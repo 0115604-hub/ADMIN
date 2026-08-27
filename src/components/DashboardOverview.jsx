@@ -4,6 +4,7 @@ import {
   TrendingDown,
   DollarSign,
   Car,
+  Boxes,
   Layers,
   ArrowUpRight,
   ArrowDownRight,
@@ -17,7 +18,12 @@ import { MASTER_SALES_SUMMARY, MASTER_PROCESS_BREAKDOWN, MASTER_VEHICLE_SALES } 
 import { MASTER_PURCHASE_SUMMARY, MASTER_PURCHASE_CATEGORIES } from "../data/masterPurchaseData";
 import { useCurrency } from "../context/CurrencyContext";
 
-export const DashboardOverview = ({ onNavigateToVehicles, onNavigateToPurchases, onNavigateToStatement }) => {
+export const DashboardOverview = ({
+  onNavigateToVehicles,
+  onNavigateToMaterials,
+  onNavigateToPurchases,
+  onNavigateToStatement
+}) => {
   const { formatAmount } = useCurrency();
 
   const totalSales = MASTER_SALES_SUMMARY.totalSales; // 2,873,777,826
@@ -50,7 +56,14 @@ export const DashboardOverview = ({ onNavigateToVehicles, onNavigateToPurchases,
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
             >
               <Car className="w-4 h-4" />
-              <span>차종별 매출 분석</span>
+              <span>차종별 매출</span>
+            </button>
+            <button
+              onClick={onNavigateToMaterials}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+            >
+              <Boxes className="w-4 h-4" />
+              <span>자재매입 품목군</span>
             </button>
             <button
               onClick={onNavigateToPurchases}

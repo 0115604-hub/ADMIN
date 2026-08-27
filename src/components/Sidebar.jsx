@@ -2,6 +2,7 @@ import React from "react";
 import {
   LayoutDashboard,
   Car,
+  Boxes,
   Layers,
   FileText,
   Settings,
@@ -14,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 export const NAVIGATION_TABS = [
   { id: "dashboard", label: "총괄 손익 대시보드", icon: LayoutDashboard, badge: "종합" },
   { id: "vehicle_sales", label: "차종별 매출 분석", icon: Car, badge: "23개 차종" },
+  { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes, badge: "9개 군" },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers, badge: "12개 과목" },
   { id: "statement", label: "월간 손익계산서", icon: FileText, badge: "K-IFRS" },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }

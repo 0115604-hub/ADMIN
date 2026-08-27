@@ -3,6 +3,7 @@ import { Sidebar, NAVIGATION_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
 import { VehicleSalesView } from "./components/VehicleSalesView";
+import { MaterialPurchaseView } from "./components/MaterialPurchaseView";
 import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
 import { PnLStatement } from "./components/PnLStatement";
 import { SettingsView } from "./components/SettingsView";
@@ -142,6 +143,7 @@ export const App = () => {
               {activeTab === "dashboard" && (
                 <DashboardOverview
                   onNavigateToVehicles={() => setActiveTab("vehicle_sales")}
+                  onNavigateToMaterials={() => setActiveTab("material_purchases")}
                   onNavigateToPurchases={() => setActiveTab("purchase_costs")}
                   onNavigateToStatement={() => setActiveTab("statement")}
                 />
@@ -149,6 +151,10 @@ export const App = () => {
 
               {activeTab === "vehicle_sales" && (
                 <VehicleSalesView />
+              )}
+
+              {activeTab === "material_purchases" && (
+                <MaterialPurchaseView />
               )}
 
               {activeTab === "purchase_costs" && (
