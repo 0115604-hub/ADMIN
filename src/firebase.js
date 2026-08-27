@@ -5,13 +5,13 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {
-  apiKey: "AIzaSyCiHEInVCW1x2xnyw3eOW5oEubaCiwzZOg",
-  authDomain: "profit-and-loss-7d09b.firebaseapp.com",
-  projectId: "profit-and-loss-7d09b",
-  storageBucket: "profit-and-loss-7d09b.firebasestorage.app",
-  messagingSenderId: "751528745146",
-  appId: "1:751528745146:web:c9bc019f965942b3eaca83",
-  measurementId: "G-2XSENS7QCB"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCiHEInVCW1x2xnyw3eOW5oEubaCiwzZOg",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "profit-and-loss-7d09b.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "profit-and-loss-7d09b",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "profit-and-loss-7d09b.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "751528745146",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:751528745146:web:c9bc019f965942b3eaca83",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-2XSENS7QCB"
 };
 
 // Initialize Firebase
