@@ -11,23 +11,25 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
+import realPurchasingData from "../data/purchasing202607.json";
 
 const COLLECTION_NAME = "transactions";
-const LOCAL_STORAGE_KEY = "admin_pnl_transactions_fallback_v2";
+const LOCAL_STORAGE_KEY = "admin_pnl_transactions_real_v1";
 
-// Clean initial data (empty)
-export const INITIAL_SAMPLE_DATA = [];
+// Default to user's real purchasing data
+export const INITIAL_SAMPLE_DATA = realPurchasingData || [];
 
 // Helper: Get local fallback data
 const getLocalData = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
-      return [];
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_DATA));
+      return INITIAL_SAMPLE_DATA;
     }
     return JSON.parse(data);
   } catch (e) {
-    return [];
+    return INITIAL_SAMPLE_DATA;
   }
 };
 
@@ -48,7 +50,7 @@ export const fetchTransactions = async () => {
     if (querySnapshot.empty) {
       // If Firestore collection is empty, check localStorage
       const local = getLocalData();
-      return { data: local, source: "firestore_empty", count: local.length };
+      return { data: local, source: "local_dataset", count: local.length };
     }
 
     const items = [];
@@ -141,6 +143,5 @@ export const deleteTransaction = async (id) => {
 // Clear All Data
 export const clearAllTransactions = async () => {
   localStorage.removeItem(LOCAL_STORAGE_KEY);
-  localStorage.removeItem("admin_pnl_transactions_fallback");
   return true;
 };
