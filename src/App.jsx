@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Sidebar, NAVIGATION_TABS } from "./components/Sidebar";
+import { Sidebar, ADMIN_TABS, OPERATOR_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
 import { VehicleSalesView } from "./components/VehicleSalesView";
 import { MaterialPurchaseView } from "./components/MaterialPurchaseView";
 import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
 import { PnLStatement } from "./components/PnLStatement";
+import { OperatorWorkspace } from "./components/OperatorWorkspace";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
@@ -19,8 +20,8 @@ import {
 } from "./services/dbService";
 
 export const App = () => {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard"); // Default to Executive Dashboard
+  const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState(isOperator ? "operator_workspace" : "dashboard");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -28,6 +29,17 @@ export const App = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+
+  // Sync default tab when user changes
+  useEffect(() => {
+    if (isOperator) {
+      setActiveTab("operator_workspace");
+    } else if (isAdmin && activeTab === "operator_workspace") {
+      // Keep or allow
+    } else if (isAdmin && !activeTab) {
+      setActiveTab("dashboard");
+    }
+  }, [isOperator, isAdmin]);
 
   // Load data
   const loadData = async (showRefreshAnim = false) => {
@@ -52,7 +64,7 @@ export const App = () => {
     }
   }, [isAuthenticated]);
 
-  // Create or Update
+  // Save Transaction
   const handleSaveTransaction = async (formData) => {
     try {
       if (editingItem) {
@@ -71,7 +83,7 @@ export const App = () => {
     }
   };
 
-  // Bulk Upload from Excel/CSV
+  // Bulk Upload
   const handleBulkUpload = async (items) => {
     const createdList = [];
     for (const item of items) {
@@ -82,7 +94,7 @@ export const App = () => {
     return true;
   };
 
-  // Delete
+  // Delete Transaction
   const handleDeleteTransaction = async (id) => {
     if (!window.confirm("이 항목을 정말 삭제하시겠습니까?")) return;
     try {
@@ -93,9 +105,14 @@ export const App = () => {
     }
   };
 
-  // Active Tab Title
-  const activeTabMeta = NAVIGATION_TABS.find((t) => t.id === activeTab);
-  const pageTitle = activeTabMeta ? activeTabMeta.label : "월간 매입·매출 손익 관리";
+  // Tab Title
+  const allTabs = isOperator ? OPERATOR_TABS : ADMIN_TABS;
+  const activeTabMeta = allTabs.find((t) => t.id === activeTab);
+  const pageTitle = activeTabMeta
+    ? activeTabMeta.label
+    : isOperator
+    ? "엑셀 일일 업데이트 업로드"
+    : "월간 매입·매출 손익 관리";
 
   if (authLoading) {
     return (
@@ -140,65 +157,81 @@ export const App = () => {
             </div>
           ) : (
             <>
-              {activeTab === "dashboard" && (
-                <DashboardOverview
-                  onNavigateToVehicles={() => setActiveTab("vehicle_sales")}
-                  onNavigateToMaterials={() => setActiveTab("material_purchases")}
-                  onNavigateToPurchases={() => setActiveTab("purchase_costs")}
-                  onNavigateToStatement={() => setActiveTab("statement")}
-                />
+              {/* OPERATOR VIEW */}
+              {isOperator && (
+                <OperatorWorkspace onBulkUpload={handleBulkUpload} />
               )}
 
-              {activeTab === "vehicle_sales" && (
-                <VehicleSalesView />
-              )}
+              {/* ADMIN VIEWS */}
+              {isAdmin && (
+                <>
+                  {activeTab === "dashboard" && (
+                    <DashboardOverview
+                      onNavigateToVehicles={() => setActiveTab("vehicle_sales")}
+                      onNavigateToMaterials={() => setActiveTab("material_purchases")}
+                      onNavigateToPurchases={() => setActiveTab("purchase_costs")}
+                      onNavigateToStatement={() => setActiveTab("statement")}
+                    />
+                  )}
 
-              {activeTab === "material_purchases" && (
-                <MaterialPurchaseView />
-              )}
+                  {activeTab === "vehicle_sales" && (
+                    <VehicleSalesView />
+                  )}
 
-              {activeTab === "purchase_costs" && (
-                <PurchaseExpenseView
-                  transactions={transactions}
-                  onEdit={(item) => {
-                    setEditingItem(item);
-                    setModalOpen(true);
-                  }}
-                  onDelete={handleDeleteTransaction}
-                  onOpenNewModal={() => {
-                    setEditingItem(null);
-                    setModalOpen(true);
-                  }}
-                  onOpenExcelModal={() => setExcelModalOpen(true)}
-                />
-              )}
+                  {activeTab === "material_purchases" && (
+                    <MaterialPurchaseView />
+                  )}
 
-              {activeTab === "statement" && (
-                <PnLStatement transactions={transactions} />
-              )}
+                  {activeTab === "purchase_costs" && (
+                    <PurchaseExpenseView
+                      transactions={transactions}
+                      onEdit={(item) => {
+                        setEditingItem(item);
+                        setModalOpen(true);
+                      }}
+                      onDelete={handleDeleteTransaction}
+                      onOpenNewModal={() => {
+                        setEditingItem(null);
+                        setModalOpen(true);
+                      }}
+                      onOpenExcelModal={() => setExcelModalOpen(true)}
+                    />
+                  )}
 
-              {activeTab === "settings" && (
-                <SettingsView
-                  transactions={transactions}
-                  onRefresh={() => loadData(true)}
-                  dataSource={dataSource}
-                />
+                  {activeTab === "statement" && (
+                    <PnLStatement transactions={transactions} />
+                  )}
+
+                  {activeTab === "operator_workspace" && (
+                    <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                  )}
+
+                  {activeTab === "settings" && (
+                    <SettingsView
+                      transactions={transactions}
+                      onRefresh={() => loadData(true)}
+                      dataSource={dataSource}
+                    />
+                  )}
+                </>
               )}
             </>
           )}
         </main>
       </div>
 
-      {/* Transaction Add/Edit Modal */}
-      <TransactionModal
-        isOpen={modalOpen}
-        onClose={() => {
-          setModalOpen(false);
-          setEditingItem(null);
-        }}
-        onSave={handleSaveTransaction}
-        editingItem={editingItem}
-      />
+      {/* Transaction Add/Edit Modal (Admin Only) */}
+      {isAdmin && (
+        <TransactionModal
+          isOpen={modalOpen}
+          onClose={() => {
+            setModalOpen(false);
+            setEditingItem(null);
+          }}
+          onSave={handleSaveTransaction}
+          editingItem={editingItem}
+        />
+      )}
 
       {/* Excel Upload Modal */}
       <ExcelUploadModal
