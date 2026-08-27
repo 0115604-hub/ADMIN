@@ -1,0 +1,1133 @@
+[
+  {
+    "vehicleGroup": "PCM 압출/가공",
+    "itemCount": 1,
+    "totalQty": 1,
+    "totalAmount": 934505308,
+    "details": [
+      {
+        "process": "PCM 매출",
+        "vehicle": "PCM 압출/가공",
+        "itemCode": "PCM-07",
+        "partNumber": "PCM-TOTAL",
+        "partName": "PCM 매출 전체 (압출 및 가공)",
+        "unitPrice": 0,
+        "qty": 1,
+        "amount": 934505308,
+        "share": 32.52
+      }
+    ],
+    "rank": 1,
+    "share": 32.52
+  },
+  {
+    "vehicleGroup": "9BQC",
+    "itemCount": 8,
+    "totalQty": 87260,
+    "totalAmount": 612722880,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2756-00",
+        "partNumber": "42933958",
+        "partName": "9BQC RR LH(PRI)",
+        "unitPrice": 11028,
+        "qty": 21480,
+        "amount": 236881440,
+        "share": 8.24
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2757-00",
+        "partNumber": "42933959",
+        "partName": "9BQC RR RH(PRI)",
+        "unitPrice": 11028,
+        "qty": 21420,
+        "amount": 236219760,
+        "share": 8.22
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2752-00",
+        "partNumber": "42933952",
+        "partName": "9BQC FRT LH",
+        "unitPrice": 2858,
+        "qty": 21400,
+        "amount": 61161200,
+        "share": 2.13
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2753-00",
+        "partNumber": "42933953",
+        "partName": "9BQC FRT RH",
+        "unitPrice": 2858,
+        "qty": 21200,
+        "amount": 60589600,
+        "share": 2.11
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2754-00",
+        "partNumber": "42933956",
+        "partName": "9BQC RR LH(TNI)",
+        "unitPrice": 10598,
+        "qty": 780,
+        "amount": 8266440,
+        "share": 0.29
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2755-00",
+        "partNumber": "42933957",
+        "partName": "9BQC RR RH(TNI)",
+        "unitPrice": 10598,
+        "qty": 780,
+        "amount": 8266440,
+        "share": 0.29
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2463-00",
+        "partNumber": "42870825",
+        "partName": "9BQC Glass run RR RH PRIVACY",
+        "unitPrice": 10627,
+        "qty": 100,
+        "amount": 1062700,
+        "share": 0.04
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "9BQC",
+        "itemCode": "G1102-2544-00",
+        "partNumber": "42896296",
+        "partName": "9BQC Glass run FR RH",
+        "unitPrice": 2753,
+        "qty": 100,
+        "amount": 275300,
+        "share": 0.01
+      }
+    ],
+    "rank": 2,
+    "share": 21.32
+  },
+  {
+    "vehicleGroup": "DT (수출)",
+    "itemCount": 4,
+    "totalQty": 66240,
+    "totalAmount": 411099840,
+    "details": [
+      {
+        "process": "수출상품매출",
+        "vehicle": "DT",
+        "itemCode": "G1103-2137-01",
+        "partNumber": "68291620AD",
+        "partName": "DT(CREW) Door Side RR RH (CREW)",
+        "unitPrice": 6206,
+        "qty": 32400,
+        "amount": 201074400,
+        "share": 7
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "DT",
+        "itemCode": "G1103-2138-01",
+        "partNumber": "68291621AD",
+        "partName": "DT(CREW) Door Side RR LH (CREW)",
+        "unitPrice": 6206,
+        "qty": 32400,
+        "amount": 201074400,
+        "share": 7
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "DT",
+        "itemCode": "G1103-2139-01",
+        "partNumber": "68291618AD",
+        "partName": "DT(QUAD) Door Side RR RH",
+        "unitPrice": 6216,
+        "qty": 720,
+        "amount": 4475520,
+        "share": 0.16
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "DT",
+        "itemCode": "G1103-2140-01",
+        "partNumber": "68291619AD",
+        "partName": "DT(QUAD) Door Side RR LH",
+        "unitPrice": 6216,
+        "qty": 720,
+        "amount": 4475520,
+        "share": 0.16
+      }
+    ],
+    "rank": 3,
+    "share": 14.31
+  },
+  {
+    "vehicleGroup": "NX4 (내수/수출)",
+    "itemCount": 6,
+    "totalQty": 54680,
+    "totalAmount": 303396720,
+    "details": [
+      {
+        "process": "수출상품매출",
+        "vehicle": "NX4a",
+        "itemCode": "G1102-2069-01",
+        "partNumber": "G1102-2069-00",
+        "partName": "G/RUN FRT LH",
+        "unitPrice": 5800,
+        "qty": 12960,
+        "amount": 75168000,
+        "share": 2.62
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "NX4a",
+        "itemCode": "G1102-2070-01",
+        "partNumber": "G1102-2070-00",
+        "partName": "G/RUN FRT RH",
+        "unitPrice": 5800,
+        "qty": 12960,
+        "amount": 75168000,
+        "share": 2.62
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "NX4",
+        "itemCode": "G1102-1973-00",
+        "partNumber": "82530-9N000",
+        "partName": "FRT LH",
+        "unitPrice": 5322,
+        "qty": 13239,
+        "amount": 70457958,
+        "share": 2.45
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "NX4",
+        "itemCode": "G1102-1974-00",
+        "partNumber": "82540-9N000",
+        "partName": "FRT RH",
+        "unitPrice": 5322,
+        "qty": 13239,
+        "amount": 70457958,
+        "share": 2.45
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "NX4",
+        "itemCode": "G1102-1973-01",
+        "partNumber": "82530-9N000",
+        "partName": "NX4 Glass run FR LH 현대CKD",
+        "unitPrice": 5322,
+        "qty": 1141,
+        "amount": 6072402,
+        "share": 0.21
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "NX4",
+        "itemCode": "G1102-1974-01",
+        "partNumber": "82540-9N000",
+        "partName": "NX4 Glass run FR RH 현대CKD",
+        "unitPrice": 5322,
+        "qty": 1141,
+        "amount": 6072402,
+        "share": 0.21
+      }
+    ],
+    "rank": 4,
+    "share": 10.56
+  },
+  {
+    "vehicleGroup": "DS (수출)",
+    "itemCount": 4,
+    "totalQty": 38400,
+    "totalAmount": 224624960,
+    "details": [
+      {
+        "process": "수출상품매출",
+        "vehicle": "DS",
+        "itemCode": "G1103-2082-01",
+        "partNumber": "55112363AI",
+        "partName": "DS(CREW) Door Side RR LH",
+        "unitPrice": 5845,
+        "qty": 18880,
+        "amount": 110353600,
+        "share": 3.84
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "DS",
+        "itemCode": "G1103-2081-01",
+        "partNumber": "55112362AI",
+        "partName": "DS(CREW) Door Side RR RH",
+        "unitPrice": 5845,
+        "qty": 17280,
+        "amount": 101001600,
+        "share": 3.51
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "DS",
+        "itemCode": "G1103-2086-00",
+        "partNumber": "68563583AC",
+        "partName": "DS(TRUCK) Door Side FR LH",
+        "unitPrice": 6154,
+        "qty": 1120,
+        "amount": 6892480,
+        "share": 0.24
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "DS",
+        "itemCode": "G1103-2085-00",
+        "partNumber": "68563582AC",
+        "partName": "DS(TRUCK) Door Side FR RH",
+        "unitPrice": 5694,
+        "qty": 1120,
+        "amount": 6377280,
+        "share": 0.22
+      }
+    ],
+    "rank": 5,
+    "share": 7.82
+  },
+  {
+    "vehicleGroup": "JA",
+    "itemCount": 6,
+    "totalQty": 40119,
+    "totalAmount": 120024682,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "JA",
+        "itemCode": "R1102-1363-00",
+        "partNumber": "83530G6000",
+        "partName": "G/RUN RR LH",
+        "unitPrice": 3443,
+        "qty": 9800,
+        "amount": 33741400,
+        "share": 1.17
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JA",
+        "itemCode": "R1102-1364-00",
+        "partNumber": "83540G6000",
+        "partName": "G/RUN RR RH",
+        "unitPrice": 3443,
+        "qty": 9800,
+        "amount": 33741400,
+        "share": 1.17
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JA",
+        "itemCode": "G1102-1361-00",
+        "partNumber": "82530G6000",
+        "partName": "G/RUN FRT LH",
+        "unitPrice": 2558,
+        "qty": 10235,
+        "amount": 26181130,
+        "share": 0.91
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JA",
+        "itemCode": "G1102-1362-00",
+        "partNumber": "82540G6000",
+        "partName": "G/RUN FRT RH",
+        "unitPrice": 2558,
+        "qty": 10225,
+        "amount": 26155550,
+        "share": 0.91
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JA",
+        "itemCode": "G1102-1364-01",
+        "partNumber": "83540G6000",
+        "partName": "G/RUN RR RH",
+        "unitPrice": 3478,
+        "qty": 30,
+        "amount": 104340,
+        "share": 0
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JA",
+        "itemCode": "G1102-1363-01",
+        "partNumber": "83530G6000",
+        "partName": "G/RUN RR RH",
+        "unitPrice": 3478,
+        "qty": 29,
+        "amount": 100862,
+        "share": 0
+      }
+    ],
+    "rank": 6,
+    "share": 4.18
+  },
+  {
+    "vehicleGroup": "PU",
+    "itemCount": 6,
+    "totalQty": 20137,
+    "totalAmount": 65083314,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "PU",
+        "itemCode": "G1106-0179",
+        "partNumber": "822104E000",
+        "partName": "PU OUT CHAN LH",
+        "unitPrice": 3275,
+        "qty": 7279,
+        "amount": 23838725,
+        "share": 0.83
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "PU",
+        "itemCode": "G1106-0180",
+        "partNumber": "822204E000",
+        "partName": "PU OUT CHAN RH",
+        "unitPrice": 3275,
+        "qty": 7271,
+        "amount": 23812525,
+        "share": 0.83
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "PU",
+        "itemCode": "G1106-0179-01",
+        "partNumber": "822104E000",
+        "partName": "PU Outer Belt FR LH",
+        "unitPrice": 3275,
+        "qty": 2160,
+        "amount": 7074000,
+        "share": 0.25
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "PU",
+        "itemCode": "G1106-0180-01",
+        "partNumber": "822204E000",
+        "partName": "PU Outer Belt FR RH",
+        "unitPrice": 3275,
+        "qty": 2160,
+        "amount": 7074000,
+        "share": 0.25
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "PU",
+        "itemCode": "G1102-0620",
+        "partNumber": "832104E000",
+        "partName": "PU(D/CAB) OTR BELT LH",
+        "unitPrice": 2592,
+        "qty": 647,
+        "amount": 1677024,
+        "share": 0.06
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "PU",
+        "itemCode": "G1102-0621",
+        "partNumber": "832204E000",
+        "partName": "PU(D/CAB) OTR BELT RH",
+        "unitPrice": 2592,
+        "qty": 620,
+        "amount": 1607040,
+        "share": 0.06
+      }
+    ],
+    "rank": 7,
+    "share": 2.26
+  },
+  {
+    "vehicleGroup": "NE1 / ME1 (수출/내수)",
+    "itemCount": 7,
+    "totalQty": 11850,
+    "totalAmount": 56011294,
+    "details": [
+      {
+        "process": "수출상품매출",
+        "vehicle": "NE1a",
+        "itemCode": "G1103-1874-02",
+        "partNumber": "83140PI000",
+        "partName": "NE1a Door Side RR RH",
+        "unitPrice": 5294,
+        "qty": 2880,
+        "amount": 15246720,
+        "share": 0.53
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "NE1a",
+        "itemCode": "G1103-1873-02",
+        "partNumber": "83130PI000",
+        "partName": "NE1a Door Side RR LH",
+        "unitPrice": 4898,
+        "qty": 2880,
+        "amount": 14106240,
+        "share": 0.49
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "NE1a",
+        "itemCode": "G1103-1872-02",
+        "partNumber": "82140PI000",
+        "partName": "NE1a Door Side FR RH",
+        "unitPrice": 4379,
+        "qty": 3200,
+        "amount": 14012800,
+        "share": 0.49
+      },
+      {
+        "process": "수출상품매출",
+        "vehicle": "NE1a",
+        "itemCode": "G1103-1871-02",
+        "partNumber": "82130PI000",
+        "partName": "NE1a Door Side FR LH",
+        "unitPrice": 4379,
+        "qty": 2880,
+        "amount": 12611520,
+        "share": 0.44
+      },
+      {
+        "process": "A/S",
+        "vehicle": "8NE1a",
+        "itemCode": "G1103-1874-01",
+        "partNumber": "83140PI000",
+        "partName": "NE1a Door Side RR RH",
+        "unitPrice": 4898,
+        "qty": 4,
+        "amount": 19592,
+        "share": 0
+      },
+      {
+        "process": "A/S",
+        "vehicle": "8NE1a",
+        "itemCode": "G1103-1872-01",
+        "partNumber": "82140PI000",
+        "partName": "NE1a Door Side FR RH",
+        "unitPrice": 4379,
+        "qty": 2,
+        "amount": 8758,
+        "share": 0
+      },
+      {
+        "process": "A/S",
+        "vehicle": "1ME1a",
+        "itemCode": "G1125-0082-01",
+        "partNumber": "831A0TD000",
+        "partName": "ME1a Center Pillar Seal RR LH",
+        "unitPrice": 1416,
+        "qty": 4,
+        "amount": 5664,
+        "share": 0
+      }
+    ],
+    "rank": 8,
+    "share": 1.95
+  },
+  {
+    "vehicleGroup": "OV1k",
+    "itemCount": 4,
+    "totalQty": 30867,
+    "totalAmount": 46963911,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "OV1k",
+        "itemCode": "G1110-0203-00",
+        "partNumber": "86435X9000",
+        "partName": "OV1k Hood Seal (FRUNK)",
+        "unitPrice": 1712,
+        "qty": 8064,
+        "amount": 13805568,
+        "share": 0.48
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "OV1k",
+        "itemCode": "G1160-0010-00",
+        "partNumber": "81865X9100",
+        "partName": "OV1k Power Tail Gate Side Strip RH",
+        "unitPrice": 1661,
+        "qty": 7372,
+        "amount": 12244892,
+        "share": 0.43
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "OV1k",
+        "itemCode": "G1160-0009-00",
+        "partNumber": "81855X9100",
+        "partName": "OV1k Power Tail Gate Side Strip LH",
+        "unitPrice": 1661,
+        "qty": 7367,
+        "amount": 12236587,
+        "share": 0.43
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "OV1k",
+        "itemCode": "G1110-0202-00",
+        "partNumber": "86430X9000",
+        "partName": "OV1k Hood Seal",
+        "unitPrice": 1076,
+        "qty": 8064,
+        "amount": 8676864,
+        "share": 0.3
+      }
+    ],
+    "rank": 9,
+    "share": 1.63
+  },
+  {
+    "vehicleGroup": "HR",
+    "itemCount": 4,
+    "totalQty": 17838,
+    "totalAmount": 46713696,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "HR",
+        "itemCode": "G1102-0085",
+        "partNumber": "825304F000",
+        "partName": "G/RUN FRT LH",
+        "unitPrice": 2664,
+        "qty": 7898,
+        "amount": 21040272,
+        "share": 0.73
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "HR",
+        "itemCode": "G1102-0128",
+        "partNumber": "825404F000",
+        "partName": "G/RUN FRT RH",
+        "unitPrice": 2664,
+        "qty": 7882,
+        "amount": 20997648,
+        "share": 0.73
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "HR",
+        "itemCode": "G1102-0218",
+        "partNumber": "835404F000",
+        "partName": "G/RUN RR RH",
+        "unitPrice": 2272,
+        "qty": 1031,
+        "amount": 2342432,
+        "share": 0.08
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "HR",
+        "itemCode": "G1102-0181",
+        "partNumber": "835304F000",
+        "partName": "G/RUN RR LH",
+        "unitPrice": 2272,
+        "qty": 1027,
+        "amount": 2333344,
+        "share": 0.08
+      }
+    ],
+    "rank": 10,
+    "share": 1.63
+  },
+  {
+    "vehicleGroup": "JK 1 (내수/임가공)",
+    "itemCount": 6,
+    "totalQty": 16470,
+    "totalAmount": 25273340,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "JK 1",
+        "itemCode": "G1129-0063-00",
+        "partNumber": "82540-9N000",
+        "partName": "JK Wheel Seal RR RH",
+        "unitPrice": 1546,
+        "qty": 5410,
+        "amount": 8363860,
+        "share": 0.29
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JK 1",
+        "itemCode": "G1129-0062-00",
+        "partNumber": "82530-9N000",
+        "partName": "JK Wheel Seal RR LH",
+        "unitPrice": 1546,
+        "qty": 5280,
+        "amount": 8162880,
+        "share": 0.28
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JK 1",
+        "itemCode": "F1129-0062-00",
+        "partNumber": "831C0-AR000",
+        "partName": "JK Wheel Seal RR LH",
+        "unitPrice": 1490,
+        "qty": 1690,
+        "amount": 2518100,
+        "share": 0.09
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JK 1",
+        "itemCode": "F1129-0063-00",
+        "partNumber": "831D0-AR000",
+        "partName": "JK Wheel Seal RR RH",
+        "unitPrice": 1490,
+        "qty": 1690,
+        "amount": 2518100,
+        "share": 0.09
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JK 1",
+        "itemCode": "G1129-0062-01",
+        "partNumber": "82530-9N000",
+        "partName": "JK Wheel Seal RR LH(22라인)",
+        "unitPrice": 1546,
+        "qty": 1200,
+        "amount": 1855200,
+        "share": 0.06
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "JK 1",
+        "itemCode": "G1129-0063-01",
+        "partNumber": "82540-9N000",
+        "partName": "JK Wheel Seal RR RH(22라인)",
+        "unitPrice": 1546,
+        "qty": 1200,
+        "amount": 1855200,
+        "share": 0.06
+      }
+    ],
+    "rank": 11,
+    "share": 0.88
+  },
+  {
+    "vehicleGroup": "VT",
+    "itemCount": 1,
+    "totalQty": 3400,
+    "totalAmount": 12512000,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "VT",
+        "itemCode": "G1102-0832-01",
+        "partNumber": "81151-5H000",
+        "partName": "VT OUTER BELT 벨트라인",
+        "unitPrice": 3680,
+        "qty": 3400,
+        "amount": 12512000,
+        "share": 0.44
+      }
+    ],
+    "rank": 12,
+    "share": 0.44
+  },
+  {
+    "vehicleGroup": "GV",
+    "itemCount": 2,
+    "totalQty": 1650,
+    "totalAmount": 4087050,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "GV",
+        "itemCode": "G1106-0212",
+        "partNumber": "821707M000",
+        "partName": "OTR CHAN LH",
+        "unitPrice": 2477,
+        "qty": 830,
+        "amount": 2055910,
+        "share": 0.07
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "GV",
+        "itemCode": "G1106-0213",
+        "partNumber": "821807M000",
+        "partName": "OTR CHAN RH",
+        "unitPrice": 2477,
+        "qty": 820,
+        "amount": 2031140,
+        "share": 0.07
+      }
+    ],
+    "rank": 13,
+    "share": 0.14
+  },
+  {
+    "vehicleGroup": "CE1",
+    "itemCount": 2,
+    "totalQty": 1820,
+    "totalAmount": 3001180,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "CE1",
+        "itemCode": "G1125-0076-00",
+        "partNumber": "831A0KL000",
+        "partName": "CE1 P/SEAL RR LH",
+        "unitPrice": 1649,
+        "qty": 921,
+        "amount": 1518729,
+        "share": 0.05
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "CE1",
+        "itemCode": "G1125-0077-00",
+        "partNumber": "831B0KL000",
+        "partName": "CE1 P/SEAL RR RH",
+        "unitPrice": 1649,
+        "qty": 899,
+        "amount": 1482451,
+        "share": 0.05
+      }
+    ],
+    "rank": 14,
+    "share": 0.1
+  },
+  {
+    "vehicleGroup": "P417",
+    "itemCount": 2,
+    "totalQty": 460,
+    "totalAmount": 2949060,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "P417",
+        "itemCode": "G1109-0252-02",
+        "partNumber": "6608258820",
+        "partName": "P417 Upper Opening RH",
+        "unitPrice": 6411,
+        "qty": 240,
+        "amount": 1538640,
+        "share": 0.05
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "P417",
+        "itemCode": "G1109-0251-02",
+        "partNumber": "6608258819",
+        "partName": "P417 Upper Opening LH",
+        "unitPrice": 6411,
+        "qty": 220,
+        "amount": 1410420,
+        "share": 0.05
+      }
+    ],
+    "rank": 15,
+    "share": 0.1
+  },
+  {
+    "vehicleGroup": "QZ",
+    "itemCount": 2,
+    "totalQty": 1350,
+    "totalAmount": 2719033,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "QZ",
+        "itemCode": "G1106-0317-00",
+        "partNumber": "821707P000",
+        "partName": "OTR CHAN LH",
+        "unitPrice": 2150,
+        "qty": 673,
+        "amount": 1446950,
+        "share": 0.05
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "QZ",
+        "itemCode": "G1106-0318-00",
+        "partNumber": "821807P000",
+        "partName": "OTR CHAN RH",
+        "unitPrice": 1879,
+        "qty": 677,
+        "amount": 1272083,
+        "share": 0.04
+      }
+    ],
+    "rank": 16,
+    "share": 0.09
+  },
+  {
+    "vehicleGroup": "FS",
+    "itemCount": 3,
+    "totalQty": 179,
+    "totalAmount": 646125,
+    "details": [
+      {
+        "process": "A/S",
+        "vehicle": "FS",
+        "itemCode": "G1103-0628",
+        "partNumber": "82130-2V000",
+        "partName": "D/SIDE FR LH",
+        "unitPrice": 3850,
+        "qty": 100,
+        "amount": 385000,
+        "share": 0.01
+      },
+      {
+        "process": "A/S",
+        "vehicle": "FS",
+        "itemCode": "G1103-0630",
+        "partNumber": "83140-2V000",
+        "partName": "D/SIDE RR RH",
+        "unitPrice": 3327,
+        "qty": 65,
+        "amount": 216255,
+        "share": 0.01
+      },
+      {
+        "process": "A/S",
+        "vehicle": "FS",
+        "itemCode": "G1103-0633",
+        "partNumber": "83130-2V900",
+        "partName": "RR RH(RHD)",
+        "unitPrice": 3205,
+        "qty": 14,
+        "amount": 44870,
+        "share": 0
+      }
+    ],
+    "rank": 17,
+    "share": 0.02
+  },
+  {
+    "vehicleGroup": "EG",
+    "itemCount": 2,
+    "totalQty": 248,
+    "totalAmount": 569904,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "EG",
+        "itemCode": "G1106-0010",
+        "partNumber": "821807A000",
+        "partName": "OTR CHAN RH",
+        "unitPrice": 2298,
+        "qty": 156,
+        "amount": 358488,
+        "share": 0.01
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "EG",
+        "itemCode": "G1106-0009",
+        "partNumber": "821707A000",
+        "partName": "OTR CHAN LH",
+        "unitPrice": 2298,
+        "qty": 92,
+        "amount": 211416,
+        "share": 0.01
+      }
+    ],
+    "rank": 18,
+    "share": 0.02
+  },
+  {
+    "vehicleGroup": "TY",
+    "itemCount": 2,
+    "totalQty": 140,
+    "totalAmount": 346780,
+    "details": [
+      {
+        "process": "내수상품매출",
+        "vehicle": "TY",
+        "itemCode": "G1106-0669-00",
+        "partNumber": "AD66203598-1",
+        "partName": "TY Outer Belt FRT LH",
+        "unitPrice": 2477,
+        "qty": 70,
+        "amount": 173390,
+        "share": 0.01
+      },
+      {
+        "process": "내수상품매출",
+        "vehicle": "TY",
+        "itemCode": "G1106-0670-00",
+        "partNumber": "AD62203598-2",
+        "partName": "TY Outer Belt FRT RH",
+        "unitPrice": 2477,
+        "qty": 70,
+        "amount": 173390,
+        "share": 0.01
+      }
+    ],
+    "rank": 19,
+    "share": 0.01
+  },
+  {
+    "vehicleGroup": "BL / BL7m",
+    "itemCount": 1,
+    "totalQty": 130,
+    "totalAmount": 220220,
+    "details": [
+      {
+        "process": "A/S",
+        "vehicle": "BL7m",
+        "itemCode": "G1110-0171-01",
+        "partNumber": "86455BC000",
+        "partName": "BL7m Hood Seal (FRT)",
+        "unitPrice": 1694,
+        "qty": 130,
+        "amount": 220220,
+        "share": 0.01
+      }
+    ],
+    "rank": 20,
+    "share": 0.01
+  },
+  {
+    "vehicleGroup": "GM (M2JO / M200 / M300)",
+    "itemCount": 1,
+    "totalQty": 50,
+    "totalAmount": 202950,
+    "details": [
+      {
+        "process": "A/S",
+        "vehicle": "M2JO",
+        "itemCode": "G1102-1487-03",
+        "partNumber": "42574263",
+        "partName": "M2JO Glass run FR RH",
+        "unitPrice": 4059,
+        "qty": 50,
+        "amount": 202950,
+        "share": 0.01
+      }
+    ],
+    "rank": 21,
+    "share": 0.01
+  },
+  {
+    "vehicleGroup": "HI / VI (EPDM)",
+    "itemCount": 4,
+    "totalQty": 24,
+    "totalAmount": 52910,
+    "details": [
+      {
+        "process": "EPDM",
+        "vehicle": "HI",
+        "itemCode": "G1127-0018-00",
+        "partNumber": "82231-D2000",
+        "partName": "INR BELT FRT LH",
+        "unitPrice": 2615,
+        "qty": 12,
+        "amount": 31380,
+        "share": 0
+      },
+      {
+        "process": "EPDM",
+        "vehicle": "VI",
+        "itemCode": "G1106-0252",
+        "partNumber": "82241-3N000",
+        "partName": "INR BELT FRT RH",
+        "unitPrice": 1531,
+        "qty": 6,
+        "amount": 9186,
+        "share": 0
+      },
+      {
+        "process": "EPDM",
+        "vehicle": "VI",
+        "itemCode": "G1106-0254",
+        "partNumber": "83241-3N000",
+        "partName": "INR BELT RR RH",
+        "unitPrice": 1662,
+        "qty": 5,
+        "amount": 8310,
+        "share": 0
+      },
+      {
+        "process": "EPDM",
+        "vehicle": "HI",
+        "itemCode": "G1127-0020-00",
+        "partNumber": "83231-D2000",
+        "partName": "INR BELT RR LH",
+        "unitPrice": 4034,
+        "qty": 1,
+        "amount": 4034,
+        "share": 0
+      }
+    ],
+    "rank": 22,
+    "share": 0
+  },
+  {
+    "vehicleGroup": "8MV1A",
+    "itemCount": 2,
+    "totalQty": 11,
+    "totalAmount": 40003,
+    "details": [
+      {
+        "process": "A/S",
+        "vehicle": "8MV1a",
+        "itemCode": "G1103-1871-01",
+        "partNumber": "82130PI000",
+        "partName": "NE1a Door Side FR LH",
+        "unitPrice": 4379,
+        "qty": 8,
+        "amount": 35032,
+        "share": 0
+      },
+      {
+        "process": "A/S",
+        "vehicle": "8MV1a",
+        "itemCode": "G1160-0003-03",
+        "partNumber": "81855XA100",
+        "partName": "MV1a Power Tail Gate Side Strip LH",
+        "unitPrice": 1657,
+        "qty": 3,
+        "amount": 4971,
+        "share": 0
+      }
+    ],
+    "rank": 23,
+    "share": 0
+  },
+  {
+    "vehicleGroup": "PD",
+    "itemCount": 1,
+    "totalQty": 2,
+    "totalAmount": 10666,
+    "details": [
+      {
+        "process": "수출상품매출",
+        "vehicle": "PD",
+        "itemCode": "G1102-1346-00",
+        "partNumber": "82530-G3000",
+        "partName": "G/RUN FRT LH",
+        "unitPrice": 5333,
+        "qty": 2,
+        "amount": 10666,
+        "share": 0
+      }
+    ],
+    "rank": 24,
+    "share": 0
+  }
+]

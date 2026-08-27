@@ -1,0 +1,1167 @@
+{
+  "totalSales": 934898633,
+  "itemCount": 81,
+  "processSummary": [
+    {
+      "process": "PCM 공정",
+      "count": 1,
+      "totalAmount": 934505308,
+      "share": 99.96
+    },
+    {
+      "process": "내수상품매출",
+      "count": 39,
+      "totalAmount": 204829,
+      "share": 0.02
+    },
+    {
+      "process": "수출\r\n서지연",
+      "count": 15,
+      "totalAmount": 142402,
+      "share": 0.02
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "count": 10,
+      "totalAmount": 42310,
+      "share": 0
+    },
+    {
+      "process": "임가공",
+      "count": 2,
+      "totalAmount": 3380,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "count": 10,
+      "totalAmount": 380,
+      "share": 0
+    },
+    {
+      "process": "EPDM",
+      "count": 4,
+      "totalAmount": 24,
+      "share": 0
+    }
+  ],
+  "vehicleSummary": [
+    {
+      "vehicle": "PCM 전체",
+      "process": "PCM 공정",
+      "count": 1,
+      "totalQty": 1,
+      "totalAmount": 934505308,
+      "share": 99.96
+    },
+    {
+      "vehicle": "9BQC",
+      "process": "내수상품매출",
+      "count": 8,
+      "totalQty": 62348,
+      "totalAmount": 87260,
+      "share": 0.01
+    },
+    {
+      "vehicle": "DT",
+      "process": "수출\r\n서지연",
+      "count": 4,
+      "totalQty": 24844,
+      "totalAmount": 66240,
+      "share": 0.01
+    },
+    {
+      "vehicle": "JA",
+      "process": "내수상품매출",
+      "count": 6,
+      "totalQty": 18958,
+      "totalAmount": 40119,
+      "share": 0
+    },
+    {
+      "vehicle": "DS",
+      "process": "수출\r\n서지연",
+      "count": 4,
+      "totalQty": 23538,
+      "totalAmount": 38400,
+      "share": 0
+    },
+    {
+      "vehicle": "OV1k",
+      "process": "내수상품매출",
+      "count": 4,
+      "totalQty": 6110,
+      "totalAmount": 30867,
+      "share": 0
+    },
+    {
+      "vehicle": "NX4",
+      "process": "내수\r\n김다솜",
+      "count": 4,
+      "totalQty": 21288,
+      "totalAmount": 28760,
+      "share": 0
+    },
+    {
+      "vehicle": "NX4a",
+      "process": "수출\r\n서지연",
+      "count": 2,
+      "totalQty": 11600,
+      "totalAmount": 25920,
+      "share": 0
+    },
+    {
+      "vehicle": "PU",
+      "process": "내수상품매출",
+      "count": 6,
+      "totalQty": 18284,
+      "totalAmount": 20137,
+      "share": 0
+    },
+    {
+      "vehicle": "HR",
+      "process": "내수상품매출",
+      "count": 4,
+      "totalQty": 9872,
+      "totalAmount": 17838,
+      "share": 0
+    },
+    {
+      "vehicle": "JK 1",
+      "process": "내수\r\n김다솜",
+      "count": 6,
+      "totalQty": 9164,
+      "totalAmount": 16470,
+      "share": 0
+    },
+    {
+      "vehicle": "NE1a",
+      "process": "수출\r\n서지연",
+      "count": 4,
+      "totalQty": 18950,
+      "totalAmount": 11840,
+      "share": 0
+    },
+    {
+      "vehicle": "VT",
+      "process": "내수상품매출",
+      "count": 1,
+      "totalQty": 3680,
+      "totalAmount": 3400,
+      "share": 0
+    },
+    {
+      "vehicle": "CE1",
+      "process": "내수상품매출",
+      "count": 2,
+      "totalQty": 3298,
+      "totalAmount": 1820,
+      "share": 0
+    },
+    {
+      "vehicle": "GV",
+      "process": "내수상품매출",
+      "count": 2,
+      "totalQty": 4954,
+      "totalAmount": 1650,
+      "share": 0
+    },
+    {
+      "vehicle": "QZ",
+      "process": "내수상품매출",
+      "count": 2,
+      "totalQty": 4029,
+      "totalAmount": 1350,
+      "share": 0
+    },
+    {
+      "vehicle": "P417",
+      "process": "내수\r\n김다솜",
+      "count": 2,
+      "totalQty": 12822,
+      "totalAmount": 460,
+      "share": 0
+    },
+    {
+      "vehicle": "EG",
+      "process": "내수상품매출",
+      "count": 2,
+      "totalQty": 4596,
+      "totalAmount": 248,
+      "share": 0
+    },
+    {
+      "vehicle": "FS",
+      "process": "A/S",
+      "count": 3,
+      "totalQty": 10382,
+      "totalAmount": 179,
+      "share": 0
+    },
+    {
+      "vehicle": "TY",
+      "process": "내수상품매출",
+      "count": 2,
+      "totalQty": 4954,
+      "totalAmount": 140,
+      "share": 0
+    },
+    {
+      "vehicle": "BL7m",
+      "process": "A/S",
+      "count": 1,
+      "totalQty": 1694,
+      "totalAmount": 130,
+      "share": 0
+    },
+    {
+      "vehicle": "M2JO",
+      "process": "A/S",
+      "count": 1,
+      "totalQty": 4059,
+      "totalAmount": 50,
+      "share": 0
+    },
+    {
+      "vehicle": "HI",
+      "process": "EPDM",
+      "count": 2,
+      "totalQty": 6649,
+      "totalAmount": 13,
+      "share": 0
+    },
+    {
+      "vehicle": "8MV1a",
+      "process": "A/S",
+      "count": 2,
+      "totalQty": 6036,
+      "totalAmount": 11,
+      "share": 0
+    },
+    {
+      "vehicle": "VI",
+      "process": "EPDM",
+      "count": 2,
+      "totalQty": 3193,
+      "totalAmount": 11,
+      "share": 0
+    },
+    {
+      "vehicle": "8NE1a",
+      "process": "A/S",
+      "count": 2,
+      "totalQty": 9277,
+      "totalAmount": 6,
+      "share": 0
+    },
+    {
+      "vehicle": "1ME1a",
+      "process": "A/S",
+      "count": 1,
+      "totalQty": 1416,
+      "totalAmount": 4,
+      "share": 0
+    },
+    {
+      "vehicle": "PD",
+      "process": "수출\r\n서지연",
+      "count": 1,
+      "totalQty": 5333,
+      "totalAmount": 2,
+      "share": 0
+    }
+  ],
+  "topItems": [
+    {
+      "process": "PCM 공정",
+      "vehicle": "PCM 전체",
+      "itemCode": "-",
+      "partNumber": "-",
+      "partName": "PCM 압출/가공 매출 (7월 마감)",
+      "unitPrice": 0,
+      "qty": 1,
+      "amount": 934505308,
+      "share": 99.96
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DT",
+      "itemCode": "-",
+      "partNumber": "G1103-2137-01",
+      "partName": "68291620AD",
+      "unitPrice": 0,
+      "qty": 6206,
+      "amount": 32400,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DT",
+      "itemCode": "-",
+      "partNumber": "G1103-2138-01",
+      "partName": "68291621AD",
+      "unitPrice": 0,
+      "qty": 6206,
+      "amount": 32400,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2756-00",
+      "partName": "42933958",
+      "unitPrice": 0,
+      "qty": 11028,
+      "amount": 21480,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2757-00",
+      "partName": "42933959",
+      "unitPrice": 0,
+      "qty": 11028,
+      "amount": 21420,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "9BQC",
+      "partNumber": "G1102-2752-00",
+      "partName": "42933952",
+      "unitPrice": 0,
+      "qty": 2858,
+      "amount": 21400,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2753-00",
+      "partName": "42933953",
+      "unitPrice": 0,
+      "qty": 2858,
+      "amount": 21200,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DS",
+      "itemCode": "-",
+      "partNumber": "G1103-2082-01",
+      "partName": "55112363AI",
+      "unitPrice": 0,
+      "qty": 5845,
+      "amount": 18880,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DS",
+      "itemCode": "DS",
+      "partNumber": "G1103-2081-01",
+      "partName": "55112362AI",
+      "unitPrice": 0,
+      "qty": 5845,
+      "amount": 17280,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "NX4",
+      "itemCode": "NX4",
+      "partNumber": "G1102-1973-00",
+      "partName": "82530-9N000",
+      "unitPrice": 0,
+      "qty": 5322,
+      "amount": 13239,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "NX4",
+      "itemCode": "-",
+      "partNumber": "G1102-1974-00",
+      "partName": "82540-9N000",
+      "unitPrice": 0,
+      "qty": 5322,
+      "amount": 13239,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "NX4a",
+      "itemCode": "NX4a",
+      "partNumber": "G1102-2069-01",
+      "partName": "G1102-2069-00",
+      "unitPrice": 0,
+      "qty": 5800,
+      "amount": 12960,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "NX4a",
+      "itemCode": "-",
+      "partNumber": "G1102-2070-01",
+      "partName": "G1102-2070-00",
+      "unitPrice": 0,
+      "qty": 5800,
+      "amount": 12960,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "JA",
+      "itemCode": "JA",
+      "partNumber": "G1102-1361-00",
+      "partName": "82530G6000",
+      "unitPrice": 0,
+      "qty": 2558,
+      "amount": 10235,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "JA",
+      "itemCode": "-",
+      "partNumber": "G1102-1362-00",
+      "partName": "82540G6000",
+      "unitPrice": 0,
+      "qty": 2558,
+      "amount": 10225,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "JA",
+      "itemCode": "-",
+      "partNumber": "R1102-1363-00",
+      "partName": "83530G6000",
+      "unitPrice": 0,
+      "qty": 3443,
+      "amount": 9800,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "JA",
+      "itemCode": "-",
+      "partNumber": "R1102-1364-00",
+      "partName": "83540G6000",
+      "unitPrice": 0,
+      "qty": 3443,
+      "amount": 9800,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "OV1k",
+      "itemCode": "OV1k",
+      "partNumber": "G1110-0202-00",
+      "partName": "86430X9000",
+      "unitPrice": 0,
+      "qty": 1076,
+      "amount": 8064,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "OV1k",
+      "itemCode": "-",
+      "partNumber": "G1110-0203-00",
+      "partName": "86435X9000",
+      "unitPrice": 0,
+      "qty": 1712,
+      "amount": 8064,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "HR",
+      "itemCode": "HR",
+      "partNumber": "G1102-0085",
+      "partName": "825304F000",
+      "unitPrice": 0,
+      "qty": 2664,
+      "amount": 7898,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "HR",
+      "itemCode": "-",
+      "partNumber": "G1102-0128",
+      "partName": "825404F000",
+      "unitPrice": 0,
+      "qty": 2664,
+      "amount": 7882,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "OV1k",
+      "itemCode": "-",
+      "partNumber": "G1160-0010-00",
+      "partName": "81865X9100",
+      "unitPrice": 0,
+      "qty": 1661,
+      "amount": 7372,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "OV1k",
+      "itemCode": "-",
+      "partNumber": "G1160-0009-00",
+      "partName": "81855X9100",
+      "unitPrice": 0,
+      "qty": 1661,
+      "amount": 7367,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "PU",
+      "itemCode": "PU",
+      "partNumber": "G1106-0179",
+      "partName": "822104E000",
+      "unitPrice": 0,
+      "qty": 3275,
+      "amount": 7279,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "PU",
+      "itemCode": "-",
+      "partNumber": "G1106-0180",
+      "partName": "822204E000",
+      "unitPrice": 0,
+      "qty": 3275,
+      "amount": 7271,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "JK 1",
+      "itemCode": "-",
+      "partNumber": "G1129-0063-00",
+      "partName": "82540-9N000",
+      "unitPrice": 0,
+      "qty": 1546,
+      "amount": 5410,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "JK 1",
+      "itemCode": "JK 1",
+      "partNumber": "G1129-0062-00",
+      "partName": "82530-9N000",
+      "unitPrice": 0,
+      "qty": 1546,
+      "amount": 5280,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "VT",
+      "itemCode": "VT",
+      "partNumber": "G1102-0832-01",
+      "partName": "81151-5H000",
+      "unitPrice": 0,
+      "qty": 3680,
+      "amount": 3400,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "NE1a",
+      "itemCode": "-",
+      "partNumber": "G1103-1872-02",
+      "partName": "82140PI000",
+      "unitPrice": 0,
+      "qty": 4379,
+      "amount": 3200,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "NE1a",
+      "itemCode": "NE1a",
+      "partNumber": "G1103-1871-02",
+      "partName": "82130PI000",
+      "unitPrice": 0,
+      "qty": 4379,
+      "amount": 2880,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "NE1a",
+      "itemCode": "-",
+      "partNumber": "G1103-1873-02",
+      "partName": "83130PI000",
+      "unitPrice": 0,
+      "qty": 4898,
+      "amount": 2880,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "NE1a",
+      "itemCode": "-",
+      "partNumber": "G1103-1874-02",
+      "partName": "83140PI000",
+      "unitPrice": 0,
+      "qty": 5294,
+      "amount": 2880,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "PU",
+      "itemCode": "-",
+      "partNumber": "G1106-0179-01",
+      "partName": "822104E000",
+      "unitPrice": 0,
+      "qty": 3275,
+      "amount": 2160,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "PU",
+      "itemCode": "-",
+      "partNumber": "G1106-0180-01",
+      "partName": "822204E000",
+      "unitPrice": 0,
+      "qty": 3275,
+      "amount": 2160,
+      "share": 0
+    },
+    {
+      "process": "임가공",
+      "vehicle": "JK 1",
+      "itemCode": "JK 1",
+      "partNumber": "F1129-0062-00",
+      "partName": "831C0-AR000",
+      "unitPrice": 0,
+      "qty": 1490,
+      "amount": 1690,
+      "share": 0
+    },
+    {
+      "process": "임가공",
+      "vehicle": "JK 1",
+      "itemCode": "-",
+      "partNumber": "F1129-0063-00",
+      "partName": "831D0-AR000",
+      "unitPrice": 0,
+      "qty": 1490,
+      "amount": 1690,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "JK 1",
+      "itemCode": "-",
+      "partNumber": "G1129-0062-01",
+      "partName": "82530-9N000",
+      "unitPrice": 0,
+      "qty": 1546,
+      "amount": 1200,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "JK 1",
+      "itemCode": "-",
+      "partNumber": "G1129-0063-01",
+      "partName": "82540-9N000",
+      "unitPrice": 0,
+      "qty": 1546,
+      "amount": 1200,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "NX4",
+      "itemCode": "-",
+      "partNumber": "G1102-1973-01",
+      "partName": "82530-9N000",
+      "unitPrice": 0,
+      "qty": 5322,
+      "amount": 1141,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "NX4",
+      "itemCode": "-",
+      "partNumber": "G1102-1974-01",
+      "partName": "82540-9N000",
+      "unitPrice": 0,
+      "qty": 5322,
+      "amount": 1141,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DS",
+      "itemCode": "-",
+      "partNumber": "G1103-2085-00",
+      "partName": "68563582AC",
+      "unitPrice": 0,
+      "qty": 5694,
+      "amount": 1120,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DS",
+      "itemCode": "-",
+      "partNumber": "G1103-2086-00",
+      "partName": "68563583AC",
+      "unitPrice": 0,
+      "qty": 6154,
+      "amount": 1120,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "HR",
+      "itemCode": "-",
+      "partNumber": "G1102-0218",
+      "partName": "835404F000",
+      "unitPrice": 0,
+      "qty": 2272,
+      "amount": 1031,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "HR",
+      "itemCode": "-",
+      "partNumber": "G1102-0181",
+      "partName": "835304F000",
+      "unitPrice": 0,
+      "qty": 2272,
+      "amount": 1027,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "CE1",
+      "itemCode": "CE1",
+      "partNumber": "G1125-0076-00",
+      "partName": "831A0KL000",
+      "unitPrice": 0,
+      "qty": 1649,
+      "amount": 921,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "CE1",
+      "itemCode": "-",
+      "partNumber": "G1125-0077-00",
+      "partName": "831B0KL000",
+      "unitPrice": 0,
+      "qty": 1649,
+      "amount": 899,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "GV",
+      "itemCode": "GV",
+      "partNumber": "G1106-0212",
+      "partName": "821707M000",
+      "unitPrice": 0,
+      "qty": 2477,
+      "amount": 830,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "GV",
+      "itemCode": "-",
+      "partNumber": "G1106-0213",
+      "partName": "821807M000",
+      "unitPrice": 0,
+      "qty": 2477,
+      "amount": 820,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2754-00",
+      "partName": "42933956",
+      "unitPrice": 0,
+      "qty": 10598,
+      "amount": 780,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2755-00",
+      "partName": "42933957",
+      "unitPrice": 0,
+      "qty": 10598,
+      "amount": 780,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DT",
+      "itemCode": "-",
+      "partNumber": "G1103-2139-01",
+      "partName": "68291618AD",
+      "unitPrice": 0,
+      "qty": 6216,
+      "amount": 720,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "DT",
+      "itemCode": "-",
+      "partNumber": "G1103-2140-01",
+      "partName": "68291619AD",
+      "unitPrice": 0,
+      "qty": 6216,
+      "amount": 720,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "QZ",
+      "itemCode": "-",
+      "partNumber": "G1106-0318-00",
+      "partName": "821807P000",
+      "unitPrice": 0,
+      "qty": 1879,
+      "amount": 677,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "QZ",
+      "itemCode": "QZ",
+      "partNumber": "G1106-0317-00",
+      "partName": "821707P000",
+      "unitPrice": 0,
+      "qty": 2150,
+      "amount": 673,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "PU",
+      "itemCode": "-",
+      "partNumber": "G1102-0620",
+      "partName": "832104E000",
+      "unitPrice": 0,
+      "qty": 2592,
+      "amount": 647,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "PU",
+      "itemCode": "-",
+      "partNumber": "G1102-0621",
+      "partName": "832204E000",
+      "unitPrice": 0,
+      "qty": 2592,
+      "amount": 620,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "P417",
+      "itemCode": "-",
+      "partNumber": "G1109-0252-02",
+      "partName": "6608258820",
+      "unitPrice": 0,
+      "qty": 6411,
+      "amount": 240,
+      "share": 0
+    },
+    {
+      "process": "내수\r\n김다솜",
+      "vehicle": "P417",
+      "itemCode": "P417",
+      "partNumber": "G1109-0251-02",
+      "partName": "6608258819",
+      "unitPrice": 0,
+      "qty": 6411,
+      "amount": 220,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "EG",
+      "itemCode": "-",
+      "partNumber": "G1106-0010",
+      "partName": "821807A000",
+      "unitPrice": 0,
+      "qty": 2298,
+      "amount": 156,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "BL7m",
+      "itemCode": "BL7m",
+      "partNumber": "G1110-0171-01",
+      "partName": "86455BC000",
+      "unitPrice": 0,
+      "qty": 1694,
+      "amount": 130,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2463-00",
+      "partName": "42870825",
+      "unitPrice": 0,
+      "qty": 10627,
+      "amount": 100,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "9BQC",
+      "itemCode": "-",
+      "partNumber": "G1102-2544-00",
+      "partName": "42896296",
+      "unitPrice": 0,
+      "qty": 2753,
+      "amount": 100,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "FS",
+      "itemCode": "FS",
+      "partNumber": "G1103-0628",
+      "partName": "82130-2V000",
+      "unitPrice": 0,
+      "qty": 3850,
+      "amount": 100,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "EG",
+      "itemCode": "-",
+      "partNumber": "G1106-0009",
+      "partName": "821707A000",
+      "unitPrice": 0,
+      "qty": 2298,
+      "amount": 92,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "TY",
+      "itemCode": "TY",
+      "partNumber": "G1106-0669-00",
+      "partName": "AD66203598-1",
+      "unitPrice": 0,
+      "qty": 2477,
+      "amount": 70,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "TY",
+      "itemCode": "-",
+      "partNumber": "G1106-0670-00",
+      "partName": "AD62203598-2",
+      "unitPrice": 0,
+      "qty": 2477,
+      "amount": 70,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "FS",
+      "itemCode": "-",
+      "partNumber": "G1103-0630",
+      "partName": "83140-2V000",
+      "unitPrice": 0,
+      "qty": 3327,
+      "amount": 65,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "M2JO",
+      "itemCode": "-",
+      "partNumber": "G1102-1487-03",
+      "partName": "42574263",
+      "unitPrice": 0,
+      "qty": 4059,
+      "amount": 50,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "JA",
+      "itemCode": "-",
+      "partNumber": "G1102-1364-01",
+      "partName": "83540G6000",
+      "unitPrice": 0,
+      "qty": 3478,
+      "amount": 30,
+      "share": 0
+    },
+    {
+      "process": "내수상품매출",
+      "vehicle": "JA",
+      "itemCode": "-",
+      "partNumber": "G1102-1363-01",
+      "partName": "83530G6000",
+      "unitPrice": 0,
+      "qty": 3478,
+      "amount": 29,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "FS",
+      "itemCode": "-",
+      "partNumber": "G1103-0633",
+      "partName": "83130-2V900",
+      "unitPrice": 0,
+      "qty": 3205,
+      "amount": 14,
+      "share": 0
+    },
+    {
+      "process": "EPDM",
+      "vehicle": "HI",
+      "itemCode": "HI",
+      "partNumber": "G1127-0018-00",
+      "partName": "82231-D2000",
+      "unitPrice": 0,
+      "qty": 2615,
+      "amount": 12,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "8MV1a",
+      "itemCode": "-",
+      "partNumber": "G1103-1871-01",
+      "partName": "82130PI000",
+      "unitPrice": 0,
+      "qty": 4379,
+      "amount": 8,
+      "share": 0
+    },
+    {
+      "process": "EPDM",
+      "vehicle": "VI",
+      "itemCode": "-",
+      "partNumber": "G1106-0252",
+      "partName": "82241-3N000",
+      "unitPrice": 0,
+      "qty": 1531,
+      "amount": 6,
+      "share": 0
+    },
+    {
+      "process": "EPDM",
+      "vehicle": "VI",
+      "itemCode": "-",
+      "partNumber": "G1106-0254",
+      "partName": "83241-3N000",
+      "unitPrice": 0,
+      "qty": 1662,
+      "amount": 5,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "8NE1a",
+      "itemCode": "8NE1a",
+      "partNumber": "G1103-1874-01",
+      "partName": "83140PI000",
+      "unitPrice": 0,
+      "qty": 4898,
+      "amount": 4,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "1ME1a",
+      "itemCode": "1ME1a",
+      "partNumber": "G1125-0082-01",
+      "partName": "831A0TD000",
+      "unitPrice": 0,
+      "qty": 1416,
+      "amount": 4,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "8MV1a",
+      "itemCode": "8MV1a",
+      "partNumber": "G1160-0003-03",
+      "partName": "81855XA100",
+      "unitPrice": 0,
+      "qty": 1657,
+      "amount": 3,
+      "share": 0
+    },
+    {
+      "process": "수출\r\n서지연",
+      "vehicle": "PD",
+      "itemCode": "PD",
+      "partNumber": "G1102-1346-00",
+      "partName": "82530-G3000",
+      "unitPrice": 0,
+      "qty": 5333,
+      "amount": 2,
+      "share": 0
+    },
+    {
+      "process": "A/S",
+      "vehicle": "8NE1a",
+      "itemCode": "8NE1a",
+      "partNumber": "G1103-1872-01",
+      "partName": "82140PI000",
+      "unitPrice": 0,
+      "qty": 4379,
+      "amount": 2,
+      "share": 0
+    },
+    {
+      "process": "EPDM",
+      "vehicle": "HI",
+      "itemCode": "-",
+      "partNumber": "G1127-0020-00",
+      "partName": "83231-D2000",
+      "unitPrice": 0,
+      "qty": 4034,
+      "amount": 1,
+      "share": 0
+    }
+  ]
+}
