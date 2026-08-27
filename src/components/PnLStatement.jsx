@@ -1,248 +1,260 @@
-import React, { useState, useMemo } from "react";
+import React, { useRef } from "react";
 import {
-  FileSpreadsheet,
+  FileText,
   Printer,
+  Download,
   Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
-  Percent,
-  CheckCircle
+  Building2,
+  TrendingUp,
+  TrendingDown,
+  Sparkles
 } from "lucide-react";
+import { MASTER_SALES_SUMMARY, MASTER_PROCESS_BREAKDOWN } from "../data/masterSalesData";
+import { MASTER_PURCHASE_CATEGORIES, MASTER_PURCHASE_SUMMARY } from "../data/masterPurchaseData";
 import { useCurrency } from "../context/CurrencyContext";
 
-export const PnLStatement = ({ transactions }) => {
+export const PnLStatement = () => {
   const { formatAmount } = useCurrency();
-  const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const printRef = useRef();
 
-  // Filter transactions by period
-  const filtered = useMemo(() => {
-    if (selectedPeriod === "all") return transactions;
-    const now = new Date();
-    if (selectedPeriod === "this-month") {
-      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      return transactions.filter((t) => t.date && t.date.startsWith(ym));
-    }
-    if (selectedPeriod === "this-year") {
-      const year = `${now.getFullYear()}`;
-      return transactions.filter((t) => t.date && t.date.startsWith(year));
-    }
-    return transactions;
-  }, [transactions, selectedPeriod]);
+  const totalSales = MASTER_SALES_SUMMARY.totalSales; // 2,873,777,826
 
-  // Breakdowns
-  const stats = useMemo(() => {
-    let grossRevenue = 0;
-    const revenueByCat = {};
+  // COGS (매출원가: 원자재, 임가공비, 부자재, 포장부자재)
+  const rawMaterial = 1848089555;
+  const processingCost = 966480256;
+  const subMaterial = 85659438;
+  const packagingCost = 14910770;
+  const totalCOGS = rawMaterial + processingCost + subMaterial + packagingCost; // 2,915,140,019
+  const grossProfit = totalSales - totalCOGS;
 
-    let costOfGoods = 0; // Direct costs (서버/인프라, 외주용역비, 제품원가)
-    const cogsByCat = {};
+  // SG&A (판매비와 관리비)
+  const powerCost = 79940633;
+  const logisticsCost = 24421221;
+  const welfareCost = 12863180;
+  const rentCost = 12217340;
+  const repairCost = 7018000;
+  const feeCost = 6317614;
+  const wasteCost = 3045280;
+  const suppliesCost = 1850720;
+  const totalSGA = powerCost + logisticsCost + welfareCost + rentCost + repairCost + feeCost + wasteCost + suppliesCost; // 147,673,988
 
-    let sgaExpense = 0; // SG&A (인건비, 마케팅, 사무실/운영비, 소프트웨어 구독 등)
-    const sgaByCat = {};
-
-    filtered.forEach((item) => {
-      const amt = Number(item.amount) || 0;
-      const cat = item.category || "기타";
-
-      if (item.type === "revenue") {
-        grossRevenue += amt;
-        revenueByCat[cat] = (revenueByCat[cat] || 0) + amt;
-      } else {
-        if (["서버/인프라", "외주용역비", "제품원가"].includes(cat)) {
-          costOfGoods += amt;
-          cogsByCat[cat] = (cogsByCat[cat] || 0) + amt;
-        } else {
-          sgaExpense += amt;
-          sgaByCat[cat] = (sgaByCat[cat] || 0) + amt;
-        }
-      }
-    });
-
-    const grossProfit = grossRevenue - costOfGoods;
-    const operatingProfit = grossProfit - sgaExpense;
-    const grossMarginPercent =
-      grossRevenue > 0 ? ((grossProfit / grossRevenue) * 100).toFixed(1) : 0;
-    const operatingMarginPercent =
-      grossRevenue > 0 ? ((operatingProfit / grossRevenue) * 100).toFixed(1) : 0;
-
-    return {
-      grossRevenue,
-      revenueByCat,
-      costOfGoods,
-      cogsByCat,
-      grossProfit,
-      grossMarginPercent,
-      sgaExpense,
-      sgaByCat,
-      operatingProfit,
-      operatingMarginPercent,
-    };
-  }, [filtered]);
+  const operatingProfit = grossProfit - totalSGA;
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <span>표준 손익계산서 (Profit & Loss Statement)</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            기업회계기준(K-IFRS/일반기업회계기준) 형식의 표준 손익 보고서
-          </p>
+    <div className="space-y-6 animate-fadeIn pb-12">
+      {/* Top Action Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              2026년 07월 제조업 표준 손익계산서
+            </h2>
+            <p className="text-xs text-slate-400">
+              K-IFRS 제조업 표준 회계기준 기반 월간 손익 정산서
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-semibold">
-            <button
-              onClick={() => setSelectedPeriod("all")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                selectedPeriod === "all"
-                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
-              }`}
-            >
-              전체 누적
-            </button>
-            <button
-              onClick={() => setSelectedPeriod("this-year")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                selectedPeriod === "this-year"
-                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
-              }`}
-            >
-              올해 (YTD)
-            </button>
-            <button
-              onClick={() => setSelectedPeriod("this-month")}
-              className={`px-3 py-1.5 rounded-lg transition-all ${
-                selectedPeriod === "this-month"
-                  ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
-              }`}
-            >
-              이번 달 (MTD)
-            </button>
-          </div>
-
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handlePrint}
-            title="손익계산서 인쇄 / PDF 출력"
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold shadow-sm transition-all"
           >
-            <Printer className="w-4 h-4" />
-            <span>인쇄 / PDF</span>
+            <Printer className="w-3.5 h-3.5" />
+            <span>인쇄 / PDF 저장</span>
           </button>
         </div>
       </div>
 
-      {/* Financial Statement Table Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden p-6 sm:p-8">
-        <div className="text-center pb-6 border-b border-slate-200 dark:border-slate-800">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+      {/* Printable Statement Sheet */}
+      <div
+        ref={printRef}
+        className="bg-white dark:bg-slate-900 p-8 sm:p-12 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-lg text-slate-900 dark:text-slate-100 max-w-4xl mx-auto space-y-8 print:p-0 print:border-none print:shadow-none"
+      >
+        {/* Document Header */}
+        <div className="text-center space-y-2 border-b-2 border-slate-900 dark:border-white pb-6">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-wider uppercase">
             손 익 계 산 서
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            프로젝트: profit-and-loss-7d09b | 통화: {useCurrency().currency}
+          </h1>
+          <p className="text-xs text-slate-500">
+            당기: 2026년 07월 01일 부터 2026년 07월 31일 까지 (단위: 원)
           </p>
         </div>
 
-        <div className="mt-6 space-y-6">
-          {/* I. 매출액 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between py-2 border-b-2 border-slate-900 dark:border-slate-100 font-bold text-base text-slate-900 dark:text-white">
-              <span>Ⅰ. 매출액 (Gross Revenue)</span>
-              <span className="text-blue-600 dark:text-blue-400">
-                {formatAmount(stats.grossRevenue)}
-              </span>
-            </div>
-            <div className="pl-4 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-              {Object.entries(stats.revenueByCat).map(([cat, amt]) => (
-                <div key={cat} className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                  <span>- {cat}</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    {formatAmount(amt)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Financial Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs sm:text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 font-bold text-slate-600 dark:text-slate-300">
+                <th className="py-3 px-4 text-left">과 목 (Account Title)</th>
+                <th className="py-3 px-4 text-right">세부 금액</th>
+                <th className="py-3 px-4 text-right">합계 금액</th>
+                <th className="py-3 px-4 text-right">구성비 (%)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {/* I. 매출액 */}
+              <tr className="font-extrabold bg-blue-50/40 dark:bg-blue-950/20 text-slate-900 dark:text-white">
+                <td className="py-3.5 px-4 text-base">Ⅰ. 매출액 (Gross Revenue)</td>
+                <td></td>
+                <td className="py-3.5 px-4 text-right text-base text-blue-600 dark:text-blue-400">
+                  {formatAmount(totalSales)}
+                </td>
+                <td className="py-3.5 px-4 text-right font-bold">100.0%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">1. 내수 상품매출 (9BQC, NX4, JA, PU 등 51종)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(1096027550)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">38.14%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">2. PCM 압출/가공 매출 (PCM 라인 전체)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(934505308)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">32.52%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">3. 수출 상품매출 (DT, DS, NX4a, NE1a 등 15종)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(842048746)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">29.30%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">4. A/S 및 EPDM 부품매출 (14종)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(1196222)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.04%</td>
+              </tr>
 
-          {/* II. 매출원가 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-800 dark:text-slate-200">
-              <span>Ⅱ. 매출원가 (Cost of Goods Sold)</span>
-              <span className="text-rose-600 dark:text-rose-400">
-                ({formatAmount(stats.costOfGoods)})
-              </span>
-            </div>
-            <div className="pl-4 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-              {Object.entries(stats.cogsByCat).length === 0 ? (
-                <div className="py-1 text-slate-400 italic">- 해당 내역 없음</div>
-              ) : (
-                Object.entries(stats.cogsByCat).map(([cat, amt]) => (
-                  <div key={cat} className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                    <span>- {cat}</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">
-                      ({formatAmount(amt)})
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+              {/* II. 매출원가 */}
+              <tr className="font-extrabold bg-rose-50/40 dark:bg-rose-950/20 text-slate-900 dark:text-white">
+                <td className="py-3.5 px-4 text-base">Ⅱ. 매출원가 (Cost of Goods Sold)</td>
+                <td></td>
+                <td className="py-3.5 px-4 text-right text-base text-rose-600 dark:text-rose-400">
+                  {formatAmount(totalCOGS)}
+                </td>
+                <td className="py-3.5 px-4 text-right font-bold">101.4%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">1. 원자재비 (해동무역, 화승알앤에이, 화승코퍼레이션 등)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(rawMaterial)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">64.31%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">2. 외주 임가공비 (조영산업, 한울, 오륙공사, 부림텍 등)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(processingCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">33.63%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">3. 부자재비 (화승네트웍스, 효신산업, 삼도산업 등)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(subMaterial)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">2.98%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">4. 포장 부자재비 (광진포장, 성환패키지 등)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(packagingCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.52%</td>
+              </tr>
 
-          {/* III. 매출총이익 */}
-          <div className="flex items-center justify-between py-3 px-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl font-bold text-sm text-slate-900 dark:text-white">
-            <span className="flex items-center gap-2">
-              <span>Ⅲ. 매출총이익 (Gross Profit)</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                이익률 {stats.grossMarginPercent}%
-              </span>
-            </span>
-            <span className={stats.grossProfit >= 0 ? "text-blue-600 dark:text-blue-400" : "text-rose-600"}>
-              {formatAmount(stats.grossProfit)}
-            </span>
-          </div>
+              {/* III. 매출총이익 */}
+              <tr className="font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
+                <td className="py-3 px-4 font-black">Ⅲ. 매출총이익 (Gross Profit)</td>
+                <td></td>
+                <td className={`py-3 px-4 text-right font-black ${grossProfit >= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                  {formatAmount(grossProfit)}
+                </td>
+                <td className="py-3 px-4 text-right font-bold">{((grossProfit / totalSales) * 100).toFixed(1)}%</td>
+              </tr>
 
-          {/* IV. 판매비와 관리비 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between py-2 border-b border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-800 dark:text-slate-200">
-              <span>Ⅳ. 판매비와 관리비 (SG&A Expenses)</span>
-              <span className="text-rose-600 dark:text-rose-400">
-                ({formatAmount(stats.sgaExpense)})
-              </span>
-            </div>
-            <div className="pl-4 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-              {Object.entries(stats.sgaByCat).map(([cat, amt]) => (
-                <div key={cat} className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800/60">
-                  <span>- {cat}</span>
-                  <span className="font-medium text-slate-800 dark:text-slate-200">
-                    ({formatAmount(amt)})
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+              {/* IV. 판매비와 관리비 */}
+              <tr className="font-extrabold bg-amber-50/40 dark:bg-amber-950/20 text-slate-900 dark:text-white">
+                <td className="py-3.5 px-4 text-base">Ⅳ. 판매비와 관리비 (SG&A Expenses)</td>
+                <td></td>
+                <td className="py-3.5 px-4 text-right text-base text-amber-600 dark:text-amber-400">
+                  {formatAmount(totalSGA)}
+                </td>
+                <td className="py-3.5 px-4 text-right font-bold">5.14%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">1. 공장 전력비 (한국전력공사 등 19건)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(powerCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">2.78%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">2. 물류 및 운송비 (용진운수, 제이엠로지스 등 19건)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(logisticsCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.85%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">3. 복리후생비 및 식대 (큰상웰빙푸드 등 6건)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(welfareCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.45%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">4. 설비 및 공장 임대료 (화승알앤에이 설비임대 등)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(rentCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.43%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">5. 수선비 및 설비공사비 (조은건설, 건영전기)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(repairCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.24%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">6. 지급수수료 (세무/노무/전기/안전관리 등 27건)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(feeCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.22%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">7. 산업폐기물 처리비 (한국알앤티 등 5건)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(wasteCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.11%</td>
+              </tr>
+              <tr className="text-slate-600 dark:text-slate-400">
+                <td className="py-2 px-8">8. 소모품 및 공구비 (김해종합가스 등 3건)</td>
+                <td className="py-2 px-4 text-right">{formatAmount(suppliesCost)}</td>
+                <td></td>
+                <td className="py-2 px-4 text-right">0.06%</td>
+              </tr>
 
-          {/* V. 영업이익 / 당기순이익 */}
-          <div className="flex items-center justify-between py-4 px-5 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-2 border-blue-500/30 rounded-2xl font-black text-lg text-slate-900 dark:text-white">
-            <div>
-              <span className="block text-base">Ⅴ. 영업이익 / 당기순이익 (Operating / Net Income)</span>
-              <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                영업이익률: {stats.operatingMarginPercent}%
-              </span>
-            </div>
-            <span className={`text-xl ${stats.operatingProfit >= 0 ? "text-blue-600 dark:text-blue-400" : "text-rose-600"}`}>
-              {formatAmount(stats.operatingProfit)}
-            </span>
-          </div>
+              {/* V. 영업이익 */}
+              <tr className="font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-base sm:text-lg">
+                <td className="py-4 px-4">Ⅴ. 영업이익 (Operating Profit)</td>
+                <td></td>
+                <td className="py-4 px-4 text-right">
+                  {formatAmount(operatingProfit)}
+                </td>
+                <td className="py-4 px-4 text-right font-black">
+                  {((operatingProfit / totalSales) * 100).toFixed(1)}%
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer Note */}
+        <div className="pt-6 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>* 본 손익계산서는 2026년 07월 매입·매출 마감 원장 기준 자동 산출되었습니다.</span>
+          <span className="font-semibold text-slate-600 dark:text-slate-300">작성일: 2026-08-27</span>
         </div>
       </div>
     </div>

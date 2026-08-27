@@ -1,6 +1,4 @@
-import * as XLSXModule from "xlsx";
-
-const XLSX = XLSXModule.default || XLSXModule;
+import * as XLSX from "xlsx";
 
 const KNOWN_EXPENSE_CATEGORIES = [
   "원자재",

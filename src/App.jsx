@@ -2,10 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Sidebar, NAVIGATION_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
-import { MonthlyCalculator } from "./components/MonthlyCalculator";
-import { TransactionTable } from "./components/TransactionTable";
+import { VehicleSalesView } from "./components/VehicleSalesView";
+import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
 import { PnLStatement } from "./components/PnLStatement";
-import { BudgetAnalysis } from "./components/BudgetAnalysis";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
@@ -20,7 +19,7 @@ import {
 
 export const App = () => {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("monthly"); // Default to monthly calculator
+  const [activeTab, setActiveTab] = useState("dashboard"); // Default to Executive Dashboard
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -71,16 +70,6 @@ export const App = () => {
     }
   };
 
-  // Direct Add
-  const handleDirectAddTransaction = async (formData) => {
-    try {
-      const newItem = await addTransaction(formData);
-      setTransactions((prev) => [newItem, ...prev]);
-    } catch (error) {
-      console.error("Quick add transaction error:", error);
-    }
-  };
-
   // Bulk Upload from Excel/CSV
   const handleBulkUpload = async (items) => {
     const createdList = [];
@@ -105,14 +94,14 @@ export const App = () => {
 
   // Active Tab Title
   const activeTabMeta = NAVIGATION_TABS.find((t) => t.id === activeTab);
-  const pageTitle = activeTabMeta ? activeTabMeta.label : "월간 손익 간편 계산";
+  const pageTitle = activeTabMeta ? activeTabMeta.label : "월간 매입·매출 손익 관리";
 
   if (authLoading) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-sm font-semibold">Firebase 초기화 중...</p>
+          <p className="text-sm font-semibold">시스템 초기화 중...</p>
         </div>
       </div>
     );
@@ -140,7 +129,7 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-6 flex-1 overflow-y-auto">
+        <main className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
           {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
@@ -150,60 +139,36 @@ export const App = () => {
             </div>
           ) : (
             <>
-              {activeTab === "monthly" && (
-                <MonthlyCalculator
-                  transactions={transactions}
-                  onAddTransaction={handleDirectAddTransaction}
-                  onUpdateTransaction={handleSaveTransaction}
-                  onDeleteTransaction={handleDeleteTransaction}
+              {activeTab === "dashboard" && (
+                <DashboardOverview
+                  onNavigateToVehicles={() => setActiveTab("vehicle_sales")}
+                  onNavigateToPurchases={() => setActiveTab("purchase_costs")}
+                  onNavigateToStatement={() => setActiveTab("statement")}
                 />
               )}
 
-              {activeTab === "dashboard" && (
-                <DashboardOverview
+              {activeTab === "vehicle_sales" && (
+                <VehicleSalesView />
+              )}
+
+              {activeTab === "purchase_costs" && (
+                <PurchaseExpenseView
                   transactions={transactions}
+                  onEdit={(item) => {
+                    setEditingItem(item);
+                    setModalOpen(true);
+                  }}
+                  onDelete={handleDeleteTransaction}
                   onOpenNewModal={() => {
                     setEditingItem(null);
                     setModalOpen(true);
                   }}
-                  onNavigateToTransactions={() => setActiveTab("transactions")}
+                  onOpenExcelModal={() => setExcelModalOpen(true)}
                 />
-              )}
-
-              {activeTab === "transactions" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                        수익 및 지출 전체 거래 내역
-                      </h3>
-                      <p className="text-xs text-slate-400">
-                        등록된 모든 손익 데이터의 조회, 검색, 수정, 삭제, 엑셀 일괄 업로드 및 CSV 내보내기
-                      </p>
-                    </div>
-                  </div>
-                  <TransactionTable
-                    transactions={transactions}
-                    onEdit={(item) => {
-                      setEditingItem(item);
-                      setModalOpen(true);
-                    }}
-                    onDelete={handleDeleteTransaction}
-                    onOpenNewModal={() => {
-                      setEditingItem(null);
-                      setModalOpen(true);
-                    }}
-                    onOpenExcelModal={() => setExcelModalOpen(true)}
-                  />
-                </div>
               )}
 
               {activeTab === "statement" && (
                 <PnLStatement transactions={transactions} />
-              )}
-
-              {activeTab === "categories" && (
-                <BudgetAnalysis transactions={transactions} />
               )}
 
               {activeTab === "settings" && (
