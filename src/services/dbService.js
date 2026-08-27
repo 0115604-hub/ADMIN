@@ -11,13 +11,12 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
-import realPurchasingData from "../data/purchasing202607.json";
+import combinedDataset from "../data/combined202607.json";
 
 const COLLECTION_NAME = "transactions";
-const LOCAL_STORAGE_KEY = "admin_pnl_transactions_real_v1";
+const LOCAL_STORAGE_KEY = "admin_pnl_transactions_full_v2";
 
-// Default to user's real purchasing data
-export const INITIAL_SAMPLE_DATA = realPurchasingData || [];
+export const INITIAL_SAMPLE_DATA = combinedDataset || [];
 
 // Helper: Get local fallback data
 const getLocalData = () => {
@@ -48,9 +47,8 @@ export const fetchTransactions = async () => {
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      // If Firestore collection is empty, check localStorage
       const local = getLocalData();
-      return { data: local, source: "local_dataset", count: local.length };
+      return { data: local, source: "company_ledger", count: local.length };
     }
 
     const items = [];
@@ -58,11 +56,10 @@ export const fetchTransactions = async () => {
       items.push({ id: docSnap.id, ...docSnap.data() });
     });
     
-    // Also backup to local
     saveLocalData(items);
     return { data: items, source: "firestore", count: items.length };
   } catch (error) {
-    console.warn("Firestore fetch error, using local fallback:", error.message);
+    console.warn("Firestore fetch error, using local dataset:", error.message);
     const local = getLocalData();
     return { data: local, source: "local_offline", error: error.message, count: local.length };
   }
@@ -84,7 +81,6 @@ export const addTransaction = async (transactionData) => {
     });
     const newItem = { id: docRef.id, ...payload };
     
-    // Update local cache
     const current = getLocalData();
     saveLocalData([newItem, ...current]);
     
@@ -115,7 +111,6 @@ export const updateTransaction = async (id, updatedData) => {
     console.warn("Firestore update error:", error.message);
   }
 
-  // Update local
   const current = getLocalData();
   const updated = current.map((item) => (item.id === id ? { ...item, ...payload } : item));
   saveLocalData(updated);
@@ -133,7 +128,6 @@ export const deleteTransaction = async (id) => {
     console.warn("Firestore delete error:", error.message);
   }
 
-  // Remove from local
   const current = getLocalData();
   const filtered = current.filter((item) => item.id !== id);
   saveLocalData(filtered);
