@@ -3,6 +3,7 @@ import {
   Search,
   Filter,
   Download,
+  Upload,
   Trash2,
   Edit2,
   ArrowUpRight,
@@ -18,7 +19,8 @@ export const TransactionTable = ({
   transactions,
   onEdit,
   onDelete,
-  onOpenNewModal
+  onOpenNewModal,
+  onOpenExcelModal
 }) => {
   const { formatAmount } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
@@ -175,6 +177,16 @@ export const TransactionTable = ({
             <option value="amount-asc">금액 낮은순</option>
           </select>
 
+          {/* Excel Upload */}
+          <button
+            onClick={onOpenExcelModal}
+            title="엑셀 파일로 대량 업로드"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+          >
+            <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>엑셀 업로드</span>
+          </button>
+
           {/* Export CSV */}
           <button
             onClick={handleExportCSV}
@@ -210,12 +222,21 @@ export const TransactionTable = ({
                   <div className="flex flex-col items-center justify-center gap-2">
                     <FileSpreadsheet className="w-10 h-10 text-slate-300 dark:text-slate-600" />
                     <p className="text-sm font-medium">검색 조건에 일치하는 내역이 없습니다.</p>
-                    <button
-                      onClick={onOpenNewModal}
-                      className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-                    >
-                      + 새로운 내역 등록하기
-                    </button>
+                    <div className="flex items-center gap-3 mt-2">
+                      <button
+                        onClick={onOpenNewModal}
+                        className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                      >
+                        + 새로운 내역 직접 등록
+                      </button>
+                      <span className="text-slate-300 dark:text-slate-700">|</span>
+                      <button
+                        onClick={onOpenExcelModal}
+                        className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+                      >
+                        📊 엑셀 파일로 일괄 업로드
+                      </button>
+                    </div>
                   </div>
                 </td>
               </tr>

@@ -4,6 +4,7 @@ import {
   Moon,
   Plus,
   RefreshCw,
+  FileSpreadsheet,
   DollarSign
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
@@ -12,6 +13,7 @@ import { useCurrency } from "../context/CurrencyContext";
 export const Header = ({
   title,
   onOpenNewModal,
+  onOpenExcelModal,
   onRefresh,
   isRefreshing
 }) => {
@@ -68,6 +70,16 @@ export const Header = ({
           className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
         >
           <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin text-blue-500" : ""}`} />
+        </button>
+
+        {/* Excel Upload Button */}
+        <button
+          onClick={onOpenExcelModal}
+          title="매입/손익 자료 엑셀 파일 일괄 업로드"
+          className="hidden sm:flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+        >
+          <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <span>엑셀 일괄 업로드</span>
         </button>
 
         {/* Add Transaction Button */}

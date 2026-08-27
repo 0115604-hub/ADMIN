@@ -8,6 +8,7 @@ import { PnLStatement } from "./components/PnLStatement";
 import { BudgetAnalysis } from "./components/BudgetAnalysis";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
+import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
 import { useAuth } from "./context/AuthContext";
 import {
@@ -19,12 +20,13 @@ import {
 
 export const App = () => {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("monthly"); // Default to monthly calculator for easy P&L!
+  const [activeTab, setActiveTab] = useState("monthly"); // Default to monthly calculator
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [dataSource, setDataSource] = useState("local");
   const [modalOpen, setModalOpen] = useState(false);
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   // Load data
@@ -69,7 +71,7 @@ export const App = () => {
     }
   };
 
-  // Direct Add (e.g. from Monthly Quick Add Bar)
+  // Direct Add
   const handleDirectAddTransaction = async (formData) => {
     try {
       const newItem = await addTransaction(formData);
@@ -77,6 +79,17 @@ export const App = () => {
     } catch (error) {
       console.error("Quick add transaction error:", error);
     }
+  };
+
+  // Bulk Upload from Excel/CSV
+  const handleBulkUpload = async (items) => {
+    const createdList = [];
+    for (const item of items) {
+      const created = await addTransaction(item);
+      createdList.push(created);
+    }
+    setTransactions((prev) => [...createdList, ...prev]);
+    return true;
   };
 
   // Delete
@@ -122,6 +135,7 @@ export const App = () => {
             setEditingItem(null);
             setModalOpen(true);
           }}
+          onOpenExcelModal={() => setExcelModalOpen(true)}
           onRefresh={() => loadData(true)}
           isRefreshing={isRefreshing}
         />
@@ -164,7 +178,7 @@ export const App = () => {
                         수익 및 지출 전체 거래 내역
                       </h3>
                       <p className="text-xs text-slate-400">
-                        등록된 모든 손익 데이터의 조회, 검색, 수정, 삭제 및 CSV 내보내기
+                        등록된 모든 손익 데이터의 조회, 검색, 수정, 삭제, 엑셀 일괄 업로드 및 CSV 내보내기
                       </p>
                     </div>
                   </div>
@@ -179,6 +193,7 @@ export const App = () => {
                       setEditingItem(null);
                       setModalOpen(true);
                     }}
+                    onOpenExcelModal={() => setExcelModalOpen(true)}
                   />
                 </div>
               )}
@@ -212,6 +227,13 @@ export const App = () => {
         }}
         onSave={handleSaveTransaction}
         editingItem={editingItem}
+      />
+
+      {/* Excel Upload Modal */}
+      <ExcelUploadModal
+        isOpen={excelModalOpen}
+        onClose={() => setExcelModalOpen(false)}
+        onBulkUpload={handleBulkUpload}
       />
     </div>
   );
