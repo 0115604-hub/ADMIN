@@ -15,7 +15,6 @@ import {
   addTransaction,
   updateTransaction,
   deleteTransaction,
-  seedSampleData,
 } from "./services/dbService";
 
 export const App = () => {
@@ -91,25 +90,6 @@ export const App = () => {
     }
   };
 
-  // Seed sample data
-  const handleSeedData = async () => {
-    if (
-      !window.confirm(
-        "테스트용 손익 샘플 데이터를 추가하시겠습니까? (새로운 항목들이 추가됩니다)"
-      )
-    )
-      return;
-    setIsRefreshing(true);
-    try {
-      await seedSampleData();
-      await loadData();
-    } catch (error) {
-      console.error("Seed data error:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   // Active Tab Title
   const activeTabMeta = NAVIGATION_TABS.find((t) => t.id === activeTab);
   const pageTitle = activeTabMeta ? activeTabMeta.label : "월간 손익 간편 계산";
@@ -143,7 +123,6 @@ export const App = () => {
             setModalOpen(true);
           }}
           onRefresh={() => loadData(true)}
-          onSeedData={handleSeedData}
           isRefreshing={isRefreshing}
         />
 

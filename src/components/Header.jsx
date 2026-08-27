@@ -4,7 +4,6 @@ import {
   Moon,
   Plus,
   RefreshCw,
-  Sparkles,
   DollarSign
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
@@ -14,7 +13,6 @@ export const Header = ({
   title,
   onOpenNewModal,
   onRefresh,
-  onSeedData,
   isRefreshing
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
@@ -70,16 +68,6 @@ export const Header = ({
           className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
         >
           <RefreshCw className={`w-5 h-5 ${isRefreshing ? "animate-spin text-blue-500" : ""}`} />
-        </button>
-
-        {/* Seed Sample Data Button */}
-        <button
-          onClick={onSeedData}
-          title="테스트용 샘플 데이터 생성"
-          className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors"
-        >
-          <Sparkles className="w-4 h-4 text-indigo-500" />
-          <span>샘플 데이터 추가</span>
         </button>
 
         {/* Add Transaction Button */}

@@ -13,122 +13,21 @@ import {
 import { db } from "../firebase";
 
 const COLLECTION_NAME = "transactions";
-const LOCAL_STORAGE_KEY = "admin_pnl_transactions_fallback";
+const LOCAL_STORAGE_KEY = "admin_pnl_transactions_fallback_v2";
 
-// Sample initial seed data
-export const INITIAL_SAMPLE_DATA = [
-  {
-    type: "revenue",
-    category: "제품 판매",
-    title: "B2B 엔터프라이즈 솔루션 라이선스 공급",
-    amount: 14500000,
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "(주)테크솔루션",
-    paymentMethod: "계좌이체",
-    status: "완료",
-    memo: "연간 라이선스 결제 건 (계약번호 #2026-0812)"
-  },
-  {
-    type: "revenue",
-    category: "구독 서비스",
-    title: "SaaS 프리미엄 월간 플랜 정기결제",
-    amount: 4800000,
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "개인/기업 정기구독 120건",
-    paymentMethod: "PG 카드결제",
-    status: "완료",
-    memo: "8월 정기 결제분"
-  },
-  {
-    type: "revenue",
-    category: "컨설팅",
-    title: "AI 전환 및 아키텍처 컨설팅 1차 대금",
-    amount: 7200000,
-    date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "미래소프트",
-    paymentMethod: "계좌이체",
-    status: "완료",
-    memo: "착수금 입금 완료"
-  },
-  {
-    type: "expense",
-    category: "인건비",
-    title: "개발팀 & 운영팀 8월 급여 지급",
-    amount: 9800000,
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "임직원 급여",
-    paymentMethod: "계좌이체",
-    status: "완료",
-    memo: "원천징수세 포함"
-  },
-  {
-    type: "expense",
-    category: "서버/인프라",
-    title: "AWS & Firebase 클라우드 인프라 비용",
-    amount: 1650000,
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "Amazon Web Services / Google",
-    paymentMethod: "법인카드",
-    status: "완료",
-    memo: "EC2, Cloud Firestore, Storage 사용료"
-  },
-  {
-    type: "expense",
-    category: "마케팅/광고",
-    title: "Google Ads & 메타 광고 집행비",
-    amount: 2400000,
-    date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "Google Ads / Meta",
-    paymentMethod: "법인카드",
-    status: "완료",
-    memo: "Q3 신규 고객 유치 캠페인"
-  },
-  {
-    type: "expense",
-    category: "사무실/운영비",
-    title: "사무실 임대료 및 관리비",
-    amount: 1800000,
-    date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "강남 공유오피스",
-    paymentMethod: "계좌이체",
-    status: "완료",
-    memo: "8월분 임대료"
-  },
-  {
-    type: "revenue",
-    category: "유지보수",
-    title: "시스템 유지보수 정기 SLA 비용",
-    amount: 3200000,
-    date: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "(주)글로벌네트웍스",
-    paymentMethod: "계좌이체",
-    status: "완료",
-    memo: "Q3 유지보수료"
-  },
-  {
-    type: "expense",
-    category: "소프트웨어 구독",
-    title: "GitHub, Slack, Figma, Notion 구독료",
-    amount: 650000,
-    date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-    client: "협업툴 서비스사",
-    paymentMethod: "법인카드",
-    status: "완료",
-    memo: "전사 라이선스"
-  }
-];
+// Clean initial data (empty)
+export const INITIAL_SAMPLE_DATA = [];
 
 // Helper: Get local fallback data
 const getLocalData = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_DATA));
-      return INITIAL_SAMPLE_DATA;
+      return [];
     }
     return JSON.parse(data);
   } catch (e) {
-    return INITIAL_SAMPLE_DATA;
+    return [];
   }
 };
 
@@ -149,7 +48,7 @@ export const fetchTransactions = async () => {
     if (querySnapshot.empty) {
       // If Firestore collection is empty, check localStorage
       const local = getLocalData();
-      return { data: local, source: "local_cache", count: local.length };
+      return { data: local, source: "firestore_empty", count: local.length };
     }
 
     const items = [];
@@ -239,12 +138,9 @@ export const deleteTransaction = async (id) => {
   return true;
 };
 
-// Seed Initial Sample Data to Firestore
-export const seedSampleData = async () => {
-  const results = [];
-  for (const item of INITIAL_SAMPLE_DATA) {
-    const res = await addTransaction(item);
-    results.push(res);
-  }
-  return results;
+// Clear All Data
+export const clearAllTransactions = async () => {
+  localStorage.removeItem(LOCAL_STORAGE_KEY);
+  localStorage.removeItem("admin_pnl_transactions_fallback");
+  return true;
 };
