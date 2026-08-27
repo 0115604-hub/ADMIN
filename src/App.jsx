@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Sidebar, NAVIGATION_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
+import { MonthlyCalculator } from "./components/MonthlyCalculator";
 import { TransactionTable } from "./components/TransactionTable";
 import { PnLStatement } from "./components/PnLStatement";
 import { BudgetAnalysis } from "./components/BudgetAnalysis";
@@ -19,7 +20,7 @@ import {
 
 export const App = () => {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("monthly"); // Default to monthly calculator for easy P&L!
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -69,6 +70,16 @@ export const App = () => {
     }
   };
 
+  // Direct Add (e.g. from Monthly Quick Add Bar)
+  const handleDirectAddTransaction = async (formData) => {
+    try {
+      const newItem = await addTransaction(formData);
+      setTransactions((prev) => [newItem, ...prev]);
+    } catch (error) {
+      console.error("Quick add transaction error:", error);
+    }
+  };
+
   // Delete
   const handleDeleteTransaction = async (id) => {
     if (!window.confirm("이 항목을 정말 삭제하시겠습니까?")) return;
@@ -101,7 +112,7 @@ export const App = () => {
 
   // Active Tab Title
   const activeTabMeta = NAVIGATION_TABS.find((t) => t.id === activeTab);
-  const pageTitle = activeTabMeta ? activeTabMeta.label : "대시보드";
+  const pageTitle = activeTabMeta ? activeTabMeta.label : "월간 손익 간편 계산";
 
   if (authLoading) {
     return (
@@ -146,6 +157,15 @@ export const App = () => {
             </div>
           ) : (
             <>
+              {activeTab === "monthly" && (
+                <MonthlyCalculator
+                  transactions={transactions}
+                  onAddTransaction={handleDirectAddTransaction}
+                  onUpdateTransaction={handleSaveTransaction}
+                  onDeleteTransaction={handleDeleteTransaction}
+                />
+              )}
+
               {activeTab === "dashboard" && (
                 <DashboardOverview
                   transactions={transactions}

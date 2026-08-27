@@ -1,6 +1,7 @@
 import React from "react";
 import {
   LayoutDashboard,
+  Calendar,
   Receipt,
   FileSpreadsheet,
   PieChart,
@@ -14,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 
 export const NAVIGATION_TABS = [
   { id: "dashboard", label: "대시보드 개요", icon: LayoutDashboard },
+  { id: "monthly", label: "월간 손익 간편 계산", icon: Calendar },
   { id: "transactions", label: "수익/지출 내역", icon: Receipt },
   { id: "statement", label: "손익계산서 (P&L)", icon: FileSpreadsheet },
   { id: "categories", label: "예산 & 카테고리", icon: PieChart },
@@ -58,7 +60,12 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
             >
               <Icon className={`w-5 h-5 ${isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`} />
               <span>{tab.label}</span>
-              {isActive && (
+              {tab.id === "monthly" && (
+                <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300">
+                  추천
+                </span>
+              )}
+              {isActive && tab.id !== "monthly" && (
                 <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400"></div>
               )}
             </button>
