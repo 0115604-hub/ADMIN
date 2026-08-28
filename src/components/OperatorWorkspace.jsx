@@ -35,23 +35,13 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
 
   // Upload History
   const [uploadHistory, setUploadHistory] = useState(() => {
-    const saved = localStorage.getItem("operator_upload_history");
+    const saved = localStorage.getItem("operator_upload_history_clean_v2");
     return saved
       ? JSON.parse(saved)
       : [
           {
             id: 1,
-            fileName: "2026-08매입매출현황_원본.xlsx",
-            month: "2026-08",
-            date: "2026-08-28 08:44",
-            operator: `${workerName} (${plantName})`,
-            salesAmount: 1756104735,
-            purchaseAmount: 1248400884.5,
-            status: "동기화 완료"
-          },
-          {
-            id: 2,
-            fileName: "2026-07월매입매출현황_원본.xlsx",
+            fileName: "2026.07 매입매출 내역서.xlsx",
             month: "2026-07",
             date: "2026-08-27 15:30",
             operator: `조인주 (삼랑진공장)`,

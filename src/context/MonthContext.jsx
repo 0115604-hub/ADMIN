@@ -6,7 +6,7 @@ const MonthContext = createContext();
 export const MonthProvider = ({ children }) => {
   // Load persistent monthly data from localStorage or fallback to default multi-month master data
   const [allMonthlyData, setAllMonthlyData] = useState(() => {
-    const saved = localStorage.getItem("admin_multi_month_store");
+    const saved = localStorage.getItem("admin_multi_month_store_v3_clean");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -18,12 +18,12 @@ export const MonthProvider = ({ children }) => {
     return initialMultiMonthData;
   });
 
-  // Default to the latest month available (e.g. "2026-08")
+  // Default to the latest month available (e.g. "2026-07")
   const availableMonths = Object.keys(allMonthlyData).sort().reverse();
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const savedMonth = localStorage.getItem("admin_selected_month");
+    const savedMonth = localStorage.getItem("admin_selected_month_v3");
     if (savedMonth && allMonthlyData[savedMonth]) return savedMonth;
-    return availableMonths[0] || "2026-08";
+    return "2026-07";
   });
 
   // Current active month's data package

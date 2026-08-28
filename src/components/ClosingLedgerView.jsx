@@ -649,10 +649,10 @@ export const ClosingLedgerView = () => {
           </div>
           <div className="mt-3">
             <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400">
-              {costRatio}%
+              {totalSales > 0 ? `${costRatio}%` : "0.0%"}
             </p>
             <p className="text-xs font-semibold text-slate-400 mt-1">
-              {monthTitle} 총 매출 {formatAmount(totalSales)} 기준
+              {totalSales > 0 ? `${monthTitle} 총 매출 ${formatAmount(totalSales)} 기준` : `${monthTitle} 매출자료 업로드 대기`}
             </p>
           </div>
         </div>
@@ -660,17 +660,17 @@ export const ClosingLedgerView = () => {
         {/* Estimated Net Operating Profit */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400">결산 반영 예상 손익</span>
+            <span className="text-xs font-bold text-slate-400">결산 반영 손익 (매출 - 결산)</span>
             <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <p className={`text-2xl sm:text-3xl font-black ${netEstimatedProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>
-              {netEstimatedProfit >= 0 ? "+" : ""}{formatAmount(netEstimatedProfit)}
+            <p className={`text-2xl sm:text-3xl font-black ${totalSales === 0 ? "text-slate-400" : netEstimatedProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>
+              {totalSales > 0 ? `${netEstimatedProfit >= 0 ? "+" : ""}${formatAmount(netEstimatedProfit)}` : `-${formatAmount(totalClosingAmount)}`}
             </p>
             <p className="text-xs font-semibold text-slate-400 mt-1">
-              매출액 - 결산 합계 차액
+              {totalSales > 0 ? "매출액 - 결산 합계 차액" : "매출자료 미등록 (지출만 집계 중)"}
             </p>
           </div>
         </div>
