@@ -10,7 +10,8 @@ import {
   ArrowDownRight,
   Sparkles,
   Calendar,
-  Building2
+  Building2,
+  BarChart3
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
@@ -61,14 +62,14 @@ export const DashboardOverview = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{monthTitle} 월간 손익 결산 대시보드</span>
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>{monthTitle} 월간경영현황 종합 분석</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
-              월간 매입·매출 종합 경영 현황 ({monthTitle})
+              {monthTitle} 월간경영현황
             </h1>
             <p className="text-sm text-slate-300 max-w-2xl">
-              `매입-매출 정리본` 실적 마스터 기준 매출 {formatAmount(totalSales)} vs 매입 {formatAmount(ledgerPurchases)} 실시간 손익 대사
+              `매입-매출 정리본` 실적 마스터 기준 매출 {formatAmount(totalSales)} vs 매입 {formatAmount(ledgerPurchases)} 종합 손익 대사
             </p>
           </div>
 

@@ -10,12 +10,13 @@ import {
   Building2,
   UploadCloud,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  BarChart3
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export const ADMIN_TABS = [
-  { id: "dashboard", label: "총괄 손익 대시보드", icon: LayoutDashboard, badge: "종합" },
+  { id: "dashboard", label: "월간경영현황", icon: BarChart3, badge: "종합" },
   { id: "vehicle_sales", label: "차종별 매출 분석", icon: Car, badge: "23개 차종" },
   { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes, badge: "9개 군" },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers, badge: "12개 과목" },
@@ -34,19 +35,19 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const navigationTabs = isOperator ? OPERATOR_TABS : ADMIN_TABS;
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200">
+    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200 shadow-sm">
       {/* Brand Logo & Profile Tag */}
       <div className="p-6">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg ${
+          <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-lg ${
             isOperator
               ? "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/25"
               : "bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/25"
           }`}>
-            <Building2 className="w-5 h-5" />
+            <Building2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white leading-tight">
+            <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight">
               매입·매출 관리
             </h1>
             <p className={`text-[11px] font-bold ${isOperator ? "text-amber-600" : "text-blue-600 dark:text-blue-400"}`}>
@@ -64,11 +65,11 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   isActive
                     ? isOperator
-                      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 shadow-sm"
-                      : "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 shadow-sm"
+                      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 shadow-sm ring-1 ring-amber-400/30"
+                      : "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 shadow-sm ring-1 ring-blue-400/30"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 }`}
               >
@@ -83,7 +84,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                   <span>{tab.label}</span>
                 </div>
                 {tab.badge && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold ${
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                     isActive
                       ? isOperator
                         ? "bg-amber-500 text-white"
@@ -103,7 +104,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
               isOperator ? "bg-amber-500" : "bg-blue-600"
             }`}>
               {currentProfile?.avatar || "관"}
@@ -112,7 +113,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
               <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                 {currentProfile?.name || "사용자"}
               </p>
-              <p className="text-[10px] text-slate-400 truncate">
+              <p className="text-[10px] text-slate-400 truncate font-semibold">
                 {currentProfile?.roleLabel || "사용자"}
               </p>
             </div>
@@ -121,7 +122,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           <button
             onClick={logout}
             title="사용자 전환 / 로그아웃"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 transition-colors shrink-0"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 transition-colors shrink-0"
           >
             <LogOut className="w-4 h-4" />
           </button>
