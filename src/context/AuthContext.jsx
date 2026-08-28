@@ -12,11 +12,11 @@ import { auth, googleProvider } from "../firebase";
 export const ADMIN_USERS = [
   {
     id: "admin_general",
-    name: "총괄 관리자",
+    name: "ADMIN",
     role: "ADMIN",
-    roleLabel: "총괄 관리자",
+    roleLabel: "ADMIN",
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
-    avatar: "관",
+    avatar: "A",
     pin: "1234"
   }
 ];
@@ -27,11 +27,11 @@ export const PLANTS = [
     name: "삼랑진공장",
     badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
     workers: [
-      { id: "sam_mj", name: "이명재 이사", plant: "삼랑진공장", role: "OPERATOR", avatar: "이", pin: "1234" },
-      { id: "sam_yc", name: "설유철 책임", plant: "삼랑진공장", role: "OPERATOR", avatar: "설", pin: "1234" },
-      { id: "sam_ks", name: "윤경수 책임", plant: "삼랑진공장", role: "OPERATOR", avatar: "윤", pin: "1234" },
-      { id: "sam_cy", name: "이창엽 책임", plant: "삼랑진공장", role: "OPERATOR", avatar: "이", pin: "1234" },
-      { id: "sam_in", name: "양인나 선임", plant: "삼랑진공장", role: "OPERATOR", avatar: "양", pin: "1234" },
+      { id: "sam_mj", name: "이명재", plant: "삼랑진공장", role: "OPERATOR", avatar: "이", pin: "1234" },
+      { id: "sam_yc", name: "설유철", plant: "삼랑진공장", role: "OPERATOR", avatar: "설", pin: "1234" },
+      { id: "sam_ks", name: "윤경수", plant: "삼랑진공장", role: "OPERATOR", avatar: "윤", pin: "1234" },
+      { id: "sam_cy", name: "이창엽", plant: "삼랑진공장", role: "OPERATOR", avatar: "이", pin: "1234" },
+      { id: "sam_in", name: "양인나", plant: "삼랑진공장", role: "OPERATOR", avatar: "양", pin: "1234" },
       { id: "sam_ij", name: "조인주", plant: "삼랑진공장", role: "OPERATOR", avatar: "조", pin: "1234" }
     ]
   },
@@ -40,9 +40,9 @@ export const PLANTS = [
     name: "한림공장",
     badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
     workers: [
-      { id: "hal_dw", name: "김동욱 책임", plant: "한림공장", role: "OPERATOR", avatar: "김", pin: "1234" },
-      { id: "hal_cy", name: "우창용 선임", plant: "한림공장", role: "OPERATOR", avatar: "우", pin: "1234" },
-      { id: "hal_sm", name: "오상민 주임", plant: "한림공장", role: "OPERATOR", avatar: "오", pin: "1234" }
+      { id: "hal_dw", name: "김동욱", plant: "한림공장", role: "OPERATOR", avatar: "김", pin: "1234" },
+      { id: "hal_cy", name: "우창용", plant: "한림공장", role: "OPERATOR", avatar: "우", pin: "1234" },
+      { id: "hal_sm", name: "오상민", plant: "한림공장", role: "OPERATOR", avatar: "오", pin: "1234" }
     ]
   }
 ];
@@ -77,11 +77,11 @@ export const AuthProvider = ({ children }) => {
         if (!currentProfile) {
           const fallback = {
             id: user.uid,
-            name: user.displayName || "관리자",
+            name: "ADMIN",
             role: "ADMIN",
-            roleLabel: "총괄 관리자",
+            roleLabel: "ADMIN",
             email: user.email,
-            avatar: (user.displayName || "관")[0]
+            avatar: "A"
           };
           setCurrentProfile(fallback);
         }
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }) => {
 
     const profileToSave = {
       ...target,
-      roleLabel: target.role === "ADMIN" ? "총괄 관리자" : `${target.plant} ${target.name}`
+      roleLabel: target.role === "ADMIN" ? "ADMIN" : `${target.plant} ${target.name}`
     };
 
     setCurrentProfile(profileToSave);

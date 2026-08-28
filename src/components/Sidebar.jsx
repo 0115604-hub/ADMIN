@@ -45,10 +45,10 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           </div>
           <div>
             <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight">
-              매입·매출 관리
+              월간관리현황
             </h1>
             <p className={`text-[11px] font-bold ${isOperator ? "text-amber-600" : "text-blue-600 dark:text-blue-400"}`}>
-              {isOperator ? "작업자 전용 시스템" : "제조·임가공 ERP Pro"}
+              {isOperator ? `${currentProfile?.plant || "작업자 시스템"}` : "ERP Pro"}
             </p>
           </div>
         </div>
@@ -102,16 +102,16 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
-              isOperator ? "bg-amber-500" : "bg-blue-600"
+              isOperator ? "bg-amber-500" : "bg-slate-800"
             }`}>
-              {currentProfile?.avatar || "관"}
+              {currentProfile?.avatar || "A"}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                {currentProfile?.name || "사용자"}
+                {currentProfile?.name || "ADMIN"}
               </p>
               <p className="text-[10px] text-slate-400 truncate font-semibold">
-                {currentProfile?.roleLabel || "사용자"}
+                {currentProfile?.roleLabel || "ADMIN"}
               </p>
             </div>
           </div>

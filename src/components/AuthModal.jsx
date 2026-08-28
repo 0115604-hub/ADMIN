@@ -3,7 +3,7 @@ import {
   Building2,
   KeyRound,
   ChevronRight,
-  Crown,
+  Shield,
   Factory,
   ArrowRight
 } from "lucide-react";
@@ -37,17 +37,17 @@ export const AuthModal = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 sm:p-8 my-8 relative">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 sm:p-8 my-8 relative">
         {/* Brand Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 mb-2.5">
             <Building2 className="w-6 h-6" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            매입·매출 관리 시스템
+            월간관리현황
           </h3>
           <p className="text-xs text-slate-400 mt-1">
-            접속하실 사용자(관리자 또는 작업자)를 선택해 주세요.
+            접속하실 작업자 또는 관리자를 선택해 주세요.
           </p>
         </div>
 
@@ -60,110 +60,95 @@ export const AuthModal = () => {
 
         {!selectedUser ? (
           <div className="space-y-6">
-            {/* 1. TOP: 총괄 관리자 (주석 및 이름 삭제하고 심플하게 유지) */}
-            <div>
-              {ADMIN_USERS.map((admin) => (
-                <div
-                  key={admin.id}
-                  onClick={() => handleUserClick(admin)}
-                  className="p-4 rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-md shadow-blue-500/30">
-                      <Crown className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-black text-base text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
-                        {admin.name}
-                      </h4>
-                    </div>
-                  </div>
-
-                  <div className="p-2 rounded-xl text-blue-500 group-hover:translate-x-1 transition-transform">
-                    <ChevronRight className="w-5 h-5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* 2. FACTORY 1: 삼랑진공장 (6명) */}
+            {/* 1. FACTORY 1: 삼랑진공장 (6명: 단순 이름만 표기) */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
-                <div className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Factory className="w-3.5 h-3.5" />
+                <div className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Factory className="w-4 h-4" />
                   <span>삼랑진공장</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-3 gap-2.5">
                 {PLANTS[0].workers.map((worker) => (
-                  <div
+                  <button
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex items-center gap-2.5 group shadow-sm hover:shadow"
+                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 group shadow-sm hover:shadow active:scale-95"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shadow-sm">
                       {worker.avatar}
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate">
-                        {worker.name}
-                      </p>
-                    </div>
-                  </div>
+                    <span className="font-black text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                      {worker.name}
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* 3. FACTORY 2: 한림공장 (3명) */}
+            {/* 2. FACTORY 2: 한림공장 (3명: 단순 이름만 표기) */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
-                <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Factory className="w-3.5 h-3.5" />
+                <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Factory className="w-4 h-4" />
                   <span>한림공장</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2.5">
                 {PLANTS[1].workers.map((worker) => (
-                  <div
+                  <button
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex items-center gap-2.5 group shadow-sm hover:shadow"
+                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 group shadow-sm hover:shadow active:scale-95"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
                       {worker.avatar}
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate">
-                        {worker.name}
-                      </p>
-                    </div>
-                  </div>
+                    <span className="font-black text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                      {worker.name}
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>
+
+            {/* 3. BOTTOM: ADMIN (맨 밑에 조그맣고 깔끔하게 배치) */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+              {ADMIN_USERS.map((admin) => (
+                <button
+                  key={admin.id}
+                  onClick={() => handleUserClick(admin)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-300 text-xs font-black transition-all shadow-sm group"
+                >
+                  <Shield className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500" />
+                  <span>ADMIN</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
-          /* PIN Input View for Selected User */
+          /* PIN Input View */
           <form onSubmit={handlePinSubmit} className="space-y-5 animate-fadeIn">
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`w-11 h-11 rounded-2xl text-white flex items-center justify-center font-black text-base shadow-sm ${
                   selectedUser.role === "ADMIN"
-                    ? "bg-blue-600"
+                    ? "bg-slate-800"
                     : selectedUser.plant === "한림공장"
                     ? "bg-emerald-600"
                     : "bg-amber-500"
                 }`}>
-                  {selectedUser.avatar || "관"}
+                  {selectedUser.avatar}
                 </div>
                 <div>
                   <h4 className="font-black text-base text-slate-900 dark:text-white">
                     {selectedUser.name}
                   </h4>
                   <span className="text-[11px] font-bold text-slate-500">
-                    {selectedUser.role === "ADMIN" ? "총괄 관리자 모드" : selectedUser.plant}
+                    {selectedUser.role === "ADMIN" ? "관리자 모드" : selectedUser.plant}
                   </span>
                 </div>
               </div>
@@ -197,7 +182,7 @@ export const AuthModal = () => {
               disabled={loading}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-black text-sm shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <span>{selectedUser.name} 으로 접속하기</span>
+              <span>{selectedUser.name} 접속하기</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
