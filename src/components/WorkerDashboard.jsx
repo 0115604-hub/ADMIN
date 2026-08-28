@@ -24,13 +24,13 @@ import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
 import { OperatorWorkspace } from "./OperatorWorkspace";
 
-// Default Initial Work Logs Seed
+// Default Initial Work Logs Seed with Official Titles
 const DEFAULT_WORK_LOGS = [
   {
     id: 1,
     date: "2026-08-28",
     plant: "삼랑진공장",
-    writer: "조인주",
+    writer: "조인주 선임",
     shift: "주간",
     line: "9BQC 압출 1호기",
     workContent: "9BQC FRT LH/RH 압출 생산 (목표 2,400개 / 실적 2,450개 달성)",
@@ -42,7 +42,7 @@ const DEFAULT_WORK_LOGS = [
     id: 2,
     date: "2026-08-28",
     plant: "삼랑진공장",
-    writer: "설유철",
+    writer: "설유철 책임",
     shift: "주간",
     line: "가공 2라인",
     workContent: "DT 수출용 웨더스트립 절단 및 피팅 가공 (1,800개 완료)",
@@ -54,7 +54,7 @@ const DEFAULT_WORK_LOGS = [
     id: 3,
     date: "2026-08-28",
     plant: "한림공장",
-    writer: "김동욱",
+    writer: "김동욱 책임",
     shift: "주간",
     line: "EPDM 사출 라인",
     workContent: "NX4 코너 몰딩 사출 성형 (3,200개 출하 검사 완료)",
@@ -70,6 +70,9 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
   const { selectedMonth, currentMonthData } = useMonth();
 
   const isInjoo = currentProfile?.name === "조인주";
+  const workerFullName = isOperator ? `${currentProfile?.name} ${currentProfile?.title || ""}` : "ADMIN";
+  const workerPlant = currentProfile?.plant || "사업장";
+
   const [activeWorkerTab, setActiveWorkerTab] = useState("summary_log"); // 'summary_log' | 'uploader'
 
   // Work Logs State
@@ -86,12 +89,23 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     plant: currentProfile?.plant || "삼랑진공장",
-    writer: currentProfile?.name || "작업자",
+    writer: workerFullName,
     shift: "주간",
     line: "9BQC 압출 1호기",
     workContent: "",
     issues: ""
   });
+
+  // Keep writer updated if profile loads late
+  useEffect(() => {
+    if (currentProfile) {
+      setFormData((prev) => ({
+        ...prev,
+        plant: currentProfile.plant || "삼랑진공장",
+        writer: isOperator ? `${currentProfile.name} ${currentProfile.title || ""}` : "ADMIN"
+      }));
+    }
+  }, [currentProfile, isOperator]);
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
@@ -112,7 +126,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       id: Date.now(),
       date: formData.date,
       plant: formData.plant,
-      writer: currentProfile?.name || formData.writer,
+      writer: workerFullName,
       shift: formData.shift,
       line: formData.line,
       workContent: formData.workContent,
@@ -134,7 +148,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
     setFormData({
       date: new Date().toISOString().split("T")[0],
       plant: currentProfile?.plant || "삼랑진공장",
-      writer: currentProfile?.name || "작업자",
+      writer: workerFullName,
       shift: "주간",
       line: "9BQC 압출 1호기",
       workContent: "",
@@ -162,9 +176,9 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Top Banner for Worker */}
+      {/* Top Banner for Worker: Shows Factory Name, Worker Name, and Official Job Title */}
       <div className={`rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden ${
-        currentProfile?.plant === "한림공장"
+        workerPlant === "한림공장"
           ? "bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900"
           : "bg-gradient-to-r from-amber-700 via-orange-800 to-slate-900"
       }`}>
@@ -173,10 +187,10 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-xs font-bold">
               <Factory className="w-3.5 h-3.5" />
-              <span>{currentProfile?.plant || "사업장"} • {currentProfile?.name}</span>
+              <span>{workerPlant} • {workerFullName}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              안녕하세요, {currentProfile?.name} 님! 🛠️
+              안녕하세요, {workerFullName}님! 🛠️
             </h1>
             <p className="text-xs sm:text-sm text-slate-200">
               {monthTitle} 매출·매입 현황을 확인하고 오늘의 일일업무일지를 작성해 주세요.
@@ -317,7 +331,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="작성자, 작업내용, 라인 검색..."
+                  placeholder="작성자, 직책, 작업내용, 라인 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -368,7 +382,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                         <span className="text-[11px] text-slate-400 hidden sm:inline">
                           {log.createdAt}
                         </span>
-                        {(currentProfile?.name === log.writer || isAdmin) && (
+                        {(workerFullName === log.writer || isAdmin) && (
                           <button
                             onClick={() => handleDeleteLog(log.id)}
                             className="p-1 rounded-lg text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -416,7 +430,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                     일일업무일지 작성
                   </h3>
                   <p className="text-xs text-slate-400">
-                    {currentProfile?.plant} • 작성자: {currentProfile?.name}
+                    {workerPlant} • 작성자: {workerFullName}
                   </p>
                 </div>
               </div>

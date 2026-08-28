@@ -17,24 +17,34 @@ export const Header = ({ title }) => {
     return `${parts[0]}년 ${parts[1]}월`;
   };
 
+  const userBadgeText = isOperator
+    ? `${currentProfile?.plant} • ${currentProfile?.name} ${currentProfile?.title || ""}`
+    : "ADMIN";
+
   return (
     <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200">
-      {/* Left: View Title & Profile Badge */}
+      {/* Left: View Title & Official Profile Badge */}
       <div className="flex items-center gap-3">
         <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
           {title === "월간경영현황" || title === "총괄 손익 대시보드" ? "현황" : title}
         </h2>
 
         {currentProfile && (
-          <span className={`hidden sm:inline-flex items-center text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${currentProfile.badgeColor}`}>
-            {currentProfile.name} ({isOperator ? "작업자" : "관리자"})
+          <span className={`hidden sm:inline-flex items-center text-xs font-black px-3 py-1 rounded-full shadow-sm ${
+            isOperator
+              ? currentProfile.plant === "한림공장"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
+                : "bg-amber-50 text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
+              : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+          }`}>
+            {userBadgeText}
           </span>
         )}
       </div>
 
       {/* Center / Right: Clean Segmented Month Switcher & Logout */}
       <div className="flex items-center gap-3">
-        {/* Sleek Apple/Notion-style Segmented Month Control */}
+        {/* Sleek Segmented Month Control */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 shadow-inner">
           {availableMonths.map((ym) => {
             const isSelected = selectedMonth === ym;
@@ -69,7 +79,7 @@ export const Header = ({ title }) => {
         {/* Logout Button */}
         <button
           onClick={logout}
-          title="로그아웃"
+          title="사용자 전환 / 로그아웃"
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
         >
           <LogOut className="w-4 h-4" />

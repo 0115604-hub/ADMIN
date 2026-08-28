@@ -30,13 +30,21 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
 
   // Operator navigation tabs
   const operatorTabs = [
-    { id: "worker_dashboard", label: "업무일지 & 실적요약", icon: ClipboardList, badge: "일일업무" },
+    { id: "worker_dashboard", label: "업무일지 & 현황", icon: ClipboardList, badge: "일일업무" },
     ...(isInjoo
       ? [{ id: "operator_workspace", label: "엑셀 파일 업로드", icon: UploadCloud, badge: "업로더" }]
       : [])
   ];
 
   const navigationTabs = isOperator ? operatorTabs : ADMIN_TABS;
+
+  const displayName = isOperator
+    ? `${currentProfile?.name} ${currentProfile?.title || ""}`
+    : "ADMIN";
+
+  const displayPlant = isOperator
+    ? currentProfile?.plant
+    : "본사 총괄";
 
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200">
@@ -45,7 +53,9 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         <div className="flex items-center gap-3">
           <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-lg ${
             isOperator
-              ? "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/25"
+              ? currentProfile?.plant === "한림공장"
+                ? "bg-gradient-to-tr from-emerald-600 to-teal-700 shadow-emerald-500/25"
+                : "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/25"
               : "bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/25"
           }`}>
             <Building2 className="w-6 h-6" />
@@ -54,8 +64,14 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
             <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight">
               월간관리현황
             </h1>
-            <p className={`text-[11px] font-bold ${isOperator ? "text-amber-600" : "text-blue-600 dark:text-blue-400"}`}>
-              {isOperator ? `${currentProfile?.plant || "작업자 시스템"}` : "ERP Pro"}
+            <p className={`text-[11px] font-bold ${
+              isOperator
+                ? currentProfile?.plant === "한림공장"
+                  ? "text-emerald-600"
+                  : "text-amber-600"
+                : "text-blue-600 dark:text-blue-400"
+            }`}>
+              {displayPlant}
             </p>
           </div>
         </div>
@@ -72,7 +88,9 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                 className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
                   isActive
                     ? isOperator
-                      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 shadow-sm ring-1 ring-amber-400/30"
+                      ? currentProfile?.plant === "한림공장"
+                        ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 shadow-sm ring-1 ring-emerald-400/30"
+                        : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 shadow-sm ring-1 ring-amber-400/30"
                       : "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 shadow-sm ring-1 ring-blue-400/30"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 }`}
@@ -81,7 +99,9 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                   <Icon className={`w-4 h-4 ${
                     isActive
                       ? isOperator
-                        ? "text-amber-600"
+                        ? currentProfile?.plant === "한림공장"
+                          ? "text-emerald-600"
+                          : "text-amber-600"
                         : "text-blue-600 dark:text-blue-400"
                       : "text-slate-400"
                   }`} />
@@ -91,7 +111,9 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                     isActive
                       ? isOperator
-                        ? "bg-amber-500 text-white"
+                        ? currentProfile?.plant === "한림공장"
+                          ? "bg-emerald-600 text-white"
+                          : "bg-amber-500 text-white"
                         : "bg-blue-600 text-white"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                   }`}>
@@ -109,16 +131,20 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0 pr-2">
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
-              isOperator ? "bg-amber-500" : "bg-slate-800"
+              isOperator
+                ? currentProfile?.plant === "한림공장"
+                  ? "bg-emerald-600"
+                  : "bg-amber-500"
+                : "bg-slate-800"
             }`}>
               {currentProfile?.avatar || "A"}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                {currentProfile?.name || "ADMIN"}
+              <p className="text-xs font-black text-slate-900 dark:text-white truncate">
+                {displayName}
               </p>
-              <p className="text-[10px] text-slate-400 truncate font-semibold">
-                {currentProfile?.plant ? `${currentProfile.plant} 작업자` : "ADMIN"}
+              <p className="text-[10px] text-slate-400 truncate font-bold">
+                {displayPlant}
               </p>
             </div>
           </div>
