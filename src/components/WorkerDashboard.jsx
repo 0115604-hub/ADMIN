@@ -13,10 +13,9 @@ import {
   Edit3,
   Factory,
   User,
-  Boxes,
-  Car,
   ArrowUpRight,
   ArrowDownRight,
+  Percent,
   UploadCloud,
   ChevronRight
 } from "lucide-react";
@@ -99,8 +98,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   const totalSales = currentMonthData?.salesSummary?.totalSales || 0;
   const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 0;
-  const vehicleSales = currentMonthData?.vehicleSales || [];
-  const jajaeGroups = currentMonthData?.jajaeGroups || [];
+  const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "0.0";
 
   // Save work log
   const handleSaveLog = (e) => {
@@ -175,13 +173,13 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-xs font-bold">
               <Factory className="w-3.5 h-3.5" />
-              <span>{currentProfile?.plant || "사업장"} • {currentProfile?.name} 작업자</span>
+              <span>{currentProfile?.plant || "사업장"} • {currentProfile?.name}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               안녕하세요, {currentProfile?.name} 님! 🛠️
             </h1>
             <p className="text-xs sm:text-sm text-slate-200">
-              {monthTitle} 매출·매입 요약 실적을 확인하고 오늘의 일일업무일지를 작성해 주세요.
+              {monthTitle} 매출·매입 현황을 확인하고 오늘의 일일업무일지를 작성해 주세요.
             </p>
           </div>
 
@@ -196,7 +194,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                     : "text-white/80 hover:text-white"
                 }`}
               >
-                📋 업무일지 & 요약본
+                📋 업무일지 & 현황
               </button>
               <button
                 onClick={() => setActiveWorkerTab("uploader")}
@@ -220,86 +218,70 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       ) : (
         <>
           {/* ========================================================================= */}
-          {/* 1. MONTHLY SALES & PURCHASING SUMMARY OVERVIEW (월별 매출/매입 요약본) */}
+          {/* 1. {monthTitle} 매출 매입현황 (3가지 카드: 총매출액, 총매입액, 매출대비매입액비율) */}
           {/* ========================================================================= */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                <span>{monthTitle} 전사 매출 & 매입 핵심 요약</span>
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                <span>{monthTitle} 매출 매입현황</span>
               </h3>
               <span className="text-xs text-slate-400">마스터 정리본 기준</span>
             </div>
 
-            {/* Summary KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Sales Summary Card */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+            {/* Exact 3 KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* 1. 총매출액 Card */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400">{monthTitle} 총 매출액</span>
-                  <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매출액</span>
+                  <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
                     <ArrowUpRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                <div className="mt-4">
+                  <p className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
                     {formatAmount(totalSales)}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    출하 차종 {vehicleSales.length}개군
+                  <p className="text-xs font-semibold text-slate-400 mt-1">
+                    {monthTitle} 마스터 매출 총액
                   </p>
                 </div>
               </div>
 
-              {/* Purchase Summary Card */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              {/* 2. 총매입액 Card */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400">{monthTitle} 총 매입액</span>
-                  <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액</span>
+                  <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
                     <ArrowDownRight className="w-4 h-4" />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                <div className="mt-4">
+                  <p className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
                     {formatAmount(totalPurchases)}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    자재 {jajaeGroups.length}개 품목군
+                  <p className="text-xs font-semibold text-slate-400 mt-1">
+                    {monthTitle} 마스터 매입 총액
                   </p>
                 </div>
               </div>
 
-              {/* Top 3 Shipment Vehicle Models */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                <span className="text-xs font-bold text-slate-400">주요 납품 차종 Top 3</span>
-                <div className="mt-2 space-y-1 text-xs">
-                  {vehicleSales.slice(0, 3).map((v, i) => (
-                    <div key={v.vehicleGroup} className="flex items-center justify-between">
-                      <span className="font-extrabold text-slate-700 dark:text-slate-300 truncate">
-                        {i + 1}. {v.vehicleGroup}
-                      </span>
-                      <span className="font-black text-slate-900 dark:text-white">
-                        {formatAmount(v.totalAmount)}
-                      </span>
-                    </div>
-                  ))}
+              {/* 3. 매출대비매입액비율 Card */}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비매입액비율</span>
+                  <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+                    <Percent className="w-4 h-4" />
+                  </div>
                 </div>
-              </div>
-
-              {/* Top 3 Material Groups */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                <span className="text-xs font-bold text-slate-400">주요 매입 자재 Top 3</span>
-                <div className="mt-2 space-y-1 text-xs">
-                  {jajaeGroups.slice(0, 3).map((g, i) => (
-                    <div key={g.groupName} className="flex items-center justify-between">
-                      <span className="font-extrabold text-slate-700 dark:text-slate-300 truncate">
-                        {i + 1}. {g.groupName}
-                      </span>
-                      <span className="font-black text-indigo-600 dark:text-indigo-400">
-                        {formatAmount(g.totalAmount)}
-                      </span>
-                    </div>
-                  ))}
+                <div className="mt-4">
+                  <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
+                    {purchaseRatio}%
+                  </p>
+                  <p className="text-xs font-semibold text-slate-400 mt-1">
+                    매출액 대비 총 매입(원가) 비중
+                  </p>
                 </div>
               </div>
             </div>
@@ -355,7 +337,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
               </div>
             </div>
 
-            {/* Work Logs List / Cards */}
+            {/* Work Logs List */}
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredLogs.length === 0 ? (
                 <div className="py-12 text-center text-slate-400 text-xs">
