@@ -8,51 +8,60 @@ import {
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 
-// Predefined User Profiles with Roles
-export const DESIGNATED_USERS = [
+// Factory and User Hierarchy Definitions
+export const ADMIN_USERS = [
   {
-    id: "user_injoo",
-    name: "조인주",
-    role: "OPERATOR", // 작업자
-    roleLabel: "작업자 (업로드 전용)",
-    badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
-    avatar: "조",
-    email: "injoo@company.com",
-    pin: "1234",
-    description: "일일/월간 매입·매출 엑셀 파일 업데이트 업로드 권한"
-  },
-  {
-    id: "user_miyoung",
-    name: "최미영",
-    role: "ADMIN", // 관리자
+    id: "admin_general",
+    name: "총괄 관리자",
+    subName: "최미영 / 권태형",
+    role: "ADMIN",
     roleLabel: "총괄 관리자",
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
-    avatar: "최",
-    email: "miyoung@company.com",
+    avatar: "관",
     pin: "1234",
-    description: "전체 손익 대시보드, 차종별 매출, 자재매입, 원가, 손익계산서 전체 열람 권한"
+    description: "전체 손익 현황, 차종별 매출, 자재매입, 원가, 손익계산서 전체 열람"
+  }
+];
+
+export const PLANTS = [
+  {
+    id: "samrangjin",
+    name: "삼랑진공장",
+    badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
+    workers: [
+      { id: "sam_mj", name: "이명재", plant: "삼랑진공장", role: "OPERATOR", avatar: "이", pin: "1234" },
+      { id: "sam_yc", name: "설유철", plant: "삼랑진공장", role: "OPERATOR", avatar: "설", pin: "1234" },
+      { id: "sam_ks", name: "윤경수", plant: "삼랑진공장", role: "OPERATOR", avatar: "윤", pin: "1234" },
+      { id: "sam_cy", name: "이창엽", plant: "삼랑진공장", role: "OPERATOR", avatar: "이", pin: "1234" },
+      { id: "sam_in", name: "양인나", plant: "삼랑진공장", role: "OPERATOR", avatar: "양", pin: "1234" },
+      { id: "sam_ij", name: "조인주", plant: "삼랑진공장", role: "OPERATOR", avatar: "조", pin: "1234" }
+    ]
   },
   {
-    id: "user_taehyung",
-    name: "권태형",
-    role: "ADMIN", // 관리자
-    roleLabel: "총괄 관리자",
-    badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300",
-    avatar: "권",
-    email: "taehyung@company.com",
-    pin: "1234",
-    description: "전체 손익 대시보드, 차종별 매출, 자재매입, 원가, 손익계산서 전체 열람 권한"
+    id: "hallim",
+    name: "한림공장",
+    badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
+    workers: [
+      { id: "hal_dw", name: "김동욱", plant: "한림공장", role: "OPERATOR", avatar: "김", pin: "1234" },
+      { id: "hal_cy", name: "우창용", plant: "한림공장", role: "OPERATOR", avatar: "우", pin: "1234" },
+      { id: "hal_sm", name: "오상민", plant: "한림공장", role: "OPERATOR", avatar: "오", pin: "1234" }
+    ]
   }
+];
+
+// Flat list of all selectable users
+export const ALL_DESIGNATED_USERS = [
+  ...ADMIN_USERS,
+  ...PLANTS.flatMap((p) => p.workers)
 ];
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [currentProfile, setCurrentProfile] = useState(null); // { name, role, ... }
+  const [currentProfile, setCurrentProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize from localStorage or Firebase
   useEffect(() => {
     const savedProfile = localStorage.getItem("admin_user_profile");
     if (savedProfile) {
@@ -67,26 +76,16 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        // Map email to designated profile if not already set
         if (!currentProfile) {
-          const match = DESIGNATED_USERS.find(
-            (u) => u.email.toLowerCase() === (user.email || "").toLowerCase()
-          );
-          if (match) {
-            setCurrentProfile(match);
-            localStorage.setItem("admin_user_profile", JSON.stringify(match));
-          } else {
-            // Default to admin for firebase authenticated users
-            const fallback = {
-              id: user.uid,
-              name: user.displayName || user.email.split("@")[0],
-              role: "ADMIN",
-              roleLabel: "총괄 관리자",
-              email: user.email,
-              avatar: (user.displayName || user.email)[0].toUpperCase()
-            };
-            setCurrentProfile(fallback);
-          }
+          const fallback = {
+            id: user.uid,
+            name: user.displayName || "관리자",
+            role: "ADMIN",
+            roleLabel: "총괄 관리자",
+            email: user.email,
+            avatar: (user.displayName || "관")[0]
+          };
+          setCurrentProfile(fallback);
         }
       }
       setLoading(false);
@@ -95,9 +94,8 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  // Quick Profile Login with PIN
   const loginWithProfile = (userId, inputPin) => {
-    const target = DESIGNATED_USERS.find((u) => u.id === userId);
+    const target = ALL_DESIGNATED_USERS.find((u) => u.id === userId);
     if (!target) {
       throw new Error("존재하지 않는 사용자입니다.");
     }
@@ -105,62 +103,16 @@ export const AuthProvider = ({ children }) => {
       throw new Error("비밀번호(PIN)가 올바르지 않습니다. (기본: 1234)");
     }
 
-    setCurrentProfile(target);
-    localStorage.setItem("admin_user_profile", JSON.stringify(target));
-    return target;
+    const profileToSave = {
+      ...target,
+      roleLabel: target.role === "ADMIN" ? "총괄 관리자" : `${target.plant} 작업자`
+    };
+
+    setCurrentProfile(profileToSave);
+    localStorage.setItem("admin_user_profile", JSON.stringify(profileToSave));
+    return profileToSave;
   };
 
-  // Google Login
-  const loginWithGoogle = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      const match = DESIGNATED_USERS.find(
-        (u) => u.email.toLowerCase() === (user.email || "").toLowerCase()
-      );
-      const profile = match || {
-        id: user.uid,
-        name: user.displayName || "관리자",
-        role: "ADMIN",
-        roleLabel: "총괄 관리자",
-        email: user.email,
-        avatar: (user.displayName || "관")[0]
-      };
-      setCurrentProfile(profile);
-      localStorage.setItem("admin_user_profile", JSON.stringify(profile));
-      return profile;
-    } catch (error) {
-      console.error("Google login error:", error);
-      throw error;
-    }
-  };
-
-  // Email Login
-  const loginWithEmail = async (email, password) => {
-    try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-      const match = DESIGNATED_USERS.find(
-        (u) => u.email.toLowerCase() === (user.email || "").toLowerCase()
-      );
-      const profile = match || {
-        id: user.uid,
-        name: user.displayName || email.split("@")[0],
-        role: "ADMIN",
-        roleLabel: "총괄 관리자",
-        email: user.email,
-        avatar: "관"
-      };
-      setCurrentProfile(profile);
-      localStorage.setItem("admin_user_profile", JSON.stringify(profile));
-      return profile;
-    } catch (error) {
-      console.error("Email login error:", error);
-      throw error;
-    }
-  };
-
-  // Logout
   const logout = async () => {
     try {
       await signOut(auth);
@@ -185,8 +137,6 @@ export const AuthProvider = ({ children }) => {
         isAdmin,
         loading,
         loginWithProfile,
-        loginWithGoogle,
-        loginWithEmail,
         logout
       }}
     >
