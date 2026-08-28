@@ -2,31 +2,37 @@ import React, { useState, useMemo } from "react";
 import {
   Car,
   Search,
-  Filter,
   Download,
   ChevronDown,
   ChevronUp,
   ArrowUpRight,
   TrendingUp,
-  Package,
-  Layers,
-  Sparkles,
-  CheckCircle2,
-  FileSpreadsheet
+  Sparkles
 } from "lucide-react";
-import { MASTER_VEHICLE_SALES, MASTER_PROCESS_BREAKDOWN, MASTER_SALES_SUMMARY } from "../data/masterSalesData";
 import { useCurrency } from "../context/CurrencyContext";
+import { useMonth } from "../context/MonthContext";
 
 export const VehicleSalesView = () => {
   const { formatAmount } = useCurrency();
+  const { selectedMonth, currentMonthData } = useMonth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProcess, setSelectedProcess] = useState("all");
-  const [expandedVehicle, setExpandedVehicle] = useState("9BQC"); // Default expanded
-  const [selectedItemForModal, setSelectedItemForModal] = useState(null);
+  const [expandedVehicle, setExpandedVehicle] = useState("9BQC");
+
+  const vehicleSales = currentMonthData?.vehicleSales || [];
+  const salesSummary = currentMonthData?.salesSummary || {
+    totalSales: 0,
+    totalQty: 0,
+    itemCount: 0,
+    vehicleGroupCount: 0
+  };
+
+  const monthParts = selectedMonth.split("-");
+  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
   // Filter Vehicles
   const filteredVehicles = useMemo(() => {
-    return MASTER_VEHICLE_SALES.filter((v) => {
+    return vehicleSales.filter((v) => {
       const matchSearch =
         v.vehicleGroup.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.details.some(
@@ -43,17 +49,16 @@ export const VehicleSalesView = () => {
 
       return matchSearch && matchProcess;
     });
-  }, [searchTerm, selectedProcess]);
+  }, [vehicleSales, searchTerm, selectedProcess]);
 
   const totalFilteredAmount = filteredVehicles.reduce((acc, cur) => acc + cur.totalAmount, 0);
-  const totalFilteredQty = filteredVehicles.reduce((acc, cur) => acc + cur.totalQty, 0);
 
-  // Export to CSV
+  // Export CSV
   const handleExportCSV = () => {
-    const headers = ["순위", "차종/프로젝트", "구분", "아이템코드", "고객품번", "품명(P/NAME)", "판매단가", "7월출하수량", "매출금액(원)", "비중(%)"];
+    const headers = ["순위", "차종/프로젝트", "구분", "아이템코드", "고객품번", "품명(P/NAME)", "판매단가", `${monthParts[1]}월출하수량`, "매출금액(원)", "비중(%)"];
     const rows = [];
 
-    MASTER_VEHICLE_SALES.forEach((v) => {
+    vehicleSales.forEach((v) => {
       v.details.forEach((d) => {
         rows.push([
           v.rank,
@@ -65,7 +70,7 @@ export const VehicleSalesView = () => {
           d.unitPrice,
           d.qty,
           d.amount,
-          `${((d.amount / MASTER_SALES_SUMMARY.totalSales) * 100).toFixed(2)}%`
+          `${((d.amount / (salesSummary.totalSales || 1)) * 100).toFixed(2)}%`
         ]);
       });
     });
@@ -75,7 +80,7 @@ export const VehicleSalesView = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `2026년07월_차종별_품목별_매출실적_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute("download", `${selectedMonth}_차종별_품목별_매출실적.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -90,13 +95,13 @@ export const VehicleSalesView = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>2026년 07월 실적 마스터 기준</span>
+              <span>{monthTitle} 실적 마스터 기준</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-              차종별 · 품목별 매출 실적 분석
+              {monthTitle} 차종별 · 품목별 매출 실적
             </h2>
             <p className="text-sm text-slate-300 max-w-2xl">
-              `매입-매출 정리본` 기준 23개 차종 패밀리 및 81개 세부 납품 부품의 단가, 출하수량, 매출액 집계
+              총 {vehicleSales.length}개 차종 패밀리 및 {salesSummary.itemCount}개 세부 납품 부품의 단가, 출하수량, 매출액 집계
             </p>
           </div>
 
@@ -115,15 +120,12 @@ export const VehicleSalesView = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">당월 총 매출 합계</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{monthTitle} 총 매출액</span>
           <div className="mt-2">
             <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
-              {formatAmount(MASTER_SALES_SUMMARY.totalSales)}
+              {formatAmount(salesSummary.totalSales)}
             </p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>전월比 +{formatAmount(MASTER_SALES_SUMMARY.momDiff)} 증가</span>
-            </p>
+            <p className="text-[11px] text-slate-400 mt-1">{salesSummary.itemCount}개 부품 출하</p>
           </div>
         </div>
 
@@ -131,67 +133,35 @@ export const VehicleSalesView = () => {
           <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">총 출하 수량</span>
           <div className="mt-2">
             <p className="text-2xl font-black text-slate-900 dark:text-white">
-              {MASTER_SALES_SUMMARY.totalQty.toLocaleString()} <span className="text-sm font-normal text-slate-400">개</span>
+              {salesSummary.totalQty.toLocaleString()} <span className="text-sm font-normal text-slate-400">개</span>
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">23개 차종군 / 81개 부품</p>
+            <p className="text-[11px] text-slate-400 mt-1">{vehicleSales.length}개 차종군</p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">매출 1위 차종군</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">매출 1위 차종</span>
           <div className="mt-2">
             <p className="text-xl font-extrabold text-slate-900 dark:text-white truncate">
-              PCM 압출/가공
+              {vehicleSales[0]?.vehicleGroup || "-"}
             </p>
             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-              ₩934,505,308 <span className="text-[11px] font-normal text-slate-400">(비중 32.5%)</span>
+              {formatAmount(vehicleSales[0]?.totalAmount || 0)} <span className="text-[11px] font-normal text-slate-400">({vehicleSales[0]?.share || 0}%)</span>
             </p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">내수 1위 모델 (9BQC)</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">매출 2위 차종</span>
           <div className="mt-2">
             <p className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400 truncate">
-              현대/기아 9BQC
+              {vehicleSales[1]?.vehicleGroup || "-"}
             </p>
             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-1">
-              ₩612,722,880 <span className="text-[11px] font-normal text-slate-400">(87,260개 출하)</span>
+              {formatAmount(vehicleSales[1]?.totalAmount || 0)} <span className="text-[11px] font-normal text-slate-400">({vehicleSales[1]?.share || 0}%)</span>
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Process Filter Pills */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setSelectedProcess("all")}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            selectedProcess === "all"
-              ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
-              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50"
-          }`}
-        >
-          전체 공정 (81개 품목)
-        </button>
-
-        {MASTER_PROCESS_BREAKDOWN.map((p) => (
-          <button
-            key={p.process}
-            onClick={() => setSelectedProcess(p.process)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              selectedProcess === p.process
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }}></span>
-            <span>{p.label}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300">
-              {p.share}%
-            </span>
-          </button>
-        ))}
       </div>
 
       {/* Search Bar */}
@@ -257,7 +227,7 @@ export const VehicleSalesView = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      세부 품목 {v.itemCount}종 • 총 출하수량 {v.totalQty.toLocaleString()}개
+                      세부 품목 {v.itemCount}종 • 출하수량 {v.totalQty.toLocaleString()}개
                     </p>
                   </div>
                 </div>
@@ -301,7 +271,7 @@ export const VehicleSalesView = () => {
                         <th className="py-2.5 px-4 font-semibold">품명 (P/NAME)</th>
                         <th className="py-2.5 px-4 font-semibold">공정/구분</th>
                         <th className="py-2.5 px-4 font-semibold text-right">판매단가</th>
-                        <th className="py-2.5 px-4 font-semibold text-right">7월 출하수량</th>
+                        <th className="py-2.5 px-4 font-semibold text-right">출하수량</th>
                         <th className="py-2.5 px-4 font-semibold text-right">매출금액</th>
                       </tr>
                     </thead>

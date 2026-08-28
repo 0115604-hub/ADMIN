@@ -5,29 +5,35 @@ import {
   Download,
   ChevronRight,
   ArrowLeft,
-  Layers,
-  Sparkles,
-  Building2,
-  TrendingDown,
-  Filter,
-  CheckCircle2
+  Sparkles
 } from "lucide-react";
-import { MASTER_JAJAE_GROUPS, MASTER_JAJAE_SUMMARY } from "../data/masterJajaeData";
 import { useCurrency } from "../context/CurrencyContext";
+import { useMonth } from "../context/MonthContext";
 
 export const MaterialPurchaseView = () => {
   const { formatAmount } = useCurrency();
-  const [selectedGroup, setSelectedGroup] = useState(null); // null = 요약본, string = 선택된 품목군
+  const { selectedMonth, currentMonthData } = useMonth();
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [supplierFilter, setSupplierFilter] = useState("all");
 
-  // Current active group object
+  const jajaeGroups = currentMonthData?.jajaeGroups || [];
+  const jajaeSummary = currentMonthData?.jajaeSummary || {
+    totalAmount: 0,
+    itemCount: 0,
+    groupCount: 0
+  };
+
+  const monthParts = selectedMonth.split("-");
+  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+
+  // Active group
   const activeGroup = useMemo(() => {
     if (!selectedGroup) return null;
-    return MASTER_JAJAE_GROUPS.find((g) => g.groupName === selectedGroup) || null;
-  }, [selectedGroup]);
+    return jajaeGroups.find((g) => g.groupName === selectedGroup) || null;
+  }, [jajaeGroups, selectedGroup]);
 
-  // Unique suppliers in active group
+  // Unique suppliers
   const groupSuppliers = useMemo(() => {
     if (!activeGroup) return [];
     const set = new Set();
@@ -37,7 +43,7 @@ export const MaterialPurchaseView = () => {
     return Array.from(set);
   }, [activeGroup]);
 
-  // Filtered detailed items
+  // Filtered detail items
   const filteredDetailItems = useMemo(() => {
     if (!activeGroup) return [];
     return activeGroup.items.filter((item) => {
@@ -57,12 +63,12 @@ export const MaterialPurchaseView = () => {
 
   const filteredDetailTotal = filteredDetailItems.reduce((acc, cur) => acc + cur.amount, 0);
 
-  // Export to CSV
+  // Export CSV
   const handleExportCSV = () => {
-    const itemsToExport = activeGroup ? filteredDetailItems : MASTER_JAJAE_GROUPS.flatMap((g) => g.items);
+    const itemsToExport = activeGroup ? filteredDetailItems : jajaeGroups.flatMap((g) => g.items);
     const filename = activeGroup
-      ? `자재매입_${activeGroup.groupName}_${new Date().toISOString().split("T")[0]}.csv`
-      : `자재매입_전체품목군_${new Date().toISOString().split("T")[0]}.csv`;
+      ? `${selectedMonth}_자재매입_${activeGroup.groupName}.csv`
+      : `${selectedMonth}_자재매입_전체품목군.csv`;
 
     const headers = ["대분류 품목군", "자재코드", "품명 및 규격", "단위", "차종/용도", "구매처(공급사)", "단가(원)", "구매량", "공급가액(원)", "메모"];
     const rows = itemsToExport.map((i) => [
@@ -98,10 +104,10 @@ export const MaterialPurchaseView = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>`자재매입` 시트 마스터 기준 (총 142종 / 18.19억)</span>
+              <span>{monthTitle} `자재매입` 시트 마스터 기준</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
-              <span>자재매입 품목군별 분석</span>
+              <span>{monthTitle} 자재매입 품목군별 분석</span>
               {activeGroup && (
                 <span className="text-base font-bold px-3 py-1 rounded-xl bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">
                   {activeGroup.groupName}
@@ -111,7 +117,7 @@ export const MaterialPurchaseView = () => {
             <p className="text-sm text-slate-300 max-w-2xl">
               {activeGroup
                 ? `${activeGroup.groupName}의 세부 자재 품목(${activeGroup.itemCount}종)별 단가, 구매량, 금액 상세 내역입니다.`
-                : "품목군별 요약본입니다. 원하는 품목군을 클릭하시면 142개 세부 부품/원자재 내역이 열립니다."}
+                : `총 ${jajaeGroups.length}개 품목군 요약본입니다. 원하는 품목군을 클릭하시면 ${jajaeSummary.itemCount}개 세부 부품/원자재 내역이 열립니다.`}
             </p>
           </div>
 
@@ -143,75 +149,71 @@ export const MaterialPurchaseView = () => {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">총 자재매입액</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{monthTitle} 총 자재매입액</span>
           <div className="mt-2">
             <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-              {formatAmount(MASTER_JAJAE_SUMMARY.totalAmount)}
+              {formatAmount(jajaeSummary.totalAmount)}
             </p>
-            <p className="text-[11px] text-slate-400 mt-1">9개 품목군 / 142개 자재</p>
+            <p className="text-[11px] text-slate-400 mt-1">{jajaeGroups.length}개 품목군 / {jajaeSummary.itemCount}개 자재</p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">1위 품목군 (TPE)</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">1위 품목군</span>
           <div className="mt-2">
-            <p className="text-2xl font-black text-slate-900 dark:text-white">
-              ₩867,712,243
+            <p className="text-2xl font-black text-slate-900 dark:text-white truncate">
+              {jajaeGroups[0]?.groupName || "-"}
             </p>
             <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-1">
-              전체의 47.70% (33종)
+              {formatAmount(jajaeGroups[0]?.totalAmount || 0)} ({jajaeGroups[0]?.share || 0}%)
             </p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">2위 품목군 (EPDM)</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">2위 품목군</span>
           <div className="mt-2">
-            <p className="text-2xl font-black text-slate-900 dark:text-white">
-              ₩533,929,310
+            <p className="text-2xl font-black text-slate-900 dark:text-white truncate">
+              {jajaeGroups[1]?.groupName || "-"}
             </p>
             <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
-              전체의 29.35% (16종)
+              {formatAmount(jajaeGroups[1]?.totalAmount || 0)} ({jajaeGroups[1]?.share || 0}%)
             </p>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">3위 (9BQC 전용자재)</span>
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">3위 품목군</span>
           <div className="mt-2">
-            <p className="text-2xl font-black text-purple-600 dark:text-purple-400">
-              ₩214,828,924
+            <p className="text-2xl font-black text-purple-600 dark:text-purple-400 truncate">
+              {jajaeGroups[2]?.groupName || "-"}
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              D/V BAR, 아마쉘 패드 등 10종
+              {formatAmount(jajaeGroups[2]?.totalAmount || 0)} ({jajaeGroups[2]?.share || 0}%)
             </p>
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 1. SUMMARY VIEW (요약본: 품목군 미선택 시) */}
-      {/* ========================================================================= */}
+      {/* 1. SUMMARY VIEW */}
       {!selectedGroup && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Boxes className="w-4 h-4 text-indigo-500" />
-              <span>9대 자재 품목군 요약본 (클릭하여 세부내역 조회)</span>
+              <span>{monthTitle} 자재 품목군 요약본 (클릭하여 세부내역 조회)</span>
             </h3>
-            <span className="text-xs text-slate-400">품목군 카드를 클릭하면 세부 부품 명세가 열립니다.</span>
+            <span className="text-xs text-slate-400">품목군 카드를 클릭하면 세부 명세가 열립니다.</span>
           </div>
 
-          {/* 9 Product Groups Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {MASTER_JAJAE_GROUPS.map((g) => (
+            {jajaeGroups.map((g) => (
               <div
                 key={g.groupName}
                 onClick={() => setSelectedGroup(g.groupName)}
                 className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-indigo-400 dark:hover:border-indigo-500 cursor-pointer transition-all flex flex-col justify-between group"
               >
                 <div>
-                  {/* Card Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <span className="w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
@@ -226,7 +228,6 @@ export const MaterialPurchaseView = () => {
                     </span>
                   </div>
 
-                  {/* Amount & Progress */}
                   <div className="mt-4">
                     <p className="text-2xl font-black text-slate-900 dark:text-white">
                       {formatAmount(g.totalAmount)}
@@ -239,13 +240,11 @@ export const MaterialPurchaseView = () => {
                     </div>
                   </div>
 
-                  {/* Suppliers Info */}
                   <p className="text-xs text-slate-400 mt-3 truncate">
                     주요 공급처: <strong className="text-slate-600 dark:text-slate-300">{g.mainSuppliers}</strong>
                   </p>
                 </div>
 
-                {/* Card Footer Button */}
                 <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400">
                   <span>세부 품목 {g.itemCount}종 명세 보기</span>
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -254,13 +253,13 @@ export const MaterialPurchaseView = () => {
             ))}
           </div>
 
-          {/* Master Summary Table */}
+          {/* Table */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden mt-6">
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h4 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                품목군별 집계 대사표
+                {monthTitle} 품목군별 집계표
               </h4>
-              <span className="text-xs text-slate-400">총 142종 / ₩1,819,295,168</span>
+              <span className="text-xs text-slate-400">총 {jajaeSummary.itemCount}종 / {formatAmount(jajaeSummary.totalAmount)}</span>
             </div>
 
             <div className="overflow-x-auto">
@@ -271,13 +270,13 @@ export const MaterialPurchaseView = () => {
                     <th className="py-3 px-4">대분류 품목군</th>
                     <th className="py-3 px-4">세부 품목수</th>
                     <th className="py-3 px-4">주요 공급사</th>
-                    <th className="py-3 px-4 text-right">7월 매입금액</th>
+                    <th className="py-3 px-4 text-right">{monthParts[1]}월 매입금액</th>
                     <th className="py-3 px-4 text-right">점유 비중</th>
                     <th className="py-3 px-4 text-center">조회</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {MASTER_JAJAE_GROUPS.map((g) => (
+                  {jajaeGroups.map((g) => (
                     <tr
                       key={g.groupName}
                       onClick={() => setSelectedGroup(g.groupName)}
@@ -313,12 +312,9 @@ export const MaterialPurchaseView = () => {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 2. DETAILED DRILLDOWN VIEW (세부내역: 품목군 선택 시) */}
-      {/* ========================================================================= */}
+      {/* 2. DETAILED DRILLDOWN */}
       {selectedGroup && activeGroup && (
         <div className="space-y-4 animate-fadeIn">
-          {/* Back Navigation Bar */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
@@ -345,7 +341,6 @@ export const MaterialPurchaseView = () => {
               </div>
             </div>
 
-            {/* Search and Supplier Filters */}
             <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -375,7 +370,6 @@ export const MaterialPurchaseView = () => {
             </div>
           </div>
 
-          {/* Detailed Items Table */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
               <span>
@@ -396,7 +390,7 @@ export const MaterialPurchaseView = () => {
                     <th className="py-3 px-4">차종 / 용도</th>
                     <th className="py-3 px-4">구매처 (공급사)</th>
                     <th className="py-3 px-4 text-right">구매 단가</th>
-                    <th className="py-3 px-4 text-right">7월 구매량</th>
+                    <th className="py-3 px-4 text-right">구매량</th>
                     <th className="py-3 px-4 text-right">공급가액 (원)</th>
                     <th className="py-3 px-4">메모 / 비고</th>
                   </tr>

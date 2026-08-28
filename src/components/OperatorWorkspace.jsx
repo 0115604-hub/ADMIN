@@ -9,15 +9,18 @@ import {
   ArrowRight,
   ShieldCheck,
   FileCheck,
-  RotateCw
+  RotateCw,
+  Calendar
 } from "lucide-react";
 import { parseExcelFile } from "../utils/excelHelper";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { useMonth } from "../context/MonthContext";
 
 export const OperatorWorkspace = ({ onBulkUpload }) => {
   const { currentProfile } = useAuth();
   const { formatAmount } = useCurrency();
+  const { uploadMonthlyData, selectedMonth, changeMonth } = useMonth();
   const fileInputRef = useRef();
 
   const [dragActive, setDragActive] = useState(false);
@@ -25,8 +28,9 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
   const [uploading, setUploading] = useState(false);
   const [parsedResult, setParsedResult] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // Upload History (stored in localStorage)
+  // Upload History
   const [uploadHistory, setUploadHistory] = useState(() => {
     const saved = localStorage.getItem("operator_upload_history");
     return saved
@@ -34,10 +38,22 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       : [
           {
             id: 1,
+            fileName: "2026-08매입매출현황_원본.xlsx",
+            month: "2026-08",
+            date: "2026-08-28 08:44",
+            operator: "조인주",
+            salesAmount: 1756104735,
+            purchaseAmount: 1248400884.5,
+            status: "동기화 완료"
+          },
+          {
+            id: 2,
             fileName: "2026-07월매입매출현황_원본.xlsx",
+            month: "2026-07",
             date: "2026-08-27 15:30",
             operator: "조인주",
-            itemCount: 142,
+            salesAmount: 2873777826,
+            purchaseAmount: 1831147543.4,
             status: "동기화 완료"
           }
         ];
@@ -82,10 +98,16 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
   };
 
   const handleConfirmUpload = async () => {
-    if (!parsedResult || !parsedResult.items) return;
+    if (!parsedResult) return;
     setUploading(true);
     try {
-      if (onBulkUpload) {
+      const targetYM = parsedResult.yearMonth || "2026-08";
+
+      // Save into MonthContext
+      uploadMonthlyData(targetYM, parsedResult);
+
+      // Save into transactions DB if items exist
+      if (onBulkUpload && parsedResult.items && parsedResult.items.length > 0) {
         await onBulkUpload(parsedResult.items);
       }
 
@@ -93,6 +115,7 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       const newRecord = {
         id: Date.now(),
         fileName: parsedResult.fileName,
+        month: targetYM,
         date: new Date().toLocaleString("ko-KR", {
           year: "numeric",
           month: "2-digit",
@@ -101,7 +124,8 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
           minute: "2-digit"
         }),
         operator: currentProfile?.name || "조인주",
-        itemCount: parsedResult.items.length,
+        salesAmount: parsedResult.totalSales,
+        purchaseAmount: parsedResult.totalExpenses,
         status: "동기화 완료"
       };
 
@@ -109,6 +133,8 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       setUploadHistory(updatedHistory);
       localStorage.setItem("operator_upload_history", JSON.stringify(updatedHistory));
 
+      const ymLabel = `${targetYM.split("-")[0]}년 ${targetYM.split("-")[1]}월`;
+      setSuccessMessage(`${ymLabel} 엑셀 파일(매출 ${formatAmount(parsedResult.totalSales)} / 매입 ${formatAmount(parsedResult.totalExpenses)})이 성공적으로 동기화 및 반영되었습니다!`);
       setUploadSuccess(true);
       setParsedResult(null);
     } catch (err) {
@@ -132,7 +158,7 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
             안녕하세요, {currentProfile?.name || "조인주"} 작업자님! 🛠️
           </h2>
           <p className="text-xs sm:text-sm text-amber-100 max-w-xl">
-            오늘 작성하신 매입·매출 엑셀 파일(`.xlsx`)을 업로드해 주세요. 시스템이 자동으로 분석하여 최신 실적을 반영합니다.
+            작성하신 매입·매출 엑셀 파일(`.xlsx`)을 업로드해 주세요. 8월, 9월 등 해당 월을 자동 인식하여 시스템에 즉시 동기화합니다.
           </p>
         </div>
       </div>
@@ -140,17 +166,17 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       {uploadSuccess && (
         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 flex items-center justify-between animate-fadeIn">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+            <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
             <div>
-              <p className="font-extrabold text-sm">일일 엑셀 파일이 성공적으로 동기화되었습니다!</p>
+              <p className="font-extrabold text-sm">{successMessage}</p>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                관리자(최미영, 권태형) 대시보드에 최신 실적이 실시간 업데이트되었습니다.
+                상단 월 선택기에서 해당 월을 선택하시면 차종별 매출, 자재매입, 손익계산서가 즉시 조회됩니다.
               </p>
             </div>
           </div>
           <button
             onClick={() => setUploadSuccess(false)}
-            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shrink-0 ml-2"
           >
             확인
           </button>
@@ -192,13 +218,13 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
               {parsing ? "엑셀 데이터 분석 중..." : "엑셀 파일을 이곳에 끌어다 놓으세요"}
             </h3>
             <p className="text-xs text-slate-400">
-              또는 클릭하여 컴퓨터/스마트폰에서 <span className="font-semibold text-amber-600">2026-XX월매입매출현황.xlsx</span> 파일 선택
+              또는 클릭하여 컴퓨터/스마트폰에서 <span className="font-semibold text-amber-600">2026-08매입매출현황.xlsx</span> 파일 선택
             </p>
           </div>
 
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-500">
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>.xlsx, .xls 형식 지원 (시트 자동 분리)</span>
+            <span>.xlsx, .xls 형식 지원 (시트 및 해당 월 자동 감지)</span>
           </div>
         </div>
       </div>
@@ -212,10 +238,15 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
                 <FileCheck className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="font-extrabold text-base text-slate-900 dark:text-white">
-                  {parsedResult.fileName}
-                </h4>
-                <p className="text-xs text-slate-400">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white">
+                    {parsedResult.fileName}
+                  </h4>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white">
+                    {parsedResult.yearMonth} 인식됨
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
                   파일 크기 {parsedResult.fileSize} • 감지된 시트 {parsedResult.sheetCount || 1}개
                 </p>
               </div>
@@ -231,22 +262,24 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
 
           {/* Validation Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
-              <span className="text-[11px] font-semibold text-slate-400">총 감지 품목</span>
-              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                {parsedResult.items.length.toLocaleString()} 건
-              </p>
-            </div>
             <div className="p-4 rounded-2xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/60">
               <span className="text-[11px] font-semibold text-blue-500">감지된 매출 합계</span>
               <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">
                 {formatAmount(parsedResult.totalSales || 0)}
               </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">차종 {parsedResult.vehicleSales?.length || 0}개군</p>
             </div>
             <div className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/60">
               <span className="text-[11px] font-semibold text-rose-500">감지된 매입 합계</span>
               <p className="text-xl font-black text-rose-600 dark:text-rose-400 mt-1">
                 {formatAmount(parsedResult.totalExpenses || 0)}
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">자재 {parsedResult.jajaeGroups?.length || 0}개군</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/60 col-span-2 sm:col-span-1">
+              <span className="text-[11px] font-semibold text-emerald-500">당기 손익 (예상)</span>
+              <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                {formatAmount((parsedResult.totalSales || 0) - (parsedResult.totalExpenses || 0))}
               </p>
             </div>
           </div>
@@ -265,7 +298,7 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
             ) : (
               <>
                 <CheckCircle2 className="w-5 h-5" />
-                <span>최신 엑셀 실적 동기화 완료 및 전송</span>
+                <span>{parsedResult.yearMonth} 엑셀 실적 동기화 완료 및 전송</span>
               </>
             )}
           </button>
@@ -288,8 +321,15 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
               <div className="flex items-center gap-3">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
                 <div>
-                  <p className="font-bold text-slate-900 dark:text-white">{item.fileName}</p>
-                  <p className="text-[11px] text-slate-400">{item.date} • {item.itemCount}건 처리</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900 dark:text-white">{item.fileName}</p>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {item.month}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {item.date} • 매출 {formatAmount(item.salesAmount || 0)} / 매입 {formatAmount(item.purchaseAmount || 0)}
+                  </p>
                 </div>
               </div>
 
