@@ -15,9 +15,11 @@ import {
   Layers,
   Sparkles,
   Inbox,
-  AlertCircle
+  AlertCircle,
+  Calendar
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
+import { useMonth } from "../context/MonthContext";
 
 const CATEGORY_COLORS = {
   "원자재": "#EF4444",
@@ -43,17 +45,24 @@ export const PurchaseExpenseView = ({
   onClearAll
 }) => {
   const { formatAmount } = useCurrency();
+  const { selectedMonth } = useMonth();
+
+  const monthParts = selectedMonth.split("-");
+  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
-  // Only use actual transactions (no dummy sample fallback)
+  // Filter expenses strictly by selectedMonth
   const displayItems = useMemo(() => {
-    return transactions.filter((t) => t.type === "expense");
-  }, [transactions]);
+    return transactions.filter(
+      (t) => t.type === "expense" && (!t.date || t.date.startsWith(selectedMonth))
+    );
+  }, [transactions, selectedMonth]);
 
-  // Compute dynamic category summary from displayItems
+  // Compute dynamic category summary from displayItems of selectedMonth
   const dynamicCategories = useMemo(() => {
     const map = {};
     let total = 0;
@@ -85,7 +94,7 @@ export const PurchaseExpenseView = ({
       .sort((a, b) => b.totalAmount - a.totalAmount);
   }, [displayItems]);
 
-  // Filter items
+  // Filter items by category & search term
   const filteredItems = useMemo(() => {
     return displayItems.filter((item) => {
       const matchesSearch =
@@ -111,7 +120,7 @@ export const PurchaseExpenseView = ({
   }, [filteredItems, currentPage]);
 
   const handleClearAllConfirm = () => {
-    if (window.confirm("정말로 계정과목별 매입의 모든 기존 데이터를 영구 삭제하시겠습니까? (삭제 후 복구할 수 없습니다)")) {
+    if (window.confirm(`${monthTitle}의 등록된 매입 데이터를 모두 삭제하시겠습니까?`)) {
       if (onClearAll) onClearAll();
     }
   };
@@ -124,14 +133,14 @@ export const PurchaseExpenseView = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
-              <Layers className="w-3.5 h-3.5" />
-              <span>계정과목별 매입 원장 관리</span>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{monthTitle} 월별 매입 원장</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              계정과목별 매입·지출 원장
+              {monthTitle} 계정과목별 매입·지출 원장
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              실제 등록된 매입 및 지출 전표 내역을 계정과목별로 조회, 등록, 수정 및 관리합니다.
+              {monthTitle}에 발생한 실제 매입 및 지출 전표 내역을 계정과목별로 조회, 등록, 수정 및 관리합니다.
             </p>
           </div>
 
@@ -142,7 +151,7 @@ export const PurchaseExpenseView = ({
                 className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-800/80 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-bold transition-all shadow-sm"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>전체 내역 초기화</span>
+                <span>{monthTitle} 내역 초기화</span>
               </button>
             )}
             <button
@@ -166,7 +175,7 @@ export const PurchaseExpenseView = ({
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">총 매입·지출 합계</span>
+          <span className="text-xs font-bold text-slate-400">{monthTitle} 총 매입·지출 합계</span>
           <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">
             {formatAmount(totalExpenseSum)}
           </p>
@@ -176,7 +185,7 @@ export const PurchaseExpenseView = ({
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">활성 계정과목 수</span>
+          <span className="text-xs font-bold text-slate-400">{monthTitle} 활성 계정과목 수</span>
           <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
             {dynamicCategories.length}개 과목
           </p>
@@ -265,9 +274,9 @@ export const PurchaseExpenseView = ({
                 <tr>
                   <td colSpan={7} className="py-16 text-center text-slate-400 space-y-2">
                     <Inbox className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-                    <p className="font-bold">등록된 매입·지출 데이터가 없습니다.</p>
+                    <p className="font-bold">{monthTitle}에 등록된 매입·지출 데이터가 없습니다.</p>
                     <p className="text-[11px] text-slate-400">
-                      상단의 [새 매입 내역 추가] 또는 [엑셀 일괄 업로드]를 통해 데이터를 등록하세요.
+                      상단의 [새 매입 내역 추가] 또는 [엑셀 일괄 업로드]를 통해 {monthTitle} 데이터를 등록하세요.
                     </p>
                   </td>
                 </tr>

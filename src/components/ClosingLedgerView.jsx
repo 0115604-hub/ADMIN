@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -18,8 +18,8 @@ import {
   ArrowLeft,
   Zap,
   Filter,
-  Sparkles,
-  RefreshCw
+  X,
+  FileText
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
@@ -27,7 +27,7 @@ import { parseHometaxExcel, CATEGORY_RULES, classifyTaxInvoiceItem } from "../se
 import detailedClosingMaster from "../data/detailedClosingLedgerData.json";
 import * as XLSX from "xlsx";
 
-const STORAGE_KEY = "monthly_4_entity_closing_ledger_v3";
+const STORAGE_KEY = "monthly_4_entity_closing_ledger_v4_manual";
 
 const ENTITY_SLOTS = [
   { id: "oryuk_corp", name: "(주)오륙", taxNo: "615-81-39247", badge: "법인 본사", color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-200 dark:border-blue-800" },
@@ -44,6 +44,16 @@ const GROUPS = [
   { id: "물류 & 운영 경비", label: "🚚 물류 & 운영경비 (4)" }
 ];
 
+// Build empty 16 categories default structure
+const buildDefaultCategories = () => {
+  return Object.values(CATEGORY_RULES).map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    group: cat.group,
+    items: []
+  }));
+};
+
 export const ClosingLedgerView = () => {
   const { formatAmount } = useCurrency();
   const { selectedMonth, currentMonthData } = useMonth();
@@ -51,47 +61,52 @@ export const ClosingLedgerView = () => {
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
-  // 4 Entity Files status
-  const [uploadedEntities, setUploadedEntities] = useState({});
-  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
-  const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
-
-  // 16 Categories Store
-  const [categories, setCategories] = useState(() => {
+  // Persistent store keyed by month: { "2026-07": { uploadedEntities: {}, categories: [] }, "2026-08": ... }
+  const [closingStore, setClosingStore] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed[selectedMonth]?.categories) return parsed[selectedMonth].categories;
+        return JSON.parse(saved);
       } catch (e) {
         console.error(e);
       }
     }
-    return detailedClosingMaster["2026-07"].categories;
+    return {
+      "2026-07": {
+        uploadedEntities: {},
+        categories: detailedClosingMaster["2026-07"]?.categories || buildDefaultCategories()
+      },
+      "2026-08": {
+        uploadedEntities: {},
+        categories: buildDefaultCategories()
+      }
+    };
   });
 
+  // Current Month's active state
+  const currentMonthStore = closingStore[selectedMonth] || {
+    uploadedEntities: {},
+    categories: buildDefaultCategories()
+  };
+
+  const [uploadedEntities, setUploadedEntities] = useState(currentMonthStore.uploadedEntities || {});
+  const [categories, setCategories] = useState(currentMonthStore.categories || buildDefaultCategories());
   const [selectedGroup, setSelectedGroup] = useState("all");
   const [selectedCategoryDetailId, setSelectedCategoryDetailId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
+  const [uploadingSlot, setUploadingSlot] = useState(null);
 
-  // Sync state when selectedMonth changes
+  // Sync state strictly when selectedMonth changes
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed[selectedMonth]?.categories) {
-          setCategories(parsed[selectedMonth].categories);
-          if (parsed[selectedMonth]?.uploadedEntities) {
-            setUploadedEntities(parsed[selectedMonth].uploadedEntities);
-          }
-          return;
-        }
-      } catch (e) {}
-    }
-    const defaultData = detailedClosingMaster[selectedMonth] || detailedClosingMaster["2026-07"];
-    setCategories(defaultData.categories || []);
-  }, [selectedMonth]);
+    const monthData = closingStore[selectedMonth] || {
+      uploadedEntities: {},
+      categories: buildDefaultCategories()
+    };
+    setUploadedEntities(monthData.uploadedEntities || {});
+    setCategories(monthData.categories || buildDefaultCategories());
+    setSelectedCategoryDetailId(null);
+  }, [selectedMonth, closingStore]);
 
   // Grand Totals Calculation
   const totalSupplyAmount = categories.reduce((sum, cat) => {
@@ -106,261 +121,268 @@ export const ClosingLedgerView = () => {
     return sum + cat.items.reduce((catSum, item) => catSum + (Number(item.totalAmt || (Number(item.supplyAmt) + Number(item.taxAmt))) || 0), 0);
   }, 0);
 
-  const totalSales = currentMonthData?.salesSummary?.totalSales || 2873777826;
+  const totalSales = currentMonthData?.salesSummary?.totalSales || 0;
   const costRatio = totalSales > 0 ? ((totalClosingAmount / totalSales) * 100).toFixed(1) : "0.0";
   const netEstimatedProfit = totalSales - totalClosingAmount;
 
   // Active Category for Drilldown
   const activeCategory = categories.find((c) => c.id === selectedCategoryDetailId);
 
-  // Handle Multi-file Upload of Tax Invoices
-  const handleFileUpload = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
+  // Helper: Persist and update state
+  const persistMonthData = (newCategories, newUploadedEntities) => {
+    setCategories(newCategories);
+    setUploadedEntities(newUploadedEntities);
 
-    setIsProcessingFiles(true);
-    const newEntities = { ...uploadedEntities };
-    const allParsedItems = [];
-
-    for (const file of files) {
-      try {
-        const buffer = await file.arrayBuffer();
-        const result = parseHometaxExcel(buffer, file.name);
-
-        if (result.success) {
-          newEntities[result.entityKey] = {
-            fileName: file.name,
-            entityLabel: result.entityLabel,
-            itemCount: result.itemCount,
-            totalSupply: result.totalSupply,
-            totalTax: result.totalTax,
-            totalAmount: result.totalAmount,
-            uploadedAt: new Date().toLocaleTimeString()
-          };
-          allParsedItems.push(...result.items);
-        } else {
-          alert(`[${file.name}] 파일 분석 실패: ${result.error}`);
-        }
-      } catch (err) {
-        console.error(err);
+    const updatedStore = {
+      ...closingStore,
+      [selectedMonth]: {
+        month: selectedMonth,
+        uploadedEntities: newUploadedEntities,
+        categories: newCategories
       }
-    }
-
-    if (allParsedItems.length > 0) {
-      // Merge parsed tax invoices into categories
-      mergeTaxInvoicesIntoCategories(allParsedItems);
-      setUploadedEntities(newEntities);
-      setSaveSuccessMessage(`${files.length}개 매입세금계산서 파일(${allParsedItems.length}건)이 16대 계정과목으로 자동 매칭되었습니다!`);
-      setTimeout(() => setSaveSuccessMessage(""), 5000);
-    }
-
-    setIsProcessingFiles(false);
+    };
+    setClosingStore(updatedStore);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStore));
   };
 
-  // Merge items into 16 categories
-  const mergeTaxInvoicesIntoCategories = (newItems) => {
-    setCategories((prevCategories) => {
-      // Group non-invoice categories (Salaries, Insurance, Financial Interest)
-      const nonInvoiceCategories = ["salaries_labor", "taxes_social_insurance", "financial_interests_cards"];
+  // 1. Single Entity File Upload Handler (하나씩 업로드)
+  const handleSingleEntityUpload = async (slot, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      return prevCategories.map((cat) => {
-        // Items belonging to this category from uploaded tax invoices
-        const matchedTaxItems = newItems
-          .filter((it) => it.categoryId === cat.id)
-          .map((it, idx) => ({
-            id: it.id || `${cat.id}_${idx}_${Date.now()}`,
-            vendor: it.vendor,
-            item: it.item,
-            supplyAmt: it.supplyAmt,
-            taxAmt: it.taxAmt,
-            totalAmt: it.totalAmt,
-            memo: `${it.sourceEntity} | ${it.writeDate || ""}`
-          }));
+    setUploadingSlot(slot.id);
 
-        // For non-invoice categories (or if no new items matched), preserve existing entries
-        if (nonInvoiceCategories.includes(cat.id)) {
-          return {
-            ...cat,
-            items: cat.items
-          };
-        }
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      const ws = workbook.Sheets[sheetName];
+      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-        // If new items were matched from uploaded files, replace or append
-        if (matchedTaxItems.length > 0) {
-          return {
-            ...cat,
-            items: matchedTaxItems
-          };
-        }
-
-        return cat;
-      });
-    });
-  };
-
-  // Load Anti folder demo files (7월 119건 매입세금계산서)
-  const handleLoadDemoAntiFiles = () => {
-    // Reset to 7월 full 119+ itemized categories
-    const defaultData = detailedClosingMaster["2026-07"];
-    setCategories(defaultData.categories);
-    setUploadedEntities({
-      oryuk_corp: {
-        fileName: "매입전자세금계산서목록(1~80).xls",
-        entityLabel: "(주)오륙",
-        itemCount: 80,
-        totalSupply: 2680726004,
-        totalTax: 268072597,
-        totalAmount: 2948798601,
-        uploadedAt: "자동 연동됨"
-      },
-      joyoung_corp: {
-        fileName: "매입전자세금계산서목록(1~39).xls",
-        entityLabel: "(주)조영산업",
-        itemCount: 39,
-        totalSupply: 273496173,
-        totalTax: 27349616,
-        totalAmount: 300845789,
-        uploadedAt: "자동 연동됨"
+      if (!rawRows || rawRows.length < 7) {
+        throw new Error("유효한 홈택스 매입세금계산서 파일이 아닙니다.");
       }
-    });
 
-    setSaveSuccessMessage("바탕화면 anti 폴더의 (주)오륙(80건) & (주)조영산업(39건) 매입세금계산서가 자동 분류 연동되었습니다!");
-    setTimeout(() => setSaveSuccessMessage(""), 5000);
-  };
+      const newParsedItems = [];
+      let totalSupply = 0;
+      let totalTax = 0;
+      let totalAmount = 0;
 
-  // Update item field in active category
-  const handleItemChange = (catId, itemId, field, value) => {
-    setCategories((prevCategories) =>
-      prevCategories.map((cat) => {
-        if (cat.id !== catId) return cat;
+      for (let r = 6; r < rawRows.length; r++) {
+        const row = rawRows[r];
+        if (!row || !row[6]) continue;
 
-        const updatedItems = cat.items.map((item) => {
-          if (item.id !== itemId) return item;
+        const vendor = String(row[6]).trim();
+        const item = String(row[26] || row[11] || "물품대").trim();
+        const supplyAmt = Number(row[15]) || 0;
+        const taxAmt = Number(row[16]) || Math.round(supplyAmt * 0.1);
+        const rowTotal = Number(row[14]) || (supplyAmt + taxAmt);
+        const writeDate = String(row[0] || "").trim();
+        const memo = String(row[32] || row[20] || "").trim();
 
-          if (field === "supplyAmt") {
-            const supply = Number(String(value).replace(/[^0-9.-]+/g, "")) || 0;
-            const tax = item.taxAmt > 0 ? Math.round(supply * 0.1) : 0;
-            return {
-              ...item,
-              supplyAmt: supply,
-              taxAmt: tax,
-              totalAmt: supply + tax
-            };
-          } else if (field === "taxAmt") {
-            const tax = Number(String(value).replace(/[^0-9.-]+/g, "")) || 0;
-            return {
-              ...item,
-              taxAmt: tax,
-              totalAmt: Number(item.supplyAmt || 0) + tax
-            };
-          } else {
-            return {
-              ...item,
-              [field]: value
-            };
-          }
+        const categoryId = classifyTaxInvoiceItem(vendor, item);
+
+        totalSupply += supplyAmt;
+        totalTax += taxAmt;
+        totalAmount += rowTotal;
+
+        newParsedItems.push({
+          id: `${slot.id}_${r}_${Date.now()}`,
+          entityKey: slot.id,
+          sourceEntity: slot.name,
+          writeDate,
+          vendor,
+          item,
+          supplyAmt,
+          taxAmt,
+          totalAmt: rowTotal,
+          memo: `${slot.name} | ${writeDate || ""}`,
+          categoryId
         });
+      }
 
+      // Update uploadedEntities metadata for this slot
+      const newEntities = {
+        ...uploadedEntities,
+        [slot.id]: {
+          fileName: file.name,
+          entityLabel: slot.name,
+          itemCount: newParsedItems.length,
+          totalSupply,
+          totalTax,
+          totalAmount,
+          uploadedAt: new Date().toLocaleTimeString()
+        }
+      };
+
+      // Merge into categories: Remove previous items from this slot, add new ones
+      const newCategories = categories.map((cat) => {
+        const keptItems = cat.items.filter((it) => it.entityKey !== slot.id && it.sourceEntity !== slot.name);
+        const addedItems = newParsedItems.filter((it) => it.categoryId === cat.id);
         return {
           ...cat,
-          items: updatedItems
+          items: [...keptItems, ...addedItems]
         };
-      })
-    );
+      });
+
+      persistMonthData(newCategories, newEntities);
+      setSaveSuccessMessage(`[${slot.name}] 매입세금계산서(${newParsedItems.length}건)가 ${monthTitle} 결산서에 성공적으로 반영되었습니다!`);
+      setTimeout(() => setSaveSuccessMessage(""), 5000);
+    } catch (err) {
+      console.error(err);
+      alert(`[${slot.name}] 파일 분석 오류: ${err.message}`);
+    } finally {
+      setUploadingSlot(null);
+      e.target.value = "";
+    }
   };
 
-  // Re-classify item to another category
+  // 2. Delete Single Entity's Uploaded Tax Invoices
+  const handleDeleteEntityFile = (slot) => {
+    if (!window.confirm(`[${slot.name}]의 업로드된 세금계산서 데이터를 삭제하시겠습니까?`)) return;
+
+    const newEntities = { ...uploadedEntities };
+    delete newEntities[slot.id];
+
+    const newCategories = categories.map((cat) => ({
+      ...cat,
+      items: cat.items.filter((it) => it.entityKey !== slot.id && it.sourceEntity !== slot.name)
+    }));
+
+    persistMonthData(newCategories, newEntities);
+    setSaveSuccessMessage(`[${slot.name}] 세금계산서 데이터가 삭제되었습니다.`);
+    setTimeout(() => setSaveSuccessMessage(""), 4000);
+  };
+
+  // 3. Update Item Field in Active Category
+  const handleItemChange = (catId, itemId, field, value) => {
+    const newCategories = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+
+      const updatedItems = cat.items.map((item) => {
+        if (item.id !== itemId) return item;
+
+        if (field === "supplyAmt") {
+          const supply = Number(String(value).replace(/[^0-9.-]+/g, "")) || 0;
+          const tax = item.taxAmt > 0 ? Math.round(supply * 0.1) : 0;
+          return {
+            ...item,
+            supplyAmt: supply,
+            taxAmt: tax,
+            totalAmt: supply + tax
+          };
+        } else if (field === "taxAmt") {
+          const tax = Number(String(value).replace(/[^0-9.-]+/g, "")) || 0;
+          return {
+            ...item,
+            taxAmt: tax,
+            totalAmt: Number(item.supplyAmt || 0) + tax
+          };
+        } else {
+          return {
+            ...item,
+            [field]: value
+          };
+        }
+      });
+
+      return {
+        ...cat,
+        items: updatedItems
+      };
+    });
+
+    persistMonthData(newCategories, uploadedEntities);
+  };
+
+  // 4. Re-classify Item to Another Category
   const handleMoveItemCategory = (currentCatId, itemId, targetCatId) => {
     if (currentCatId === targetCatId) return;
 
     let targetItem = null;
+    const sourceCat = categories.find((c) => c.id === currentCatId);
+    if (sourceCat) {
+      targetItem = sourceCat.items.find((it) => it.id === itemId);
+    }
+    if (!targetItem) return;
 
-    setCategories((prevCategories) => {
-      // Find item
-      const sourceCat = prevCategories.find((c) => c.id === currentCatId);
-      if (sourceCat) {
-        targetItem = sourceCat.items.find((it) => it.id === itemId);
-      }
-
-      if (!targetItem) return prevCategories;
-
-      return prevCategories.map((cat) => {
-        if (cat.id === currentCatId) {
-          return {
-            ...cat,
-            items: cat.items.filter((it) => it.id !== itemId)
-          };
-        }
-        if (cat.id === targetCatId) {
-          return {
-            ...cat,
-            items: [...cat.items, targetItem]
-          };
-        }
-        return cat;
-      });
-    });
-  };
-
-  // Add new item under category
-  const handleAddItem = (catId) => {
-    setCategories((prevCategories) =>
-      prevCategories.map((cat) => {
-        if (cat.id !== catId) return cat;
-        const newItem = {
-          id: `${catId}_${Date.now()}`,
-          vendor: "",
-          item: "",
-          supplyAmt: 0,
-          taxAmt: 0,
-          totalAmt: 0,
-          memo: "직접 입력"
-        };
-        return {
-          ...cat,
-          items: [...cat.items, newItem]
-        };
-      })
-    );
-  };
-
-  // Delete item under category
-  const handleDeleteItem = (catId, itemId) => {
-    setCategories((prevCategories) =>
-      prevCategories.map((cat) => {
-        if (cat.id !== catId) return cat;
+    const newCategories = categories.map((cat) => {
+      if (cat.id === currentCatId) {
         return {
           ...cat,
           items: cat.items.filter((it) => it.id !== itemId)
         };
-      })
-    );
+      }
+      if (cat.id === targetCatId) {
+        return {
+          ...cat,
+          items: [...cat.items, { ...targetItem, categoryId: targetCatId }]
+        };
+      }
+      return cat;
+    });
+
+    persistMonthData(newCategories, uploadedEntities);
   };
 
-  // Save to persistent storage
+  // 5. Add Manual Item under Category
+  const handleAddItem = (catId) => {
+    const newCategories = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      const newItem = {
+        id: `manual_${catId}_${Date.now()}`,
+        sourceEntity: "직접 입력",
+        vendor: "",
+        item: "",
+        supplyAmt: 0,
+        taxAmt: 0,
+        totalAmt: 0,
+        memo: "직접 입력"
+      };
+      return {
+        ...cat,
+        items: [...cat.items, newItem]
+      };
+    });
+
+    persistMonthData(newCategories, uploadedEntities);
+  };
+
+  // 6. Delete Item
+  const handleDeleteItem = (catId, itemId) => {
+    const newCategories = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      return {
+        ...cat,
+        items: cat.items.filter((it) => it.id !== itemId)
+      };
+    });
+
+    persistMonthData(newCategories, uploadedEntities);
+  };
+
+  // 7. Save to persistent storage explicitly
   const handleSave = () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const prevStore = saved ? JSON.parse(saved) : {};
-    const updatedStore = {
-      ...prevStore,
-      [selectedMonth]: {
-        month: selectedMonth,
-        categories,
-        uploadedEntities
-      }
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStore));
-    setSaveSuccessMessage(`${monthTitle} 16대 계정과목 결산 데이터가 시스템에 안전하게 저장되었습니다!`);
+    persistMonthData(categories, uploadedEntities);
+    setSaveSuccessMessage(`${monthTitle} 결산 데이터가 안전하게 저장되었습니다!`);
     setTimeout(() => setSaveSuccessMessage(""), 4000);
   };
 
-  // Export to Excel file
+  // 8. Clear/Reset Current Month's Data
+  const handleResetMonth = () => {
+    if (!window.confirm(`${monthTitle}의 결산 데이터를 모두 초기화하시겠습니까?`)) return;
+    persistMonthData(buildDefaultCategories(), {});
+    setSaveSuccessMessage(`${monthTitle} 결산 데이터가 초기화되었습니다.`);
+    setTimeout(() => setSaveSuccessMessage(""), 4000);
+  };
+
+  // 9. Export to Excel File
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    // 1. Summary Sheet
+    // Summary Sheet
     const summaryRows = [
-      ["2026년 월간 매입·비용 결산 요약 보고서"],
+      [`${monthTitle} 매입·비용 결산 요약 보고서`],
       ["당월 총 매출액", totalSales, "총 결산 지출 합계", totalClosingAmount, "매출 대비 원가 비율", `${costRatio}%`, "예상 영업손익", netEstimatedProfit],
       [],
       ["NO", "대분류", "계정과목명", "항목수", "공급가액 (원)", "세액 (원)", "총 결산합계 (원)", "점유율", "주요 거래처 및 비고"]
@@ -401,9 +423,9 @@ export const ClosingLedgerView = () => {
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, wsSummary, "📊 월간 결산 종합 요약");
 
-    // 2. Itemized Detail Sheet
+    // Itemized Detail Sheet
     const detailRows = [
-      ["16대 계정과목별 세부 매입·지출 입력장부"],
+      [`${monthTitle} 16대 계정과목별 세부 매입·지출 입력장부`],
       [],
       ["NO", "계정과목", "거래처명 / 지출처", "품목 및 세부내용", "공급가액 (원)", "세액 (원)", "합계금액 (원)", "비고 / 메모"]
     ];
@@ -431,10 +453,10 @@ export const ClosingLedgerView = () => {
     const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
     XLSX.utils.book_append_sheet(wb, wsDetail, "📋 16대 계정과목 세부 입력장부");
 
-    XLSX.writeFile(wb, `AI_${monthTitle}_결산서_자동생성.xlsx`);
+    XLSX.writeFile(wb, `AI_${monthTitle}_결산서.xlsx`);
   };
 
-  // Filter categories
+  // Filter categories for display
   const filteredCategories = categories.filter((cat) => {
     const matchGroup = selectedGroup === "all" || cat.group === selectedGroup;
     if (!matchGroup) return false;
@@ -445,8 +467,8 @@ export const ClosingLedgerView = () => {
     const matchCatName = cat.name.toLowerCase().includes(term);
     const matchItems = cat.items.some(
       (it) =>
-        it.vendor.toLowerCase().includes(term) ||
-        it.item.toLowerCase().includes(term) ||
+        (it.vendor && it.vendor.toLowerCase().includes(term)) ||
+        (it.item && it.item.toLowerCase().includes(term)) ||
         (it.memo && it.memo.toLowerCase().includes(term))
     );
     return matchCatName || matchItems;
@@ -460,18 +482,26 @@ export const ClosingLedgerView = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>4대 법인·사업장 매입세금계산서 AI 자동 결산 엔진</span>
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>{monthTitle} 월별 결산 관리</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {monthTitle} 매입세금계산서 업로드 & AI 결산서 자동 생성
+              {monthTitle} 매입세금계산서 업로드 & 결산 관리
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-              홈택스에서 내려받은 4개의 매입세금계산서 엑셀 파일을 업로드하면, AI가 16대 계정과목으로 자동 분류 및 합산하여 월간 결산서를 즉시 완성합니다.
+              4개 회사별 매입세금계산서 파일을 각각 하나씩 업로드하면, 16대 계정과목으로 자동 분류되어 월간 결산서가 작성됩니다.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleResetMonth}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all shadow-sm"
+              title="현재 월 결산 데이터 초기화"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{monthTitle} 초기화</span>
+            </button>
             <button
               onClick={handleExportExcel}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm"
@@ -498,86 +528,90 @@ export const ClosingLedgerView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 1: 4 ENTITY TAX INVOICE UPLOAD CARDS */}
+      {/* SECTION 1: 4 INDIVIDUAL ENTITY UPLOAD SLOTS (하나씩 업로드) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div>
-            <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <UploadCloud className="w-5 h-5 text-blue-600" />
-              <span>4대 법인·사업장 매입전자세금계산서 업로드</span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              홈택스 매입 전자세금계산서 목록 파일(.xls / .xlsx) 4개를 한 번에 선택하여 업로드하세요.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleLoadDemoAntiFiles}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all border border-indigo-200/60 dark:border-indigo-800/60"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>바탕화면 anti 폴더 세금계산서 즉시 연동</span>
-            </button>
-
-            <label className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black cursor-pointer shadow-md shadow-blue-500/20 active:scale-95 transition-all">
-              <UploadCloud className="w-4 h-4" />
-              <span>{isProcessingFiles ? "분석 중..." : "4개 파일 일괄 업로드"}</span>
-              <input
-                type="file"
-                multiple
-                accept=".xls,.xlsx"
-                onChange={handleFileUpload}
-                className="hidden"
-                disabled={isProcessingFiles}
-              />
-            </label>
-          </div>
+        <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+            <UploadCloud className="w-5 h-5 text-blue-600" />
+            <span>{monthTitle} 4대 회사별 매입세금계산서 개별 업로드</span>
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            각 회사 카드에서 홈택스 매입전자세금계산서 목록 파일(.xls / .xlsx)을 각각 업로드하세요.
+          </p>
         </div>
 
-        {/* 4 Entity Status Slots */}
+        {/* 4 Individual Entity Upload Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {ENTITY_SLOTS.map((slot) => {
             const uploaded = uploadedEntities[slot.id];
+            const isThisUploading = uploadingSlot === slot.id;
 
             return (
               <div
                 key={slot.id}
-                className={`p-4 rounded-2xl border transition-all ${
+                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
                   uploaded
                     ? `${slot.bg} ${slot.border}`
-                    : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800 border-dashed"
+                    : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Building2 className={`w-4 h-4 ${slot.color}`} />
-                    <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                      {slot.name}
-                    </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Building2 className={`w-4 h-4 ${slot.color}`} />
+                      <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                        {slot.name}
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-slate-500">
+                      {slot.badge}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-slate-500">
-                    {slot.badge}
-                  </span>
-                </div>
 
-                <div className="mt-3 space-y-1">
                   {uploaded ? (
-                    <>
-                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{uploaded.fileName}</span>
+                    <div className="space-y-1 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 truncate max-w-[140px]">
+                          {uploaded.fileName}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteEntityFile(slot)}
+                          className="text-slate-400 hover:text-rose-600 p-1"
+                          title="업로드 파일 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                        세금계산서 <strong>{uploaded.itemCount}건</strong> • {formatAmount(uploaded.totalAmount)}
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                        {uploaded.itemCount}건 • {formatAmount(uploaded.totalAmount)}
                       </p>
-                    </>
+                    </div>
                   ) : (
-                    <p className="text-xs text-slate-400 italic py-1">
-                      세금계산서 파일 대기 중...
+                    <p className="text-xs text-slate-400 italic py-2">
+                      {monthTitle} 세금계산서 대기 중
                     </p>
                   )}
+                </div>
+
+                <div className="pt-3">
+                  <label
+                    className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
+                      uploaded
+                        ? "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
+                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    }`}
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>{isThisUploading ? "업로드 중..." : uploaded ? "파일 다시 업로드" : `[${slot.name}] 업로드`}</span>
+                    <input
+                      type="file"
+                      accept=".xls,.xlsx"
+                      onChange={(e) => handleSingleEntityUpload(slot, e)}
+                      className="hidden"
+                      disabled={isThisUploading}
+                    />
+                  </label>
                 </div>
               </div>
             );
@@ -842,7 +876,7 @@ export const ClosingLedgerView = () => {
                     {activeCategory.items.length === 0 ? (
                       <tr>
                         <td colSpan={9} className="py-12 text-center text-slate-400">
-                          등록된 세부 항목이 없습니다. 상단의 [항목 추가] 버튼을 눌러 새 거래처와 금액을 등록해 보세요!
+                          {monthTitle}에 등록된 세부 항목이 없습니다. 상단의 [항목 추가] 버튼을 눌러 새 거래처와 금액을 등록해 보세요!
                         </td>
                       </tr>
                     ) : (
@@ -982,7 +1016,7 @@ export const ClosingLedgerView = () => {
         )
       )}
 
-      {/* Floating Save Button */}
+      {/* Floating Action Bar */}
       <div className="fixed bottom-6 right-6 z-30 flex items-center gap-3">
         <button
           onClick={handleExportExcel}
