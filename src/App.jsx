@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sidebar, ADMIN_TABS, OPERATOR_TABS } from "./components/Sidebar";
+import { Sidebar, ADMIN_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
 import { VehicleSalesView } from "./components/VehicleSalesView";
@@ -7,6 +7,7 @@ import { MaterialPurchaseView } from "./components/MaterialPurchaseView";
 import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
 import { PnLStatement } from "./components/PnLStatement";
 import { OperatorWorkspace } from "./components/OperatorWorkspace";
+import { WorkerDashboard } from "./components/WorkerDashboard";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
@@ -21,7 +22,7 @@ import {
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState(isOperator ? "operator_workspace" : "dashboard");
+  const [activeTab, setActiveTab] = useState(isOperator ? "worker_dashboard" : "dashboard");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -33,10 +34,8 @@ export const App = () => {
   // Sync default tab when user changes
   useEffect(() => {
     if (isOperator) {
-      setActiveTab("operator_workspace");
-    } else if (isAdmin && activeTab === "operator_workspace") {
-      // Keep or allow
-    } else if (isAdmin && !activeTab) {
+      setActiveTab("worker_dashboard");
+    } else if (isAdmin && (activeTab === "worker_dashboard" || !activeTab)) {
       setActiveTab("dashboard");
     }
   }, [isOperator, isAdmin]);
@@ -105,14 +104,15 @@ export const App = () => {
     }
   };
 
-  // Tab Title
-  const allTabs = isOperator ? OPERATOR_TABS : ADMIN_TABS;
-  const activeTabMeta = allTabs.find((t) => t.id === activeTab);
-  const pageTitle = activeTabMeta
-    ? activeTabMeta.label
-    : isOperator
-    ? "엑셀 일일 업데이트 업로드"
-    : "월간 매입·매출 손익 관리";
+  // Title mapping
+  const getTabTitle = () => {
+    if (isOperator) {
+      if (activeTab === "operator_workspace") return "엑셀 파일 업로드";
+      return "업무일지 & 실적요약";
+    }
+    const meta = ADMIN_TABS.find((t) => t.id === activeTab);
+    return meta ? meta.label : "현황";
+  };
 
   if (authLoading) {
     return (
@@ -137,7 +137,7 @@ export const App = () => {
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
-          title={pageTitle}
+          title={getTabTitle()}
           onOpenNewModal={() => {
             setEditingItem(null);
             setModalOpen(true);
@@ -157,9 +157,16 @@ export const App = () => {
             </div>
           ) : (
             <>
-              {/* OPERATOR VIEW */}
+              {/* OPERATOR VIEWS */}
               {isOperator && (
-                <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                <>
+                  {activeTab === "worker_dashboard" && (
+                    <WorkerDashboard onBulkUpload={handleBulkUpload} />
+                  )}
+                  {activeTab === "operator_workspace" && (
+                    <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                  )}
+                </>
               )}
 
               {/* ADMIN VIEWS */}
@@ -200,6 +207,10 @@ export const App = () => {
 
                   {activeTab === "statement" && (
                     <PnLStatement transactions={transactions} />
+                  )}
+
+                  {activeTab === "worker_dashboard" && (
+                    <WorkerDashboard onBulkUpload={handleBulkUpload} />
                   )}
 
                   {activeTab === "operator_workspace" && (

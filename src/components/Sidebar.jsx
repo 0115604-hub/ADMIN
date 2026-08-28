@@ -8,7 +8,8 @@ import {
   Settings,
   LogOut,
   Building2,
-  UploadCloud
+  UploadCloud,
+  ClipboardList
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -18,18 +19,24 @@ export const ADMIN_TABS = [
   { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes, badge: "9개 군" },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers, badge: "12개 과목" },
   { id: "statement", label: "월간 손익계산서", icon: FileText, badge: "K-IFRS" },
+  { id: "worker_dashboard", label: "일일업무일지 관리", icon: ClipboardList, badge: "공장일지" },
   { id: "operator_workspace", label: "엑셀 데이터 업데이트", icon: UploadCloud, badge: "업로드" },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];
 
-export const OPERATOR_TABS = [
-  { id: "operator_workspace", label: "엑셀 일일 업데이트 업로드", icon: UploadCloud, badge: "작업자 전용" }
-];
-
 export const Sidebar = ({ activeTab, setActiveTab }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
+  const isInjoo = currentProfile?.name === "조인주";
 
-  const navigationTabs = isOperator ? OPERATOR_TABS : ADMIN_TABS;
+  // Operator navigation tabs
+  const operatorTabs = [
+    { id: "worker_dashboard", label: "업무일지 & 실적요약", icon: ClipboardList, badge: "일일업무" },
+    ...(isInjoo
+      ? [{ id: "operator_workspace", label: "엑셀 파일 업로드", icon: UploadCloud, badge: "업로더" }]
+      : [])
+  ];
+
+  const navigationTabs = isOperator ? operatorTabs : ADMIN_TABS;
 
   return (
     <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200">
@@ -111,7 +118,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                 {currentProfile?.name || "ADMIN"}
               </p>
               <p className="text-[10px] text-slate-400 truncate font-semibold">
-                {currentProfile?.roleLabel || "ADMIN"}
+                {currentProfile?.plant ? `${currentProfile.plant} 작업자` : "ADMIN"}
               </p>
             </div>
           </div>
