@@ -20,7 +20,9 @@ import {
   FileSpreadsheet,
   PieChart,
   Eye,
-  Filter
+  Filter,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
@@ -222,13 +224,13 @@ export const ClosingLedgerView = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
               <Calculator className="w-3.5 h-3.5" />
-              <span>{monthTitle} 16대 계정과목 결산 현황</span>
+              <span>{monthTitle} 16대 계정과목 결산 관리</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {monthTitle} 월간 결산 계정과목 요약 & 입력
+              {monthTitle} 월간 결산 계정과목 현황
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-              계정과목별 요약본을 먼저 확인하고, 과목 카드를 클릭하여 엑셀 세부 거래처와 수치를 입력·수정하세요.
+              16개 계정과목별 한 줄 요약 목록을 확인하고, 원하는 과목을 클릭하여 세부 거래처와 수치를 입력·수정하세요.
             </p>
           </div>
 
@@ -316,7 +318,7 @@ export const ClosingLedgerView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* VIEW MODE 1: 16-CATEGORY SUMMARY OVERVIEW (계정과목별 요약본 화면 - 기본) */}
+      {/* VIEW MODE 1: 16-CATEGORY SUMMARY OVERVIEW (한 줄씩 배열 - Full Width List) */}
       {/* ========================================================================= */}
       {!selectedCategoryDetailId ? (
         <div className="space-y-6">
@@ -350,70 +352,67 @@ export const ClosingLedgerView = () => {
             </div>
           </div>
 
-          {/* 16 Category Summary Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 16 Category Full-Width List (한 줄씩 수평 배열) */}
+          <div className="space-y-3">
             {filteredCategories.map((cat, idx) => {
               const catTotal = cat.items.reduce((s, it) => s + (Number(it.totalAmt || (Number(it.supplyAmt) + Number(it.taxAmt))) || 0), 0);
               const catShare = totalClosingAmount > 0 ? ((catTotal / totalClosingAmount) * 100).toFixed(2) : 0;
-              const topVendors = cat.items.slice(0, 2).map((it) => it.vendor).filter(Boolean).join(", ");
+              const topVendors = cat.items.slice(0, 3).map((it) => it.vendor).filter(Boolean).join(", ");
 
               return (
                 <div
                   key={cat.id}
                   onClick={() => setSelectedCategoryDetailId(cat.id)}
-                  className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer transition-all flex flex-col justify-between space-y-4 group"
+                  className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-4 group"
                 >
-                  <div className="space-y-2.5">
-                    {/* Header: Rank + Name + Group */}
-                    <div className="flex items-center justify-between">
+                  {/* Left: No, Category Name, Group Tag, Item Count */}
+                  <div className="flex items-center gap-3.5 min-w-[280px]">
+                    <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-sm shrink-0">
+                      {idx + 1}
+                    </span>
+                    <div>
                       <div className="flex items-center gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs">
-                          {idx + 1}
-                        </span>
                         <h4 className="font-black text-base text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {cat.name}
                         </h4>
+                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          {cat.items.length}건
+                        </span>
                       </div>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                        {cat.items.length}건
+                      <span className="text-xs font-semibold text-slate-400 block mt-0.5">
+                        {cat.group}
                       </span>
                     </div>
+                  </div>
 
-                    {/* Group Tag */}
-                    <div className="flex items-center gap-1 text-[11px] text-slate-400 font-bold">
-                      <span>{cat.group}</span>
-                    </div>
-
-                    {/* Amount & Share */}
-                    <div className="pt-1">
-                      <p className="text-xl font-black text-slate-900 dark:text-white">
-                        {formatAmount(catTotal)}
+                  {/* Middle: Major Vendors Preview */}
+                  <div className="flex-1 min-w-0 md:px-4">
+                    {topVendors ? (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        <span className="font-bold text-slate-400">주요처:</span> {topVendors}
+                        {cat.items.length > 3 && ` 외 ${cat.items.length - 3}개처`}
                       </p>
-                      <div className="flex items-center justify-between text-xs font-bold mt-1">
-                        <span className="text-slate-400">점유율</span>
-                        <span className="text-blue-600 dark:text-blue-400">{catShare}%</span>
-                      </div>
-                      {/* Progress bar */}
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1.5">
-                        <div
-                          className="bg-blue-600 h-full rounded-full transition-all"
-                          style={{ width: `${Math.min(Number(catShare) * 1.6, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* Top Vendors Preview */}
-                    {topVendors && (
-                      <p className="text-[11px] text-slate-400 truncate pt-1 border-t border-slate-100 dark:border-slate-800">
-                        주요처: {topVendors}
-                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic">등록된 세부 거래처 없음</p>
                     )}
                   </div>
 
-                  {/* Button hint */}
-                  <div className="pt-2 flex items-center justify-between text-xs font-black text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
-                    <span>세부항목 입력 & 조회</span>
-                    <ChevronRight className="w-4 h-4" />
+                  {/* Right: Amount, Share & Progress, Action Button */}
+                  <div className="flex items-center justify-between md:justify-end gap-6 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                    <div className="text-left md:text-right min-w-[150px]">
+                      <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white block">
+                        {formatAmount(catTotal)}
+                      </span>
+                      <div className="flex items-center md:justify-end gap-2 text-xs font-bold mt-0.5">
+                        <span className="text-slate-400">점유율</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-extrabold">{catShare}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 text-xs font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-3.5 py-2 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                      <span>세부항목 입력 & 조회</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
                   </div>
                 </div>
               );
