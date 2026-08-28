@@ -5,6 +5,7 @@ import { DashboardOverview } from "./components/DashboardOverview";
 import { VehicleSalesView } from "./components/VehicleSalesView";
 import { MaterialPurchaseView } from "./components/MaterialPurchaseView";
 import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
+import { ClosingLedgerView } from "./components/ClosingLedgerView";
 import { PnLStatement } from "./components/PnLStatement";
 import { OperatorWorkspace } from "./components/OperatorWorkspace";
 import { WorkerDashboard } from "./components/WorkerDashboard";
@@ -188,6 +189,10 @@ export const App = () => {
 
                   {activeTab === "material_purchases" && (
                     <MaterialPurchaseView />
+                  )}
+
+                  {activeTab === "closing_ledger" && (
+                    <ClosingLedgerView />
                   )}
 
                   {activeTab === "purchase_costs" && (
