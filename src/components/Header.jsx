@@ -5,7 +5,7 @@ import {
   Building2,
   UserCheck
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 
 export const Header = ({ title }) => {
@@ -17,8 +17,13 @@ export const Header = ({ title }) => {
     return `${parts[0]}년 ${parts[1]}월`;
   };
 
+  const matchedWorker = PLANTS.flatMap((p) => p.workers).find(
+    (w) => w.name === currentProfile?.name || w.id === currentProfile?.id
+  );
+  const officialTitle = currentProfile?.title || matchedWorker?.title || "";
+  const workerPlant = currentProfile?.plant || matchedWorker?.plant || "삼랑진공장";
   const userBadgeText = isOperator
-    ? `${currentProfile?.plant} • ${currentProfile?.name} ${currentProfile?.title || ""}`
+    ? `${workerPlant} • ${currentProfile?.name} ${officialTitle}`.trim()
     : "ADMIN";
 
   return (
@@ -32,7 +37,7 @@ export const Header = ({ title }) => {
         {currentProfile && (
           <span className={`hidden sm:inline-flex items-center text-xs font-black px-3 py-1 rounded-full shadow-sm ${
             isOperator
-              ? currentProfile.plant === "한림공장"
+              ? workerPlant === "한림공장"
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
               : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"

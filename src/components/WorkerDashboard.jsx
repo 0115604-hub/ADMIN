@@ -19,7 +19,7 @@ import {
   UploadCloud,
   ChevronRight
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, PLANTS } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
 import { OperatorWorkspace } from "./OperatorWorkspace";
@@ -69,9 +69,13 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
   const { formatAmount } = useCurrency();
   const { selectedMonth, currentMonthData } = useMonth();
 
+  const matchedWorker = PLANTS.flatMap((p) => p.workers).find(
+    (w) => w.name === currentProfile?.name || w.id === currentProfile?.id
+  );
+  const officialTitle = currentProfile?.title || matchedWorker?.title || "";
+  const workerPlant = currentProfile?.plant || matchedWorker?.plant || "삼랑진공장";
+  const workerFullName = isOperator ? `${currentProfile?.name} ${officialTitle}`.trim() : "ADMIN";
   const isInjoo = currentProfile?.name === "조인주";
-  const workerFullName = isOperator ? `${currentProfile?.name} ${currentProfile?.title || ""}` : "ADMIN";
-  const workerPlant = currentProfile?.plant || "사업장";
 
   const [activeWorkerTab, setActiveWorkerTab] = useState("summary_log"); // 'summary_log' | 'uploader'
 
@@ -83,12 +87,12 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterPlant, setFilterPlant] = useState(currentProfile?.plant || "all");
+  const [filterPlant, setFilterPlant] = useState(workerPlant || "all");
 
   // Form State for New Work Log
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
-    plant: currentProfile?.plant || "삼랑진공장",
+    plant: workerPlant,
     writer: workerFullName,
     shift: "주간",
     line: "9BQC 압출 1호기",
@@ -101,11 +105,11 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
     if (currentProfile) {
       setFormData((prev) => ({
         ...prev,
-        plant: currentProfile.plant || "삼랑진공장",
-        writer: isOperator ? `${currentProfile.name} ${currentProfile.title || ""}` : "ADMIN"
+        plant: workerPlant,
+        writer: workerFullName
       }));
     }
-  }, [currentProfile, isOperator]);
+  }, [currentProfile, isOperator, workerFullName, workerPlant]);
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
@@ -147,7 +151,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
     setFormData({
       date: new Date().toISOString().split("T")[0],
-      plant: currentProfile?.plant || "삼랑진공장",
+      plant: workerPlant,
       writer: workerFullName,
       shift: "주간",
       line: "9BQC 압출 1호기",

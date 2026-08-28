@@ -63,19 +63,23 @@ export const AuthProvider = ({ children }) => {
   const [currentProfile, setCurrentProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Sync / Migrate saved sessions to latest worker plant & title definitions
   useEffect(() => {
     const savedProfile = localStorage.getItem("admin_user_profile");
     if (savedProfile) {
       try {
         const parsed = JSON.parse(savedProfile);
-        // Refresh with latest plant/title definition
-        const matched = ALL_DESIGNATED_USERS.find((u) => u.id === parsed.id);
+        const matched = ALL_DESIGNATED_USERS.find(
+          (u) => u.id === parsed.id || u.name === parsed.name
+        );
         if (matched) {
-          setCurrentProfile({
+          const refreshed = {
             ...matched,
             displayName: matched.role === "ADMIN" ? "ADMIN" : `${matched.name} ${matched.title}`,
             roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name} ${matched.title}`
-          });
+          };
+          setCurrentProfile(refreshed);
+          localStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
         } else {
           setCurrentProfile(parsed);
         }
