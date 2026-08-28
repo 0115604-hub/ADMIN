@@ -23,46 +23,7 @@ import { useAuth, PLANTS } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
 import { OperatorWorkspace } from "./OperatorWorkspace";
-
-// Default Initial Work Logs Seed with Official Titles
-const DEFAULT_WORK_LOGS = [
-  {
-    id: 1,
-    date: "2026-08-28",
-    plant: "삼랑진공장",
-    writer: "조인주 선임",
-    shift: "주간",
-    line: "9BQC 압출 1호기",
-    workContent: "9BQC FRT LH/RH 압출 생산 (목표 2,400개 / 실적 2,450개 달성)",
-    issues: "원료 TPE 공급압력 안정적 유지, 특이사항 없음",
-    status: "완료",
-    createdAt: "2026-08-28 08:30"
-  },
-  {
-    id: 2,
-    date: "2026-08-28",
-    plant: "삼랑진공장",
-    writer: "설유철 책임",
-    shift: "주간",
-    line: "가공 2라인",
-    workContent: "DT 수출용 웨더스트립 절단 및 피팅 가공 (1,800개 완료)",
-    issues: "2호 절단기 칼날 마모 점검 후 교체 완료",
-    status: "완료",
-    createdAt: "2026-08-28 09:10"
-  },
-  {
-    id: 3,
-    date: "2026-08-28",
-    plant: "한림공장",
-    writer: "김동욱 책임",
-    shift: "주간",
-    line: "EPDM 사출 라인",
-    workContent: "NX4 코너 몰딩 사출 성형 (3,200개 출하 검사 완료)",
-    issues: "금형 온도 145도 정상 유지, 품질 이상 없음",
-    status: "완료",
-    createdAt: "2026-08-28 08:50"
-  }
-];
+import { getWorkLogs, saveWorkLog, deleteWorkLog } from "../services/workLogService";
 
 export const WorkerDashboard = ({ onBulkUpload }) => {
   const { currentProfile, isOperator, isAdmin } = useAuth();
@@ -79,11 +40,8 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   const [activeWorkerTab, setActiveWorkerTab] = useState("summary_log"); // 'summary_log' | 'uploader'
 
-  // Work Logs State
-  const [workLogs, setWorkLogs] = useState(() => {
-    const saved = localStorage.getItem("plant_daily_worklogs");
-    return saved ? JSON.parse(saved) : DEFAULT_WORK_LOGS;
-  });
+  // Work Logs State from shared service
+  const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -130,7 +88,8 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       id: Date.now(),
       date: formData.date,
       plant: formData.plant,
-      writer: workerFullName,
+      writer: currentProfile?.name || "작업자",
+      title: officialTitle,
       shift: formData.shift,
       line: formData.line,
       workContent: formData.workContent,
@@ -145,9 +104,8 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       })
     };
 
-    const updated = [newLog, ...workLogs];
+    const updated = saveWorkLog(newLog);
     setWorkLogs(updated);
-    localStorage.setItem("plant_daily_worklogs", JSON.stringify(updated));
 
     setFormData({
       date: new Date().toISOString().split("T")[0],
@@ -163,14 +121,14 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   const handleDeleteLog = (id) => {
     if (!window.confirm("이 업무일지를 삭제하시겠습니까?")) return;
-    const updated = workLogs.filter((l) => l.id !== id);
+    const updated = deleteWorkLog(id);
     setWorkLogs(updated);
-    localStorage.setItem("plant_daily_worklogs", JSON.stringify(updated));
   };
 
   const filteredLogs = workLogs.filter((log) => {
+    const writerWithTitle = `${log.writer} ${log.title || ""}`;
     const matchSearch =
-      log.writer.includes(searchTerm) ||
+      writerWithTitle.includes(searchTerm) ||
       log.workContent.includes(searchTerm) ||
       log.line.includes(searchTerm) ||
       log.issues.includes(searchTerm);
@@ -374,7 +332,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                           {log.plant}
                         </span>
                         <span className="font-black text-sm text-slate-900 dark:text-white">
-                          {log.writer}
+                          {log.writer} {log.title || ""}
                         </span>
                         <span className="text-xs text-slate-400">• {log.date} ({log.shift})</span>
                         <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-lg">
@@ -386,7 +344,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                         <span className="text-[11px] text-slate-400 hidden sm:inline">
                           {log.createdAt}
                         </span>
-                        {(workerFullName === log.writer || isAdmin) && (
+                        {(currentProfile?.name === log.writer || isAdmin) && (
                           <button
                             onClick={() => handleDeleteLog(log.id)}
                             className="p-1 rounded-lg text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"

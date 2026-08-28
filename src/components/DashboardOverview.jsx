@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   TrendingUp,
   Car,
@@ -7,18 +7,30 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
-  BarChart3
+  BarChart3,
+  ClipboardList,
+  Factory,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  ChevronRight,
+  UserCheck
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
+import { getWorkLogs } from "../services/workLogService";
 
 export const DashboardOverview = ({
   onNavigateToVehicles,
   onNavigateToMaterials,
-  onNavigateToPurchases
+  onNavigateToPurchases,
+  onNavigateToWorkLogs
 }) => {
   const { formatAmount } = useCurrency();
   const { selectedMonth, currentMonthData, allMonthlyData } = useMonth();
+
+  const [selectedPlantFilter, setSelectedPlantFilter] = useState("all"); // 'all' | '삼랑진공장' | '한림공장'
+  const workLogs = getWorkLogs();
 
   const salesSummary = currentMonthData?.salesSummary || {
     totalSales: 0,
@@ -48,6 +60,11 @@ export const DashboardOverview = ({
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+
+  const filteredLogs = workLogs.filter((log) => {
+    if (selectedPlantFilter === "all") return true;
+    return log.plant === selectedPlantFilter;
+  });
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
@@ -159,39 +176,39 @@ export const DashboardOverview = ({
         {/* Production Items */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">출하 차종 및 부품</span>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-              <Car className="w-4 h-4" />
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">품목 & 차종 구조</span>
+            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+              <Boxes className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-4">
             <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-              {vehicleSales.length}개 차종 <span className="text-base font-normal text-slate-400">/ {salesSummary.itemCount}종</span>
+              {salesSummary.vehicleGroupCount || 23}개 차종
             </p>
             <p className="text-xs font-semibold text-slate-400 mt-1">
-              총 {salesSummary.totalQty.toLocaleString()}개 부품 출하
+              자재 {jajaeGroups.length}대 품목군 점유
             </p>
           </div>
         </div>
       </div>
 
-      {/* Two Column Section */}
+      {/* Grid: Vehicle Ranking & Material Purchase */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Top Vehicles */}
+        {/* Left: Top Shipment Vehicle Ranking */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                  {monthTitle} 차종별 매출 순위 Top 6
+                  {monthTitle} 주요 출하 차종 현황 (Top 6)
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">총 {vehicleSales.length}개 차종 중 상위 실적</p>
+                <p className="text-xs text-slate-400 mt-0.5">총 {vehicleSales.length}개 차종별 매출 실적</p>
               </div>
               <button
                 onClick={onNavigateToVehicles}
                 className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
               >
-                전체보기 →
+                전체 차종 보기 →
               </button>
             </div>
 
@@ -289,6 +306,156 @@ export const DashboardOverview = ({
             <span>자재매입 시트 기준</span>
             <span className="font-bold text-slate-900 dark:text-white">합계 {formatAmount(ledgerPurchases)}</span>
           </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. ADMIN DEDICATED: WORKER DAILY WORK LOGS EXECUTIVE SUMMARY (작업자 업무일지 요약) */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg text-slate-900 dark:text-white">
+                  공장별 작업자 일일업무일지 종합 요약
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  삼랑진공장 및 한림공장 라인별 실시간 생산 실적 & 이슈 현황 (총 {workLogs.length}명 기록)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Plant Segmented Filter */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/70 dark:border-slate-700/70">
+              <button
+                onClick={() => setSelectedPlantFilter("all")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  selectedPlantFilter === "all"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                전체 ({workLogs.length})
+              </button>
+              <button
+                onClick={() => setSelectedPlantFilter("삼랑진공장")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  selectedPlantFilter === "삼랑진공장"
+                    ? "bg-amber-500 text-white shadow-sm"
+                    : "text-amber-700 dark:text-amber-400 hover:text-amber-900"
+                }`}
+              >
+                🏭 삼랑진공장 (6명)
+              </button>
+              <button
+                onClick={() => setSelectedPlantFilter("한림공장")}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                  selectedPlantFilter === "한림공장"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-900"
+                }`}
+              >
+                🏭 한림공장 (3명)
+              </button>
+            </div>
+
+            {onNavigateToWorkLogs && (
+              <button
+                onClick={onNavigateToWorkLogs}
+                className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+              >
+                <span>일지 상세조회</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Worker Summary Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredLogs.map((log) => {
+            const isHallim = log.plant === "한림공장";
+            const isClean = !log.issues || log.issues.includes("특이사항 없음") || log.issues.includes("정상");
+
+            return (
+              <div
+                key={log.id}
+                className="p-4 rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:shadow-md transition-all flex flex-col justify-between space-y-3 group"
+              >
+                {/* Card Top: Worker Profile & Plant */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-2xl text-white flex items-center justify-center font-black text-xs shadow-sm ${
+                      isHallim ? "bg-emerald-600" : "bg-amber-500"
+                    }`}>
+                      {log.writer[0]}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                          {log.writer} {log.title || ""}
+                        </h4>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                          isHallim
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300"
+                        }`}>
+                          {log.plant}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+                        {log.line}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {log.date}
+                  </span>
+                </div>
+
+                {/* Card Content: Work Details */}
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs space-y-2">
+                  <div>
+                    <strong className="text-slate-900 dark:text-white block mb-0.5">🛠️ 작업 실적:</strong>
+                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                      {log.workContent}
+                    </p>
+                  </div>
+
+                  {log.issues && (
+                    <div className={`p-2 rounded-xl text-[11px] font-medium flex items-start gap-1.5 ${
+                      isClean
+                        ? "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300"
+                        : "bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/50"
+                    }`}>
+                      {isClean ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      )}
+                      <span><strong>이슈:</strong> {log.issues}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Card Footer: Shift & Timestamp */}
+                <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-slate-400" />
+                    <span>{log.shift} 근무</span>
+                  </span>
+                  <span className="font-semibold">{log.createdAt}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

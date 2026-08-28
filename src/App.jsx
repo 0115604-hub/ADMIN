@@ -108,7 +108,7 @@ export const App = () => {
   const getTabTitle = () => {
     if (isOperator) {
       if (activeTab === "operator_workspace") return "엑셀 파일 업로드";
-      return "업무일지 & 실적요약";
+      return "업무일지 & 현황";
     }
     const meta = ADMIN_TABS.find((t) => t.id === activeTab);
     return meta ? meta.label : "현황";
@@ -178,6 +178,7 @@ export const App = () => {
                       onNavigateToMaterials={() => setActiveTab("material_purchases")}
                       onNavigateToPurchases={() => setActiveTab("purchase_costs")}
                       onNavigateToStatement={() => setActiveTab("statement")}
+                      onNavigateToWorkLogs={() => setActiveTab("worker_dashboard")}
                     />
                   )}
 
