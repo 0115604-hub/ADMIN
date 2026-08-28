@@ -1,10 +1,8 @@
 import React, { useState } from "react";
 import {
   Building2,
-  ShieldCheck,
   KeyRound,
   ChevronRight,
-  User,
   Crown,
   Factory,
   ArrowRight
@@ -62,13 +60,8 @@ export const AuthModal = () => {
 
         {!selectedUser ? (
           <div className="space-y-6">
-            {/* 1. TOP: 관리자 모드 (최미영 / 권태형) */}
+            {/* 1. TOP: 총괄 관리자 (주석 및 이름 삭제하고 심플하게 유지) */}
             <div>
-              <div className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-1.5 px-1">
-                <Crown className="w-3.5 h-3.5" />
-                <span>총괄 관리자</span>
-              </div>
-
               {ADMIN_USERS.map((admin) => (
                 <div
                   key={admin.id}
@@ -76,21 +69,13 @@ export const AuthModal = () => {
                   className="p-4 rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50/70 to-indigo-50/50 dark:from-blue-950/30 dark:to-indigo-950/20 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer transition-all flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-md shadow-blue-500/30">
-                      <Crown className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-base shadow-md shadow-blue-500/30">
+                      <Crown className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-black text-base text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
-                          {admin.name}
-                        </h4>
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
-                          {admin.subName}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {admin.description}
-                      </p>
+                      <h4 className="font-black text-base text-slate-900 dark:text-white group-hover:text-blue-600 transition-colors">
+                        {admin.name}
+                      </h4>
                     </div>
                   </div>
 
@@ -106,9 +91,8 @@ export const AuthModal = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Factory className="w-3.5 h-3.5" />
-                  <span>삼랑진공장 작업자 (6명)</span>
+                  <span>삼랑진공장</span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400">엑셀 업데이트 전용</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -116,16 +100,15 @@ export const AuthModal = () => {
                   <div
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex items-center gap-2.5 group shadow-sm hover:shadow"
+                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex items-center gap-2.5 group shadow-sm hover:shadow"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
                       {worker.avatar}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate">
+                      <p className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate">
                         {worker.name}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-semibold">작업자</p>
                     </div>
                   </div>
                 ))}
@@ -137,9 +120,8 @@ export const AuthModal = () => {
               <div className="flex items-center justify-between px-1">
                 <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Factory className="w-3.5 h-3.5" />
-                  <span>한림공장 작업자 (3명)</span>
+                  <span>한림공장</span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400">엑셀 업데이트 전용</span>
               </div>
 
               <div className="grid grid-cols-3 gap-2.5">
@@ -147,16 +129,15 @@ export const AuthModal = () => {
                   <div
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex items-center gap-2.5 group shadow-sm hover:shadow"
+                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex items-center gap-2.5 group shadow-sm hover:shadow"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
                       {worker.avatar}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-extrabold text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate">
+                      <p className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate">
                         {worker.name}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-semibold">작업자</p>
                     </div>
                   </div>
                 ))}
@@ -179,10 +160,10 @@ export const AuthModal = () => {
                 </div>
                 <div>
                   <h4 className="font-black text-base text-slate-900 dark:text-white">
-                    {selectedUser.name} {selectedUser.subName ? `(${selectedUser.subName})` : ""}
+                    {selectedUser.name}
                   </h4>
                   <span className="text-[11px] font-bold text-slate-500">
-                    {selectedUser.role === "ADMIN" ? "총괄 관리자 모드" : `${selectedUser.plant} 작업자`}
+                    {selectedUser.role === "ADMIN" ? "총괄 관리자 모드" : selectedUser.plant}
                   </span>
                 </div>
               </div>
@@ -216,7 +197,7 @@ export const AuthModal = () => {
               disabled={loading}
               className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-black text-sm shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
-              <span>{selectedUser.name} 님으로 접속하기</span>
+              <span>{selectedUser.name} 으로 접속하기</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
