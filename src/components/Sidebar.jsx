@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  LayoutDashboard,
+  BarChart3,
   Car,
   Boxes,
   Layers,
@@ -8,15 +8,12 @@ import {
   Settings,
   LogOut,
   Building2,
-  UploadCloud,
-  ShieldCheck,
-  UserCheck,
-  BarChart3
+  UploadCloud
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export const ADMIN_TABS = [
-  { id: "dashboard", label: "월간경영현황", icon: BarChart3, badge: "종합" },
+  { id: "dashboard", label: "현황", icon: BarChart3, badge: "종합" },
   { id: "vehicle_sales", label: "차종별 매출 분석", icon: Car, badge: "23개 차종" },
   { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes, badge: "9개 군" },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers, badge: "12개 과목" },
@@ -35,7 +32,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const navigationTabs = isOperator ? OPERATOR_TABS : ADMIN_TABS;
 
   return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200 shadow-sm">
+    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200">
       {/* Brand Logo & Profile Tag */}
       <div className="p-6">
         <div className="flex items-center gap-3">

@@ -1,16 +1,12 @@
 import React from "react";
 import {
   TrendingUp,
-  TrendingDown,
-  DollarSign,
   Car,
   Boxes,
   Layers,
   ArrowUpRight,
   ArrowDownRight,
   Sparkles,
-  Calendar,
-  Building2,
   BarChart3
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
@@ -19,8 +15,7 @@ import { useMonth } from "../context/MonthContext";
 export const DashboardOverview = ({
   onNavigateToVehicles,
   onNavigateToMaterials,
-  onNavigateToPurchases,
-  onNavigateToStatement
+  onNavigateToPurchases
 }) => {
   const { formatAmount } = useCurrency();
   const { selectedMonth, currentMonthData, allMonthlyData } = useMonth();
@@ -45,7 +40,7 @@ export const DashboardOverview = ({
   const netProfit = totalSales - ledgerPurchases;
   const profitMargin = totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(1) : 0;
 
-  // Calculate MoM (compared to previous month in data)
+  // Calculate MoM
   const prevMonthKey = selectedMonth === "2026-08" ? "2026-07" : null;
   const prevMonthData = prevMonthKey ? allMonthlyData[prevMonthKey] : null;
   const salesMoM = prevMonthData ? totalSales - (prevMonthData.salesSummary?.totalSales || 0) : null;
@@ -60,16 +55,16 @@ export const DashboardOverview = ({
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>{monthTitle} 월간경영현황 종합 분석</span>
+              <span>{monthTitle} 실적 종합</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
-              {monthTitle} 월간경영현황
+              {monthTitle} 현황
             </h1>
             <p className="text-sm text-slate-300 max-w-2xl">
-              `매입-매출 정리본` 실적 마스터 기준 매출 {formatAmount(totalSales)} vs 매입 {formatAmount(ledgerPurchases)} 종합 손익 대사
+              매출 {formatAmount(totalSales)} • 매입 {formatAmount(ledgerPurchases)} • 손익 {formatAmount(netProfit)} (이익률 {profitMargin}%)
             </p>
           </div>
 
@@ -180,7 +175,7 @@ export const DashboardOverview = ({
         </div>
       </div>
 
-      {/* Two Column Section: Top Vehicle Sales & Top Expense Groups */}
+      {/* Two Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Top Vehicles */}
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
