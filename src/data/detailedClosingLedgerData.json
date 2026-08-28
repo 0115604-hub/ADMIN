@@ -1,0 +1,1424 @@
+{
+  "2026-07": {
+    "month": "2026-07",
+    "categories": [
+      {
+        "id": "raw_materials",
+        "name": "원자재",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "주식회사 해동무역",
+            "item": "cmb",
+            "supplyAmt": 285113270,
+            "taxAmt": 28511327,
+            "totalAmt": 313624597,
+            "memo": "246,600,079"
+          },
+          {
+            "id": 2,
+            "vendor": "(주)화승알앤에이",
+            "item": "물품대",
+            "supplyAmt": 587291596,
+            "taxAmt": 58729159,
+            "totalAmt": 646020755,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "(주)화승알앤에이",
+            "item": "소급건",
+            "supplyAmt": 574460,
+            "taxAmt": 57446,
+            "totalAmt": 631906,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "(주)화승알앤에이",
+            "item": "물품대",
+            "supplyAmt": 176854376,
+            "taxAmt": 17685437,
+            "totalAmt": 194539813,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "(주)우진금속",
+            "item": "STS430(BB) 0.4 X 45.5(5C)",
+            "supplyAmt": 10924476,
+            "taxAmt": 1092446,
+            "totalAmt": 12016922,
+            "memo": "오륙"
+          },
+          {
+            "id": 6,
+            "vendor": "(주)화승케미칼양산공장",
+            "item": "HSC-2000B-3 외",
+            "supplyAmt": 23531001,
+            "taxAmt": 2353100,
+            "totalAmt": 25884101,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "(주)화승코퍼레이션 양산공장",
+            "item": "영업 월매출마감 [202605]",
+            "supplyAmt": 262398500,
+            "taxAmt": 26239850,
+            "totalAmt": 288638350,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "(주)화승코퍼레이션 양산공장",
+            "item": "영업 월매출마감 [202605]",
+            "supplyAmt": 127078920,
+            "taxAmt": 12707892,
+            "totalAmt": 139786812,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "경기금속",
+            "item": "UPR Bracket",
+            "supplyAmt": 8112000,
+            "taxAmt": 811200,
+            "totalAmt": 8923200,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "(주)세동",
+            "item": "W/STRIP ASSY-RR DIVISON BAR 외",
+            "supplyAmt": 91492436,
+            "taxAmt": 9149243,
+            "totalAmt": 100641679,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "주식회사 해동무역",
+            "item": "cmb",
+            "supplyAmt": 44863050,
+            "taxAmt": 4486305,
+            "totalAmt": 49349355,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "（주）오륙",
+            "item": "물품대",
+            "supplyAmt": 18245525,
+            "taxAmt": 1824552,
+            "totalAmt": 20070077,
+            "memo": "조영"
+          }
+        ]
+      },
+      {
+        "id": "sub_materials",
+        "name": "부자재",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "(주)화승네트웍스",
+            "item": "46MM WIRE CARRIER 외",
+            "supplyAmt": 45733300,
+            "taxAmt": 4573330,
+            "totalAmt": 50306630,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "(주)화승네트웍스",
+            "item": "CHEMLOK 외",
+            "supplyAmt": 1842940,
+            "taxAmt": 184294,
+            "totalAmt": 2027234,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "주식회사 이노켐",
+            "item": "물품대",
+            "supplyAmt": 2610800,
+            "taxAmt": 261080,
+            "totalAmt": 2871880,
+            "memo": "부자재"
+          },
+          {
+            "id": 4,
+            "vendor": "효신산업",
+            "item": "w/strip 외",
+            "supplyAmt": 5000000,
+            "taxAmt": 500000,
+            "totalAmt": 5500000,
+            "memo": "오륙"
+          },
+          {
+            "id": 5,
+            "vendor": "(주)타스인터내셔날",
+            "item": "N1.5*0.45",
+            "supplyAmt": 2800000,
+            "taxAmt": 280000,
+            "totalAmt": 3080000,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "(주)영우",
+            "item": "YT-150G",
+            "supplyAmt": 478875,
+            "taxAmt": 47887,
+            "totalAmt": 526762,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "(주）우봉",
+            "item": "EPDM PAD",
+            "supplyAmt": 1521000,
+            "taxAmt": 152100,
+            "totalAmt": 1673100,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "케이에스 인터내셔널",
+            "item": "자재(고무사상가위)",
+            "supplyAmt": 300000,
+            "taxAmt": 30000,
+            "totalAmt": 330000,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "성환패키지",
+            "item": "HD포장필름(단칼)",
+            "supplyAmt": 2748500,
+            "taxAmt": 274850,
+            "totalAmt": 3023350,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "삼도산업",
+            "item": "양면테이프 외",
+            "supplyAmt": 2620000,
+            "taxAmt": 262000,
+            "totalAmt": 2882000,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "삼신포장공업사",
+            "item": "박스대금",
+            "supplyAmt": 426000,
+            "taxAmt": 42600,
+            "totalAmt": 468600,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "OK버원시스템",
+            "item": "백색분홍라인연속라벨지",
+            "supplyAmt": 212000,
+            "taxAmt": 21200,
+            "totalAmt": 233200,
+            "memo": ""
+          },
+          {
+            "id": 13,
+            "vendor": "아론켐",
+            "item": "CT-70A",
+            "supplyAmt": 1035000,
+            "taxAmt": 103500,
+            "totalAmt": 1138500,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "packaging_materials",
+        "name": "포장 부자재",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "(주)화승네트웍스",
+            "item": "목재파렛트 외",
+            "supplyAmt": 7026000,
+            "taxAmt": 702600,
+            "totalAmt": 7728600,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "(주)화승네트웍스",
+            "item": "지관 (신품) 외",
+            "supplyAmt": 3490000,
+            "taxAmt": 349000,
+            "totalAmt": 3839000,
+            "memo": "포장"
+          },
+          {
+            "id": 3,
+            "vendor": "성환패키지",
+            "item": "포장필름(단칼)",
+            "supplyAmt": 1238600,
+            "taxAmt": 123860,
+            "totalAmt": 1362460,
+            "memo": "부자재"
+          },
+          {
+            "id": 4,
+            "vendor": "(주)광진포장",
+            "item": "물품대(골판지 박스)",
+            "supplyAmt": 15857750,
+            "taxAmt": 1585775,
+            "totalAmt": 17443525,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "outsourcing_costs",
+        "name": "임가공비",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "(주)조영산업",
+            "item": "5월 임가공비 외",
+            "supplyAmt": 428565920,
+            "taxAmt": 42856592,
+            "totalAmt": 471422512,
+            "memo": "정산분담"
+          },
+          {
+            "id": 2,
+            "vendor": "오륙공사",
+            "item": "임가공 외",
+            "supplyAmt": 54045063,
+            "taxAmt": 5404506,
+            "totalAmt": 59449569,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "한울",
+            "item": "9BQC FRT LH 가공",
+            "supplyAmt": 120886800,
+            "taxAmt": 12088680,
+            "totalAmt": 132975480,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "에스에이치씨",
+            "item": "DT SILL SEAL 가공비",
+            "supplyAmt": 30235680,
+            "taxAmt": 3023568,
+            "totalAmt": 33259248,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "엘케이오토주식회사",
+            "item": "가공비",
+            "supplyAmt": 47589570,
+            "taxAmt": 4758957,
+            "totalAmt": 52348527,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "유성",
+            "item": "5월 임가공비",
+            "supplyAmt": 24205555,
+            "taxAmt": 2420555,
+            "totalAmt": 26626110,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "조영산업",
+            "item": "5월 임가공비 외",
+            "supplyAmt": 52554730,
+            "taxAmt": 5255473,
+            "totalAmt": 57810203,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "태경테크",
+            "item": "5월 임가공비",
+            "supplyAmt": 192000,
+            "taxAmt": 19200,
+            "totalAmt": 211200,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "부림텍",
+            "item": "임가공비",
+            "supplyAmt": 40608374,
+            "taxAmt": 4060837,
+            "totalAmt": 44669211,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "salaries_labor",
+        "name": "노무비 (급여)",
+        "group": "인건비 & 공과금",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "주 오륙",
+            "item": "등록 생산직 급여",
+            "supplyAmt": 128314220,
+            "taxAmt": 0,
+            "totalAmt": 128314220,
+            "memo": "4월 급여분"
+          },
+          {
+            "id": 2,
+            "vendor": "주 오륙",
+            "item": "미등록 생산직 급여",
+            "supplyAmt": 46396230,
+            "taxAmt": 0,
+            "totalAmt": 46396230,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "주 오륙",
+            "item": "등록 관리직 급여",
+            "supplyAmt": 26949270,
+            "taxAmt": 0,
+            "totalAmt": 26949270,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "주 조영산업",
+            "item": "등록 생산직 급여",
+            "supplyAmt": 78113340,
+            "taxAmt": 0,
+            "totalAmt": 78113340,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "주 조영산업",
+            "item": "미등록 생산직 급여",
+            "supplyAmt": 43566600,
+            "taxAmt": 0,
+            "totalAmt": 43566600,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "주 조영산업",
+            "item": "등록 관리직 급여",
+            "supplyAmt": 24060700,
+            "taxAmt": 0,
+            "totalAmt": 24060700,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "조영산업",
+            "item": "미등록 생산직 급여",
+            "supplyAmt": 11381420,
+            "taxAmt": 0,
+            "totalAmt": 11381420,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "taxes_social_insurance",
+        "name": "공과금 (4대보험/세금)",
+        "group": "인건비 & 공과금",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "국민건강보험공단",
+            "item": "주 오륙 4대 사회보험",
+            "supplyAmt": 24532940,
+            "taxAmt": 0,
+            "totalAmt": 24532940,
+            "memo": "사회보험"
+          },
+          {
+            "id": 2,
+            "vendor": "세무서",
+            "item": "주 오륙 근로소득세",
+            "supplyAmt": 7350900,
+            "taxAmt": 0,
+            "totalAmt": 7350900,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "시청/구청",
+            "item": "주 오륙 지방소득세",
+            "supplyAmt": 734930,
+            "taxAmt": 0,
+            "totalAmt": 734930,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "세무서",
+            "item": "주 오륙 부가가치세 분납분",
+            "supplyAmt": 21399500,
+            "taxAmt": 0,
+            "totalAmt": 21399500,
+            "memo": "분납분"
+          },
+          {
+            "id": 5,
+            "vendor": "국민건강보험공단",
+            "item": "주 조영산업 4대 사회보험",
+            "supplyAmt": 18588050,
+            "taxAmt": 0,
+            "totalAmt": 18588050,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "세무서",
+            "item": "주 조영산업 근로소득세",
+            "supplyAmt": 4311550,
+            "taxAmt": 0,
+            "totalAmt": 4311550,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "시청/구청",
+            "item": "주 조영산업 지방소득세",
+            "supplyAmt": 431050,
+            "taxAmt": 0,
+            "totalAmt": 431050,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "세무서",
+            "item": "주 조영산업 부가가치세 분납분",
+            "supplyAmt": 17634180,
+            "taxAmt": 0,
+            "totalAmt": 17634180,
+            "memo": "분납분"
+          },
+          {
+            "id": 9,
+            "vendor": "국민건강보험공단",
+            "item": "조영산업 4대 사회보험",
+            "supplyAmt": 5434370,
+            "taxAmt": 0,
+            "totalAmt": 5434370,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "세무서",
+            "item": "조영산업 근로소득세",
+            "supplyAmt": 735740,
+            "taxAmt": 0,
+            "totalAmt": 735740,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "시청/구청",
+            "item": "조영산업 지방소득세",
+            "supplyAmt": 73530,
+            "taxAmt": 0,
+            "totalAmt": 73530,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "세무서",
+            "item": "조영산업 부가가치세 분납분",
+            "supplyAmt": 4307000,
+            "taxAmt": 0,
+            "totalAmt": 4307000,
+            "memo": "분납분"
+          },
+          {
+            "id": 13,
+            "vendor": "국민건강보험공단",
+            "item": "오륙공사 4대 사회보험",
+            "supplyAmt": 3990500,
+            "taxAmt": 0,
+            "totalAmt": 3990500,
+            "memo": ""
+          },
+          {
+            "id": 14,
+            "vendor": "세무서",
+            "item": "오륙공사 근로소득세",
+            "supplyAmt": 1143870,
+            "taxAmt": 0,
+            "totalAmt": 1143870,
+            "memo": ""
+          },
+          {
+            "id": 15,
+            "vendor": "시청/구청",
+            "item": "오륙공사 지방소득세",
+            "supplyAmt": 114360,
+            "taxAmt": 0,
+            "totalAmt": 114360,
+            "memo": ""
+          },
+          {
+            "id": 16,
+            "vendor": "세무서",
+            "item": "오륙공사 부가가치세 분납분",
+            "supplyAmt": 4884000,
+            "taxAmt": 0,
+            "totalAmt": 4884000,
+            "memo": "분납분"
+          }
+        ]
+      },
+      {
+        "id": "welfare_meals",
+        "name": "복리후생비 (식대)",
+        "group": "인건비 & 공과금",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "큰상 웰빙푸드",
+            "item": "구내식당 식대 (주 오륙)",
+            "supplyAmt": 6855600,
+            "taxAmt": 685560,
+            "totalAmt": 7541160,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "새한유통",
+            "item": "생수 공급",
+            "supplyAmt": 1305000,
+            "taxAmt": 130500,
+            "totalAmt": 1435500,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "큰상 웰빙푸드",
+            "item": "구내식당 식대 (주 조영)",
+            "supplyAmt": 3715300,
+            "taxAmt": 371530,
+            "totalAmt": 4086830,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "큰상 웰빙푸드",
+            "item": "구내식당 식대 (한림)",
+            "supplyAmt": 2093800,
+            "taxAmt": 209380,
+            "totalAmt": 2303180,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "에스케이인텔릭스(주)",
+            "item": "슬림 탱크 정수기 렌탈",
+            "supplyAmt": 16273,
+            "taxAmt": 1627,
+            "totalAmt": 17900,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "큰상 웰빙푸드",
+            "item": "구내식당 식대 (추가)",
+            "supplyAmt": 1592200,
+            "taxAmt": 159220,
+            "totalAmt": 1751420,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "electricity_utilities",
+        "name": "전력비 (전기요금)",
+        "group": "공장 유틸리티 & 설비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928010091) 오륙",
+            "supplyAmt": 16588,
+            "taxAmt": 1659,
+            "totalAmt": 18247,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928010019) 오륙",
+            "supplyAmt": 13238,
+            "taxAmt": 1324,
+            "totalAmt": 14562,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928010046) 오륙",
+            "supplyAmt": 19938,
+            "taxAmt": 1994,
+            "totalAmt": 21932,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928010082) 유성",
+            "supplyAmt": 15114,
+            "taxAmt": 1511,
+            "totalAmt": 16625,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928014541) 신천",
+            "supplyAmt": 21948,
+            "taxAmt": 2195,
+            "totalAmt": 24143,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928010055)",
+            "supplyAmt": 16722,
+            "taxAmt": 1672,
+            "totalAmt": 18394,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928014523) 조영/한울",
+            "supplyAmt": 11496,
+            "taxAmt": 1150,
+            "totalAmt": 12646,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0928014480)",
+            "supplyAmt": 15516,
+            "taxAmt": 1552,
+            "totalAmt": 17068,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "한국전력공사",
+            "item": "메인 공장 전기요금(0921356677)",
+            "supplyAmt": 43699176,
+            "taxAmt": 4369918,
+            "totalAmt": 48069094,
+            "memo": "밀양공장"
+          },
+          {
+            "id": 10,
+            "vendor": "한울",
+            "item": "5월 전기세 정산",
+            "supplyAmt": 3706080,
+            "taxAmt": 370608,
+            "totalAmt": 4076688,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "유성",
+            "item": "5월 전기세 정산",
+            "supplyAmt": 12046170,
+            "taxAmt": 1204617,
+            "totalAmt": 13250787,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0441967114) 외주명의",
+            "supplyAmt": 15866730,
+            "taxAmt": 1586673,
+            "totalAmt": 17453403,
+            "memo": ""
+          },
+          {
+            "id": 13,
+            "vendor": "부림텍",
+            "item": "전기세 외",
+            "supplyAmt": 8998410,
+            "taxAmt": 899841,
+            "totalAmt": 9898251,
+            "memo": ""
+          },
+          {
+            "id": 14,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0917070698) 주촌",
+            "supplyAmt": 8380096,
+            "taxAmt": 838010,
+            "totalAmt": 9218106,
+            "memo": ""
+          },
+          {
+            "id": 15,
+            "vendor": "한국전력공사",
+            "item": "전기요금(0403127442) 오륙공사",
+            "supplyAmt": 203019,
+            "taxAmt": 20302,
+            "totalAmt": 223321,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "rent_leases",
+        "name": "임대료",
+        "group": "공장 유틸리티 & 설비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "(주)화승알앤에이",
+            "item": "5월 오륙 설비임대료",
+            "supplyAmt": 9799400,
+            "taxAmt": 979940,
+            "totalAmt": 10779340,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "repairs_maintenance",
+        "name": "수선비 / 설비보전",
+        "group": "공장 유틸리티 & 설비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "동원정보통신",
+            "item": "사무실 자리변동공사 (감액)",
+            "supplyAmt": -50000,
+            "taxAmt": -5000,
+            "totalAmt": -55000,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "동원정보통신",
+            "item": "사무실 자리변동공사",
+            "supplyAmt": 800000,
+            "taxAmt": 80000,
+            "totalAmt": 880000,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "（주）대한콘트롤",
+            "item": "혈명기 PLC 밧데리 교체 및 PROGRAM",
+            "supplyAmt": 540000,
+            "taxAmt": 54000,
+            "totalAmt": 594000,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "waste_disposal",
+        "name": "산업폐기물처리비",
+        "group": "공장 유틸리티 & 설비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "(주)한국알앤티",
+            "item": "폐고무 처리",
+            "supplyAmt": 784000,
+            "taxAmt": 78400,
+            "totalAmt": 862400,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "주식회사 정성",
+            "item": "스크랩 처리",
+            "supplyAmt": 336000,
+            "taxAmt": 33600,
+            "totalAmt": 369600,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "일성에너지(주)",
+            "item": "폐합성수지처리",
+            "supplyAmt": 1029600,
+            "taxAmt": 102960,
+            "totalAmt": 1132560,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "(주)한국알앤티",
+            "item": "폐고무 추가 처리",
+            "supplyAmt": 1586000,
+            "taxAmt": 158600,
+            "totalAmt": 1744600,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "(주)대성환경",
+            "item": "폐기물운반처리용역비",
+            "supplyAmt": 2325300,
+            "taxAmt": 232530,
+            "totalAmt": 2557830,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "제일고물상",
+            "item": "고물 및 스크랩 정산",
+            "supplyAmt": 70000,
+            "taxAmt": 0,
+            "totalAmt": 70000,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "consumables_tools",
+        "name": "소모품비 (공구)",
+        "group": "공장 유틸리티 & 설비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "미전종합공구",
+            "item": "원터치니플 외 공구",
+            "supplyAmt": 655800,
+            "taxAmt": 65580,
+            "totalAmt": 721380,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "금조종합상사",
+            "item": "물품대",
+            "supplyAmt": 800000,
+            "taxAmt": 80000,
+            "totalAmt": 880000,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "금화종합상사",
+            "item": "보루 외 현장 소모품",
+            "supplyAmt": 1210500,
+            "taxAmt": 121050,
+            "totalAmt": 1331550,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "logistics_transport",
+        "name": "물류비 (운송/유류)",
+        "group": "물류 & 운영 경비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "파이팅물류",
+            "item": "화물운송비 (유대포함)",
+            "supplyAmt": 1000000,
+            "taxAmt": 100000,
+            "totalAmt": 1100000,
+            "memo": "유대포함"
+          },
+          {
+            "id": 2,
+            "vendor": "오케이 퀵(개인용달)",
+            "item": "운임",
+            "supplyAmt": 50000,
+            "taxAmt": 5000,
+            "totalAmt": 55000,
+            "memo": "유대포함"
+          },
+          {
+            "id": 3,
+            "vendor": "용진운수",
+            "item": "주유대",
+            "supplyAmt": 5345455,
+            "taxAmt": 534545,
+            "totalAmt": 5880000,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "클라크서비스영남센터",
+            "item": "물류장비 지게차(0045-11007)",
+            "supplyAmt": 550000,
+            "taxAmt": 55000,
+            "totalAmt": 605000,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "클라크서비스영남센터",
+            "item": "물류장비 지게차(0041)",
+            "supplyAmt": 750000,
+            "taxAmt": 75000,
+            "totalAmt": 825000,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "만포주유소",
+            "item": "경유 주유대",
+            "supplyAmt": 779091,
+            "taxAmt": 77909,
+            "totalAmt": 857000,
+            "memo": "퀵 합계"
+          },
+          {
+            "id": 7,
+            "vendor": "한율",
+            "item": "용역대",
+            "supplyAmt": 9634545,
+            "taxAmt": 963455,
+            "totalAmt": 10598000,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "현대캐피탈",
+            "item": "렌트료(76호5837)",
+            "supplyAmt": 683300,
+            "taxAmt": 68330,
+            "totalAmt": 751630,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "클라크지게차창원(주)",
+            "item": "물류장비 EPX25",
+            "supplyAmt": 500000,
+            "taxAmt": 50000,
+            "totalAmt": 550000,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "클라크지게차창원(주)",
+            "item": "물류장비 2271",
+            "supplyAmt": 550000,
+            "taxAmt": 55000,
+            "totalAmt": 605000,
+            "memo": "유대 제외 286만"
+          },
+          {
+            "id": 11,
+            "vendor": "주식회사 제이엠로지스",
+            "item": "운송료",
+            "supplyAmt": 6400000,
+            "taxAmt": 640000,
+            "totalAmt": 7040000,
+            "memo": "유대 제외 196만"
+          },
+          {
+            "id": 12,
+            "vendor": "오케이 퀵(개인용달)",
+            "item": "운임 퀵",
+            "supplyAmt": 1345000,
+            "taxAmt": 134500,
+            "totalAmt": 1479500,
+            "memo": ""
+          },
+          {
+            "id": 13,
+            "vendor": "팔도차량",
+            "item": "통근버스 운행(12인승)",
+            "supplyAmt": 2150000,
+            "taxAmt": 215000,
+            "totalAmt": 2365000,
+            "memo": ""
+          },
+          {
+            "id": 14,
+            "vendor": "SY삼계셀프주유소",
+            "item": "경유 유류대",
+            "supplyAmt": 6138510,
+            "taxAmt": 613851,
+            "totalAmt": 6752361,
+            "memo": ""
+          },
+          {
+            "id": 15,
+            "vendor": "김해고속화물",
+            "item": "운송료",
+            "supplyAmt": 6540000,
+            "taxAmt": 654000,
+            "totalAmt": 7194000,
+            "memo": ""
+          },
+          {
+            "id": 16,
+            "vendor": "(주)아마존카",
+            "item": "차량 35회차 대여료",
+            "supplyAmt": 433800,
+            "taxAmt": 43380,
+            "totalAmt": 477180,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "fees_commissions",
+        "name": "지급수수료",
+        "group": "물류 & 운영 경비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "(주)에스원 밀양",
+            "item": "보안서비스료",
+            "supplyAmt": 250000,
+            "taxAmt": 25000,
+            "totalAmt": 275000,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "㈜대한소방이엔지",
+            "item": "소방시설관리유지 대행",
+            "supplyAmt": 150000,
+            "taxAmt": 15000,
+            "totalAmt": 165000,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "주식회사 경남안전기술단",
+            "item": "안전관리위탁 수수료",
+            "supplyAmt": 520000,
+            "taxAmt": 52000,
+            "totalAmt": 572000,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "주식회사 대일트랜스",
+            "item": "작업료 외",
+            "supplyAmt": 500000,
+            "taxAmt": 50000,
+            "totalAmt": 550000,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "주식회사 안전가스산업",
+            "item": "LPG 가스 공급",
+            "supplyAmt": 336000,
+            "taxAmt": 33600,
+            "totalAmt": 369600,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "주식회사 에프티에이전략연구센터",
+            "item": "원산지발급대행 수수료",
+            "supplyAmt": 250000,
+            "taxAmt": 25000,
+            "totalAmt": 275000,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "부산진세무회계사무소",
+            "item": "기장수수료 및 개인결산조정료",
+            "supplyAmt": 2700000,
+            "taxAmt": 270000,
+            "totalAmt": 2970000,
+            "memo": "기장+결산"
+          },
+          {
+            "id": 8,
+            "vendor": "영진사무기",
+            "item": "복합기 임대료 外",
+            "supplyAmt": 300000,
+            "taxAmt": 30000,
+            "totalAmt": 330000,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "㈜엘지유플러스",
+            "item": "통신 서비스 이용료",
+            "supplyAmt": 85300,
+            "taxAmt": 8530,
+            "totalAmt": 93830,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "노무법인 율곡",
+            "item": "아웃소싱 노무자문 수수료",
+            "supplyAmt": 950000,
+            "taxAmt": 95000,
+            "totalAmt": 1045000,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "대붕엔지니어링 / 대한전기",
+            "item": "전기안전 대행료",
+            "supplyAmt": 1480000,
+            "taxAmt": 148000,
+            "totalAmt": 1628000,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "주식회사 케이티",
+            "item": "일반전화 & 오피스넷 인터넷",
+            "supplyAmt": 108477,
+            "taxAmt": 10847,
+            "totalAmt": 119324,
+            "memo": ""
+          },
+          {
+            "id": 13,
+            "vendor": "(주)에스원 김해",
+            "item": "보안서비스료",
+            "supplyAmt": 410000,
+            "taxAmt": 41000,
+            "totalAmt": 451000,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "financial_interests_cards",
+        "name": "금융비용 (이자/카드)",
+        "group": "물류 & 운영 경비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "주 오륙 대출",
+            "item": "은행 대출이자 합산 (9600, 7501, 0701 등)",
+            "supplyAmt": 28768707,
+            "taxAmt": 0,
+            "totalAmt": 28768707,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "DGB생명 / 마이너스통장",
+            "item": "약정대출 및 마이너스통장 이자",
+            "supplyAmt": 1693354,
+            "taxAmt": 0,
+            "totalAmt": 1693354,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "상승 / B2B어음",
+            "item": "B2B 어음 할인이자 외",
+            "supplyAmt": 5410000,
+            "taxAmt": 0,
+            "totalAmt": 5410000,
+            "memo": "예정"
+          },
+          {
+            "id": 4,
+            "vendor": "화승 R&A",
+            "item": "선급금 상계 이자",
+            "supplyAmt": 833333,
+            "taxAmt": 0,
+            "totalAmt": 833333,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "주 조영산업 대출",
+            "item": "25억 / 3.29억 / 5억 차입금 이자",
+            "supplyAmt": 13524810,
+            "taxAmt": 0,
+            "totalAmt": 13524810,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "조영산업 대출",
+            "item": "2억 / 1억 / 생명사 대출이자",
+            "supplyAmt": 8609720,
+            "taxAmt": 0,
+            "totalAmt": 8609720,
+            "memo": ""
+          },
+          {
+            "id": 7,
+            "vendor": "오륙공사",
+            "item": "노란우산공제 대출이자",
+            "supplyAmt": 44876,
+            "taxAmt": 0,
+            "totalAmt": 44876,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "오륙 BC카드",
+            "item": "법인카드 결제대금",
+            "supplyAmt": 8652036,
+            "taxAmt": 0,
+            "totalAmt": 8652036,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "조영 BC카드",
+            "item": "법인카드 결제대금",
+            "supplyAmt": 12093399,
+            "taxAmt": 0,
+            "totalAmt": 12093399,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "오공 KB카드",
+            "item": "법인카드 결제대금",
+            "supplyAmt": 1282510,
+            "taxAmt": 0,
+            "totalAmt": 1282510,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "최미영 KB카드",
+            "item": "카드 결제대금",
+            "supplyAmt": 12638537,
+            "taxAmt": 0,
+            "totalAmt": 12638537,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "삼성카드",
+            "item": "카드 결제대금",
+            "supplyAmt": 1166745,
+            "taxAmt": 0,
+            "totalAmt": 1166745,
+            "memo": ""
+          },
+          {
+            "id": 13,
+            "vendor": "현대카드",
+            "item": "카드 결제대금",
+            "supplyAmt": 3555328,
+            "taxAmt": 0,
+            "totalAmt": 3555328,
+            "memo": ""
+          },
+          {
+            "id": 14,
+            "vendor": "우리카드",
+            "item": "카드 결제대금",
+            "supplyAmt": 2722191,
+            "taxAmt": 0,
+            "totalAmt": 2722191,
+            "memo": ""
+          },
+          {
+            "id": 15,
+            "vendor": "신한카드",
+            "item": "카드 결제대금",
+            "supplyAmt": 3800000,
+            "taxAmt": 0,
+            "totalAmt": 3800000,
+            "memo": ""
+          },
+          {
+            "id": 16,
+            "vendor": "교보생명 / DGB / 하나",
+            "item": "교보단체보험 및 생명보험료",
+            "supplyAmt": 8783120,
+            "taxAmt": 0,
+            "totalAmt": 8783120,
+            "memo": ""
+          },
+          {
+            "id": 17,
+            "vendor": "중소기업중앙회",
+            "item": "노란우산공제 부금",
+            "supplyAmt": 700000,
+            "taxAmt": 0,
+            "totalAmt": 700000,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "misc_expenses",
+        "name": "기타잡비 / 수수료",
+        "group": "물류 & 운영 경비",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "금융결제원 / 은행",
+            "item": "전자어음 수수료 & SMS 알림",
+            "supplyAmt": 3900,
+            "taxAmt": 0,
+            "totalAmt": 3900,
+            "memo": "세동/화승"
+          },
+          {
+            "id": 2,
+            "vendor": "용진운수",
+            "item": "화물 기사 식대",
+            "supplyAmt": 188900,
+            "taxAmt": 0,
+            "totalAmt": 188900,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "한울",
+            "item": "화물 기사 식대",
+            "supplyAmt": 96900,
+            "taxAmt": 0,
+            "totalAmt": 96900,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "조영1 / 조영2",
+            "item": "화물 기사 식대",
+            "supplyAmt": 343000,
+            "taxAmt": 0,
+            "totalAmt": 343000,
+            "memo": ""
+          }
+        ]
+      }
+    ]
+  }
+}
