@@ -19,6 +19,7 @@ import {
   addTransaction,
   updateTransaction,
   deleteTransaction,
+  clearAllTransactions
 } from "./services/dbService";
 
 export const App = () => {
@@ -102,6 +103,16 @@ export const App = () => {
       setTransactions((prev) => prev.filter((t) => t.id !== id));
     } catch (error) {
       console.error("Delete transaction error:", error);
+    }
+  };
+
+  // Clear All Transactions
+  const handleClearAllTransactions = async () => {
+    try {
+      await clearAllTransactions();
+      setTransactions([]);
+    } catch (error) {
+      console.error("Clear all error:", error);
     }
   };
 
@@ -208,6 +219,7 @@ export const App = () => {
                         setModalOpen(true);
                       }}
                       onOpenExcelModal={() => setExcelModalOpen(true)}
+                      onClearAll={handleClearAllTransactions}
                     />
                   )}
 

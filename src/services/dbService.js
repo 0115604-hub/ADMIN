@@ -11,24 +11,24 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
-import combinedDataset from "../data/combined202607.json";
 
 const COLLECTION_NAME = "transactions";
-const LOCAL_STORAGE_KEY = "admin_pnl_transactions_full_v2";
+const LOCAL_STORAGE_KEY = "admin_pnl_transactions_v4_clean";
 
-export const INITIAL_SAMPLE_DATA = combinedDataset || [];
+// Empty by default as requested by user
+export const INITIAL_SAMPLE_DATA = [];
 
 // Helper: Get local fallback data
 const getLocalData = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_SAMPLE_DATA));
-      return INITIAL_SAMPLE_DATA;
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
+      return [];
     }
     return JSON.parse(data);
   } catch (e) {
-    return INITIAL_SAMPLE_DATA;
+    return [];
   }
 };
 
@@ -136,6 +136,25 @@ export const deleteTransaction = async (id) => {
 
 // Clear All Data
 export const clearAllTransactions = async () => {
-  localStorage.removeItem(LOCAL_STORAGE_KEY);
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    localStorage.removeItem("admin_pnl_transactions_full_v2");
+    localStorage.removeItem("admin_transactions");
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
+
+    // Clear Firestore collection
+    try {
+      const querySnapshot = await getDocs(collection(db, COLLECTION_NAME));
+      const batch = writeBatch(db);
+      querySnapshot.forEach((d) => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+    } catch (e) {
+      console.warn("Firestore batch delete error:", e.message);
+    }
+  } catch (e) {
+    console.error("Clear all error:", e);
+  }
   return true;
 };
