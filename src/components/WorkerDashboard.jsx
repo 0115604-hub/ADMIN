@@ -138,54 +138,57 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Top Banner for Worker: Shows Factory Name, Worker Name, and Official Job Title */}
-      <div className={`rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden ${
+      {/* Compact Minimized Top Banner for Worker */}
+      <div className={`rounded-2xl px-5 py-3.5 text-white shadow-sm border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
         workerPlant === "한림공장"
-          ? "bg-gradient-to-r from-emerald-700 via-teal-800 to-slate-900"
-          : "bg-gradient-to-r from-amber-700 via-orange-800 to-slate-900"
+          ? "bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900"
+          : "bg-gradient-to-r from-amber-800 via-orange-900 to-slate-900"
       }`}>
-        <div className="absolute right-0 top-0 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-xs font-bold">
-              <Factory className="w-3.5 h-3.5" />
-              <span>{workerPlant} • {workerFullName}</span>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-white/10 text-white shrink-0">
+            <Factory className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black tracking-tight">
+                안녕하세요, {workerFullName}님! 🛠️
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px] font-extrabold text-white">
+                {workerPlant}
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              안녕하세요, {workerFullName}님! 🛠️
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-200">
-              {monthTitle} 매출·매입 현황을 확인하고 오늘의 일일업무일지를 작성해 주세요.
+            <p className="text-[11px] text-white/70">
+              {monthTitle} 업무일지 작성 및 현황 확인
             </p>
           </div>
-
-          {/* Special Toggle for 조인주 (일지/요약 ↔ 엑셀 업로더) */}
-          {isInjoo && (
-            <div className="flex items-center bg-black/30 p-1 rounded-2xl border border-white/20 backdrop-blur-md self-start md:self-auto">
-              <button
-                onClick={() => setActiveWorkerTab("summary_log")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-                  activeWorkerTab === "summary_log"
-                    ? "bg-white text-slate-900 shadow-md"
-                    : "text-white/80 hover:text-white"
-                }`}
-              >
-                📋 업무일지 & 현황
-              </button>
-              <button
-                onClick={() => setActiveWorkerTab("uploader")}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  activeWorkerTab === "uploader"
-                    ? "bg-amber-400 text-slate-950 shadow-md"
-                    : "text-amber-300 hover:text-white"
-                }`}
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                <span>엑셀 파일 업로드</span>
-              </button>
-            </div>
-          )}
         </div>
+
+        {/* Special Toggle for 조인주 (일지/요약 ↔ 엑셀 업로더) */}
+        {isInjoo && (
+          <div className="flex items-center bg-black/40 p-1 rounded-xl border border-white/15 backdrop-blur-md self-start sm:self-auto">
+            <button
+              onClick={() => setActiveWorkerTab("summary_log")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeWorkerTab === "summary_log"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-white/80 hover:text-white"
+              }`}
+            >
+              📋 업무일지 & 현황
+            </button>
+            <button
+              onClick={() => setActiveWorkerTab("uploader")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeWorkerTab === "uploader"
+                  ? "bg-amber-400 text-slate-950 shadow-sm"
+                  : "text-amber-300 hover:text-white"
+              }`}
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>엑셀 파일 업로드</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* RENDER INJOO'S UPLOADER IF SELECTED */}

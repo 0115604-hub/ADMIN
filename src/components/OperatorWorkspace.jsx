@@ -139,24 +139,29 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn pb-12">
-      {/* Operator Welcome Banner */}
-      <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden ${
+      {/* Compact Minimized Operator Welcome Banner */}
+      <div className={`rounded-2xl px-5 py-3.5 text-white shadow-sm border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
         plantName === "한림공장"
-          ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700"
-          : "bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700"
+          ? "bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900"
+          : "bg-gradient-to-r from-amber-800 via-orange-900 to-slate-900"
       }`}>
-        <div className="absolute right-0 top-0 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 space-y-2.5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 border border-white/30 text-white text-xs font-bold">
-            <Factory className="w-3.5 h-3.5" />
-            <span>{plantName} • 작업자 전용 엑셀 업데이트 워크스페이스</span>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-white/10 text-white shrink-0">
+            <Factory className="w-4 h-4" />
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-            안녕하세요, {workerName} 작업자님! 🛠️
-          </h2>
-          <p className="text-xs sm:text-sm text-amber-100 max-w-xl">
-            {plantName}에서 작성하신 매입·매출 엑셀 파일(`.xlsx`)을 업로드해 주세요. 시스템이 자동으로 분석하여 최신 실적을 반영합니다.
-          </p>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black tracking-tight">
+                안녕하세요, {workerName} 작업자님! 🛠️
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px] font-extrabold text-white">
+                {plantName}
+              </span>
+            </div>
+            <p className="text-[11px] text-white/70">
+              {plantName} 매입·매출 엑셀 파일(.xlsx) 업로드 워크스페이스
+            </p>
+          </div>
         </div>
       </div>
 
