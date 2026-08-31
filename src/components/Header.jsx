@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   LogOut,
   Calendar,
   Building2,
   UserCheck,
-  ArrowLeft
+  ArrowLeft,
+  QrCode,
+  X
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -12,6 +14,7 @@ import { useMonth } from "../context/MonthContext";
 export const Header = ({ title, activeTab, onBackToSummary }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth } = useMonth();
+  const [showQrModal, setShowQrModal] = useState(false);
 
   const formatMonthShort = (ym) => {
     const parts = ym.split("-");
@@ -109,6 +112,16 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
           })}
         </div>
 
+        {/* QR Code Button */}
+        <button
+          onClick={() => setShowQrModal(true)}
+          title="모바일 접속 QR코드"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 text-slate-600 dark:text-slate-300 hover:text-blue-600 text-xs font-black transition-all shadow-sm active:scale-95"
+        >
+          <QrCode className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <span className="hidden sm:inline">모바일 QR</span>
+        </button>
+
         {/* Logout Button */}
         <button
           onClick={logout}
@@ -119,6 +132,51 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
           <span className="hidden sm:inline">로그아웃</span>
         </button>
       </div>
+
+      {/* QR Code Popup Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center relative animate-scaleUp">
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
+              <QrCode className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">
+              모바일 간편 접속 QR코드
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">
+              스마트폰 카메라로 QR코드를 비추면<br />
+              <strong className="text-blue-600 dark:text-blue-400 font-bold">(주)오륙 생산관리현황</strong>에 즉시 접속됩니다.
+            </p>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-md inline-block mb-4">
+              <img
+                src="/oryuk_app_qr.png"
+                alt="(주)오륙 생산관리현황 모바일 접속 QR코드"
+                className="w-48 h-48 mx-auto object-contain"
+              />
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400 break-all select-all mb-4">
+              https://profit-and-loss-7d09b.web.app
+            </div>
+
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-md shadow-blue-500/20"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
