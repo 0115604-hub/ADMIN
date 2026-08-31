@@ -36,7 +36,7 @@ export const PLANTS = [
       { id: "sam_cy", name: "이창엽", title: "책임", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "7483" },
       { id: "sam_in", name: "양인나", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "양", pin: "4860" },
       { id: "sam_ij", name: "조인주", title: "선임", plant: "삼랑진공장", assignedProcess: "경리업무", role: "OPERATOR", avatar: "조", pin: "3738" },
-      { id: "sam_sg", name: "이상기", title: "책임", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "9992" }
+      { id: "sam_sg", name: "이상기", title: "사원", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "9992" }
     ]
   },
   {
