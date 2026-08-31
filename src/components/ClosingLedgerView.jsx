@@ -60,7 +60,7 @@ const buildDefaultCategories = () => {
 
 // Default empty manual ledger structure matching user's exact table
 const buildDefaultManualLedger = () => ({
-  // 1. 노무비
+  // 1. 노무비 (4개사 x 4개 표준 항목)
   labor: {
     oryuk_reg: 0,
     oryuk_unreg: 0,
@@ -68,12 +68,16 @@ const buildDefaultManualLedger = () => ({
     oryuk_expense: 0,
     ogong_reg: 0,
     ogong_unreg: 0,
+    ogong_foreign: 0,
+    ogong_expense: 0,
     joyoung_corp_reg: 0,
     joyoung_corp_unreg: 0,
     joyoung_corp_foreign: 0,
     joyoung_corp_expense: 0,
     joyoung_ind_reg: 0,
-    joyoung_ind_unreg: 0
+    joyoung_ind_unreg: 0,
+    joyoung_ind_foreign: 0,
+    joyoung_ind_expense: 0
   },
   // 2. 대출이자
   loanInterest: {
@@ -243,9 +247,9 @@ export const ClosingLedgerView = () => {
   const laborSubtotals = useMemo(() => {
     const l = manualLedger.labor || {};
     const oryuk = (Number(l.oryuk_reg) || 0) + (Number(l.oryuk_unreg) || 0) + (Number(l.oryuk_foreign) || 0) + (Number(l.oryuk_expense) || 0);
-    const ogong = (Number(l.ogong_reg) || 0) + (Number(l.ogong_unreg) || 0);
+    const ogong = (Number(l.ogong_reg) || 0) + (Number(l.ogong_unreg) || 0) + (Number(l.ogong_foreign) || 0) + (Number(l.ogong_expense) || 0);
     const joyoungCorp = (Number(l.joyoung_corp_reg) || 0) + (Number(l.joyoung_corp_unreg) || 0) + (Number(l.joyoung_corp_foreign) || 0) + (Number(l.joyoung_corp_expense) || 0);
-    const joyoungInd = (Number(l.joyoung_ind_reg) || 0) + (Number(l.joyoung_ind_unreg) || 0);
+    const joyoungInd = (Number(l.joyoung_ind_reg) || 0) + (Number(l.joyoung_ind_unreg) || 0) + (Number(l.joyoung_ind_foreign) || 0) + (Number(l.joyoung_ind_expense) || 0);
     return { oryuk, ogong, joyoungCorp, joyoungInd, total: oryuk + ogong + joyoungCorp + joyoungInd };
   }, [manualLedger.labor]);
 
@@ -1109,22 +1113,25 @@ export const ClosingLedgerView = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {/* 1. 노무비 Section */}
+                {/* 1. 노무비 Section (4개사 x 4개 표준 항목 = 총 16줄) */}
                 <tr className="bg-slate-50/70 dark:bg-slate-800/30">
-                  <td rowSpan={14} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <td rowSpan={16} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                     <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
                       <UserCheck className="w-4 h-4" />
                       <span>노무비</span>
                     </div>
                   </td>
+
+                  {/* (주)오륙 */}
                   <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 오륙</td>
                   <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록 (정규직 급여)</td>
                   <td className="py-1 px-4 text-right">
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.oryuk_reg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "oryuk_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                   <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
@@ -1137,8 +1144,9 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.oryuk_unreg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "oryuk_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
@@ -1148,8 +1156,9 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.oryuk_foreign || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "oryuk_foreign", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
@@ -1159,25 +1168,27 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.oryuk_expense || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "oryuk_expense", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
 
                 {/* 오륙공사 */}
                 <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">오륙공사</td>
+                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">오륙공사</td>
                   <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록</td>
                   <td className="py-1 px-4 text-right">
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.ogong_reg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "ogong_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
+                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
                     {formatAmount(laborSubtotals.ogong)}
                   </td>
                 </tr>
@@ -1187,8 +1198,33 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.ogong_unreg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "ogong_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">외국인 출국만기보험</td>
+                  <td className="py-1 px-4 text-right">
+                    <input
+                      type="text"
+                      value={Number(manualLedger.labor?.ogong_foreign || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleManualLedgerChange("labor", "ogong_foreign", e.target.value)}
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지출결의서</td>
+                  <td className="py-1 px-4 text-right">
+                    <input
+                      type="text"
+                      value={Number(manualLedger.labor?.ogong_expense || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleManualLedgerChange("labor", "ogong_expense", e.target.value)}
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
@@ -1201,8 +1237,9 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.joyoung_corp_reg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                   <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
@@ -1215,8 +1252,9 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.joyoung_corp_unreg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
@@ -1226,8 +1264,9 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.joyoung_corp_foreign || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_foreign", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
@@ -1237,25 +1276,27 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.joyoung_corp_expense || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_expense", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
 
                 {/* 조영산업 */}
                 <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">조영산업</td>
+                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">조영산업</td>
                   <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록</td>
                   <td className="py-1 px-4 text-right">
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.joyoung_ind_reg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
+                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
                     {formatAmount(laborSubtotals.joyoungInd)}
                   </td>
                 </tr>
@@ -1265,15 +1306,40 @@ export const ClosingLedgerView = () => {
                     <input
                       type="text"
                       value={Number(manualLedger.labor?.joyoung_ind_unreg || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">외국인 출국만기보험</td>
+                  <td className="py-1 px-4 text-right">
+                    <input
+                      type="text"
+                      value={Number(manualLedger.labor?.joyoung_ind_foreign || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_foreign", e.target.value)}
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지출결의서</td>
+                  <td className="py-1 px-4 text-right">
+                    <input
+                      type="text"
+                      value={Number(manualLedger.labor?.joyoung_ind_expense || 0).toLocaleString()}
+                      onFocus={(e) => e.target.select()}
+                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_expense", e.target.value)}
+                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
                     />
                   </td>
                 </tr>
 
                 {/* 노무비 합계 Row */}
                 <tr className="bg-blue-50 dark:bg-blue-950/40 font-black text-blue-800 dark:text-blue-300 border-t-2 border-blue-200">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 노무비 총합계 (4개사 합산)</td>
+                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 노무비 총합계 (4개사 16개 항목 전체 합산)</td>
                   <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(laborSubtotals.total)}</td>
                   <td className="py-2.5 px-4 text-right text-xs">전사 노무비 마감</td>
                 </tr>
