@@ -594,47 +594,6 @@ export const ClosingLedgerView = () => {
 
   return (
     <div className="space-y-6 animate-fadeIn pb-24">
-      {/* Top Header Bar */}
-      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-              {monthTitle}
-            </span>
-            <h2 className="text-xl font-black text-slate-900 dark:text-white">
-              매입DATA 관리
-            </h2>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            홈택스 매입세금계산서 엑셀 파일을 일괄 드래그 업로드하면 16대 계정과목으로 자동 분류 및 집계됩니다.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 self-end md:self-center">
-          <button
-            onClick={handleResetMonth}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-sm"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>초기화</span>
-          </button>
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-600" />
-            <span>엑셀 다운로드</span>
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>매입DATA 저장</span>
-          </button>
-        </div>
-      </div>
-
       {saveSuccessMessage && (
         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-black flex items-center gap-2 animate-fadeIn">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -643,36 +602,60 @@ export const ClosingLedgerView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 1: 4~6 MULTI-FILE DRAG & DROP UPLOAD ZONE */}
+      {/* SECTION 1: 매입세금계산서 일괄업로드 ZONE */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
               <UploadCloud className="w-5 h-5 text-blue-600" />
-              <span>매입세금계산서 일괄 업로드 (4~6개 드래그 앤 드롭)</span>
+              <span>매입세금계산서 일괄업로드</span>
             </h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              오륙, 조영산업, 오륙공사, 조영 등 4~6개의 매입전자세금계산서 엑셀 파일을 한번에 드래그하여 업로드하세요.
+              홈택스 매입전자세금계산서 엑셀 파일을 드래그하여 업로드하세요.
             </p>
           </div>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessing}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-200 dark:border-blue-800 transition-all shrink-0"
-          >
-            <Files className="w-4 h-4" />
-            <span>파일 다중 선택</span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".xlsx,.xls,.csv"
-            onChange={(e) => handleBatchFiles(e.target.files)}
-            className="hidden"
-          />
+          <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
+            <button
+              onClick={handleResetMonth}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-sm"
+              title="현재 월 데이터 초기화"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>초기화</span>
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-sm"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span>엑셀 다운로드</span>
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-200 dark:border-blue-800 transition-all shrink-0"
+            >
+              <Files className="w-3.5 h-3.5" />
+              <span>파일 선택</span>
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all shrink-0"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>저장</span>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".xlsx,.xls,.csv"
+              onChange={(e) => handleBatchFiles(e.target.files)}
+              className="hidden"
+            />
+          </div>
         </div>
 
         {/* Drag and Drop Zone */}
@@ -696,15 +679,15 @@ export const ClosingLedgerView = () => {
             </div>
           ) : (
             <>
-              <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
-                <UploadCloud className="w-7 h-7" />
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
+                <UploadCloud className="w-6 h-6" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
-                  4~6개의 매입세금계산서 엑셀 파일을 이곳에 드래그하여 올려놓으세요
+                  매입세금계산서 엑셀 파일을 이곳에 드래그하여 올려놓으세요
                 </p>
                 <p className="text-xs text-slate-400">
-                  (주)오륙, (주)조영산업, 오륙공사, 조영산업 홈택스 파일 동시 지원 (.xlsx, .xls)
+                  홈택스 매입전자세금계산서 파일 지원 (.xlsx, .xls)
                 </p>
               </div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-xs">
