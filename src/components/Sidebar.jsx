@@ -28,7 +28,6 @@ export const ADMIN_TABS = [
   { id: "closing_ledger", label: "매입DATA", icon: Calculator },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers },
   { id: "statement", label: "월간 손익계산서", icon: FileText },
-  { id: "operator_workspace", label: "엑셀 데이터 업데이트", icon: UploadCloud },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];
 
