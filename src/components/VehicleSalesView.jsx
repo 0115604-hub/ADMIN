@@ -77,81 +77,80 @@ export const VehicleSalesView = () => {
 
   return (
     <div className="space-y-5 animate-fadeIn pb-12">
-      {/* 4 Summary KPI Cards with MoM (+- %) Indicators */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Sales & MoM % */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+      {/* 맨 상단: 총매출액 및 전월대비 매출증감액 (가독성 극대화 2분할 카드) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 1. 당월 총매출액 */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{monthTitle} 총 매출액</span>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center font-bold">
+                <Car className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                {monthTitle} 총 매출액
+              </span>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              차종 {vehicleSales.length}개군
+            </span>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl sm:text-4xl font-black tracking-tight text-blue-600 dark:text-blue-400 font-mono">
+                {formatAmount(totalSales)}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
+              <span>전월 ({prevMonthTitle}) 실적:</span>
+              <strong className="text-slate-600 dark:text-slate-300 font-mono">{formatAmount(prevTotalSales)}</strong>
+            </p>
+          </div>
+        </div>
+
+        {/* 2. 전월대비 매출 증감액 & 증감률 */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold ${
+                totalSalesDiff >= 0
+                  ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600"
+                  : "bg-rose-50 dark:bg-rose-950/50 text-rose-600"
+              }`}>
+                {totalSalesDiff >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              </div>
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                전월 대비 매출 증감액
+              </span>
+            </div>
+
             {totalSalesMoMRate !== null && (
-              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-black ${
+              <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black ${
                 Number(totalSalesMoMRate) >= 0
-                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
-                  : "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400"
+                  ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20"
+                  : "bg-rose-500 text-white shadow-sm shadow-rose-500/20"
               }`}>
-                {Number(totalSalesMoMRate) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {Number(totalSalesMoMRate) >= 0 ? `+${totalSalesMoMRate}%` : `${totalSalesMoMRate}%`}
+                {Number(totalSalesMoMRate) >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                <span>{Number(totalSalesMoMRate) >= 0 ? `+${totalSalesMoMRate}%` : `${totalSalesMoMRate}%`}</span>
               </span>
             )}
           </div>
-          <div className="mt-3">
-            <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
-              {formatAmount(totalSales)}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              전월({prevMonthTitle}): {formatAmount(prevTotalSales)}
-            </p>
-          </div>
-        </div>
 
-        {/* Card 2: Total Qty & MoM % */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총 출하 수량</span>
-            {totalQtyMoMRate !== null && (
-              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-black ${
-                Number(totalQtyMoMRate) >= 0
-                  ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400"
-                  : "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400"
+          <div className="mt-4">
+            <div className="flex items-baseline gap-2">
+              <span className={`text-3xl sm:text-4xl font-black tracking-tight font-mono ${
+                totalSalesDiff >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
               }`}>
-                {Number(totalQtyMoMRate) >= 0 ? `+${totalQtyMoMRate}%` : `${totalQtyMoMRate}%`}
+                {totalSalesDiff >= 0 ? `+${formatAmount(totalSalesDiff)}` : `-${formatAmount(Math.abs(totalSalesDiff))}`}
               </span>
-            )}
-          </div>
-          <div className="mt-3">
-            <p className="text-2xl font-black text-slate-900 dark:text-white">
-              {totalQty.toLocaleString()} <span className="text-sm font-normal text-slate-400">개</span>
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              {vehicleSales.length}개 차종군 • {salesSummary.itemCount}개 세부 부품
-            </p>
-          </div>
-        </div>
-
-        {/* Card 3: Top Vehicle */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출 1위 차종</span>
-          <div className="mt-3">
-            <p className="text-xl font-extrabold text-slate-900 dark:text-white truncate">
-              {vehicleSales[0]?.vehicleGroup || "-"}
-            </p>
-            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-              {formatAmount(vehicleSales[0]?.totalAmount || 0)} <span className="text-[11px] font-normal text-slate-400">({vehicleSales[0]?.share || 0}%)</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Card 4: MoM Net Difference */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">전월 대비 매출 증감액</span>
-          <div className="mt-3">
-            <p className={`text-xl sm:text-2xl font-black ${
-              totalSalesDiff >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-            }`}>
-              {totalSalesDiff >= 0 ? `+${formatAmount(totalSalesDiff)}` : `-${formatAmount(Math.abs(totalSalesDiff))}`}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              {totalSalesMoMRate !== null ? (Number(totalSalesMoMRate) >= 0 ? `+${totalSalesMoMRate}% 증가` : `${totalSalesMoMRate}% 감소`) : "비교 데이터 없음"}
+            </div>
+            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1.5">
+              <span>증감 상태:</span>
+              <strong className={totalSalesDiff >= 0 ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
+                {totalSalesDiff >= 0
+                  ? `전월대비 ${formatAmount(totalSalesDiff)} 매출 신장 (+${totalSalesMoMRate}%)`
+                  : `전월대비 ${formatAmount(Math.abs(totalSalesDiff))} 매출 감소 (${totalSalesMoMRate}%)`}
+              </strong>
             </p>
           </div>
         </div>
