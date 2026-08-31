@@ -27,7 +27,7 @@ export const ADMIN_TABS = [
   { id: "closing_ledger", label: "월간 결산 수치 입력", icon: Calculator },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers },
   { id: "statement", label: "월간 손익계산서", icon: FileText },
-  { id: "worker_dashboard", label: "업무일지 & 현황", icon: ClipboardList, color: "blue" },
+  { id: "worker_dashboard", label: "일일생산정보현황", icon: ClipboardList, color: "blue" },
   { id: "extrusion_downtime", label: "압출동 주간 비가동내역", icon: Wrench, color: "amber" },
   { id: "daily_quality", label: "일일 품질현황", icon: ShieldCheck, color: "indigo" },
   { id: "overtime_status", label: "특근현황", icon: Clock, color: "purple" },
@@ -43,7 +43,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const operatorTabs = [
     {
       id: "worker_dashboard",
-      label: "업무일지 & 현황",
+      label: "일일생산정보현황",
       icon: ClipboardList,
       color: "blue",
       activeClass: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-1 ring-blue-500/30",
