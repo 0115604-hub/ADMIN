@@ -26,7 +26,8 @@ import {
   BarChart2,
   ArrowRight,
   Building2,
-  CheckCheck
+  CheckCheck,
+  ChevronDown
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -44,9 +45,9 @@ const EXTRUSION_SUMMARY = [
 
 // Quality 4 Core Items Summary (Sorted by Inspection Volume)
 const QUALITY_SUMMARY = [
-  { id: "ja", name: "JA G-RUN", inspectQty: 57596, defectQty: 732, defectRate: 1.27, isMax: false, reason: "수포 (318건), 둔_어퍼" },
+  { id: "ja", name: "JA G-RUN", inspectQty: 57596, defectQty: 732, defectRate: 1.27, isMax: false, reason: "수포 (318건)" },
   { id: "nx4a", name: "NX4a G-RUN", inspectQty: 50400, defectQty: 302, defectRate: 0.60, isMax: false, reason: "스코치 (148건)" },
-  { id: "nx4", name: "NX4 G-RUN", inspectQty: 25880, defectQty: 34, defectRate: 0.13, isMax: false, reason: "사상불량, 삽입불량" },
+  { id: "nx4", name: "NX4 G-RUN", inspectQty: 25880, defectQty: 34, defectRate: 0.13, isMax: false, reason: "사상불량" },
   { id: "hr", name: "HR G-RUN", inspectQty: 20858, defectQty: 270, defectRate: 1.29, isMax: true, reason: "직_어퍼떨어짐 (218건)" }
 ];
 
@@ -63,13 +64,13 @@ const SAMRANGJIN_OVERTIME = {
     { role: "대표", name: "권태형", status: "완료" }
   ],
   lines: [
-    { name: "JA 가공", count: 9 },
-    { name: "NX4 가공", count: 8 },
-    { name: "압출 4LINE", count: 4 },
-    { name: "코팅/공통", count: 3 },
-    { name: "DT HOOD/기타", count: 8 }
+    { name: "JA", count: 9 },
+    { name: "NX4", count: 8 },
+    { name: "압출", count: 4 },
+    { name: "코팅", count: 3 },
+    { name: "DT", count: 8 }
   ],
-  reason: "PCM 1호/3호/TPE 형교환 생산, DT HOOD 코팅 납품 대응, NX4a 수출창고 입고"
+  reason: "PCM 1/3호/TPE 형교환 생산, DT HOOD 코팅 납품 대응, NX4a 수출창고 입고"
 };
 
 const HANLIM_OVERTIME = {
@@ -84,10 +85,10 @@ const HANLIM_OVERTIME = {
     { role: "대표", name: "권태형", status: "완료" }
   ],
   lines: [
-    { name: "JK1 조인트/후가공", count: 4 },
-    { name: "CHANNEL 밴딩/가공", count: 3 },
-    { name: "CE1/DT 후가공", count: 3 },
-    { name: "공장 총괄지원", count: 2 }
+    { name: "JK1", count: 4 },
+    { name: "CHANNEL", count: 3 },
+    { name: "CE1/DT", count: 3 },
+    { name: "관리", count: 2 }
   ],
   reason: "CHANNEL 밴딩/가공 지원, JK1 조인트 및 후가공 납품 대응, PU KD 재고 확보"
 };
@@ -104,15 +105,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isInjoo = currentProfile?.name === "조인주";
 
   const [activeWorkerTab, setActiveWorkerTab] = useState("summary_log"); // 'summary_log' | 'uploader'
-
-  // Work Logs State from shared service
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterPlant, setFilterPlant] = useState(workerPlant || "all");
+  const [filterPlant, setFilterPlant] = useState("all");
 
-  // Form State for New Work Log
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     plant: workerPlant,
@@ -160,10 +157,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       shift: formData.shift,
       line: formData.line,
       workContent: formData.workContent,
-      issues: formData.issues || "특이사항 없음",
+      issues: formData.issues || "-",
       status: "완료",
       createdAt: new Date().toLocaleString("ko-KR", {
-        year: "numeric",
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
@@ -199,58 +195,59 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       writerWithTitle.includes(searchTerm) ||
       log.workContent.includes(searchTerm) ||
       log.line.includes(searchTerm) ||
-      log.issues.includes(searchTerm);
+      (log.issues && log.issues.includes(searchTerm));
     const matchPlant = filterPlant === "all" || log.plant === filterPlant;
     return matchSearch && matchPlant;
   });
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto px-2 sm:px-0">
       {/* ========================================================================= */}
-      {/* TOP HEADER & WORKER GREETING BAR */}
+      {/* TOP HEADER: MOBILE-OPTIMIZED GREETING BAR */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-2xl ${
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className={`p-2 sm:p-2.5 rounded-xl sm:rounded-2xl shrink-0 ${
             workerPlant === "한림공장"
               ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
               : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
           }`}>
-            <Factory className="w-5 h-5" />
+            <Factory className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-slate-900 dark:text-white">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
                 {workerFullName} {officialTitle}
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-black">
+              <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] sm:text-xs font-black">
                 {assignedProcess}
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black">
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] sm:text-xs font-black">
                 {workerPlant}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              기준월: <strong>{monthTitle}</strong> | 전사 통합 생산·품질·원가 종합 요약 대시보드
+            <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+              기준: <strong>{monthTitle}</strong> | 전사 통합 생산·품질·원가 요약 대시보드
             </p>
           </div>
         </div>
 
-        {/* Quick Action Button */}
-        <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
           {isInjoo && (
             <button
               onClick={() => setActiveWorkerTab(activeWorkerTab === "uploader" ? "summary_log" : "uploader")}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-sm transition-all"
+              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-sm transition-all"
             >
               <UploadCloud className="w-3.5 h-3.5" />
-              <span>{activeWorkerTab === "uploader" ? "종합 현황 보기" : "엑셀 파일 업로드"}</span>
+              <span className="hidden sm:inline">{activeWorkerTab === "uploader" ? "종합 현황" : "엑셀 업로드"}</span>
+              <span className="sm:hidden">업로드</span>
             </button>
           )}
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all"
+            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>업무일지 작성</span>
@@ -261,128 +258,107 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {isInjoo && activeWorkerTab === "uploader" ? (
         <OperatorWorkspace onBulkUpload={onBulkUpload} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* ========================================================================= */}
-          {/* 1. ⭐ [1위치: 최상단] 매입매출현황 요약 */}
+          {/* 1. ⭐ [1위치] 매입매출현황 요약 (모바일 최적화 3-KPI) */}
           {/* ========================================================================= */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600">
-                  <DollarSign className="w-4 h-4" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600">
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
                 <div>
-                  <h2 className="font-black text-base text-slate-900 dark:text-white">
+                  <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                     1. {monthTitle} 매입매출현황 요약
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    전사 총 매출실적 및 원부자재 매입원가 마스터 현황
-                  </p>
                 </div>
               </div>
 
               {onNavigateTab && (
                 <button
                   onClick={() => onNavigateTab("vehicle_sales")}
-                  className="flex items-center gap-1 text-xs font-black text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors"
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-black text-blue-600 hover:text-blue-700 dark:text-blue-400"
                 >
-                  <span>매출 상세 분석</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>상세 분석</span>
+                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* 3 Core KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* 총매출액 */}
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매출액</span>
-                  <ArrowUpRight className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="mt-3">
-                  <p className="text-2xl font-black text-slate-900 dark:text-white">
+            {/* 3 Core KPI Cards (Mobile Stacking) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4">
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center sm:flex-col justify-between sm:items-start">
+                <div>
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-400 block">총매출액</span>
+                  <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white mt-0.5 sm:mt-2">
                     {formatAmount(totalSales)}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1 font-semibold">
-                    자동차 부품 23개 차종 납품 실적
-                  </p>
                 </div>
+                <span className="text-[10px] sm:text-[11px] text-blue-600 font-bold bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md sm:mt-2">
+                  23개 차종 실적
+                </span>
               </div>
 
-              {/* 총매입액 */}
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액 (원가)</span>
-                  <Layers className="w-4 h-4 text-rose-600" />
-                </div>
-                <div className="mt-3">
-                  <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center sm:flex-col justify-between sm:items-start">
+                <div>
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-400 block">총매입액 (원가)</span>
+                  <p className="text-lg sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-0.5 sm:mt-2">
                     {formatAmount(totalPurchases)}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1 font-semibold">
-                    원부자재 및 외주가공 매입액
-                  </p>
                 </div>
+                <span className="text-[10px] sm:text-[11px] text-rose-600 font-bold bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md sm:mt-2">
+                  원부자재 및 외주
+                </span>
               </div>
 
-              {/* 매출대비 매입액 비율 */}
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비 매입원가율</span>
-                  <TrendingUp className="w-4 h-4 text-indigo-600" />
-                </div>
-                <div className="mt-3">
-                  <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center sm:flex-col justify-between sm:items-start">
+                <div>
+                  <span className="text-[11px] sm:text-xs font-bold text-slate-400 block">매출대비 매입원가율</span>
+                  <p className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-0.5 sm:mt-2">
                     {purchaseRatio}%
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1 font-semibold">
-                    영업마진율: {(100 - parseFloat(purchaseRatio)).toFixed(1)}% 달성
-                  </p>
                 </div>
+                <span className="text-[10px] sm:text-[11px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md sm:mt-2">
+                  마진율 {(100 - parseFloat(purchaseRatio)).toFixed(1)}%
+                </span>
               </div>
             </div>
           </div>
 
           {/* ========================================================================= */}
-          {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 */}
+          {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 (모바일 2x2 그리드) */}
           {/* ========================================================================= */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600">
-                  <Wrench className="w-4 h-4" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600">
+                  <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
                 <div>
-                  <h2 className="font-black text-base text-slate-900 dark:text-white">
+                  <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                     2. 압출동 주간 비가동내역 요약
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    8월 4주차 압출 4대 라인 비가동 시간 및 가동률 현황
-                  </p>
                 </div>
               </div>
 
               {onNavigateTab && (
                 <button
                   onClick={() => onNavigateTab("extrusion_downtime")}
-                  className="flex items-center gap-1 text-xs font-black text-amber-600 hover:text-amber-700 dark:text-amber-400 transition-colors"
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-black text-amber-600 hover:text-amber-700 dark:text-amber-400"
                 >
-                  <span>비가동 전체 매트릭스</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>비가동 매트릭스</span>
+                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* 8월 누적 스트립 */}
-            <div className="bg-slate-900 text-white rounded-2xl px-4 py-2.5 border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 font-bold shrink-0">
-                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                <span className="text-amber-400">8월 설비별 누적 비가동:</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* 8월 누적 바 (모바일 가로 정렬) */}
+            <div className="bg-slate-900 text-white rounded-xl sm:rounded-2xl p-2.5 sm:px-4 sm:py-2.5 border border-slate-800 flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+              <span className="text-amber-400 font-bold">8월 누적:</span>
+              <div className="flex flex-wrap gap-1.5">
                 {EXTRUSION_SUMMARY.map((ex) => (
-                  <span key={ex.line} className="px-2.5 py-0.5 rounded-lg bg-slate-800 text-[11px] font-bold">
+                  <span key={ex.line} className="px-2 py-0.5 rounded bg-slate-800 text-[10px] font-bold">
                     <span className="text-slate-300">{ex.line}:</span> <strong className="text-rose-400">{ex.monthCumulative}분</strong>
                   </span>
                 ))}
@@ -390,33 +366,33 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
 
             {/* 4 Line Weekly Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               {EXTRUSION_SUMMARY.map((ex) => (
                 <div
                   key={ex.line}
-                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between"
+                  className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-black text-sm text-slate-900 dark:text-white">
+                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                       {ex.line}
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-black">
+                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[9px] sm:text-[10px] font-black">
                       {ex.reason}
                     </span>
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-baseline justify-between">
+                  <div className="mt-2 sm:mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-baseline justify-between">
                     <div>
-                      <span className="text-xl font-black text-rose-600 dark:text-rose-400">
+                      <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
                         {ex.minutes}분
                       </span>
-                      <span className="text-[10px] text-slate-400 block font-semibold">주간 비가동</span>
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 block font-medium">주간손실</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                      <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400">
                         {ex.opRatio}%
                       </span>
-                      <span className="text-[10px] text-slate-400 block font-semibold">가동률</span>
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 block font-medium">가동률</span>
                     </div>
                   </div>
                 </div>
@@ -425,78 +401,70 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 3. ⭐ [3위치] 일일품질현황 요약 */}
+          {/* 3. ⭐ [3위치] 일일품질현황 요약 (모바일 2x2 그리드) */}
           {/* ========================================================================= */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600">
-                  <CheckSquare className="w-4 h-4" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600">
+                  <CheckSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
                 <div>
-                  <h2 className="font-black text-base text-slate-900 dark:text-white">
-                    3. 일일품질현황 요약 (검사량순 정렬)
+                  <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    3. 일일품질현황 요약
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    4대 핵심 아이템 검사수량 및 불량률(%) 실시간 분석
-                  </p>
                 </div>
               </div>
 
               {onNavigateTab && (
                 <button
                   onClick={() => onNavigateTab("daily_quality")}
-                  className="flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 transition-colors"
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-black text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
                 >
-                  <span>품질현황 전체 분석</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>품질 상세</span>
+                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* 4 Core Item Quality Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* 4 Core Item Quality Cards (2x2 on Mobile) */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
               {QUALITY_SUMMARY.map((q) => (
                 <div
                   key={q.id}
-                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                  className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between ${
                     q.isMax
-                      ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/30"
+                      ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-500 ring-1 ring-rose-500/30"
                       : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800"
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`font-black text-sm ${q.isMax ? "text-rose-950 dark:text-rose-100" : "text-slate-900 dark:text-white"}`}>
+                    <span className={`font-black text-xs sm:text-sm truncate ${q.isMax ? "text-rose-950 dark:text-rose-100" : "text-slate-900 dark:text-white"}`}>
                       {q.name}
                     </span>
                     {q.isMax ? (
-                      <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3" />
-                        <span>최고 불량</span>
-                      </span>
-                    ) : q.defectRate <= 0.70 ? (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-black">
-                        목표달성
+                      <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white text-[9px] font-black shrink-0">
+                        경고 🚨
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-[10px] font-black">
-                        주의관리
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[9px] font-black shrink-0">
+                        달성
                       </span>
                     )}
                   </div>
 
-                  <div className="mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1.5">
-                    <div className="flex items-baseline justify-between">
-                      <span className={`text-xl font-black ${q.isMax ? "text-rose-600 dark:text-rose-400" : q.defectRate <= 0.70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                  <div className="mt-2 sm:mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-baseline justify-between">
+                    <div>
+                      <span className={`text-base sm:text-xl font-black ${q.isMax ? "text-rose-600 dark:text-rose-400" : q.defectRate <= 0.70 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
                         {q.defectRate}%
                       </span>
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                        불량 {q.defectQty.toLocaleString()} EA
-                      </span>
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 block font-medium">불량률</span>
                     </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                      <span>검사량: <strong>{q.inspectQty.toLocaleString()} EA</strong></span>
+                    <div className="text-right">
+                      <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">
+                        {q.inspectQty.toLocaleString()}
+                      </span>
+                      <span className="text-[9px] sm:text-[10px] text-slate-400 block font-medium">검사(EA)</span>
                     </div>
                   </div>
                 </div>
@@ -505,216 +473,194 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 4. ⭐ [4위치] 특근현황 요약 (삼랑진공장 & 한림공장 2개 분할) */}
+          {/* 4. ⭐ [4위치] 특근현황 요약 (삼랑진공장 & 한림공장) */}
           {/* ========================================================================= */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600">
-                  <Clock className="w-4 h-4" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between pb-2 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-purple-50 dark:bg-purple-950/50 text-purple-600">
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
                 <div>
-                  <h2 className="font-black text-base text-slate-900 dark:text-white">
-                    4. 공장별 특근현황 요약 (삼랑진공장 • 한림공장)
+                  <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    4. 공장별 특근현황 요약
                   </h2>
-                  <p className="text-xs text-slate-400">
-                    2026년 8월 29일 (토) • 전사 총 44명 투입 (삼랑진 32명 / 한림 12명)
-                  </p>
                 </div>
               </div>
 
               {onNavigateTab && (
                 <button
                   onClick={() => onNavigateTab("overtime_status")}
-                  className="flex items-center gap-1 text-xs font-black text-purple-600 hover:text-purple-700 dark:text-purple-400 transition-colors"
+                  className="flex items-center gap-1 text-[11px] sm:text-xs font-black text-purple-600 hover:text-purple-700 dark:text-purple-400"
                 >
-                  <span>특근보고서 전체</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span>특근보고서</span>
+                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* 2-Plant Side-by-Side Split Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Plant 1: 삼랑진공장 특근 */}
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-3.5">
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/60 dark:border-slate-700/60">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">
+            {/* 2 Plant Split Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+              {/* 삼랑진공장 */}
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-2.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[11px] font-black">
                       삼랑진공장
                     </span>
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      작성: {SAMRANGJIN_OVERTIME.author}
-                    </span>
+                    <span className="text-[11px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
                   </div>
-                  <div className="text-base font-black text-purple-600 dark:text-purple-400">
+                  <span className="text-sm font-black text-purple-600 dark:text-purple-400">
                     {SAMRANGJIN_OVERTIME.headcount}명 투입
-                  </div>
+                  </span>
                 </div>
 
-                {/* Approvals */}
-                <div className="grid grid-cols-4 gap-1 text-center">
-                  {SAMRANGJIN_OVERTIME.approval.map((ap) => (
-                    <div key={ap.role} className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px]">
-                      <span className="text-slate-400 block font-bold">{ap.role}</span>
-                      <strong className="text-slate-900 dark:text-white font-black">{ap.name}</strong>
-                      <span className="text-emerald-600 font-extrabold block text-[9px]">●완료</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Line Breakdown Pills */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1">
                   {SAMRANGJIN_OVERTIME.lines.map((ln) => (
-                    <span key={ln.name} className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    <span key={ln.name} className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[10px] font-bold text-slate-700 dark:text-slate-300">
                       {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
                     </span>
                   ))}
                 </div>
 
-                {/* Reason */}
-                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <strong className="text-slate-900 dark:text-white">사유: </strong>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
                   {SAMRANGJIN_OVERTIME.reason}
-                </div>
+                </p>
               </div>
 
-              {/* Plant 2: 한림공장 특근 */}
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-3.5">
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/60 dark:border-slate-700/60">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-black">
+              {/* 한림공장 */}
+              <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-2.5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[11px] font-black">
                       한림공장
                     </span>
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      작성: {HANLIM_OVERTIME.author}
-                    </span>
+                    <span className="text-[11px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
                   </div>
-                  <div className="text-base font-black text-purple-600 dark:text-purple-400">
+                  <span className="text-sm font-black text-purple-600 dark:text-purple-400">
                     {HANLIM_OVERTIME.headcount}명 투입
-                  </div>
+                  </span>
                 </div>
 
-                {/* Approvals */}
-                <div className="grid grid-cols-4 gap-1 text-center">
-                  {HANLIM_OVERTIME.approval.map((ap) => (
-                    <div key={ap.role} className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px]">
-                      <span className="text-slate-400 block font-bold">{ap.role}</span>
-                      <strong className="text-slate-900 dark:text-white font-black">{ap.name}</strong>
-                      <span className="text-emerald-600 font-extrabold block text-[9px]">●완료</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Line Breakdown Pills */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1">
                   {HANLIM_OVERTIME.lines.map((ln) => (
-                    <span key={ln.name} className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    <span key={ln.name} className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[10px] font-bold text-slate-700 dark:text-slate-300">
                       {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
                     </span>
                   ))}
                 </div>
 
-                {/* Reason */}
-                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <strong className="text-slate-900 dark:text-white">사유: </strong>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 truncate">
                   {HANLIM_OVERTIME.reason}
-                </div>
+                </p>
               </div>
             </div>
           </div>
 
           {/* ========================================================================= */}
-          {/* 5. ⭐ [5위치] 공장별 일일업무일지 공유 게시판 */}
+          {/* 5. ⭐ [5위치] 일일업무일지 현황 (한줄 표시 • 주석 삭제 • 깔끔한 단일 행 리스트) */}
           {/* ========================================================================= */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-              <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  <span>공장별 일일업무일지 게시판</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  각 공장 작업자들의 일일 생산 실적 및 점검 특이사항 공유
-                </p>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600">
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    5. 일일업무일지 현황
+                  </h3>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              <div className="flex items-center gap-2 self-end sm:self-auto">
                 <select
                   value={filterPlant}
                   onChange={(e) => setFilterPlant(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
+                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200"
                 >
-                  <option value="all">전체 공장 ({workLogs.length}건)</option>
-                  <option value="삼랑진공장">삼랑진공장</option>
-                  <option value="한림공장">한림공장</option>
+                  <option value="all">전체 ({workLogs.length})</option>
+                  <option value="삼랑진공장">삼랑진</option>
+                  <option value="한림공장">한림</option>
                 </select>
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>작성</span>
+                  <span>일지작성</span>
                 </button>
               </div>
             </div>
 
-            {/* Work Logs Feed */}
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredLogs.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs font-bold">
-                  등록된 일일업무일지가 없습니다.
-                </div>
-              ) : (
-                filteredLogs.map((log) => (
-                  <div key={log.id} className="py-3.5 space-y-2 group">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
-                          log.plant === "한림공장"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                        }`}>
-                          {log.plant}
-                        </span>
-                        <span className="font-black text-xs text-slate-900 dark:text-white">
+            {/* ⭐ 한줄 리스트 테이블 (주석 제거 & 간결한 1열 뷰) */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse table-fixed min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-9">
+                    <th className="py-2 px-2.5 w-[11%] text-center">일자</th>
+                    <th className="py-2 px-2.5 w-[9%] text-center">공장</th>
+                    <th className="py-2 px-2.5 w-[12%]">작성자</th>
+                    <th className="py-2 px-2.5 w-[16%]">라인/공정</th>
+                    <th className="py-2 px-2.5 w-[34%]">작업 내용</th>
+                    <th className="py-2 px-2.5 w-[14%]">특이사항</th>
+                    <th className="py-2 px-1 w-[4%] text-center"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center text-slate-400 font-bold">
+                        등록된 일일업무일지가 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLogs.map((log) => (
+                      <tr
+                        key={log.id}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors h-11 group text-[11px]"
+                      >
+                        <td className="py-2 px-2.5 text-center font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {log.date.slice(5)} ({log.shift})
+                        </td>
+                        <td className="py-2 px-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                            log.plant === "한림공장"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                          }`}>
+                            {log.plant === "한림공장" ? "한림" : "삼랑진"}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2.5 font-bold text-slate-900 dark:text-white truncate">
                           {log.writer} {log.title || ""}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
-                          {log.process || "가공동 관리"}
-                        </span>
-                        <span className="text-[11px] text-slate-400">• {log.date} ({log.shift})</span>
-                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                        </td>
+                        <td className="py-2 px-2.5 font-medium text-slate-600 dark:text-slate-400 truncate" title={log.line}>
                           {log.line}
-                        </span>
-                      </div>
-
-                      {(currentProfile?.name === log.writer || isAdmin) && (
-                        <button
-                          onClick={() => handleDeleteLog(log.id)}
-                          className="p-1 rounded-lg text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="삭제"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl text-xs space-y-1 border border-slate-100 dark:border-slate-800">
-                      <div>
-                        <strong className="text-slate-900 dark:text-white">작업 실적:</strong>{" "}
-                        <span className="text-slate-700 dark:text-slate-300 font-medium">{log.workContent}</span>
-                      </div>
-                      {log.issues && (
-                        <div className="text-amber-700 dark:text-amber-400">
-                          <strong>특이사항:</strong> {log.issues}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
+                        </td>
+                        <td className="py-2 px-2.5 font-bold text-slate-800 dark:text-slate-200 truncate" title={log.workContent}>
+                          {log.workContent}
+                        </td>
+                        <td className="py-2 px-2.5 text-slate-500 dark:text-slate-400 truncate" title={log.issues || "-"}>
+                          {log.issues && log.issues !== "특이사항 없음" ? log.issues : "-"}
+                        </td>
+                        <td className="py-2 px-1 text-center">
+                          {(currentProfile?.name === log.writer || isAdmin) && (
+                            <button
+                              onClick={() => handleDeleteLog(log.id)}
+                              className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
