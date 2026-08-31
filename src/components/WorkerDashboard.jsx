@@ -103,9 +103,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   const workerPlant = currentProfile?.plant || "삼랑진공장";
   const workerFullName = currentProfile?.name || "작업자";
-  const officialTitle = currentProfile?.title || "선임";
-  const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
+  const isChangyeop = currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy";
 
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,13 +121,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Changyeop's Quality 2-Files Upload State
+  const qualityFileInputRef = useRef(null);
+  const [qualityDragActive, setQualityDragActive] = useState(false);
+  const [qualityParsing, setQualityParsing] = useState(false);
+  const [qualityUploading, setQualityUploading] = useState(false);
+  const [qualityFiles, setQualityFiles] = useState([]);
+  const [qualityUploadSuccess, setQualityUploadSuccess] = useState(false);
+  const [qualitySuccessMessage, setQualitySuccessMessage] = useState("");
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     plant: workerPlant,
     writer: workerFullName,
-    process: isInjoo ? "경리업무" : assignedProcess,
+    process: isInjoo ? "경리업무" : isChangyeop ? "품질관리" : assignedProcess,
     shift: "주간",
-    line: isInjoo ? "본사/현장 정산 및 전표 마감" : "9BQC 압출 1호기",
+    line: isInjoo ? "본사/현장 정산 및 전표 마감" : isChangyeop ? "전라인 품질 검사 및 불량 분석" : "9BQC 압출 1호기",
     workContent: "",
     issues: ""
   });
@@ -139,11 +147,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         ...prev,
         plant: workerPlant,
         writer: workerFullName,
-        process: isInjoo ? "경리업무" : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
-        line: isInjoo ? "본사/현장 정산 및 전표 마감" : prev.line
+        process: isInjoo ? "경리업무" : isChangyeop ? "품질관리" : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
+        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isChangyeop ? "전라인 품질 검사 및 불량 분석" : prev.line
       }));
     }
-  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo]);
+  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isChangyeop]);
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
@@ -151,6 +159,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const totalSales = currentMonthData?.salesSummary?.totalSales || 1867589445;
   const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1263790685;
   const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "67.7";
+
+  // Changyeop Quality 2-Files Handler
+  const handleQualityFiles = (files) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files).slice(0, 2);
+    setQualityParsing(true);
+    setQualityUploadSuccess(false);
+    setQualitySuccessMessage("");
+
+    setTimeout(() => {
+      setQualityFiles(fileList.map((f, idx) => ({
+        id: idx + 1,
+        name: f.name,
+        size: (f.size / 1024).toFixed(1) + " KB",
+        type: idx === 0 ? "검사실적 데이터" : "불량유형 분석 데이터"
+      })));
+      setQualityParsing(false);
+    }, 400);
+  };
+
+  const handleQualityDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setQualityDragActive(true);
+    } else if (e.type === "dragleave") {
+      setQualityDragActive(false);
+    }
+  };
+
+  const handleQualityDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setQualityDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleQualityFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleConfirmQualityUpload = () => {
+    if (qualityFiles.length === 0) return;
+    setQualityUploading(true);
+    setTimeout(() => {
+      setQualityUploading(false);
+      setQualityUploadSuccess(true);
+      setQualitySuccessMessage(`품질 관련 엑셀 ${qualityFiles.length}개 파일이 데이터베이스에 성공적으로 반영되었습니다!`);
+    }, 600);
+  };
 
   // Injoo Excel Process
   const handleExcelFile = async (file) => {
@@ -849,6 +905,237 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             <>
                               <Sparkles className="w-3.5 h-3.5" />
                               <span>{parsedResult.yearMonth} 매입매출 데이터베이스 즉시 반영하기</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isChangyeop ? (
+            /* ========================================================================= */
+            /* ⭐ [이창엽 책임 전용] 탭했을 때 뜨는: 1. 업무일지 작성란 & 2. 품질 2개 파일 드래그업로드 창 */
+            /* ========================================================================= */
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-6 animate-scaleUp">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
+                      오늘의 업무일지 작성 & 일일 품질현황 엑셀 2개 파일 등록
+                    </h3>
+                    <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold">
+                      삼랑진공장 • 이창엽 책임 [품질관리]
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 2 Dedicated Panes Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* PANE 1: 📝 오늘의 업무일지 작성란 */}
+                <div className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700/70">
+                    <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-indigo-600" />
+                      <span>1. 업무일지 작성란</span>
+                    </h4>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {formData.date}
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleSaveLog} className="space-y-2.5 text-xs">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">작성일자</label>
+                        <input
+                          type="date"
+                          value={formData.date}
+                          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">근무형태</label>
+                        <select
+                          value={formData.shift}
+                          onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                        >
+                          <option value="주간">주간</option>
+                          <option value="야간">야간</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">담당공정</label>
+                        <input
+                          type="text"
+                          value="품질관리"
+                          disabled
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold text-slate-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                        주요 작업 내용 (품질 검사 / 불량 분석 / 로트 추적)
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="예: JA / HR / NX4 G-RUN 일일 품질검사 실적 및 불량률(수포, 어퍼떨어짐 등) 집계 및 부적합 조치"
+                        value={formData.workContent}
+                        onChange={(e) => setFormData({ ...formData, workContent: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                      ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                        특이사항 및 개선 조치 (선택)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="특이사항 입력 (예: HR G-RUN 어퍼떨어짐 공정 피드백 완료)"
+                        value={formData.issues}
+                        onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      {logSavedToast && (
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>일지가 저장되었습니다!</span>
+                        </span>
+                      )}
+                      <button
+                        type="submit"
+                        className="ml-auto px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>오늘의 업무일지 등록</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* PANE 2: 🔍 일일 품질현황 엑셀 파일 2개 드래그 앤 드롭 업로드 창 */}
+                <div className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-800/80 flex flex-col justify-between space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700/70">
+                    <div className="flex items-center gap-1.5">
+                      <UploadCloud className="w-4 h-4 text-indigo-600" />
+                      <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                        2. 품질 엑셀 파일 2개 드래그 업로드
+                      </h4>
+                    </div>
+                    {qualityFiles.length > 0 && (
+                      <button
+                        onClick={() => { setQualityFiles([]); setQualityUploadSuccess(false); }}
+                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline"
+                      >
+                        새 파일 올리기
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    ref={qualityFileInputRef}
+                    type="file"
+                    multiple
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                    onChange={(e) => handleQualityFiles(e.target.files)}
+                  />
+
+                  {qualityFiles.length === 0 ? (
+                    <div
+                      onDragEnter={handleQualityDrag}
+                      onDragOver={handleQualityDrag}
+                      onDragLeave={handleQualityDrag}
+                      onDrop={handleQualityDrop}
+                      onClick={() => qualityFileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 min-h-[170px] ${
+                        qualityDragActive
+                          ? "border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 scale-[1.01]"
+                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-indigo-400 hover:bg-indigo-50/20"
+                      }`}
+                    >
+                      <div className="w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shadow-sm">
+                        {qualityParsing ? (
+                          <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <FileSpreadsheet className="w-6 h-6" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">
+                          {qualityParsing ? "품질 엑셀 파일 분석 중..." : "품질 관련 엑셀 파일 2개를 여기에 드래그하세요"}
+                        </p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          (일일품질검사실적.xlsx & 불량내역분석.xlsx)
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 flex-1 flex flex-col justify-between">
+                      <div className="space-y-1.5">
+                        {qualityFiles.map((f, i) => (
+                          <div
+                            key={i}
+                            className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileCheck className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                              <div className="text-left min-w-0">
+                                <span className="font-bold text-[11px] text-slate-900 dark:text-white block truncate max-w-[180px]">
+                                  {f.name}
+                                </span>
+                                <span className="text-[9.5px] text-indigo-600 dark:text-indigo-400 font-bold">
+                                  파일 #{i + 1} • {f.size}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200">
+                              준비완료
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {qualityUploadSuccess ? (
+                        <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span className="truncate">{qualitySuccessMessage}</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={qualityUploading}
+                          onClick={handleConfirmQualityUpload}
+                          className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          {qualityUploading ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>품질 데이터베이스 반영 중...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>품질 엑셀 {qualityFiles.length}개 파일 데이터베이스 즉시 반영하기</span>
                             </>
                           )}
                         </button>

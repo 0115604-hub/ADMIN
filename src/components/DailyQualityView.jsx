@@ -266,15 +266,6 @@ export const DailyQualityView = () => {
             </p>
           </div>
         </div>
-
-        <button
-          onClick={handleExportExcel}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm shrink-0"
-        >
-          <Download className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="hidden sm:inline">엑셀 다운로드</span>
-          <span className="sm:hidden">다운로드</span>
-        </button>
       </div>
 
       {/* ========================================================================= */}
