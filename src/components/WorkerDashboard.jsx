@@ -106,7 +106,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const officialTitle = currentProfile?.title || "선임";
   const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
-  const isChangyeop = currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy";
+  const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
 
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -916,9 +916,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
               </div>
             </div>
-          ) : isChangyeop ? (
+          ) : isQualityWorker ? (
             /* ========================================================================= */
-            /* ⭐ [이창엽 책임 전용] 탭했을 때 뜨는: 1. 업무일지 작성란 & 2. 품질 2개 파일 드래그업로드 창 */
+            /* ⭐ [품질관리 전용: 이창엽/이상기] 탭했을 때 뜨는: 1. 업무일지 작성란 & 2. 품질 2개 파일 드래그업로드 창 */
             /* ========================================================================= */
             <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-6 animate-scaleUp">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -931,7 +931,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       오늘의 업무일지 작성 & 일일 품질현황 엑셀 2개 파일 등록
                     </h3>
                     <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold">
-                      삼랑진공장 • 이창엽 책임 [품질관리]
+                      {workerPlant} • {workerFullName} {officialTitle} [품질관리]
                     </span>
                   </div>
                 </div>
