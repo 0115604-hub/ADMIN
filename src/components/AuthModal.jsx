@@ -93,7 +93,7 @@ export const AuthModal = () => {
           {!selectedUser ? (
             <div className="space-y-4">
               {/* ========================================================================= */}
-              {/* 1. FACTORY 1: 삼랑진공장 (7명) */}
+              {/* 1. FACTORY 1: 삼랑진공장 */}
               {/* ========================================================================= */}
               <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2.5 shadow-sm">
                 <div className="flex items-center justify-between">
@@ -104,7 +104,7 @@ export const AuthModal = () => {
                     <span className="tracking-wide">삼랑진공장</span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                    7명
+                    {PLANTS[0].workers.length}명
                   </span>
                 </div>
 
@@ -144,7 +144,7 @@ export const AuthModal = () => {
               </div>
 
               {/* ========================================================================= */}
-              {/* 2. FACTORY 2: 한림공장 (3명) */}
+              {/* 2. FACTORY 2: 한림공장 */}
               {/* ========================================================================= */}
               <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2.5 shadow-sm">
                 <div className="flex items-center justify-between">
@@ -155,7 +155,7 @@ export const AuthModal = () => {
                     <span className="tracking-wide">한림공장</span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
-                    3명
+                    {PLANTS[1].workers.length}명
                   </span>
                 </div>
 
