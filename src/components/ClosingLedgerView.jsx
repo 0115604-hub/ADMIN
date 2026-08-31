@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   UploadCloud,
   FileSpreadsheet,
@@ -19,7 +19,11 @@ import {
   Zap,
   Filter,
   X,
-  FileText
+  FileText,
+  Files,
+  ArrowUpRight,
+  Check,
+  HelpCircle
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
@@ -57,6 +61,7 @@ const buildDefaultCategories = () => {
 export const ClosingLedgerView = () => {
   const { formatAmount } = useCurrency();
   const { selectedMonth, currentMonthData } = useMonth();
+  const fileInputRef = useRef(null);
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
@@ -95,7 +100,8 @@ export const ClosingLedgerView = () => {
   const [selectedCategoryDetailId, setSelectedCategoryDetailId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
-  const [uploadingSlot, setUploadingSlot] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Sync state strictly when selectedMonth changes
   useEffect(() => {
@@ -145,80 +151,169 @@ export const ClosingLedgerView = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStore));
   };
 
-  // 1. Single Entity File Upload Handler (하나씩 업로드)
-  const handleSingleEntityUpload = async (slot, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Helper: Parse single tax invoice file buffer
+  const parseTaxInvoiceFile = async (file) => {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const ws = workbook.Sheets[sheetName];
+    const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-    setUploadingSlot(slot.id);
+    if (!rawRows || rawRows.length < 5) {
+      throw new Error(`[${file.name}] 유효한 세금계산서 파일 내용이 없습니다.`);
+    }
+
+    // Determine Entity from Filename or Content
+    const fileName = file.name || "";
+    let detectedEntityKey = "entity_" + Math.random().toString(36).substring(2, 7);
+    let detectedEntityName = fileName.replace(/\.[^/.]+$/, "");
+
+    if (fileName.includes("오륙") && !fileName.includes("공사")) {
+      detectedEntityKey = "oryuk_corp";
+      detectedEntityName = "(주)오륙";
+    } else if (fileName.includes("조영산업") && fileName.includes("주")) {
+      detectedEntityKey = "joyoung_corp";
+      detectedEntityName = "(주)조영산업";
+    } else if (fileName.includes("오륙공사")) {
+      detectedEntityKey = "oryuk_gongsa";
+      detectedEntityName = "오륙공사";
+    } else if (fileName.includes("조영산업")) {
+      detectedEntityKey = "joyoung_ind";
+      detectedEntityName = "조영산업";
+    } else if (fileName.includes("화승")) {
+      detectedEntityKey = "hwaseung";
+      detectedEntityName = "화승알앤에이/소재";
+    }
+
+    // Detect Header Row & Columns
+    let startRow = 6;
+    let vendorCol = 6;
+    let itemCol = 26;
+    let supplyCol = 15;
+    let taxCol = 16;
+    let totalCol = 14;
+    let dateCol = 0;
+    let memoCol = 32;
+
+    // Scan first 10 rows for headers if not standard
+    for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+      const rowStr = JSON.stringify(rawRows[i] || []);
+      if (rowStr.includes("공급자") || rowStr.includes("상호") || rowStr.includes("거래처")) {
+        startRow = i + 1;
+        rawRows[i].forEach((colVal, colIdx) => {
+          const str = String(colVal || "");
+          if (str.includes("상호") || str.includes("공급자") || str.includes("거래처")) vendorCol = colIdx;
+          if (str.includes("품목") || str.includes("품명") || str.includes("품목명")) itemCol = colIdx;
+          if (str.includes("공급가액") || str.includes("공급가")) supplyCol = colIdx;
+          if (str.includes("세액") || str.includes("부가세")) taxCol = colIdx;
+          if (str.includes("합계금액") || str.includes("합계")) totalCol = colIdx;
+          if (str.includes("작성일자") || str.includes("발행일") || str.includes("일자")) dateCol = colIdx;
+          if (str.includes("비고") || str.includes("메모")) memoCol = colIdx;
+        });
+        break;
+      }
+    }
+
+    const items = [];
+    let totalSupply = 0;
+    let totalTax = 0;
+    let totalAmount = 0;
+
+    for (let r = startRow; r < rawRows.length; r++) {
+      const row = rawRows[r];
+      if (!row || (!row[vendorCol] && !row[supplyCol])) continue;
+
+      const vendor = String(row[vendorCol] || "").trim();
+      if (!vendor || vendor.includes("합계") || vendor.includes("총계")) continue;
+
+      const item = String(row[itemCol] || row[11] || "물품대").trim();
+      const supplyAmt = Number(String(row[supplyCol] || 0).replace(/,/g, "")) || 0;
+      const taxAmt = Number(String(row[taxCol] || 0).replace(/,/g, "")) || Math.round(supplyAmt * 0.1);
+      const rowTotal = Number(String(row[totalCol] || 0).replace(/,/g, "")) || (supplyAmt + taxAmt);
+      const writeDate = String(row[dateCol] || "").trim();
+      const memo = String(row[memoCol] || "").trim();
+
+      const categoryId = classifyTaxInvoiceItem(vendor, item);
+
+      totalSupply += supplyAmt;
+      totalTax += taxAmt;
+      totalAmount += rowTotal;
+
+      items.push({
+        id: `${detectedEntityKey}_${r}_${Date.now()}_${Math.random()}`,
+        entityKey: detectedEntityKey,
+        sourceEntity: detectedEntityName,
+        fileName: file.name,
+        writeDate,
+        vendor,
+        item,
+        supplyAmt,
+        taxAmt,
+        totalAmt: rowTotal,
+        memo: memo || `${detectedEntityName} | ${writeDate}`,
+        categoryId
+      });
+    }
+
+    return {
+      entityKey: detectedEntityKey,
+      entityName: detectedEntityName,
+      fileName: file.name,
+      fileSize: (file.size / 1024).toFixed(1) + " KB",
+      itemCount: items.length,
+      totalSupply,
+      totalTax,
+      totalAmount,
+      items,
+      uploadedAt: new Date().toLocaleTimeString()
+    };
+  };
+
+  // MULTI-FILE UPLOAD HANDLER (4~6 files Drag & Drop or Batch select)
+  const handleBatchFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    setIsProcessing(true);
 
     try {
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "buffer" });
-      const sheetName = workbook.SheetNames[0];
-      const ws = workbook.Sheets[sheetName];
-      const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-      if (!rawRows || rawRows.length < 7) {
-        throw new Error("유효한 홈택스 매입세금계산서 파일이 아닙니다.");
-      }
-
-      const newParsedItems = [];
-      let totalSupply = 0;
-      let totalTax = 0;
-      let totalAmount = 0;
-
-      for (let r = 6; r < rawRows.length; r++) {
-        const row = rawRows[r];
-        if (!row || !row[6]) continue;
-
-        const vendor = String(row[6]).trim();
-        const item = String(row[26] || row[11] || "물품대").trim();
-        const supplyAmt = Number(row[15]) || 0;
-        const taxAmt = Number(row[16]) || Math.round(supplyAmt * 0.1);
-        const rowTotal = Number(row[14]) || (supplyAmt + taxAmt);
-        const writeDate = String(row[0] || "").trim();
-        const memo = String(row[32] || row[20] || "").trim();
-
-        const categoryId = classifyTaxInvoiceItem(vendor, item);
-
-        totalSupply += supplyAmt;
-        totalTax += taxAmt;
-        totalAmount += rowTotal;
-
-        newParsedItems.push({
-          id: `${slot.id}_${r}_${Date.now()}`,
-          entityKey: slot.id,
-          sourceEntity: slot.name,
-          writeDate,
-          vendor,
-          item,
-          supplyAmt,
-          taxAmt,
-          totalAmt: rowTotal,
-          memo: `${slot.name} | ${writeDate || ""}`,
-          categoryId
-        });
-      }
-
-      // Update uploadedEntities metadata for this slot
-      const newEntities = {
-        ...uploadedEntities,
-        [slot.id]: {
-          fileName: file.name,
-          entityLabel: slot.name,
-          itemCount: newParsedItems.length,
-          totalSupply,
-          totalTax,
-          totalAmount,
-          uploadedAt: new Date().toLocaleTimeString()
+      const parsedResults = [];
+      for (const file of fileList) {
+        try {
+          const res = await parseTaxInvoiceFile(file);
+          parsedResults.push(res);
+        } catch (err) {
+          console.warn("File parse warning:", err.message);
         }
-      };
+      }
 
-      // Merge into categories: Remove previous items from this slot, add new ones
+      if (parsedResults.length === 0) {
+        throw new Error("유효하게 파싱된 세금계산서 파일이 없습니다.");
+      }
+
+      // Merge into updated entities metadata
+      const newEntities = { ...uploadedEntities };
+      let allNewItems = [];
+
+      parsedResults.forEach((res) => {
+        newEntities[res.entityKey] = {
+          fileName: res.fileName,
+          fileSize: res.fileSize,
+          entityLabel: res.entityName,
+          itemCount: res.itemCount,
+          totalSupply: res.totalSupply,
+          totalTax: res.totalTax,
+          totalAmount: res.totalAmount,
+          uploadedAt: res.uploadedAt
+        };
+        allNewItems = [...allNewItems, ...res.items];
+      });
+
+      // Merge into 16 categories
       const newCategories = categories.map((cat) => {
-        const keptItems = cat.items.filter((it) => it.entityKey !== slot.id && it.sourceEntity !== slot.name);
-        const addedItems = newParsedItems.filter((it) => it.categoryId === cat.id);
+        // Keep items from entities not touched in this batch
+        const touchedEntityKeys = parsedResults.map((r) => r.entityKey);
+        const keptItems = cat.items.filter((it) => !touchedEntityKeys.includes(it.entityKey));
+        const addedItems = allNewItems.filter((it) => it.categoryId === cat.id);
         return {
           ...cat,
           items: [...keptItems, ...addedItems]
@@ -226,35 +321,56 @@ export const ClosingLedgerView = () => {
       });
 
       persistMonthData(newCategories, newEntities);
-      setSaveSuccessMessage(`[${slot.name}] 매입세금계산서(${newParsedItems.length}건)가 ${monthTitle} 결산서에 성공적으로 반영되었습니다!`);
-      setTimeout(() => setSaveSuccessMessage(""), 5000);
+      setSaveSuccessMessage(`${parsedResults.length}개 매입세금계산서 파일(총 ${allNewItems.length}건)이 16대 계정과목으로 자동 분류되어 매입DATA에 반영되었습니다!`);
+      setTimeout(() => setSaveSuccessMessage(""), 6000);
     } catch (err) {
-      console.error(err);
-      alert(`[${slot.name}] 파일 분석 오류: ${err.message}`);
+      alert("매입세금계산서 일괄 업로드 오류: " + err.message);
     } finally {
-      setUploadingSlot(null);
-      e.target.value = "";
+      setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // 2. Delete Single Entity's Uploaded Tax Invoices
-  const handleDeleteEntityFile = (slot) => {
-    if (!window.confirm(`[${slot.name}]의 업로드된 세금계산서 데이터를 삭제하시겠습니까?`)) return;
+  // Drag and Drop handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleBatchFiles(e.dataTransfer.files);
+    }
+  };
+
+  // Delete Single Uploaded File
+  const handleDeleteUploadedFile = (entityKey, entityLabel) => {
+    if (!window.confirm(`[${entityLabel}]의 업로드된 세금계산서 데이터를 삭제하시겠습니까?`)) return;
 
     const newEntities = { ...uploadedEntities };
-    delete newEntities[slot.id];
+    delete newEntities[entityKey];
 
     const newCategories = categories.map((cat) => ({
       ...cat,
-      items: cat.items.filter((it) => it.entityKey !== slot.id && it.sourceEntity !== slot.name)
+      items: cat.items.filter((it) => it.entityKey !== entityKey)
     }));
 
     persistMonthData(newCategories, newEntities);
-    setSaveSuccessMessage(`[${slot.name}] 세금계산서 데이터가 삭제되었습니다.`);
+    setSaveSuccessMessage(`[${entityLabel}] 세금계산서 데이터가 삭제되었습니다.`);
     setTimeout(() => setSaveSuccessMessage(""), 4000);
   };
 
-  // 3. Update Item Field in Active Category
+  // Update Item Field in Active Category
   const handleItemChange = (catId, itemId, field, value) => {
     const newCategories = categories.map((cat) => {
       if (cat.id !== catId) return cat;
@@ -295,60 +411,37 @@ export const ClosingLedgerView = () => {
     persistMonthData(newCategories, uploadedEntities);
   };
 
-  // 4. Re-classify Item to Another Category
+  // Re-classify Item to Another Category
   const handleMoveItemCategory = (currentCatId, itemId, targetCatId) => {
     if (currentCatId === targetCatId) return;
 
-    let targetItem = null;
-    const sourceCat = categories.find((c) => c.id === currentCatId);
-    if (sourceCat) {
-      targetItem = sourceCat.items.find((it) => it.id === itemId);
-    }
-    if (!targetItem) return;
-
+    let movedItem = null;
     const newCategories = categories.map((cat) => {
       if (cat.id === currentCatId) {
-        return {
-          ...cat,
-          items: cat.items.filter((it) => it.id !== itemId)
-        };
-      }
-      if (cat.id === targetCatId) {
-        return {
-          ...cat,
-          items: [...cat.items, { ...targetItem, categoryId: targetCatId }]
-        };
+        const remaining = cat.items.filter((it) => {
+          if (it.id === itemId) {
+            movedItem = { ...it, categoryId: targetCatId };
+            return false;
+          }
+          return true;
+        });
+        return { ...cat, items: remaining };
       }
       return cat;
     });
 
-    persistMonthData(newCategories, uploadedEntities);
+    if (movedItem) {
+      const finalCategories = newCategories.map((cat) => {
+        if (cat.id === targetCatId) {
+          return { ...cat, items: [...cat.items, movedItem] };
+        }
+        return cat;
+      });
+      persistMonthData(finalCategories, uploadedEntities);
+    }
   };
 
-  // 5. Add Manual Item under Category
-  const handleAddItem = (catId) => {
-    const newCategories = categories.map((cat) => {
-      if (cat.id !== catId) return cat;
-      const newItem = {
-        id: `manual_${catId}_${Date.now()}`,
-        sourceEntity: "직접 입력",
-        vendor: "",
-        item: "",
-        supplyAmt: 0,
-        taxAmt: 0,
-        totalAmt: 0,
-        memo: "직접 입력"
-      };
-      return {
-        ...cat,
-        items: [...cat.items, newItem]
-      };
-    });
-
-    persistMonthData(newCategories, uploadedEntities);
-  };
-
-  // 6. Delete Item
+  // Delete Single Item
   const handleDeleteItem = (catId, itemId) => {
     const newCategories = categories.map((cat) => {
       if (cat.id !== catId) return cat;
@@ -357,32 +450,55 @@ export const ClosingLedgerView = () => {
         items: cat.items.filter((it) => it.id !== itemId)
       };
     });
+    persistMonthData(newCategories, uploadedEntities);
+  };
+
+  // Add Manual Item to Category
+  const handleAddManualItem = (catId) => {
+    const newItem = {
+      id: `manual_${Date.now()}`,
+      entityKey: "manual",
+      sourceEntity: "수기입력",
+      writeDate: new Date().toISOString().split("T")[0],
+      vendor: "신규 거래처",
+      item: "품목명 입력",
+      supplyAmt: 0,
+      taxAmt: 0,
+      totalAmt: 0,
+      memo: "수기등록",
+      categoryId: catId
+    };
+
+    const newCategories = categories.map((cat) => {
+      if (cat.id !== catId) return cat;
+      return { ...cat, items: [...cat.items, newItem] };
+    });
 
     persistMonthData(newCategories, uploadedEntities);
   };
 
-  // 7. Save to persistent storage explicitly
+  // Save to persistent storage explicitly
   const handleSave = () => {
     persistMonthData(categories, uploadedEntities);
-    setSaveSuccessMessage(`${monthTitle} 결산 데이터가 안전하게 저장되었습니다!`);
+    setSaveSuccessMessage(`${monthTitle} 매입DATA가 안전하게 저장되었습니다!`);
     setTimeout(() => setSaveSuccessMessage(""), 4000);
   };
 
-  // 8. Clear/Reset Current Month's Data
+  // Clear/Reset Current Month's Data
   const handleResetMonth = () => {
-    if (!window.confirm(`${monthTitle}의 결산 데이터를 모두 초기화하시겠습니까?`)) return;
+    if (!window.confirm(`${monthTitle}의 매입DATA를 모두 초기화하시겠습니까?`)) return;
     persistMonthData(buildDefaultCategories(), {});
-    setSaveSuccessMessage(`${monthTitle} 결산 데이터가 초기화되었습니다.`);
+    setSaveSuccessMessage(`${monthTitle} 매입DATA가 초기화되었습니다.`);
     setTimeout(() => setSaveSuccessMessage(""), 4000);
   };
 
-  // 9. Export to Excel File
+  // Export to Excel File
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
 
     // Summary Sheet
     const summaryRows = [
-      [`${monthTitle} 매입·비용 결산 요약 보고서`],
+      [`${monthTitle} 매입DATA 결산 요약 보고서`],
       ["당월 총 매출액", totalSales, "총 결산 지출 합계", totalClosingAmount, "매출 대비 원가 비율", `${costRatio}%`, "예상 영업손익", netEstimatedProfit],
       [],
       ["NO", "대분류", "계정과목명", "항목수", "공급가액 (원)", "세액 (원)", "총 결산합계 (원)", "점유율", "주요 거래처 및 비고"]
@@ -421,11 +537,11 @@ export const ClosingLedgerView = () => {
     ]);
 
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-    XLSX.utils.book_append_sheet(wb, wsSummary, "📊 월간 결산 종합 요약");
+    XLSX.utils.book_append_sheet(wb, wsSummary, "📊 월간 결산 요약");
 
     // Itemized Detail Sheet
     const detailRows = [
-      [`${monthTitle} 16대 계정과목별 세부 매입·지출 입력장부`],
+      [`${monthTitle} 16대 계정과목별 세부 매입·지출 장부`],
       [],
       ["NO", "계정과목", "거래처명 / 지출처", "품목 및 세부내용", "공급가액 (원)", "세액 (원)", "합계금액 (원)", "비고 / 메모"]
     ];
@@ -451,9 +567,9 @@ export const ClosingLedgerView = () => {
     });
 
     const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
-    XLSX.utils.book_append_sheet(wb, wsDetail, "📋 16대 계정과목 세부 입력장부");
+    XLSX.utils.book_append_sheet(wb, wsDetail, "📋 16대 계정과목 세부 장부");
 
-    XLSX.writeFile(wb, `AI_${monthTitle}_결산서.xlsx`);
+    XLSX.writeFile(wb, `매입DATA_${monthTitle}.xlsx`);
   };
 
   // Filter categories for display
@@ -474,49 +590,48 @@ export const ClosingLedgerView = () => {
     return matchCatName || matchItems;
   });
 
+  const uploadedFilesList = Object.entries(uploadedEntities);
+
   return (
     <div className="space-y-6 animate-fadeIn pb-24">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>{monthTitle} 월별 결산 관리</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              {monthTitle} 매입세금계산서 업로드 & 결산 관리
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl">
-              4개 회사별 매입세금계산서 파일을 각각 하나씩 업로드하면, 16대 계정과목으로 자동 분류되어 월간 결산서가 작성됩니다.
-            </p>
+      {/* Top Header Bar */}
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+              {monthTitle}
+            </span>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">
+              매입DATA 관리
+            </h2>
           </div>
+          <p className="text-xs text-slate-400 mt-1">
+            홈택스 매입세금계산서 엑셀 파일을 일괄 드래그 업로드하면 16대 계정과목으로 자동 분류 및 집계됩니다.
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={handleResetMonth}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-all shadow-sm"
-              title="현재 월 결산 데이터 초기화"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>{monthTitle} 초기화</span>
-            </button>
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm"
-            >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span>엑셀 다운로드</span>
-            </button>
-            <button
-              onClick={handleSave}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
-            >
-              <Save className="w-4 h-4" />
-              <span>결산서 저장</span>
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2.5 self-end md:self-center">
+          <button
+            onClick={handleResetMonth}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-all shadow-sm"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>초기화</span>
+          </button>
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-600" />
+            <span>엑셀 다운로드</span>
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>매입DATA 저장</span>
+          </button>
         </div>
       </div>
 
@@ -528,510 +643,384 @@ export const ClosingLedgerView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 1: 4 INDIVIDUAL ENTITY UPLOAD SLOTS (하나씩 업로드) */}
+      {/* SECTION 1: 4~6 MULTI-FILE DRAG & DROP UPLOAD ZONE */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-        <div className="pb-3 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-blue-600" />
-            <span>{monthTitle} 4대 회사별 매입세금계산서 개별 업로드</span>
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            각 회사 카드에서 홈택스 매입전자세금계산서 목록 파일(.xls / .xlsx)을 각각 업로드하세요.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <UploadCloud className="w-5 h-5 text-blue-600" />
+              <span>매입세금계산서 일괄 업로드 (4~6개 드래그 앤 드롭)</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              오륙, 조영산업, 오륙공사, 조영 등 4~6개의 매입전자세금계산서 엑셀 파일을 한번에 드래그하여 업로드하세요.
+            </p>
+          </div>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isProcessing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-200 dark:border-blue-800 transition-all shrink-0"
+          >
+            <Files className="w-4 h-4" />
+            <span>파일 다중 선택</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".xlsx,.xls,.csv"
+            onChange={(e) => handleBatchFiles(e.target.files)}
+            className="hidden"
+          />
         </div>
 
-        {/* 4 Individual Entity Upload Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ENTITY_SLOTS.map((slot) => {
-            const uploaded = uploadedEntities[slot.id];
-            const isThisUploading = uploadingSlot === slot.id;
+        {/* Drag and Drop Zone */}
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
+            isDragging
+              ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 scale-[1.01]"
+              : "border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+          }`}
+        >
+          {isProcessing ? (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                세금계산서 파일 분석 및 16대 계정과목 자동 분류 중...
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
+                <UploadCloud className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+                  4~6개의 매입세금계산서 엑셀 파일을 이곳에 드래그하여 올려놓으세요
+                </p>
+                <p className="text-xs text-slate-400">
+                  (주)오륙, (주)조영산업, 오륙공사, 조영산업 홈택스 파일 동시 지원 (.xlsx, .xls)
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-xs">
+                <Files className="w-3.5 h-3.5 text-blue-500" />
+                <span>클릭하여 컴퓨터에서 파일 선택</span>
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Uploaded Files Status Grid */}
+        {uploadedFilesList.length > 0 && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between text-xs font-extrabold text-slate-500">
+              <span>현재 업로드된 세금계산서 파일 ({uploadedFilesList.length}개)</span>
+              <span>총 {categories.reduce((s, c) => s + c.items.length, 0)}건 파싱 완료</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {uploadedFilesList.map(([key, fileInfo]) => (
+                <div
+                  key={key}
+                  className="bg-slate-50 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
+                      <FileSpreadsheet className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-black text-slate-900 dark:text-white truncate">
+                          {fileInfo.entityLabel || fileInfo.fileName}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-slate-400 truncate">
+                        {fileInfo.itemCount}건 • {formatAmount(fileInfo.totalAmount)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteUploadedFile(key, fileInfo.entityLabel || fileInfo.fileName)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0"
+                    title="파일 삭제"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 2: GRAND SUMMARY KPI CARDS */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{monthTitle} 총 공급가액</span>
+          <div className="mt-2">
+            <p className="text-2xl font-black text-slate-900 dark:text-white">
+              {formatAmount(totalSupplyAmount)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">세액 제외 순수 매입원가</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총 부가가치세액</span>
+          <div className="mt-2">
+            <p className="text-2xl font-black text-slate-700 dark:text-slate-300">
+              {formatAmount(totalTaxAmount)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">매입세액 공제 대상</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총 결산 지출 합계</span>
+          <div className="mt-2">
+            <p className="text-2xl font-black text-rose-600 dark:text-rose-400">
+              {formatAmount(totalClosingAmount)}
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">공급가액 + 부가세 합계</p>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출 대비 원가 비율</span>
+          <div className="mt-2">
+            <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
+              {costRatio}%
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              총매출 {formatAmount(totalSales)} 기준
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 3: 16 ACCOUNTING CATEGORIES BREAKDOWN & MANAGEMENT */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+        {/* Controls: Group Selector & Search */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+          {/* Group Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {GROUPS.map((grp) => (
+              <button
+                key={grp.id}
+                onClick={() => setSelectedGroup(grp.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  selectedGroup === grp.id
+                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                {grp.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Box */}
+          <div className="relative w-full md:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <input
+              type="text"
+              placeholder="계정과목, 거래처, 품목 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* 16 Categories Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {filteredCategories.map((cat) => {
+            const catSupply = cat.items.reduce((s, it) => s + (Number(it.supplyAmt) || 0), 0);
+            const catTax = cat.items.reduce((s, it) => s + (Number(it.taxAmt) || 0), 0);
+            const catTotal = cat.items.reduce((s, it) => s + (Number(it.totalAmt || (Number(it.supplyAmt) + Number(it.taxAmt))) || 0), 0);
+            const share = totalClosingAmount > 0 ? ((catTotal / totalClosingAmount) * 100).toFixed(1) : "0.0";
+            const isSelected = selectedCategoryDetailId === cat.id;
 
             return (
               <div
-                key={slot.id}
-                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
-                  uploaded
-                    ? `${slot.bg} ${slot.border}`
-                    : "bg-slate-50/50 dark:bg-slate-800/30 border-slate-200/70 dark:border-slate-800"
+                key={cat.id}
+                onClick={() => setSelectedCategoryDetailId(isSelected ? null : cat.id)}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
+                  isSelected
+                    ? "border-blue-500 bg-blue-50/40 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-500/20"
+                    : "border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900"
                 }`}
               >
-                <div className="space-y-3">
+                <div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Building2 className={`w-4 h-4 ${slot.color}`} />
-                      <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                        {slot.name}
-                      </h4>
-                    </div>
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-slate-500">
-                      {slot.badge}
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500">
+                      {cat.group}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {cat.items.length}건
                     </span>
                   </div>
 
-                  {uploaded ? (
-                    <div className="space-y-1 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 truncate max-w-[140px]">
-                          {uploaded.fileName}
-                        </span>
-                        <button
-                          onClick={() => handleDeleteEntityFile(slot)}
-                          className="text-slate-400 hover:text-rose-600 p-1"
-                          title="업로드 파일 삭제"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        {uploaded.itemCount}건 • {formatAmount(uploaded.totalAmount)}
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic py-2">
-                      {monthTitle} 세금계산서 대기 중
-                    </p>
-                  )}
+                  <h4 className="font-extrabold text-sm text-slate-900 dark:text-white mt-2">
+                    {cat.name}
+                  </h4>
                 </div>
 
-                <div className="pt-3">
-                  <label
-                    className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black cursor-pointer transition-all ${
-                      uploaded
-                        ? "bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
-                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                    }`}
-                  >
-                    <UploadCloud className="w-3.5 h-3.5" />
-                    <span>{isThisUploading ? "업로드 중..." : uploaded ? "파일 다시 업로드" : `[${slot.name}] 업로드`}</span>
-                    <input
-                      type="file"
-                      accept=".xls,.xlsx"
-                      onChange={(e) => handleSingleEntityUpload(slot, e)}
-                      className="hidden"
-                      disabled={isThisUploading}
-                    />
-                  </label>
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-end justify-between">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">합계금액</span>
+                    <p className="text-base font-black text-slate-900 dark:text-white">
+                      {formatAmount(catTotal)}
+                    </p>
+                  </div>
+                  <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400">
+                    {share}%
+                  </span>
                 </div>
               </div>
             );
           })}
         </div>
-      </div>
 
-      {/* Top 3 KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Closing Cost */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400">{monthTitle} 총 결산 지출(매입)</span>
-            <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400">
-              {formatAmount(totalClosingAmount)}
-            </p>
-            <p className="text-xs font-semibold text-slate-400 mt-1">
-              공급가: {formatAmount(totalSupplyAmount)} + 세액: {formatAmount(totalTaxAmount)}
-            </p>
-          </div>
-        </div>
-
-        {/* Cost Ratio to Sales */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400">매출 대비 결산 원가 비율</span>
-            <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400">
-              {totalSales > 0 ? `${costRatio}%` : "0.0%"}
-            </p>
-            <p className="text-xs font-semibold text-slate-400 mt-1">
-              {totalSales > 0 ? `${monthTitle} 총 매출 ${formatAmount(totalSales)} 기준` : `${monthTitle} 매출자료 업로드 대기`}
-            </p>
-          </div>
-        </div>
-
-        {/* Estimated Net Operating Profit */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400">결산 반영 손익 (매출 - 결산)</span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            <p className={`text-2xl sm:text-3xl font-black ${totalSales === 0 ? "text-slate-400" : netEstimatedProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}`}>
-              {totalSales > 0 ? `${netEstimatedProfit >= 0 ? "+" : ""}${formatAmount(netEstimatedProfit)}` : `-${formatAmount(totalClosingAmount)}`}
-            </p>
-            <p className="text-xs font-semibold text-slate-400 mt-1">
-              {totalSales > 0 ? "매출액 - 결산 합계 차액" : "매출자료 미등록 (지출만 집계 중)"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* SECTION 2: 16-CATEGORY SUMMARY OVERVIEW (한 줄씩 배열 - Single Row List) */}
-      {/* ========================================================================= */}
-      {!selectedCategoryDetailId ? (
-        <div className="space-y-6">
-          {/* Group Filter & Search Bar */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 w-full md:w-auto">
-              {GROUPS.map((grp) => (
-                <button
-                  key={grp.id}
-                  onClick={() => setSelectedGroup(grp.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
-                    selectedGroup === grp.id
-                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400"
-                  }`}
-                >
-                  {grp.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                placeholder="계정과목, 거래처, 메모 검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {/* 16 Category Single-Row List (한 줄씩 배열) */}
-          <div className="space-y-3">
-            {filteredCategories.map((cat, idx) => {
-              const catTotal = cat.items.reduce((s, it) => s + (Number(it.totalAmt || (Number(it.supplyAmt) + Number(it.taxAmt))) || 0), 0);
-              const catShare = totalClosingAmount > 0 ? ((catTotal / totalClosingAmount) * 100).toFixed(2) : 0;
-              const topVendors = cat.items.slice(0, 3).map((it) => it.vendor).filter(Boolean).join(", ");
-
-              return (
-                <div
-                  key={cat.id}
-                  onClick={() => setSelectedCategoryDetailId(cat.id)}
-                  className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-blue-500 hover:shadow-md cursor-pointer transition-all flex flex-col md:flex-row md:items-center md:justify-between gap-4 group"
-                >
-                  {/* Left: No, Category Name, Group Tag, Item Count */}
-                  <div className="flex items-center gap-3.5 min-w-[280px]">
-                    <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-sm shrink-0">
-                      {idx + 1}
-                    </span>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-black text-base text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {cat.name}
-                        </h4>
-                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                          {cat.items.length}건
-                        </span>
-                      </div>
-                      <span className="text-xs font-semibold text-slate-400 block mt-0.5">
-                        {cat.group}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Middle: Major Vendors Preview */}
-                  <div className="flex-1 min-w-0 md:px-4">
-                    {topVendors ? (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                        <span className="font-bold text-slate-400">주요처:</span> {topVendors}
-                        {cat.items.length > 3 && ` 외 ${cat.items.length - 3}개처`}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic">등록된 세부 거래처 없음</p>
-                    )}
-                  </div>
-
-                  {/* Right: Amount, Share & Progress, Action Button */}
-                  <div className="flex items-center justify-between md:justify-end gap-6 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
-                    <div className="text-left md:text-right min-w-[150px]">
-                      <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white block">
-                        {formatAmount(catTotal)}
-                      </span>
-                      <div className="flex items-center md:justify-end gap-2 text-xs font-bold mt-0.5">
-                        <span className="text-slate-400">점유율</span>
-                        <span className="text-blue-600 dark:text-blue-400 font-extrabold">{catShare}%</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-xs font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-3.5 py-2 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                      <span>세부항목 입력 & 조회</span>
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        /* ========================================================================= */
-        /* SECTION 3: SPECIFIC CATEGORY ITEMIzED DETAIL (과목 클릭 시 세부사항 편집) */
-        /* ========================================================================= */
-        activeCategory && (
-          <div className="space-y-6 animate-fadeIn">
-            {/* Category Breadcrumb & Quick Switcher */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-              <button
-                onClick={() => setSelectedCategoryDetailId(null)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all self-start"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>전체 16대 계정과목 요약본으로 돌아가기</span>
-              </button>
-
-              {/* Quick Jump Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400">다른 과목 바로가기:</span>
-                <select
-                  value={selectedCategoryDetailId}
-                  onChange={(e) => setSelectedCategoryDetailId(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.items.length}건)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Active Category Header Card */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        {/* Selected Category Drilldown Table */}
+        {activeCategory && (
+          <div className="mt-8 border border-blue-200 dark:border-blue-800/60 rounded-3xl bg-blue-50/20 dark:bg-blue-950/20 p-6 space-y-4 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-blue-200/60 dark:border-blue-800/40">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-md shadow-blue-500/25">
-                  <FileSpreadsheet className="w-6 h-6" />
-                </div>
+                <span className="w-3 h-8 bg-blue-600 rounded-full"></span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-black text-xl text-slate-900 dark:text-white">
-                      {activeCategory.name}
+                    <h3 className="font-black text-lg text-slate-900 dark:text-white">
+                      {activeCategory.name} 세부 내역 장부
                     </h3>
-                    <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">
-                      {activeCategory.group}
+                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+                      총 {activeCategory.items.length}건
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
-                    등록된 세부 항목: <strong>{activeCategory.items.length}개</strong> • 공급가, 세액 및 계정과목 변경 가능
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    금액 수정, 거래처명 변경, 과목 재배정 및 행 추가/삭제가 가능합니다.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <span className="text-xs text-slate-400 block font-semibold">과목 소계 합계</span>
-                  <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
-                    {formatAmount(
-                      activeCategory.items.reduce(
-                        (s, it) => s + (Number(it.totalAmt || (Number(it.supplyAmt) + Number(it.taxAmt))) || 0),
-                        0
-                      )
-                    )}
-                  </span>
-                </div>
-
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleAddItem(activeCategory.id)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
+                  onClick={() => handleAddManualItem(activeCategory.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>항목 추가</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>새 항목 추가</span>
                 </button>
-              </div>
-            </div>
-
-            {/* Itemized Spreadsheet Table */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden p-4 sm:p-6 space-y-4">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse min-w-[860px]">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/40 text-slate-500 font-black">
-                      <th className="py-3 px-3 w-12 text-center">NO</th>
-                      <th className="py-3 px-3 w-40">과목 재분류</th>
-                      <th className="py-3 px-3 w-48">거래처명 / 지출처</th>
-                      <th className="py-3 px-3 w-56">품목 및 세부내용</th>
-                      <th className="py-3 px-3 w-36 text-right">공급가액 (원)</th>
-                      <th className="py-3 px-3 w-28 text-right">세액 (원)</th>
-                      <th className="py-3 px-3 w-36 text-right">합계금액 (원)</th>
-                      <th className="py-3 px-3 w-32">비고 / 메모</th>
-                      <th className="py-3 px-3 w-12 text-center">삭제</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {activeCategory.items.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-12 text-center text-slate-400">
-                          {monthTitle}에 등록된 세부 항목이 없습니다. 상단의 [항목 추가] 버튼을 눌러 새 거래처와 금액을 등록해 보세요!
-                        </td>
-                      </tr>
-                    ) : (
-                      activeCategory.items.map((item, idx) => (
-                        <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors group">
-                          <td className="py-2.5 px-3 text-center font-bold text-slate-400">
-                            {idx + 1}
-                          </td>
-                          <td className="py-2 px-3">
-                            <select
-                              value={activeCategory.id}
-                              onChange={(e) => handleMoveItemCategory(activeCategory.id, item.id, e.target.value)}
-                              className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-blue-600 dark:text-blue-400 focus:outline-none"
-                            >
-                              {categories.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              placeholder="거래처명 입력..."
-                              value={item.vendor || ""}
-                              onChange={(e) => handleItemChange(activeCategory.id, item.id, "vendor", e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              placeholder="품목/규격/적요..."
-                              value={item.item || ""}
-                              onChange={(e) => handleItemChange(activeCategory.id, item.id, "item", e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              value={Number(item.supplyAmt || 0).toLocaleString()}
-                              onChange={(e) => handleItemChange(activeCategory.id, item.id, "supplyAmt", e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-black text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              value={Number(item.taxAmt || 0).toLocaleString()}
-                              onChange={(e) => handleItemChange(activeCategory.id, item.id, "taxAmt", e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white">
-                            {formatAmount(Number(item.totalAmt || (Number(item.supplyAmt) + Number(item.taxAmt))))}
-                          </td>
-                          <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              placeholder="메모..."
-                              value={item.memo || ""}
-                              onChange={(e) => handleItemChange(activeCategory.id, item.id, "memo", e.target.value)}
-                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </td>
-                          <td className="py-2 px-3 text-center">
-                            <button
-                              onClick={() => handleDeleteItem(activeCategory.id, item.id)}
-                              className="p-2 rounded-xl text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
-                              title="항목 삭제"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                  {/* Category Subtotal Footer */}
-                  <tfoot>
-                    <tr className="bg-slate-50 dark:bg-slate-800/80 font-black border-t-2 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white">
-                      <td colSpan={4} className="py-3.5 px-4 text-center">
-                        {activeCategory.name} 소계 ({activeCategory.items.length}개 항목)
-                      </td>
-                      <td className="py-3.5 px-3 text-right text-blue-600 dark:text-blue-400 text-sm">
-                        {formatAmount(
-                          activeCategory.items.reduce((s, it) => s + (Number(it.supplyAmt) || 0), 0)
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 text-right text-slate-500">
-                        {formatAmount(
-                          activeCategory.items.reduce((s, it) => s + (Number(it.taxAmt) || 0), 0)
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 text-right text-rose-600 dark:text-rose-400 text-base">
-                        {formatAmount(
-                          activeCategory.items.reduce(
-                            (s, it) => s + (Number(it.totalAmt || (Number(it.supplyAmt) + Number(it.taxAmt))) || 0),
-                            0
-                          )
-                        )}
-                      </td>
-                      <td colSpan={2} className="py-3.5 px-3 text-right text-slate-400 text-xs">
-                        전체 결산 대비 {(
-                          (activeCategory.items.reduce(
-                            (s, it) => s + (Number(it.totalAmt || (Number(it.supplyAmt) + Number(it.taxAmt))) || 0),
-                            0
-                          ) / (totalClosingAmount || 1)) * 100
-                        ).toFixed(2)}%
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* Bottom Actions */}
-              <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={() => handleAddItem(activeCategory.id)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs font-bold transition-all shadow-sm active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>[{activeCategory.name}] 행 추가</span>
-                </button>
-
                 <button
                   onClick={() => setSelectedCategoryDetailId(null)}
-                  className="text-xs font-bold text-slate-400 hover:text-slate-600 underline"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800"
                 >
-                  요약 목록으로 돌아가기
+                  <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
-          </div>
-        )
-      )}
 
-      {/* Floating Action Bar */}
-      <div className="fixed bottom-6 right-6 z-30 flex items-center gap-3">
-        <button
-          onClick={handleExportExcel}
-          className="flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-sm shadow-xl shadow-slate-900/30 active:scale-95 transition-all border border-slate-700"
-        >
-          <Download className="w-4 h-4 text-emerald-400" />
-          <span>엑셀 내보내기</span>
-        </button>
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-xl shadow-blue-500/30 active:scale-95 transition-all"
-        >
-          <Save className="w-5 h-5" />
-          <span>{monthTitle} 결산 저장</span>
-        </button>
+            {/* Drilldown Table */}
+            <div className="overflow-x-auto bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-3 font-semibold w-12 text-center">NO</th>
+                    <th className="py-2.5 px-3 font-semibold">출처/회사</th>
+                    <th className="py-2.5 px-3 font-semibold">거래처명</th>
+                    <th className="py-2.5 px-3 font-semibold">품목/내용</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">공급가액</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">세액</th>
+                    <th className="py-2.5 px-3 font-semibold text-right">합계금액</th>
+                    <th className="py-2.5 px-3 font-semibold">과목 재배정</th>
+                    <th className="py-2.5 px-3 font-semibold w-10 text-center">삭제</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {activeCategory.items.map((item, idx) => (
+                    <tr key={item.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">
+                        {idx + 1}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                          {item.sourceEntity || "세금계산서"}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          type="text"
+                          value={item.vendor || ""}
+                          onChange={(e) => handleItemChange(activeCategory.id, item.id, "vendor", e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 px-1 py-0.5 font-bold text-slate-900 dark:text-white focus:outline-none"
+                        />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input
+                          type="text"
+                          value={item.item || ""}
+                          onChange={(e) => handleItemChange(activeCategory.id, item.id, "item", e.target.value)}
+                          className="w-full bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 px-1 py-0.5 text-slate-700 dark:text-slate-300 focus:outline-none"
+                        />
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <input
+                          type="text"
+                          value={Number(item.supplyAmt || 0).toLocaleString()}
+                          onChange={(e) => handleItemChange(activeCategory.id, item.id, "supplyAmt", e.target.value)}
+                          className="w-28 bg-transparent text-right border-b border-transparent hover:border-slate-300 focus:border-blue-500 px-1 py-0.5 font-mono font-bold text-slate-900 dark:text-white focus:outline-none"
+                        />
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <input
+                          type="text"
+                          value={Number(item.taxAmt || 0).toLocaleString()}
+                          onChange={(e) => handleItemChange(activeCategory.id, item.id, "taxAmt", e.target.value)}
+                          className="w-24 bg-transparent text-right border-b border-transparent hover:border-slate-300 focus:border-blue-500 px-1 py-0.5 font-mono text-slate-600 dark:text-slate-400 focus:outline-none"
+                        />
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-black text-rose-600 dark:text-rose-400">
+                        ₩{Number(item.totalAmt || (Number(item.supplyAmt) + Number(item.taxAmt))).toLocaleString()}
+                      </td>
+                      <td className="py-2 px-3">
+                        <select
+                          value={activeCategory.id}
+                          onChange={(e) => handleMoveItemCategory(activeCategory.id, item.id, e.target.value)}
+                          className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold py-1 px-2 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        <button
+                          onClick={() => handleDeleteItem(activeCategory.id, item.id)}
+                          className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
