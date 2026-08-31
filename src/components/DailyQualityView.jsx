@@ -9,7 +9,13 @@ import {
   BarChart2,
   FileSpreadsheet,
   FileUp,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp,
+  TrendingUp,
+  DollarSign,
+  AlertCircle,
+  Activity
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
@@ -23,8 +29,16 @@ const INITIAL_CORE_ITEMS = [
     inspectQty: 57596,
     defectQty: 732,
     defectRate: 1.27,
-    worstReason: "수포 (318건), 둔_어퍼떨어짐 (198건)",
-    lossAmount: 2281050
+    worstReason: "수포 (318건), 둔_어퍼떨어짐 (198건), 직_어퍼떨어짐 (112건)",
+    lossAmount: 2281050,
+    dailySummary: [
+      { date: "08/24 (월)", insp: 1687, def: 32, rate: 1.90 },
+      { date: "08/25 (화)", insp: 1501, def: 8, rate: 0.53 },
+      { date: "08/26 (수)", insp: 1744, def: 16, rate: 0.92 },
+      { date: "08/27 (목)", insp: 1500, def: 5, rate: 0.33 },
+      { date: "08/28 (금)", insp: 1685, def: 15, rate: 0.89 },
+      { date: "08/29 (토)", insp: 1563, def: 7, rate: 0.45 }
+    ]
   },
   {
     id: "nx4a",
@@ -33,8 +47,16 @@ const INITIAL_CORE_ITEMS = [
     inspectQty: 50400,
     defectQty: 302,
     defectRate: 0.60,
-    worstReason: "스코치 (148건), 직_찢어짐 (62건)",
-    lossAmount: 1735594
+    worstReason: "스코치 (148건), 직_찢어짐 (62건), 사상불량 (44건)",
+    lossAmount: 1735594,
+    dailySummary: [
+      { date: "08/24 (월)", insp: 1200, def: 2, rate: 0.17 },
+      { date: "08/25 (화)", insp: 960, def: 3, rate: 0.31 },
+      { date: "08/26 (수)", insp: 1200, def: 26, rate: 2.17 },
+      { date: "08/27 (목)", insp: 1200, def: 9, rate: 0.75 },
+      { date: "08/28 (금)", insp: 960, def: 5, rate: 0.52 },
+      { date: "08/29 (토)", insp: 960, def: 4, rate: 0.42 }
+    ]
   },
   {
     id: "nx4",
@@ -43,8 +65,16 @@ const INITIAL_CORE_ITEMS = [
     inspectQty: 25880,
     defectQty: 34,
     defectRate: 0.13,
-    worstReason: "사상불량, 둔_삽입불량",
-    lossAmount: 195398
+    worstReason: "사상불량 (18건), 둔_삽입불량 (9건), 기타 (7건)",
+    lossAmount: 195398,
+    dailySummary: [
+      { date: "08/24 (월)", insp: 1440, def: 1, rate: 0.07 },
+      { date: "08/25 (화)", insp: 1440, def: 6, rate: 0.42 },
+      { date: "08/26 (수)", insp: 1600, def: 4, rate: 0.25 },
+      { date: "08/27 (목)", insp: 1440, def: 0, rate: 0.00 },
+      { date: "08/28 (금)", insp: 1100, def: 3, rate: 0.27 },
+      { date: "08/29 (토)", insp: 0, def: 0, rate: 0.00 }
+    ]
   },
   {
     id: "hr",
@@ -53,12 +83,20 @@ const INITIAL_CORE_ITEMS = [
     inspectQty: 20858,
     defectQty: 270,
     defectRate: 1.29,
-    worstReason: "직_어퍼떨어짐 (218건), 둔_어퍼떨어짐 (46건)",
-    lossAmount: 640380
+    worstReason: "직_어퍼떨어짐 (218건), 둔_어퍼떨어짐 (46건), 치수불량 (6건)",
+    lossAmount: 640380,
+    dailySummary: [
+      { date: "08/24 (월)", insp: 520, def: 0, rate: 0.00 },
+      { date: "08/25 (화)", insp: 520, def: 0, rate: 0.00 },
+      { date: "08/26 (수)", insp: 742, def: 10, rate: 1.35 },
+      { date: "08/27 (목)", insp: 630, def: 0, rate: 0.00 },
+      { date: "08/28 (금)", insp: 627, def: 7, rate: 1.12 },
+      { date: "08/29 (토)", insp: 0, def: 0, rate: 0.00 }
+    ]
   }
 ];
 
-const STORAGE_KEY_CORE_ITEMS = "factory_core_items_quality_v1";
+const STORAGE_KEY_CORE_ITEMS = "factory_core_items_quality_v2_expandable";
 
 export const DailyQualityView = () => {
   const { currentProfile } = useAuth();
@@ -73,6 +111,8 @@ export const DailyQualityView = () => {
     }
   });
 
+  // Track expanded item ID for interactive detail breakdown
+  const [expandedItemId, setExpandedItemId] = useState("hr"); // Default expand highest defect rate item
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([
     "G-RUN 불량율 집계.xlsx",
@@ -80,15 +120,20 @@ export const DailyQualityView = () => {
   ]);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState("");
 
-  // Sort items strictly by Inspection Quantity in descending order (검사수량 많은 순서대로 나열)
+  // Sort items strictly by Inspection Quantity descending
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => b.inspectQty - a.inspectQty);
   }, [items]);
 
-  // Find the item with the highest defect rate (불량률이 제일 높은 아이템)
+  // Highest defect rate item
   const maxDefectRateItem = useMemo(() => {
     return items.reduce((max, it) => (it.defectRate > max.defectRate ? it : max), items[0]);
   }, [items]);
+
+  // Toggle item expansion
+  const toggleItemExpand = (id) => {
+    setExpandedItemId((prev) => (prev === id ? null : id));
+  };
 
   // Process files from Input or Drag & Drop
   const processFiles = (files) => {
@@ -177,10 +222,10 @@ export const DailyQualityView = () => {
   // Export Analysis to Excel
   const handleExportExcel = () => {
     const rows = [
-      ["아이템별 품질 검사실적 및 불량률 보고서"],
-      ["조회일자", new Date().toLocaleDateString(), "관리목표", "불량률 0.70% 이하"],
+      ["아이템별 불량률 보고서"],
+      ["조회일자", new Date().toLocaleDateString(), "관리목표", "0.70% 이하"],
       [],
-      ["아이템명", "검사수량(EA)", "불량수량(EA)", "불량률(%)", "상태", "주요 불량 사유"]
+      ["아이템명", "검사수량(EA)", "불량수량(EA)", "불량률(%)", "상태", "주요 불량 사유", "손실금액(원)"]
     ];
 
     sortedItems.forEach((it) => {
@@ -191,7 +236,8 @@ export const DailyQualityView = () => {
         it.defectQty,
         `${it.defectRate}%`,
         isMaxRate ? "🚨 최고 불량률 경고" : it.defectRate <= 0.70 ? "목표달성" : "주의관리",
-        it.worstReason
+        it.worstReason,
+        it.lossAmount
       ]);
     });
 
@@ -202,43 +248,217 @@ export const DailyQualityView = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
+    <div className="space-y-4 sm:space-y-5 animate-fadeIn pb-24 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & EXCEL EXPORT */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg font-black text-slate-900 dark:text-white">
-              아이템별 품질 검사실적 및 불량률
+            <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+              일일 품질현황
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              품질 관리 목표치: <strong className="text-emerald-600 font-black">0.70% 이하</strong> | 담당: <strong>이창엽 책임</strong>
+            <p className="text-[11px] text-slate-400">
+              품질 관리 목표치: <strong className="text-emerald-600 font-bold">0.70% 이하</strong> | 담당: <strong>이창엽 책임</strong>
             </p>
           </div>
         </div>
 
         <button
           onClick={handleExportExcel}
-          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm self-start sm:self-auto"
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm shrink-0"
         >
           <Download className="w-3.5 h-3.5 text-emerald-400" />
-          <span>엑셀 다운로드</span>
+          <span className="hidden sm:inline">엑셀 다운로드</span>
+          <span className="sm:hidden">다운로드</span>
         </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ [핵심 업로더] 2개 엑셀 파일 드래그 앤 드롭 업로드 영역 (Drag & Drop Zone) */}
+      {/* 2. ⭐ [핵심 1] 아이템별 불량률(%) 비교 탭 (클릭 시 세부내용 아코디언 확장) */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600">
+              <BarChart2 className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                아이템별 불량률(%) 비교
+              </h2>
+              <p className="text-[11px] text-slate-400">
+                각 아이템 항목을 <strong>클릭</strong>하면 상세 검사 수량, 주요 불량 원인 및 일자별 실적이 펼쳐집니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs font-bold shrink-0">
+            <span className="flex items-center gap-1 text-emerald-600 text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>목표달성</span>
+            </span>
+            <span className="flex items-center gap-1 text-rose-600 text-[11px]">
+              <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+              <span>최고불량</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Clickable Interactive Item Bars with Smooth Expansion */}
+        <div className="space-y-2.5 pt-1">
+          {sortedItems.map((item) => {
+            const isMaxRate = item.id === maxDefectRateItem.id;
+            const isGood = item.defectRate <= 0.70;
+            const maxRate = 1.6;
+            const barWidthPct = Math.min(100, Math.max(8, (item.defectRate / maxRate) * 100));
+            const isExpanded = expandedItemId === item.id;
+
+            return (
+              <div
+                key={item.id}
+                className={`rounded-2xl border transition-all overflow-hidden ${
+                  isExpanded
+                    ? isMaxRate
+                      ? "bg-rose-50/70 dark:bg-rose-950/30 border-rose-400 ring-2 ring-rose-500/20 shadow-md"
+                      : "bg-slate-50/90 dark:bg-slate-800/80 border-indigo-300 ring-2 ring-indigo-500/20 shadow-md"
+                    : isMaxRate
+                    ? "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 hover:border-rose-400"
+                    : "bg-slate-50/40 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:border-slate-300"
+                }`}
+              >
+                {/* Header Row (Clickable) */}
+                <div
+                  onClick={() => toggleItemExpand(item.id)}
+                  className="p-3.5 sm:p-4 cursor-pointer flex flex-col gap-2 select-none"
+                >
+                  <div className="flex items-center justify-between text-xs font-black">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-900 dark:text-white font-extrabold text-sm sm:text-base">
+                        {item.name}
+                      </span>
+                      {isMaxRate && (
+                        <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black flex items-center gap-1 shadow-sm">
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>최고 불량 🚨</span>
+                        </span>
+                      )}
+                      {isGood && (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-[10px] font-black">
+                          목표달성
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className={`text-base sm:text-xl font-black ${
+                        isMaxRate
+                          ? "text-rose-600 dark:text-rose-400"
+                          : isGood
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-amber-600 dark:text-amber-400"
+                      }`}>
+                        {item.defectRate}%
+                      </span>
+                      <div className="p-1 rounded-lg bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-200/70 dark:bg-slate-700/70 h-3 rounded-full overflow-hidden relative">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        isMaxRate
+                          ? "bg-gradient-to-r from-rose-600 to-red-500 shadow-sm shadow-rose-500/30"
+                          : isGood
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                          : "bg-gradient-to-r from-amber-500 to-orange-400"
+                      }`}
+                      style={{ width: `${barWidthPct}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* ⭐ Expandable Detailed View (펼쳐지는 세부내용) */}
+                {isExpanded && (
+                  <div className="px-3.5 pb-4 sm:px-4 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 space-y-3 animate-fadeIn">
+                    {/* 3 Metric Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">총 검사수량</span>
+                        <strong className="text-sm font-black text-slate-900 dark:text-white">
+                          {item.inspectQty.toLocaleString()} EA
+                        </strong>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">총 불량수량</span>
+                        <strong className={`text-sm font-black ${isMaxRate ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}>
+                          {item.defectQty.toLocaleString()} EA
+                        </strong>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">불량률</span>
+                        <strong className={`text-sm font-black ${isMaxRate ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+                          {item.defectRate}%
+                        </strong>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">품질 손실금액</span>
+                        <strong className="text-sm font-black text-rose-600 dark:text-rose-400">
+                          ₩ {item.lossAmount.toLocaleString()}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Worst Reason Box */}
+                    <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
+                      <strong className="text-slate-900 dark:text-white font-black block mb-1">
+                        주요 불량 원인 및 유형:
+                      </strong>
+                      <span className="text-slate-700 dark:text-slate-300 font-semibold leading-relaxed">
+                        {item.worstReason}
+                      </span>
+                    </div>
+
+                    {/* Daily Trend Strip */}
+                    {item.dailySummary && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 block">최근 8월 일자별 실적 추이:</span>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center text-[10px]">
+                          {item.dailySummary.map((d, i) => (
+                            <div key={i} className="p-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700">
+                              <span className="text-slate-400 block font-bold">{d.date.slice(0, 5)}</span>
+                              <strong className="text-slate-800 dark:text-slate-200 block">{d.insp}EA</strong>
+                              <span className={`font-black ${d.rate > 0.70 ? "text-rose-600 font-extrabold" : "text-emerald-600"}`}>
+                                {d.rate}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. ⭐ [사용자 요청] 2개 파일 드래그 앤 드롭 업로드 탭 (맨 밑으로 이동) */}
       {/* ========================================================================= */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`p-5 sm:p-6 rounded-3xl border-2 border-dashed transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 ${
+        className={`p-4 sm:p-5 rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-3 ${
           isDragging
             ? "border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 ring-4 ring-indigo-500/20 scale-[1.01]"
             : "border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 hover:border-indigo-400 hover:bg-indigo-50/30"
@@ -253,31 +473,31 @@ export const DailyQualityView = () => {
           className="hidden"
         />
 
-        <div className="flex items-center gap-3.5">
-          <div className={`p-3 rounded-2xl transition-all ${
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-xl transition-all shrink-0 ${
             isDragging ? "bg-indigo-600 text-white scale-110" : "bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400"
           }`}>
-            <FileUp className="w-6 h-6" />
+            <FileUp className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white">
+            <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
               G-RUN 불량율 집계 & AB동 최종검사 파일 드래그 업로드
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               바탕화면의 엑셀 파일 2개를 이곳에 <strong>한 번에 드래그하여 놓거나 클릭</strong>하여 업로드하세요.
             </p>
           </div>
         </div>
 
         {/* Linked Files Status Badges */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {uploadedFiles.map((fn, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 shadow-sm"
             >
-              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span className="truncate max-w-[180px]">{fn}</span>
+              <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+              <span className="truncate max-w-[160px]">{fn}</span>
             </div>
           ))}
         </div>
@@ -290,267 +510,6 @@ export const DailyQualityView = () => {
           <span>{uploadSuccessMsg}</span>
         </div>
       )}
-
-      {/* ========================================================================= */}
-      {/* 3. ⭐ [핵심 1] 아이템별 품질 실적 카드 (검사수량 순 나열 & 최고 불량률 붉은색 경고) */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {sortedItems.map((item) => {
-          const isMaxRate = item.id === maxDefectRateItem.id;
-          const isTargetAchieved = item.defectRate <= 0.70;
-
-          return (
-            <div
-              key={item.id}
-              className={`p-5 rounded-3xl border transition-all shadow-sm flex flex-col justify-between relative overflow-hidden ${
-                isMaxRate
-                  ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/40 shadow-lg shadow-rose-500/15 animate-pulse-subtle"
-                  : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300"
-              }`}
-            >
-              {/* Top Row: Item Name & Alert Badge */}
-              <div>
-                <div className="flex items-center justify-between">
-                  <h3 className={`text-lg font-black ${isMaxRate ? "text-rose-950 dark:text-rose-100" : "text-slate-900 dark:text-white"}`}>
-                    {item.name}
-                  </h3>
-
-                  {isMaxRate ? (
-                    <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white text-xs font-black flex items-center gap-1 shadow-md shadow-rose-600/30">
-                      <AlertTriangle className="w-3.5 h-3.5 animate-bounce" />
-                      <span>최고 불량률 경고</span>
-                    </span>
-                  ) : isTargetAchieved ? (
-                    <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[11px] font-black">
-                      목표달성
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 text-[11px] font-black">
-                      주의관리
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Metrics: Defect Rate & Inspection Qty */}
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-3">
-                {/* Defect Rate Highlight */}
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <span className="text-xs text-slate-400 font-bold block">불량률</span>
-                    <span className={`text-3xl font-black ${
-                      isMaxRate
-                        ? "text-rose-600 dark:text-rose-400 font-black"
-                        : isTargetAchieved
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-amber-600 dark:text-amber-400"
-                    }`}>
-                      {item.defectRate}%
-                    </span>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-xs text-slate-400 font-bold block">불량수량</span>
-                    <span className={`text-lg font-black ${isMaxRate ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-200"}`}>
-                      {item.defectQty.toLocaleString()} <span className="text-xs text-slate-400 font-normal">EA</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Inspection Qty Strip */}
-                <div className={`p-3 rounded-2xl flex items-center justify-between text-xs font-black ${
-                  isMaxRate
-                    ? "bg-rose-100/70 dark:bg-rose-900/40 text-rose-950 dark:text-rose-100"
-                    : "bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-200"
-                }`}>
-                  <span className="text-slate-500 dark:text-slate-400 font-bold">검사 수량</span>
-                  <span className="text-base font-black">
-                    {item.inspectQty.toLocaleString()} EA
-                  </span>
-                </div>
-
-                {/* Worst Cause */}
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-1">
-                  <span className="font-bold shrink-0">주요 원인:</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                    {item.worstReason}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. ⭐ [핵심 2] 아이템별 불량률(%) 비교 가로형 바 차트 */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-              <BarChart2 className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="font-black text-base text-slate-900 dark:text-white">
-                아이템별 불량률(%) 비교
-              </h2>
-              <p className="text-xs text-slate-400">
-                품질 관리 목표치: 0.70% 이하 (불량률 최고 아이템 붉은색 경고 표시)
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-xs font-bold">
-            <span className="flex items-center gap-1 text-emerald-600">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span>목표달성 (≤0.70%)</span>
-            </span>
-            <span className="flex items-center gap-1 text-rose-600">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
-              <span>최고 불량 경고</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Horizontal Progress Bars */}
-        <div className="space-y-4 pt-2">
-          {sortedItems.map((item) => {
-            const isMaxRate = item.id === maxDefectRateItem.id;
-            const isGood = item.defectRate <= 0.70;
-            const maxRate = 1.6;
-            const barWidthPct = Math.min(100, Math.max(8, (item.defectRate / maxRate) * 100));
-
-            return (
-              <div key={item.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-black">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-900 dark:text-white font-extrabold text-sm">
-                      {item.name}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {isMaxRate && (
-                      <span className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-black">
-                        최고 불량 🚨
-                      </span>
-                    )}
-                    <span className={`text-base font-black ${
-                      isMaxRate
-                        ? "text-rose-600 dark:text-rose-400"
-                        : isGood
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-amber-600 dark:text-amber-400"
-                    }`}>
-                      {item.defectRate}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-3.5 rounded-full overflow-hidden relative">
-                  {/* Progress Fill */}
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isMaxRate
-                        ? "bg-gradient-to-r from-rose-600 to-red-500 shadow-md shadow-rose-500/30"
-                        : isGood
-                        ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                        : "bg-gradient-to-r from-amber-500 to-orange-400"
-                    }`}
-                    style={{ width: `${barWidthPct}%` }}
-                  ></div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 5. ⭐ [핵심 3] 아이템별 검사실적 일람표 */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-            <h3 className="font-black text-base text-slate-900 dark:text-white">
-              아이템별 검사실적 및 불량률 종합 일람표
-            </h3>
-          </div>
-          <span className="text-xs font-bold text-slate-400">
-            총 {sortedItems.length}개 핵심 아이템
-          </span>
-        </div>
-
-        {/* Detailed Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[750px]">
-            <thead>
-              <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 font-black">
-                <th className="py-3 px-3 w-[22%]">아이템명</th>
-                <th className="py-3 px-3 text-right w-[18%]">검사 수량</th>
-                <th className="py-3 px-3 text-right w-[16%]">불량 수량</th>
-                <th className="py-3 px-3 text-center w-[16%]">불량률 (%)</th>
-                <th className="py-3 px-3 text-center w-[14%]">상태 구분</th>
-                <th className="py-3 px-3 w-[24%]">주요 불량 사유</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {sortedItems.map((item) => {
-                const isMaxRate = item.id === maxDefectRateItem.id;
-                const isGood = item.defectRate <= 0.70;
-
-                return (
-                  <tr
-                    key={item.id}
-                    className={`transition-colors h-12 ${
-                      isMaxRate
-                        ? "bg-rose-50/80 dark:bg-rose-950/30 font-bold"
-                        : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <td className="py-2.5 px-3 font-black text-slate-900 dark:text-white text-sm">
-                      {item.name}
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-black text-slate-900 dark:text-white text-sm">
-                      {item.inspectQty.toLocaleString()} EA
-                    </td>
-                    <td className={`py-2.5 px-3 text-right font-black text-sm ${isMaxRate ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-200"}`}>
-                      {item.defectQty.toLocaleString()} EA
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className={`px-3 py-1 rounded-lg font-black text-xs ${
-                        isMaxRate
-                          ? "bg-rose-600 text-white shadow-sm shadow-rose-600/30"
-                          : isGood
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                      }`}>
-                        {item.defectRate}%
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center font-black">
-                      {isMaxRate ? (
-                        <span className="text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>최고 불량 🚨</span>
-                        </span>
-                      ) : isGood ? (
-                        <span className="text-emerald-600">● 목표달성</span>
-                      ) : (
-                        <span className="text-amber-600">■ 주의관리</span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 font-medium truncate" title={item.worstReason}>
-                      {item.worstReason}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 };
