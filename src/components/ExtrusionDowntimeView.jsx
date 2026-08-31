@@ -216,7 +216,6 @@ export const ExtrusionDowntimeView = () => {
     }
   });
 
-  const [viewMode, setViewMode] = useState("all"); // 'all' | 'monthly' | 'weekly'
   const [selectedWeek, setSelectedWeek] = useState("8월 4주차");
   const [selectedLineFilter, setSelectedLineFilter] = useState("all");
   const [selectedReasonFilter, setSelectedReasonFilter] = useState("all");
@@ -442,93 +441,44 @@ export const ExtrusionDowntimeView = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
-      {/* 0. VIEW SWITCHER (가독성 극대화: 전체보기 | 1.월 누적 | 2.주차별) */}
+      {/* ⭐ [1구역] 압출동 8월 누적 비가동내역 (각 라인별 표시) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Wrench className="w-4 h-4" />
-          </div>
-          <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-            압출동 비가동 관리
-          </h1>
-        </div>
-
-        {/* View Mode Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-          <button
-            onClick={() => setViewMode("all")}
-            className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
-              viewMode === "all"
-                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            📑 전체 2개 영역 보기
-          </button>
-          <button
-            onClick={() => setViewMode("monthly")}
-            className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
-              viewMode === "monthly"
-                ? "bg-amber-500 text-slate-950 shadow-sm"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            📅 1. 월 누적 비가동내역
-          </button>
-          <button
-            onClick={() => setViewMode("weekly")}
-            className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
-              viewMode === "weekly"
-                ? "bg-blue-600 text-white shadow-sm"
-                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            ⏱️ 2. 주차별 비가동내역
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* ⭐ [1구역] 압출동 8월(월) 누적 비가동내역 (각 라인별 표시) */}
-      {/* ========================================================================= */}
-      {(viewMode === "all" || viewMode === "monthly") && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-amber-500/30 dark:border-amber-500/20 shadow-sm space-y-3.5 animate-fadeIn">
-          {/* Section 1 Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-sm">
-                1
-              </div>
-              <div>
-                <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>📅 압출동 8월(월) 누적 비가동내역</span>
-                  <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">(각 라인별 표시)</span>
-                </h2>
-                <span className="text-[11px] text-slate-400">
-                  8월 1일 ~ 8월 29일 누적 비가동 및 월평균 가동률 종합
-                </span>
-              </div>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-amber-500/30 dark:border-amber-500/20 shadow-sm space-y-3.5 animate-fadeIn">
+        {/* Section 1 Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-sm">
+              1
             </div>
-
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-1 rounded-xl bg-slate-900 text-amber-400 text-xs font-black flex items-center gap-1.5">
-                <span>8월 총 누적:</span>
-                <strong className="text-white">{totalMonthCumulative}분 (9.3h)</strong>
-                <span className="text-slate-500">|</span>
-                <span>월 가동률:</span>
-                <strong className="text-emerald-400">98.5%</strong>
-              </div>
-              <button
-                onClick={() => { setSelectedSummaryLine("all"); setIsSummaryModalOpen(true); }}
-                className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-700 hover:text-slate-950 text-xs font-black transition-all flex items-center gap-1"
-                title="8월 누적 종합 분석 열기"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>심층 분석</span>
-              </button>
+            <div>
+              <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>📅 압출동 8월 누적 비가동내역</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">(각 라인별 표시)</span>
+              </h2>
+              <span className="text-[11px] text-slate-400">
+                8월 1일 ~ 8월 29일 누적 비가동 및 월평균 가동률 종합
+              </span>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1 rounded-xl bg-slate-900 text-amber-400 text-xs font-black flex items-center gap-1.5">
+              <span>8월 총 누적:</span>
+              <strong className="text-white">{totalMonthCumulative}분 (9.3h)</strong>
+              <span className="text-slate-500">|</span>
+              <span>월 가동률:</span>
+              <strong className="text-emerald-400">98.5%</strong>
+            </div>
+            <button
+              onClick={() => { setSelectedSummaryLine("all"); setIsSummaryModalOpen(true); }}
+              className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-700 hover:text-slate-950 text-xs font-black transition-all flex items-center gap-1"
+              title="8월 누적 종합 분석 열기"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>심층 분석</span>
+            </button>
+          </div>
+        </div>
 
           {/* 4-Lines Monthly Cumulative Grid Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
@@ -589,14 +539,12 @@ export const ExtrusionDowntimeView = () => {
             })}
           </div>
         </div>
-      )}
 
       {/* ========================================================================= */}
       {/* ⭐ [2구역] 압출동 주차별 비가동내역 (각 라인별 표시) */}
       {/* ========================================================================= */}
-      {(viewMode === "all" || viewMode === "weekly") && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-blue-500/30 dark:border-blue-500/20 shadow-sm space-y-3.5 animate-fadeIn">
-          {/* Section 2 Header & Controller */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-blue-500/30 dark:border-blue-500/20 shadow-sm space-y-3.5 animate-fadeIn">
+        {/* Section 2 Header & Controller */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-xl bg-blue-600 text-white font-black text-xs shadow-sm">
@@ -888,7 +836,6 @@ export const ExtrusionDowntimeView = () => {
             </div>
           </div>
         </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 5. ⭐ [8월 누적 비가동 심층 요약본 모달] */}
