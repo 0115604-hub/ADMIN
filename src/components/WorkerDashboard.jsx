@@ -35,7 +35,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
-import { getWorkLogs, saveWorkLog, deleteWorkLog } from "../services/workLogService";
+import { getWorkLogs, saveWorkLog, deleteWorkLog, subscribeWorkLogs } from "../services/workLogService";
 import { parseExcelFile } from "../utils/excelHelper";
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, TPE 1호, PVC)
@@ -155,6 +155,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isQualityWorker]);
 
+  // Real-time Cloud Synchronization for Work Logs across all mobile phones & PCs
+  useEffect(() => {
+    const unsubscribe = subscribeWorkLogs((logs) => {
+      setWorkLogs(logs);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
@@ -268,8 +276,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   };
 
-  // Save work log
-  const handleSaveLog = (e) => {
+  // Save work log (Cloud Firestore + Local)
+  const handleSaveLog = async (e) => {
     e.preventDefault();
     if (!formData.workContent.trim()) {
       alert("작업 내용을 입력해 주세요.");
@@ -277,7 +285,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
 
     const newLog = {
-      id: Date.now(),
+      id: String(Date.now()),
       date: formData.date,
       plant: formData.plant,
       writer: currentProfile?.name || workerFullName,
@@ -296,8 +304,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       })
     };
 
-    const updated = saveWorkLog(newLog);
-    setWorkLogs(updated);
+    await saveWorkLog(newLog);
 
     setFormData((prev) => ({
       ...prev,
@@ -310,10 +317,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setIsModalOpen(false);
   };
 
-  const handleDeleteLog = (id) => {
+  const handleDeleteLog = async (id) => {
     if (!window.confirm("이 업무일지를 삭제하시겠습니까?")) return;
-    const updated = deleteWorkLog(id);
-    setWorkLogs(updated);
+    await deleteWorkLog(id);
   };
 
   const filteredLogs = workLogs.filter((log) => {
