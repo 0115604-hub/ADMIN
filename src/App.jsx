@@ -179,7 +179,10 @@ export const App = () => {
               {isOperator && (
                 <>
                   {activeTab === "worker_dashboard" && (
-                    <WorkerDashboard onBulkUpload={handleBulkUpload} />
+                    <WorkerDashboard
+                      onBulkUpload={handleBulkUpload}
+                      onNavigateTab={(tabId) => setActiveTab(tabId)}
+                    />
                   )}
                   {activeTab === "extrusion_downtime" && (
                     <ExtrusionDowntimeView />
@@ -243,7 +246,10 @@ export const App = () => {
                   )}
 
                   {activeTab === "worker_dashboard" && (
-                    <WorkerDashboard onBulkUpload={handleBulkUpload} />
+                    <WorkerDashboard
+                      onBulkUpload={handleBulkUpload}
+                      onNavigateTab={(tabId) => setActiveTab(tabId)}
+                    />
                   )}
 
                   {activeTab === "extrusion_downtime" && (
