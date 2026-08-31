@@ -225,85 +225,91 @@ export const ExtrusionDowntimeView = () => {
     XLSX.writeFile(wb, `압출동_주간_비가동내역_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
+  // Extrusion line statistics
+  const lineStats = useMemo(() => {
+    return EXTRUSION_LINES.map((line) => {
+      const lineLogs = logs.filter((l) => l.machine === line);
+      const downtime = lineLogs.reduce((sum, l) => sum + (Number(l.durationMinutes) || 0), 0);
+      const count = lineLogs.length;
+      return { line, downtime, count };
+    });
+  }, [logs]);
+
   return (
-    <div className="space-y-6 animate-fadeIn pb-24">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-amber-900 via-orange-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-semibold">
-              <Wrench className="w-3.5 h-3.5" />
-              <span>압출 4개 LINE (PVC / PCM 1호 / PCM 3호 / TPE 1호) 설비 가동 효율</span>
+    <div className="space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
+      {/* Top Compact Control Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <Wrench className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-black text-slate-900 dark:text-white">
+                압출동 주간 비가동 내역
+              </h1>
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-black">
+                4개 LINE 가동률 {operationRatio}%
+              </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-              압출동 주간 비가동 내역
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              PVC LINE, PCM 1호 LINE, PCM 3호 LINE, TPE 1호 LINE의 형교환, 승온대기, 퍼징 등 주간 비가동 시간을 체계적으로 분석하여 최적의 가동률을 달성합니다.
+            <p className="text-xs text-slate-400 mt-0.5">
+              총괄: <strong>설유철 책임</strong> | 금주 총 비가동: <strong className="text-rose-600 font-black">{totalDowntimeMinutes}분 ({totalDowntimeHours}시간)</strong>
             </p>
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all shadow-sm"
-            >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span>엑셀 다운로드</span>
-            </button>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-lg shadow-amber-500/25 active:scale-95 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>비가동 내역 등록</span>
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>엑셀 다운로드</span>
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md shadow-amber-500/25 active:scale-95 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>비가동 내역 등록</span>
+          </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">금주 총 비가동 시간</span>
-          <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">
-            {totalDowntimeMinutes} 분
-          </p>
-          <p className="text-xs font-semibold text-slate-400 mt-1">
-            약 {totalDowntimeHours} 시간 손실
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">압출 4개 LINE 평균 가동률</span>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
-            {operationRatio}%
-          </p>
-          <p className="text-xs font-semibold text-slate-400 mt-1">
-            주간 목표(96.0%) 대비 양호
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">총 비가동 발생 건수</span>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-2">
-            {logs.length} 건
-          </p>
-          <p className="text-xs font-semibold text-slate-400 mt-1">
-            형교환 및 퍼징 위주
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">압출 공정 총괄 관리자</span>
-          <p className="text-xl font-black text-slate-900 dark:text-white mt-2">
-            설유철 책임
-          </p>
-          <p className="text-xs font-semibold text-slate-400 mt-1">
-            삼랑진공장 압출동
-          </p>
-        </div>
+      {/* 4 Horizontal Extrusion Line Status Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {lineStats.map(({ line, downtime, count }) => (
+          <div
+            key={line}
+            onClick={() => setSelectedMachine(selectedMachine === line ? "all" : line)}
+            className={`p-4 sm:p-5 rounded-3xl border transition-all cursor-pointer shadow-sm ${
+              selectedMachine === line
+                ? "bg-amber-50/70 border-amber-400 dark:bg-amber-950/40 dark:border-amber-600 ring-2 ring-amber-400/30"
+                : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-amber-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <span>{line}</span>
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">
+                {count}건 발생
+              </span>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <div>
+                <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                  {downtime}
+                </span>
+                <span className="text-xs text-slate-400 ml-1 font-bold">분</span>
+              </div>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                {downtime > 0 ? "형교환/점검" : "무중단 가동"}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Filter & Search Bar */}
