@@ -27,10 +27,14 @@ export const AuthModal = () => {
 
   const handlePinSubmit = (e) => {
     e.preventDefault();
+    if (!pin) {
+      setErrorMsg("비밀번호(PIN)를 입력해 주세요.");
+      return;
+    }
     setErrorMsg("");
     setLoading(true);
     try {
-      loginWithProfile(selectedUser.id, pin || "1234");
+      loginWithProfile(selectedUser.id, pin);
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
@@ -216,7 +220,7 @@ export const AuthModal = () => {
                 <span>
                   {selectedUser.role === "ADMIN"
                     ? "관리자 비밀번호 입력"
-                    : "비밀번호(PIN) 입력 (기본: 1234)"}
+                    : "비밀번호(PIN 4자리) 입력"}
                 </span>
               </label>
               <input
@@ -225,7 +229,7 @@ export const AuthModal = () => {
                 placeholder={
                   selectedUser.role === "ADMIN"
                     ? "관리자 비밀번호 입력"
-                    : "PIN 4자리 입력 (기본: 1234)"
+                    : "PIN 4자리 입력"
                 }
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}

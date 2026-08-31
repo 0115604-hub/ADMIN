@@ -30,12 +30,12 @@ export const PLANTS = [
     name: "삼랑진공장",
     badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300",
     workers: [
-      { id: "sam_mj", name: "이명재", title: "이사", plant: "삼랑진공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "이", pin: "1234" },
-      { id: "sam_yc", name: "설유철", title: "책임", plant: "삼랑진공장", assignedProcess: "압출동 관리", role: "OPERATOR", avatar: "설", pin: "1234" },
-      { id: "sam_ks", name: "윤경수", title: "책임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "윤", pin: "1234" },
-      { id: "sam_cy", name: "이창엽", title: "책임", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "1234" },
-      { id: "sam_in", name: "양인나", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "양", pin: "1234" },
-      { id: "sam_ij", name: "조인주", title: "선임", plant: "삼랑진공장", assignedProcess: "경리업무", role: "OPERATOR", avatar: "조", pin: "1234" }
+      { id: "sam_mj", name: "이명재", title: "이사", plant: "삼랑진공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "이", pin: "6348" },
+      { id: "sam_yc", name: "설유철", title: "책임", plant: "삼랑진공장", assignedProcess: "압출동 관리", role: "OPERATOR", avatar: "설", pin: "6355" },
+      { id: "sam_ks", name: "윤경수", title: "책임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "윤", pin: "0213" },
+      { id: "sam_cy", name: "이창엽", title: "책임", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "7483" },
+      { id: "sam_in", name: "양인나", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "양", pin: "4860" },
+      { id: "sam_ij", name: "조인주", title: "선임", plant: "삼랑진공장", assignedProcess: "경리업무", role: "OPERATOR", avatar: "조", pin: "3738" }
     ]
   },
   {
@@ -43,9 +43,9 @@ export const PLANTS = [
     name: "한림공장",
     badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
     workers: [
-      { id: "hal_dw", name: "김동욱", title: "책임", plant: "한림공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "김", pin: "1234" },
-      { id: "hal_cy", name: "우창용", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "우", pin: "1234" },
-      { id: "hal_sm", name: "오상민", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "오", pin: "1234" }
+      { id: "hal_dw", name: "김동욱", title: "책임", plant: "한림공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "김", pin: "7175" },
+      { id: "hal_cy", name: "우창용", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "우", pin: "4871" },
+      { id: "hal_sm", name: "오상민", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "오", pin: "7800" }
     ]
   }
 ];
