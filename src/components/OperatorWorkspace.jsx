@@ -127,7 +127,7 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       localStorage.setItem("operator_upload_history", JSON.stringify(updatedHistory));
 
       const ymLabel = `${targetYM.split("-")[0]}년 ${targetYM.split("-")[1]}월`;
-      setSuccessMessage(`${ymLabel} 엑셀 파일(매출 ${formatAmount(parsedResult.totalSales)} / 매입 ${formatAmount(parsedResult.totalExpenses)})이 성공적으로 동기화 및 반영되었습니다!`);
+      setSuccessMessage("성공적으로 동기화 및 반영되었습니다.");
       setUploadSuccess(true);
       setParsedResult(null);
     } catch (err) {
@@ -168,17 +168,12 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       {uploadSuccess && (
         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 flex items-center justify-between animate-fadeIn">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-            <div>
-              <p className="font-extrabold text-sm">{successMessage}</p>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                관리자(최미영, 권태형) 대시보드에 최신 실적이 실시간 업데이트되었습니다.
-              </p>
-            </div>
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+            <p className="font-extrabold text-sm">{successMessage || "성공적으로 동기화 및 반영되었습니다."}</p>
           </div>
           <button
             onClick={() => setUploadSuccess(false)}
-            className="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shrink-0 ml-2"
+            className="text-xs font-bold px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shrink-0 ml-2"
           >
             확인
           </button>
