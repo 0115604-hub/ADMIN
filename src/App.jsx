@@ -54,9 +54,10 @@ export const App = () => {
       if (forceRefresh) setIsRefreshing(true);
       else setLoading(true);
 
-      const data = await fetchTransactions();
-      setTransactions(data);
-      setDataSource("local");
+      const result = await fetchTransactions();
+      const items = Array.isArray(result) ? result : (result?.data || []);
+      setTransactions(items);
+      setDataSource(result?.source || "local");
     } catch (error) {
       console.error("Data load error:", error);
     } finally {

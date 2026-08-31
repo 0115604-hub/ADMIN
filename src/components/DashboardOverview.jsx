@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   TrendingUp,
   Car,
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
-import { getWorkLogs } from "../services/workLogService";
+import { getWorkLogs, subscribeWorkLogs } from "../services/workLogService";
 
 export const DashboardOverview = ({
   onNavigateToVehicles,
@@ -30,7 +30,15 @@ export const DashboardOverview = ({
   const { selectedMonth, currentMonthData, allMonthlyData } = useMonth();
 
   const [selectedPlantFilter, setSelectedPlantFilter] = useState("all"); // 'all' | '삼랑진공장' | '한림공장'
-  const workLogs = getWorkLogs();
+  const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
+
+  // Real-time Cloud Sync for Work Logs on Admin Dashboard
+  useEffect(() => {
+    const unsubscribe = subscribeWorkLogs((logs) => {
+      setWorkLogs(logs);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const salesSummary = currentMonthData?.salesSummary || {
     totalSales: 0,
