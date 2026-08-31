@@ -166,9 +166,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
-  const totalSales = currentMonthData?.salesSummary?.totalSales || 1867589445;
-  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1263790685;
-  const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "67.7";
+  const totalSales = currentMonthData?.salesSummary?.totalSales || 1756104735;
+  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1248400884.5;
+  const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "71.1";
 
   // Changyeop Quality 2-Files Handler
   const handleQualityFiles = (files) => {

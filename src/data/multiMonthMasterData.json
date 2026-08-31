@@ -3,22 +3,20 @@
     "yearMonth": "2026-08",
     "salesSummary": {
       "yearMonth": "2026-08",
-      "totalSales": 1867589445,
-      "totalCalculatedSales": 1867589445,
-      "pcmTotal": 607428450,
-      "totalQty": 256840,
-      "itemCount": 64,
-      "vehicleGroupCount": 10
+      "totalSales": 1756104735,
+      "totalCalculatedSales": 1756104735,
+      "pcmTotal": 520316759,
+      "totalQty": 249539,
+      "itemCount": 65,
+      "vehicleGroupCount": 19
     },
     "vehicleSales": [
       {
-        "rank": 1,
         "vehicleGroup": "PCM 압출/가공",
         "category": "PCM 매출",
         "itemCount": 1,
         "totalQty": 1,
-        "totalAmount": 607428450,
-        "share": 32.53,
+        "totalAmount": 520316759,
         "details": [
           {
             "process": "PCM 매출",
@@ -26,41 +24,21 @@
             "itemCode": "PCM-08",
             "partNumber": "PCM-TOTAL",
             "partName": "PCM 매출 전체 (압출 및 가공 08월 정산)",
-            "unitPrice": 607428450,
+            "unitPrice": 520316759,
             "qty": 1,
-            "amount": 607428450
+            "amount": 520316759
           }
-        ]
+        ],
+        "rank": 1,
+        "share": 29.63
       },
       {
-        "rank": 2,
         "vehicleGroup": "9BQC",
         "category": "내수상품매출",
-        "itemCount": 7,
-        "totalQty": 56945,
-        "totalAmount": 398269870,
-        "share": 21.32,
+        "itemCount": 6,
+        "totalQty": 53580,
+        "totalAmount": 359892840,
         "details": [
-          {
-            "process": "내수상품매출",
-            "vehicle": "9BQC",
-            "itemCode": "G1102-2756-00",
-            "partNumber": "42933958",
-            "partName": "9BQC RR LH(PRI)",
-            "unitPrice": 11028,
-            "qty": 13950,
-            "amount": 153840600
-          },
-          {
-            "process": "내수상품매출",
-            "vehicle": "9BQC",
-            "itemCode": "G1102-2757-00",
-            "partNumber": "42933959",
-            "partName": "9BQC RR RH(PRI)",
-            "unitPrice": 11028,
-            "qty": 13920,
-            "amount": 153509760
-          },
           {
             "process": "내수상품매출",
             "vehicle": "9BQC",
@@ -68,8 +46,8 @@
             "partNumber": "42933952",
             "partName": "9BQC FRT LH",
             "unitPrice": 2858,
-            "qty": 14000,
-            "amount": 40012000
+            "qty": 14100,
+            "amount": 40297800
           },
           {
             "process": "내수상품매출",
@@ -78,8 +56,8 @@
             "partNumber": "42933953",
             "partName": "9BQC FRT RH",
             "unitPrice": 2858,
-            "qty": 13900,
-            "amount": 39726200
+            "qty": 14100,
+            "amount": 40297800
           },
           {
             "process": "내수상품매출",
@@ -88,8 +66,8 @@
             "partNumber": "42933956",
             "partName": "9BQC RR LH(TNI)",
             "unitPrice": 10598,
-            "qty": 520,
-            "amount": 5510960
+            "qty": 660,
+            "amount": 6994680
           },
           {
             "process": "내수상품매출",
@@ -98,29 +76,39 @@
             "partNumber": "42933957",
             "partName": "9BQC RR RH(TNI)",
             "unitPrice": 10598,
-            "qty": 520,
-            "amount": 5510960
+            "qty": 720,
+            "amount": 7630560
           },
           {
             "process": "내수상품매출",
             "vehicle": "9BQC",
-            "itemCode": "G1102-2463-00",
-            "partNumber": "42870825",
-            "partName": "9BQC Glass run RR RH PRIVACY",
-            "unitPrice": 10627,
-            "qty": 135,
-            "amount": 159390
+            "itemCode": "G1102-2756-00",
+            "partNumber": "42933958",
+            "partName": "9BQC RR LH(PRI)",
+            "unitPrice": 11028,
+            "qty": 12000,
+            "amount": 132336000
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "9BQC",
+            "itemCode": "G1102-2757-00",
+            "partNumber": "42933959",
+            "partName": "9BQC RR RH(PRI)",
+            "unitPrice": 11028,
+            "qty": 12000,
+            "amount": 132336000
           }
-        ]
+        ],
+        "rank": 2,
+        "share": 20.49
       },
       {
-        "rank": 3,
-        "vehicleGroup": "DT (수출)",
+        "vehicleGroup": "DT",
         "category": "수출상품매출",
-        "itemCount": 3,
-        "totalQty": 43100,
-        "totalAmount": 267215290,
-        "share": 14.31,
+        "itemCount": 4,
+        "totalQty": 39600,
+        "totalAmount": 245772000,
         "details": [
           {
             "process": "수출상품매출",
@@ -129,8 +117,8 @@
             "partNumber": "68291620AD",
             "partName": "DT(CREW) Door Side RR RH (CREW)",
             "unitPrice": 6206,
-            "qty": 21500,
-            "amount": 133429000
+            "qty": 19080,
+            "amount": 118410480
           },
           {
             "process": "수출상품매출",
@@ -139,329 +127,2264 @@
             "partNumber": "68291621AD",
             "partName": "DT(CREW) Door Side RR LH (CREW)",
             "unitPrice": 6206,
-            "qty": 21500,
-            "amount": 133429000
+            "qty": 19080,
+            "amount": 118410480
           },
           {
             "process": "수출상품매출",
             "vehicle": "DT",
             "itemCode": "G1103-2139-01",
             "partNumber": "68291618AD",
-            "partName": "DT Hood Seal LH/RH",
-            "unitPrice": 3572,
-            "qty": 100,
-            "amount": 357290
+            "partName": "DT(QUAD) Door Side RR RH",
+            "unitPrice": 6216,
+            "qty": 720,
+            "amount": 4475520
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "DT",
+            "itemCode": "G1103-2140-01",
+            "partNumber": "68291619AD",
+            "partName": "DT(QUAD) Door Side RR LH",
+            "unitPrice": 6216,
+            "qty": 720,
+            "amount": 4475520
           }
-        ]
+        ],
+        "rank": 3,
+        "share": 14
       },
       {
+        "vehicleGroup": "DS",
+        "category": "수출상품매출",
+        "itemCount": 4,
+        "totalQty": 28160,
+        "totalAmount": 164772160,
+        "details": [
+          {
+            "process": "수출상품매출",
+            "vehicle": "DS",
+            "itemCode": "G1103-2081-01",
+            "partNumber": "55112362AI",
+            "partName": "DS(CREW) Door Side RR RH",
+            "unitPrice": 5845,
+            "qty": 12800,
+            "amount": 74816000
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "DS",
+            "itemCode": "G1103-2082-01",
+            "partNumber": "55112363AI",
+            "partName": "DS(CREW) Door Side RR LH",
+            "unitPrice": 5845,
+            "qty": 13120,
+            "amount": 76686400
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "DS",
+            "itemCode": "G1103-2085-00",
+            "partNumber": "68563582AC",
+            "partName": "DS(TRUCK) Door Side FR RH",
+            "unitPrice": 5694,
+            "qty": 1120,
+            "amount": 6377280
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "DS",
+            "itemCode": "G1103-2086-00",
+            "partNumber": "68563583AC",
+            "partName": "DS(TRUCK) Door Side FR LH",
+            "unitPrice": 6154,
+            "qty": 1120,
+            "amount": 6892480
+          }
+        ],
         "rank": 4,
-        "vehicleGroup": "NX4 / NX4a",
-        "category": "내수상품매출",
+        "share": 9.38
+      },
+      {
+        "vehicleGroup": "NX4a",
+        "category": "수출상품매출",
         "itemCount": 2,
-        "totalQty": 55130,
-        "totalAmount": 172005000,
-        "share": 9.21,
+        "totalQty": 26880,
+        "totalAmount": 155904000,
+        "details": [
+          {
+            "process": "수출상품매출",
+            "vehicle": "NX4a",
+            "itemCode": "G1102-2069-01",
+            "partNumber": "G1102-2069-00",
+            "partName": "G/RUN FRT LH",
+            "unitPrice": 5800,
+            "qty": 13440,
+            "amount": 77952000
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "NX4a",
+            "itemCode": "G1102-2070-01",
+            "partNumber": "G1102-2070-00",
+            "partName": "G/RUN FRT RH",
+            "unitPrice": 5800,
+            "qty": 13440,
+            "amount": 77952000
+          }
+        ],
+        "rank": 5,
+        "share": 8.88
+      },
+      {
+        "vehicleGroup": "NX4",
+        "category": "내수상품매출",
+        "itemCount": 4,
+        "totalQty": 15736,
+        "totalAmount": 83746992,
         "details": [
           {
             "process": "내수상품매출",
             "vehicle": "NX4",
-            "itemCode": "G1102-1920-00",
-            "partNumber": "82110N9000",
-            "partName": "NX4 G-RUN FRT LH",
-            "unitPrice": 3120,
-            "qty": 28000,
-            "amount": 87360000
+            "itemCode": "G1102-1973-00",
+            "partNumber": "82530-9N000",
+            "partName": "FRT LH",
+            "unitPrice": 5322,
+            "qty": 6902,
+            "amount": 36732444
           },
           {
             "process": "내수상품매출",
             "vehicle": "NX4",
-            "itemCode": "G1102-1921-00",
-            "partNumber": "82120N9000",
-            "partName": "NX4 G-RUN FRT RH",
-            "unitPrice": 3120,
-            "qty": 27130,
-            "amount": 84645000
+            "itemCode": "G1102-1974-00",
+            "partNumber": "82540-9N000",
+            "partName": "FRT RH",
+            "unitPrice": 5322,
+            "qty": 6854,
+            "amount": 36476988
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "NX4",
+            "itemCode": "G1102-1973-01",
+            "partNumber": "82530-9N000",
+            "partName": "NX4 Glass run FR LH 현대CKD",
+            "unitPrice": 5322,
+            "qty": 990,
+            "amount": 5268780
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "NX4",
+            "itemCode": "G1102-1974-01",
+            "partNumber": "82540-9N000",
+            "partName": "NX4 Glass run FR RH 현대CKD",
+            "unitPrice": 5322,
+            "qty": 990,
+            "amount": 5268780
           }
-        ]
+        ],
+        "rank": 6,
+        "share": 4.77
       },
       {
-        "rank": 5,
         "vehicleGroup": "JA",
         "category": "내수상품매출",
-        "itemCount": 2,
-        "totalQty": 56593,
-        "totalAmount": 149407150,
-        "share": 8,
+        "itemCount": 6,
+        "totalQty": 25490,
+        "totalAmount": 76570980,
         "details": [
           {
             "process": "내수상품매출",
             "vehicle": "JA",
-            "itemCode": "G1102-1540-00",
-            "partNumber": "83110G6000",
-            "partName": "JA G-RUN RR LH",
-            "unitPrice": 2640,
-            "qty": 28500,
-            "amount": 75240000
+            "itemCode": "G1102-1361-00",
+            "partNumber": "82530G6000",
+            "partName": "G/RUN FRT LH",
+            "unitPrice": 2558,
+            "qty": 6315,
+            "amount": 16153770
           },
           {
             "process": "내수상품매출",
             "vehicle": "JA",
-            "itemCode": "G1102-1541-00",
-            "partNumber": "83120G6000",
-            "partName": "JA G-RUN RR RH",
-            "unitPrice": 2640,
-            "qty": 28093,
-            "amount": 74167150
+            "itemCode": "G1102-1362-00",
+            "partNumber": "82540G6000",
+            "partName": "G/RUN FRT RH",
+            "unitPrice": 2558,
+            "qty": 6332,
+            "amount": 16197256
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "JA",
+            "itemCode": "R1102-1363-00",
+            "partNumber": "83530G6000",
+            "partName": "G/RUN RR LH",
+            "unitPrice": 3443,
+            "qty": 6400,
+            "amount": 22035200
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "JA",
+            "itemCode": "R1102-1364-00",
+            "partNumber": "83540G6000",
+            "partName": "G/RUN RR RH",
+            "unitPrice": 3443,
+            "qty": 6400,
+            "amount": 22035200
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "JA",
+            "itemCode": "G1102-1363-01",
+            "partNumber": "83530G6000",
+            "partName": "G/RUN RR RH",
+            "unitPrice": 3478,
+            "qty": 17,
+            "amount": 59126
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "JA",
+            "itemCode": "G1102-1364-01",
+            "partNumber": "83540G6000",
+            "partName": "G/RUN RR RH",
+            "unitPrice": 3478,
+            "qty": 26,
+            "amount": 90428
           }
-        ]
+        ],
+        "rank": 7,
+        "share": 4.36
       },
       {
-        "rank": 6,
+        "vehicleGroup": "PU",
+        "category": "내수상품매출",
+        "itemCount": 6,
+        "totalQty": 14130,
+        "totalAmount": 45852973,
+        "details": [
+          {
+            "process": "내수상품매출",
+            "vehicle": "PU",
+            "itemCode": "G1106-0179",
+            "partNumber": "822104E000",
+            "partName": "PU OUT CHAN LH",
+            "unitPrice": 3275,
+            "qty": 5520,
+            "amount": 18078000
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "PU",
+            "itemCode": "G1106-0180",
+            "partNumber": "822204E000",
+            "partName": "PU OUT CHAN RH",
+            "unitPrice": 3275,
+            "qty": 5470,
+            "amount": 17914250
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "PU",
+            "itemCode": "G1102-0620",
+            "partNumber": "832104E000",
+            "partName": "PU(D/CAB) OTR BELT LH",
+            "unitPrice": 2592,
+            "qty": 313,
+            "amount": 811296
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "PU",
+            "itemCode": "G1102-0621",
+            "partNumber": "832204E000",
+            "partName": "PU(D/CAB) OTR BELT RH",
+            "unitPrice": 2592,
+            "qty": 306,
+            "amount": 793152
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "PU",
+            "itemCode": "G1106-0179-01",
+            "partNumber": "822104E000",
+            "partName": "PU Outer Belt FR LH",
+            "unitPrice": 3275,
+            "qty": 1260,
+            "amount": 4126500
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "PU",
+            "itemCode": "G1106-0180-01",
+            "partNumber": "822204E000",
+            "partName": "PU Outer Belt FR RH",
+            "unitPrice": 3275,
+            "qty": 1261,
+            "amount": 4129775
+          }
+        ],
+        "rank": 8,
+        "share": 2.61
+      },
+      {
+        "vehicleGroup": "NE1a",
+        "category": "수출상품매출",
+        "itemCount": 5,
+        "totalQty": 6720,
+        "totalAmount": 31721280,
+        "details": [
+          {
+            "process": "수출상품매출",
+            "vehicle": "NE1a",
+            "itemCode": "G1103-1871-01",
+            "partNumber": "82130PI000",
+            "partName": "NE1a Door Side FR LH",
+            "unitPrice": 4379,
+            "qty": 320,
+            "amount": 1401280
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "NE1a",
+            "itemCode": "G1103-1871-02",
+            "partNumber": "82130PI000",
+            "partName": "NE1a Door Side FR LH",
+            "unitPrice": 4379,
+            "qty": 1600,
+            "amount": 7006400
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "NE1a",
+            "itemCode": "G1103-1872-02",
+            "partNumber": "82140PI000",
+            "partName": "NE1a Door Side FR RH",
+            "unitPrice": 4379,
+            "qty": 1600,
+            "amount": 7006400
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "NE1a",
+            "itemCode": "G1103-1873-02",
+            "partNumber": "83130PI000",
+            "partName": "NE1a Door Side RR LH",
+            "unitPrice": 4898,
+            "qty": 1600,
+            "amount": 7836800
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "NE1a",
+            "itemCode": "G1103-1874-02",
+            "partNumber": "83140PI000",
+            "partName": "NE1a Door Side RR RH",
+            "unitPrice": 5294,
+            "qty": 1600,
+            "amount": 8470400
+          }
+        ],
+        "rank": 9,
+        "share": 1.81
+      },
+      {
+        "vehicleGroup": "OV1k",
+        "category": "내수상품매출",
+        "itemCount": 4,
+        "totalQty": 17771,
+        "totalAmount": 27364543,
+        "details": [
+          {
+            "process": "내수상품매출",
+            "vehicle": "OV1k",
+            "itemCode": "G1110-0202-00",
+            "partNumber": "86430X9000",
+            "partName": "OV1k Hood Seal",
+            "unitPrice": 1076,
+            "qty": 4032,
+            "amount": 4338432
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "OV1k",
+            "itemCode": "G1110-0203-00",
+            "partNumber": "86435X9000",
+            "partName": "OV1k Hood Seal (FRUNK)",
+            "unitPrice": 1712,
+            "qty": 4032,
+            "amount": 6902784
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "OV1k",
+            "itemCode": "G1160-0009-00",
+            "partNumber": "81855X9100",
+            "partName": "OV1k Power Tail Gate Side Strip LH",
+            "unitPrice": 1661,
+            "qty": 4850,
+            "amount": 8055850
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "OV1k",
+            "itemCode": "G1160-0010-00",
+            "partNumber": "81865X9100",
+            "partName": "OV1k Power Tail Gate Side Strip RH",
+            "unitPrice": 1661,
+            "qty": 4857,
+            "amount": 8067477
+          }
+        ],
+        "rank": 10,
+        "share": 1.56
+      },
+      {
         "vehicleGroup": "HR",
         "category": "내수상품매출",
-        "itemCount": 2,
-        "totalQty": 37602,
-        "totalAmount": 112055360,
-        "share": 6,
+        "itemCount": 4,
+        "totalQty": 8765,
+        "totalAmount": 22984616,
         "details": [
           {
             "process": "내수상품매출",
             "vehicle": "HR",
-            "itemCode": "G1102-1680-00",
-            "partNumber": "82110M0000",
-            "partName": "HR G-RUN FRT LH",
-            "unitPrice": 2980,
-            "qty": 18800,
-            "amount": 56024000
+            "itemCode": "G1102-0085",
+            "partNumber": "825304F000",
+            "partName": "G/RUN FRT LH",
+            "unitPrice": 2664,
+            "qty": 3988,
+            "amount": 10624032
           },
           {
             "process": "내수상품매출",
             "vehicle": "HR",
-            "itemCode": "G1102-1681-00",
-            "partNumber": "82120M0000",
-            "partName": "HR G-RUN FRT RH",
-            "unitPrice": 2980,
-            "qty": 18802,
-            "amount": 56031360
+            "itemCode": "G1102-0128",
+            "partNumber": "825404F000",
+            "partName": "G/RUN FRT RH",
+            "unitPrice": 2664,
+            "qty": 3845,
+            "amount": 10243080
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "HR",
+            "itemCode": "G1102-0181",
+            "partNumber": "835304F000",
+            "partName": "G/RUN RR LH",
+            "unitPrice": 2272,
+            "qty": 470,
+            "amount": 1067840
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "HR",
+            "itemCode": "G1102-0218",
+            "partNumber": "835404F000",
+            "partName": "G/RUN RR RH",
+            "unitPrice": 2272,
+            "qty": 462,
+            "amount": 1049664
           }
-        ]
+        ],
+        "rank": 11,
+        "share": 1.31
       },
       {
-        "rank": 7,
+        "vehicleGroup": "ME1a",
+        "category": "수출상품매출",
+        "itemCount": 2,
+        "totalQty": 4800,
+        "totalAmount": 6158400,
+        "details": [
+          {
+            "process": "수출상품매출",
+            "vehicle": "ME1a",
+            "itemCode": "G1125-0083-01",
+            "partNumber": "831B0TD000",
+            "partName": "ME1a Center Pillar Seal RR RH",
+            "unitPrice": 1283,
+            "qty": 2400,
+            "amount": 3079200
+          },
+          {
+            "process": "수출상품매출",
+            "vehicle": "ME1a",
+            "itemCode": "G1125-0082-01",
+            "partNumber": "831A0TD000",
+            "partName": "ME1a Center Pillar Seal RR LH",
+            "unitPrice": 1283,
+            "qty": 2400,
+            "amount": 3079200
+          }
+        ],
+        "rank": 12,
+        "share": 0.35
+      },
+      {
+        "vehicleGroup": "JK 1",
+        "category": "내수상품매출",
+        "itemCount": 2,
+        "totalQty": 3200,
+        "totalAmount": 4947200,
+        "details": [
+          {
+            "process": "내수상품매출",
+            "vehicle": "JK 1",
+            "itemCode": "G1129-0062-00",
+            "partNumber": "82530-9N000",
+            "partName": "JK Wheel Seal RR LH",
+            "unitPrice": 1546,
+            "qty": 1600,
+            "amount": 2473600
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "JK 1",
+            "itemCode": "G1129-0063-00",
+            "partNumber": "82540-9N000",
+            "partName": "JK Wheel Seal RR RH",
+            "unitPrice": 1546,
+            "qty": 1600,
+            "amount": 2473600
+          }
+        ],
+        "rank": 13,
+        "share": 0.28
+      },
+      {
         "vehicleGroup": "CE1",
         "category": "내수상품매출",
         "itemCount": 2,
-        "totalQty": 22775,
-        "totalAmount": 74703570,
-        "share": 4,
+        "totalQty": 2233,
+        "totalAmount": 3682217,
         "details": [
           {
             "process": "내수상품매출",
             "vehicle": "CE1",
-            "itemCode": "G1102-1810-00",
-            "partNumber": "82110K0000",
-            "partName": "CE1 Door Side LH",
-            "unitPrice": 3280,
-            "qty": 11400,
-            "amount": 37392000
+            "itemCode": "G1125-0076-00",
+            "partNumber": "831A0KL000",
+            "partName": "CE1 P/SEAL RR LH",
+            "unitPrice": 1649,
+            "qty": 1103,
+            "amount": 1818847
           },
           {
             "process": "내수상품매출",
             "vehicle": "CE1",
-            "itemCode": "G1102-1811-00",
-            "partNumber": "82120K0000",
-            "partName": "CE1 Door Side RH",
-            "unitPrice": 3280,
-            "qty": 11375,
-            "amount": 37311570
+            "itemCode": "G1125-0077-00",
+            "partNumber": "831B0KL000",
+            "partName": "CE1 P/SEAL RR RH",
+            "unitPrice": 1649,
+            "qty": 1130,
+            "amount": 1863370
           }
-        ]
+        ],
+        "rank": 14,
+        "share": 0.21
       },
       {
-        "rank": 8,
-        "vehicleGroup": "JK1",
+        "vehicleGroup": "GV",
         "category": "내수상품매출",
-        "itemCount": 1,
-        "totalQty": 10000,
-        "totalAmount": 45210000,
-        "share": 2.42,
+        "itemCount": 2,
+        "totalQty": 1100,
+        "totalAmount": 2724700,
         "details": [
           {
             "process": "내수상품매출",
-            "vehicle": "JK1",
-            "itemCode": "G1102-2100-00",
-            "partNumber": "82110J0000",
-            "partName": "JK1 조인트 후가공 부품",
-            "unitPrice": 4521,
-            "qty": 10000,
-            "amount": 45210000
-          }
-        ]
-      },
-      {
-        "rank": 9,
-        "vehicleGroup": "GN7",
-        "category": "내수상품매출",
-        "itemCount": 1,
-        "totalQty": 5000,
-        "totalAmount": 22100000,
-        "share": 1.18,
-        "details": [
+            "vehicle": "GV",
+            "itemCode": "G1106-0212",
+            "partNumber": "821707M000",
+            "partName": "OTR CHAN LH",
+            "unitPrice": 2477,
+            "qty": 485,
+            "amount": 1201345
+          },
           {
             "process": "내수상품매출",
-            "vehicle": "GN7",
-            "itemCode": "G1102-2200-00",
-            "partNumber": "82110G0000",
-            "partName": "GN7 웨더스트립",
-            "unitPrice": 4420,
-            "qty": 5000,
-            "amount": 22100000
+            "vehicle": "GV",
+            "itemCode": "G1106-0213",
+            "partNumber": "821807M000",
+            "partName": "OTR CHAN RH",
+            "unitPrice": 2477,
+            "qty": 615,
+            "amount": 1523355
           }
-        ]
+        ],
+        "rank": 15,
+        "share": 0.16
       },
       {
-        "rank": 10,
-        "vehicleGroup": "기타 차종 및 부품",
-        "category": "A/S 및 기타",
-        "itemCount": 1,
-        "totalQty": 1,
-        "totalAmount": 19194755,
-        "share": 1.03,
+        "vehicleGroup": "FS",
+        "category": "A/S",
+        "itemCount": 5,
+        "totalQty": 508,
+        "totalAmount": 1767591,
         "details": [
           {
             "process": "A/S",
-            "vehicle": "기타",
-            "itemCode": "G1199-0000-00",
-            "partNumber": "AS-MISC",
-            "partName": "보수용 A/S 및 소량 부품류",
-            "unitPrice": 19194755,
-            "qty": 1,
-            "amount": 19194755
+            "vehicle": "FS",
+            "itemCode": "G1103-0628",
+            "partNumber": "82130-2V000",
+            "partName": "D/SIDE FR LH",
+            "unitPrice": 3850,
+            "qty": 65,
+            "amount": 250250
+          },
+          {
+            "process": "A/S",
+            "vehicle": "FS",
+            "itemCode": "G1103-0629",
+            "partNumber": "82140-2V000",
+            "partName": "D/SIDE FR RH",
+            "unitPrice": 3537,
+            "qty": 165,
+            "amount": 583605
+          },
+          {
+            "process": "A/S",
+            "vehicle": "FS",
+            "itemCode": "G1103-0630",
+            "partNumber": "83140-2V000",
+            "partName": "D/SIDE RR RH",
+            "unitPrice": 3327,
+            "qty": 260,
+            "amount": 865020
+          },
+          {
+            "process": "A/S",
+            "vehicle": "FS",
+            "itemCode": "G1103-0631",
+            "partNumber": "82140-2V900",
+            "partName": "FR RH(RHD)",
+            "unitPrice": 3854,
+            "qty": 10,
+            "amount": 38540
+          },
+          {
+            "process": "A/S",
+            "vehicle": "FS",
+            "itemCode": "G1103-0632",
+            "partNumber": "82130-2V900",
+            "partName": "FR LH(RHD)",
+            "unitPrice": 3772,
+            "qty": 8,
+            "amount": 30176
           }
-        ]
+        ],
+        "rank": 16,
+        "share": 0.1
+      },
+      {
+        "vehicleGroup": "QZ",
+        "category": "내수상품매출",
+        "itemCount": 2,
+        "totalQty": 451,
+        "totalAmount": 910030,
+        "details": [
+          {
+            "process": "내수상품매출",
+            "vehicle": "QZ",
+            "itemCode": "G1106-0317-00",
+            "partNumber": "821707P000",
+            "partName": "OTR CHAN LH",
+            "unitPrice": 2150,
+            "qty": 231,
+            "amount": 496650
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "QZ",
+            "itemCode": "G1106-0318-00",
+            "partNumber": "821807P000",
+            "partName": "OTR CHAN RH",
+            "unitPrice": 1879,
+            "qty": 220,
+            "amount": 413380
+          }
+        ],
+        "rank": 17,
+        "share": 0.05
+      },
+      {
+        "vehicleGroup": "TY",
+        "category": "내수상품매출",
+        "itemCount": 2,
+        "totalQty": 358,
+        "totalAmount": 886766,
+        "details": [
+          {
+            "process": "내수상품매출",
+            "vehicle": "TY",
+            "itemCode": "G1106-0669-00",
+            "partNumber": "AD66203598-1",
+            "partName": "TY Outer Belt FRT LH",
+            "unitPrice": 2477,
+            "qty": 179,
+            "amount": 443383
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "TY",
+            "itemCode": "G1106-0670-00",
+            "partNumber": "AD62203598-2",
+            "partName": "TY Outer Belt FRT RH",
+            "unitPrice": 2477,
+            "qty": 179,
+            "amount": 443383
+          }
+        ],
+        "rank": 18,
+        "share": 0.05
+      },
+      {
+        "vehicleGroup": "EG",
+        "category": "내수상품매출",
+        "itemCount": 2,
+        "totalQty": 56,
+        "totalAmount": 128688,
+        "details": [
+          {
+            "process": "내수상품매출",
+            "vehicle": "EG",
+            "itemCode": "G1106-0009",
+            "partNumber": "821707A000",
+            "partName": "OTR CHAN LH",
+            "unitPrice": 2298,
+            "qty": 31,
+            "amount": 71238
+          },
+          {
+            "process": "내수상품매출",
+            "vehicle": "EG",
+            "itemCode": "G1106-0010",
+            "partNumber": "821807A000",
+            "partName": "OTR CHAN RH",
+            "unitPrice": 2298,
+            "qty": 25,
+            "amount": 57450
+          }
+        ],
+        "rank": 19,
+        "share": 0.01
       }
     ],
     "jajaeSummary": {
       "yearMonth": "2026-08",
-      "totalAmount": 1263790685,
-      "itemCount": 98,
-      "groupCount": 6
+      "totalAmount": 1248400884.5,
+      "itemCount": 139,
+      "groupCount": 14
     },
     "jajaeGroups": [
       {
-        "group": "원자재 (EPDM/TPE/CMB)",
-        "itemCount": 32,
-        "totalAmount": 480240460,
-        "share": 38,
+        "group": "전력비",
+        "itemCount": 4,
+        "totalAmount": 2443721529,
         "details": [
           {
-            "vendor": "주식회사 해동무역",
-            "item": "CMB 원료",
-            "amount": 185113270
+            "code": "",
+            "item": "",
+            "unit": "",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 0,
+            "qty": null,
+            "amount": 1189124769.5
           },
           {
-            "vendor": "(주)화승알앤에이",
-            "item": "EPDM 원료 공급",
-            "amount": 215127190
+            "code": "",
+            "item": "",
+            "unit": "",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 0,
+            "qty": null,
+            "amount": 6195875
           },
           {
-            "vendor": "(주)화승케미칼양산공장",
-            "item": "HSC-2000B TPE 외",
-            "amount": 80000000
+            "code": "",
+            "item": "",
+            "unit": "",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": null,
+            "qty": null,
+            "amount": 1195320644.5
+          },
+          {
+            "code": "",
+            "item": "",
+            "unit": "",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 0,
+            "qty": null,
+            "amount": 53080240
           }
-        ]
+        ],
+        "share": 66.3
       },
       {
-        "group": "금속/플레이트/심재 (STS/AL)",
-        "itemCount": 18,
-        "totalAmount": 278033950,
-        "share": 22,
+        "group": "EPDM",
+        "itemCount": 16,
+        "totalAmount": 432799460,
         "details": [
           {
-            "vendor": "(주)우진금속",
-            "item": "STS430(BB) 0.4 X 45.5",
-            "amount": 128033950
+            "code": "1",
+            "item": "W60712$2",
+            "unit": "Kg",
+            "vehicle": "MCA A,B,DT S/SEAL",
+            "vendor": "해동무역\r\n삼랑진",
+            "unitPrice": 3510,
+            "qty": 37184,
+            "amount": 130515840
           },
           {
-            "vendor": "경기금속",
-            "item": "UPR Bracket / Insert Core",
-            "amount": 150000000
+            "code": "2",
+            "item": "W60712$2TA",
+            "unit": "Kg",
+            "vehicle": "MCA A,B,DT S/SEAL",
+            "vendor": "",
+            "unitPrice": 3340,
+            "qty": 5443,
+            "amount": 18179620
+          },
+          {
+            "code": "3",
+            "item": "W60594BJ2",
+            "unit": "Kg",
+            "vehicle": "MCA A,B 오프닝,트렁크",
+            "vendor": "",
+            "unitPrice": 4410,
+            "qty": 8838,
+            "amount": 38975580
+          },
+          {
+            "code": "5",
+            "item": "W60052",
+            "unit": "KG",
+            "vehicle": "NQ5 C, D",
+            "vendor": "",
+            "unitPrice": 4110,
+            "qty": 6168,
+            "amount": 25350480
+          },
+          {
+            "code": "6",
+            "item": "W60905$OS",
+            "unit": "KG",
+            "vehicle": "KL MCA,JK1",
+            "vendor": "",
+            "unitPrice": 4940,
+            "qty": 3582,
+            "amount": 17695080
+          },
+          {
+            "code": "12",
+            "item": "W60593$W3",
+            "unit": "KG",
+            "vehicle": "DT S/SEAL",
+            "vendor": "",
+            "unitPrice": 4340,
+            "qty": 8541,
+            "amount": 37067940
+          },
+          {
+            "code": "13",
+            "item": "W60054",
+            "unit": "KG",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 3870,
+            "qty": 2343,
+            "amount": 9067410
+          },
+          {
+            "code": "17",
+            "item": "W60664$OS",
+            "unit": "",
+            "vehicle": "",
+            "vendor": "해동무역\r\n조영",
+            "unitPrice": 5890,
+            "qty": 5718,
+            "amount": 33679020
+          },
+          {
+            "code": "18",
+            "item": "W6082$NA",
+            "unit": "",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 4970,
+            "qty": 886,
+            "amount": 4403420
+          },
+          {
+            "code": "FFWED70050",
+            "item": "W60433",
+            "unit": "KG",
+            "vehicle": "J200 2ND",
+            "vendor": "화승코퍼레이션\r\n연고무",
+            "unitPrice": 3620,
+            "qty": 250,
+            "amount": 905000
+          },
+          {
+            "code": "신규",
+            "item": "W60433$GT",
+            "unit": "KG",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 3680,
+            "qty": 450,
+            "amount": 1656000
+          },
+          {
+            "code": "FFWED80102",
+            "item": "W60513M",
+            "unit": "KG",
+            "vehicle": "D/S  C,D",
+            "vendor": "",
+            "unitPrice": 3400,
+            "qty": 11446,
+            "amount": 38916400
+          },
+          {
+            "code": "FFWED80108",
+            "item": "W60515",
+            "unit": "KG",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 3350,
+            "qty": 1173,
+            "amount": 3929550
+          },
+          {
+            "code": "FFWED80012",
+            "item": "W6085YU",
+            "unit": "KG",
+            "vehicle": "가니쉬",
+            "vendor": "",
+            "unitPrice": 3520,
+            "qty": 2231,
+            "amount": 7853120
+          },
+          {
+            "code": "FFWED80065",
+            "item": "w60922",
+            "unit": "KG",
+            "vehicle": "DS D/S D",
+            "vendor": "",
+            "unitPrice": 4250,
+            "qty": 2099,
+            "amount": 8920750
+          },
+          {
+            "code": "FFWED80104",
+            "item": "W60923",
+            "unit": "KG",
+            "vehicle": "HOOD RR 공용",
+            "vendor": "",
+            "unitPrice": 3610,
+            "qty": 15425,
+            "amount": 55684250
           }
-        ]
+        ],
+        "share": 11.74
       },
       {
-        "group": "외주가공비 (임가공/피팅)",
-        "itemCount": 15,
-        "totalAmount": 202206510,
-        "share": 16,
+        "group": "소재",
+        "itemCount": 21,
+        "totalAmount": 392709930,
         "details": [
           {
-            "vendor": "(주)화승코퍼레이션 양산공장",
-            "item": "압출 임가공 마감",
-            "amount": 132206510
+            "code": "G2102-2012",
+            "item": "NX4 G/RUN FRT A",
+            "unit": "1",
+            "vehicle": "",
+            "vendor": "삼랑진\r\nT&C\r\n박수진마감",
+            "unitPrice": 3725,
+            "qty": 17850,
+            "amount": 66491250
           },
           {
-            "vendor": "(주)세동",
-            "item": "웨더스트립 외주가공",
-            "amount": 70000000
-          }
-        ]
-      },
-      {
-        "group": "부자재 (접착제/테이프/코팅제)",
-        "itemCount": 14,
-        "totalAmount": 151654882,
-        "share": 12,
-        "details": [
-          {
-            "vendor": "한국쓰리엠(3M)",
-            "item": "아크릴 폼 테이프 & 프라이머",
-            "amount": 91654882
+            "code": "G2102-2013",
+            "item": "NX4 G/RUN FRT B",
+            "unit": "2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 4468,
+            "qty": 10610,
+            "amount": 47405480
           },
           {
-            "vendor": "화승소재",
-            "item": "우레탄 슬립 코팅제",
-            "amount": 60000000
+            "code": "G2102-2014",
+            "item": "NX4 G/RUN FRT C",
+            "unit": "3",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2178,
+            "qty": 11000,
+            "amount": 23958000
+          },
+          {
+            "code": "G2110-0097",
+            "item": "DT HOOD SEAL FRT \"A\"",
+            "unit": "4",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1516,
+            "qty": 11990,
+            "amount": 18176840
+          },
+          {
+            "code": "G2110-0098",
+            "item": "DT HOOD SEAL FRT \"B\"",
+            "unit": "5",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1064,
+            "qty": 6050,
+            "amount": 6437200
+          },
+          {
+            "code": "G2103-0614",
+            "item": "DS DR SIDE SECT D, HALF RR (475mm)",
+            "unit": "9",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 869,
+            "qty": null,
+            "amount": 28726880
+          },
+          {
+            "code": "G2103-2396",
+            "item": "NE1a Door Side FR  \"A\"",
+            "unit": "1",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1536,
+            "qty": 3000,
+            "amount": 4608000
+          },
+          {
+            "code": "G2103-2398",
+            "item": "NE1a Door Side RR  \"A\"",
+            "unit": "2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 909,
+            "qty": 3000,
+            "amount": 2727000
+          },
+          {
+            "code": "F2103-0814-01",
+            "item": "DS DR SIDE CREW RR LH B\"(설변)",
+            "unit": "5",
+            "vehicle": "",
+            "vendor": "신천\r\n김명진마감",
+            "unitPrice": 1425,
+            "qty": 10080,
+            "amount": 14364000
+          },
+          {
+            "code": "F2103-0813-01",
+            "item": "DS DR SIDE CREW RR RH B\"(설변)",
+            "unit": "6",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1425,
+            "qty": 8820,
+            "amount": 12568500
+          },
+          {
+            "code": "F2103-2400",
+            "item": "NE1a Door Side FR LH SECT \"B\" 클립머신",
+            "unit": "9",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1719,
+            "qty": 1100,
+            "amount": 1890900
+          },
+          {
+            "code": "F2103-2402",
+            "item": "NE1a Door Side FR RH SECT \"B\"클립머신",
+            "unit": "10",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1719,
+            "qty": 840,
+            "amount": 1443960
+          },
+          {
+            "code": "F2103-2403",
+            "item": "NE1a Door Side RR LH SECT \"B\"클립머신",
+            "unit": "11",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1988,
+            "qty": 880,
+            "amount": 1749440
+          },
+          {
+            "code": "F2103-2404",
+            "item": "NE1a Door Side RR RH SECT \"B\"클립머신",
+            "unit": "12",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1988,
+            "qty": 860,
+            "amount": 1709680
+          },
+          {
+            "code": "F2103-1709",
+            "item": "DT(CREW) D/SIDE \"A\" RR ROLL",
+            "unit": "13",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1125,
+            "qty": 34000,
+            "amount": 38250000
+          },
+          {
+            "code": "F2103-1710",
+            "item": "DT(CREW) D/SIDE RR \"B\" ROLL",
+            "unit": "14",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 423,
+            "qty": 162000,
+            "amount": 68526000
+          },
+          {
+            "code": "F2103-1533",
+            "item": "DT(CREW) D/SIDE \"C\" RR",
+            "unit": "15",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2779,
+            "qty": 4800,
+            "amount": 13339200
+          },
+          {
+            "code": "F2103-0606",
+            "item": "DS D/SIDE RR A(CREW)",
+            "unit": "17",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2047,
+            "qty": 10400,
+            "amount": 21288800
+          },
+          {
+            "code": "F2103-0608",
+            "item": "DS D/SIDE RR C (CREW)",
+            "unit": "18",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2108,
+            "qty": 7200,
+            "amount": 15177600
+          },
+          {
+            "code": "F2103-0615",
+            "item": "DS D/SIDE   A  (STD)",
+            "unit": "19",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1498,
+            "qty": 1600,
+            "amount": 2396800
+          },
+          {
+            "code": "F2103-0618",
+            "item": "DS D/SIDE  C (STD)",
+            "unit": "20",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1843,
+            "qty": 800,
+            "amount": 1474400
           }
-        ]
+        ],
+        "share": 10.65
       },
       {
-        "group": "포장재 (박스/간지/파렛트)",
+        "group": "TPE",
         "itemCount": 10,
-        "totalAmount": 101103255,
-        "share": 8,
+        "totalAmount": 183311500,
         "details": [
           {
-            "vendor": "대영포장",
-            "item": "수출용 골판지 박스 (DT/9BQC)",
-            "amount": 61103255
+            "code": "",
+            "item": "IA4-75B_1",
+            "unit": "KG",
+            "vehicle": "NX 4 조인트제",
+            "vendor": "화승코퍼레이션",
+            "unitPrice": 5190,
+            "qty": 850,
+            "amount": 4411500
           },
           {
-            "vendor": "신흥물류",
-            "item": "수출용 플라스틱 파렛트 및 간지",
-            "amount": 40000000
+            "code": "12345679",
+            "item": "B64E",
+            "unit": "KG",
+            "vehicle": "HR,JB 메인제",
+            "vendor": "",
+            "unitPrice": 5080,
+            "qty": 5000,
+            "amount": 25400000
+          },
+          {
+            "code": "신천",
+            "item": "IA4-80B (G)",
+            "unit": "Kg",
+            "vehicle": "9BQC 조인트제",
+            "vendor": "",
+            "unitPrice": 6020,
+            "qty": 1500,
+            "amount": 9030000
+          },
+          {
+            "code": "",
+            "item": "IA4-68B",
+            "unit": "Kg",
+            "vehicle": "JA 픽시드 조인트제",
+            "vendor": "",
+            "unitPrice": 5740,
+            "qty": 1500,
+            "amount": 8610000
+          },
+          {
+            "code": "",
+            "item": "IA4-78B",
+            "unit": "Kg",
+            "vehicle": "HR,PD, JA, VF 34,35 직각 조인트제",
+            "vendor": "",
+            "unitPrice": 6250,
+            "qty": 500,
+            "amount": 3125000
+          },
+          {
+            "code": "국산화",
+            "item": "XA1-65B_001 (명례)",
+            "unit": "Kg",
+            "vehicle": "JA, 9BQC 메인제",
+            "vendor": "",
+            "unitPrice": 4660,
+            "qty": 10000,
+            "amount": 46600000
+          },
+          {
+            "code": "",
+            "item": "XA1-80B_001 (명례)",
+            "unit": "Kg",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 4600,
+            "qty": 4000,
+            "amount": 18400000
+          },
+          {
+            "code": "12345680",
+            "item": "ED2-52B",
+            "unit": "Kg",
+            "vehicle": "HR/JA 슬립제",
+            "vendor": "",
+            "unitPrice": 11330,
+            "qty": 500,
+            "amount": 5665000
+          },
+          {
+            "code": "추가",
+            "item": "EA1-73B",
+            "unit": "Kg",
+            "vehicle": "9BQC메인제",
+            "vendor": "",
+            "unitPrice": 5050,
+            "qty": 9000,
+            "amount": 45450000
+          },
+          {
+            "code": "신천",
+            "item": "GM-B64EM",
+            "unit": "Kg",
+            "vehicle": "9BQC조인트",
+            "vendor": "",
+            "unitPrice": 5540,
+            "qty": 3000,
+            "amount": 16620000
           }
-        ]
+        ],
+        "share": 4.97
       },
       {
-        "group": "기타 제조경비",
+        "group": "9BQC  매입",
         "itemCount": 9,
-        "totalAmount": 50551628,
-        "share": 4,
+        "totalAmount": 133894120,
         "details": [
           {
-            "vendor": "삼화유류 / 기타",
-            "item": "지게차 유류대 및 공장 소모품",
-            "amount": 50551628
+            "code": "3107-0054",
+            "item": "UPR Bracket LH",
+            "unit": "EA",
+            "vehicle": "9BQC",
+            "vendor": "경기금속",
+            "unitPrice": 169,
+            "qty": 12000,
+            "amount": 2028000
+          },
+          {
+            "code": "3107-0055",
+            "item": "UPR Bracket RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 169,
+            "qty": 12000,
+            "amount": 2028000
+          },
+          {
+            "code": "G3109-0182",
+            "item": "9BQC PRI LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "글라스\r\n㈜지텍 납품",
+            "unitPrice": 2492,
+            "qty": 14218,
+            "amount": 35431256
+          },
+          {
+            "code": "G3109-0183",
+            "item": "9BQC PRI RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2492,
+            "qty": 14152,
+            "amount": 35266784
+          },
+          {
+            "code": "G3109-0184",
+            "item": "9BQC TNTD LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2120,
+            "qty": 1099,
+            "amount": 2329880
+          },
+          {
+            "code": "42823723",
+            "item": "9BQC D/V BAR LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "㈜ 세동",
+            "unitPrice": 1972,
+            "qty": 14101,
+            "amount": 27807172
+          },
+          {
+            "code": "42823724",
+            "item": "9BQC D/V BAR RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1972,
+            "qty": 14249,
+            "amount": 28099028
+          },
+          {
+            "code": "G3103-0686",
+            "item": "아마쉘 PAD 5T*5W*60L",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "우봉",
+            "unitPrice": 9.2,
+            "qty": 64000,
+            "amount": 588800
+          },
+          {
+            "code": "G3103-0832",
+            "item": "아마쉘 PAD 7T*10W*50L",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 19.7,
+            "qty": 16000,
+            "amount": 315200
           }
-        ]
+        ],
+        "share": 3.63
+      },
+      {
+        "group": "부   자   재",
+        "itemCount": 50,
+        "totalAmount": 22299600,
+        "details": [
+          {
+            "code": "G3101-0181",
+            "item": "CAP 82210-4E000",
+            "unit": "EA",
+            "vehicle": "PU",
+            "vendor": "화승 R&A 물품대(박수진)",
+            "unitPrice": 27,
+            "qty": 2000,
+            "amount": 54000
+          },
+          {
+            "code": "G3101-0182",
+            "item": "CAP 82220-4E000",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 27,
+            "qty": 2000,
+            "amount": 54000
+          },
+          {
+            "code": "G3101-0183",
+            "item": "CLIP 82210-4E000(WHITE)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 19,
+            "qty": 40000,
+            "amount": 760000
+          },
+          {
+            "code": "G3101-0184",
+            "item": "CLIP 82220-4E000(YELLOW)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 19,
+            "qty": 40000,
+            "amount": 760000
+          },
+          {
+            "code": "G3101-0185",
+            "item": "PU D/C END CAP①",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 28,
+            "qty": 1000,
+            "amount": 28000
+          },
+          {
+            "code": "G3101-0186",
+            "item": "PU D/C END CAP②",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 28,
+            "qty": 1000,
+            "amount": 28000
+          },
+          {
+            "code": "G3101-0187",
+            "item": "PU D/C END CAP③",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 28,
+            "qty": 1000,
+            "amount": 28000
+          },
+          {
+            "code": "G3101-0188",
+            "item": "PU D/C END CAP④",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 28,
+            "qty": 1000,
+            "amount": 28000
+          },
+          {
+            "code": "G3101-0170",
+            "item": "EG CLIP(W)",
+            "unit": "EA",
+            "vehicle": "EG/GV\r\n공용",
+            "vendor": "",
+            "unitPrice": 25.2,
+            "qty": 5000,
+            "amount": 126000
+          },
+          {
+            "code": "G3101-0171",
+            "item": "EG CLIP(Y)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 25.2,
+            "qty": 5000,
+            "amount": 126000
+          },
+          {
+            "code": "G3101-0253",
+            "item": "GV END CAP LH-X",
+            "unit": "EA",
+            "vehicle": "GV",
+            "vendor": "",
+            "unitPrice": 35.4,
+            "qty": 1000,
+            "amount": 35400
+          },
+          {
+            "code": "G3101-0254",
+            "item": "GV END CAP RH-X",
+            "unit": "Kg",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 35.4,
+            "qty": 1000,
+            "amount": 35400
+          },
+          {
+            "code": "G3101-0255",
+            "item": "GV END CAP LH-Y",
+            "unit": "Kg",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 35.4,
+            "qty": 1000,
+            "amount": 35400
+          },
+          {
+            "code": "G3101-0256",
+            "item": "GV END CAP RH-Y",
+            "unit": "Kg",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 35.4,
+            "qty": 1000,
+            "amount": 35400
+          },
+          {
+            "code": "G3105-0047-01",
+            "item": "EPDM PAD 5*10*70",
+            "unit": "EA",
+            "vehicle": "JB,HR,M300,DN8A",
+            "vendor": "",
+            "unitPrice": 9.5,
+            "qty": 20000,
+            "amount": 190000
+          },
+          {
+            "code": "G3101-0047-06",
+            "item": "GS-034 MOUNTING CLIP",
+            "unit": "EA",
+            "vehicle": "JA/JB 공용",
+            "vendor": "",
+            "unitPrice": 3.7,
+            "qty": 100000,
+            "amount": 370000
+          },
+          {
+            "code": "G3101-0867",
+            "item": "GH 120(GR)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 6.5,
+            "qty": 50000,
+            "amount": 325000
+          },
+          {
+            "code": "G3101-0327-06",
+            "item": "YF C/SEAL CLIP BK (HWC-450)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 5.7,
+            "qty": 100000,
+            "amount": 570000
+          },
+          {
+            "code": "G3105-0897",
+            "item": "Tape Double Coated 일반 0.4T*7W*354L",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 75.1,
+            "qty": 10000,
+            "amount": 751000
+          },
+          {
+            "code": "G3106-1453",
+            "item": "인서트 레진 #P LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 293.1,
+            "qty": 1500,
+            "amount": 439650.00000000006
+          },
+          {
+            "code": "G3106-1454",
+            "item": "인서트 레진 #P RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 293.1,
+            "qty": 1500,
+            "amount": 439650.00000000006
+          },
+          {
+            "code": "G3106-1455",
+            "item": "인서트 레진 #Q LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 149.9,
+            "qty": 1500,
+            "amount": 224850
+          },
+          {
+            "code": "G3106-1456",
+            "item": "인서트 레진 #Q RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 149.9,
+            "qty": 1500,
+            "amount": 224850
+          },
+          {
+            "code": "G3106-1457",
+            "item": "인서트 레진 #R LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 191.3,
+            "qty": 1500,
+            "amount": 286950
+          },
+          {
+            "code": "G3106-1458",
+            "item": "인서트 레진 #R RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 191.3,
+            "qty": 1500,
+            "amount": 286950
+          },
+          {
+            "code": "G3106-1459",
+            "item": "인서트 레진 #S LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 142.2,
+            "qty": 1500,
+            "amount": 213299.99999999997
+          },
+          {
+            "code": "G3106-1460",
+            "item": "인서트 레진 #S RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 142.2,
+            "qty": 1500,
+            "amount": 213299.99999999997
+          },
+          {
+            "code": "G3106-1461",
+            "item": "인서트 레진 #V LH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 67.4,
+            "qty": 1500,
+            "amount": 101100.00000000001
+          },
+          {
+            "code": "G3106-1462",
+            "item": "인서트 레진 #V RH",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 67.4,
+            "qty": 1000,
+            "amount": 67400
+          },
+          {
+            "code": "G3106-1745",
+            "item": "OV1k Insert Resin LH #X",
+            "unit": "EA",
+            "vehicle": "OV1k",
+            "vendor": "",
+            "unitPrice": 122.9,
+            "qty": 4000,
+            "amount": 491600
+          },
+          {
+            "code": "G3106-1746",
+            "item": "OV1k Insert Resin RH #X",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 122.9,
+            "qty": 4000,
+            "amount": 491600
+          },
+          {
+            "code": "G3106-1747",
+            "item": "OV1k Insert Resin LH #Y",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 120.6,
+            "qty": 4000,
+            "amount": 482400
+          },
+          {
+            "code": "G3106-1748",
+            "item": "OV1k Insert Resin RH #Y",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 120.6,
+            "qty": 4000,
+            "amount": 482400
+          },
+          {
+            "code": "G3103-0914",
+            "item": "OV1k 형상패드(1.5*20*20)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 16.5,
+            "qty": 10000,
+            "amount": 165000
+          },
+          {
+            "code": "G3101-1253",
+            "item": "LQ2 클립 (WH)",
+            "unit": "EA",
+            "vehicle": "LQ2-한울",
+            "vendor": "",
+            "unitPrice": 6.1,
+            "qty": 50000,
+            "amount": 305000
+          },
+          {
+            "code": "G3101-1254",
+            "item": "LQ2 클립 (BR)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 6.1,
+            "qty": 50000,
+            "amount": 305000
+          },
+          {
+            "code": "G3103-0118",
+            "item": "EPDM PAD (3T*10W*70L)-블랙",
+            "unit": "EA",
+            "vehicle": "NX4",
+            "vendor": "",
+            "unitPrice": 16.5,
+            "qty": 10000,
+            "amount": 165000
+          },
+          {
+            "code": "G3103-0732",
+            "item": "EPDM PAD (3T*10W*70L)-아이보리",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 10.7,
+            "qty": 20000,
+            "amount": 214000
+          },
+          {
+            "code": "G3106-0663",
+            "item": "FCA DT INSERT RH R부",
+            "unit": "EA",
+            "vehicle": "DT",
+            "vendor": "",
+            "unitPrice": 73.7,
+            "qty": 15000,
+            "amount": 1105500
+          },
+          {
+            "code": "G3106-0664",
+            "item": "FCA DT INSERT LH R부",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 73.7,
+            "qty": 15000,
+            "amount": 1105500
+          },
+          {
+            "code": "G3101-0668",
+            "item": "GH501(RED)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 5.1,
+            "qty": 50000,
+            "amount": 254999.99999999997
+          },
+          {
+            "code": "G3101-0311",
+            "item": "M46-0580-01 (WHITE)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 5.1,
+            "qty": 200000,
+            "amount": 1019999.9999999999
+          },
+          {
+            "code": "G3101-0673",
+            "item": "M46-0580-02 (GREEN)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 5.3,
+            "qty": 50000,
+            "amount": 265000
+          },
+          {
+            "code": "G3101-0278-01",
+            "item": "DCX DS ROOP CLIP(WH)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 3.9,
+            "qty": 50000,
+            "amount": 195000
+          },
+          {
+            "code": "G3101-0279-01",
+            "item": "DCX DS ROOP CLIP(YE)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 3.9,
+            "qty": 50000,
+            "amount": 195000
+          },
+          {
+            "code": "G3101-0380-01",
+            "item": "DCX DS  D/S CLIP(GR)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 4.5,
+            "qty": 50000,
+            "amount": 225000
+          },
+          {
+            "code": "G3101-0384",
+            "item": "M46-0595-02(국산 BLACK)-장유",
+            "unit": "EA",
+            "vehicle": "WK/KL",
+            "vendor": "",
+            "unitPrice": 12,
+            "qty": 80000,
+            "amount": 960000
+          },
+          {
+            "code": "G3101-0384-01",
+            "item": "M46-0595-02 PF HOOD SEAL CILP(PA)BK",
+            "unit": "EA",
+            "vehicle": "KM",
+            "vendor": "",
+            "unitPrice": 13.6,
+            "qty": 40000,
+            "amount": 544000
+          },
+          {
+            "code": "G3101-0369-01",
+            "item": "M46-0580-02(ITW-오렌지)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 5.9,
+            "qty": 600000,
+            "amount": 3540000
+          },
+          {
+            "code": "G3101-0374-01",
+            "item": "M46-0580-02(ITW-파랑색)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 5.9,
+            "qty": 500000,
+            "amount": 2950000
+          }
+        ],
+        "share": 0.6
+      },
+      {
+        "group": "T&C(화승케미칼)",
+        "itemCount": 7,
+        "totalAmount": 19673354.5,
+        "details": [
+          {
+            "code": "490204",
+            "item": "HSY-6800-1",
+            "unit": "캔(900g)",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 43913.700000000004,
+            "qty": 15,
+            "amount": 658705.5000000001
+          },
+          {
+            "code": "900003",
+            "item": "PR-405(희석제)",
+            "unit": "캔(15kg)",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 31995,
+            "qty": 7,
+            "amount": 223965
+          },
+          {
+            "code": "901413",
+            "item": "HSC-2000-B-3",
+            "unit": "캔(6kg)",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 51480,
+            "qty": 40,
+            "amount": 2059200
+          },
+          {
+            "code": "900998",
+            "item": "HSP-500-2",
+            "unit": "캔(6kg)",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 63498,
+            "qty": 20,
+            "amount": 1269960
+          },
+          {
+            "code": "901488",
+            "item": "HSW-6000L",
+            "unit": "8K",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 83888,
+            "qty": 128,
+            "amount": 10737664
+          },
+          {
+            "code": "400223",
+            "item": "HSW-595V",
+            "unit": "1K",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 33393,
+            "qty": 42,
+            "amount": 1402506
+          },
+          {
+            "code": "901463",
+            "item": "HSP-700",
+            "unit": "6K",
+            "vehicle": "PCM",
+            "vendor": "",
+            "unitPrice": 45498,
+            "qty": 73,
+            "amount": 3321354
+          }
+        ],
+        "share": 0.53
+      },
+      {
+        "group": "광진포장",
+        "itemCount": 6,
+        "totalAmount": 14997800,
+        "details": [
+          {
+            "code": "A타입 캡상자",
+            "item": "1116*949*98",
+            "unit": "m2",
+            "vehicle": "",
+            "vendor": "조영마감",
+            "unitPrice": 1905,
+            "qty": 3360,
+            "amount": 6400800
+          },
+          {
+            "code": "A타입 윤곽",
+            "item": "1100*930*285",
+            "unit": "m2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 2300,
+            "qty": 1490,
+            "amount": 3427000
+          },
+          {
+            "code": "A타입 사각패드",
+            "item": "920*1080",
+            "unit": "m2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 750,
+            "qty": 1600,
+            "amount": 1200000
+          },
+          {
+            "code": "C타입 캡",
+            "item": "2015*465*95",
+            "unit": "m2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 1800,
+            "qty": 800,
+            "amount": 1440000
+          },
+          {
+            "code": "C타입 AA골 윤곽",
+            "item": "1997*450*285",
+            "unit": "m2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 6020,
+            "qty": 350,
+            "amount": 2107000
+          },
+          {
+            "code": "C타입 캡패드",
+            "item": "1977*430",
+            "unit": "m2",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 705,
+            "qty": 600,
+            "amount": 423000
+          }
+        ],
+        "share": 0.41
+      },
+      {
+        "group": "PVC",
+        "itemCount": 1,
+        "totalAmount": 12520000,
+        "details": [
+          {
+            "code": "12457811",
+            "item": "COMPOUND SD#75 BK",
+            "unit": "Kg",
+            "vehicle": "PVC(PU)",
+            "vendor": "화승네트웍스",
+            "unitPrice": 3130,
+            "qty": 4000,
+            "amount": 12520000
+          }
+        ],
+        "share": 0.34
+      },
+      {
+        "group": "심금류",
+        "itemCount": 1,
+        "totalAmount": 10821165,
+        "details": [
+          {
+            "code": "31020032",
+            "item": "심금STS430A 0.4*45.5",
+            "unit": "Kg",
+            "vehicle": "PU",
+            "vendor": "우진금속",
+            "unitPrice": 2649,
+            "qty": 4085,
+            "amount": 10821165
+          }
+        ],
+        "share": 0.29
+      },
+      {
+        "group": "심금",
+        "itemCount": 1,
+        "totalAmount": 10497600,
+        "details": [
+          {
+            "code": "B0155093",
+            "item": "46MM WIRE CARRIER(05R-159)",
+            "unit": "M",
+            "vehicle": "편조 심금",
+            "vendor": "",
+            "unitPrice": 324,
+            "qty": 32400,
+            "amount": 10497600
+          }
+        ],
+        "share": 0.28
+      },
+      {
+        "group": "포장재",
+        "itemCount": 3,
+        "totalAmount": 4560000,
+        "details": [
+          {
+            "code": "지관",
+            "item": "70*4.5T*285",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 270,
+            "qty": 2000,
+            "amount": 540000
+          },
+          {
+            "code": "목재파렛트",
+            "item": "2000*950",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 21000,
+            "qty": 100,
+            "amount": 2100000
+          },
+          {
+            "code": "목재파렛트",
+            "item": "1100*950*81",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 9600,
+            "qty": 200,
+            "amount": 1920000
+          }
+        ],
+        "share": 0.12
+      },
+      {
+        "group": "네트웍스",
+        "itemCount": 8,
+        "totalAmount": 3800480,
+        "details": [
+          {
+            "code": "2215N01215",
+            "item": "접착제 SC-P-1512",
+            "unit": "말(15kg)",
+            "vehicle": "케미록",
+            "vendor": "",
+            "unitPrice": 85740,
+            "qty": 4,
+            "amount": 342960
+          },
+          {
+            "code": "2215N01214",
+            "item": "BOND SC-H-50",
+            "unit": "말(8kg)",
+            "vehicle": "경화제",
+            "vendor": "",
+            "unitPrice": 60700,
+            "qty": 4,
+            "amount": 242800
+          },
+          {
+            "code": "2215N01213",
+            "item": "SC-B-4550",
+            "unit": "말(16kg)",
+            "vehicle": "본드",
+            "vendor": "",
+            "unitPrice": 118280,
+            "qty": 4,
+            "amount": 473120
+          },
+          {
+            "code": "221600161",
+            "item": "이형제 800-NC",
+            "unit": "박스(24개)",
+            "vehicle": "장유포함",
+            "vendor": "",
+            "unitPrice": 218400,
+            "qty": 4,
+            "amount": 873600
+          },
+          {
+            "code": "231408400",
+            "item": "절단가위 SX-10",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 63000,
+            "qty": 5,
+            "amount": 315000
+          },
+          {
+            "code": "121200148",
+            "item": "절단가위 날 SX-10",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 25000,
+            "qty": 5,
+            "amount": 125000
+          },
+          {
+            "code": "221501043",
+            "item": "순간접착제 OS-252",
+            "unit": "EA",
+            "vehicle": "장유접착제",
+            "vendor": "",
+            "unitPrice": 1400,
+            "qty": 720,
+            "amount": 1008000
+          },
+          {
+            "code": "A2215N01323",
+            "item": "스리본드 방청제 1521B 3kg",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 210000,
+            "qty": 2,
+            "amount": 420000
+          }
+        ],
+        "share": 0.1
+      },
+      {
+        "group": "삼도 산업",
+        "itemCount": 2,
+        "totalAmount": 320000,
+        "details": [
+          {
+            "code": "31030221",
+            "item": "EPDM PAD (5T*7W*35L)",
+            "unit": "EA",
+            "vehicle": "JA",
+            "vendor": "삼도산업",
+            "unitPrice": 10,
+            "qty": 20000,
+            "amount": 200000
+          },
+          {
+            "code": "31030194",
+            "item": "EPDM PAD (10T*4W*14L)",
+            "unit": "EA",
+            "vehicle": "",
+            "vendor": "",
+            "unitPrice": 6,
+            "qty": 20000,
+            "amount": 120000
+          }
+        ],
+        "share": 0.01
       }
     ],
     "purchaseSummary": {
       "yearMonth": "2026-08",
-      "ledgerBenchmark": 1263790685,
-      "totalExpenses": 1263790685
+      "ledgerBenchmark": 1248400884.5,
+      "totalExpenses": 1248400884.5
     }
   },
   "2026-07": {
