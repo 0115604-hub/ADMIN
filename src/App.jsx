@@ -149,13 +149,15 @@ export const App = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      {/* Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Sidebar (Admin Only - Operators use Full-Width Single-Page Flow) */}
+      {!isOperator && <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />}
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
           title={getTabTitle()}
+          activeTab={activeTab}
+          onBackToSummary={() => setActiveTab(isOperator ? "worker_dashboard" : "dashboard")}
           onOpenNewModal={() => {
             setEditingItem(null);
             setModalOpen(true);
@@ -165,7 +167,7 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
+        <main className="p-3 sm:p-6 lg:p-6 flex-1 overflow-y-auto">
           {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
@@ -175,7 +177,7 @@ export const App = () => {
             </div>
           ) : (
             <>
-              {/* OPERATOR VIEWS */}
+              {/* OPERATOR VIEWS (Full-Width Single-Page Experience) */}
               {isOperator && (
                 <>
                   {activeTab === "worker_dashboard" && (
@@ -183,6 +185,9 @@ export const App = () => {
                       onBulkUpload={handleBulkUpload}
                       onNavigateTab={(tabId) => setActiveTab(tabId)}
                     />
+                  )}
+                  {activeTab === "vehicle_sales" && (
+                    <VehicleSalesView />
                   )}
                   {activeTab === "extrusion_downtime" && (
                     <ExtrusionDowntimeView />

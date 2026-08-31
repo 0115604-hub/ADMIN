@@ -3,12 +3,13 @@ import {
   LogOut,
   Calendar,
   Building2,
-  UserCheck
+  UserCheck,
+  ArrowLeft
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 
-export const Header = ({ title }) => {
+export const Header = ({ title, activeTab, onBackToSummary }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth } = useMonth();
 
@@ -26,13 +27,40 @@ export const Header = ({ title }) => {
     ? `${workerPlant} • ${currentProfile?.name} ${officialTitle}`.trim()
     : "ADMIN";
 
+  const showBackButton = activeTab && activeTab !== "worker_dashboard" && activeTab !== "dashboard";
+
   return (
-    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200">
-      {/* Left: View Title & Official Profile Badge */}
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-sm">
+      {/* Left: Brand Logo / Back Button & View Title */}
       <div className="flex items-center gap-3">
-        <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
-          {title === "월간경영현황" || title === "총괄 손익 대시보드" ? "현황" : title}
-        </h2>
+        {showBackButton && onBackToSummary ? (
+          <button
+            onClick={onBackToSummary}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 text-xs font-black transition-all shadow-sm ring-1 ring-blue-500/20 active:scale-95"
+          >
+            <ArrowLeft className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span>← 요약본 전체보기</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md ${
+              workerPlant === "한림공장"
+                ? "bg-gradient-to-tr from-emerald-600 to-teal-700 shadow-emerald-500/20"
+                : "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/20"
+            }`}>
+              <Building2 className="w-4 h-4" />
+            </div>
+            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+              {title || "일일생산정보현황"}
+            </h2>
+          </div>
+        )}
+
+        {showBackButton && (
+          <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight hidden md:inline ml-2">
+            | {title}
+          </h2>
+        )}
 
         {currentProfile && (
           <span className={`hidden sm:inline-flex items-center text-xs font-black px-3 py-1 rounded-full shadow-sm ${
@@ -48,7 +76,7 @@ export const Header = ({ title }) => {
       </div>
 
       {/* Center / Right: Clean Segmented Month Switcher & Logout */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Sleek Segmented Month Control */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 shadow-inner">
           {availableMonths.map((ym) => {
