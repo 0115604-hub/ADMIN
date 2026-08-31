@@ -12,7 +12,13 @@ import {
   Wrench,
   BarChart2,
   Calendar,
-  Filter
+  Filter,
+  Sparkles,
+  TrendingUp,
+  Layers,
+  FileText,
+  ChevronRight,
+  ShieldCheck
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -118,6 +124,82 @@ const INITIAL_DOWNTIME_LOGS = [
   }
 ];
 
+// Detailed Cumulative Line Breakdown Dataset
+const CUMULATIVE_DETAILS = {
+  "PCM 1호": {
+    name: "PCM 1호",
+    monthCumulative: 180,
+    hours: "3.0h",
+    opRatio: "98.1%",
+    status: "양호",
+    weeklyTrend: [
+      { week: "1주차", min: 45, reason: "DT 형교환" },
+      { week: "2주차", min: 45, reason: "SILL 형교환" },
+      { week: "3주차", min: 45, reason: "승온 안정화" },
+      { week: "4주차", min: 45, reason: "DT 형교환" }
+    ],
+    reasons: [
+      { label: "DT SILL SEAL 형교환", min: 135, pct: 75 },
+      { label: "승온 안정화 및 세팅", min: 45, pct: 25 }
+    ],
+    note: "SILL SEAL 형교환 규격 안정화로 비가동 목표 범위(주 45분 이내) 정상 유지 중"
+  },
+  "PCM 3호": {
+    name: "PCM 3호",
+    monthCumulative: 140,
+    hours: "2.3h",
+    opRatio: "98.7%",
+    status: "우수",
+    weeklyTrend: [
+      { week: "1주차", min: 35, reason: "호리젠탈 형교환" },
+      { week: "2주차", min: 40, reason: "다이스 정렬" },
+      { week: "3주차", min: 35, reason: "퍼징 청소" },
+      { week: "4주차", min: 30, reason: "DT 형교환" }
+    ],
+    reasons: [
+      { label: "DT 호리젠탈 금형 교환", min: 110, pct: 78 },
+      { label: "원료 퍼징 및 다이스 청소", min: 30, pct: 22 }
+    ],
+    note: "호리젠탈 금형 장착 프로세스 단축으로 가동률 98.7% 우수 관리"
+  },
+  "TPE 1호": {
+    name: "TPE 1호",
+    monthCumulative: 135,
+    hours: "2.3h",
+    opRatio: "98.3%",
+    status: "양호",
+    weeklyTrend: [
+      { week: "1주차", min: 30, reason: "JA 형교환" },
+      { week: "2주차", min: 35, reason: "호퍼 청소" },
+      { week: "3주차", min: 30, reason: "원료 투입" },
+      { week: "4주차", min: 40, reason: "JA 형교환" }
+    ],
+    reasons: [
+      { label: "JA 전용 TPE 압출 형교환", min: 95, pct: 70 },
+      { label: "호퍼 청소 및 스크류 잔류물 퍼징", min: 40, pct: 30 }
+    ],
+    note: "TPE 원료 퍼징 시간 준수 및 금형 센터링 최적화 진행 중"
+  },
+  "PVC": {
+    name: "PVC",
+    monthCumulative: 105,
+    hours: "1.8h",
+    opRatio: "98.9%",
+    status: "최우수",
+    weeklyTrend: [
+      { week: "1주차", min: 25, reason: "승온 대기" },
+      { week: "2주차", min: 30, reason: "칼라 교체" },
+      { week: "3주차", min: 25, reason: "히터 점검" },
+      { week: "4주차", min: 25, reason: "승온 대기" }
+    ],
+    reasons: [
+      { label: "3존 히터 승온 안정화 대기", min: 70, pct: 67 },
+      { label: "칼라 원료 교체 / 퍼징", min: 35, pct: 33 }
+    ],
+    note: "설비 안정성 최고 수준 (8월 누적 105분, 가동률 98.9%)"
+  }
+};
+
 const STORAGE_KEY = "factory_extrusion_downtime_logs_v5_clean";
 
 export const ExtrusionDowntimeView = () => {
@@ -138,6 +220,10 @@ export const ExtrusionDowntimeView = () => {
   const [selectedReasonFilter, setSelectedReasonFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Cumulative Summary Modal State
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [selectedSummaryLine, setSelectedSummaryLine] = useState("all");
 
   const defaultOperator = `${currentProfile?.name || "설유철"} ${currentProfile?.title || "책임"}`;
   const defaultPlant = currentProfile?.plant || "삼랑진공장";
@@ -223,6 +309,9 @@ export const ExtrusionDowntimeView = () => {
     const actualOperating = totalWorkingMinutes - totalDowntimeMinutes;
     return Math.max(0, (actualOperating / totalWorkingMinutes) * 100).toFixed(1);
   }, [totalDowntimeMinutes]);
+
+  // Total Monthly Cumulative
+  const totalMonthCumulative = 180 + 140 + 135 + 105; // 560 mins
 
   // Daily Column Totals
   const dailyTotals = useMemo(() => {
@@ -351,25 +440,48 @@ export const ExtrusionDowntimeView = () => {
   return (
     <div className="space-y-3 animate-fadeIn pb-16 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
-      {/* 1. TOP COMPACT HEADER & CONTROLS */}
+      {/* 1. ⭐ [사용자 요청] 압출동 주간 비가동내역 옆, 8월 4주차 위 라인별 누적 버튼 (탭 시 요약본 모달) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Wrench className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                압출동 주간 비가동 내역
-              </h1>
-              <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 text-[10px] font-black">
-                {selectedWeek}
-              </span>
+      <div className="bg-white dark:bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
+        {/* Upper Tier: Title & Line-by-Line 8월 Cumulative Clickable Badges */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="p-1.5 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Wrench className="w-4 h-4" />
+            </div>
+            <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+              압출동 주간 비가동 내역
+            </h1>
+
+            {/* ⭐ 라인별 8월 누적 표시 버튼들 (탭 시 요약본 모달 팝업) */}
+            <div className="flex flex-wrap items-center gap-1.5 ml-1">
+              <span className="text-[10.5px] font-bold text-slate-400">8월 누적:</span>
+              {matrixData.map((m) => (
+                <button
+                  key={m.lineName}
+                  onClick={() => { setSelectedSummaryLine(m.lineName); setIsSummaryModalOpen(true); }}
+                  className="px-2 py-0.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 border border-amber-200/80 dark:border-amber-800 text-[11px] font-black text-amber-950 dark:text-amber-200 transition-all hover:scale-105 active:scale-95 flex items-center gap-1 group shadow-sm"
+                  title={`${m.lineName} 8월 누적 요약본 보기`}
+                >
+                  <span className="text-slate-600 dark:text-slate-300 font-bold">{m.lineName}:</span>
+                  <strong className="text-rose-600 dark:text-rose-400">{m.monthCumulative}분</strong>
+                </button>
+              ))}
+
+              <button
+                onClick={() => { setSelectedSummaryLine("all"); setIsSummaryModalOpen(true); }}
+                className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 text-[10.5px] font-black transition-all flex items-center gap-1 active:scale-95 shadow-sm"
+                title="8월 압출동 전체 누적 요약본 열기"
+              >
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>8월 종합 요약본</span>
+              </button>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2 text-xs pl-2 border-l border-slate-200 dark:border-slate-700">
-            <span className="text-slate-500">주간 비가동:</span>
+
+          {/* Quick Metrics */}
+          <div className="flex items-center gap-2 text-xs self-start lg:self-auto">
+            <span className="text-slate-500">주간 합계:</span>
             <strong className="text-rose-600 dark:text-rose-400 font-black">{totalDowntimeMinutes}분 ({totalDowntimeHours}h)</strong>
             <span className="text-slate-300">|</span>
             <span className="text-slate-500">가동률:</span>
@@ -377,40 +489,51 @@ export const ExtrusionDowntimeView = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="flex items-center gap-1.5 self-end sm:self-auto">
-          <select
-            value={selectedWeek}
-            onChange={(e) => setSelectedWeek(e.target.value)}
-            className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
-          >
-            <option value="8월 4주차">8월 4주차 (8/24 ~ 8/29)</option>
-            <option value="8월 3주차">8월 3주차 (8/17 ~ 8/22)</option>
-            <option value="8월 2주차">8월 2주차 (8/10 ~ 8/15)</option>
-            <option value="8월 1주차">8월 1주차 (8/03 ~ 8/08)</option>
-          </select>
+        {/* Lower Tier: Week Selector, Excel Download & Registration */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 text-xs font-black">
+              {selectedWeek}
+            </span>
+            <span className="text-xs text-slate-400 hidden sm:inline">
+              (기준: 주 40시간 / 라인)
+            </span>
+          </div>
 
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-black transition-all shadow-sm active:scale-95"
-            title="엑셀 다운로드"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden sm:inline">엑셀</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedWeek}
+              onChange={(e) => setSelectedWeek(e.target.value)}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            >
+              <option value="8월 4주차">8월 4주차 (8/24 ~ 8/29)</option>
+              <option value="8월 3주차">8월 3주차 (8/17 ~ 8/22)</option>
+              <option value="8월 2주차">8월 2주차 (8/10 ~ 8/15)</option>
+              <option value="8월 1주차">8월 1주차 (8/03 ~ 8/08)</option>
+            </select>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-black shadow-md shadow-amber-500/20 active:scale-95 transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>비가동 등록</span>
-          </button>
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-black transition-all shadow-sm active:scale-95"
+              title="엑셀 다운로드"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">엑셀 다운로드</span>
+            </button>
+
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-black shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>비가동 등록</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. 4-LINE COMPACT STATUS CARDS (Merged with 8월 누적) */}
+      {/* 2. 4-LINE COMPACT STATUS CARDS */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {matrixData.map((m) => {
@@ -712,7 +835,189 @@ export const ExtrusionDowntimeView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. REGISTRATION MODAL */}
+      {/* 5. ⭐ [신규] 8월 라인별 누적 비가동 요약본 팝업 모달 */}
+      {/* ========================================================================= */}
+      {isSummaryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-5 sm:p-6 space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20">
+                  <BarChart2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>2026년 08월 압출동 누적 비가동 종합 요약본</span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    라인별 월간 누적 시간, 가동률 및 주요 비가동 원인 분석
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSummaryModalOpen(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 text-sm font-black transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Line Selection Filter in Modal */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-1">
+              <button
+                onClick={() => setSelectedSummaryLine("all")}
+                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                  selectedSummaryLine === "all"
+                    ? "bg-slate-900 text-amber-400 dark:bg-white dark:text-slate-900 shadow-sm"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                }`}
+              >
+                전체 4대 라인 ({totalMonthCumulative}분)
+              </button>
+              {EXTRUSION_LINES.map((line) => {
+                const det = CUMULATIVE_DETAILS[line];
+                return (
+                  <button
+                    key={line}
+                    onClick={() => setSelectedSummaryLine(line)}
+                    className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                      selectedSummaryLine === line
+                        ? "bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/25"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {line} ({det.monthCumulative}분)
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Modal Body: If 'all', show 4-line overview & KPIs */}
+            {selectedSummaryLine === "all" ? (
+              <div className="space-y-3">
+                {/* 4 Cards Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {EXTRUSION_LINES.map((line) => {
+                    const det = CUMULATIVE_DETAILS[line];
+                    return (
+                      <div
+                        key={line}
+                        onClick={() => setSelectedSummaryLine(line)}
+                        className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 hover:border-amber-400 cursor-pointer transition-all flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs text-slate-900 dark:text-white">{line}</span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
+                            {det.status}
+                          </span>
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-base font-black text-rose-600 dark:text-rose-400">
+                            {det.monthCumulative}분
+                            <span className="text-[10px] text-slate-400 ml-1 font-semibold">({det.hours})</span>
+                          </div>
+                          <div className="text-[10.5px] font-bold text-slate-500 mt-0.5">
+                            월 가동률 <strong className="text-emerald-600">{det.opRatio}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Overall Month Analysis Box */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-2 text-xs">
+                  <div className="flex items-center justify-between font-black text-slate-900 dark:text-white">
+                    <span className="flex items-center gap-1.5 text-amber-900 dark:text-amber-300">
+                      <TrendingUp className="w-4 h-4 text-amber-600" />
+                      <span>8월 압출동 비가동 종합 평가 & 원인 비중</span>
+                    </span>
+                    <span className="text-rose-600 font-bold">8월 총 560분 (9.3h)</span>
+                  </div>
+
+                  <p className="text-slate-600 dark:text-slate-300 text-[11.5px] leading-relaxed">
+                    • <strong>형교환 비중 (74%)</strong>: 차종 변경 및 금형 교환이 전체 비가동의 대부분을 차지하며 정상 프로세스로 관리 중입니다.<br />
+                    • <strong>온도 안정화 / 승온대기 (18%)</strong>: 승온 대기 시간 최소화를 위한 사전 예열 점검 완료.<br />
+                    • <strong>설비 고장 손실 (0분)</strong>: 정기 점검 준수로 기계 고장에 의한 돌발 비가동 0건 달성.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              /* Specific Line Detail View */
+              (() => {
+                const det = CUMULATIVE_DETAILS[selectedSummaryLine];
+                return (
+                  <div className="space-y-3 text-xs">
+                    {/* Top Key Metrics */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">8월 누적 비가동</span>
+                        <span className="text-lg font-black text-rose-600 dark:text-rose-400">{det.monthCumulative}분</span>
+                        <span className="text-[10px] text-slate-400 ml-1">({det.hours})</span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">월간 가동률</span>
+                        <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{det.opRatio}</span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                        <span className="text-[10px] text-slate-400 font-bold block">관리 상태</span>
+                        <span className="text-lg font-black text-amber-600 dark:text-amber-400">{det.status}</span>
+                      </div>
+                    </div>
+
+                    {/* Weekly Trend Bar */}
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                      <span className="font-black text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                        <span>8월 주차별 비가동 내역</span>
+                      </span>
+                      <div className="grid grid-cols-4 gap-1.5 text-center">
+                        {det.weeklyTrend.map((wt) => (
+                          <div key={wt.week} className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                            <span className="text-[10px] text-slate-400 font-bold block">{wt.week}</span>
+                            <span className="text-xs font-black text-rose-600 dark:text-rose-400">{wt.min}분</span>
+                            <span className="text-[9px] text-slate-500 block truncate">{wt.reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Reasons Breakdown */}
+                    <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                      <span className="font-black text-slate-800 dark:text-slate-200 text-xs">주요 발생 원인</span>
+                      <div className="space-y-1">
+                        {det.reasons.map((r) => (
+                          <div key={r.label} className="flex items-center justify-between text-[11px] p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{r.label}</span>
+                            <span className="font-black text-rose-600">{r.min}분 ({r.pct}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 font-medium">
+                      💡 {det.note}
+                    </p>
+                  </div>
+                );
+              })()
+            )}
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsSummaryModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs shadow-md active:scale-95 transition-all"
+              >
+                확인 완료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. REGISTRATION MODAL */}
       {/* ========================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
