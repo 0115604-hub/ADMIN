@@ -294,7 +294,7 @@ export const AuthModal = () => {
                   <span>
                     {selectedUser.role === "ADMIN"
                       ? "관리자 비밀번호 입력"
-                      : "비밀번호(PIN 4자리) 입력"}
+                      : "비밀번호(PIN) 입력"}
                   </span>
                 </label>
                 <input
@@ -303,7 +303,7 @@ export const AuthModal = () => {
                   placeholder={
                     selectedUser.role === "ADMIN"
                       ? "관리자 비밀번호"
-                      : "PIN 4자리 입력"
+                      : "비밀번호 입력"
                   }
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
