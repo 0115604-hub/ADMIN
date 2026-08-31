@@ -1,41 +1,51 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
-  FileText,
+  Factory,
   Calendar,
   Clock,
+  User,
   Plus,
+  Trash2,
   CheckCircle2,
   AlertTriangle,
+  FileText,
+  DollarSign,
+  TrendingUp,
+  Layers,
+  ArrowUpRight,
   Search,
   Filter,
   Save,
-  Trash2,
   Edit3,
-  Factory,
-  User,
-  ArrowUpRight,
-  ArrowDownRight,
-  Percent,
   UploadCloud,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert,
+  Sparkles,
+  Briefcase
 } from "lucide-react";
-import { useAuth, PLANTS } from "../context/AuthContext";
-import { useCurrency } from "../context/CurrencyContext";
+import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
-import { OperatorWorkspace } from "./OperatorWorkspace";
+import { useCurrency } from "../context/CurrencyContext";
 import { getWorkLogs, saveWorkLog, deleteWorkLog } from "../services/workLogService";
+import { OperatorWorkspace } from "./OperatorWorkspace";
+
+const PROCESS_OPTIONS = [
+  "총괄관리",
+  "압출동 관리",
+  "가공동 관리",
+  "품질관리",
+  "경리업무"
+];
 
 export const WorkerDashboard = ({ onBulkUpload }) => {
   const { currentProfile, isOperator, isAdmin } = useAuth();
-  const { formatAmount } = useCurrency();
   const { selectedMonth, currentMonthData } = useMonth();
+  const { formatAmount } = useCurrency();
 
-  const matchedWorker = PLANTS.flatMap((p) => p.workers).find(
-    (w) => w.name === currentProfile?.name || w.id === currentProfile?.id
-  );
-  const officialTitle = currentProfile?.title || matchedWorker?.title || "";
-  const workerPlant = currentProfile?.plant || matchedWorker?.plant || "삼랑진공장";
-  const workerFullName = isOperator ? `${currentProfile?.name} ${officialTitle}`.trim() : "ADMIN";
+  const workerPlant = currentProfile?.plant || "삼랑진공장";
+  const workerFullName = currentProfile?.name || "작업자";
+  const officialTitle = currentProfile?.title || "선임";
+  const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
   const isInjoo = currentProfile?.name === "조인주";
 
   const [activeWorkerTab, setActiveWorkerTab] = useState("summary_log"); // 'summary_log' | 'uploader'
@@ -47,27 +57,29 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPlant, setFilterPlant] = useState(workerPlant || "all");
 
-  // Form State for New Work Log
+  // Form State for New Work Log with Pre-filled Assigned Process
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     plant: workerPlant,
     writer: workerFullName,
+    process: assignedProcess,
     shift: "주간",
     line: "9BQC 압출 1호기",
     workContent: "",
     issues: ""
   });
 
-  // Keep writer updated if profile loads late
+  // Keep writer & assigned process updated if profile loads late
   useEffect(() => {
     if (currentProfile) {
       setFormData((prev) => ({
         ...prev,
         plant: workerPlant,
-        writer: workerFullName
+        writer: workerFullName,
+        process: currentProfile.assignedProcess || prev.process || "가공동 관리"
       }));
     }
-  }, [currentProfile, isOperator, workerFullName, workerPlant]);
+  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess]);
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
@@ -90,6 +102,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       plant: formData.plant,
       writer: currentProfile?.name || "작업자",
       title: officialTitle,
+      process: formData.process || assignedProcess,
       shift: formData.shift,
       line: formData.line,
       workContent: formData.workContent,
@@ -111,6 +124,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       date: new Date().toISOString().split("T")[0],
       plant: workerPlant,
       writer: workerFullName,
+      process: assignedProcess,
       shift: "주간",
       line: "9BQC 압출 1호기",
       workContent: "",
@@ -126,7 +140,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
   };
 
   const filteredLogs = workLogs.filter((log) => {
-    const writerWithTitle = `${log.writer} ${log.title || ""}`;
+    const writerWithTitle = `${log.writer} ${log.title || ""} ${log.process || ""}`;
     const matchSearch =
       writerWithTitle.includes(searchTerm) ||
       log.workContent.includes(searchTerm) ||
@@ -138,7 +152,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
 
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Compact Minimized Top Banner for Worker */}
+      {/* Compact Minimized Top Banner for Worker with Assigned Process Badge */}
       <div className={`rounded-2xl px-5 py-3.5 text-white shadow-sm border border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
         workerPlant === "한림공장"
           ? "bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900"
@@ -149,15 +163,18 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
             <Factory className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-black tracking-tight">
                 안녕하세요, {workerFullName}님! 🛠️
               </span>
               <span className="px-2 py-0.5 rounded-md bg-white/20 text-[10px] font-extrabold text-white">
                 {workerPlant}
               </span>
+              <span className="px-2 py-0.5 rounded-md bg-amber-400 text-slate-950 text-[10px] font-black shadow-sm">
+                담당: {assignedProcess}
+              </span>
             </div>
-            <p className="text-[11px] text-white/70">
+            <p className="text-[11px] text-white/70 mt-0.5">
               {monthTitle} 업무일지 작성 및 현황 확인
             </p>
           </div>
@@ -219,47 +236,47 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
-                    {formatAmount(totalSales)}
+                  <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                    {totalSales > 0 ? formatAmount(totalSales) : "0 원"}
                   </p>
-                  <p className="text-xs font-semibold text-slate-400 mt-1">
-                    {monthTitle} 마스터 매출 총액
+                  <p className="text-xs text-slate-400 mt-1 font-medium">
+                    {totalSales > 0 ? `${monthTitle} 매출 실적` : "매출자료 업로드 대기"}
                   </p>
                 </div>
               </div>
 
-              {/* 2. 총매입액 Card */}
+              {/* 2. 총매입액 (전월비) Card */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액 (원가)</span>
                   <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
-                    <ArrowDownRight className="w-4 h-4" />
+                    <Layers className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
-                    {formatAmount(totalPurchases)}
+                  <p className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400">
+                    {totalPurchases > 0 ? formatAmount(totalPurchases) : "0 원"}
                   </p>
-                  <p className="text-xs font-semibold text-slate-400 mt-1">
-                    {monthTitle} 마스터 매입 총액
+                  <p className="text-xs text-slate-400 mt-1 font-medium">
+                    {totalPurchases > 0 ? "원부자재 및 외주 매입액" : "매입자료 업로드 대기"}
                   </p>
                 </div>
               </div>
 
-              {/* 3. 매출대비매입액비율 Card */}
+              {/* 3. 매출대비 매입액 비율 Card */}
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비매입액비율</span>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비 매입액 비율</span>
                   <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-                    <Percent className="w-4 h-4" />
+                    <TrendingUp className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="mt-4">
-                  <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 tracking-tight">
+                  <p className="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400">
                     {purchaseRatio}%
                   </p>
-                  <p className="text-xs font-semibold text-slate-400 mt-1">
-                    매출액 대비 총 매입(원가) 비중
+                  <p className="text-xs text-slate-400 mt-1 font-medium">
+                    매출액 대비 매입원가 비중
                   </p>
                 </div>
               </div>
@@ -267,22 +284,34 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 2. DAILY WORK LOG (일일업무일지 작성 및 조회) */}
+          {/* 2. 일일업무일지 리스트 및 작성 영역 */}
           {/* ========================================================================= */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <h3 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <FileText className="w-5 h-5 text-blue-600" />
-                  <span>공장 일일업무일지 관리</span>
+                  <span>공장별 일일업무일지 공유 게시판</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  오늘의 작업 실적 및 설비/품질 특이사항을 기록합니다.
+                  각 공장의 작업자가 일일 생산 실적, 공정 점검 및 특이사항을 실시간으로 공유합니다.
                 </p>
               </div>
 
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => {
+                  setFormData({
+                    date: new Date().toISOString().split("T")[0],
+                    plant: workerPlant,
+                    writer: workerFullName,
+                    process: assignedProcess,
+                    shift: "주간",
+                    line: `${assignedProcess} 세부라인`,
+                    workContent: "",
+                    issues: ""
+                  });
+                  setIsModalOpen(true);
+                }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-lg shadow-blue-500/25 active:scale-95 transition-all self-start sm:self-auto"
               >
                 <Plus className="w-4 h-4" />
@@ -290,13 +319,13 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
               </button>
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            {/* Filter & Search */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  placeholder="작성자, 직책, 작업내용, 라인 검색..."
+                  placeholder="작성자, 공정, 작업내용 검색..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -326,7 +355,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                 filteredLogs.map((log) => (
                   <div key={log.id} className="py-4 space-y-2 group">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
                           log.plant === "한림공장"
                             ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
@@ -337,8 +366,12 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                         <span className="font-black text-sm text-slate-900 dark:text-white">
                           {log.writer} {log.title || ""}
                         </span>
+                        {/* Process Badge */}
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                          {log.process || "가공동 관리"}
+                        </span>
                         <span className="text-xs text-slate-400">• {log.date} ({log.shift})</span>
-                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-lg">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">
                           {log.line}
                         </span>
                       </div>
@@ -380,7 +413,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. MODAL: CREATE NEW DAILY WORK LOG */}
+      {/* 3. MODAL: CREATE NEW DAILY WORK LOG (Pre-filled Process) */}
       {/* ========================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -394,9 +427,14 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
                     일일업무일지 작성
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    {workerPlant} • 작성자: {workerFullName}
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-slate-400">
+                      {workerPlant} • 작성자: <strong>{workerFullName} {officialTitle}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 text-[10px] font-black">
+                      담당: {assignedProcess}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -409,6 +447,7 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
             </div>
 
             <form onSubmit={handleSaveLog} className="space-y-4 text-xs">
+              {/* Date & Shift */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
@@ -438,20 +477,42 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  담당 공정 / 라인
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="예: 9BQC 압출 1호기 / EPDM 사출 라인 / 포장 검사 라인"
-                  value={formData.line}
-                  onChange={(e) => setFormData({ ...formData, line: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Pre-filled Assigned Process & Detailed Line */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1 flex items-center justify-between">
+                    <span>담당 공정 (자동지정)</span>
+                    <span className="text-[10px] text-blue-600 font-black">★ 자동입력됨</span>
+                  </label>
+                  <select
+                    value={formData.process || assignedProcess}
+                    onChange={(e) => setFormData({ ...formData, process: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 font-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {PROCESS_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt} {opt === assignedProcess ? `(기본 담당)` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    세부 라인 / 설비
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="예: 9BQC 압출 1호기 / 가공 2라인"
+                    value={formData.line}
+                    onChange={(e) => setFormData({ ...formData, line: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
+              {/* Work Content */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                   금일 작업 실적 및 주요 생산 내용
@@ -459,20 +520,21 @@ export const WorkerDashboard = ({ onBulkUpload }) => {
                 <textarea
                   required
                   rows="3"
-                  placeholder="예: 9BQC FRT LH 2,400개 압출 완료 및 양품 검사 완료. DT 수출품 포장 1,800개 완료"
+                  placeholder="예: 금일 담당공정 생산 실적 및 점검 사항을 입력해 주세요."
                   value={formData.workContent}
                   onChange={(e) => setFormData({ ...formData, workContent: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
                 ></textarea>
               </div>
 
+              {/* Issues */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                   특이사항 / 설비 점검 / 품질 이슈
                 </label>
                 <textarea
                   rows="2"
-                  placeholder="예: 2호 절단기 날 교체 완료, 원료 TPE 공급 압력 정상"
+                  placeholder="예: 특이사항 없음 / 금형 점검 완료"
                   value={formData.issues}
                   onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"

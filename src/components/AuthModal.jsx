@@ -74,20 +74,23 @@ export const AuthModal = () => {
                   <button
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 group shadow-sm hover:shadow active:scale-95"
+                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group shadow-sm hover:shadow active:scale-95 text-center"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-sm shadow-sm">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
                       {worker.avatar}
                     </div>
-                    <span className="font-black text-sm text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                    <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
                       {worker.name}
+                    </span>
+                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 truncate max-w-full">
+                      {worker.assignedProcess}
                     </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* 2. FACTORY 2: 한림공장 (3명: 단순 이름만 표기) */}
+            {/* 2. FACTORY 2: 한림공장 (3명) */}
             <div className="space-y-2.5">
               <div className="flex items-center justify-between px-1">
                 <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -101,13 +104,16 @@ export const AuthModal = () => {
                   <button
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1.5 group shadow-sm hover:shadow active:scale-95"
+                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group shadow-sm hover:shadow active:scale-95 text-center"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
                       {worker.avatar}
                     </div>
-                    <span className="font-black text-sm text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
+                    <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                       {worker.name}
+                    </span>
+                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 truncate max-w-full">
+                      {worker.assignedProcess}
                     </span>
                   </button>
                 ))}
