@@ -103,6 +103,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   const workerPlant = currentProfile?.plant || "삼랑진공장";
   const workerFullName = currentProfile?.name || "작업자";
+  const officialTitle = currentProfile?.title || "선임";
+  const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
   const isChangyeop = currentProfile?.name === "이창엽" || currentProfile?.id === "sam_cy";
 
@@ -278,11 +280,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       id: Date.now(),
       date: formData.date,
       plant: formData.plant,
-      writer: currentProfile?.name || "조인주",
+      writer: currentProfile?.name || workerFullName,
       title: officialTitle,
-      process: isInjoo ? "경리업무" : (formData.process || assignedProcess),
+      process: isInjoo ? "경리업무" : isChangyeop ? "품질관리" : (formData.process || assignedProcess),
       shift: formData.shift,
-      line: isInjoo ? "본사/현장 정산 및 전표 마감" : formData.line,
+      line: isInjoo ? "본사/현장 정산 및 전표 마감" : isChangyeop ? (formData.line || "전라인 품질 검사 및 불량 분석") : formData.line,
       workContent: formData.workContent,
       issues: formData.issues || "-",
       status: "완료",
