@@ -82,7 +82,7 @@ export const AuthModal = () => {
                   <button
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group shadow-sm hover:shadow active:scale-95 text-center"
+                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-amber-400 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group shadow-sm hover:shadow active:scale-95 text-center min-h-[74px]"
                   >
                     <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
                       {worker.avatar}
@@ -90,9 +90,11 @@ export const AuthModal = () => {
                     <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400">
                       {worker.name}
                     </span>
-                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 truncate max-w-full">
-                      {worker.assignedProcess}
-                    </span>
+                    {(worker.name === "이명재" || worker.assignedProcess === "총괄관리") && (
+                      <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 truncate max-w-full">
+                        총괄관리
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -112,7 +114,7 @@ export const AuthModal = () => {
                   <button
                     key={worker.id}
                     onClick={() => handleUserClick(worker)}
-                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group shadow-sm hover:shadow active:scale-95 text-center"
+                    className="p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 cursor-pointer transition-all flex flex-col items-center justify-center gap-1 group shadow-sm hover:shadow active:scale-95 text-center min-h-[74px]"
                   >
                     <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
                       {worker.avatar}
@@ -120,9 +122,11 @@ export const AuthModal = () => {
                     <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">
                       {worker.name}
                     </span>
-                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 truncate max-w-full">
-                      {worker.assignedProcess}
-                    </span>
+                    {(worker.name === "김동욱" || worker.assignedProcess === "총괄관리") && (
+                      <span className="text-[9.5px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 truncate max-w-full">
+                        총괄관리
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
