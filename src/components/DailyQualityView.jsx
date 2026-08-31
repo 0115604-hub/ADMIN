@@ -262,7 +262,7 @@ export const DailyQualityView = () => {
               일일 품질현황
             </h1>
             <p className="text-[11px] text-slate-400">
-              품질 관리 목표치: <strong className="text-emerald-600 font-bold">0.70% 이하</strong> | 담당: <strong>이창엽 책임</strong>
+              품질 관리 목표치: <strong className="text-emerald-600 font-bold">0.70% 이하</strong>
             </p>
           </div>
         </div>
