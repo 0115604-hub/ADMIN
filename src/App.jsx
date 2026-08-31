@@ -16,6 +16,7 @@ import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
+import { OryukLogo } from "./components/OryukLogo";
 import { useAuth } from "./context/AuthContext";
 import {
   fetchTransactions,
@@ -167,8 +168,16 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-3 sm:p-6 lg:p-6 flex-1 overflow-y-auto">
-          {loading ? (
+        <main className="p-3 sm:p-6 lg:p-6 flex-1 overflow-y-auto relative min-h-[calc(100vh-4rem)]">
+          {/* ⭐ [사용자 요청] 탭 화면 내 밑바탕 (주)오륙 공식 로고 워터마크 배경 */}
+          <div className="fixed inset-0 top-16 pointer-events-none flex items-center justify-center overflow-hidden z-0 select-none">
+            <div className="opacity-[0.05] dark:opacity-[0.07] w-[450px] h-[450px] sm:w-[650px] sm:h-[650px] lg:w-[750px] lg:h-[750px] transition-all">
+              <OryukLogo className="w-full h-full" />
+            </div>
+          </div>
+
+          <div className="relative z-10">
+            {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -284,6 +293,7 @@ export const App = () => {
               )}
             </>
           )}
+          </div>
         </main>
       </div>
 
