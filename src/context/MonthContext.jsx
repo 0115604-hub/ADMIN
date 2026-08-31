@@ -39,7 +39,11 @@ export const MonthProvider = ({ children }) => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...initialMultiMonthData, ...parsed };
+        const merged = { ...initialMultiMonthData, ...parsed };
+        if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
+          merged["2026-08"] = initialMultiMonthData["2026-08"];
+        }
+        return merged;
       } catch (e) {
         console.error("Error reading saved monthly store:", e);
       }
@@ -67,6 +71,9 @@ export const MonthProvider = ({ children }) => {
           if (remoteData && remoteData.store) {
             setAllMonthlyData((prev) => {
               const merged = { ...prev, ...remoteData.store };
+              if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
+                merged["2026-08"] = initialMultiMonthData["2026-08"];
+              }
               localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
               return merged;
             });
@@ -83,6 +90,9 @@ export const MonthProvider = ({ children }) => {
             if (remoteData && remoteData.store) {
               setAllMonthlyData((prev) => {
                 const merged = { ...prev, ...remoteData.store };
+                if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
+                  merged["2026-08"] = initialMultiMonthData["2026-08"];
+                }
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
                 return merged;
               });
