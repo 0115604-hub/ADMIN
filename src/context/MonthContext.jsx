@@ -121,16 +121,33 @@ export const MonthProvider = ({ children }) => {
     }
   };
 
-  // Add / Update Monthly Data from Workbook Upload (Syncs to Cloud + Local)
-  const uploadMonthlyData = async (yearMonth, monthPackage) => {
+  // Add / Update Monthly Data from Workbook Upload (Strictly uses the latest uploaded file and replaces old file data)
+  const uploadMonthlyData = async (yearMonth, monthPackage, fileMeta = {}) => {
     const cleanPackage = sanitizeForFirestore(monthPackage);
 
+    const latestFileRecord = {
+      fileName: fileMeta.fileName || cleanPackage.fileName || "최신_업로드_데이터.xlsx",
+      uploadedAt: new Date().toISOString(),
+      uploadedAtFormatted: new Date().toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      }),
+      uploadedBy: fileMeta.uploadedBy || "작업자",
+      fileSize: fileMeta.fileSize || "1.2 MB",
+      isLatest: true
+    };
+
+    // Cleanly overwrite the month with the newest file's data (replacing previous file)
     const updated = {
       ...allMonthlyData,
       [yearMonth]: {
-        ...allMonthlyData[yearMonth],
         ...cleanPackage,
-        yearMonth
+        yearMonth,
+        latestFile: latestFileRecord,
+        lastUpdated: new Date().toISOString()
       }
     };
 
@@ -139,16 +156,17 @@ export const MonthProvider = ({ children }) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
     localStorage.setItem("admin_selected_month_v4", yearMonth);
 
-    // Sync to Firestore Cloud Database so all mobile devices & PCs update immediately
+    // Sync to Firestore Cloud Database so all mobile devices & PCs update immediately to the latest file
     try {
       const docRef = doc(db, ...FIRESTORE_DOC_PATH);
       const sanitizedStore = sanitizeForFirestore(updated);
       await setDoc(docRef, {
         store: sanitizedStore,
         lastUpdatedYearMonth: yearMonth,
+        latestFile: latestFileRecord,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-      console.log("Monthly store successfully synced to Firestore cloud!");
+      console.log(`[${yearMonth}] Latest uploaded file (${latestFileRecord.fileName}) successfully synced to Firestore cloud. Previous file replaced.`);
     } catch (e) {
       console.error("Firestore monthly store upload error:", e);
     }

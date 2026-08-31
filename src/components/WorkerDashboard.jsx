@@ -263,12 +263,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setUploading(true);
     try {
       const targetYM = parsedResult.yearMonth || selectedMonth || "2026-08";
-      await uploadMonthlyData(targetYM, parsedResult);
+      await uploadMonthlyData(targetYM, parsedResult, {
+        fileName: parsedResult.fileName,
+        uploadedBy: `${workerFullName} (${workerPlant})`,
+        fileSize: parsedResult.fileSize
+      });
       if (onBulkUpload && parsedResult.items && parsedResult.items.length > 0) {
         await onBulkUpload(parsedResult.items);
       }
       setUploadSuccess(true);
-      setSuccessMessage(`${targetYM} 매입매출 데이터(${parsedResult.items?.length || 0}건)가 성공적으로 반영되었습니다!`);
+      setSuccessMessage(`${targetYM} 최신 파일(${parsedResult.fileName}) 기준으로 데이터가 갱신되었습니다. (이전 파일 대체 완료)`);
     } catch (err) {
       alert("업로드 중 오류 발생: " + err.message);
     } finally {

@@ -96,15 +96,19 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
     try {
       const targetYM = parsedResult.yearMonth || "2026-08";
 
-      // Save into MonthContext
-      await uploadMonthlyData(targetYM, parsedResult);
+      // Save into MonthContext with file metadata
+      await uploadMonthlyData(targetYM, parsedResult, {
+        fileName: parsedResult.fileName,
+        uploadedBy: `${workerName} (${plantName})`,
+        fileSize: parsedResult.fileSize
+      });
 
       // Save into transactions DB if items exist
       if (onBulkUpload && parsedResult.items && parsedResult.items.length > 0) {
         await onBulkUpload(parsedResult.items);
       }
 
-      // Add to history
+      // Add to history (Replacing old file for this month so only latest active file is kept)
       const newRecord = {
         id: Date.now(),
         fileName: parsedResult.fileName,
@@ -119,15 +123,15 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
         operator: `${workerName} (${plantName})`,
         salesAmount: parsedResult.totalSales,
         purchaseAmount: parsedResult.totalExpenses,
-        status: "동기화 완료"
+        status: "최신 파일 기준 동기화 완료"
       };
 
-      const updatedHistory = [newRecord, ...uploadHistory.slice(0, 9)];
+      const updatedHistory = [newRecord, ...uploadHistory.filter((h) => h.month !== targetYM)];
       setUploadHistory(updatedHistory);
       localStorage.setItem("operator_upload_history", JSON.stringify(updatedHistory));
 
       const ymLabel = `${targetYM.split("-")[0]}년 ${targetYM.split("-")[1]}월`;
-      setSuccessMessage("성공적으로 동기화 및 반영되었습니다.");
+      setSuccessMessage(`[${ymLabel}] 최신 엑셀 파일(${parsedResult.fileName}) 기준으로 전사 데이터가 갱신되었습니다. (이전 파일 대체 완료)`);
       setUploadSuccess(true);
       setParsedResult(null);
     } catch (err) {
