@@ -44,7 +44,7 @@ export const AuthModal = () => {
             <Building2 className="w-6 h-6" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            월간관리현황
+            (주)오륙 생산관리현황
           </h3>
           <p className="text-xs text-slate-400 mt-1">
             접속하실 작업자 또는 관리자를 선택해 주세요.

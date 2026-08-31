@@ -113,7 +113,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           </div>
           <div className="min-w-0">
             <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight truncate">
-              월간관리현황
+              (주)오륙 생산관리현황
             </h1>
             <p className={`text-[11px] font-bold truncate ${
               isOperator

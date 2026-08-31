@@ -51,7 +51,7 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
               <Building2 className="w-4 h-4" />
             </div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              {title || "일일생산정보현황"}
+              (주)오륙 생산관리현황
             </h2>
           </div>
         )}
