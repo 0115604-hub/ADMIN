@@ -22,8 +22,15 @@ import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import * as XLSX from "xlsx";
 
-const DOWNTIME_REASONS = [
-  "금형 교체 / 세팅",
+export const EXTRUSION_LINES = [
+  "PVC LINE",
+  "PCM 1호 LINE",
+  "PCM 3호 LINE",
+  "TPE 1호 LINE"
+];
+
+export const DOWNTIME_REASONS = [
+  "형교환",
   "원료 / 칼라 교체 (퍼징)",
   "온도 안정화 / 승온 대기",
   "설비 정기 점검 / 청소",
@@ -39,10 +46,10 @@ const INITIAL_DOWNTIME_LOGS = [
     date: "2026-08-28",
     week: "8월 4주차",
     plant: "삼랑진공장",
-    machine: "압출 1호기",
+    machine: "PCM 1호 LINE",
     durationMinutes: 45,
-    reason: "금형 교체 / 세팅",
-    details: "9BQC FRT LH ➔ DT RR RH 금형 교체 및 피팅 세팅 완료",
+    reason: "형교환",
+    details: "DT SILL SEAL 형교환 및 피팅 세팅 완료",
     actionTaken: "금형 체결 및 145도 승온 정상화 완료",
     operator: "설유철 책임",
     status: "조치완료"
@@ -52,11 +59,11 @@ const INITIAL_DOWNTIME_LOGS = [
     date: "2026-08-28",
     week: "8월 4주차",
     plant: "삼랑진공장",
-    machine: "압출 2호기",
+    machine: "PCM 3호 LINE",
     durationMinutes: 30,
-    reason: "원료 / 칼라 교체 (퍼징)",
-    details: "블랙 TPE ➔ 그레이 TPE 원료 교체 및 실린더 퍼징",
-    actionTaken: "호퍼 청소 및 스크류 잔류물 완전 제거 완료",
+    reason: "형교환",
+    details: "DT 호리젠탈 형교환 및 다이스 센터 정렬 완료",
+    actionTaken: "금형 장착 및 시험 압출 양품 확인",
     operator: "설유철 책임",
     status: "조치완료"
   },
@@ -65,12 +72,12 @@ const INITIAL_DOWNTIME_LOGS = [
     date: "2026-08-27",
     week: "8월 4주차",
     plant: "삼랑진공장",
-    machine: "PCM 압출기",
-    durationMinutes: 60,
-    reason: "설비 정기 점검 / 청소",
-    details: "PCM 압출 라인 냉각 노즐 세척 및 수압 밸브 점검",
-    actionTaken: "냉각수 펌프 필터 교체 및 수압 2.5bar 정상 유지",
-    operator: "윤경수 책임",
+    machine: "TPE 1호 LINE",
+    durationMinutes: 40,
+    reason: "형교환",
+    details: "JA 전용 TPE 압출 형교환 및 원료 투입 점검",
+    actionTaken: "호퍼 청소 및 스크류 잔류물 퍼징 완료",
+    operator: "설유철 책임",
     status: "조치완료"
   },
   {
@@ -78,17 +85,17 @@ const INITIAL_DOWNTIME_LOGS = [
     date: "2026-08-26",
     week: "8월 4주차",
     plant: "삼랑진공장",
-    machine: "압출 1호기",
+    machine: "PVC LINE",
     durationMinutes: 25,
     reason: "온도 안정화 / 승온 대기",
-    details: "다이스 3존 히터 온도 편차 발생에 따른 승온 안정화",
+    details: "PVC 압출 다이스 3존 히터 온도 편차 발생에 따른 승온 안정화",
     actionTaken: "열전대 센서 체결 상태 점검 및 온도 편차 ±1도 이내 정상화",
     operator: "설유철 책임",
     status: "조치완료"
   }
 ];
 
-const STORAGE_KEY = "factory_extrusion_downtime_logs_v1";
+const STORAGE_KEY = "factory_extrusion_downtime_logs_v2_exact_lines";
 
 export const ExtrusionDowntimeView = () => {
   const { currentProfile, isAdmin } = useAuth();
@@ -114,9 +121,9 @@ export const ExtrusionDowntimeView = () => {
     date: new Date().toISOString().split("T")[0],
     week: "8월 4주차",
     plant: defaultPlant,
-    machine: "압출 1호기",
+    machine: "PCM 1호 LINE",
     durationMinutes: 30,
-    reason: "금형 교체 / 세팅",
+    reason: "형교환",
     details: "",
     actionTaken: "",
     operator: defaultOperator
@@ -128,7 +135,7 @@ export const ExtrusionDowntimeView = () => {
   }, [logs]);
 
   const totalDowntimeHours = (totalDowntimeMinutes / 60).toFixed(1);
-  const standardWeeklyHours = 40 * 3; // 3 lines * 40 hours = 120 hours
+  const standardWeeklyHours = 40 * 4; // 4 lines * 40 hours = 160 hours
   const operationRatio = (100 - (totalDowntimeMinutes / (standardWeeklyHours * 60)) * 100).toFixed(1);
 
   // Save new log
@@ -154,9 +161,9 @@ export const ExtrusionDowntimeView = () => {
       date: new Date().toISOString().split("T")[0],
       week: "8월 4주차",
       plant: defaultPlant,
-      machine: "압출 1호기",
+      machine: "PCM 1호 LINE",
       durationMinutes: 30,
-      reason: "금형 교체 / 세팅",
+      reason: "형교환",
       details: "",
       actionTaken: "",
       operator: defaultOperator
@@ -193,7 +200,7 @@ export const ExtrusionDowntimeView = () => {
       ["압출동 주간 비가동 내역 관리 보고서"],
       ["조회일자", new Date().toLocaleDateString(), "총 비가동시간", `${totalDowntimeMinutes}분 (${totalDowntimeHours}시간)`, "설비 가동률", `${operationRatio}%`],
       [],
-      ["NO", "일자", "주차", "공장", "설비/호기", "비가동시간(분)", "비가동 구분", "세부내용", "조치사항", "담당자", "상태"]
+      ["NO", "일자", "주차", "공장", "압출 LINE", "비가동시간(분)", "비가동 구분", "세부내용", "조치사항", "담당자", "상태"]
     ];
 
     filteredLogs.forEach((l, idx) => {
@@ -227,13 +234,13 @@ export const ExtrusionDowntimeView = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-semibold">
               <Wrench className="w-3.5 h-3.5" />
-              <span>압출동 설비 가동 효율 관리</span>
+              <span>압출 4개 LINE (PVC / PCM 1호 / PCM 3호 / TPE 1호) 설비 가동 효율</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               압출동 주간 비가동 내역
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-xl">
-              압출 1~2호기 및 PCM 압출 라인의 금형교체, 승온대기, 설비점검 등 주간 비가동 시간을 기록하여 설비 가동률을 극대화합니다.
+              PVC LINE, PCM 1호 LINE, PCM 3호 LINE, TPE 1호 LINE의 형교환, 승온대기, 퍼징 등 주간 비가동 시간을 체계적으로 분석하여 최적의 가동률을 달성합니다.
             </p>
           </div>
 
@@ -269,7 +276,7 @@ export const ExtrusionDowntimeView = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <span className="text-xs font-bold text-slate-400">압출 라인 가동률</span>
+          <span className="text-xs font-bold text-slate-400">압출 4개 LINE 평균 가동률</span>
           <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
             {operationRatio}%
           </p>
@@ -284,7 +291,7 @@ export const ExtrusionDowntimeView = () => {
             {logs.length} 건
           </p>
           <p className="text-xs font-semibold text-slate-400 mt-1">
-            금형교체 및 퍼징 위주
+            형교환 및 퍼징 위주
           </p>
         </div>
 
@@ -306,7 +313,7 @@ export const ExtrusionDowntimeView = () => {
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
             <input
               type="text"
-              placeholder="호기, 사유, 조치내용, 담당자 검색..."
+              placeholder="LINE, 사유, 조치내용, 담당자 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -314,16 +321,18 @@ export const ExtrusionDowntimeView = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            {/* Machine Filter */}
+            {/* Extrusion Line Filter */}
             <select
               value={selectedMachine}
               onChange={(e) => setSelectedMachine(e.target.value)}
               className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
             >
-              <option value="all">전체 설비/호기</option>
-              <option value="압출 1호기">압출 1호기</option>
-              <option value="압출 2호기">압출 2호기</option>
-              <option value="PCM 압출기">PCM 압출기</option>
+              <option value="all">전체 압출 LINE</option>
+              {EXTRUSION_LINES.map((line) => (
+                <option key={line} value={line}>
+                  {line}
+                </option>
+              ))}
             </select>
 
             {/* Reason Filter */}
@@ -348,7 +357,7 @@ export const ExtrusionDowntimeView = () => {
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 text-slate-500 font-black">
                 <th className="py-3 px-3">일자 / 주차</th>
-                <th className="py-3 px-3">설비 / 호기</th>
+                <th className="py-3 px-3">압출 LINE</th>
                 <th className="py-3 px-3 text-right">비가동 시간</th>
                 <th className="py-3 px-3">비가동 구분 / 원인</th>
                 <th className="py-3 px-3">세부 내용</th>
@@ -372,7 +381,7 @@ export const ExtrusionDowntimeView = () => {
                       <span className="text-[10px] text-amber-600 font-bold">{log.week}</span>
                     </td>
                     <td className="py-3 px-3 font-black text-slate-900 dark:text-white">
-                      <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-extrabold text-[11px]">
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 font-extrabold text-[11px] border border-amber-200/60 dark:border-amber-800/60">
                         {log.machine}
                       </span>
                     </td>
@@ -380,7 +389,13 @@ export const ExtrusionDowntimeView = () => {
                       {log.durationMinutes} 분
                     </td>
                     <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">
-                      {log.reason}
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                        log.reason === "형교환"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      }`}>
+                        {log.reason}
+                      </span>
                     </td>
                     <td className="py-3 px-3 text-slate-600 dark:text-slate-300 max-w-xs truncate" title={log.details}>
                       {log.details}
@@ -422,7 +437,7 @@ export const ExtrusionDowntimeView = () => {
                     압출동 비가동 내역 등록
                   </h3>
                   <p className="text-xs text-slate-400">
-                    압출 설비의 비가동 사유 및 조치 사항을 등록합니다.
+                    PVC LINE, PCM 1·3호 LINE, TPE 1호 LINE 형교환 및 비가동 등록
                   </p>
                 </div>
               </div>
@@ -450,16 +465,18 @@ export const ExtrusionDowntimeView = () => {
                 </div>
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    설비 / 호기
+                    압출 LINE 선택
                   </label>
                   <select
                     value={formData.machine}
                     onChange={(e) => setFormData({ ...formData, machine: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
-                    <option value="압출 1호기">압출 1호기</option>
-                    <option value="압출 2호기">압출 2호기</option>
-                    <option value="PCM 압출기">PCM 압출기</option>
+                    {EXTRUSION_LINES.map((line) => (
+                      <option key={line} value={line}>
+                        {line}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -486,7 +503,7 @@ export const ExtrusionDowntimeView = () => {
                   <select
                     value={formData.reason}
                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/40 font-black text-amber-900 dark:text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     {DOWNTIME_REASONS.map((r) => (
                       <option key={r} value={r}>
@@ -504,7 +521,7 @@ export const ExtrusionDowntimeView = () => {
                 <textarea
                   required
                   rows="2"
-                  placeholder="예: 9BQC FRT LH ➔ DT RR RH 금형 교체 및 피팅 세팅 진행"
+                  placeholder="예: DT SILL SEAL 형교환 및 피팅 세팅 진행"
                   value={formData.details}
                   onChange={(e) => setFormData({ ...formData, details: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -517,7 +534,7 @@ export const ExtrusionDowntimeView = () => {
                 </label>
                 <textarea
                   rows="2"
-                  placeholder="예: 금형 체결 후 145도 승온 완료, 시험 생산 양품 확인"
+                  placeholder="예: 금형 체결 후 145도 승온 완료, 시험 압출 양품 확인"
                   value={formData.actionTaken}
                   onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
