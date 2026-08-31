@@ -557,48 +557,57 @@ export const ExtrusionDowntimeView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. DETAILED LOG LEDGER (상세 발생 일지 & 필터) */}
+      {/* 4. DETAILED LOG LEDGER (가로형 1줄 상세 발생 일지) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-            <h3 className="font-black text-base text-slate-900 dark:text-white">
-              상세 비가동 발생 일지 ({filteredLogs.length}건)
-            </h3>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+          {/* Quick Line Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+            <button
+              onClick={() => setSelectedLineFilter("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                selectedLineFilter === "all"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+              }`}
+            >
+              전체 ({logs.length})
+            </button>
+            {EXTRUSION_LINES.map((line) => {
+              const count = logs.filter((l) => l.machine === line || l.machine === `${line} LINE`).length;
+              return (
+                <button
+                  key={line}
+                  onClick={() => setSelectedLineFilter(line)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
+                    selectedLineFilter === line
+                      ? "bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                  }`}
+                >
+                  {line} ({count})
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            {/* Line Filter */}
-            <select
-              value={selectedLineFilter}
-              onChange={(e) => setSelectedLineFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
-            >
-              <option value="all">전체 압출 LINE</option>
-              {EXTRUSION_LINES.map((line) => (
-                <option key={line} value={line}>
-                  {line}
-                </option>
-              ))}
-            </select>
-
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Reason Filter */}
             <select
               value={selectedReasonFilter}
               onChange={(e) => setSelectedReasonFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none"
             >
               <option value="all">전체 사유</option>
               {DOWNTIME_REASONS.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {getShortReason(r)}
                 </option>
               ))}
             </select>
 
             {/* Search Input */}
-            <div className="relative w-48">
+            <div className="relative w-44">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
@@ -611,71 +620,74 @@ export const ExtrusionDowntimeView = () => {
           </div>
         </div>
 
-        {/* Detailed Table */}
+        {/* Ultra-Clean Horizontal Single-Row Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse min-w-[800px]">
+          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[850px]">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-extrabold">
-                <th className="py-2.5 px-3">발생 일자</th>
-                <th className="py-2.5 px-3">압출 LINE</th>
-                <th className="py-2.5 px-3 text-right">비가동 시간</th>
-                <th className="py-2.5 px-3">비가동 구분 / 사유</th>
-                <th className="py-2.5 px-3">세부 작업 내용</th>
-                <th className="py-2.5 px-3">조치 사항 및 정상화</th>
-                <th className="py-2.5 px-3">담당 조치자</th>
-                <th className="py-2.5 px-3 text-center">삭제</th>
+              <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-black">
+                <th className="py-2.5 px-2.5 w-[11%]">일자</th>
+                <th className="py-2.5 px-2 w-[12%]">설비</th>
+                <th className="py-2.5 px-2 w-[9%] text-center">시간</th>
+                <th className="py-2.5 px-2 w-[12%] text-center">구분</th>
+                <th className="py-2.5 px-2 w-[30%]">작업 내용</th>
+                <th className="py-2.5 px-2 w-[18%]">조치 내용</th>
+                <th className="py-2.5 px-2 w-[8%] text-center">담당</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={7} className="py-8 text-center text-slate-400 font-bold">
                     등록된 비가동 내역이 없습니다.
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-2.5 px-3 font-semibold text-slate-600 dark:text-slate-300">
-                      {log.date}
-                    </td>
-                    <td className="py-2.5 px-3 font-black text-slate-900 dark:text-white">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-200 dark:border-slate-700">
-                        {log.machine}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-black text-rose-600 dark:text-rose-400 text-sm">
-                      {log.durationMinutes} 분
-                    </td>
-                    <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                        log.reason.includes("형교환")
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300"
-                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                      }`}>
-                        {log.reason}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300 font-medium max-w-xs truncate" title={log.details}>
-                      {log.details}
-                    </td>
-                    <td className="py-2.5 px-3 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={log.actionTaken}>
-                      {log.actionTaken}
-                    </td>
-                    <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
-                      {log.operator}
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <button
-                        onClick={() => handleDelete(log.id)}
-                        className="p-1 rounded-lg text-slate-300 hover:text-rose-600 transition-colors"
-                        title="삭제"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                filteredLogs.map((log) => {
+                  const isMold = log.reason.includes("형교환");
+                  const shortOp = log.operator.replace(/(책임|선임|이사|대표|주임|사원)/g, "").trim();
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors h-11">
+                      {/* 일자 */}
+                      <td className="py-2 px-2.5 font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {log.date.slice(5)} {log.day ? `(${log.day})` : ""}
+                      </td>
+                      {/* 설비 */}
+                      <td className="py-2 px-2 font-black text-slate-900 dark:text-white whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-black text-[11px] border border-slate-200 dark:border-slate-700">
+                          {log.machine}
+                        </span>
+                      </td>
+                      {/* 시간 */}
+                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 font-black text-xs">
+                          {log.durationMinutes}분
+                        </span>
+                      </td>
+                      {/* 구분 */}
+                      <td className="py-2 px-2 text-center whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-black ${
+                          isMold
+                            ? "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        }`}>
+                          {getShortReason(log.reason)}
+                        </span>
+                      </td>
+                      {/* 작업 내용 */}
+                      <td className="py-2 px-2 font-medium text-slate-800 dark:text-slate-200 truncate" title={log.details}>
+                        {log.details}
+                      </td>
+                      {/* 조치 내용 */}
+                      <td className="py-2 px-2 text-slate-500 dark:text-slate-400 font-medium truncate" title={log.actionTaken}>
+                        {log.actionTaken || "-"}
+                      </td>
+                      {/* 담당 */}
+                      <td className="py-2 px-2 text-center font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                        {shortOp}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
