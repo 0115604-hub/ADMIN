@@ -125,7 +125,7 @@ export const App = () => {
 
   // Title mapping
   const getTabTitle = () => {
-    if (activeTab === "worker_dashboard") return "일일생산정보현황";
+    if (activeTab === "worker_dashboard") return isOperator ? "일일생산정보현황" : "일일업무일지 관리";
     if (activeTab === "extrusion_downtime") return "압출동 주간 비가동내역";
     if (activeTab === "daily_quality") return "일일 품질현황";
     if (activeTab === "overtime_status") return "특근현황";
