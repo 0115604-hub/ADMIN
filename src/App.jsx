@@ -9,6 +9,9 @@ import { ClosingLedgerView } from "./components/ClosingLedgerView";
 import { PnLStatement } from "./components/PnLStatement";
 import { OperatorWorkspace } from "./components/OperatorWorkspace";
 import { WorkerDashboard } from "./components/WorkerDashboard";
+import { ExtrusionDowntimeView } from "./components/ExtrusionDowntimeView";
+import { DailyQualityView } from "./components/DailyQualityView";
+import { OvertimeStatusView } from "./components/OvertimeStatusView";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
@@ -36,34 +39,34 @@ export const App = () => {
   // Sync default tab when user changes
   useEffect(() => {
     if (isOperator) {
-      setActiveTab("worker_dashboard");
-    } else if (isAdmin && (activeTab === "worker_dashboard" || !activeTab)) {
+      if (!activeTab || activeTab === "dashboard") {
+        setActiveTab("worker_dashboard");
+      }
+    } else if (isAdmin && !activeTab) {
       setActiveTab("dashboard");
     }
   }, [isOperator, isAdmin]);
 
   // Load data
-  const loadData = async (showRefreshAnim = false) => {
-    if (showRefreshAnim) setIsRefreshing(true);
+  const loadData = async (forceRefresh = false) => {
     try {
-      const result = await fetchTransactions();
-      setTransactions(result.data || []);
-      setDataSource(result.source || "local");
+      if (forceRefresh) setIsRefreshing(true);
+      else setLoading(true);
+
+      const data = await fetchTransactions();
+      setTransactions(data);
+      setDataSource("local");
     } catch (error) {
       console.error("Data load error:", error);
     } finally {
       setLoading(false);
-      if (showRefreshAnim) {
-        setTimeout(() => setIsRefreshing(false), 500);
-      }
+      setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      loadData();
-    }
-  }, [isAuthenticated]);
+    loadData();
+  }, []);
 
   // Save Transaction
   const handleSaveTransaction = async (formData) => {
@@ -71,33 +74,35 @@ export const App = () => {
       if (editingItem) {
         const updated = await updateTransaction(editingItem.id, formData);
         setTransactions((prev) =>
-          prev.map((t) => (t.id === editingItem.id ? { ...t, ...updated } : t))
+          prev.map((t) => (t.id === editingItem.id ? updated : t))
         );
       } else {
-        const newItem = await addTransaction(formData);
-        setTransactions((prev) => [newItem, ...prev]);
+        const created = await addTransaction(formData);
+        setTransactions((prev) => [created, ...prev]);
       }
+      setModalOpen(false);
+      setEditingItem(null);
     } catch (error) {
       console.error("Save transaction error:", error);
-    } finally {
-      setEditingItem(null);
     }
   };
 
-  // Bulk Upload
-  const handleBulkUpload = async (items) => {
-    const createdList = [];
-    for (const item of items) {
-      const created = await addTransaction(item);
-      createdList.push(created);
+  // Bulk Upload from Excel
+  const handleBulkUpload = async (newTransactions) => {
+    try {
+      for (const item of newTransactions) {
+        await addTransaction(item);
+      }
+      await loadData(true);
+      setExcelModalOpen(false);
+    } catch (error) {
+      console.error("Bulk upload error:", error);
+      alert("업로드 중 오류가 발생했습니다: " + error.message);
     }
-    setTransactions((prev) => [...createdList, ...prev]);
-    return true;
   };
 
   // Delete Transaction
   const handleDeleteTransaction = async (id) => {
-    if (!window.confirm("이 항목을 정말 삭제하시겠습니까?")) return;
     try {
       await deleteTransaction(id);
       setTransactions((prev) => prev.filter((t) => t.id !== id));
@@ -118,10 +123,11 @@ export const App = () => {
 
   // Title mapping
   const getTabTitle = () => {
-    if (isOperator) {
-      if (activeTab === "operator_workspace") return "엑셀 파일 업로드";
-      return "업무일지 & 현황";
-    }
+    if (activeTab === "worker_dashboard") return "업무일지 & 현황";
+    if (activeTab === "extrusion_downtime") return "압출동 주간 비가동내역";
+    if (activeTab === "daily_quality") return "일일 품질현황";
+    if (activeTab === "overtime_status") return "특근현황";
+    if (activeTab === "operator_workspace") return "엑셀 파일 업로드";
     const meta = ADMIN_TABS.find((t) => t.id === activeTab);
     return meta ? meta.label : "현황";
   };
@@ -174,6 +180,15 @@ export const App = () => {
                 <>
                   {activeTab === "worker_dashboard" && (
                     <WorkerDashboard onBulkUpload={handleBulkUpload} />
+                  )}
+                  {activeTab === "extrusion_downtime" && (
+                    <ExtrusionDowntimeView />
+                  )}
+                  {activeTab === "daily_quality" && (
+                    <DailyQualityView />
+                  )}
+                  {activeTab === "overtime_status" && (
+                    <OvertimeStatusView />
                   )}
                   {activeTab === "operator_workspace" && (
                     <OperatorWorkspace onBulkUpload={handleBulkUpload} />
@@ -229,6 +244,18 @@ export const App = () => {
 
                   {activeTab === "worker_dashboard" && (
                     <WorkerDashboard onBulkUpload={handleBulkUpload} />
+                  )}
+
+                  {activeTab === "extrusion_downtime" && (
+                    <ExtrusionDowntimeView />
+                  )}
+
+                  {activeTab === "daily_quality" && (
+                    <DailyQualityView />
+                  )}
+
+                  {activeTab === "overtime_status" && (
+                    <OvertimeStatusView />
                   )}
 
                   {activeTab === "operator_workspace" && (
