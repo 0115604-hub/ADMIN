@@ -6,12 +6,13 @@ import {
   UserCheck,
   ArrowLeft,
   QrCode,
-  X
+  X,
+  Menu
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 
-export const Header = ({ title, activeTab, onBackToSummary }) => {
+export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth } = useMonth();
   const [showQrModal, setShowQrModal] = useState(false);
@@ -30,12 +31,24 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
     ? `${workerPlant} • ${currentProfile?.name} ${officialTitle}`.trim()
     : "ADMIN";
 
-  const showBackButton = activeTab && activeTab !== "worker_dashboard" && activeTab !== "dashboard";
+  const showBackButton = isOperator && activeTab && activeTab !== "worker_dashboard";
 
   return (
-    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-sm">
-      {/* Left: Brand Logo / Back Button & View Title */}
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-sm">
+      {/* Left: View Title / Mobile Menu Button / Operator Back Button */}
       <div className="flex items-center gap-3">
+        {/* Admin Mobile Hamburger Menu Button */}
+        {isAdmin && onOpenMobileMenu && (
+          <button
+            onClick={onOpenMobileMenu}
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 md:hidden transition-colors"
+            title="메뉴 열기"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Operator Back Button */}
         {showBackButton && onBackToSummary ? (
           <button
             onClick={onBackToSummary}
@@ -44,7 +57,7 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
             <ArrowLeft className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             <span>← 요약본 전체보기</span>
           </button>
-        ) : (
+        ) : isOperator ? (
           <div className="flex items-center gap-2.5">
             <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md ${
               workerPlant === "한림공장"
@@ -55,6 +68,13 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
             </div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
               (주)오륙 생산관리현황
+            </h2>
+          </div>
+        ) : (
+          /* Admin Title Header */
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              {title === "월간경영현황" || title === "총괄 손익 대시보드" ? "현황" : title}
             </h2>
           </div>
         )}
@@ -71,7 +91,7 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
               ? workerPlant === "한림공장"
                 ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800"
                 : "bg-amber-50 text-amber-800 border border-amber-200/80 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
-              : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+              : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800"
           }`}>
             {userBadgeText}
           </span>
@@ -89,7 +109,7 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
               <button
                 key={ym}
                 onClick={() => changeMonth(ym)}
-                className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
                   isSelected
                     ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
                     : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
@@ -98,7 +118,7 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
                 <span>{formatMonthShort(ym)}</span>
                 {isLatest && (
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    className={`hidden sm:inline-block text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                       isSelected
                         ? "bg-blue-50 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300"
                         : "bg-slate-200 dark:bg-slate-700 text-slate-500"
@@ -112,11 +132,11 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
           })}
         </div>
 
-        {/* QR Code Button */}
+        {/* QR Access Button */}
         <button
           onClick={() => setShowQrModal(true)}
           title="모바일 접속 QR코드"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:border-blue-300 text-slate-600 dark:text-slate-300 hover:text-blue-600 text-xs font-black transition-all shadow-sm active:scale-95"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all shadow-sm active:scale-95"
         >
           <QrCode className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           <span className="hidden sm:inline">모바일 QR</span>
@@ -133,44 +153,43 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
         </button>
       </div>
 
-      {/* QR Code Popup Modal */}
+      {/* QR Code Modal */}
       {showQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 text-center relative animate-scaleUp">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 text-center relative animate-scaleUp">
             <button
               onClick={() => setShowQrModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
-              <QrCode className="w-6 h-6" />
+            <div className="space-y-1">
+              <div className="inline-flex p-2.5 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 mb-1">
+                <QrCode className="w-6 h-6" />
+              </div>
+              <h3 className="font-black text-lg text-slate-900 dark:text-white">
+                스마트폰 간편 접속 QR
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                스마트폰 카메라로 스캔하여 즉시 접속하세요
+              </p>
             </div>
 
-            <h3 className="text-lg font-black text-slate-900 dark:text-white">
-              모바일 간편 접속 QR코드
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-4">
-              스마트폰 카메라로 QR코드를 비추면<br />
-              <strong className="text-blue-600 dark:text-blue-400 font-bold">(주)오륙 생산관리현황</strong>에 즉시 접속됩니다.
-            </p>
-
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-md inline-block mb-4">
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-inner flex flex-col items-center justify-center">
               <img
-                src="/oryuk_app_qr.png"
-                alt="(주)오륙 생산관리현황 모바일 접속 QR코드"
-                className="w-48 h-48 mx-auto object-contain"
+                src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://profit-and-loss-7d09b.web.app"
+                alt="Mobile QR Code"
+                className="w-44 h-44 object-contain rounded-xl"
               />
-            </div>
-
-            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-500 dark:text-slate-400 break-all select-all mb-4">
-              https://profit-and-loss-7d09b.web.app
+              <span className="text-[11px] font-extrabold text-blue-600 mt-2">
+                profit-and-loss-7d09b.web.app
+              </span>
             </div>
 
             <button
               onClick={() => setShowQrModal(false)}
-              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-md shadow-blue-500/20"
+              className="w-full py-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition-all"
             >
               닫기
             </button>

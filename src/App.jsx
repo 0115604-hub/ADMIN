@@ -36,6 +36,7 @@ export const App = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Sync default tab when user changes
   useEffect(() => {
@@ -151,8 +152,15 @@ export const App = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      {/* Sidebar (Admin Only - Operators use Full-Width Single-Page Flow) */}
-      {!isOperator && <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />}
+      {/* Sidebar (Admin Only - Desktop & Mobile Drawer) */}
+      {!isOperator && (
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          mobileOpen={mobileMenuOpen}
+          onCloseMobile={() => setMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -160,6 +168,7 @@ export const App = () => {
           title={getTabTitle()}
           activeTab={activeTab}
           onBackToSummary={() => setActiveTab(isOperator ? "worker_dashboard" : "dashboard")}
+          onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onOpenNewModal={() => {
             setEditingItem(null);
             setModalOpen(true);

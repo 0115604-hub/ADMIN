@@ -16,7 +16,8 @@ import {
   Clock,
   Sparkles,
   Wrench,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -32,7 +33,7 @@ export const ADMIN_TABS = [
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];
 
-export const Sidebar = ({ activeTab, setActiveTab }) => {
+export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const isInjoo = currentProfile?.name === "조인주";
 
@@ -94,37 +95,48 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
     ? currentProfile?.plant
     : "본사 총괄";
 
-  return (
-    <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200">
+  const sidebarContent = (
+    <div className="flex flex-col justify-between h-full">
       {/* Brand Logo & Profile Tag */}
       <div className="p-5 sm:p-6">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0 ${
-            isOperator
-              ? currentProfile?.plant === "한림공장"
-                ? "bg-gradient-to-tr from-emerald-600 to-teal-700 shadow-emerald-500/25"
-                : "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/25"
-              : "bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/25"
-          }`}>
-            <Building2 className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight truncate">
-              (주)오륙 생산관리현황
-            </h1>
-            <p className={`text-[11px] font-bold truncate ${
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0 ${
               isOperator
                 ? currentProfile?.plant === "한림공장"
-                  ? "text-emerald-600"
-                  : "text-amber-600"
-                : "text-blue-600 dark:text-blue-400"
+                  ? "bg-gradient-to-tr from-emerald-600 to-teal-700 shadow-emerald-500/25"
+                  : "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/25"
+                : "bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/25"
             }`}>
-              {displayPlant}
-            </p>
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight truncate">
+                (주)오륙 생산관리현황
+              </h1>
+              <p className={`text-[11px] font-bold truncate ${
+                isOperator
+                  ? currentProfile?.plant === "한림공장"
+                    ? "text-emerald-600"
+                    : "text-amber-600"
+                  : "text-blue-600 dark:text-blue-400"
+              }`}>
+                {displayPlant}
+              </p>
+            </div>
           </div>
+
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 md:hidden hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
-        {/* Navigation Menu (Single Line, No Annotations/Badges) */}
+        {/* Navigation Menu */}
         <nav className="mt-6 sm:mt-8 space-y-1.5">
           {navigationTabs.map((tab) => {
             const Icon = tab.icon;
@@ -133,7 +145,10 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (onCloseMobile) onCloseMobile();
+                }}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${
                   isActive
                     ? tab.activeClass || "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 shadow-sm ring-1 ring-blue-400/30"
@@ -190,6 +205,28 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
           </button>
         </div>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Fixed Sidebar */}
+      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200 min-h-screen">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer Sidebar */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm animate-fadeIn"
+            onClick={onCloseMobile}
+          />
+          <aside className="relative w-72 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-2xl z-10 flex flex-col justify-between h-full">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 };
