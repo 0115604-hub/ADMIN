@@ -24,21 +24,15 @@ import {
   CheckSquare,
   Wrench,
   BarChart2,
-  ArrowRight
+  ArrowRight,
+  Building2,
+  CheckCheck
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { getWorkLogs, saveWorkLog, deleteWorkLog } from "../services/workLogService";
 import { OperatorWorkspace } from "./OperatorWorkspace";
-
-const PROCESS_OPTIONS = [
-  "총괄관리",
-  "압출동 관리",
-  "가공동 관리",
-  "품질관리",
-  "경리업무"
-];
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, TPE 1호, PVC)
 const EXTRUSION_SUMMARY = [
@@ -56,31 +50,46 @@ const QUALITY_SUMMARY = [
   { id: "hr", name: "HR G-RUN", inspectQty: 20858, defectQty: 270, defectRate: 1.29, isMax: true, reason: "직_어퍼떨어짐 (218건)" }
 ];
 
-// Overtime Summary (August 29 Saturday)
-const OVERTIME_SUMMARY = {
-  date: "2026년 8월 29일 토요일",
+// Split Overtime Summary (삼랑진공장 & 한림공장)
+const SAMRANGJIN_OVERTIME = {
+  plant: "삼랑진공장",
+  date: "2026년 8월 29일 (토)",
   author: "양인나 선임",
-  totalHeadcount: 44,
+  headcount: 32,
   approval: [
     { role: "담당", name: "양인나", status: "완료" },
     { role: "책임", name: "윤경수", status: "완료" },
     { role: "이사", name: "이명재", status: "완료" },
     { role: "대표", name: "권태형", status: "완료" }
   ],
-  lineBreakdown: [
-    { name: "JA 가공", count: 14 },
-    { name: "NX4 가공", count: 10 },
-    { name: "압출 라인", count: 9 },
-    { name: "DT 코팅", count: 5 },
-    { name: "PU 라인", count: 4 },
-    { name: "품질/물류", count: 2 }
+  lines: [
+    { name: "JA 가공", count: 9 },
+    { name: "NX4 가공", count: 8 },
+    { name: "압출 4LINE", count: 4 },
+    { name: "코팅/공통", count: 3 },
+    { name: "DT HOOD/기타", count: 8 }
   ],
-  reasons: [
-    "PCM 1호, 3호, TPE 형교환 생산 긴급 대응",
-    "DT HOOD 코팅 긴급 납품 수량 확보",
-    "NX4a 수출창고 입고 일정 준수",
-    "PU KD 재고 사전 확보"
-  ]
+  reason: "PCM 1호/3호/TPE 형교환 생산, DT HOOD 코팅 납품 대응, NX4a 수출창고 입고"
+};
+
+const HANLIM_OVERTIME = {
+  plant: "한림공장",
+  date: "2026년 8월 29일 (토)",
+  author: "우창용 선임",
+  headcount: 12,
+  approval: [
+    { role: "담당", name: "우창용", status: "완료" },
+    { role: "책임", name: "김동욱", status: "완료" },
+    { role: "이사", name: "이명재", status: "완료" },
+    { role: "대표", name: "권태형", status: "완료" }
+  ],
+  lines: [
+    { name: "JK1 조인트/후가공", count: 4 },
+    { name: "CHANNEL 밴딩/가공", count: 3 },
+    { name: "CE1/DT 후가공", count: 3 },
+    { name: "공장 총괄지원", count: 2 }
+  ],
+  reason: "CHANNEL 밴딩/가공 지원, JK1 조인트 및 후가공 납품 대응, PU KD 재고 확보"
 };
 
 export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
@@ -103,7 +112,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPlant, setFilterPlant] = useState(workerPlant || "all");
 
-  // Form State for New Work Log with Pre-filled Assigned Process
+  // Form State for New Work Log
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     plant: workerPlant,
@@ -115,7 +124,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     issues: ""
   });
 
-  // Keep writer & assigned process updated if profile loads late
   useEffect(() => {
     if (currentProfile) {
       setFormData((prev) => ({
@@ -497,7 +505,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 4. ⭐ [4위치] 특근현황 요약 */}
+          {/* 4. ⭐ [4위치] 특근현황 요약 (삼랑진공장 & 한림공장 2개 분할) */}
           {/* ========================================================================= */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -507,10 +515,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
                 <div>
                   <h2 className="font-black text-base text-slate-900 dark:text-white">
-                    4. 특근현황 요약 (특근보고서)
+                    4. 공장별 특근현황 요약 (삼랑진공장 • 한림공장)
                   </h2>
                   <p className="text-xs text-slate-400">
-                    {OVERTIME_SUMMARY.date} • 총 {OVERTIME_SUMMARY.totalHeadcount}명 투입 실적
+                    2026년 8월 29일 (토) • 전사 총 44명 투입 (삼랑진 32명 / 한림 12명)
                   </p>
                 </div>
               </div>
@@ -520,59 +528,97 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   onClick={() => onNavigateTab("overtime_status")}
                   className="flex items-center gap-1 text-xs font-black text-purple-600 hover:text-purple-700 dark:text-purple-400 transition-colors"
                 >
-                  <span>특근보고서 상세</span>
+                  <span>특근보고서 전체</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Overtime Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Approval Box & Total Headcount */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-400">총 특근 인원</span>
-                  <span className="text-xs font-bold text-slate-500">작성자: {OVERTIME_SUMMARY.author}</span>
-                </div>
-                <div className="text-3xl font-black text-purple-600 dark:text-purple-400">
-                  {OVERTIME_SUMMARY.totalHeadcount} <span className="text-sm text-slate-400 font-bold">명 투입</span>
+            {/* 2-Plant Side-by-Side Split Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Plant 1: 삼랑진공장 특근 */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-3.5">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-black">
+                      삼랑진공장
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      작성: {SAMRANGJIN_OVERTIME.author}
+                    </span>
+                  </div>
+                  <div className="text-base font-black text-purple-600 dark:text-purple-400">
+                    {SAMRANGJIN_OVERTIME.headcount}명 투입
+                  </div>
                 </div>
 
-                {/* 4 Roles Approval Pills */}
-                <div className="grid grid-cols-4 gap-1 text-center pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                  {OVERTIME_SUMMARY.approval.map((ap) => (
-                    <div key={ap.role} className="p-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      <span className="text-[10px] text-slate-400 block font-bold">{ap.role}</span>
-                      <strong className="text-xs text-slate-900 dark:text-white font-black block">{ap.name}</strong>
-                      <span className="text-[9px] text-emerald-600 font-extrabold">●{ap.status}</span>
+                {/* Approvals */}
+                <div className="grid grid-cols-4 gap-1 text-center">
+                  {SAMRANGJIN_OVERTIME.approval.map((ap) => (
+                    <div key={ap.role} className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px]">
+                      <span className="text-slate-400 block font-bold">{ap.role}</span>
+                      <strong className="text-slate-900 dark:text-white font-black">{ap.name}</strong>
+                      <span className="text-emerald-600 font-extrabold block text-[9px]">●완료</span>
                     </div>
                   ))}
+                </div>
+
+                {/* Line Breakdown Pills */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {SAMRANGJIN_OVERTIME.lines.map((ln) => (
+                    <span key={ln.name} className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Reason */}
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <strong className="text-slate-900 dark:text-white">사유: </strong>
+                  {SAMRANGJIN_OVERTIME.reason}
                 </div>
               </div>
 
-              {/* Line Breakdown */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">라인별 특근 인원</span>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  {OVERTIME_SUMMARY.lineBreakdown.map((lb) => (
-                    <div key={lb.name} className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700/70">
-                      <span className="font-bold text-slate-700 dark:text-slate-300">{lb.name}</span>
-                      <span className="font-black text-purple-600 dark:text-purple-400">{lb.count}명</span>
+              {/* Plant 2: 한림공장 특근 */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-3.5">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-black">
+                      한림공장
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      작성: {HANLIM_OVERTIME.author}
+                    </span>
+                  </div>
+                  <div className="text-base font-black text-purple-600 dark:text-purple-400">
+                    {HANLIM_OVERTIME.headcount}명 투입
+                  </div>
+                </div>
+
+                {/* Approvals */}
+                <div className="grid grid-cols-4 gap-1 text-center">
+                  {HANLIM_OVERTIME.approval.map((ap) => (
+                    <div key={ap.role} className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px]">
+                      <span className="text-slate-400 block font-bold">{ap.role}</span>
+                      <strong className="text-slate-900 dark:text-white font-black">{ap.name}</strong>
+                      <span className="text-emerald-600 font-extrabold block text-[9px]">●완료</span>
                     </div>
                   ))}
                 </div>
-              </div>
 
-              {/* Overtime Reasons */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 space-y-2">
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block">※ 특근 실시 주요 사유</span>
-                <div className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
-                  {OVERTIME_SUMMARY.reasons.map((rs, idx) => (
-                    <div key={idx} className="flex items-start gap-1.5">
-                      <span className="text-purple-600 font-black shrink-0">{idx + 1}.</span>
-                      <span className="font-medium truncate">{rs}</span>
-                    </div>
+                {/* Line Breakdown Pills */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {HANLIM_OVERTIME.lines.map((ln) => (
+                    <span key={ln.name} className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
+                    </span>
                   ))}
+                </div>
+
+                {/* Reason */}
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/50 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <strong className="text-slate-900 dark:text-white">사유: </strong>
+                  {HANLIM_OVERTIME.reason}
                 </div>
               </div>
             </div>
