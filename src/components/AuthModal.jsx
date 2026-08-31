@@ -316,7 +316,7 @@ export const AuthModal = () => {
                 disabled={loading}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm shadow-xl shadow-indigo-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
               >
-                <span>{selectedUser.name} 작업자 시스템 접속</span>
+                <span>시스템 접속</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
