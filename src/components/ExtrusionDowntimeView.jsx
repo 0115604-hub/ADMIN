@@ -341,19 +341,19 @@ export const ExtrusionDowntimeView = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
       {/* ========================================================================= */}
-      {/* 0. 8월 총 비가동시간 설비별 간략 표시 바 (배너 위 상단 스트립) */}
+      {/* 0. 8월 설비별 누적 비가동 시간 표시 바 (각 LINE 누적분만 간략 표시) */}
       {/* ========================================================================= */}
-      <div className="bg-slate-900 text-white rounded-2xl px-4 sm:px-5 py-3 border border-slate-800 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 text-xs">
+      <div className="bg-slate-900 text-white rounded-2xl px-4 sm:px-5 py-2.5 border border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 text-xs">
         {/* Left Title */}
         <div className="flex items-center gap-2 font-black shrink-0">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-          <span className="text-amber-400 font-black">2026년 08월 누적</span>
+          <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span className="text-amber-400 font-bold">2026년 08월 누적</span>
           <span className="text-slate-500">|</span>
-          <span className="text-slate-200 font-bold">설비별 총 비가동 시간</span>
+          <span className="text-slate-200 font-medium">라인별 비가동</span>
         </div>
 
-        {/* Right: Equipments Concise Pills & Total */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+        {/* Right: Each Line Cumulative Minutes */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {monthlyStats.list.map((item) => (
             <div
               key={item.line}
@@ -361,15 +361,8 @@ export const ExtrusionDowntimeView = () => {
             >
               <span className="font-bold text-slate-300">{item.line}</span>
               <span className="font-black text-rose-400">{item.minutes}분</span>
-              <span className="text-[10px] text-slate-400">({item.hours}h)</span>
             </div>
           ))}
-
-          {/* Monthly Sum */}
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-black">
-            <span>8월 합계:</span>
-            <span className="text-white font-black text-xs">{monthlyStats.totalMinutes}분 ({monthlyStats.totalHours}시간)</span>
-          </div>
         </div>
       </div>
 
