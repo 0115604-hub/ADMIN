@@ -33,6 +33,10 @@ export const AuthModal = () => {
 
   const handlePinSubmit = (e) => {
     e.preventDefault();
+    if (!selectedUser) {
+      setErrorMsg("작업자를 먼저 선택해 주세요.");
+      return;
+    }
     if (!pin) {
       setErrorMsg("비밀번호(PIN)를 입력해 주세요.");
       return;

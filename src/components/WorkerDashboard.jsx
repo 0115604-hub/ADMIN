@@ -136,9 +136,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     date: new Date().toISOString().split("T")[0],
     plant: workerPlant,
     writer: workerFullName,
-    process: isInjoo ? "경리업무" : isChangyeop ? "품질관리" : assignedProcess,
+    process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess,
     shift: "주간",
-    line: isInjoo ? "본사/현장 정산 및 전표 마감" : isChangyeop ? "전라인 품질 검사 및 불량 분석" : "9BQC 압출 1호기",
+    line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : "9BQC 압출 1호기",
     workContent: "",
     issues: ""
   });
@@ -149,11 +149,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         ...prev,
         plant: workerPlant,
         writer: workerFullName,
-        process: isInjoo ? "경리업무" : isChangyeop ? "품질관리" : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
-        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isChangyeop ? "전라인 품질 검사 및 불량 분석" : prev.line
+        process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
+        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : prev.line
       }));
     }
-  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isChangyeop]);
+  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isQualityWorker]);
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
