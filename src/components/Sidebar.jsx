@@ -22,13 +22,12 @@ import {
 import { useAuth } from "../context/AuthContext";
 
 export const ADMIN_TABS = [
-  { id: "dashboard", label: "현황", icon: BarChart3 },
+  { id: "worker_dashboard", label: "현황", icon: ClipboardList },
   { id: "vehicle_sales", label: "차종별 매출 분석", icon: Car },
   { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes },
   { id: "closing_ledger", label: "월간 결산 수치 입력", icon: Calculator },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers },
   { id: "statement", label: "월간 손익계산서", icon: FileText },
-  { id: "worker_dashboard", label: "일일업무일지 관리", icon: ClipboardList },
   { id: "operator_workspace", label: "엑셀 데이터 업데이트", icon: UploadCloud },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];

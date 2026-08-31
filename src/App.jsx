@@ -28,7 +28,7 @@ import {
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState(isOperator ? "worker_dashboard" : "dashboard");
+  const [activeTab, setActiveTab] = useState("worker_dashboard");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -40,12 +40,10 @@ export const App = () => {
 
   // Sync default tab when user changes
   useEffect(() => {
-    if (isOperator) {
+    if (isOperator || isAdmin) {
       if (!activeTab || activeTab === "dashboard") {
         setActiveTab("worker_dashboard");
       }
-    } else if (isAdmin && !activeTab) {
-      setActiveTab("dashboard");
     }
   }, [isOperator, isAdmin]);
 
@@ -126,7 +124,7 @@ export const App = () => {
 
   // Title mapping
   const getTabTitle = () => {
-    if (activeTab === "worker_dashboard") return isOperator ? "일일생산정보현황" : "일일업무일지 관리";
+    if (activeTab === "worker_dashboard") return isAdmin ? "현황" : "일일생산정보현황";
     if (activeTab === "extrusion_downtime") return "압출동 주간 비가동내역";
     if (activeTab === "daily_quality") return "일일 품질현황";
     if (activeTab === "overtime_status") return "특근현황";
@@ -167,7 +165,7 @@ export const App = () => {
         <Header
           title={getTabTitle()}
           activeTab={activeTab}
-          onBackToSummary={() => setActiveTab(isOperator ? "worker_dashboard" : "dashboard")}
+          onBackToSummary={() => setActiveTab("worker_dashboard")}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onOpenNewModal={() => {
             setEditingItem(null);
@@ -218,13 +216,10 @@ export const App = () => {
               {/* ADMIN VIEWS */}
               {isAdmin && (
                 <>
-                  {activeTab === "dashboard" && (
-                    <DashboardOverview
-                      onNavigateToVehicles={() => setActiveTab("vehicle_sales")}
-                      onNavigateToMaterials={() => setActiveTab("material_purchases")}
-                      onNavigateToPurchases={() => setActiveTab("purchase_costs")}
-                      onNavigateToStatement={() => setActiveTab("statement")}
-                      onNavigateToWorkLogs={() => setActiveTab("worker_dashboard")}
+                  {activeTab === "worker_dashboard" && (
+                    <WorkerDashboard
+                      onBulkUpload={handleBulkUpload}
+                      onNavigateTab={(tabId) => setActiveTab(tabId)}
                     />
                   )}
 
@@ -259,13 +254,6 @@ export const App = () => {
 
                   {activeTab === "statement" && (
                     <PnLStatement transactions={transactions} />
-                  )}
-
-                  {activeTab === "worker_dashboard" && (
-                    <WorkerDashboard
-                      onBulkUpload={handleBulkUpload}
-                      onNavigateTab={(tabId) => setActiveTab(tabId)}
-                    />
                   )}
 
                   {activeTab === "extrusion_downtime" && (
