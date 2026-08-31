@@ -175,9 +175,6 @@ export const ClosingLedgerView = () => {
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
-  // Upload Tab: 'tax_invoice' vs 'manual_ledger' (노무비 및 제세공과금 일괄업로드)
-  const [uploadTab, setUploadTab] = useState("manual_ledger");
-
   // Persistent store keyed by month
   const [closingStore, setClosingStore] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -219,8 +216,10 @@ export const ClosingLedgerView = () => {
   const [selectedCategoryDetailId, setSelectedCategoryDetailId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isDraggingManual, setIsDraggingManual] = useState(false);
+  const [isDraggingTax, setIsDraggingTax] = useState(false);
+  const [isProcessingManual, setIsProcessingManual] = useState(false);
+  const [isProcessingTax, setIsProcessingTax] = useState(false);
 
   // Sync state strictly when selectedMonth changes
   useEffect(() => {
@@ -439,11 +438,11 @@ export const ClosingLedgerView = () => {
     };
   };
 
-  // MANUAL CLOSING LEDGER (노무비 및 제세공과금 통합관리대장) UPLOAD HANDLER
+  // 1. MANUAL CLOSING LEDGER (노무비 및 제세공과금 통합관리대장) UPLOAD HANDLER
   const handleManualLedgerUpload = async (files) => {
     if (!files || files.length === 0) return;
     const file = files[0];
-    setIsProcessing(true);
+    setIsProcessingManual(true);
 
     try {
       const buffer = await file.arrayBuffer();
@@ -470,24 +469,24 @@ export const ClosingLedgerView = () => {
     } catch (err) {
       alert("노무비 및 제세공과금 일괄 업로드 오류: " + err.message);
     } finally {
-      setIsProcessing(false);
+      setIsProcessingManual(false);
       if (manualFileInputRef.current) manualFileInputRef.current.value = "";
     }
   };
 
-  // MULTI-FILE UPLOAD HANDLER
+  // 2. MULTI-FILE TAX INVOICE UPLOAD HANDLER
   const handleBatchFiles = async (files) => {
     if (!files || files.length === 0) return;
     const fileList = Array.from(files);
 
-    // If manual ledger file was passed or manual_ledger tab is active
+    // If manual ledger file was accidentally dropped here
     const firstFile = fileList[0];
     const fileName = (firstFile?.name || "").toLowerCase();
-    if (uploadTab === "manual_ledger" || fileName.includes("통합관리대장") || (fileName.includes("노무비") && fileName.includes(".xls"))) {
+    if (fileName.includes("통합관리대장") || (fileName.includes("노무비") && fileName.includes(".xls"))) {
       return handleManualLedgerUpload(fileList);
     }
 
-    setIsProcessing(true);
+    setIsProcessingTax(true);
 
     try {
       const parsedResults = [];
@@ -537,35 +536,52 @@ export const ClosingLedgerView = () => {
     } catch (err) {
       alert("매입세금계산서 일괄 업로드 오류: " + err.message);
     } finally {
-      setIsProcessing(false);
+      setIsProcessingTax(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  const handleDragOver = (e) => {
+  // Drag & Drop Handlers for Manual Ledger Box
+  const handleManualDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    setIsDraggingManual(true);
   };
 
-  const handleDragLeave = (e) => {
+  const handleManualDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    setIsDraggingManual(false);
   };
 
-  const handleDrop = (e) => {
+  const handleManualDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    setIsDraggingManual(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const firstFile = e.dataTransfer.files[0];
-      const fileName = (firstFile?.name || "").toLowerCase();
-      if (uploadTab === "manual_ledger" || fileName.includes("통합관리대장") || (fileName.includes("노무비") && fileName.includes(".xls"))) {
-        handleManualLedgerUpload(e.dataTransfer.files);
-      } else {
-        handleBatchFiles(e.dataTransfer.files);
-      }
+      handleManualLedgerUpload(e.dataTransfer.files);
+    }
+  };
+
+  // Drag & Drop Handlers for Tax Invoice Box
+  const handleTaxDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingTax(true);
+  };
+
+  const handleTaxDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingTax(false);
+  };
+
+  const handleTaxDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingTax(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleBatchFiles(e.dataTransfer.files);
     }
   };
 
@@ -742,32 +758,20 @@ export const ClosingLedgerView = () => {
       {/* ========================================================================= */}
       {/* SECTION 1: 매입DATA 업로드 ZONE (세금계산서 vs 노무비/제세공과금 일괄업로드) */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* SECTION 1: 매입DATA 2대 일괄업로드 드래그 존 (노무비/제세공과금 & 세금계산서) */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-        {/* Upload Mode Switcher Tabs */}
+        {/* Section Header & Global Action Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 w-fit shadow-xs">
-            <button
-              onClick={() => setUploadTab("manual_ledger")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                uploadTab === "manual_ledger"
-                  ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>노무비 및 제세공과금 일괄업로드</span>
-            </button>
-            <button
-              onClick={() => setUploadTab("tax_invoice")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                uploadTab === "tax_invoice"
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <UploadCloud className="w-4 h-4 text-blue-600" />
-              <span>매입세금계산서 일괄업로드</span>
-            </button>
+          <div>
+            <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <UploadCloud className="w-5 h-5 text-blue-600" />
+              <span>매입DATA 엑셀 일괄 업로드 관리</span>
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              통합관리대장 또는 홈택스 세금계산서 엑셀 파일을 각각의 드래그 영역에 올려놓으세요.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-end sm:self-center">
@@ -784,27 +788,8 @@ export const ClosingLedgerView = () => {
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all shadow-sm"
             >
               <Download className="w-3.5 h-3.5 text-emerald-600" />
-              <span>통합관리대장 다운로드</span>
+              <span>통합관리대장 양식 다운로드</span>
             </button>
-            {uploadTab === "manual_ledger" ? (
-              <button
-                onClick={() => manualFileInputRef.current?.click()}
-                disabled={isProcessing}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-200 dark:border-emerald-800 transition-all shrink-0"
-              >
-                <Files className="w-3.5 h-3.5" />
-                <span>통합관리대장 파일 선택</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessing}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-200 dark:border-blue-800 transition-all shrink-0"
-              >
-                <Files className="w-3.5 h-3.5" />
-                <span>세금계산서 파일 선택</span>
-              </button>
-            )}
             <button
               onClick={handleSave}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/20 active:scale-95 transition-all shrink-0"
@@ -830,89 +815,112 @@ export const ClosingLedgerView = () => {
           </div>
         </div>
 
-        {/* Tab 1: 노무비 및 제세공과금 일괄업로드 */}
-        {uploadTab === "manual_ledger" && (
+        {/* 2대 Drag & Drop 영역 (좌측: 노무비 및 제세공과금 / 우측: 매입세금계산서) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* 드래그 영역 1: 노무비 및 제세공과금 일괄업로드 */}
           <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            onDragOver={handleManualDragOver}
+            onDragLeave={handleManualDragLeave}
+            onDrop={handleManualDrop}
             onClick={() => manualFileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
-              isDragging
-                ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 scale-[1.01]"
-                : "border-emerald-300 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40"
+            className={`border-2 border-dashed rounded-3xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-between min-h-[220px] ${
+              isDraggingManual
+                ? "border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50 scale-[1.01] shadow-lg shadow-emerald-500/10 ring-2 ring-emerald-500/30"
+                : "border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 hover:border-emerald-400"
             }`}
           >
-            {isProcessing ? (
+            <div className="flex items-center justify-between w-full">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-emerald-100 dark:bg-emerald-900/70 text-emerald-800 dark:text-emerald-300">
+                통합관리대장 엑셀
+              </span>
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                4개사 노무비 · 공과금 자동반영
+              </span>
+            </div>
+
+            {isProcessingManual ? (
               <div className="flex flex-col items-center gap-2 py-4">
                 <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                  통합관리대장 분석 및 노무비·제세공과금 과목별 자동 입력 중...
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  통합관리대장 분석 및 노무비·공과금 자동 입력 중...
                 </p>
               </div>
             ) : (
-              <>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+              <div className="flex flex-col items-center gap-2.5 my-2">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs">
                   <FileSpreadsheet className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-extrabold text-emerald-900 dark:text-emerald-200">
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    노무비 및 제세공과금 일괄업로드
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
                     오륙_조영_매입DATA_통합관리대장 엑셀 파일을 이곳에 드래그하여 올려놓으세요
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    노무비(4개사 16개 항목), 대출이자, 신용카드, 보험공제, 제세공과금이 각 과목에 자동 입력됩니다.
-                  </p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-xs">
-                  <Files className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>클릭하여 통합관리대장 파일 선택</span>
-                </span>
-              </>
+              </div>
             )}
-          </div>
-        )}
 
-        {/* Tab 2: 매입세금계산서 일괄업로드 */}
-        {uploadTab === "tax_invoice" && (
+            <div className="w-full pt-1 flex items-center justify-center">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 shadow-xs hover:bg-emerald-50 transition-colors">
+                <Files className="w-3.5 h-3.5 text-emerald-600" />
+                <span>통합관리대장 파일 선택</span>
+              </span>
+            </div>
+          </div>
+
+          {/* 드래그 영역 2: 매입세금계산서 일괄업로드 */}
           <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            onDragOver={handleTaxDragOver}
+            onDragLeave={handleTaxDragLeave}
+            onDrop={handleTaxDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 ${
-              isDragging
-                ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 scale-[1.01]"
-                : "border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/20 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            className={`border-2 border-dashed rounded-3xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-between min-h-[220px] ${
+              isDraggingTax
+                ? "border-blue-500 bg-blue-50/90 dark:bg-blue-950/50 scale-[1.01] shadow-lg shadow-blue-500/10 ring-2 ring-blue-500/30"
+                : "border-slate-300 dark:border-slate-700 bg-slate-50/40 dark:bg-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 hover:border-blue-300"
             }`}
           >
-            {isProcessing ? (
+            <div className="flex items-center justify-between w-full">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black bg-blue-100 dark:bg-blue-900/70 text-blue-800 dark:text-blue-300">
+                홈택스 전자세금계산서
+              </span>
+              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                16대 계정과목 자동분류
+              </span>
+            </div>
+
+            {isProcessingTax ? (
               <div className="flex flex-col items-center gap-2 py-4">
                 <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   세금계산서 파일 분석 및 16대 계정과목 자동 분류 중...
                 </p>
               </div>
             ) : (
-              <>
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
+              <div className="flex flex-col items-center gap-2.5 my-2">
+                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs">
                   <UploadCloud className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
-                    매입세금계산서 엑셀 파일을 이곳에 드래그하여 올려놓으세요
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    홈택스 매입전자세금계산서 파일 지원 (.xlsx, .xls)
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    매입세금계산서 일괄업로드
+                  </h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">
+                    홈택스 매입전자세금계산서 엑셀 다중 파일을 이곳에 드래그하여 올려놓으세요
                   </p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-xs">
-                  <Files className="w-3.5 h-3.5 text-blue-500" />
-                  <span>클릭하여 컴퓨터에서 세금계산서 파일 선택</span>
-                </span>
-              </>
+              </div>
             )}
+
+            <div className="w-full pt-1 flex items-center justify-center">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs hover:bg-slate-50 transition-colors">
+                <Files className="w-3.5 h-3.5 text-blue-500" />
+                <span>세금계산서 파일 선택</span>
+              </span>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Uploaded Files Status Grid */}
         {uploadedFilesList.length > 0 && (
