@@ -96,114 +96,30 @@ export const MaterialPurchaseView = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 sm:p-7 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{monthTitle} `자재매입` 시트 마스터 기준</span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
-              <span>{monthTitle} 자재매입 품목군별 분석</span>
-              {activeGroup && (
-                <span className="text-base font-bold px-3 py-1 rounded-xl bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">
-                  {activeGroup.groupName}
-                </span>
-              )}
-            </h2>
-            <p className="text-sm text-slate-300 max-w-2xl">
-              {activeGroup
-                ? `${activeGroup.groupName}의 세부 자재 품목(${activeGroup.itemCount}종)별 단가, 구매량, 금액 상세 내역입니다.`
-                : `총 ${jajaeGroups.length}개 품목군 요약본입니다. 원하는 품목군을 클릭하시면 ${jajaeSummary.itemCount}개 세부 부품/원자재 내역이 열립니다.`}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {activeGroup && (
-              <button
-                onClick={() => {
-                  setSelectedGroup(null);
-                  setSearchTerm("");
-                  setSupplierFilter("all");
-                }}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold transition-all"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>요약본 전체보기</span>
-              </button>
-            )}
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 active:scale-95 transition-all"
-            >
-              <Download className="w-4 h-4" />
-              <span>{activeGroup ? "현재 품목군 CSV 저장" : "전체 자재 CSV 다운로드"}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{monthTitle} 총 자재매입액</span>
-          <div className="mt-2">
-            <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
-              {formatAmount(jajaeSummary.totalAmount)}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">{jajaeGroups.length}개 품목군 / {jajaeSummary.itemCount}개 자재</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">1위 품목군</span>
-          <div className="mt-2">
-            <p className="text-2xl font-black text-slate-900 dark:text-white truncate">
-              {jajaeGroups[0]?.groupName || "-"}
-            </p>
-            <p className="text-[11px] text-blue-600 dark:text-blue-400 font-bold mt-1">
-              {formatAmount(jajaeGroups[0]?.totalAmount || 0)} ({jajaeGroups[0]?.share || 0}%)
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">2위 품목군</span>
-          <div className="mt-2">
-            <p className="text-2xl font-black text-slate-900 dark:text-white truncate">
-              {jajaeGroups[1]?.groupName || "-"}
-            </p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
-              {formatAmount(jajaeGroups[1]?.totalAmount || 0)} ({jajaeGroups[1]?.share || 0}%)
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">3위 품목군</span>
-          <div className="mt-2">
-            <p className="text-2xl font-black text-purple-600 dark:text-purple-400 truncate">
-              {jajaeGroups[2]?.groupName || "-"}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">
-              {formatAmount(jajaeGroups[2]?.totalAmount || 0)} ({jajaeGroups[2]?.share || 0}%)
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-5 animate-fadeIn pb-12">
       {/* 1. SUMMARY VIEW */}
       {!selectedGroup && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-indigo-500" />
-              <span>{monthTitle} 자재 품목군 요약본 (클릭하여 세부내역 조회)</span>
-            </h3>
-            <span className="text-xs text-slate-400">품목군 카드를 클릭하면 세부 명세가 열립니다.</span>
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <Boxes className="w-5 h-5 text-indigo-600" />
+                <span>{monthTitle} 자재매입 품목군 요약본</span>
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                총 {jajaeGroups.length}개 품목군 • {jajaeSummary.itemCount}종 자재 • 총 매입액 {formatAmount(jajaeSummary.totalAmount)}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-all shrink-0"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>엑셀/CSV 다운로드</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
