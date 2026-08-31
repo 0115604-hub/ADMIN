@@ -7,6 +7,31 @@ const MonthContext = createContext();
 const FIRESTORE_DOC_PATH = ["system_store", "monthly_master"];
 const LOCAL_STORAGE_KEY = "admin_multi_month_store_v4_firestore";
 
+// Helper: Deep sanitize object to guarantee Firestore compatibility (removes DOM File, functions, undefined)
+function sanitizeForFirestore(obj) {
+  if (obj === null || typeof obj !== "object") {
+    return obj === undefined ? null : obj;
+  }
+  if (typeof File !== "undefined" && obj instanceof File) {
+    return null;
+  }
+  if (typeof Blob !== "undefined" && obj instanceof Blob) {
+    return null;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForFirestore).filter((item) => item !== undefined);
+  }
+  const result = {};
+  for (const key of Object.keys(obj)) {
+    if (key === "file") continue;
+    const val = obj[key];
+    if (val !== undefined && typeof val !== "function") {
+      result[key] = sanitizeForFirestore(val);
+    }
+  }
+  return result;
+}
+
 export const MonthProvider = ({ children }) => {
   // Load persistent monthly data from localStorage or fallback to default multi-month master data
   const [allMonthlyData, setAllMonthlyData] = useState(() => {
@@ -34,6 +59,22 @@ export const MonthProvider = ({ children }) => {
   useEffect(() => {
     try {
       const docRef = doc(db, ...FIRESTORE_DOC_PATH);
+
+      // 1. Initial direct fetch from Cloud Firestore
+      getDoc(docRef).then((snap) => {
+        if (snap.exists()) {
+          const remoteData = snap.data();
+          if (remoteData && remoteData.store) {
+            setAllMonthlyData((prev) => {
+              const merged = { ...prev, ...remoteData.store };
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+              return merged;
+            });
+          }
+        }
+      }).catch((e) => console.warn("Firestore direct get warning:", e.message));
+
+      // 2. Real-time live listener
       const unsubscribe = onSnapshot(
         docRef,
         (docSnap) => {
@@ -72,11 +113,13 @@ export const MonthProvider = ({ children }) => {
 
   // Add / Update Monthly Data from Workbook Upload (Syncs to Cloud + Local)
   const uploadMonthlyData = async (yearMonth, monthPackage) => {
+    const cleanPackage = sanitizeForFirestore(monthPackage);
+
     const updated = {
       ...allMonthlyData,
       [yearMonth]: {
         ...allMonthlyData[yearMonth],
-        ...monthPackage,
+        ...cleanPackage,
         yearMonth
       }
     };
@@ -89,8 +132,9 @@ export const MonthProvider = ({ children }) => {
     // Sync to Firestore Cloud Database so all mobile devices & PCs update immediately
     try {
       const docRef = doc(db, ...FIRESTORE_DOC_PATH);
+      const sanitizedStore = sanitizeForFirestore(updated);
       await setDoc(docRef, {
-        store: updated,
+        store: sanitizedStore,
         lastUpdatedYearMonth: yearMonth,
         updatedAt: new Date().toISOString()
       }, { merge: true });

@@ -263,7 +263,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setUploading(true);
     try {
       const targetYM = parsedResult.yearMonth || selectedMonth || "2026-08";
-      uploadMonthlyData(targetYM, parsedResult);
+      await uploadMonthlyData(targetYM, parsedResult);
       if (onBulkUpload && parsedResult.items && parsedResult.items.length > 0) {
         await onBulkUpload(parsedResult.items);
       }

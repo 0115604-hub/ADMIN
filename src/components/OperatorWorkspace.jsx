@@ -97,7 +97,7 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
       const targetYM = parsedResult.yearMonth || "2026-08";
 
       // Save into MonthContext
-      uploadMonthlyData(targetYM, parsedResult);
+      await uploadMonthlyData(targetYM, parsedResult);
 
       // Save into transactions DB if items exist
       if (onBulkUpload && parsedResult.items && parsedResult.items.length > 0) {

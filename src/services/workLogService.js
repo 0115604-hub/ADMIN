@@ -159,6 +159,18 @@ export const INITIAL_WORK_LOGS = [
 const COLLECTION_NAME = "work_logs";
 const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v4_firestore";
 
+// Deep clean object for Firestore
+function sanitizeLog(obj) {
+  const result = {};
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (val !== undefined && typeof val !== "function") {
+      result[key] = String(val === null ? "" : val);
+    }
+  }
+  return result;
+}
+
 // Get local cache
 export const getLocalWorkLogs = () => {
   try {
@@ -205,10 +217,29 @@ export const seedInitialLogsIfNeeded = async () => {
 
 // Subscribe to real-time work logs from Firestore
 export const subscribeWorkLogs = (onUpdate) => {
-  // Give immediate local cache
+  // 1. Immediate local cache
   const localLogs = getLocalWorkLogs();
   onUpdate(localLogs);
 
+  // 2. Immediate direct fetch from Cloud Firestore
+  getDocs(collection(db, COLLECTION_NAME)).then((snap) => {
+    if (!snap.empty) {
+      const remoteLogs = [];
+      snap.forEach((docSnap) => {
+        remoteLogs.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      remoteLogs.sort((a, b) => {
+        const dateA = a.date || "";
+        const dateB = b.date || "";
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        return String(b.id || "").localeCompare(String(a.id || ""));
+      });
+      saveLocalWorkLogs(remoteLogs);
+      onUpdate(remoteLogs);
+    }
+  }).catch((e) => console.warn("Direct getDocs warning:", e.message));
+
+  // 3. Real-time live listener
   try {
     seedInitialLogsIfNeeded();
 
@@ -259,11 +290,12 @@ export const getWorkLogs = () => {
 // Save a work log (Cloud Firestore + Local Cache)
 export const saveWorkLog = async (newLog) => {
   const logId = String(newLog.id || Date.now());
+  const cleanData = sanitizeLog(newLog);
   const logData = {
-    ...newLog,
+    ...cleanData,
     id: logId,
     updatedAt: new Date().toISOString(),
-    createdAt: newLog.createdAt || new Date().toLocaleString("ko-KR", {
+    createdAt: cleanData.createdAt || new Date().toLocaleString("ko-KR", {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
