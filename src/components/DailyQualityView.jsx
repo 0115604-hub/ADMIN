@@ -1,19 +1,15 @@
 import React, { useState, useMemo, useRef } from "react";
 import {
-  CheckSquare,
   ShieldCheck,
-  AlertCircle,
   AlertTriangle,
   Download,
   Upload,
   Search,
   CheckCircle2,
   BarChart2,
-  TrendingUp,
-  Award,
-  Flame,
-  ArrowUpDown,
-  FileSpreadsheet
+  FileSpreadsheet,
+  FileUp,
+  Check
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
@@ -62,27 +58,6 @@ const INITIAL_CORE_ITEMS = [
   }
 ];
 
-// Daily Trend for 4 Core Items
-const INITIAL_DAILY_DATA = [
-  { date: "08/07 (금)", ja: { insp: 1592, def: 19, rate: 1.19 }, nx4a: { insp: 1680, def: 24, rate: 1.43 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 703, def: 0, rate: 0.00 } },
-  { date: "08/10 (월)", ja: { insp: 1624, def: 37, rate: 2.28 }, nx4a: { insp: 1920, def: 10, rate: 0.52 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 651, def: 8, rate: 1.23 } },
-  { date: "08/11 (화)", ja: { insp: 2205, def: 39, rate: 1.77 }, nx4a: { insp: 1200, def: 6, rate: 0.50 }, nx4: { insp: 1600, def: 0, rate: 0.00 }, hr: { insp: 909, def: 64, rate: 7.04 } },
-  { date: "08/12 (수)", ja: { insp: 1967, def: 41, rate: 2.08 }, nx4a: { insp: 1200, def: 6, rate: 0.50 }, nx4: { insp: 1800, def: 1, rate: 0.06 }, hr: { insp: 879, def: 23, rate: 2.62 } },
-  { date: "08/13 (목)", ja: { insp: 1928, def: 22, rate: 1.14 }, nx4a: { insp: 1200, def: 10, rate: 0.83 }, nx4: { insp: 1800, def: 2, rate: 0.11 }, hr: { insp: 730, def: 0, rate: 0.00 } },
-  { date: "08/14 (금)", ja: { insp: 1689, def: 27, rate: 1.60 }, nx4a: { insp: 960, def: 2, rate: 0.21 }, nx4: { insp: 720, def: 0, rate: 0.00 }, hr: { insp: 745, def: 10, rate: 1.34 } },
-  { date: "08/18 (화)", ja: { insp: 1682, def: 28, rate: 1.66 }, nx4a: { insp: 2160, def: 5, rate: 0.23 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 638, def: 8, rate: 1.25 } },
-  { date: "08/19 (수)", ja: { insp: 1682, def: 13, rate: 0.77 }, nx4a: { insp: 2160, def: 11, rate: 0.51 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 725, def: 5, rate: 0.69 } },
-  { date: "08/20 (목)", ja: { insp: 1685, def: 19, rate: 1.13 }, nx4a: { insp: 2160, def: 13, rate: 0.60 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 800, def: 0, rate: 0.00 } },
-  { date: "08/21 (금)", ja: { insp: 1440, def: 14, rate: 0.97 }, nx4a: { insp: 2160, def: 6, rate: 0.28 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 610, def: 0, rate: 0.00 } },
-  { date: "08/22 (토)", ja: { insp: 1624, def: 24, rate: 1.48 }, nx4a: { insp: 960, def: 5, rate: 0.52 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 0, def: 0, rate: 0.00 } },
-  { date: "08/24 (월)", ja: { insp: 1687, def: 32, rate: 1.90 }, nx4a: { insp: 1200, def: 2, rate: 0.17 }, nx4: { insp: 1440, def: 1, rate: 0.07 }, hr: { insp: 520, def: 0, rate: 0.00 } },
-  { date: "08/25 (화)", ja: { insp: 1501, def: 8, rate: 0.53 }, nx4a: { insp: 960, def: 3, rate: 0.31 }, nx4: { insp: 1440, def: 6, rate: 0.42 }, hr: { insp: 520, def: 0, rate: 0.00 } },
-  { date: "08/26 (수)", ja: { insp: 1744, def: 16, rate: 0.92 }, nx4a: { insp: 1200, def: 26, rate: 2.17 }, nx4: { insp: 1600, def: 4, rate: 0.25 }, hr: { insp: 742, def: 10, rate: 1.35 } },
-  { date: "08/27 (목)", ja: { insp: 1500, def: 5, rate: 0.33 }, nx4a: { insp: 1200, def: 9, rate: 0.75 }, nx4: { insp: 1440, def: 0, rate: 0.00 }, hr: { insp: 630, def: 0, rate: 0.00 } },
-  { date: "08/28 (금)", ja: { insp: 1685, def: 15, rate: 0.89 }, nx4a: { insp: 960, def: 5, rate: 0.52 }, nx4: { insp: 1100, def: 3, rate: 0.27 }, hr: { insp: 627, def: 7, rate: 1.12 } },
-  { date: "08/29 (토)", ja: { insp: 1563, def: 7, rate: 0.45 }, nx4a: { insp: 960, def: 4, rate: 0.42 }, nx4: { insp: 0, def: 0, rate: 0.00 }, hr: { insp: 0, def: 0, rate: 0.00 } }
-];
-
 const STORAGE_KEY_CORE_ITEMS = "factory_core_items_quality_v1";
 
 export const DailyQualityView = () => {
@@ -98,6 +73,11 @@ export const DailyQualityView = () => {
     }
   });
 
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([
+    "G-RUN 불량율 집계.xlsx",
+    "01. 08월 AB동-최종검사 정리.xlsx"
+  ]);
   const [uploadSuccessMsg, setUploadSuccessMsg] = useState("");
 
   // Sort items strictly by Inspection Quantity in descending order (검사수량 많은 순서대로 나열)
@@ -110,12 +90,14 @@ export const DailyQualityView = () => {
     return items.reduce((max, it) => (it.defectRate > max.defectRate ? it : max), items[0]);
   }, [items]);
 
-  // Handle Excel Upload
-  const handleFileUpload = (e) => {
-    const files = e.target.files;
+  // Process files from Input or Drag & Drop
+  const processFiles = (files) => {
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
+    const fileList = Array.from(files);
+    const names = fileList.map((f) => f.name);
+
+    fileList.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
@@ -124,7 +106,7 @@ export const DailyQualityView = () => {
 
           const newItems = [...INITIAL_CORE_ITEMS];
 
-          // Parse NX4, JA, HR sheets
+          // Parse NX4, JA, HR sheets from AB동-최종검사 정리
           if (wb.Sheets["NX4 정리"] && wb.Sheets["JA 정리"] && wb.Sheets["HR 정리"]) {
             const nx4Json = XLSX.utils.sheet_to_json(wb.Sheets["NX4 정리"], { header: 1, defval: 0 });
             const jaJson = XLSX.utils.sheet_to_json(wb.Sheets["JA 정리"], { header: 1, defval: 0 });
@@ -166,6 +148,30 @@ export const DailyQualityView = () => {
       };
       reader.readAsArrayBuffer(file);
     });
+
+    setUploadedFiles(names);
+  };
+
+  // Drag & Drop Handlers
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
+    }
   };
 
   // Export Analysis to Excel
@@ -174,13 +180,12 @@ export const DailyQualityView = () => {
       ["아이템별 품질 검사실적 및 불량률 보고서"],
       ["조회일자", new Date().toLocaleDateString(), "관리목표", "불량률 0.70% 이하"],
       [],
-      ["순위 (검사량순)", "아이템명", "검사수량(EA)", "불량수량(EA)", "불량률(%)", "상태", "주요 불량 사유"]
+      ["아이템명", "검사수량(EA)", "불량수량(EA)", "불량률(%)", "상태", "주요 불량 사유"]
     ];
 
-    sortedItems.forEach((it, idx) => {
+    sortedItems.forEach((it) => {
       const isMaxRate = it.id === maxDefectRateItem.id;
       rows.push([
-        `${idx + 1}위`,
         it.name,
         it.inspectQty,
         it.defectQty,
@@ -199,54 +204,82 @@ export const DailyQualityView = () => {
   return (
     <div className="space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
       {/* ========================================================================= */}
-      {/* 1. TOP HEADER & ACTION BAR */}
+      {/* 1. TOP HEADER & EXCEL EXPORT */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-slate-900 dark:text-white">
-                아이템별 품질 검사실적 및 불량률
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black">
-                검사수량 순 정렬
-              </span>
-            </div>
+            <h1 className="text-lg font-black text-slate-900 dark:text-white">
+              아이템별 품질 검사실적 및 불량률
+            </h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              관리목표: <strong className="text-emerald-600 font-black">0.70% 이하</strong> | 담당: <strong>이창엽 책임</strong>
+              품질 관리 목표치: <strong className="text-emerald-600 font-black">0.70% 이하</strong> | 담당: <strong>이창엽 책임</strong>
             </p>
           </div>
         </div>
 
-        {/* Action Buttons & Hidden File Input */}
+        <button
+          onClick={handleExportExcel}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm self-start sm:self-auto"
+        >
+          <Download className="w-3.5 h-3.5 text-emerald-400" />
+          <span>엑셀 다운로드</span>
+        </button>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. ⭐ [핵심 업로더] 2개 엑셀 파일 드래그 앤 드롭 업로드 영역 (Drag & Drop Zone) */}
+      {/* ========================================================================= */}
+      <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={`p-5 sm:p-6 rounded-3xl border-2 border-dashed transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-between gap-4 ${
+          isDragging
+            ? "border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 ring-4 ring-indigo-500/20 scale-[1.01]"
+            : "border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/60 hover:border-indigo-400 hover:bg-indigo-50/30"
+        }`}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={(e) => processFiles(e.target.files)}
+          multiple
+          accept=".xlsx, .xls"
+          className="hidden"
+        />
+
+        <div className="flex items-center gap-3.5">
+          <div className={`p-3 rounded-2xl transition-all ${
+            isDragging ? "bg-indigo-600 text-white scale-110" : "bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400"
+          }`}>
+            <FileUp className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">
+              G-RUN 불량율 집계 & AB동 최종검사 파일 드래그 업로드
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              바탕화면의 엑셀 파일 2개를 이곳에 <strong>한 번에 드래그하여 놓거나 클릭</strong>하여 업로드하세요.
+            </p>
+          </div>
+        </div>
+
+        {/* Linked Files Status Badges */}
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            multiple
-            accept=".xlsx, .xls"
-            className="hidden"
-          />
-
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-500/25 active:scale-95 transition-all"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>파일 업로드 (G-RUN / AB동)</span>
-          </button>
-
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
-            <span>엑셀 다운로드</span>
-          </button>
+          {uploadedFiles.map((fn, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 shadow-sm"
+            >
+              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className="truncate max-w-[180px]">{fn}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -259,10 +292,10 @@ export const DailyQualityView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ [핵심 1] 아이템별 검사수량 많은 순 카드 그리드 (최고 불량률 붉은색 경고) */}
+      {/* 3. ⭐ [핵심 1] 아이템별 품질 실적 카드 (검사수량 순 나열 & 최고 불량률 붉은색 경고) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {sortedItems.map((item, idx) => {
+        {sortedItems.map((item) => {
           const isMaxRate = item.id === maxDefectRateItem.id;
           const isTargetAchieved = item.defectRate <= 0.70;
 
@@ -275,12 +308,12 @@ export const DailyQualityView = () => {
                   : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300"
               }`}
             >
-              {/* Top Row: Rank & Alert Badge */}
+              {/* Top Row: Item Name & Alert Badge */}
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-black">
-                    검사수량 {idx + 1}위
-                  </span>
+                  <h3 className={`text-lg font-black ${isMaxRate ? "text-rose-950 dark:text-rose-100" : "text-slate-900 dark:text-white"}`}>
+                    {item.name}
+                  </h3>
 
                   {isMaxRate ? (
                     <span className="px-2.5 py-1 rounded-xl bg-rose-600 text-white text-xs font-black flex items-center gap-1 shadow-md shadow-rose-600/30">
@@ -297,11 +330,6 @@ export const DailyQualityView = () => {
                     </span>
                   )}
                 </div>
-
-                {/* Item Name */}
-                <h3 className={`text-lg font-black mt-3 ${isMaxRate ? "text-rose-950 dark:text-rose-100" : "text-slate-900 dark:text-white"}`}>
-                  {item.name}
-                </h3>
               </div>
 
               {/* Metrics: Defect Rate & Inspection Qty */}
@@ -355,7 +383,7 @@ export const DailyQualityView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. ⭐ [핵심 2] 아이템별 불량률 & 검사수량 비교 가로형 바 차트 */}
+      {/* 4. ⭐ [핵심 2] 아이템별 불량률(%) 비교 가로형 바 차트 */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -365,7 +393,7 @@ export const DailyQualityView = () => {
             </div>
             <div>
               <h2 className="font-black text-base text-slate-900 dark:text-white">
-                아이템별 불량률(%) 및 검사규모 비교
+                아이템별 불량률(%) 비교
               </h2>
               <p className="text-xs text-slate-400">
                 품질 관리 목표치: 0.70% 이하 (불량률 최고 아이템 붉은색 경고 표시)
@@ -386,7 +414,7 @@ export const DailyQualityView = () => {
 
         {/* Horizontal Progress Bars */}
         <div className="space-y-4 pt-2">
-          {sortedItems.map((item, idx) => {
+          {sortedItems.map((item) => {
             const isMaxRate = item.id === maxDefectRateItem.id;
             const isGood = item.defectRate <= 0.70;
             const maxRate = 1.6;
@@ -396,14 +424,8 @@ export const DailyQualityView = () => {
               <div key={item.id} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs font-black">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px]">
-                      {idx + 1}위
-                    </span>
                     <span className="text-slate-900 dark:text-white font-extrabold text-sm">
                       {item.name}
-                    </span>
-                    <span className="text-xs text-slate-400 font-bold">
-                      (검사 {item.inspectQty.toLocaleString()} EA / 불량 {item.defectQty} EA)
                     </span>
                   </div>
 
@@ -445,14 +467,14 @@ export const DailyQualityView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ⭐ [핵심 3] 아이템별 검사실적 일람표 (검사량순 정렬 & 최고 불량 강조) */}
+      {/* 5. ⭐ [핵심 3] 아이템별 검사실적 일람표 */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
             <h3 className="font-black text-base text-slate-900 dark:text-white">
-              아이템별 검사실적 및 불량률 종합 일람표 (검사량순)
+              아이템별 검사실적 및 불량률 종합 일람표
             </h3>
           </div>
           <span className="text-xs font-bold text-slate-400">
@@ -462,20 +484,19 @@ export const DailyQualityView = () => {
 
         {/* Detailed Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[800px]">
+          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[750px]">
             <thead>
               <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 font-black">
-                <th className="py-3 px-3 w-[10%] text-center">검사량 순위</th>
-                <th className="py-3 px-3 w-[20%]">아이템명</th>
-                <th className="py-3 px-3 text-right w-[16%]">검사 수량</th>
-                <th className="py-3 px-3 text-right w-[14%]">불량 수량</th>
-                <th className="py-3 px-3 text-center w-[14%]">불량률 (%)</th>
+                <th className="py-3 px-3 w-[22%]">아이템명</th>
+                <th className="py-3 px-3 text-right w-[18%]">검사 수량</th>
+                <th className="py-3 px-3 text-right w-[16%]">불량 수량</th>
+                <th className="py-3 px-3 text-center w-[16%]">불량률 (%)</th>
                 <th className="py-3 px-3 text-center w-[14%]">상태 구분</th>
-                <th className="py-3 px-3 w-[22%]">주요 불량 사유</th>
+                <th className="py-3 px-3 w-[24%]">주요 불량 사유</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {sortedItems.map((item, idx) => {
+              {sortedItems.map((item) => {
                 const isMaxRate = item.id === maxDefectRateItem.id;
                 const isGood = item.defectRate <= 0.70;
 
@@ -488,11 +509,6 @@ export const DailyQualityView = () => {
                         : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
                     }`}
                   >
-                    <td className="py-2.5 px-3 text-center">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-black text-xs">
-                        {idx + 1}위
-                      </span>
-                    </td>
                     <td className="py-2.5 px-3 font-black text-slate-900 dark:text-white text-sm">
                       {item.name}
                     </td>
