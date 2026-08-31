@@ -20,7 +20,7 @@ export const ADMIN_USERS = [
     plant: "본사",
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
     avatar: "A",
-    pin: "1234"
+    pin: "470928"
   }
 ];
 
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
       throw new Error("존재하지 않는 사용자입니다.");
     }
     if (target.pin && inputPin !== target.pin) {
-      throw new Error("비밀번호(PIN)가 올바르지 않습니다. (기본: 1234)");
+      throw new Error("비밀번호(PIN)가 올바르지 않습니다.");
     }
 
     const profileToSave = {

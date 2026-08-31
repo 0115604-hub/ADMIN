@@ -171,12 +171,20 @@ export const AuthModal = () => {
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                 <KeyRound className="w-3.5 h-3.5 text-blue-500" />
-                <span>비밀번호(PIN) 입력 (기본: 1234)</span>
+                <span>
+                  {selectedUser.role === "ADMIN"
+                    ? "관리자 비밀번호 입력"
+                    : "비밀번호(PIN) 입력 (기본: 1234)"}
+                </span>
               </label>
               <input
                 type="password"
                 autoFocus
-                placeholder="PIN 4자리 입력 (기본: 1234)"
+                placeholder={
+                  selectedUser.role === "ADMIN"
+                    ? "관리자 비밀번호 입력"
+                    : "PIN 4자리 입력 (기본: 1234)"
+                }
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-base font-bold text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
