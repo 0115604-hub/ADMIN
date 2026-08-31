@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
-import { OryukLogo } from "./OryukLogo";
 
 export const Header = ({ title, activeTab, onBackToSummary }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
@@ -44,8 +43,12 @@ export const Header = ({ title, activeTab, onBackToSummary }) => {
           </button>
         ) : (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 shadow-sm p-1">
-              <OryukLogo className="w-6 h-6" />
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md ${
+              workerPlant === "한림공장"
+                ? "bg-gradient-to-tr from-emerald-600 to-teal-700 shadow-emerald-500/20"
+                : "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/20"
+            }`}>
+              <Building2 className="w-4 h-4" />
             </div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
               (주)오륙 생산관리현황

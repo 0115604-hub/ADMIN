@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  Building2,
   KeyRound,
   ChevronRight,
   Shield,
@@ -7,7 +8,6 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
-import { OryukLogo } from "./OryukLogo";
 
 export const AuthModal = () => {
   const { loginWithProfile } = useAuth();
@@ -36,28 +36,13 @@ export const AuthModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn overflow-y-auto relative">
-      {/* ========================================================================= */}
-      {/* ⭐ [사용자 요청] (주)오륙 공식 로고 전체 배경 워터마크 & 앰비언트 글로우 */}
-      {/* ========================================================================= */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center">
-        {/* Soft Ambient Radial Glows */}
-        <div className="absolute w-[600px] h-[600px] rounded-full bg-blue-600/15 blur-[120px] -top-24 -left-24 animate-pulse"></div>
-        <div className="absolute w-[500px] h-[500px] rounded-full bg-indigo-600/15 blur-[100px] -bottom-20 -right-20 animate-pulse"></div>
-        <div className="absolute w-[400px] h-[400px] rounded-full bg-sky-500/10 blur-[80px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
-
-        {/* Giant Watermark Official Oryuk Logo */}
-        <div className="opacity-[0.14] dark:opacity-[0.18] w-[750px] h-[750px] max-w-[90vw] max-h-[90vh] transform rotate-[-6deg] transition-all duration-1000">
-          <OryukLogo className="w-full h-full" />
-        </div>
-      </div>
-
-      {/* Main Glassmorphism Login Card */}
-      <div className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-xl w-full max-w-lg rounded-3xl shadow-2xl border border-white/40 dark:border-slate-800 overflow-hidden p-6 sm:p-8 my-8 relative z-10">
-        {/* Brand Header with Official Logo */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn overflow-y-auto">
+      {/* Main Login Card */}
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden p-6 sm:p-8 my-8 relative">
+        {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/80 border border-blue-100 dark:border-slate-700 shadow-md shadow-blue-500/10 mb-3">
-            <OryukLogo className="w-9 h-9" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25 mb-2.5">
+            <Building2 className="w-6 h-6" />
           </div>
           <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             (주)오륙 생산관리현황
