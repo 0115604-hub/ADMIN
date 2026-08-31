@@ -38,14 +38,12 @@ export const App = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Sync default tab when user changes
+  // Sync default tab when user connects/changes
   useEffect(() => {
-    if (isOperator || isAdmin) {
-      if (!activeTab || activeTab === "dashboard") {
-        setActiveTab("worker_dashboard");
-      }
+    if (currentProfile) {
+      setActiveTab("worker_dashboard");
     }
-  }, [isOperator, isAdmin]);
+  }, [currentProfile?.id]);
 
   // Load data
   const loadData = async (forceRefresh = false) => {

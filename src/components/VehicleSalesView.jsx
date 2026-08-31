@@ -20,7 +20,7 @@ export const VehicleSalesView = () => {
   const { selectedMonth, currentMonthData, allMonthlyData, availableMonths } = useMonth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProcess, setSelectedProcess] = useState("all");
-  const [expandedVehicle, setExpandedVehicle] = useState("9BQC");
+  const [expandedVehicle, setExpandedVehicle] = useState(null);
 
   const vehicleSales = currentMonthData?.vehicleSales || [];
   const salesSummary = currentMonthData?.salesSummary || {
