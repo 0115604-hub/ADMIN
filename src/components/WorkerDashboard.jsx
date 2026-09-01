@@ -33,7 +33,8 @@ import {
   RotateCw,
   MessageSquare,
   Palmtree,
-  CalendarDays
+  CalendarDays,
+  X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -520,234 +521,108 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   return (
     <div className="space-y-3 sm:space-y-3.5 animate-fadeIn pb-20 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
-      {/* 🌟 [상단] 작업자 정보 (**공장 ***직위) & 연차사용일 지정 및 신청/현황 표 */}
+      {/* 🌟 [상단] 작업자 정보 (**공장 ***직위) & 간편 연차사용일 지정 */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-          {/* Left (5 cols): Worker Official Profile & Today Status */}
-          <div className="lg:col-span-5 p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 dark:from-slate-800/80 dark:to-slate-800/40 border border-slate-200/80 dark:border-slate-700 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black shadow-xs ${
-                workerPlant === "한림공장"
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                  : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
-              }`}>
-                <Factory className="w-3.5 h-3.5" />
-                <span>{workerPlant}</span>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Left: Plant Badge, Worker Name, Title, and Process */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black shadow-xs ${
+              workerPlant === "한림공장"
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
+            }`}>
+              <Factory className="w-3.5 h-3.5" />
+              <span>{workerPlant}</span>
+            </span>
+
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                {workerFullName}
               </span>
-
-              {/* Today Leave / Work Status Badge */}
-              {myLeaveStatus?.status === "ACTIVE" ? (
-                <span className="px-2.5 py-1 rounded-full bg-rose-500 text-white font-black text-xs shadow-xs animate-pulse flex items-center gap-1">
-                  <Palmtree className="w-3.5 h-3.5" />
-                  <span>오늘 연차사용중</span>
-                </span>
-              ) : myLeaveStatus?.status === "SCHEDULED" ? (
-                <span className="px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  <span>{myLeaveStatus.label}</span>
-                </span>
-              ) : (
-                <span className="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-bold text-xs border border-emerald-200/80 dark:border-emerald-800 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                  <span>정상 근무중</span>
-                </span>
-              )}
+              <span className="text-xs sm:text-sm font-extrabold text-slate-500 dark:text-slate-400">
+                {officialTitle}
+              </span>
             </div>
 
-            {/* **공장 ***직위 Display */}
-            <div>
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-baseline gap-1.5 flex-wrap">
-                <span className="text-blue-600 dark:text-blue-400">{workerPlant}</span>
-                <span>{workerFullName}</span>
-                <span className="text-sm font-extrabold text-slate-500 dark:text-slate-400">
-                  {officialTitle}
-                </span>
-              </h1>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                담당 공정: <strong className="text-slate-700 dark:text-slate-200 font-bold">{isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess}</strong>
-              </p>
-            </div>
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+              {isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess}
+            </span>
 
-            {/* Leave Summary Stats */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700 text-center shadow-2xs">
-                <span className="text-[10px] text-slate-400 font-bold block">등록된 연차 일정</span>
-                <span className="font-black text-sm text-slate-900 dark:text-white mt-0.5 block">
-                  {myLeaves.length}건
-                </span>
-              </div>
-              <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700 text-center shadow-2xs">
-                <span className="text-[10px] text-slate-400 font-bold block">다음 연차일정</span>
-                <span className="font-extrabold text-xs text-blue-600 dark:text-blue-400 mt-0.5 block truncate">
-                  {myLeaveStatus?.leave ? myLeaveStatus.leave.startDate : "예정 없음"}
-                </span>
-              </div>
-            </div>
+            {/* Active/Scheduled Badge */}
+            {myLeaveStatus?.status === "ACTIVE" ? (
+              <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-black text-xs shadow-xs animate-pulse flex items-center gap-1">
+                <Palmtree className="w-3 h-3" />
+                <span>오늘 연차사용중</span>
+              </span>
+            ) : myLeaveStatus?.status === "SCHEDULED" ? (
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                <CalendarDays className="w-3 h-3" />
+                <span>{myLeaveStatus.label}</span>
+              </span>
+            ) : null}
           </div>
 
-          {/* Right (7 cols): Annual Leave Date Picker Form & Schedule Table */}
-          <div className="lg:col-span-7 space-y-2.5">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600">
-                  <CalendarDays className="w-3.5 h-3.5" />
-                </div>
-                <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                  연차사용일 지정 및 신청 현황
-                </h2>
-              </div>
-              <span className="text-[11px] text-slate-400 font-medium">
-                날짜를 선택하여 연차를 등록할 수 있습니다
-              </span>
-            </div>
-
-            {/* Date Picker & Add Form */}
-            <form onSubmit={handleRegisterLeave} className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700 space-y-2">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">연차 구분</label>
-                  <select
-                    value={leaveForm.leaveType}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
-                  >
-                    <option value="연차">연차 (전일)</option>
-                    <option value="반차(오전)">오전 반차</option>
-                    <option value="반차(오후)">오후 반차</option>
-                    <option value="경조휴가">경조휴가</option>
-                    <option value="병가">병가</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">시작일자</label>
-                  <input
-                    type="date"
-                    required
-                    value={leaveForm.startDate}
-                    onChange={(e) => {
-                      const newStart = e.target.value;
-                      setLeaveForm((prev) => ({
-                        ...prev,
-                        startDate: newStart,
-                        endDate: prev.endDate < newStart ? newStart : prev.endDate
-                      }));
-                    }}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">종료일자</label>
-                  <input
-                    type="date"
-                    required
-                    min={leaveForm.startDate}
-                    value={leaveForm.endDate}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">사유 (선택)</label>
-                  <input
-                    type="text"
-                    placeholder="개인 사유 등"
-                    value={leaveForm.reason}
-                    onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-0.5">
-                <span className="text-[10px] text-slate-400">
-                  ※ 등록된 연차는 로그인 선택 화면에 실시간으로 반영됩니다.
+          {/* Right: Simple Inline Annual Leave Picker & Setter */}
+          <div className="flex items-center gap-2 flex-wrap pt-1 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+            {/* If currently has an active or scheduled leave, show cancellation chip */}
+            {myLeaveStatus?.leave && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs">
+                <span className="text-rose-700 dark:text-rose-300 font-bold">
+                  등록연차: {myLeaveStatus.leave.startDate} ({myLeaveStatus.leave.leaveType || "연차"})
                 </span>
                 <button
-                  type="submit"
-                  disabled={leaveSaving}
-                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs shadow-sm active:scale-95 transition-all flex items-center gap-1 shrink-0"
+                  type="button"
+                  onClick={() => handleDeleteLeave(myLeaveStatus.leave.id)}
+                  className="ml-1 p-0.5 rounded hover:bg-rose-200 dark:hover:bg-rose-800 text-rose-500 hover:text-rose-800 transition-colors"
+                  title="연차 취소/삭제"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{leaveSaving ? "등록 중..." : "연차 일정 등록"}</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
+            )}
+
+            {/* Compact Inline Form */}
+            <form onSubmit={handleRegisterLeave} className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                <CalendarDays className="w-3.5 h-3.5 text-blue-500" />
+                <span>연차사용일:</span>
+              </span>
+
+              <input
+                type="date"
+                required
+                value={leaveForm.startDate}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLeaveForm((prev) => ({
+                    ...prev,
+                    startDate: val,
+                    endDate: val
+                  }));
+                }}
+                className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              />
+
+              <select
+                value={leaveForm.leaveType}
+                onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
+                className="px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+              >
+                <option value="연차">연차 (전일)</option>
+                <option value="반차(오전)">오전반차</option>
+                <option value="반차(오후)">오후반차</option>
+              </select>
+
+              <button
+                type="submit"
+                disabled={leaveSaving}
+                className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1 shrink-0"
+              >
+                <Plus className="w-3 h-3" />
+                <span>{leaveSaving ? "설정 중..." : "연차 설정"}</span>
+              </button>
             </form>
-
-            {/* Annual Leave Table */}
-            <div className="overflow-x-auto max-h-[140px] overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xs">
-              <table className="w-full text-left text-[11px] border-collapse">
-                <thead className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 sticky top-0 font-bold border-b border-slate-200 dark:border-slate-700">
-                  <tr>
-                    <th className="py-1 px-2.5">구분</th>
-                    <th className="py-1 px-2.5">지정 연차 기간</th>
-                    <th className="py-1 px-2.5">일수</th>
-                    <th className="py-1 px-2.5">사유</th>
-                    <th className="py-1 px-2.5 text-center">상태</th>
-                    <th className="py-1 px-2 text-center">취소</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                  {myLeaves.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-slate-400 text-xs">
-                        등록된 연차 일정이 없습니다. 상단에서 연차사용일을 지정해 등록해 주세요.
-                      </td>
-                    </tr>
-                  ) : (
-                    myLeaves.map((l) => {
-                      const todayStr = new Date().toISOString().split("T")[0];
-                      const isNowActive = l.startDate <= todayStr && todayStr <= (l.endDate || l.startDate);
-                      const isFuture = l.startDate > todayStr;
-
-                      return (
-                        <tr key={l.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                          <td className="py-1.5 px-2.5 font-bold text-slate-800 dark:text-slate-200">
-                            <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">
-                              {l.leaveType || "연차"}
-                            </span>
-                          </td>
-                          <td className="py-1.5 px-2.5 font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            {l.startDate} {l.endDate && l.endDate !== l.startDate ? `~ ${l.endDate}` : ""}
-                          </td>
-                          <td className="py-1.5 px-2.5 font-bold text-blue-600 dark:text-blue-400">
-                            {l.daysCount || 1}일
-                          </td>
-                          <td className="py-1.5 px-2.5 text-slate-500 dark:text-slate-400 truncate max-w-[120px]" title={l.reason}>
-                            {l.reason || "-"}
-                          </td>
-                          <td className="py-1.5 px-2.5 text-center whitespace-nowrap">
-                            {isNowActive ? (
-                              <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-black text-[9.5px] animate-pulse">
-                                🌴 사용중
-                              </span>
-                            ) : isFuture ? (
-                              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-bold text-[9.5px]">
-                                📅 예정
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 font-medium text-[9.5px]">
-                                완료
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-1.5 px-2 text-center">
-                            <button
-                              onClick={() => handleDeleteLeave(l.id)}
-                              className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
-                              title="연차 취소/삭제"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       </div>
