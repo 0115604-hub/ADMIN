@@ -79,6 +79,8 @@ const SAMRANGJIN_OVERTIME = {
   date: "2026-08-29 (토)",
   author: "양인나 선임",
   headcount: 32,
+  manHours: 272,
+  cost: 4080000,
   approval: [
     { role: "담당", name: "양인나" },
     { role: "책임", name: "윤경수" },
@@ -100,6 +102,8 @@ const HANLIM_OVERTIME = {
   date: "2026-08-29 (토)",
   author: "우창용 선임",
   headcount: 12,
+  manHours: 96,
+  cost: 1440000,
   approval: [
     { role: "담당", name: "우창용" },
     { role: "책임", name: "김동욱" },
@@ -795,10 +799,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 */}
+      {/* ========================================================================= */}
+      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (특근실시일 & 특근비용 산출 표시) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600">
               <Calendar className="w-3.5 h-3.5" />
@@ -809,6 +814,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 flex items-center gap-1">
               <Clock className="w-3 h-3 text-purple-500" />
               <span>특근실시일: <strong>2026년 8월 29일 (토)</strong></span>
+            </span>
+            <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
+              <DollarSign className="w-3 h-3 text-rose-500" />
+              <span>당일 총 특근비용: <strong className="font-mono">₩{(SAMRANGJIN_OVERTIME.cost + HANLIM_OVERTIME.cost).toLocaleString()}원</strong> (44명 • 368 M/H)</span>
             </span>
           </div>
 
@@ -833,13 +842,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   삼랑진공장
                 </span>
                 <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
-                  📅 특근일: {SAMRANGJIN_OVERTIME.date}
+                  📅 {SAMRANGJIN_OVERTIME.date}
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
               </div>
-              <span className="text-xs font-black text-purple-600 dark:text-purple-400">
-                {SAMRANGJIN_OVERTIME.headcount}명 투입
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                  {SAMRANGJIN_OVERTIME.headcount}명 ({SAMRANGJIN_OVERTIME.manHours} M/H)
+                </span>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/70 dark:border-rose-800">
+                  특근비용: ₩{SAMRANGJIN_OVERTIME.cost.toLocaleString()}
+                </span>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-1">
@@ -863,13 +877,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   한림공장
                 </span>
                 <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
-                  📅 특근일: {HANLIM_OVERTIME.date}
+                  📅 {HANLIM_OVERTIME.date}
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
               </div>
-              <span className="text-xs font-black text-purple-600 dark:text-purple-400">
-                {HANLIM_OVERTIME.headcount}명 투입
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+                  {HANLIM_OVERTIME.headcount}명 ({HANLIM_OVERTIME.manHours} M/H)
+                </span>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/70 dark:border-rose-800">
+                  특근비용: ₩{HANLIM_OVERTIME.cost.toLocaleString()}
+                </span>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-1">

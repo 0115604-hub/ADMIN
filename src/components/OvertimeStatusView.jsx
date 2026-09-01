@@ -128,6 +128,10 @@ export const OvertimeStatusView = () => {
     return currentReport?.items?.reduce((sum, item) => sum + ((Number(item.hours) || 0) * (Number(item.count) || 0)), 0) || 0;
   }, [currentReport]);
 
+  const totalCost = useMemo(() => {
+    return totalManHours * 15000;
+  }, [totalManHours]);
+
   // Group breakdown by category
   const categoryStats = useMemo(() => {
     const map = {};
@@ -147,7 +151,7 @@ export const OvertimeStatusView = () => {
   const handleExportExcel = () => {
     const rows = [
       [`${currentReport.plant} 특근보고서`],
-      ["근무일자", currentReport.workDateFormatted, "작성자", `${currentReport.author} ${currentReport.authorTitle || ""}`, "총원", `${totalCount}명`, "총 투입공수", `${totalManHours} M/H`],
+      ["근무일자", currentReport.workDateFormatted, "작성자", `${currentReport.author} ${currentReport.authorTitle || ""}`, "총원", `${totalCount}명`, "총 투입공수", `${totalManHours} M/H`, "특근산출비용", `₩${totalCost.toLocaleString()}원`],
       [],
       ["구분", "작업내용", "작업자 명단", "특근시간", "인원(명)"]
     ];
@@ -195,7 +199,7 @@ export const OvertimeStatusView = () => {
       id: Date.now(),
       category: "JA",
       workContent: "작업내용 입력",
-      names: "",
+      names: "작업자명",
       hours: 8,
       count: 1
     };
@@ -252,7 +256,7 @@ export const OvertimeStatusView = () => {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              공식 특근 결재 문서 • 근무일시: <strong>{currentReport.workDateFormatted}</strong> | 총 투입공수: <strong>{totalManHours} M/H</strong>
+              공식 특근 결재 문서 • 근무일시: <strong>{currentReport.workDateFormatted}</strong> | 총 투입공수: <strong>{totalManHours} M/H</strong> | 특근 산출비용: <strong className="text-rose-600 dark:text-rose-400">₩{totalCost.toLocaleString()}원</strong>
             </p>
           </div>
         </div>
