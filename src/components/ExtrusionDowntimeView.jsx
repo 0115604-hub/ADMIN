@@ -441,128 +441,28 @@ export const ExtrusionDowntimeView = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
-      {/* ⭐ [1구역] 압출동 8월 누적 비가동내역 (각 라인별 표시) */}
+      {/* ⭐ 압출동 주차별 비가동내역 (각 라인별 요일별 표시) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-amber-500/30 dark:border-amber-500/20 shadow-sm space-y-3.5 animate-fadeIn">
-        {/* Section 1 Header */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 animate-fadeIn">
+        {/* Section Header & Controller */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs shadow-sm">
-              1
+            <div className="p-2 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Wrench className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>📅 압출동 8월 누적 비가동내역</span>
-                <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">(각 라인별 표시)</span>
-              </h2>
-              <span className="text-[11px] text-slate-400">
-                8월 1일 ~ 8월 29일 누적 비가동 및 월평균 가동률 종합
+              <h1 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-1.5">
+                <span>압출동 주차별 비가동내역</span>
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-bold">(각 라인별 요일별 표시)</span>
+              </h1>
+              <span className="text-xs text-slate-400">
+                선택 주차의 요일별 발생 시간, 사유 매트릭스 및 상세 일지
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="px-3 py-1 rounded-xl bg-slate-900 text-amber-400 text-xs font-black flex items-center gap-1.5">
-              <span>8월 총 누적:</span>
-              <strong className="text-white">{totalMonthCumulative}분 (9.3h)</strong>
-              <span className="text-slate-500">|</span>
-              <span>월 가동률:</span>
-              <strong className="text-emerald-400">98.5%</strong>
-            </div>
-            <button
-              onClick={() => { setSelectedSummaryLine("all"); setIsSummaryModalOpen(true); }}
-              className="px-2.5 py-1 rounded-xl bg-amber-500/15 hover:bg-amber-500 text-amber-700 hover:text-slate-950 text-xs font-black transition-all flex items-center gap-1"
-              title="8월 누적 종합 분석 열기"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>심층 분석</span>
-            </button>
-          </div>
-        </div>
-
-          {/* 4-Lines Monthly Cumulative Grid Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {EXTRUSION_LINES.map((line) => {
-              const det = CUMULATIVE_DETAILS[line];
-              return (
-                <div
-                  key={line}
-                  onClick={() => { setSelectedSummaryLine(line); setIsSummaryModalOpen(true); }}
-                  className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 hover:border-amber-400 hover:bg-amber-50/20 cursor-pointer transition-all flex flex-col justify-between space-y-2.5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
-                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                      <span>{line}</span>
-                    </span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300">
-                      {det.status}
-                    </span>
-                  </div>
-
-                  {/* Core Cumulative Metrics */}
-                  <div className="flex items-baseline justify-between">
-                    <div>
-                      <span className="text-xs text-slate-400 font-bold block">8월 누적 비가동</span>
-                      <span className="text-lg font-black text-rose-600 dark:text-rose-400">
-                        {det.monthCumulative}
-                        <span className="text-xs font-normal text-slate-400 ml-0.5">분 ({det.hours})</span>
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs text-slate-400 font-bold block">월간 가동률</span>
-                      <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
-                        {det.opRatio}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 1~4 Weekly Trend Mini Bar */}
-                  <div className="pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
-                    <span className="text-[9.5px] font-bold text-slate-400 block mb-1">8월 주차별 발생(분)</span>
-                    <div className="grid grid-cols-4 gap-1 text-center">
-                      {det.weeklyTrend.map((wt) => (
-                        <div key={wt.week} className="px-1 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700">
-                          <span className="text-[8.5px] text-slate-400 font-bold block">{wt.week}</span>
-                          <span className="text-[10.5px] font-black text-slate-800 dark:text-slate-200">{wt.min}m</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Primary Reason */}
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                    주요 원인: <strong className="text-slate-700 dark:text-slate-300">{det.reasons[0]?.label}</strong>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-      {/* ========================================================================= */}
-      {/* ⭐ [2구역] 압출동 주차별 비가동내역 (각 라인별 표시) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-2 border-blue-500/30 dark:border-blue-500/20 shadow-sm space-y-3.5 animate-fadeIn">
-        {/* Section 2 Header & Controller */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-xl bg-blue-600 text-white font-black text-xs shadow-sm">
-                2
-              </div>
-              <div>
-                <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>⏱️ 압출동 주차별 비가동내역</span>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">(각 라인별 요일별 표시)</span>
-                </h2>
-                <span className="text-[11px] text-slate-400">
-                  선택 주차의 요일별 발생 시간, 사유 매트릭스 및 상세 일지
-                </span>
-              </div>
-            </div>
-
-            {/* Actions & Week Selector */}
-            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          {/* Actions & Week Selector */}
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
               <select
                 value={selectedWeek}
                 onChange={(e) => setSelectedWeek(e.target.value)}
