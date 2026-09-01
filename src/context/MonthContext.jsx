@@ -32,6 +32,19 @@ function sanitizeForFirestore(obj) {
   return result;
 }
 
+export const CURRENT_DEFAULT_MONTH = "2026-08";
+
+export const DEFAULT_MONTH_LIST = [
+  "2026-08",
+  "2026-07",
+  "2026-06",
+  "2026-05",
+  "2026-04",
+  "2026-03",
+  "2026-02",
+  "2026-01"
+];
+
 export const MonthProvider = ({ children }) => {
   // Load persistent monthly data from localStorage or fallback to default multi-month master data
   const [allMonthlyData, setAllMonthlyData] = useState(() => {
@@ -51,13 +64,15 @@ export const MonthProvider = ({ children }) => {
     return initialMultiMonthData;
   });
 
-  // Default to the latest month available (e.g. "2026-08" or "2026-07")
-  const availableMonths = Object.keys(allMonthlyData).sort().reverse();
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const savedMonth = localStorage.getItem("admin_selected_month_v4");
-    if (savedMonth && allMonthlyData[savedMonth]) return savedMonth;
-    return availableMonths.includes("2026-08") ? "2026-08" : (availableMonths[0] || "2026-07");
-  });
+  // Always default to the current active month ("2026-08" 당월)
+  const dataMonths = Object.keys(allMonthlyData);
+  const availableMonths = Array.from(new Set([...DEFAULT_MONTH_LIST, ...dataMonths])).sort().reverse();
+  const [selectedMonth, setSelectedMonth] = useState("2026-08");
+
+  const resetToCurrentMonth = () => {
+    setSelectedMonth("2026-08");
+    localStorage.setItem("admin_selected_month_v4", "2026-08");
+  };
 
   // Real-time Cloud Sync with Firestore
   useEffect(() => {
@@ -111,14 +126,12 @@ export const MonthProvider = ({ children }) => {
   }, []);
 
   // Current active month's data package
-  const currentMonthData = allMonthlyData[selectedMonth] || allMonthlyData[availableMonths[0]] || null;
+  const currentMonthData = allMonthlyData[selectedMonth] || allMonthlyData["2026-08"] || allMonthlyData[availableMonths[0]] || null;
 
   // Change active month
   const changeMonth = (yearMonth) => {
-    if (allMonthlyData[yearMonth]) {
-      setSelectedMonth(yearMonth);
-      localStorage.setItem("admin_selected_month_v4", yearMonth);
-    }
+    setSelectedMonth(yearMonth);
+    localStorage.setItem("admin_selected_month_v4", yearMonth);
   };
 
   // Add / Update Monthly Data from Workbook Upload (Strictly uses the latest uploaded file and replaces old file data)
@@ -182,6 +195,7 @@ export const MonthProvider = ({ children }) => {
         currentMonthData,
         allMonthlyData,
         changeMonth,
+        resetToCurrentMonth,
         uploadMonthlyData
       }}
     >

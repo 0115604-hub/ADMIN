@@ -74,36 +74,25 @@ export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) 
 
       {/* Center / Right: Clean Segmented Month Switcher & Logout */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Sleek Segmented Month Control */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 shadow-inner">
-          {availableMonths.map((ym) => {
-            const isSelected = selectedMonth === ym;
-            const isLatest = ym === availableMonths[0];
-            return (
-              <button
-                key={ym}
-                onClick={() => changeMonth(ym)}
-                className={`px-2.5 sm:px-4 py-1.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 ${
-                  isSelected
-                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                }`}
-              >
-                <span>{formatMonthShort(ym)}</span>
-                {isLatest && (
-                  <span
-                    className={`hidden sm:inline-block text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected
-                        ? "bg-blue-50 text-blue-600 dark:bg-blue-900/60 dark:text-blue-300"
-                        : "bg-slate-200 dark:bg-slate-700 text-slate-500"
-                    }`}
-                  >
-                    당월
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* ⭐ Sleek Interactive Month Selection Box */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-500 shadow-inner transition-all">
+          <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <select
+            value={selectedMonth}
+            onChange={(e) => changeMonth(e.target.value)}
+            className="bg-transparent text-xs sm:text-sm font-black text-slate-900 dark:text-white cursor-pointer focus:outline-none pr-1"
+          >
+            {availableMonths.map((ym) => (
+              <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
+                {formatMonthShort(ym)} {ym === "2026-08" ? "(당월)" : ""}
+              </option>
+            ))}
+          </select>
+          {selectedMonth === "2026-08" && (
+            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-extrabold text-[10px]">
+              당월
+            </span>
+          )}
         </div>
 
         {/* Logout Button */}

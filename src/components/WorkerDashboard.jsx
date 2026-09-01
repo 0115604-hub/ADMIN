@@ -623,8 +623,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             ) : null}
           </div>
 
-          {/* Right: 일정/연차 구분 간편 지정 (연차(전일), 오전반차, 오후반차, 업체방문, 외출) */}
+          {/* Right: 해당월 선택 박스 + 일정/연차 구분 간편 지정 */}
           <div className="flex items-center gap-2 flex-wrap pt-1 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
+            {/* ⭐ 해당월 선택 박스 (누르면 해당월 선택, 기본 당월) */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 shadow-xs">
+              <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <select
+                value={selectedMonth}
+                onChange={(e) => changeMonth(e.target.value)}
+                className="bg-transparent text-xs font-black text-blue-900 dark:text-blue-200 cursor-pointer focus:outline-none pr-0.5"
+              >
+                {availableMonths.map((ym) => {
+                  const parts = ym.split("-");
+                  const label = `${parts[0]}년 ${parts[1]}월`;
+                  return (
+                    <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
+                      {label} {ym === "2026-08" ? "(당월)" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
             {/* If current worker already has an active or scheduled leave, show cancellation chip */}
             {myLeaveStatus?.leave && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">

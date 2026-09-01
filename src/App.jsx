@@ -18,6 +18,7 @@ import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
 import { OryukLogo } from "./components/OryukLogo";
 import { useAuth } from "./context/AuthContext";
+import { useMonth } from "./context/MonthContext";
 import {
   fetchTransactions,
   addTransaction,
@@ -28,6 +29,7 @@ import {
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
+  const { resetToCurrentMonth } = useMonth();
   const [activeTab, setActiveTab] = useState("worker_dashboard");
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,10 +40,13 @@ export const App = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Sync default tab when user connects/changes
+  // Sync default tab and always reset to current month (당월) upon user login
   useEffect(() => {
     if (currentProfile) {
       setActiveTab("worker_dashboard");
+      if (resetToCurrentMonth) {
+        resetToCurrentMonth();
+      }
     }
   }, [currentProfile?.id]);
 
