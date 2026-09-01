@@ -1181,11 +1181,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </table>
         </div>
 
-        {/* 하단 설명 및 업무일지 등록 버튼 */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-            💡 업무일지 행을 탭(클릭)하여 전체 작업 내용을 확인한 후 결재 및 코멘트를 남길 수 있습니다.
-          </span>
+        {/* 하단 업무일지 등록 버튼 */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end">
           <button
             onClick={() => setIsModalOpen(true)}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all"
