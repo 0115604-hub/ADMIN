@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "profit-and-loss-7d09b",
     "public": "dist",
     "ignore": [
       "firebase.json",

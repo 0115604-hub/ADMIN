@@ -799,13 +799,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600">
               <Calendar className="w-3.5 h-3.5" />
             </div>
             <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
               4. 공장별 특근현황 요약
             </h2>
+            <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-purple-500" />
+              <span>특근실시일: <strong>2026년 8월 29일 (토)</strong></span>
+            </span>
           </div>
 
           {onNavigateTab && (
@@ -823,10 +827,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {/* 삼랑진공장 */}
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded bg-amber-500 text-white text-[10px] font-black">
                   삼랑진공장
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
+                  📅 특근일: {SAMRANGJIN_OVERTIME.date}
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
               </div>
@@ -850,10 +857,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
           {/* 한림공장 */}
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black">
                   한림공장
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
+                  📅 특근일: {HANLIM_OVERTIME.date}
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
               </div>
