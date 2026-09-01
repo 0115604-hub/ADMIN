@@ -977,15 +977,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
         {/* 한줄 리스트 테이블 */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[760px]">
+          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[720px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-8 text-[11px]">
                 <th className="py-1.5 px-2 w-[10%] text-center">일자</th>
                 <th className="py-1.5 px-2 w-[8%] text-center">공장</th>
-                <th className="py-1.5 px-2 w-[11%]">작성자</th>
-                <th className="py-1.5 px-2 w-[14%]">라인/공정</th>
-                <th className="py-1.5 px-2 w-[31%]">작업 내용</th>
-                <th className="py-1.5 px-2 w-[11%]">특이사항</th>
+                <th className="py-1.5 px-2 w-[13%]">작성자</th>
+                <th className="py-1.5 px-2 w-[44%]">작업 내용</th>
+                <th className="py-1.5 px-2 w-[10%]">특이사항</th>
                 <th className="py-1.5 px-2 w-[11%] text-center">결재 현황</th>
                 <th className="py-1.5 px-1 w-[4%] text-center"></th>
               </tr>
@@ -993,7 +992,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-6 text-center text-slate-400 font-bold text-xs">
+                  <td colSpan="7" className="py-6 text-center text-slate-400 font-bold text-xs">
                     등록된 일일업무일지가 없습니다.
                   </td>
                 </tr>
@@ -1005,8 +1004,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-10 group text-[11px]"
                     title="클릭하여 상세내용 확인 및 결재 진행"
                   >
-                    <td className="py-1.5 px-2 text-center font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {log.date.slice(5)} ({log.shift})
+                    <td className="py-1.5 px-2 text-center font-bold font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                      {log.date ? (log.date.length === 10 ? log.date.slice(5) : log.date) : ""}
                     </td>
                     <td className="py-1.5 px-2 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
@@ -1019,9 +1018,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </td>
                     <td className="py-1.5 px-2 font-bold text-slate-900 dark:text-white truncate">
                       {log.writer} {log.title || ""}
-                    </td>
-                    <td className="py-1.5 px-2 font-medium text-slate-600 dark:text-slate-400 truncate" title={log.line}>
-                      {log.line}
                     </td>
                     <td className="py-1.5 px-2 font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400" title={log.workContent}>
                       {log.workContent}
