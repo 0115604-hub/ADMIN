@@ -133,6 +133,9 @@ const SAMRANGJIN_OVERTIME = {
   headcount: 32,
   manHours: 272,
   cost: 4080000,
+  monthHeadcount: 128,
+  monthManHours: 1088,
+  monthCumulativeCost: 16320000,
   approval: [
     { role: "담당", name: "양인나" },
     { role: "책임", name: "윤경수" },
@@ -156,6 +159,9 @@ const HANLIM_OVERTIME = {
   headcount: 12,
   manHours: 96,
   cost: 1440000,
+  monthHeadcount: 48,
+  monthManHours: 384,
+  monthCumulativeCost: 5760000,
   approval: [
     { role: "담당", name: "우창용" },
     { role: "책임", name: "김동욱" },
@@ -870,7 +876,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
       {/* ========================================================================= */}
       {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (특근실시일 & 특근비용 산출 표시) */}
+      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (당월 총누적 특근비용 & 당일 특근비용 표시) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
@@ -881,13 +887,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
               4. 공장별 특근현황 요약
             </h2>
+            <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
+              <DollarSign className="w-3.5 h-3.5 text-rose-500" />
+              <span>8월(당월) 총누적 특근비용: <strong className="font-mono text-xs font-black text-rose-600 dark:text-rose-400">₩{(SAMRANGJIN_OVERTIME.monthCumulativeCost + HANLIM_OVERTIME.monthCumulativeCost).toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
+            </span>
             <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 flex items-center gap-1">
               <Clock className="w-3 h-3 text-purple-500" />
-              <span>특근실시일: <strong>2026년 8월 29일 (토)</strong></span>
-            </span>
-            <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
-              <DollarSign className="w-3 h-3 text-rose-500" />
-              <span>당일 총 특근비용: <strong className="font-mono">₩{(SAMRANGJIN_OVERTIME.cost + HANLIM_OVERTIME.cost).toLocaleString()}원</strong> (44명 • 368 M/H)</span>
+              <span>당일 특근(8/29): <strong>₩{(SAMRANGJIN_OVERTIME.cost + HANLIM_OVERTIME.cost).toLocaleString()}원</strong></span>
             </span>
           </div>
 
@@ -917,11 +923,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <span className="text-[10px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                  {SAMRANGJIN_OVERTIME.headcount}명 ({SAMRANGJIN_OVERTIME.manHours} M/H)
+                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                  당일: ₩{SAMRANGJIN_OVERTIME.cost.toLocaleString()}
                 </span>
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/70 dark:border-rose-800">
-                  특근비용: ₩{SAMRANGJIN_OVERTIME.cost.toLocaleString()}
+                  당월 누적: ₩{SAMRANGJIN_OVERTIME.monthCumulativeCost.toLocaleString()}
                 </span>
               </div>
             </div>
@@ -952,11 +958,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <span className="text-[10px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                  {HANLIM_OVERTIME.headcount}명 ({HANLIM_OVERTIME.manHours} M/H)
+                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                  당일: ₩{HANLIM_OVERTIME.cost.toLocaleString()}
                 </span>
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/70 dark:border-rose-800">
-                  특근비용: ₩{HANLIM_OVERTIME.cost.toLocaleString()}
+                  당월 누적: ₩{HANLIM_OVERTIME.monthCumulativeCost.toLocaleString()}
                 </span>
               </div>
             </div>
