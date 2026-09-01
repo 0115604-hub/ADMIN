@@ -1,4 +1,4 @@
-﻿import {
+import {
   collection,
   doc,
   setDoc,
@@ -189,54 +189,59 @@ export const deleteAnnualLeave = async (id) => {
 
 // Helper: Calculate worker's current/upcoming annual leave status
 export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
-  if (!allLeaves || allLeaves.length === 0) return null;
+  if (!allLeaves || !Array.isArray(allLeaves) || allLeaves.length === 0) return null;
 
-  // Format today's date YYYY-MM-DD
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const todayStr = `${year}-${month}-${day}`;
+  try {
+    // Format today's date YYYY-MM-DD
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const todayStr = `${year}-${month}-${day}`;
 
-  // Match leaves for this worker (by userId or userName)
-  const userLeaves = allLeaves.filter(
-    (l) => (userId && l.userId === userId) || (userName && l.userName === userName)
-  );
+    // Match leaves for this worker (by userId or userName)
+    const userLeaves = allLeaves.filter(
+      (l) => Boolean(l && ((userId && l.userId === userId) || (userName && l.userName === userName)))
+    );
 
-  if (userLeaves.length === 0) return null;
+    if (userLeaves.length === 0) return null;
 
-  // 1. Check for active leave today (startDate <= today <= endDate)
-  const activeLeave = userLeaves.find(
-    (l) => l.startDate <= todayStr && todayStr <= (l.endDate || l.startDate)
-  );
+    // 1. Check for active leave today (startDate <= today <= endDate)
+    const activeLeave = userLeaves.find(
+      (l) => Boolean(l && l.startDate && l.startDate <= todayStr && todayStr <= (l.endDate || l.startDate))
+    );
 
-  if (activeLeave) {
-    return {
-      status: "ACTIVE",
-      type: activeLeave.leaveType || "연차",
-      label: "연차사용중",
-      leave: activeLeave,
-      badgeColor: "bg-rose-500 text-white font-black animate-pulse shadow-sm ring-1 ring-rose-400"
-    };
+    if (activeLeave) {
+      return {
+        status: "ACTIVE",
+        type: activeLeave.leaveType || "연차",
+        label: "연차사용중",
+        leave: activeLeave,
+        badgeColor: "bg-rose-500 text-white font-black animate-pulse shadow-sm ring-1 ring-rose-400"
+      };
+    }
+
+    // 2. Check for upcoming scheduled leaves (startDate > todayStr)
+    const futureLeaves = userLeaves
+      .filter((l) => Boolean(l && l.startDate && l.startDate > todayStr))
+      .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
+
+    if (futureLeaves.length > 0) {
+      const nextLeave = futureLeaves[0];
+      const dateParts = (nextLeave.startDate || "").split("-");
+      const formattedShort = dateParts.length === 3 ? `${dateParts[1]}/${dateParts[2]}` : nextLeave.startDate;
+      return {
+        status: "SCHEDULED",
+        type: nextLeave.leaveType || "연차",
+        label: `연차예정 (${formattedShort})`,
+        leave: nextLeave,
+        badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
+      };
+    }
+
+    return null;
+  } catch (err) {
+    console.error("getUserLeaveStatus error:", err);
+    return null;
   }
-
-  // 2. Check for upcoming scheduled leaves (startDate > todayStr)
-  const futureLeaves = userLeaves
-    .filter((l) => l.startDate > todayStr)
-    .sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-  if (futureLeaves.length > 0) {
-    const nextLeave = futureLeaves[0];
-    const dateParts = nextLeave.startDate.split("-");
-    const formattedShort = dateParts.length === 3 ? `${dateParts[1]}/${dateParts[2]}` : nextLeave.startDate;
-    return {
-      status: "SCHEDULED",
-      type: nextLeave.leaveType || "연차",
-      label: `연차예정 (${formattedShort})`,
-      leave: nextLeave,
-      badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
-    };
-  }
-
-  return null;
 };

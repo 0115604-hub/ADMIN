@@ -290,12 +290,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, []);
 
   const myLeaveStatus = useMemo(() => {
-    return getUserLeaveStatus(currentProfile?.id, workerFullName, annualLeaves);
+    return getUserLeaveStatus(currentProfile?.id, workerFullName, annualLeaves || []);
   }, [currentProfile, workerFullName, annualLeaves]);
 
   const myLeaves = useMemo(() => {
+    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
     return annualLeaves.filter(
-      (l) => (currentProfile?.id && l.userId === currentProfile.id) || l.userName === workerFullName
+      (l) => Boolean(l && (((currentProfile?.id && l.userId === currentProfile.id) || (workerFullName && l.userName === workerFullName))))
     );
   }, [annualLeaves, currentProfile, workerFullName]);
 

@@ -104,7 +104,38 @@ export const AuthModal = () => {
             </div>
           )}
 
-          {!selectedUser ? (
+          {showQr ? (
+            /* ========================================================================= */
+            /* Mobile QR Code View */
+            /* ========================================================================= */
+            <div className="space-y-4 text-center animate-fadeIn py-2">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xl inline-block">
+                <img
+                  src="/oryuk_app_qr.png"
+                  alt="(주)오륙 모바일 접속 QR코드"
+                  className="w-44 h-44 mx-auto object-contain"
+                />
+              </div>
+              <div>
+                <h4 className="font-black text-base text-slate-900 dark:text-white">
+                  스마트폰 카메라로 스캔하세요
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  현장 작업자 및 임직원 누구나 QR코드를 비추면 즉시 접속됩니다.
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-600 dark:text-slate-300 break-all select-all font-bold">
+                https://profit-and-loss-7d09b.web.app
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQr(false)}
+                className="w-full py-3 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-black text-xs shadow-md active:scale-95 transition-all"
+              >
+                ← 사용자 선택으로 돌아가기
+              </button>
+            </div>
+          ) : !selectedUser ? (
             <div className="space-y-4">
               {/* ========================================================================= */}
               {/* 1. FACTORY 1: 삼랑진공장 */}
@@ -285,37 +316,6 @@ export const AuthModal = () => {
                   </button>
                 ))}
               </div>
-            </div>
-          ) : showQr ? (
-            /* ========================================================================= */
-            /* Mobile QR Code View */
-            /* ========================================================================= */
-            <div className="space-y-4 text-center animate-fadeIn py-2">
-              <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xl inline-block">
-                <img
-                  src="/oryuk_app_qr.png"
-                  alt="(주)오륙 모바일 접속 QR코드"
-                  className="w-44 h-44 mx-auto object-contain"
-                />
-              </div>
-              <div>
-                <h4 className="font-black text-base text-slate-900 dark:text-white">
-                  스마트폰 카메라로 스캔하세요
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  현장 작업자 및 임직원 누구나 QR코드를 비추면 즉시 접속됩니다.
-                </p>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-mono text-slate-600 dark:text-slate-300 break-all select-all font-bold">
-                https://profit-and-loss-7d09b.web.app
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowQr(false)}
-                className="w-full py-3 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-black text-xs shadow-md active:scale-95 transition-all"
-              >
-                ← 사용자 선택으로 돌아가기
-              </button>
             </div>
           ) : (
             /* ========================================================================= */
