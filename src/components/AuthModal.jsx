@@ -16,6 +16,11 @@ import {
   Cpu
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
+import {
+  getAnnualLeaves,
+  subscribeAnnualLeaves,
+  getUserLeaveStatus
+} from "../services/annualLeaveService";
 
 export const AuthModal = () => {
   const { loginWithProfile } = useAuth();
@@ -24,6 +29,15 @@ export const AuthModal = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [annualLeaves, setAnnualLeaves] = useState(() => getAnnualLeaves());
+
+  // Real-time Cloud Synchronization for Annual Leaves
+  useEffect(() => {
+    const unsub = subscribeAnnualLeaves((leaves) => {
+      setAnnualLeaves(leaves);
+    });
+    return () => unsub();
+  }, []);
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
@@ -112,12 +126,17 @@ export const AuthModal = () => {
                   {PLANTS[0].workers.map((worker) => {
                     const isChief = worker.name === "이명재" || worker.assignedProcess === "총괄관리";
                     const isPartner = worker.isPartner || worker.title === "협력업체";
+                    const leaveStatus = getUserLeaveStatus(worker.id, worker.name, annualLeaves);
+                    const isOnLeave = leaveStatus?.status === "ACTIVE";
+
                     return (
                       <button
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-center min-h-[74px] ${
-                          isChief
+                          isOnLeave
+                            ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-2 ring-rose-400/40 hover:border-rose-500"
+                            : isChief
                             ? "bg-gradient-to-b from-amber-50/90 to-amber-100/50 dark:from-amber-950/40 dark:to-amber-900/30 border-amber-300 dark:border-amber-700/80 hover:border-amber-500 ring-1 ring-amber-400/20"
                             : isPartner
                             ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 hover:bg-purple-50/30 dark:hover:bg-purple-950/20"
@@ -125,18 +144,30 @@ export const AuthModal = () => {
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm transition-transform group-hover:scale-105 ${
-                          isChief
+                          isOnLeave
+                            ? "bg-gradient-to-tr from-rose-500 to-rose-600 text-white"
+                            : isChief
                             ? "bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 ring-2 ring-amber-400/50"
                             : isPartner
                             ? "bg-gradient-to-tr from-purple-600 to-indigo-600 text-white"
                             : "bg-gradient-to-tr from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white"
                         }`}>
-                          {worker.avatar}
+                          {isOnLeave ? "🌴" : worker.avatar}
                         </div>
                         <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate w-full">
                           {worker.name}
                         </span>
-                        {isChief ? (
+
+                        {/* Leave Status & Role Badges */}
+                        {leaveStatus?.status === "ACTIVE" ? (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-500 text-white shadow-xs flex items-center gap-0.5 animate-pulse">
+                            <span>연차사용중</span>
+                          </span>
+                        ) : leaveStatus?.status === "SCHEDULED" ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            {leaveStatus.label}
+                          </span>
+                        ) : isChief ? (
                           <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 shadow-sm flex items-center gap-0.5">
                             <Crown className="w-2.5 h-2.5" />
                             <span>총괄관리</span>
@@ -172,12 +203,17 @@ export const AuthModal = () => {
                   {PLANTS[1].workers.map((worker) => {
                     const isChief = worker.name === "김동욱" || worker.assignedProcess === "총괄관리";
                     const isPartner = worker.isPartner || worker.title === "협력업체";
+                    const leaveStatus = getUserLeaveStatus(worker.id, worker.name, annualLeaves);
+                    const isOnLeave = leaveStatus?.status === "ACTIVE";
+
                     return (
                       <button
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-center min-h-[74px] ${
-                          isChief
+                          isOnLeave
+                            ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-2 ring-rose-400/40 hover:border-rose-500"
+                            : isChief
                             ? "bg-gradient-to-b from-emerald-50/90 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/30 border-emerald-300 dark:border-emerald-700/80 hover:border-emerald-500 ring-1 ring-emerald-400/20"
                             : isPartner
                             ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 hover:bg-purple-50/30 dark:hover:bg-purple-950/20"
@@ -185,18 +221,30 @@ export const AuthModal = () => {
                         }`}
                       >
                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm transition-transform group-hover:scale-105 ${
-                          isChief
+                          isOnLeave
+                            ? "bg-gradient-to-tr from-rose-500 to-rose-600 text-white"
+                            : isChief
                             ? "bg-gradient-to-tr from-emerald-500 to-emerald-600 text-white ring-2 ring-emerald-400/50"
                             : isPartner
                             ? "bg-gradient-to-tr from-purple-600 to-indigo-600 text-white"
                             : "bg-gradient-to-tr from-slate-700 to-slate-800 dark:from-slate-600 dark:to-slate-700 text-white"
                         }`}>
-                          {worker.avatar}
+                          {isOnLeave ? "🌴" : worker.avatar}
                         </div>
                         <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate w-full">
                           {worker.name}
                         </span>
-                        {isChief ? (
+
+                        {/* Leave Status & Role Badges */}
+                        {leaveStatus?.status === "ACTIVE" ? (
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-500 text-white shadow-xs flex items-center gap-0.5 animate-pulse">
+                            <span>연차사용중</span>
+                          </span>
+                        ) : leaveStatus?.status === "SCHEDULED" ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            {leaveStatus.label}
+                          </span>
+                        ) : isChief ? (
                           <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-600 text-white shadow-sm flex items-center gap-0.5">
                             <Crown className="w-2.5 h-2.5" />
                             <span>총괄관리</span>
