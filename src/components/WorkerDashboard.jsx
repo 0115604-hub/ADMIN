@@ -34,11 +34,18 @@ import {
   MessageSquare,
   Palmtree,
   CalendarDays,
-  X
+  X,
+  Users,
+  Smartphone,
+  Laptop,
+  History,
+  Radio,
+  Activity
 } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { getLocalAccessLogs } from "../services/accessLogService";
 import {
   getWorkLogs,
   saveWorkLog,
@@ -231,6 +238,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setApprovalCommentInput("");
     }
   }, [selectedLogDetail]);
+
+  // Access Logs State for ADMIN
+  const [selectedWorkerForLogs, setSelectedWorkerForLogs] = useState(null);
+  const [accessLogs, setAccessLogs] = useState(() => getLocalAccessLogs());
+
+  const handleOpenWorkerLogs = (worker) => {
+    const freshLogs = getLocalAccessLogs();
+    setAccessLogs(freshLogs);
+    setSelectedWorkerForLogs(worker);
+  };
 
   // Injoo's Excel Upload State
   const fileInputRef = useRef(null);
@@ -1195,6 +1212,102 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       </div>
 
+      {/* ========================================================================= */}
+      {/* 6. ⭐ [ADMIN 전용] 작업자 접속 및 활동 기록 관리 현황 */}
+      {/* ========================================================================= */}
+      {isAdmin && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+                <Users className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                  6. 작업자별 실시간 접속 기록 현황
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  ADMIN 전용
+                </span>
+              </div>
+            </div>
+            <span className="text-[11px] text-slate-400 font-medium">
+              💡 작업자 이름을 탭(클릭)하면 상세 접속 일시 및 기기별 접속 이력을 확인할 수 있습니다.
+            </span>
+          </div>
+
+          {/* Plant Groups Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            {PLANTS.map((plant) => (
+              <div key={plant.id} className="p-3 sm:p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white">
+                    <Factory className={`w-3.5 h-3.5 ${plant.name === "한림공장" ? "text-emerald-600" : "text-amber-500"}`} />
+                    <span>{plant.name}</span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    {plant.workers.length}명 등록
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {plant.workers.map((worker) => {
+                    const workerLogs = accessLogs[worker.id] || [];
+                    const lastLog = workerLogs[0] || null;
+                    const isMobile = lastLog?.deviceType === "MOBILE";
+
+                    return (
+                      <button
+                        key={worker.id}
+                        type="button"
+                        onClick={() => handleOpenWorkerLogs(worker)}
+                        className="group flex flex-col items-start p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500 hover:shadow-md transition-all text-left relative overflow-hidden active:scale-98"
+                      >
+                        <div className="flex items-center gap-2 w-full mb-1.5">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black text-white shrink-0 ${
+                            plant.name === "한림공장" ? "bg-emerald-600" : "bg-amber-500"
+                          }`}>
+                            {worker.avatar || worker.name[0]}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline gap-1">
+                              <span className="font-black text-xs text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                                {worker.name}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400">
+                                {worker.title}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {worker.assignedProcess}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Recent Access Badge */}
+                        <div className="w-full pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px]">
+                          <span className="inline-flex items-center gap-1 font-bold text-slate-600 dark:text-slate-300">
+                            {isMobile ? (
+                              <Smartphone className="w-3 h-3 text-emerald-500 shrink-0" />
+                            ) : (
+                              <Laptop className="w-3 h-3 text-blue-500 shrink-0" />
+                            )}
+                            <span>{lastLog?.timestamp ? lastLog.timestamp.slice(5, 16) : "미접속"}</span>
+                          </span>
+                          <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
+                            기록 →
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Work Log Detail View Modal (상세내용 확인 & 코멘트 입력 & 전자결재 모달) */}
       {selectedLogDetail && (
         <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
@@ -1446,6 +1559,114 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <button
                 onClick={() => setSelectedLogDetail(null)}
                 className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 [ADMIN 전용] 작업자별 접속 기록 상세 조회 모달 */}
+      {/* ========================================================================= */}
+      {selectedWorkerForLogs && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-6 animate-scaleUp">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-base text-white shadow-md ${
+                  selectedWorkerForLogs.plant === "한림공장" ? "bg-emerald-600 ring-2 ring-emerald-400/30" : "bg-amber-500 ring-2 ring-amber-400/30"
+                }`}>
+                  {selectedWorkerForLogs.avatar || selectedWorkerForLogs.name[0]}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-base text-slate-900 dark:text-white">
+                      {selectedWorkerForLogs.name} {selectedWorkerForLogs.title || ""} 접속 기록
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      selectedWorkerForLogs.plant === "한림공장"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                    }`}>
+                      {selectedWorkerForLogs.plant}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    담당 공정: {selectedWorkerForLogs.assignedProcess} • 총 접속 이력 {(accessLogs[selectedWorkerForLogs.id] || []).length}건
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedWorkerForLogs(null)}
+                className="p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Access Logs List */}
+            <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
+              {!(accessLogs[selectedWorkerForLogs.id]?.length > 0) ? (
+                <div className="py-12 text-center text-slate-400 font-bold text-xs">
+                  접속 기록이 없습니다.
+                </div>
+              ) : (
+                accessLogs[selectedWorkerForLogs.id].map((entry, idx) => (
+                  <div
+                    key={entry.id || idx}
+                    className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`p-1.5 rounded-lg ${
+                          entry.deviceType === "MOBILE"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                        }`}>
+                          {entry.deviceType === "MOBILE" ? (
+                            <Smartphone className="w-4 h-4" />
+                          ) : (
+                            <Laptop className="w-4 h-4" />
+                          )}
+                        </span>
+                        <div>
+                          <span className="text-xs font-black text-slate-900 dark:text-white">
+                            {entry.device}
+                          </span>
+                          <span className="ml-2 text-[10px] text-slate-400 font-mono">
+                            {entry.ip}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
+                        {entry.timestamp}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/50 dark:border-slate-700/50">
+                      <span className="text-slate-700 dark:text-slate-200 font-bold flex items-center gap-1.5">
+                        <Activity className="w-3 h-3 text-indigo-500" />
+                        <span>{entry.action || "포털 로그인"}</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        📍 {entry.location || selectedWorkerForLogs.plant}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer Close */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                onClick={() => setSelectedWorkerForLogs(null)}
+                className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs shadow-sm active:scale-95 transition-all"
               >
                 닫기
               </button>

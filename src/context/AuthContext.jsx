@@ -7,6 +7,7 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
+import { recordUserAccess } from "../services/accessLogService";
 
 // Factory and User Hierarchy Definitions with Official Titles
 export const ADMIN_USERS = [
@@ -133,6 +134,10 @@ export const AuthProvider = ({ children }) => {
 
     setCurrentProfile(profileToSave);
     localStorage.setItem("admin_user_profile", JSON.stringify(profileToSave));
+
+    // Record login access log
+    recordUserAccess(profileToSave).catch((err) => console.warn("Access log recording error:", err));
+
     return profileToSave;
   };
 
