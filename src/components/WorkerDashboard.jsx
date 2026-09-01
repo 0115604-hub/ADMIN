@@ -521,46 +521,48 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   return (
     <div className="space-y-3 sm:space-y-3.5 animate-fadeIn pb-20 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
-      {/* 🌟 [상단] 월 선택 & 일정/연차 구분 간편 지정 바 */}
+      {/* 🌟 [상단] 작업자 정보 (**공장 ***직위) & 간편 일정/연차 설정 패널 */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Left: 조회 월 선택 드롭다운 & 현재 상태 */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
-              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">조회 월:</span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => changeMonth(e.target.value)}
-                className="bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-              >
-                {(availableMonths || [selectedMonth]).map((ym) => {
-                  const parts = ym.split("-");
-                  const isLatest = ym === (availableMonths?.[0] || ym);
-                  return (
-                    <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                      {parts[0]}년 {parts[1]}월 {isLatest ? "(당월)" : ""}
-                    </option>
-                  );
-                })}
-              </select>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Left: Plant Badge, Worker Name, Title, and Process + Live Status Badge */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black shadow-xs ${
+              workerPlant === "한림공장"
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
+            }`}>
+              <Factory className="w-3.5 h-3.5" />
+              <span>{workerPlant}</span>
+            </span>
+
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                {workerFullName}
+              </span>
+              <span className="text-xs sm:text-sm font-extrabold text-slate-500 dark:text-slate-400">
+                {officialTitle}
+              </span>
             </div>
 
-            {/* If today has active or upcoming status for current worker, display badge */}
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+              {isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess}
+            </span>
+
+            {/* Active (연차사용중) / Scheduled (연차예정 M/D) Live Badge */}
             {myLeaveStatus?.status === "ACTIVE" ? (
-              <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs animate-pulse flex items-center gap-1 ${myLeaveStatus.badgeColor}`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-black shadow-xs animate-pulse flex items-center gap-1 ${myLeaveStatus.badgeColor}`}>
                 <span>{myLeaveStatus.emoji} {myLeaveStatus.label}</span>
               </span>
             ) : myLeaveStatus?.status === "SCHEDULED" ? (
-              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${myLeaveStatus.badgeColor}`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1 ${myLeaveStatus.badgeColor}`}>
                 <span>{myLeaveStatus.label}</span>
               </span>
             ) : null}
           </div>
 
           {/* Right: 일정/연차 구분 간편 지정 (연차(전일), 오전반차, 오후반차, 업체방문, 외출) */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap pt-1 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
             {/* If current worker already has an active or scheduled leave, show cancellation chip */}
             {myLeaveStatus?.leave && (
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">

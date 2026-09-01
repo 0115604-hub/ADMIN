@@ -195,6 +195,7 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "오전반차",
       emoji: "🌤️",
       activeLabel: "오전반차",
+      scheduledLabelPrefix: "오전반차예정",
       activeBadge: "bg-amber-500 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
     };
@@ -204,6 +205,7 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "오후반차",
       emoji: "⛅",
       activeLabel: "오후반차",
+      scheduledLabelPrefix: "오후반차예정",
       activeBadge: "bg-orange-500 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-800"
     };
@@ -213,6 +215,7 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "업체방문",
       emoji: "🏢",
       activeLabel: "업체방문",
+      scheduledLabelPrefix: "업체방문예정",
       activeBadge: "bg-indigo-600 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800"
     };
@@ -222,6 +225,7 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "외출",
       emoji: "🚶",
       activeLabel: "외출",
+      scheduledLabelPrefix: "외출예정",
       activeBadge: "bg-teal-600 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800"
     };
@@ -230,7 +234,8 @@ export const getLeaveTypeMeta = (typeStr = "") => {
   return {
     type: "연차",
     emoji: "🌴",
-    activeLabel: "연차(전일)",
+    activeLabel: "연차사용중",
+    scheduledLabelPrefix: "연차예정",
     activeBadge: "bg-rose-500 text-white font-black animate-pulse shadow-xs",
     scheduledBadge: "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
   };
@@ -266,7 +271,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
         status: "ACTIVE",
         type: meta.type,
         emoji: meta.emoji,
-        label: meta.activeLabel,
+        label: meta.activeLabel, // "연차사용중"
         leave: activeLeave,
         badgeColor: meta.activeBadge
       };
@@ -286,7 +291,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
         status: "SCHEDULED",
         type: meta.type,
         emoji: meta.emoji,
-        label: `${meta.type} (${formattedShort})`,
+        label: `${meta.scheduledLabelPrefix} (${formattedShort})`, // "연차예정 (09/05)"
         leave: nextLeave,
         badgeColor: meta.scheduledBadge
       };
