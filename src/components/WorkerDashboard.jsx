@@ -908,16 +908,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {/* 삼랑진공장 */}
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded bg-amber-500 text-white text-[10px] font-black">
                   삼랑진공장
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
+                  📅 {SAMRANGJIN_OVERTIME.date}
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                  누적 ₩{SAMRANGJIN_OVERTIME.monthCumulativeCost.toLocaleString()}
+                  ₩{SAMRANGJIN_OVERTIME.cost.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
                   ({SAMRANGJIN_OVERTIME.headcount}명)
@@ -936,16 +939,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
           {/* 한림공장 */}
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
-              <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black">
                   한림공장
+                </span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
+                  📅 {HANLIM_OVERTIME.date}
                 </span>
                 <span className="text-[10px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                  누적 ₩{HANLIM_OVERTIME.monthCumulativeCost.toLocaleString()}
+                  ₩{HANLIM_OVERTIME.cost.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
                   ({HANLIM_OVERTIME.headcount}명)
