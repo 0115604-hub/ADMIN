@@ -876,10 +876,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
       {/* ========================================================================= */}
       {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (당월 총누적 특근비용 & 당일 특근비용 표시) */}
+      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 flex-wrap gap-2">
+        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600">
               <Calendar className="w-3.5 h-3.5" />
@@ -888,12 +888,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               4. 공장별 특근현황 요약
             </h2>
             <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5 text-rose-500" />
-              <span>8월(당월) 총누적 특근비용: <strong className="font-mono text-xs font-black text-rose-600 dark:text-rose-400">₩{(SAMRANGJIN_OVERTIME.monthCumulativeCost + HANLIM_OVERTIME.monthCumulativeCost).toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
-            </span>
-            <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-purple-500" />
-              <span>당일 특근(8/29): <strong>₩{(SAMRANGJIN_OVERTIME.cost + HANLIM_OVERTIME.cost).toLocaleString()}원</strong></span>
+              <DollarSign className="w-3 h-3 text-rose-500" />
+              <span>당월 총누적 특근비용: <strong className="font-mono text-xs font-black text-rose-600 dark:text-rose-400">₩{(SAMRANGJIN_OVERTIME.monthCumulativeCost + HANLIM_OVERTIME.monthCumulativeCost).toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
             </span>
           </div>
 
@@ -902,7 +898,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               onClick={() => onNavigateTab("overtime_status")}
               className="flex items-center gap-1 text-[11px] font-black text-purple-600 hover:text-purple-700 dark:text-purple-400"
             >
-              <span>특근보고서</span>
+              <span>특근 상세</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           )}
@@ -912,22 +908,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {/* 삼랑진공장 */}
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
+              <div className="flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded bg-amber-500 text-white text-[10px] font-black">
                   삼랑진공장
                 </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
-                  📅 {SAMRANGJIN_OVERTIME.date}
-                </span>
                 <span className="text-[10px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                  당일: ₩{SAMRANGJIN_OVERTIME.cost.toLocaleString()}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400">
+                  누적 ₩{SAMRANGJIN_OVERTIME.monthCumulativeCost.toLocaleString()}
                 </span>
-                <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/70 dark:border-rose-800">
-                  당월 누적: ₩{SAMRANGJIN_OVERTIME.monthCumulativeCost.toLocaleString()}
+                <span className="text-[10px] text-slate-400 font-bold">
+                  ({SAMRANGJIN_OVERTIME.headcount}명)
                 </span>
               </div>
             </div>
@@ -939,30 +932,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </span>
               ))}
             </div>
-
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              {SAMRANGJIN_OVERTIME.reason}
-            </p>
           </div>
 
           {/* 한림공장 */}
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
-            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
+              <div className="flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black">
                   한림공장
                 </span>
-                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
-                  📅 {HANLIM_OVERTIME.date}
-                </span>
                 <span className="text-[10px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                  당일: ₩{HANLIM_OVERTIME.cost.toLocaleString()}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400">
+                  누적 ₩{HANLIM_OVERTIME.monthCumulativeCost.toLocaleString()}
                 </span>
-                <span className="text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-200/70 dark:border-rose-800">
-                  당월 누적: ₩{HANLIM_OVERTIME.monthCumulativeCost.toLocaleString()}
+                <span className="text-[10px] text-slate-400 font-bold">
+                  ({HANLIM_OVERTIME.headcount}명)
                 </span>
               </div>
             </div>
@@ -974,10 +960,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </span>
               ))}
             </div>
-
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              {HANLIM_OVERTIME.reason}
-            </p>
           </div>
         </div>
       </div>
