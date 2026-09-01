@@ -30,7 +30,8 @@ import {
   FileSpreadsheet,
   FileCheck,
   Sparkles,
-  RotateCw
+  RotateCw,
+  MessageSquare
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -144,6 +145,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   });
   const [logSavedToast, setLogSavedToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("업무일지가 저장되었습니다.");
+  const [approvalCommentInput, setApprovalCommentInput] = useState("");
+
+  // Sync approval comment when modal opens/changes
+  useEffect(() => {
+    if (selectedLogDetail) {
+      setApprovalCommentInput(
+        selectedLogDetail.approvalComment && selectedLogDetail.approvalComment !== "확인 및 전자결재 승인 완료"
+          ? selectedLogDetail.approvalComment
+          : ""
+      );
+    } else {
+      setApprovalCommentInput("");
+    }
+  }, [selectedLogDetail]);
 
   // Injoo's Excel Upload State
   const fileInputRef = useRef(null);
@@ -207,38 +222,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return workLogs.filter((l) => l.plant === "한림공장" && l.approvalStatus !== "결재완료").length;
   }, [workLogs]);
 
-  // Approval Handlers
-  const handleApproveLog = async (logId, comment = "확인 및 전자결재 승인 완료") => {
+  // Approval Handlers (With Comment Support)
+  const handleApproveLog = async (logId, customComment) => {
+    const finalComment = (typeof customComment === "string" && customComment.trim())
+      ? customComment.trim()
+      : (approvalCommentInput.trim() || "확인 및 전자결재 승인 완료");
+
     const approver = {
       name: currentProfile?.name || "총괄관리자",
       title: currentProfile?.title || "이사",
       plant: currentProfile?.plant || "",
-      comment
+      comment: finalComment
     };
     const updated = await approveWorkLog(logId, approver);
     setWorkLogs(updated);
     if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
       setSelectedLogDetail(updated.find((l) => String(l.id) === String(logId)) || null);
     }
-    setToastMessage("결재가 정상적으로 승인 처리되었습니다.");
-    setLogSavedToast(true);
-    setTimeout(() => setLogSavedToast(false), 3000);
-  };
-
-  const handleBatchApprove = async (plantName) => {
-    const targetIds = workLogs.filter((l) => l.plant === plantName && l.approvalStatus !== "결재완료").map((l) => l.id);
-    if (targetIds.length === 0) return;
-    if (!window.confirm(`${plantName} 결재 대기 ${targetIds.length}건을 일괄 결재 승인하시겠습니까?`)) return;
-
-    const approver = {
-      name: currentProfile?.name || "총괄관리자",
-      title: currentProfile?.title || "이사",
-      plant: currentProfile?.plant || plantName,
-      comment: "일괄 확인 및 전자결재 승인 완료"
-    };
-    const updated = await batchApproveWorkLogs(targetIds, approver);
-    setWorkLogs(updated);
-    setToastMessage(`${plantName} ${targetIds.length}건이 일괄 결재 완료되었습니다.`);
+    setToastMessage("결재 및 지시사항 코멘트가 정상적으로 등록되었습니다.");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
   };
@@ -839,9 +840,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     {/* 결재 상태 열 (클릭 시 상세 모달 열기) */}
                     <td className="py-1.5 px-2 text-center whitespace-nowrap">
                       {log.approvalStatus === "결재완료" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" title={`결재자: ${log.approverName || "관리자"} ${log.approverTitle || ""} (${log.approvedAt || ""})`}>
+                        <span
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs"
+                          title={`결재자: ${log.approverName || "총괄관리자"} ${log.approverTitle || ""} (${log.approvedAt || ""})${log.approvalComment ? '\n지시사항: ' + log.approvalComment : ''}`}
+                        >
                           <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
                           <span>{log.approverName || (log.plant === "한림공장" ? "김동욱" : "이명재")} {log.approverTitle || "결재"}</span>
+                          {log.approvalComment && log.approvalComment !== "확인 및 전자결재 승인 완료" && (
+                            <span className="p-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200" title={`코멘트: ${log.approvalComment}`}>
+                              <MessageSquare className="w-2.5 h-2.5" />
+                            </span>
+                          )}
                         </span>
                       ) : log.approvalStatus === "반려" ? (
                         <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200">
@@ -883,7 +892,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         {/* 하단 설명 및 업무일지 등록 버튼 */}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-            💡 업무일지 행을 탭(클릭)하여 전체 작업 내용을 확인한 후 전자결재를 진행할 수 있습니다.
+            💡 업무일지 행을 탭(클릭)하여 전체 작업 내용을 확인한 후 결재 및 코멘트를 남길 수 있습니다.
           </span>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -895,7 +904,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       </div>
 
-      {/* Work Log Detail View Modal (상세내용 확인 & 전자결재 모달) */}
+      {/* Work Log Detail View Modal (상세내용 확인 & 코멘트 입력 & 전자결재 모달) */}
       {selectedLogDetail && (
         <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-6 animate-scaleUp">
@@ -970,12 +979,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
             </div>
 
-            {/* 3. 전자결재 승인 및 도장 날인 섹션 (내용 확인 후 결재 진행) */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+            {/* 3. 전자결재 승인 및 총괄관리자 코멘트 섹션 */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>3. 공장 총괄관리자 전자결재 날인란</span>
+                  <span>3. 공장 총괄관리자 전자결재 & 코멘트</span>
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
                   selectedLogDetail.approvalStatus === "결재완료"
@@ -989,9 +998,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
 
               {/* Approval Stamp Badges */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-2 gap-3">
                 {/* 1. 작성자 날인 */}
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center">
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center shadow-2xs">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">작성자 제출</span>
                   <div className="inline-block border-2 border-blue-600 text-blue-600 rounded-xl px-3 py-1 font-black text-xs font-serif tracking-wider">
                     {selectedLogDetail.writer} [인]
@@ -1000,7 +1009,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
 
                 {/* 2. 총괄관리자 결재 도장 */}
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center">
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center shadow-2xs">
                   <span className="text-[10px] text-slate-400 font-bold block mb-1">
                     {selectedLogDetail.plant === "한림공장" ? "한림 총괄 (김동욱 책임)" : "삼랑진 총괄 (이명재 이사)"} 결재
                   </span>
@@ -1026,71 +1035,102 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
               </div>
 
-              {/* Manager Approval Actions (내용 확인 후 승인) */}
+              {/* 💬 총괄관리자 결재 의견 / 피드백 카드 (결재 완료 시 표시) */}
+              {selectedLogDetail.approvalStatus === "결재완료" && selectedLogDetail.approvalComment && (
+                <div className="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800 space-y-1.5 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-black text-indigo-950 dark:text-indigo-200">
+                    <span className="flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span>총괄관리자 결재 의견 및 지시사항</span>
+                    </span>
+                    <span className="text-[10.5px] text-indigo-600 dark:text-indigo-400 font-bold">
+                      {selectedLogDetail.approverName} {selectedLogDetail.approverTitle} 날인
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/80 border border-indigo-100 dark:border-indigo-900 text-xs text-indigo-950 dark:text-indigo-100 font-medium leading-relaxed shadow-2xs whitespace-pre-wrap">
+                    "{selectedLogDetail.approvalComment}"
+                  </div>
+                </div>
+              )}
+
+              {/* ✍️ 결재 코멘트 입력창 및 승인 액션 (권한 있는 총괄관리자에게 표시) */}
               {canApproveLog(selectedLogDetail) && (
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
-                  {selectedLogDetail.approvalStatus === "결재완료" ? (
-                    <button
-                      onClick={() => handleRejectLog(selectedLogDetail.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-all"
-                    >
-                      결재 취소 / 반려
-                    </button>
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                  {selectedLogDetail.approvalStatus !== "결재완료" ? (
+                    <>
+                      {/* 결재 코멘트 입력란 */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            <span>결재 코멘트 / 지시사항 입력 (선택)</span>
+                          </label>
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            작업자에게 전달될 피드백을 남겨주세요
+                          </span>
+                        </div>
+                        <textarea
+                          rows="2"
+                          value={approvalCommentInput}
+                          onChange={(e) => setApprovalCommentInput(e.target.value)}
+                          placeholder="예: 특이사항 확인 완료. 금형 예열 및 2라인 안전 작업 철저히 진행 바랍니다."
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium shadow-2xs"
+                        />
+
+                        {/* 빠른 선택 프리셋 버튼 */}
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {[
+                            "확인 완료. 수고하셨습니다.",
+                            "안전 작업 및 설비 점검 철저",
+                            "품질 치수 및 불량률 집중 관리",
+                            "납기 대응 일정 준수 바람"
+                          ].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => setApprovalCommentInput(preset)}
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 transition-all border border-slate-200/80 dark:border-slate-700 shadow-2xs"
+                            >
+                              + {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 하단 액션 버튼 */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleRejectLog(selectedLogDetail.id)}
+                          className="px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all"
+                        >
+                          보완요청 / 반려
+                        </button>
+                        <button
+                          onClick={() => handleApproveLog(selectedLogDetail.id, approvalCommentInput)}
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-lg shadow-emerald-500/25 active:scale-95 transition-all"
+                        >
+                          <CheckCheck className="w-4 h-4" />
+                          <span>내용 확인 & 코멘트 결재 승인 (도장 날인)</span>
+                        </button>
+                      </div>
+                    </>
                   ) : (
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    /* 이미 결재 완료된 경우 */
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-bold">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>정상 결재 승인된 일지입니다.</span>
+                      </div>
                       <button
                         onClick={() => handleRejectLog(selectedLogDetail.id)}
-                        className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-all"
                       >
-                        보완요청 / 반려
-                      </button>
-                      <button
-                        onClick={() => handleApproveLog(selectedLogDetail.id)}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-lg shadow-emerald-500/25 active:scale-95 transition-all"
-                      >
-                        <CheckCheck className="w-4 h-4" />
-                        <span>내용 확인 완료 및 결재 승인 (도장 날인)</span>
+                        결재 취소 / 반려
                       </button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-
-            {/* Meta Chips */}
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700">
-                <span className="text-[10px] font-semibold text-slate-400 block">담당 공정</span>
-                <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{selectedLogDetail.process || "-"}</p>
-              </div>
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700">
-                <span className="text-[10px] font-semibold text-slate-400 block">담당 라인 / 설비</span>
-                <p className="font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">{selectedLogDetail.line || "-"}</p>
-              </div>
-            </div>
-
-            {/* 1. 작업 내용 전문 */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <span>작업 내용 전문</span>
-              </span>
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
-                {selectedLogDetail.workContent || "작업 내용이 없습니다."}
-              </div>
-            </div>
-
-            {/* 2. 특이사항 및 전달사항 */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span>특이사항 및 전달사항</span>
-              </span>
-              <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
-                {selectedLogDetail.issues && selectedLogDetail.issues !== "특이사항 없음"
-                  ? selectedLogDetail.issues
-                  : "특이사항 없음 (정상 작업 완료)"}
-              </div>
             </div>
 
             {/* Footer Buttons */}

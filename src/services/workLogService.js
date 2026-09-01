@@ -30,6 +30,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "이명재",
     approverTitle: "이사",
     approvedAt: "2026-08-28 17:30",
+    approvalComment: "삼랑진 전체 라인 생산 수율 양호. 압출 2호기 보수 일정 준수 바랍니다.",
     createdAt: "2026-08-28 08:30"
   },
   {
@@ -48,6 +49,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "이명재",
     approverTitle: "이사",
     approvedAt: "2026-08-28 17:30",
+    approvalComment: "원료 공급 압력 및 수온 정상 확인. 교대 근무 시 안전 점검 철저.",
     createdAt: "2026-08-28 09:10"
   },
   {
@@ -66,6 +68,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "이명재",
     approverTitle: "이사",
     approvedAt: "2026-08-28 17:30",
+    approvalComment: "절단기 칼날 교체 상태 확인 완료. 치수 정밀도 지속 점검 요망.",
     createdAt: "2026-08-28 09:20"
   },
   {
@@ -84,6 +87,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "이명재",
     approverTitle: "이사",
     approvedAt: "2026-08-28 17:30",
+    approvalComment: "불량률 0.08% 양호. 고객사 출하 전 최종 성적서 확인 바람.",
     createdAt: "2026-08-28 08:45"
   },
   {
@@ -102,6 +106,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "",
     approverTitle: "",
     approvedAt: "",
+    approvalComment: "",
     createdAt: "2026-08-28 08:40"
   },
   {
@@ -120,6 +125,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "",
     approverTitle: "",
     approvedAt: "",
+    approvalComment: "",
     createdAt: "2026-08-28 08:35"
   },
   {
@@ -138,6 +144,7 @@ export const INITIAL_WORK_LOGS = [
     approverName: "김동욱",
     approverTitle: "책임",
     approvedAt: "2026-08-28 17:30",
+    approvalComment: "한림공장 사출 및 출하 수량 확인 완료. 금형 온도 지속 유지 바람.",
     createdAt: "2026-08-28 08:50"
   },
   {
