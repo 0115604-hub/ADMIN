@@ -59,10 +59,62 @@ import { parseExcelFile } from "../utils/excelHelper";
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, TPE 1호, PVC)
 const EXTRUSION_SUMMARY = [
-  { line: "PCM 1호", minutes: 45, opRatio: "98.1", reason: "형교환", monthCumulative: 180 },
-  { line: "PCM 3호", minutes: 30, opRatio: "98.7", reason: "형교환", monthCumulative: 140 },
-  { line: "TPE 1호", minutes: 40, opRatio: "98.3", reason: "형교환", monthCumulative: 135 },
-  { line: "PVC", minutes: 25, opRatio: "98.9", reason: "승온대기", monthCumulative: 105 }
+  {
+    line: "PCM 1호",
+    minutes: 45,
+    opRatio: "98.1",
+    reason: "형교환",
+    monthCumulative: 180,
+    hours: "3.0h",
+    weeklyTrend: [
+      { week: "1주", min: 45 },
+      { week: "2주", min: 45 },
+      { week: "3주", min: 45 },
+      { week: "4주", min: 45 }
+    ]
+  },
+  {
+    line: "PCM 3호",
+    minutes: 30,
+    opRatio: "98.7",
+    reason: "형교환",
+    monthCumulative: 140,
+    hours: "2.3h",
+    weeklyTrend: [
+      { week: "1주", min: 35 },
+      { week: "2주", min: 40 },
+      { week: "3주", min: 35 },
+      { week: "4주", min: 30 }
+    ]
+  },
+  {
+    line: "TPE 1호",
+    minutes: 40,
+    opRatio: "98.3",
+    reason: "형교환",
+    monthCumulative: 135,
+    hours: "2.3h",
+    weeklyTrend: [
+      { week: "1주", min: 30 },
+      { week: "2주", min: 35 },
+      { week: "3주", min: 30 },
+      { week: "4주", min: 40 }
+    ]
+  },
+  {
+    line: "PVC",
+    minutes: 25,
+    opRatio: "98.9",
+    reason: "승온대기",
+    monthCumulative: 105,
+    hours: "1.8h",
+    weeklyTrend: [
+      { week: "1주", min: 25 },
+      { week: "2주", min: 30 },
+      { week: "3주", min: 25 },
+      { week: "4주", min: 25 }
+    ]
+  }
 ];
 
 // Quality 4 Core Items Summary (Sorted by Inspection Volume)
@@ -677,9 +729,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 (컴팩트 뷰) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
+      {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 (라인별 반분할 타일: 좌측 총누적 / 우측 주차별) */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600">
@@ -701,38 +754,55 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        {/* 8월 누적 바 */}
-        <div className="bg-slate-900 text-white rounded-xl px-3 py-1.5 border border-slate-800 flex flex-wrap items-center justify-between gap-1 text-[11px]">
-          <span className="text-amber-400 font-bold text-[10px] sm:text-xs">8월 누적 비가동:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {EXTRUSION_SUMMARY.map((ex) => (
-              <span key={ex.line} className="px-2 py-0.5 rounded bg-slate-800 text-[10px] font-bold">
-                <span className="text-slate-300">{ex.line}:</span> <strong className="text-rose-400">{ex.monthCumulative}분</strong>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* 4 Equipment Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {/* 4 Line Tiles - Split in Half: Left (총 누적시간) & Right (주차별 비가동시간) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
           {EXTRUSION_SUMMARY.map((ex) => (
             <div
               key={ex.line}
-              className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex flex-col justify-between"
+              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-600 transition-all shadow-2xs"
             >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-xs text-slate-900 dark:text-white">{ex.line}</span>
-                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+              {/* Tile Top: Line Name & Operation Ratio */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span className="font-black text-xs text-slate-900 dark:text-white">{ex.line}</span>
+                </div>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
                   가동률 {ex.opRatio}%
                 </span>
               </div>
-              <div className="flex items-baseline justify-between mt-1">
-                <span className="text-base font-black text-slate-900 dark:text-white">
-                  {ex.minutes}<span className="text-[10px] font-normal text-slate-400 ml-0.5">분</span>
-                </span>
-                <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold">
-                  {ex.reason}
-                </span>
+
+              {/* Half-Split Body: Left (총누적시간) & Right (주차별 비가동시간) */}
+              <div className="grid grid-cols-2 gap-2 pt-2.5 items-center">
+                {/* Left Side: 총 누적 시간 */}
+                <div className="flex flex-col justify-center pr-2 border-r border-slate-200/70 dark:border-slate-700/70">
+                  <span className="text-[10px] font-bold text-slate-400">총 누적시간</span>
+                  <div className="flex items-baseline gap-0.5 mt-0.5">
+                    <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
+                      {ex.monthCumulative}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">분</span>
+                  </div>
+                  <span className="text-[9.5px] text-slate-400 font-medium truncate mt-0.5" title={`${ex.hours} • ${ex.reason}`}>
+                    {ex.hours} • {ex.reason}
+                  </span>
+                </div>
+
+                {/* Right Side: 주차별 비가동시간 */}
+                <div className="flex flex-col justify-center space-y-1 pl-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 mb-0.5">주차별 시간</span>
+                  <div className="grid grid-cols-2 gap-1 text-[9.5px]">
+                    {ex.weeklyTrend.map((w) => (
+                      <div
+                        key={w.week}
+                        className="flex items-center justify-between px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-700/60"
+                      >
+                        <span className="text-slate-400 font-bold">{w.week}</span>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200">{w.min}분</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           ))}
