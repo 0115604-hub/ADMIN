@@ -35,7 +35,15 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
-import { getWorkLogs, saveWorkLog, deleteWorkLog, subscribeWorkLogs } from "../services/workLogService";
+import {
+  getWorkLogs,
+  saveWorkLog,
+  deleteWorkLog,
+  subscribeWorkLogs,
+  approveWorkLog,
+  batchApproveWorkLogs,
+  rejectWorkLog
+} from "../services/workLogService";
 import { parseExcelFile } from "../utils/excelHelper";
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, TPE 1호, PVC)
@@ -108,12 +116,34 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
 
+  // General Manager Identification
+  const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
+  const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
+  const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
+
+  // Plant-specific approval authority
+  const canApproveSamrangjin = isMyeongjae || (currentProfile?.plant === "삼랑진공장" && currentProfile?.assignedProcess === "총괄관리") || isAdmin;
+  const canApproveHallim = isDongwook || (currentProfile?.plant === "한림공장" && currentProfile?.assignedProcess === "총괄관리") || isAdmin;
+
+  const canApproveLog = (log) => {
+    if (!log) return false;
+    if (isAdmin) return true;
+    if (log.plant === "삼랑진공장" && canApproveSamrangjin) return true;
+    if (log.plant === "한림공장" && canApproveHallim) return true;
+    return false;
+  };
+
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterPlant, setFilterPlant] = useState("all");
+  const [filterPlant, setFilterPlant] = useState(() => {
+    if (isMyeongjae) return "삼랑진공장";
+    if (isDongwook) return "한림공장";
+    return "all";
+  });
   const [logSavedToast, setLogSavedToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("업무일지가 저장되었습니다.");
 
   // Injoo's Excel Upload State
   const fileInputRef = useRef(null);
@@ -153,8 +183,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (currentProfile.assignedProcess || prev.process || "가공동 관리"),
         line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : prev.line
       }));
+
+      // Automatically focus on manager's dedicated plant
+      if (isMyeongjae) setFilterPlant("삼랑진공장");
+      else if (isDongwook) setFilterPlant("한림공장");
     }
-  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isQualityWorker]);
+  }, [currentProfile, isOperator, workerFullName, workerPlant, assignedProcess, isInjoo, isQualityWorker, isMyeongjae, isDongwook]);
 
   // Real-time Cloud Synchronization for Work Logs across all mobile phones & PCs
   useEffect(() => {
@@ -163,6 +197,70 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Pending Approvals Count for General Managers
+  const pendingSamrangjinCount = useMemo(() => {
+    return workLogs.filter((l) => l.plant === "삼랑진공장" && l.approvalStatus !== "결재완료").length;
+  }, [workLogs]);
+
+  const pendingHallimCount = useMemo(() => {
+    return workLogs.filter((l) => l.plant === "한림공장" && l.approvalStatus !== "결재완료").length;
+  }, [workLogs]);
+
+  // Approval Handlers
+  const handleApproveLog = async (logId, comment = "확인 및 전자결재 승인 완료") => {
+    const approver = {
+      name: currentProfile?.name || "총괄관리자",
+      title: currentProfile?.title || "이사",
+      plant: currentProfile?.plant || "",
+      comment
+    };
+    const updated = await approveWorkLog(logId, approver);
+    setWorkLogs(updated);
+    if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
+      setSelectedLogDetail(updated.find((l) => String(l.id) === String(logId)) || null);
+    }
+    setToastMessage("결재가 정상적으로 승인 처리되었습니다.");
+    setLogSavedToast(true);
+    setTimeout(() => setLogSavedToast(false), 3000);
+  };
+
+  const handleBatchApprove = async (plantName) => {
+    const targetIds = workLogs.filter((l) => l.plant === plantName && l.approvalStatus !== "결재완료").map((l) => l.id);
+    if (targetIds.length === 0) return;
+    if (!window.confirm(`${plantName} 결재 대기 ${targetIds.length}건을 일괄 결재 승인하시겠습니까?`)) return;
+
+    const approver = {
+      name: currentProfile?.name || "총괄관리자",
+      title: currentProfile?.title || "이사",
+      plant: currentProfile?.plant || plantName,
+      comment: "일괄 확인 및 전자결재 승인 완료"
+    };
+    const updated = await batchApproveWorkLogs(targetIds, approver);
+    setWorkLogs(updated);
+    setToastMessage(`${plantName} ${targetIds.length}건이 일괄 결재 완료되었습니다.`);
+    setLogSavedToast(true);
+    setTimeout(() => setLogSavedToast(false), 3000);
+  };
+
+  const handleRejectLog = async (logId) => {
+    const reason = window.prompt("반려 사유 또는 보완 요청 사항을 입력해주세요:", "내용 보완 후 재상신 요망");
+    if (!reason) return;
+
+    const approver = {
+      name: currentProfile?.name || "총괄관리자",
+      title: currentProfile?.title || "이사",
+      plant: currentProfile?.plant || ""
+    };
+    const updated = await rejectWorkLog(logId, approver, reason);
+    setWorkLogs(updated);
+    if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
+      setSelectedLogDetail(updated.find((l) => String(l.id) === String(logId)) || null);
+    }
+    setToastMessage("업무일지가 반려 처리되었습니다.");
+    setLogSavedToast(true);
+    setTimeout(() => setLogSavedToast(false), 3000);
+  };
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
@@ -596,9 +694,96 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 5. ⭐ [5위치] 일일업무일지 현황 (한줄 표시 • 주석 삭제 • 맨밑 작성 버튼) */}
+      {/* 5. ⭐ [5위치] 일일업무일지 현황 (공장별 총괄관리자 확인 및 전자결재 지원) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+        {/* Manager Dedicated Alert Banners */}
+        {isMyeongjae && pendingSamrangjinCount > 0 && (
+          <div className="p-3.5 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                결재
+              </div>
+              <div>
+                <p className="font-extrabold text-xs text-amber-900 dark:text-amber-200">
+                  👑 [이명재 총괄이사 전용] 삼랑진공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingSamrangjinCount}건</strong> 있습니다.
+                </p>
+                <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">
+                  삼랑진 작업자들의 일일 업무 내용을 확인하시고 [일괄 결재] 또는 행별 결재를 진행해 주세요.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleBatchApprove("삼랑진공장")}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-md shadow-amber-500/20 active:scale-95 transition-all shrink-0"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span>삼랑진 일괄 결재 ({pendingSamrangjinCount}건)</span>
+            </button>
+          </div>
+        )}
+
+        {isDongwook && pendingHallimCount > 0 && (
+          <div className="p-3.5 rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                결재
+              </div>
+              <div>
+                <p className="font-extrabold text-xs text-emerald-900 dark:text-emerald-200">
+                  👑 [김동욱 총괄책임 전용] 한림공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingHallimCount}건</strong> 있습니다.
+                </p>
+                <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                  한림 작업자들의 일일 업무 내용을 확인하시고 [일괄 결재] 또는 행별 결재를 진행해 주세요.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => handleBatchApprove("한림공장")}
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span>한림 일괄 결재 ({pendingHallimCount}건)</span>
+            </button>
+          </div>
+        )}
+
+        {isAdmin && (pendingSamrangjinCount > 0 || pendingHallimCount > 0) && (
+          <div className="p-3.5 rounded-2xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
+                ADMIN
+              </div>
+              <div>
+                <p className="font-extrabold text-xs text-blue-900 dark:text-blue-200">
+                  [관리자 결재 현황] 삼랑진 <strong className="text-blue-600 dark:text-blue-400">{pendingSamrangjinCount}건</strong> • 한림 <strong className="text-emerald-600 dark:text-emerald-400">{pendingHallimCount}건</strong> 결재 대기중
+                </p>
+                <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-0.5">
+                  전체 공장 업무일지를 검토하고 즉시 승인 및 관리할 수 있습니다.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {pendingSamrangjinCount > 0 && (
+                <button
+                  onClick={() => handleBatchApprove("삼랑진공장")}
+                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shadow-xs active:scale-95 transition-all"
+                >
+                  삼랑진 일괄승인
+                </button>
+              )}
+              {pendingHallimCount > 0 && (
+                <button
+                  onClick={() => handleBatchApprove("한림공장")}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-xs active:scale-95 transition-all"
+                >
+                  한림 일괄승인
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600">
@@ -616,30 +801,31 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200"
             >
               <option value="all">전체 ({workLogs.length})</option>
-              <option value="삼랑진공장">삼랑진</option>
-              <option value="한림공장">한림</option>
+              <option value="삼랑진공장">삼랑진 ({workLogs.filter((l) => l.plant === "삼랑진공장").length})</option>
+              <option value="한림공장">한림 ({workLogs.filter((l) => l.plant === "한림공장").length})</option>
             </select>
           </div>
         </div>
 
         {/* 한줄 리스트 테이블 */}
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[700px]">
+          <table className="w-full text-xs text-left border-collapse table-fixed min-w-[760px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-8 text-[11px]">
-                <th className="py-1.5 px-2 w-[11%] text-center">일자</th>
-                <th className="py-1.5 px-2 w-[9%] text-center">공장</th>
-                <th className="py-1.5 px-2 w-[12%]">작성자</th>
-                <th className="py-1.5 px-2 w-[16%]">라인/공정</th>
-                <th className="py-1.5 px-2 w-[35%]">작업 내용</th>
-                <th className="py-1.5 px-2 w-[13%]">특이사항</th>
+                <th className="py-1.5 px-2 w-[10%] text-center">일자</th>
+                <th className="py-1.5 px-2 w-[8%] text-center">공장</th>
+                <th className="py-1.5 px-2 w-[11%]">작성자</th>
+                <th className="py-1.5 px-2 w-[14%]">라인/공정</th>
+                <th className="py-1.5 px-2 w-[31%]">작업 내용</th>
+                <th className="py-1.5 px-2 w-[11%]">특이사항</th>
+                <th className="py-1.5 px-2 w-[11%] text-center">결재 현황</th>
                 <th className="py-1.5 px-1 w-[4%] text-center"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-6 text-center text-slate-400 font-bold text-xs">
+                  <td colSpan="8" className="py-6 text-center text-slate-400 font-bold text-xs">
                     등록된 일일업무일지가 없습니다.
                   </td>
                 </tr>
@@ -649,7 +835,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     key={log.id}
                     onClick={() => setSelectedLogDetail(log)}
                     className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-10 group text-[11px]"
-                    title="클릭하여 상세내용 보기"
+                    title="클릭하여 상세내용 및 전자결재 날인 보기"
                   >
                     <td className="py-1.5 px-2 text-center font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
                       {log.date.slice(5)} ({log.shift})
@@ -675,6 +861,34 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <td className="py-1.5 px-2 text-slate-500 dark:text-slate-400 truncate" title={log.issues || "-"}>
                       {log.issues && log.issues !== "특이사항 없음" ? log.issues : "-"}
                     </td>
+
+                    {/* 결재 상태 열 */}
+                    <td className="py-1.5 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      {log.approvalStatus === "결재완료" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" title={`결재자: ${log.approverName || "관리자"} ${log.approverTitle || ""} (${log.approvedAt || ""})`}>
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                          <span>{log.approverName || (log.plant === "한림공장" ? "김동욱" : "이명재")} {log.approverTitle || "결재"}</span>
+                        </span>
+                      ) : log.approvalStatus === "반려" ? (
+                        <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200">
+                          반려됨
+                        </span>
+                      ) : canApproveLog(log) ? (
+                        <button
+                          onClick={() => handleApproveLog(log.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black shadow-xs active:scale-95 transition-all"
+                          title="클릭하여 즉시 전자결재 승인"
+                        >
+                          <CheckCheck className="w-3 h-3" />
+                          <span>결재</span>
+                        </button>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                          결재대기
+                        </span>
+                      )}
+                    </td>
+
                     <td className="py-1.5 px-1 text-center">
                       {(currentProfile?.name === log.writer || isAdmin) && (
                         <button
@@ -696,10 +910,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </table>
         </div>
 
-        {/* ⭐ [사용자 요청] 전체 내용을 다 읽은 후 맨 밑에서 작성하는 업무일지 등록 버튼 */}
+        {/* 하단 설명 및 업무일지 등록 버튼 */}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
-            💡 목록의 행을 탭(클릭)하면 작업 내용 및 특이사항 상세보기가 열립니다.
+            💡 행을 탭(클릭)하면 작업 세부 내용과 전자결재 도장 날인 현황을 확인할 수 있습니다.
           </span>
           <button
             onClick={() => setIsModalOpen(true)}
@@ -711,7 +925,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       </div>
 
-      {/* Work Log Detail View Modal (상세내용보기 모달) */}
+      {/* Work Log Detail View Modal (상세내용보기 & 전자결재 모달) */}
       {selectedLogDetail && (
         <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-6 animate-scaleUp">
@@ -748,6 +962,93 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Electronic Approval Stamp / Status Section (전자결재 날인란) */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>공장 총괄관리자 전자결재 날인란</span>
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                  selectedLogDetail.approvalStatus === "결재완료"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : selectedLogDetail.approvalStatus === "반려"
+                    ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                }`}>
+                  {selectedLogDetail.approvalStatus === "결재완료" ? "결재완료 (승인됨)" : selectedLogDetail.approvalStatus === "반려" ? "반려됨" : "결재 대기중"}
+                </span>
+              </div>
+
+              {/* Approval Stamp Badges */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                {/* 1. 작성자 날인 */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center">
+                  <span className="text-[10px] text-slate-400 font-bold block mb-1">작성자 제출</span>
+                  <div className="inline-block border-2 border-blue-600 text-blue-600 rounded-xl px-3 py-1 font-black text-xs font-serif tracking-wider">
+                    {selectedLogDetail.writer} [인]
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1 font-mono">{selectedLogDetail.createdAt || selectedLogDetail.date}</p>
+                </div>
+
+                {/* 2. 총괄관리자 결재 도장 */}
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-center">
+                  <span className="text-[10px] text-slate-400 font-bold block mb-1">
+                    {selectedLogDetail.plant === "한림공장" ? "한림 총괄 (김동욱 책임)" : "삼랑진 총괄 (이명재 이사)"} 결재
+                  </span>
+                  {selectedLogDetail.approvalStatus === "결재완료" ? (
+                    <div className="animate-scaleUp">
+                      <div className="inline-block border-2 border-rose-600 text-rose-600 rounded-xl px-3 py-1 font-black text-xs font-serif tracking-wider shadow-xs">
+                        {selectedLogDetail.approverName || (selectedLogDetail.plant === "한림공장" ? "김동욱" : "이명재")} [결재]
+                      </div>
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 font-mono">
+                        {selectedLogDetail.approvedAt || "승인완료"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="py-0.5">
+                      <div className="inline-block border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 rounded-xl px-3 py-1 font-bold text-xs">
+                        결재 대기
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        {selectedLogDetail.plant === "한림공장" ? "김동욱 책임" : "이명재 이사"} 결재 대기
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Manager Approval Actions */}
+              {canApproveLog(selectedLogDetail) && (
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
+                  {selectedLogDetail.approvalStatus === "결재완료" ? (
+                    <button
+                      onClick={() => handleRejectLog(selectedLogDetail.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-all"
+                    >
+                      결재 취소 / 반려
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => handleRejectLog(selectedLogDetail.id)}
+                        className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-all"
+                      >
+                        반려
+                      </button>
+                      <button
+                        onClick={() => handleApproveLog(selectedLogDetail.id)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all"
+                      >
+                        <CheckCheck className="w-4 h-4" />
+                        <span>전자결재 승인 (도장 날인)</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Meta Chips */}

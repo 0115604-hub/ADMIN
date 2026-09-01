@@ -26,6 +26,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "삼랑진공장 9BQC 및 DT 라인 총괄 점검, 8월 출하 일정 및 생산 수율(99.2%) 점검 완료",
     issues: "압출 2호기 정기 보수 점검 일정 협의 완료",
     status: "완료",
+    approvalStatus: "결재완료",
+    approverName: "이명재",
+    approverTitle: "이사",
+    approvedAt: "2026-08-28 17:30",
     createdAt: "2026-08-28 08:30"
   },
   {
@@ -40,6 +44,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "압출동 EPDM/TPE 원료 공급 압력 점검 및 압출 1호기 금형 예열 점검 (생산량 4,200M 달성)",
     issues: "압출 냉각 수온 정상 유지, 온도 편차 없음",
     status: "완료",
+    approvalStatus: "결재완료",
+    approverName: "이명재",
+    approverTitle: "이사",
+    approvedAt: "2026-08-28 17:30",
     createdAt: "2026-08-28 09:10"
   },
   {
@@ -54,6 +62,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "가공동 9BQC 웨더스트립 절단 및 피팅 가공 라인 생산량 점검 (2,400개 가공 완료)",
     issues: "2호 절단기 칼날 마모 점검 후 교체 완료",
     status: "완료",
+    approvalStatus: "결재완료",
+    approverName: "이명재",
+    approverTitle: "이사",
+    approvedAt: "2026-08-28 17:30",
     createdAt: "2026-08-28 09:20"
   },
   {
@@ -68,6 +80,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "9BQC 전용 부품 품질 전수 검사 및 치수 측정 완료 (불량률 0.08% 양호)",
     issues: "특이사항 없음 (고객사 검사 기준 적합)",
     status: "완료",
+    approvalStatus: "결재완료",
+    approverName: "이명재",
+    approverTitle: "이사",
+    approvedAt: "2026-08-28 17:30",
     createdAt: "2026-08-28 08:45"
   },
   {
@@ -82,6 +98,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "가공동 조립 및 포장 라인 공정 점검, DT 수출품 포장 1,800개 검사 완료",
     issues: "원자재/부자재 라벨 부착 상태 전수 양호",
     status: "완료",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
+    approvedAt: "",
     createdAt: "2026-08-28 08:40"
   },
   {
@@ -96,6 +116,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "8월 매입매출 전표 마감 및 홈택스 매입전자세금계산서 전산 분류 정리 완료",
     issues: "특이사항 없음 (정상 마감)",
     status: "완료",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
+    approvedAt: "",
     createdAt: "2026-08-28 08:35"
   },
   {
@@ -110,6 +134,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "한림공장 EPDM 사출 및 가공동 공정 총괄 점검 (3,200개 출하 검사 완료)",
     issues: "금형 온도 145도 정상 유지, 품질 이상 없음",
     status: "완료",
+    approvalStatus: "결재완료",
+    approverName: "김동욱",
+    approverTitle: "책임",
+    approvedAt: "2026-08-28 17:30",
     createdAt: "2026-08-28 08:50"
   },
   {
@@ -124,6 +152,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "가공동 코너 몰딩 사출품 후가공 및 다듬질 작업 완료 (목표 1,500개 달성)",
     issues: "사출 버(Burr) 제거 지그 교체 완료",
     status: "완료",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
+    approvedAt: "",
     createdAt: "2026-08-28 08:55"
   },
   {
@@ -138,6 +170,10 @@ export const INITIAL_WORK_LOGS = [
     workContent: "가공동 완제품 조립 및 박스 포장 라인 가동 (1,200BOX 적재 완료)",
     issues: "지게차 일일 안전점검 완료",
     status: "완료",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
+    approvedAt: "",
     createdAt: "2026-08-28 09:05"
   },
   {
@@ -152,12 +188,34 @@ export const INITIAL_WORK_LOGS = [
     workContent: "JA/HR G-RUN 외관 불량 및 수포 검사 진행, 치수 균일도 전수 검사 완료",
     issues: "특이사항 없음",
     status: "완료",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
+    approvedAt: "",
     createdAt: "2026-08-29 09:00"
+  },
+  {
+    id: "11",
+    date: "2026-08-29",
+    plant: "삼랑진공장",
+    writer: "전재율",
+    title: "책임",
+    process: "설비보전",
+    shift: "주간",
+    line: "설비보전실 / 전라인",
+    workContent: "삼랑진공장 압출 1~3호기 모터 구동축 베어링 급유 및 가공 2라인 절단기 에어 실린더 점검 완료",
+    issues: "압출 2호기 유압 펌프 필터 교체 예정",
+    status: "완료",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
+    approvedAt: "",
+    createdAt: "2026-08-29 09:15"
   }
 ];
 
 const COLLECTION_NAME = "work_logs";
-const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v4_firestore";
+const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v5_approval";
 
 // Deep clean object for Firestore
 function sanitizeLog(obj) {
@@ -337,4 +395,137 @@ export const deleteWorkLog = async (id) => {
   }
 
   return filteredLocal;
+};
+
+// Approve a work log (by plant general manager or admin)
+export const approveWorkLog = async (id, approver = {}) => {
+  const logId = String(id);
+  const current = getLocalWorkLogs();
+  const target = current.find((l) => String(l.id) === logId);
+  if (!target) return current;
+
+  const nowFormatted = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  const approvalData = {
+    approvalStatus: "결재완료",
+    approverName: approver.name || "총괄관리자",
+    approverTitle: approver.title || "이사",
+    approverPlant: approver.plant || target.plant,
+    approvedAt: nowFormatted,
+    approvalComment: approver.comment || "확인 및 전자결재 승인 완료"
+  };
+
+  const updatedLog = {
+    ...target,
+    ...approvalData,
+    updatedAt: new Date().toISOString()
+  };
+
+  const updatedLocal = current.map((l) => (String(l.id) === logId ? updatedLog : l));
+  saveLocalWorkLogs(updatedLocal);
+
+  try {
+    await setDoc(doc(db, COLLECTION_NAME, logId), sanitizeLog(updatedLog), { merge: true });
+    console.log("Work log approved & synced to Firestore:", logId);
+  } catch (e) {
+    console.error("Firestore approve sync error:", e);
+  }
+
+  return updatedLocal;
+};
+
+// Batch approve multiple work logs for a plant
+export const batchApproveWorkLogs = async (logIds, approver = {}) => {
+  if (!Array.isArray(logIds) || logIds.length === 0) return getLocalWorkLogs();
+
+  const current = getLocalWorkLogs();
+  const nowFormatted = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  const approvalData = {
+    approvalStatus: "결재완료",
+    approverName: approver.name || "총괄관리자",
+    approverTitle: approver.title || "이사",
+    approverPlant: approver.plant || "",
+    approvedAt: nowFormatted,
+    approvalComment: approver.comment || "일괄 확인 및 전자결재 승인 완료"
+  };
+
+  const targetIds = logIds.map(String);
+  const updatedLocal = current.map((l) => {
+    if (targetIds.includes(String(l.id))) {
+      return { ...l, ...approvalData, updatedAt: new Date().toISOString() };
+    }
+    return l;
+  });
+
+  saveLocalWorkLogs(updatedLocal);
+
+  try {
+    const batch = writeBatch(db);
+    targetIds.forEach((id) => {
+      const docRef = doc(db, COLLECTION_NAME, id);
+      batch.set(docRef, sanitizeLog({ ...approvalData, updatedAt: new Date().toISOString() }), { merge: true });
+    });
+    await batch.commit();
+    console.log("Batch work logs approved in Firestore:", targetIds.length);
+  } catch (e) {
+    console.error("Firestore batch approve error:", e);
+  }
+
+  return updatedLocal;
+};
+
+// Reject / Return a work log for revision
+export const rejectWorkLog = async (id, approver = {}, reason = "보완 후 재상신 요망") => {
+  const logId = String(id);
+  const current = getLocalWorkLogs();
+  const target = current.find((l) => String(l.id) === logId);
+  if (!target) return current;
+
+  const nowFormatted = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  const rejectionData = {
+    approvalStatus: "반려",
+    approverName: approver.name || "총괄관리자",
+    approverTitle: approver.title || "이사",
+    approverPlant: approver.plant || target.plant,
+    approvedAt: nowFormatted,
+    approvalComment: reason
+  };
+
+  const updatedLog = {
+    ...target,
+    ...rejectionData,
+    updatedAt: new Date().toISOString()
+  };
+
+  const updatedLocal = current.map((l) => (String(l.id) === logId ? updatedLog : l));
+  saveLocalWorkLogs(updatedLocal);
+
+  try {
+    await setDoc(doc(db, COLLECTION_NAME, logId), sanitizeLog(updatedLog), { merge: true });
+    console.log("Work log rejected in Firestore:", logId);
+  } catch (e) {
+    console.error("Firestore reject sync error:", e);
+  }
+
+  return updatedLocal;
 };
