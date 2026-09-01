@@ -54,26 +54,31 @@ export const VehicleSalesView = () => {
 
   // Filter Vehicles
   const filteredVehicles = useMemo(() => {
+    if (!vehicleSales || !Array.isArray(vehicleSales)) return [];
     return vehicleSales.filter((v) => {
+      if (!v) return false;
+      const groupName = v.vehicleGroup || "";
+      const details = Array.isArray(v.details) ? v.details : [];
       const matchSearch =
-        v.vehicleGroup.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        v.details.some(
+        groupName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        details.some(
           (d) =>
-            d.partName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            d.partNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            d.itemCode.toLowerCase().includes(searchTerm.toLowerCase())
+            (d.partName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (d.partNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (d.itemCode || "").toLowerCase().includes(searchTerm.toLowerCase())
         );
 
+      const category = v.category || "";
       const matchProcess =
         selectedProcess === "all" ||
-        v.category.includes(selectedProcess) ||
-        v.details.some((d) => d.process.includes(selectedProcess));
+        category.includes(selectedProcess) ||
+        details.some((d) => (d.process || "").includes(selectedProcess));
 
       return matchSearch && matchProcess;
     });
   }, [vehicleSales, searchTerm, selectedProcess]);
 
-  const totalFilteredAmount = filteredVehicles.reduce((acc, cur) => acc + cur.totalAmount, 0);
+  const totalFilteredAmount = filteredVehicles.reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
 
   return (
     <div className="space-y-5 animate-fadeIn pb-12">

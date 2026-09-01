@@ -45,14 +45,15 @@ export const MaterialPurchaseView = () => {
 
   // Filtered detail items
   const filteredDetailItems = useMemo(() => {
-    if (!activeGroup) return [];
+    if (!activeGroup || !Array.isArray(activeGroup.items)) return [];
     return activeGroup.items.filter((item) => {
+      if (!item) return false;
       const matchSearch =
-        item.partName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.usage.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.memo.toLowerCase().includes(searchTerm.toLowerCase());
+        (item.partName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.code || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.supplier || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.usage || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.memo || "").toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchSupplier =
         supplierFilter === "all" || item.supplier === supplierFilter;
@@ -61,7 +62,7 @@ export const MaterialPurchaseView = () => {
     });
   }, [activeGroup, searchTerm, supplierFilter]);
 
-  const filteredDetailTotal = filteredDetailItems.reduce((acc, cur) => acc + cur.amount, 0);
+  const filteredDetailTotal = filteredDetailItems.reduce((acc, cur) => acc + (cur.amount || 0), 0);
 
   // Export CSV
   const handleExportCSV = () => {
