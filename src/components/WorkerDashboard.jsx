@@ -45,7 +45,7 @@ import {
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
-import { getLocalAccessLogs } from "../services/accessLogService";
+import { getLocalAccessLogs, subscribeAccessLogs } from "../services/accessLogService";
 import {
   getWorkLogs,
   saveWorkLog,
@@ -242,6 +242,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // Access Logs State for ADMIN
   const [selectedWorkerForLogs, setSelectedWorkerForLogs] = useState(null);
   const [accessLogs, setAccessLogs] = useState(() => getLocalAccessLogs());
+
+  // Real-time Cloud Synchronization for Access Logs
+  useEffect(() => {
+    const unsub = subscribeAccessLogs((logs) => {
+      setAccessLogs(logs);
+    });
+    return () => unsub();
+  }, []);
 
   const handleOpenWorkerLogs = (worker) => {
     const freshLogs = getLocalAccessLogs();
@@ -1286,14 +1294,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                         {/* Recent Access Badge */}
                         <div className="w-full pt-1.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px]">
-                          <span className="inline-flex items-center gap-1 font-bold text-slate-600 dark:text-slate-300">
-                            {isMobile ? (
-                              <Smartphone className="w-3 h-3 text-emerald-500 shrink-0" />
-                            ) : (
-                              <Laptop className="w-3 h-3 text-blue-500 shrink-0" />
-                            )}
-                            <span>{lastLog?.timestamp ? lastLog.timestamp.slice(5, 16) : "미접속"}</span>
-                          </span>
+                          {lastLog ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-slate-700 dark:text-slate-200">
+                              {isMobile ? (
+                                <Smartphone className="w-3 h-3 text-emerald-500 shrink-0" />
+                              ) : (
+                                <Laptop className="w-3 h-3 text-blue-500 shrink-0" />
+                              )}
+                              <span>{lastLog.timestamp ? lastLog.timestamp.slice(5, 16) : ""}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 font-medium text-slate-400">
+                              <Clock className="w-3 h-3 text-slate-300 dark:text-slate-600 shrink-0" />
+                              <span>미접속</span>
+                            </span>
+                          )}
                           <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
                             기록 →
                           </span>
@@ -1611,8 +1626,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             {/* Access Logs List */}
             <div className="space-y-2.5 max-h-[440px] overflow-y-auto pr-1">
               {!(accessLogs[selectedWorkerForLogs.id]?.length > 0) ? (
-                <div className="py-12 text-center text-slate-400 font-bold text-xs">
-                  접속 기록이 없습니다.
+                <div className="py-12 px-4 text-center space-y-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-500">
+                    <History className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-black text-sm text-slate-800 dark:text-slate-200">
+                      등록된 실시간 접속 기록이 없습니다.
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      이 시점 이후 해당 작업자({selectedWorkerForLogs.name} {selectedWorkerForLogs.title})가 모바일 또는 PC로 로그인하면 접속 일시와 기기 정보가 자동 기록됩니다.
+                    </p>
+                  </div>
                 </div>
               ) : (
                 accessLogs[selectedWorkerForLogs.id].map((entry, idx) => (
