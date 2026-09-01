@@ -117,7 +117,7 @@ const HANLIM_OVERTIME = {
 
 export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const { currentProfile, isOperator, isAdmin } = useAuth();
-  const { selectedMonth, currentMonthData, uploadMonthlyData } = useMonth();
+  const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth } = useMonth();
   const { formatAmount } = useCurrency();
 
   const workerPlant = currentProfile?.plant || "삼랑진공장";
@@ -278,7 +278,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [leaveForm, setLeaveForm] = useState({
     startDate: new Date().toISOString().split("T")[0],
     endDate: new Date().toISOString().split("T")[0],
-    leaveType: "연차",
+    leaveType: "연차(전일)",
     reason: ""
   });
   const [leaveSaving, setLeaveSaving] = useState(false);
@@ -304,7 +304,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleRegisterLeave = async (e) => {
     e.preventDefault();
     if (!leaveForm.startDate) {
-      alert("시작일자를 선택해 주세요.");
+      alert("일자를 선택해 주세요.");
       return;
     }
     setLeaveSaving(true);
@@ -317,20 +317,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         startDate: leaveForm.startDate,
         endDate: leaveForm.endDate || leaveForm.startDate,
         leaveType: leaveForm.leaveType,
-        reason: leaveForm.reason || "개인 사유"
+        reason: leaveForm.reason || leaveForm.leaveType
       };
       await saveAnnualLeave(newLeave);
-      setToastMessage("연차 일정이 정상적으로 등록되었습니다.");
+      setToastMessage(`${leaveForm.leaveType} 일정이 정상적으로 등록되었습니다.`);
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setLeaveForm({
         startDate: new Date().toISOString().split("T")[0],
         endDate: new Date().toISOString().split("T")[0],
-        leaveType: "연차",
+        leaveType: "연차(전일)",
         reason: ""
       });
     } catch (err) {
-      alert("연차 등록 중 오류 발생: " + err.message);
+      alert("일정 등록 중 오류 발생: " + err.message);
     } finally {
       setLeaveSaving(false);
     }
@@ -521,61 +521,57 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   return (
     <div className="space-y-3 sm:space-y-3.5 animate-fadeIn pb-20 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
-      {/* 🌟 [상단] 작업자 정보 (**공장 ***직위) & 간편 연차사용일 지정 */}
+      {/* 🌟 [상단] 월 선택 & 일정/연차 구분 간편 지정 바 */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Left: Plant Badge, Worker Name, Title, and Process */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black shadow-xs ${
-              workerPlant === "한림공장"
-                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
-            }`}>
-              <Factory className="w-3.5 h-3.5" />
-              <span>{workerPlant}</span>
-            </span>
-
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                {workerFullName}
-              </span>
-              <span className="text-xs sm:text-sm font-extrabold text-slate-500 dark:text-slate-400">
-                {officialTitle}
-              </span>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Left: 조회 월 선택 드롭다운 & 현재 상태 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+              <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">조회 월:</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => changeMonth(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+              >
+                {(availableMonths || [selectedMonth]).map((ym) => {
+                  const parts = ym.split("-");
+                  const isLatest = ym === (availableMonths?.[0] || ym);
+                  return (
+                    <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                      {parts[0]}년 {parts[1]}월 {isLatest ? "(당월)" : ""}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
 
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
-              {isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess}
-            </span>
-
-            {/* Active/Scheduled Badge */}
+            {/* If today has active or upcoming status for current worker, display badge */}
             {myLeaveStatus?.status === "ACTIVE" ? (
-              <span className="px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-black text-xs shadow-xs animate-pulse flex items-center gap-1">
-                <Palmtree className="w-3 h-3" />
-                <span>오늘 연차사용중</span>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-black shadow-xs animate-pulse flex items-center gap-1 ${myLeaveStatus.badgeColor}`}>
+                <span>{myLeaveStatus.emoji} {myLeaveStatus.label}</span>
               </span>
             ) : myLeaveStatus?.status === "SCHEDULED" ? (
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-                <CalendarDays className="w-3 h-3" />
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1 ${myLeaveStatus.badgeColor}`}>
                 <span>{myLeaveStatus.label}</span>
               </span>
             ) : null}
           </div>
 
-          {/* Right: Simple Inline Annual Leave Picker & Setter */}
-          <div className="flex items-center gap-2 flex-wrap pt-1 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-            {/* If currently has an active or scheduled leave, show cancellation chip */}
+          {/* Right: 일정/연차 구분 간편 지정 (연차(전일), 오전반차, 오후반차, 업체방문, 외출) */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* If current worker already has an active or scheduled leave, show cancellation chip */}
             {myLeaveStatus?.leave && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs">
-                <span className="text-rose-700 dark:text-rose-300 font-bold">
-                  등록연차: {myLeaveStatus.leave.startDate} ({myLeaveStatus.leave.leaveType || "연차"})
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                <span className="text-slate-600 dark:text-slate-300 font-bold">
+                  등록일정: {myLeaveStatus.leave.startDate} ({myLeaveStatus.leave.leaveType || "연차(전일)"})
                 </span>
                 <button
                   type="button"
                   onClick={() => handleDeleteLeave(myLeaveStatus.leave.id)}
-                  className="ml-1 p-0.5 rounded hover:bg-rose-200 dark:hover:bg-rose-800 text-rose-500 hover:text-rose-800 transition-colors"
-                  title="연차 취소/삭제"
+                  className="ml-1 p-0.5 rounded hover:bg-rose-100 dark:hover:bg-rose-950/60 text-slate-400 hover:text-rose-600 transition-colors"
+                  title="일정 취소/삭제"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -584,10 +580,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             {/* Compact Inline Form */}
             <form onSubmit={handleRegisterLeave} className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-xs font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
-                <CalendarDays className="w-3.5 h-3.5 text-blue-500" />
-                <span>연차사용일:</span>
-              </span>
+              <select
+                value={leaveForm.leaveType}
+                onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="연차(전일)">연차(전일)</option>
+                <option value="오전반차">오전반차</option>
+                <option value="오후반차">오후반차</option>
+                <option value="업체방문">업체방문</option>
+                <option value="외출">외출</option>
+              </select>
 
               <input
                 type="date"
@@ -601,26 +604,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     endDate: val
                   }));
                 }}
-                className="px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
-
-              <select
-                value={leaveForm.leaveType}
-                onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
-                className="px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-              >
-                <option value="연차">연차 (전일)</option>
-                <option value="반차(오전)">오전반차</option>
-                <option value="반차(오후)">오후반차</option>
-              </select>
 
               <button
                 type="submit"
                 disabled={leaveSaving}
-                className="px-3 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1 shrink-0"
+                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center gap-1 shrink-0"
               >
-                <Plus className="w-3 h-3" />
-                <span>{leaveSaving ? "설정 중..." : "연차 설정"}</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>{leaveSaving ? "설정 중..." : "설정"}</span>
               </button>
             </form>
           </div>

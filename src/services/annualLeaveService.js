@@ -187,6 +187,55 @@ export const deleteAnnualLeave = async (id) => {
   return filteredLocal;
 };
 
+// Supported Leave Types Meta Helper
+export const getLeaveTypeMeta = (typeStr = "") => {
+  const type = typeStr || "연차(전일)";
+  if (type.includes("오전반차") || type === "반차(오전)") {
+    return {
+      type: "오전반차",
+      emoji: "🌤️",
+      activeLabel: "오전반차",
+      activeBadge: "bg-amber-500 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+    };
+  }
+  if (type.includes("오후반차") || type === "반차(오후)") {
+    return {
+      type: "오후반차",
+      emoji: "⛅",
+      activeLabel: "오후반차",
+      activeBadge: "bg-orange-500 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-800"
+    };
+  }
+  if (type.includes("업체방문")) {
+    return {
+      type: "업체방문",
+      emoji: "🏢",
+      activeLabel: "업체방문",
+      activeBadge: "bg-indigo-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800"
+    };
+  }
+  if (type.includes("외출")) {
+    return {
+      type: "외출",
+      emoji: "🚶",
+      activeLabel: "외출",
+      activeBadge: "bg-teal-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800"
+    };
+  }
+  // Default: 연차(전일) / 연차
+  return {
+    type: "연차",
+    emoji: "🌴",
+    activeLabel: "연차(전일)",
+    activeBadge: "bg-rose-500 text-white font-black animate-pulse shadow-xs",
+    scheduledBadge: "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
+  };
+};
+
 // Helper: Calculate worker's current/upcoming annual leave status
 export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
   if (!allLeaves || !Array.isArray(allLeaves) || allLeaves.length === 0) return null;
@@ -212,12 +261,14 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
     );
 
     if (activeLeave) {
+      const meta = getLeaveTypeMeta(activeLeave.leaveType);
       return {
         status: "ACTIVE",
-        type: activeLeave.leaveType || "연차",
-        label: "연차사용중",
+        type: meta.type,
+        emoji: meta.emoji,
+        label: meta.activeLabel,
         leave: activeLeave,
-        badgeColor: "bg-rose-500 text-white font-black animate-pulse shadow-sm ring-1 ring-rose-400"
+        badgeColor: meta.activeBadge
       };
     }
 
@@ -228,14 +279,16 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
 
     if (futureLeaves.length > 0) {
       const nextLeave = futureLeaves[0];
+      const meta = getLeaveTypeMeta(nextLeave.leaveType);
       const dateParts = (nextLeave.startDate || "").split("-");
       const formattedShort = dateParts.length === 3 ? `${dateParts[1]}/${dateParts[2]}` : nextLeave.startDate;
       return {
         status: "SCHEDULED",
-        type: nextLeave.leaveType || "연차",
-        label: `연차예정 (${formattedShort})`,
+        type: meta.type,
+        emoji: meta.emoji,
+        label: `${meta.type} (${formattedShort})`,
         leave: nextLeave,
-        badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
+        badgeColor: meta.scheduledBadge
       };
     }
 
