@@ -1,4 +1,4 @@
-﻿import * as XLSX from "xlsx";
+import * as XLSX from "xlsx";
 
 export function parseManualClosingExcel(buffer) {
   const workbook = XLSX.read(buffer, { type: "buffer" });
@@ -281,10 +281,32 @@ export function parseManualClosingExcel(buffer) {
 
     // 6. Misc
     else if (currentSection === "misc") {
-      if (colItem.includes("전자어음") || colItem.includes("세동")) manualLedger.misc.ebill_sedong = num;
-      else if (colItem.includes("알바비") || colItem.includes("일용")) manualLedger.misc.alba_cost = num;
-      else if (colItem.includes("식대") || colItem.includes("운반비")) manualLedger.misc.driver_meals = num;
-      else if (colItem.includes("잡비") || colItem.includes("수수료")) manualLedger.misc.etc_misc = num;
+      let category = "기타잡비";
+      if (colItem.includes("어음") || colItem.includes("세동") || colItem.includes("화승")) category = "전자어음수수료";
+      else if (colItem.includes("SMS") || colItem.includes("우리은행")) category = "SMS수수료";
+      else if (colItem.includes("알바비") || colItem.includes("일용") || colItem.includes("최영식") || colItem.includes("김현우") || colItem.includes("이남성") || colItem.includes("이석현")) category = "알바비";
+      else if (colItem.includes("식대") || colItem.includes("용진") || colItem.includes("한울") || colItem.includes("조영1") || colItem.includes("조영2")) category = "기사식대";
+
+      if (!manualLedger.miscItems) manualLedger.miscItems = [];
+      manualLedger.miscItems.push({
+        id: "misc_" + (manualLedger.miscItems.length + 1) + "_" + Math.random().toString(36).substring(2, 6),
+        category,
+        name: colItem,
+        amount: num,
+        memo: row[4] ? String(row[4]).trim() : ""
+      });
+
+      if (colItem.includes("세동")) manualLedger.misc.ebill_sedong = num;
+      else if (colItem.includes("화승")) manualLedger.misc.ebill_hwaseung = num;
+      else if (colItem.includes("우리은행")) manualLedger.misc.sms_woori = num;
+      else if (colItem.includes("최영식")) manualLedger.misc.part_cys = num;
+      else if (colItem.includes("김현우")) manualLedger.misc.part_khw = num;
+      else if (colItem.includes("이남성")) manualLedger.misc.part_lns = num;
+      else if (colItem.includes("이석현")) manualLedger.misc.part_lsh = num;
+      else if (colItem.includes("용진")) manualLedger.misc.meal_yongjin = num;
+      else if (colItem.includes("한울")) manualLedger.misc.meal_hanul = num;
+      else if (colItem.includes("조영1")) manualLedger.misc.meal_joyoung1 = num;
+      else if (colItem.includes("조영2")) manualLedger.misc.meal_joyoung2 = num;
       extractedCount++;
     }
   }

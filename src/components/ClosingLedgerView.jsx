@@ -37,9 +37,12 @@ import { useMonth } from "../context/MonthContext";
 import { parseHometaxExcel, CATEGORY_RULES, classifyTaxInvoiceItem } from "../services/taxInvoiceParser";
 import { parseManualClosingExcel } from "../services/manualLedgerParser";
 import detailedClosingMaster from "../data/detailedClosingLedgerData.json";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import * as XLSX from "xlsx";
 
 const STORAGE_KEY = "monthly_4_entity_closing_ledger_v5_integrated";
+const FIRESTORE_CLOSING_PATH = ["system_store", "monthly_closing_master"];
 
 const GROUPS = [
   { id: "all", label: "전체 16개 과목" },
@@ -214,6 +217,7 @@ export const ClosingLedgerView = () => {
   const [manualLedger, setManualLedger] = useState(currentMonthStore.manualLedger || buildDefaultManualLedger());
   const [selectedGroup, setSelectedGroup] = useState("all");
   const [selectedCategoryDetailId, setSelectedCategoryDetailId] = useState(null);
+  const [manualSectionFilter, setManualSectionFilter] = useState("all"); // 'all' | 'labor' | 'loan' | 'card' | 'insurance' | 'tax' | 'misc'
   const [searchTerm, setSearchTerm] = useState("");
   const [saveSuccessMessage, setSaveSuccessMessage] = useState("");
   const [isDraggingManual, setIsDraggingManual] = useState(false);
@@ -233,6 +237,38 @@ export const ClosingLedgerView = () => {
     setManualLedger(monthData.manualLedger || buildDefaultManualLedger());
     setSelectedCategoryDetailId(null);
   }, [selectedMonth, closingStore]);
+
+  // Real-time Firestore Cloud Sync for Closing Ledger
+  useEffect(() => {
+    try {
+      const docRef = doc(db, ...FIRESTORE_CLOSING_PATH);
+      getDoc(docRef).then((snap) => {
+        if (snap.exists() && snap.data()?.store) {
+          const remoteStore = snap.data().store;
+          setClosingStore((prev) => {
+            const merged = { ...prev, ...remoteStore };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            return merged;
+          });
+        }
+      }).catch((e) => console.warn("Firestore closing get warning:", e.message));
+
+      const unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists() && docSnap.data()?.store) {
+          const remoteStore = docSnap.data().store;
+          setClosingStore((prev) => {
+            const merged = { ...prev, ...remoteStore };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+            return merged;
+          });
+        }
+      });
+
+      return () => unsubscribe();
+    } catch (e) {
+      console.warn("Firestore closing subscription warning:", e);
+    }
+  }, []);
 
   // Grand Totals Calculation for Categories
   const totalSupplyAmount = categories.reduce((sum, cat) => {
@@ -277,10 +313,30 @@ export const ClosingLedgerView = () => {
     return Object.values(pc).reduce((sum, v) => sum + (Number(v) || 0), 0);
   }, [manualLedger.publicCharges]);
 
-  const miscTotal = useMemo(() => {
+  // Normalized Misc Items List (Supports full inline editing, adding, and deleting)
+  const miscItemsList = useMemo(() => {
+    if (Array.isArray(manualLedger.miscItems) && manualLedger.miscItems.length > 0) {
+      return manualLedger.miscItems;
+    }
     const m = manualLedger.misc || {};
-    return Object.values(m).reduce((sum, v) => sum + (Number(v) || 0), 0);
-  }, [manualLedger.misc]);
+    return [
+      { id: "ebill_sedong", category: "전자어음수수료", name: "세동", amount: Number(m.ebill_sedong) || 0, memo: "어음수수료" },
+      { id: "ebill_hwaseung", category: "전자어음수수료", name: "화승코퍼레이션", amount: Number(m.ebill_hwaseung) || 0, memo: "어음수수료" },
+      { id: "sms_woori", category: "SMS수수료", name: "우리은행", amount: Number(m.sms_woori) || 0, memo: "통지수수료" },
+      { id: "part_cys", category: "알바비", name: "최영식", amount: Number(m.part_cys) || 0, memo: "단기인건비" },
+      { id: "part_khw", category: "알바비", name: "김현우", amount: Number(m.part_khw) || 0, memo: "단기인건비" },
+      { id: "part_lns", category: "알바비", name: "이남성", amount: Number(m.part_lns) || 0, memo: "단기인건비" },
+      { id: "part_lsh", category: "알바비", name: "이석현", amount: Number(m.part_lsh) || 0, memo: "단기인건비" },
+      { id: "meal_yongjin", category: "기사식대", name: "용진운수", amount: Number(m.meal_yongjin) || 0, memo: "기사식대" },
+      { id: "meal_hanul", category: "기사식대", name: "한울", amount: Number(m.meal_hanul) || 0, memo: "기사식대" },
+      { id: "meal_joyoung1", category: "기사식대", name: "조영1", amount: Number(m.meal_joyoung1) || 0, memo: "기사식대" },
+      { id: "meal_joyoung2", category: "기사식대", name: "조영2", amount: Number(m.meal_joyoung2) || 0, memo: "기사식대" }
+    ];
+  }, [manualLedger.misc, manualLedger.miscItems]);
+
+  const miscTotal = useMemo(() => {
+    return miscItemsList.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+  }, [miscItemsList]);
 
   const grandManualTotal = laborSubtotals.total + loanInterestTotal + cardsTotal + insuranceTotal + publicChargesTotal + miscTotal;
 
@@ -291,7 +347,7 @@ export const ClosingLedgerView = () => {
   // Active Category for Drilldown
   const activeCategory = categories.find((c) => c.id === selectedCategoryDetailId);
 
-  // Helper: Persist and update state
+  // Helper: Persist and update state (with Firestore Cloud Sync so manual edits take top priority)
   const persistMonthData = (newCategories, newUploadedEntities, newManualLedger = manualLedger) => {
     setCategories(newCategories);
     setUploadedEntities(newUploadedEntities);
@@ -308,6 +364,13 @@ export const ClosingLedgerView = () => {
     };
     setClosingStore(updatedStore);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedStore));
+
+    try {
+      const docRef = doc(db, ...FIRESTORE_CLOSING_PATH);
+      setDoc(docRef, { store: updatedStore, updatedAt: new Date().toISOString() }, { merge: true });
+    } catch (e) {
+      console.warn("Firestore closing master sync warning:", e);
+    }
   };
 
   // Helper: Update manual ledger field
@@ -321,6 +384,54 @@ export const ClosingLedgerView = () => {
       }
     };
     persistMonthData(categories, uploadedEntities, updated);
+  };
+
+  // Helper: Modify Misc items directly (category, name, amount, memo)
+  const handleMiscItemChange = (itemId, field, value) => {
+    const updatedList = miscItemsList.map((item) => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          [field]: field === "amount" ? (Number(String(value).replace(/[^0-9.-]+/g, "")) || 0) : value
+        };
+      }
+      return item;
+    });
+
+    const updatedManual = {
+      ...manualLedger,
+      miscItems: updatedList,
+      misc: {
+        ...(manualLedger.misc || {}),
+        [itemId]: field === "amount" ? (Number(String(value).replace(/[^0-9.-]+/g, "")) || 0) : manualLedger.misc?.[itemId]
+      }
+    };
+    persistMonthData(categories, uploadedEntities, updatedManual);
+  };
+
+  const handleAddMiscItem = () => {
+    const newItem = {
+      id: "misc_" + Date.now(),
+      category: "기타잡비",
+      name: "새 항목",
+      amount: 0,
+      memo: "직접입력"
+    };
+    const updatedList = [...miscItemsList, newItem];
+    const updatedManual = {
+      ...manualLedger,
+      miscItems: updatedList
+    };
+    persistMonthData(categories, uploadedEntities, updatedManual);
+  };
+
+  const handleDeleteMiscItem = (itemId) => {
+    const updatedList = miscItemsList.filter((item) => item.id !== itemId);
+    const updatedManual = {
+      ...manualLedger,
+      miscItems: updatedList
+    };
+    persistMonthData(categories, uploadedEntities, updatedManual);
   };
 
   // Helper: Parse single tax invoice file buffer
@@ -1226,981 +1337,556 @@ export const ClosingLedgerView = () => {
       {/* ========================================================================= */}
       {viewMode === "manual_ledger" && (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          {/* Header & Subtotal Overview */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <Table className="w-5 h-5 text-indigo-600" />
-                <span>노무비 · 대출이자 · 카드 · 보험공제 · 공과금 · 잡비 수기 결산표</span>
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                각 항목별 금액을 입력하시면 회사별 소계와 전사 총계가 실시간으로 자동 계산되어 저장됩니다.
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <Table className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <span>노무비 · 대출이자 · 제세공과금 수기 결산표</span>
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">
+                  수정 시 즉시 자동 저장 & 우선 반영
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                파일 업로드 시 자동 입력되며, 표에서 직접 금액이나 항목을 수정하면 실시간으로 최우선 반영 및 클라우드 저장됩니다.
               </p>
             </div>
-            <span className="text-xs font-black px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200">
-              수기 결산 총합계: {formatAmount(grandManualTotal)}
-            </span>
+
+            <div className="bg-slate-900 dark:bg-slate-800 text-white px-5 py-3 rounded-2xl flex items-center gap-3 shrink-0 shadow-sm">
+              <span className="text-xs text-slate-400 font-bold">수기 결산 총합계:</span>
+              <span className="text-xl font-black text-amber-300 font-mono">
+                {formatAmount(grandManualTotal)}
+              </span>
+            </div>
           </div>
 
-          {/* Full Integrated Master Table */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold">
-                <tr>
-                  <th className="py-3 px-4 w-28">대분류</th>
-                  <th className="py-3 px-4 w-36">회사 / 대상</th>
-                  <th className="py-3 px-4">세부 항목명 / 계좌번호</th>
-                  <th className="py-3 px-4 text-right w-44">금액 (원)</th>
-                  <th className="py-3 px-4 text-right w-40">소계 / 비고</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {/* 1. 노무비 Section (4개사 x 4개 표준 항목 = 총 16줄) */}
-                <tr className="bg-slate-50/70 dark:bg-slate-800/30">
-                  <td rowSpan={16} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                      <UserCheck className="w-4 h-4" />
-                      <span>노무비</span>
+          {/* Top 6 KPI Cards Overview */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { id: "labor", label: "👥 1. 노무비", count: "4개사 16항목", amount: laborSubtotals.total, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200/60 dark:border-blue-900/40" },
+              { id: "loan", label: "🏛️ 2. 대출이자", count: "23개 계좌/항목", amount: loanInterestTotal, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200/60 dark:border-amber-900/40" },
+              { id: "card", label: "💳 3. 신용카드", count: "8개 카드사", amount: cardsTotal, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-50/60 dark:bg-purple-950/30 border-purple-200/60 dark:border-purple-900/40" },
+              { id: "insurance", label: "🛡️ 4. 보험/공제", count: "9개 보험/공제", amount: insuranceTotal, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/60 dark:border-emerald-900/40" },
+              { id: "tax", label: "🧾 5. 제세공과금", count: "4개사+개인 18항목", amount: publicChargesTotal, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50/60 dark:bg-rose-950/30 border-rose-200/60 dark:border-rose-900/40" },
+              { id: "misc", label: "📦 6. 수수료/잡비", count: `${miscItemsList.length}개 항목`, amount: miscTotal, color: "text-slate-700 dark:text-slate-300", bg: "bg-slate-50/60 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-700" }
+            ].map((kpi) => (
+              <div
+                key={kpi.id}
+                onClick={() => setManualSectionFilter(manualSectionFilter === kpi.id ? "all" : kpi.id)}
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${kpi.bg} ${
+                  manualSectionFilter === kpi.id ? "ring-2 ring-blue-500 scale-[1.02] shadow-sm" : "hover:scale-[1.01]"
+                }`}
+              >
+                <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-500 dark:text-slate-400">
+                  <span>{kpi.label}</span>
+                </div>
+                <p className={`text-sm sm:text-base font-black font-mono mt-1 ${kpi.color}`}>
+                  {formatAmount(kpi.amount)}
+                </p>
+                <span className="text-[10px] text-slate-400 block mt-0.5">{kpi.count}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Section Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-xs font-extrabold text-slate-400 mr-1">과목 선택:</span>
+            {[
+              { id: "all", label: "전체 보기" },
+              { id: "labor", label: "노무비 (4개사)" },
+              { id: "loan", label: "대출이자" },
+              { id: "card", label: "신용카드" },
+              { id: "insurance", label: "보험/공제" },
+              { id: "tax", label: "제세공과금" },
+              { id: "misc", label: "수수료/잡비 (수정·추가)" }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setManualSectionFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                  manualSectionFilter === tab.id
+                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* 1. 노무비 SECTION (4개사 16개 표준 과목) */}
+          {/* ========================================================================= */}
+          {(manualSectionFilter === "all" || manualSectionFilter === "labor") && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-blue-100 dark:border-blue-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-blue-600 rounded-full"></span>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    1. 노무비 결산 (4개사 x 4개 표준 항목)
+                  </h4>
+                </div>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400 font-mono">
+                  노무비 합계: {formatAmount(laborSubtotals.total)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { key: "oryuk", title: "(주)오륙", subtotal: laborSubtotals.oryuk, items: [
+                    { id: "oryuk_reg", label: "등록 (정규직 급여)", desc: "4대보험 가입 인원 급여" },
+                    { id: "oryuk_unreg", label: "미등록 (일용직/기타)", desc: "일용직 / 미등록 노무비" },
+                    { id: "oryuk_foreign", label: "외국인 출국만기보험", desc: "외국인 근로자 전용 보험" },
+                    { id: "oryuk_expense", label: "지출결의서", desc: "노무비 관련 지출결의서" }
+                  ]},
+                  { key: "ogong", title: "오륙공사", subtotal: laborSubtotals.ogong, items: [
+                    { id: "ogong_reg", label: "등록", desc: "4대보험 가입 인원 급여" },
+                    { id: "ogong_unreg", label: "미등록", desc: "일용직 / 미등록 노무비" },
+                    { id: "ogong_foreign", label: "외국인 출국만기보험", desc: "외국인 근로자 전용 보험" },
+                    { id: "ogong_expense", label: "지출결의서", desc: "노무비 관련 지출결의서" }
+                  ]},
+                  { key: "joyoungCorp", title: "(주)조영산업", subtotal: laborSubtotals.joyoungCorp, items: [
+                    { id: "joyoung_corp_reg", label: "등록", desc: "4대보험 가입 인원 급여" },
+                    { id: "joyoung_corp_unreg", label: "미등록", desc: "일용직 / 미등록 노무비" },
+                    { id: "joyoung_corp_foreign", label: "외국인 출국만기보험", desc: "외국인 근로자 전용 보험" },
+                    { id: "joyoung_corp_expense", label: "지출결의서", desc: "노무비 관련 지출결의서" }
+                  ]},
+                  { key: "joyoungInd", title: "조영산업", subtotal: laborSubtotals.joyoungInd, items: [
+                    { id: "joyoung_ind_reg", label: "등록", desc: "4대보험 가입 인원 급여" },
+                    { id: "joyoung_ind_unreg", label: "미등록", desc: "일용직 / 미등록 노무비" },
+                    { id: "joyoung_ind_foreign", label: "외국인 출국만기보험", desc: "외국인 근로자 전용 보험" },
+                    { id: "joyoung_ind_expense", label: "지출결의서", desc: "노무비 관련 지출결의서" }
+                  ]}
+                ].map((comp) => (
+                  <div key={comp.key} className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/80 space-y-3 shadow-2xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
+                      <span className="font-extrabold text-xs text-slate-900 dark:text-white px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        {comp.title}
+                      </span>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 mr-1.5">소계:</span>
+                        <strong className="text-xs font-black text-blue-600 dark:text-blue-400 font-mono">
+                          {formatAmount(comp.subtotal)}
+                        </strong>
+                      </div>
                     </div>
-                  </td>
 
-                  {/* (주)오륙 */}
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 오륙</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록 (정규직 급여)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.oryuk_reg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "oryuk_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
-                    {formatAmount(laborSubtotals.oryuk)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">미등록 (일용직/기타)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.oryuk_unreg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "oryuk_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">외국인 출국만기보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.oryuk_foreign || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "oryuk_foreign", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지출결의서</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.oryuk_expense || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "oryuk_expense", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-
-                {/* 오륙공사 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">오륙공사</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.ogong_reg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "ogong_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
-                    {formatAmount(laborSubtotals.ogong)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">미등록</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.ogong_unreg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "ogong_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">외국인 출국만기보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.ogong_foreign || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "ogong_foreign", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지출결의서</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.ogong_expense || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "ogong_expense", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-
-                {/* 주 조영산업 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_corp_reg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
-                    {formatAmount(laborSubtotals.joyoungCorp)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">미등록</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_corp_unreg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">외국인 출국만기보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_corp_foreign || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_foreign", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지출결의서</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_corp_expense || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_corp_expense", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-
-                {/* 조영산업 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">등록</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_ind_reg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_reg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-blue-600 align-middle">
-                    {formatAmount(laborSubtotals.joyoungInd)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">미등록</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_ind_unreg || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_unreg", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">외국인 출국만기보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_ind_foreign || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_foreign", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지출결의서</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.labor?.joyoung_ind_expense || 0).toLocaleString()}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => handleManualLedgerChange("labor", "joyoung_ind_expense", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-400"
-                    />
-                  </td>
-                </tr>
-
-                {/* 노무비 합계 Row */}
-                <tr className="bg-blue-50 dark:bg-blue-950/40 font-black text-blue-800 dark:text-blue-300 border-t-2 border-blue-200">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 노무비 총합계 (4개사 16개 항목 전체 합산)</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(laborSubtotals.total)}</td>
-                  <td className="py-2.5 px-4 text-right text-xs">전사 노무비 마감</td>
-                </tr>
-
-                {/* 2. 대출이자 Section */}
-                <tr className="bg-slate-50/70 dark:bg-slate-800/30 border-t-4 border-slate-200 dark:border-slate-700">
-                  <td rowSpan={24} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
-                      <Landmark className="w-4 h-4" />
-                      <span>대출이자</span>
-                    </div>
-                  </td>
-                  <td rowSpan={12} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 오륙</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">9600</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.loanInterest?.oryuk_9600 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("loanInterest", "oryuk_9600", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={12} className="py-2 px-4 text-right font-mono font-extrabold text-amber-600 align-middle">
-                    오륙 대출이자
-                  </td>
-                </tr>
-                {["7501", "0701", "6002", "1302", "0109", "2400", "DGB생명이자", "마이너스 통장", "상승", "B2B 어음 할인이자", "화승 R&A 선급금 상계"].map((itemKey, idx) => {
-                  const propKey = `oryuk_${idx === 9 ? "b2b" : idx === 10 ? "hwaseung" : itemKey.replace(/[^a-zA-Z0-9]/g, "")}`;
-                  return (
-                    <tr key={itemKey}>
-                      <td className={`py-1.5 px-4 ${itemKey.includes("B2B") ? "bg-amber-100/70 font-black text-amber-900 dark:text-amber-300" : "text-slate-600 dark:text-slate-300"}`}>
-                        {itemKey}
-                      </td>
-                      <td className="py-1 px-4 text-right">
-                        <input
-                          type="text"
-                          value={Number(manualLedger.loanInterest?.[propKey] || 0).toLocaleString()}
-                          onChange={(e) => handleManualLedgerChange("loanInterest", propKey, e.target.value)}
-                          className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {/* 주 조영산업 대출이자 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={3} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">2,500,000,000 (25억)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.loanInterest?.joyoung_corp_25억 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("loanInterest", "joyoung_corp_25억", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={3} className="py-2 px-4 text-right font-mono font-extrabold text-amber-600 align-middle">
-                    조영법인 이자
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">329,000,000 (3.29억)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.loanInterest?.joyoung_corp_3억29 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("loanInterest", "joyoung_corp_3억29", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">200,000,000 (2억)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.loanInterest?.joyoung_corp_2억 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("loanInterest", "joyoung_corp_2억", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-
-                {/* 조영산업 대출이자 & 보험이자 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={8} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">500,000,000 (5억)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.loanInterest?.joyoung_ind_5억 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("loanInterest", "joyoung_ind_5억", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={8} className="py-2 px-4 text-right font-mono font-extrabold text-amber-600 align-middle">
-                    조영사업장 이자
-                  </td>
-                </tr>
-                {["200,000,000 (2억)", "100,000,000 (1억)", "삼성생명 이자", "KB생명 이자", "DGB 생명 이자", "노란우산공제"].map((itemKey, idx) => {
-                  const propKey = `joyoung_ind_${idx === 0 ? "2억" : idx === 1 ? "1억" : idx === 2 ? "samsung" : idx === 3 ? "kb" : idx === 4 ? "dgb" : "noran"}`;
-                  return (
-                    <tr key={itemKey}>
-                      <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">{itemKey}</td>
-                      <td className="py-1 px-4 text-right">
-                        <input
-                          type="text"
-                          value={Number(manualLedger.loanInterest?.[propKey] || 0).toLocaleString()}
-                          onChange={(e) => handleManualLedgerChange("loanInterest", propKey, e.target.value)}
-                          className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {/* 오륙공사 노란우산 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">오륙공사</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">노란우산공제</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.loanInterest?.ogong_noran || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("loanInterest", "ogong_noran", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td className="py-2 px-4 text-right font-mono font-extrabold text-amber-600">공제부금</td>
-                </tr>
-
-                {/* 대출이자 합계 Row */}
-                <tr className="bg-amber-50 dark:bg-amber-950/40 font-black text-amber-800 dark:text-amber-300 border-t-2 border-amber-200">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 대출이자 및 금융비용 총합계</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(loanInterestTotal)}</td>
-                  <td className="py-2.5 px-4 text-right text-xs">금융비용 집계</td>
-                </tr>
-
-                {/* 3. 카드 Section */}
-                <tr className="bg-slate-50/70 dark:bg-slate-800/30 border-t-4 border-slate-200 dark:border-slate-700">
-                  <td rowSpan={8} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
-                      <CreditCard className="w-4 h-4" />
-                      <span>카드</span>
-                    </div>
-                  </td>
-                  {[
-                    { entity: "오륙", name: "오륙 BC", key: "oryuk_bc" },
-                    { entity: "조영", name: "조영 BC", key: "joyoung_bc" },
-                    { entity: "오공", name: "오공 KB", key: "ogong_kb" },
-                    { entity: "최미영", name: "최미영 KB", key: "choi_kb" },
-                    { entity: "공통", name: "삼성", key: "samsung" },
-                    { entity: "공통", name: "현대", key: "hyundai" },
-                    { entity: "공통", name: "우리", key: "woori" },
-                    { entity: "공통", name: "신한", key: "shinhan" }
-                  ].map((card, idx) => (
-                    <React.Fragment key={card.key}>
-                      {idx > 0 && <tr key={card.key + "_row"}>
-                        <td className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">{card.entity}</td>
-                        <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">{card.name}</td>
-                        <td className="py-1 px-4 text-right">
-                          <input
-                            type="text"
-                            value={Number(manualLedger.cards?.[card.key] || 0).toLocaleString()}
-                            onChange={(e) => handleManualLedgerChange("cards", card.key, e.target.value)}
-                            className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                          />
-                        </td>
-                        <td className="py-2 px-4 text-right font-mono text-purple-600">결제대금</td>
-                      </tr>}
-                      {idx === 0 && (
-                        <>
-                          <td className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">{card.entity}</td>
-                          <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">{card.name}</td>
-                          <td className="py-1 px-4 text-right">
+                    <div className="space-y-2">
+                      {comp.items.map((it) => (
+                        <div key={it.id} className="flex items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-700 dark:text-slate-300 truncate">{it.label}</p>
+                            <p className="text-[10px] text-slate-400 truncate">{it.desc}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[11px] text-slate-400 font-mono">₩</span>
                             <input
                               type="text"
-                              value={Number(manualLedger.cards?.[card.key] || 0).toLocaleString()}
-                              onChange={(e) => handleManualLedgerChange("cards", card.key, e.target.value)}
-                              className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
+                              value={Number(manualLedger.labor?.[it.id] || 0).toLocaleString()}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => handleManualLedgerChange("labor", it.id, e.target.value)}
+                              className="w-32 text-right px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-blue-300 shadow-2xs"
                             />
-                          </td>
-                          <td className="py-2 px-4 text-right font-mono text-purple-600">결제대금</td>
-                        </>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tr>
-
-                {/* 카드 결제 총합계 */}
-                <tr className="bg-purple-50 dark:bg-purple-950/40 font-black text-purple-800 dark:text-purple-300 border-t-2 border-purple-200">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 신용카드 결제대금 총합계</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(cardsTotal)}</td>
-                  <td className="py-2.5 px-4 text-right text-xs">카드대금 집계</td>
-                </tr>
-
-                {/* 4. 공제/보험 Section */}
-                <tr className="bg-slate-50/70 dark:bg-slate-800/30 border-t-4 border-slate-200 dark:border-slate-700">
-                  <td rowSpan={9} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>공제 / 보험</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 오륙</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">교보단체보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.oryuk_kyobo || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "oryuk_kyobo", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono font-extrabold text-emerald-600 align-middle">
-                    오륙 보험료
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">DGB 생명</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.oryuk_dgb || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "oryuk_dgb", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 조영</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">교보단체보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.joyoung_corp_kyobo || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "joyoung_corp_kyobo", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono font-extrabold text-emerald-600 align-middle">
-                    조영법인 보험
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">하나생명</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.joyoung_corp_hana || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "joyoung_corp_hana", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">오륙공사</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">노란우산공제</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.ogong_noran || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "ogong_noran", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono font-extrabold text-emerald-600 align-middle">
-                    오공 공제/보험
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">교보단체보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.ogong_kyobo || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "ogong_kyobo", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">교보단체보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.joyoung_ind_kyobo || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "joyoung_ind_kyobo", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono font-extrabold text-emerald-600 align-middle">
-                    조영사업장 공제
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">노란우산공제</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.joyoung_ind_noran || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "joyoung_ind_noran", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">최미영</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">DGB 생명</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.insurance?.choi_dgb || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("insurance", "choi_dgb", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td className="py-2 px-4 text-right font-mono text-emerald-600">개인보험</td>
-                </tr>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                {/* 보험공제 총합계 */}
-                <tr className="bg-emerald-50 dark:bg-emerald-950/40 font-black text-emerald-800 dark:text-emerald-300 border-t-2 border-emerald-200">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 보험 및 공제 총합계</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(insuranceTotal)}</td>
-                  <td className="py-2.5 px-4 text-right text-xs">보험공제 집계</td>
-                </tr>
+          {/* ========================================================================= */}
+          {/* 2. 대출이자 SECTION (23종 금융이자) */}
+          {/* ========================================================================= */}
+          {(manualSectionFilter === "all" || manualSectionFilter === "loan") && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-amber-100 dark:border-amber-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-amber-500 rounded-full"></span>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    2. 대출이자 및 금융비용 (23종 계좌 / 할인료)
+                  </h4>
+                </div>
+                <span className="text-xs font-black text-amber-600 dark:text-amber-400 font-mono">
+                  대출이자 합계: {formatAmount(loanInterestTotal)}
+                </span>
+              </div>
 
-                {/* 5. 공과금 Section */}
-                <tr className="bg-slate-50/70 dark:bg-slate-800/30 border-t-4 border-slate-200 dark:border-slate-700">
-                  <td rowSpan={18} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400">
-                      <Coins className="w-4 h-4" />
-                      <span>공과금</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  {
+                    group: "주 오륙 (12종)",
+                    items: [
+                      { id: "oryuk_9600", name: "9600" },
+                      { id: "oryuk_7501", name: "7501" },
+                      { id: "oryuk_0701", name: "0701" },
+                      { id: "oryuk_6002", name: "6002" },
+                      { id: "oryuk_1302", name: "1302" },
+                      { id: "oryuk_0109", name: "0109" },
+                      { id: "oryuk_2400", name: "2400" },
+                      { id: "oryuk_dgb", name: "DGB생명이자" },
+                      { id: "oryuk_minus", name: "마이너스 통장" },
+                      { id: "oryuk_sangseung", name: "상승" },
+                      { id: "oryuk_b2b", name: "B2B 어음 할인이자" },
+                      { id: "oryuk_hwaseung", name: "화승 R&A 선급금 상계" }
+                    ]
+                  },
+                  {
+                    group: "주 조영산업 (3종)",
+                    items: [
+                      { id: "joyoung_corp_25억", name: "2,500,000,000 (25억)" },
+                      { id: "joyoung_corp_3억29", name: "329,000,000 (3.29억)" },
+                      { id: "joyoung_corp_2억", name: "200,000,000 (2억)" }
+                    ]
+                  },
+                  {
+                    group: "조영산업 & 오륙공사 (8종)",
+                    items: [
+                      { id: "joyoung_ind_5억", name: "조영 500,000,000 (5억)" },
+                      { id: "joyoung_ind_2억", name: "조영 200,000,000 (2억)" },
+                      { id: "joyoung_ind_1억", name: "조영 100,000,000 (1억)" },
+                      { id: "joyoung_ind_samsung", name: "조영 삼성생명 이자" },
+                      { id: "joyoung_ind_kb", name: "조영 KB생명 이자" },
+                      { id: "joyoung_ind_dgb", name: "조영 DGB생명 이자" },
+                      { id: "joyoung_ind_noran", name: "조영 노란우산공제" },
+                      { id: "ogong_noran", name: "오륙공사 노란우산공제" }
+                    ]
+                  }
+                ].map((card, gIdx) => (
+                  <div key={gIdx} className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700 space-y-2.5">
+                    <div className="font-extrabold text-xs text-amber-700 dark:text-amber-300 pb-1.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                      <span>{card.group}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">{card.items.length}개</span>
                     </div>
-                  </td>
-                  <td rowSpan={5} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 오륙</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">사회보험 (4대보험)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.oryuk_social || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "oryuk_social", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={5} className="py-2 px-4 text-right font-mono font-extrabold text-rose-600 align-middle">
-                    오륙 공과금
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">근로소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.oryuk_income || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "oryuk_income", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지방소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.oryuk_local || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "oryuk_local", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">법인세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.oryuk_corp || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "oryuk_corp", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">부가가치세 (분납분)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.oryuk_vat || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "oryuk_vat", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-
-                {/* 주 조영산업 공과금 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">주 조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">사회보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_corp_social || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_corp_social", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-rose-600 align-middle">
-                    조영법인 공과금
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">근로소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_corp_income || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_corp_income", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지방소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_corp_local || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_corp_local", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">부가가치세 (분납분)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_corp_vat || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_corp_vat", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-
-                {/* 조영산업 공과금 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">조영산업</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">사회보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_ind_social || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_ind_social", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-rose-600 align-middle">
-                    조영사업장 공과금
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">근로소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_ind_income || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_ind_income", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지방소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_ind_local || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_ind_local", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">부가가치세 (분납분)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.joyoung_ind_vat || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "joyoung_ind_vat", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-
-                {/* 오륙공사 공과금 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">오륙공사</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">사회보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.ogong_social || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "ogong_social", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono font-extrabold text-rose-600 align-middle">
-                    오공 공과금
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">근로소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.ogong_income || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "ogong_income", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">지방소득세</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.ogong_local || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "ogong_local", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">부가가치세 (분납분)</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.ogong_vat || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "ogong_vat", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-
-                {/* 박순화 */}
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">박순화</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">사회보험</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.publicCharges?.park_social || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("publicCharges", "park_social", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td className="py-2 px-4 text-right font-mono text-rose-600">개인</td>
-                </tr>
-
-                {/* 공과금 합계 Row */}
-                <tr className="bg-rose-50 dark:bg-rose-950/40 font-black text-rose-800 dark:text-rose-300 border-t-2 border-rose-200">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 공과금 계 (4개사 + 개인 합산)</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(publicChargesTotal)}</td>
-                  <td className="py-2.5 px-4 text-right text-xs">공과금 총액</td>
-                </tr>
-
-                {/* 6. 수수료 / 알바비 / 기사식대 Section */}
-                <tr className="bg-slate-50/70 dark:bg-slate-800/30 border-t-4 border-slate-200 dark:border-slate-700">
-                  <td rowSpan={11} className="py-3 px-4 font-black text-slate-900 dark:text-white align-top border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                      <Coins className="w-4 h-4" />
-                      <span>수수료 / 잡비</span>
+                    <div className="space-y-1.5">
+                      {card.items.map((it) => (
+                        <div key={it.id} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium truncate min-w-0">{it.name}</span>
+                          <input
+                            type="text"
+                            value={Number(manualLedger.loanInterest?.[it.id] || 0).toLocaleString()}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => handleManualLedgerChange("loanInterest", it.id, e.target.value)}
+                            className="w-28 text-right px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 shrink-0"
+                          />
+                        </div>
+                      ))}
                     </div>
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">전자어음수수료</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">세동</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.ebill_sedong || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "ebill_sedong", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={2} className="py-2 px-4 text-right font-mono text-slate-600 align-middle">어음수수료</td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">화승코퍼레이션</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.ebill_hwaseung || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "ebill_hwaseung", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">SMS수수료</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">우리은행</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.sms_woori || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "sms_woori", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td className="py-2 px-4 text-right font-mono text-slate-600">통지수수료</td>
-                </tr>
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">알바비</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">최영식</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.part_cys || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "part_cys", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono text-slate-600 align-middle">단기인건비</td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">김현우</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.part_khw || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "part_khw", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">이남성</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.part_lns || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "part_lns", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">이석현</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.part_lsh || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "part_lsh", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td rowSpan={4} className="py-2 px-4 font-bold border-r border-slate-100 dark:border-slate-800">기사식대</td>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">용진운수</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.meal_yongjin || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "meal_yongjin", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                  <td rowSpan={4} className="py-2 px-4 text-right font-mono text-slate-600 align-middle">기사식대</td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">한울</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.meal_hanul || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "meal_hanul", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">조영1</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.meal_joyoung1 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "meal_joyoung1", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-1.5 px-4 text-slate-600 dark:text-slate-300">조영2</td>
-                  <td className="py-1 px-4 text-right">
-                    <input
-                      type="text"
-                      value={Number(manualLedger.misc?.meal_joyoung2 || 0).toLocaleString()}
-                      onChange={(e) => handleManualLedgerChange("misc", "meal_joyoung2", e.target.value)}
-                      className="w-36 text-right px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold"
-                    />
-                  </td>
-                </tr>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                {/* 잡비/수수료 총합계 */}
-                <tr className="bg-slate-100 dark:bg-slate-800 font-black text-slate-800 dark:text-slate-200 border-t-2 border-slate-300">
-                  <td colSpan={3} className="py-2.5 px-4 text-center">★ 수수료 / 알바비 / 기사식대 총합계</td>
-                  <td className="py-2.5 px-4 text-right font-mono text-base">{formatAmount(miscTotal)}</td>
-                  <td className="py-2.5 px-4 text-right text-xs">잡비 총액</td>
-                </tr>
+          {/* ========================================================================= */}
+          {/* 3. 신용카드 SECTION (8종) */}
+          {/* ========================================================================= */}
+          {(manualSectionFilter === "all" || manualSectionFilter === "card") && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-purple-100 dark:border-purple-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-purple-600 rounded-full"></span>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    3. 신용카드 결제대금 (8개사)
+                  </h4>
+                </div>
+                <span className="text-xs font-black text-purple-600 dark:text-purple-400 font-mono">
+                  카드 합계: {formatAmount(cardsTotal)}
+                </span>
+              </div>
 
-                {/* GRAND TOTAL ROW */}
-                <tr className="bg-slate-900 text-white font-black border-t-4 border-slate-900">
-                  <td colSpan={3} className="py-3.5 px-4 text-center text-sm">★★ 전사 수기 결산 비세금계산서 총합계 ★★</td>
-                  <td className="py-3.5 px-4 text-right font-mono text-lg text-amber-300">{formatAmount(grandManualTotal)}</td>
-                  <td className="py-3.5 px-4 text-right text-xs text-slate-300">노무+이자+카드+보험+공과금+잡비</td>
-                </tr>
-              </tbody>
-            </table>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { key: "oryuk_bc", name: "오륙 BC", entity: "오륙" },
+                  { key: "joyoung_bc", name: "조영 BC", entity: "조영" },
+                  { key: "ogong_kb", name: "오공 KB", entity: "오공" },
+                  { key: "choi_kb", name: "최미영 KB", entity: "최미영" },
+                  { key: "samsung", name: "삼성카드", entity: "공통" },
+                  { key: "hyundai", name: "현대카드", entity: "공통" },
+                  { key: "woori", name: "우리카드", entity: "공통" },
+                  { key: "shinhan", name: "신한카드", entity: "공통" }
+                ].map((card) => (
+                  <div key={card.key} className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-3.5 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-slate-900 dark:text-white">{card.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold">{card.entity}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] text-slate-400 font-mono">₩</span>
+                      <input
+                        type="text"
+                        value={Number(manualLedger.cards?.[card.key] || 0).toLocaleString()}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => handleManualLedgerChange("cards", card.key, e.target.value)}
+                        className="w-full text-right px-2 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 4. 보험 및 공제 SECTION (9종) */}
+          {/* ========================================================================= */}
+          {(manualSectionFilter === "all" || manualSectionFilter === "insurance") && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-emerald-100 dark:border-emerald-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-emerald-600 rounded-full"></span>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    4. 보험 및 공제 (9종)
+                  </h4>
+                </div>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                  보험공제 합계: {formatAmount(insuranceTotal)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { entity: "(주)오륙", items: [
+                    { id: "oryuk_kyobo", name: "교보단체보험" },
+                    { id: "oryuk_dgb", name: "DGB 생명" }
+                  ]},
+                  { entity: "(주)조영산업", items: [
+                    { id: "joyoung_corp_kyobo", name: "교보단체보험" },
+                    { id: "joyoung_corp_hana", name: "하나생명" }
+                  ]},
+                  { entity: "오륙공사 & 조영 & 최미영", items: [
+                    { id: "ogong_noran", name: "오공 노란우산공제" },
+                    { id: "ogong_kyobo", name: "오공 교보단체보험" },
+                    { id: "joyoung_ind_kyobo", name: "조영 교보단체보험" },
+                    { id: "joyoung_ind_noran", name: "조영 노란우산공제" },
+                    { id: "choi_dgb", name: "최미영 DGB 생명" }
+                  ]}
+                ].map((grp, idx) => (
+                  <div key={idx} className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700 space-y-2">
+                    <div className="font-extrabold text-xs text-emerald-700 dark:text-emerald-300 pb-1 border-b border-slate-200 dark:border-slate-700">
+                      {grp.entity}
+                    </div>
+                    <div className="space-y-1.5">
+                      {grp.items.map((it) => (
+                        <div key={it.id} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium truncate">{it.name}</span>
+                          <input
+                            type="text"
+                            value={Number(manualLedger.insurance?.[it.id] || 0).toLocaleString()}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => handleManualLedgerChange("insurance", it.id, e.target.value)}
+                            className="w-28 text-right px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 shrink-0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 5. 제세공과금 SECTION (4대보험 / 소득세 / 지방세 / 법인세 / 부가세) */}
+          {/* ========================================================================= */}
+          {(manualSectionFilter === "all" || manualSectionFilter === "tax") && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between pb-2 border-b border-rose-100 dark:border-rose-900/40">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-rose-600 rounded-full"></span>
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                    5. 제세공과금 (4대보험 · 소득세 · 주민세 · 법인세 · 부가세)
+                  </h4>
+                </div>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
+                  공과금 합계: {formatAmount(publicChargesTotal)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  {
+                    entity: "(주)오륙",
+                    items: [
+                      { id: "oryuk_social", name: "사회보험 (4대보험)" },
+                      { id: "oryuk_income", name: "근로소득세" },
+                      { id: "oryuk_local", name: "지방소득세" },
+                      { id: "oryuk_corp", name: "법인세" },
+                      { id: "oryuk_vat", name: "부가가치세 (분납)" }
+                    ]
+                  },
+                  {
+                    entity: "(주)조영산업",
+                    items: [
+                      { id: "joyoung_corp_social", name: "사회보험 (4대보험)" },
+                      { id: "joyoung_corp_income", name: "근로소득세" },
+                      { id: "joyoung_corp_local", name: "지방소득세" },
+                      { id: "joyoung_corp_vat", name: "부가가치세 (분납)" }
+                    ]
+                  },
+                  {
+                    entity: "조영산업",
+                    items: [
+                      { id: "joyoung_ind_social", name: "사회보험 (4대보험)" },
+                      { id: "joyoung_ind_income", name: "근로소득세" },
+                      { id: "joyoung_ind_local", name: "지방소득세" },
+                      { id: "joyoung_ind_vat", name: "부가가치세 (분납)" }
+                    ]
+                  },
+                  {
+                    entity: "오륙공사 & 개인",
+                    items: [
+                      { id: "ogong_social", name: "오공 사회보험" },
+                      { id: "ogong_income", name: "오공 근로소득세" },
+                      { id: "ogong_local", name: "오공 지방소득세" },
+                      { id: "ogong_vat", name: "오공 부가가치세" },
+                      { id: "park_social", name: "박순화(개인) 사회보험" }
+                    ]
+                  }
+                ].map((grp, idx) => (
+                  <div key={idx} className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700 space-y-2">
+                    <div className="font-extrabold text-xs text-rose-700 dark:text-rose-300 pb-1 border-b border-slate-200 dark:border-slate-700">
+                      {grp.entity}
+                    </div>
+                    <div className="space-y-1.5">
+                      {grp.items.map((it) => (
+                        <div key={it.id} className="flex items-center justify-between gap-2 text-xs">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium truncate">{it.name}</span>
+                          <input
+                            type="text"
+                            value={Number(manualLedger.publicCharges?.[it.id] || 0).toLocaleString()}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => handleManualLedgerChange("publicCharges", it.id, e.target.value)}
+                            className="w-28 text-right px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 shrink-0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* 6. 수수료 / 알바비 / 기사식대 / 기타잡비 (수정 & 추가/삭제 지원!) */}
+          {/* ========================================================================= */}
+          {(manualSectionFilter === "all" || manualSectionFilter === "misc") && (
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-6 bg-slate-700 dark:bg-slate-400 rounded-full"></span>
+                  <div>
+                    <h4 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>6. 수수료 · 알바비 · 기사식대 · 기타잡비</span>
+                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                        {miscItemsList.length}건
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      분류명, 대상자/거래처명, 금액, 비고를 직접 수정하고 새 항목을 추가/삭제할 수 있습니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 self-end sm:self-center">
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 font-mono">
+                    합계: {formatAmount(miscTotal)}
+                  </span>
+                  <button
+                    onClick={handleAddMiscItem}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold shadow-xs hover:bg-slate-800 transition-all shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>새 항목 추가</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Editable Misc Table */}
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                      <th className="py-2.5 px-3 w-10 text-center">NO</th>
+                      <th className="py-2.5 px-3 w-36">구분 / 분류</th>
+                      <th className="py-2.5 px-3 w-48">세부내용 / 거래처 · 대상자</th>
+                      <th className="py-2.5 px-3 text-right w-40">결산 지출금액 (원)</th>
+                      <th className="py-2.5 px-3">비고 및 용도</th>
+                      <th className="py-2.5 px-3 w-12 text-center">삭제</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                    {miscItemsList.map((item, idx) => (
+                      <tr key={item.id || idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-2 px-3 text-center text-slate-400 font-mono text-[11px]">
+                          {idx + 1}
+                        </td>
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={item.category || ""}
+                            onChange={(e) => handleMiscItemChange(item.id, "category", e.target.value)}
+                            placeholder="분류 (예: 알바비)"
+                            className="w-full px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={item.name || ""}
+                            onChange={(e) => handleMiscItemChange(item.id, "name", e.target.value)}
+                            placeholder="대상자/거래처명"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2 px-3 text-right">
+                          <input
+                            type="text"
+                            value={Number(item.amount || 0).toLocaleString()}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => handleMiscItemChange(item.id, "amount", e.target.value)}
+                            className="w-full text-right px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-bold text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2 px-3">
+                          <input
+                            type="text"
+                            value={item.memo || ""}
+                            onChange={(e) => handleMiscItemChange(item.id, "memo", e.target.value)}
+                            placeholder="비고"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <button
+                            onClick={() => handleDeleteMiscItem(item.id)}
+                            className="text-slate-400 hover:text-rose-600 p-1 transition-colors"
+                            title="항목 삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Total Banner */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+              ★★ 전사 수기 결산 비세금계산서 총합계 (노무비 + 대출이자 + 카드 + 보험 + 공과금 + 잡비)
+            </span>
+            <span className="text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
+              {formatAmount(grandManualTotal)}
+            </span>
           </div>
         </div>
       )}
