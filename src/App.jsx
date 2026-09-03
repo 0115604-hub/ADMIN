@@ -12,6 +12,7 @@ import { WorkerDashboard } from "./components/WorkerDashboard";
 import { ExtrusionDowntimeView } from "./components/ExtrusionDowntimeView";
 import { DailyQualityView } from "./components/DailyQualityView";
 import { OvertimeStatusView } from "./components/OvertimeStatusView";
+import { ElectronicApprovalView } from "./components/ElectronicApprovalView";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
@@ -198,6 +199,9 @@ export const App = () => {
                       onNavigateTab={(tabId) => setActiveTab(tabId)}
                     />
                   )}
+                  {activeTab === "electronic_approval" && (
+                    <ElectronicApprovalView />
+                  )}
                   {activeTab === "vehicle_sales" && (
                     <VehicleSalesView />
                   )}
@@ -224,6 +228,10 @@ export const App = () => {
                       onBulkUpload={handleBulkUpload}
                       onNavigateTab={(tabId) => setActiveTab(tabId)}
                     />
+                  )}
+
+                  {activeTab === "electronic_approval" && (
+                    <ElectronicApprovalView />
                   )}
 
                   {activeTab === "vehicle_sales" && (

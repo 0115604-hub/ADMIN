@@ -17,12 +17,14 @@ import {
   Sparkles,
   Wrench,
   ShieldCheck,
+  FileSignature,
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
+  { id: "electronic_approval", label: "전자결재", icon: FileSignature },
   { id: "vehicle_sales", label: "차종별 매출 분석", icon: Car },
   { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes },
   { id: "closing_ledger", label: "매입DATA", icon: Calculator },
@@ -44,6 +46,14 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       color: "blue",
       activeClass: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-1 ring-blue-500/30",
       iconColor: "text-blue-600 dark:text-blue-400"
+    },
+    {
+      id: "electronic_approval",
+      label: "전자결재",
+      icon: FileSignature,
+      color: "emerald",
+      activeClass: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 ring-1 ring-emerald-500/30",
+      iconColor: "text-emerald-600 dark:text-emerald-400"
     },
     {
       id: "extrusion_downtime",

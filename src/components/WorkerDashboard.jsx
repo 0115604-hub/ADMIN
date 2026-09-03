@@ -40,7 +40,9 @@ import {
   Laptop,
   History,
   Radio,
-  Activity
+  Activity,
+  FileSignature,
+  Stamp
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -759,6 +761,42 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 📑 ⭐ [요청사항 반영] 스마트 전자결재 바로가기 & 간편 현황 바 */}
+      {/* ========================================================================= */}
+      <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 text-white rounded-2xl p-3 sm:p-3.5 shadow-sm border border-emerald-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30">
+            <FileSignature className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-black text-xs sm:text-sm tracking-tight flex items-center gap-1.5">
+                <span>(주)오륙 스마트 전자결재 시스템</span>
+              </span>
+              <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                특근/휴가/품의 실시간 결재선
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 font-medium">
+              모바일·PC에서 특근 신청, 휴가 신청, 부품 품의서를 상신하고 전자 인장으로 결재합니다.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+          >
+            <FileSignature className="w-3.5 h-3.5" />
+            <span>전자결재 바로가기</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
 
       {/* ========================================================================= */}
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}
