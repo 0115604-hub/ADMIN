@@ -41,12 +41,22 @@ import {
   History,
   Radio,
   Activity,
+  Crown,
+  Lock,
   FileSignature,
   Stamp
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
+import {
+  getLocalApprovalDocs,
+  subscribeApprovalDocs,
+  checkApprovalPermission,
+  approveDocumentStep,
+  holdDocumentStep,
+  rejectDocumentStep
+} from "../services/approvalService";
 import { getLocalAccessLogs, subscribeAccessLogs } from "../services/accessLogService";
 import {
   getLocalOvertimeReports,
@@ -217,6 +227,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
   const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
+
+  // Approval Documents Subscription (Real-time for Top Panel)
+  const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
+
+  useEffect(() => {
+    const unsub = subscribeApprovalDocs((docs) => {
+      setApprovalDocs(docs);
+    });
+    return () => unsub();
+  }, []);
+
+  const pendingOrHoldDocs = useMemo(() => {
+    return approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
+  }, [approvalDocs]);
+
+  const pendingCount = useMemo(() => approvalDocs.filter((d) => d.status === "IN_PROGRESS").length, [approvalDocs]);
+  const holdCount = useMemo(() => approvalDocs.filter((d) => d.status === "HOLD").length, [approvalDocs]);
 
   // Plant-specific approval authority
   const canApproveSamrangjin = isMyeongjae || (currentProfile?.plant === "삼랑진공장" && currentProfile?.assignedProcess === "총괄관리") || isAdmin;
@@ -639,6 +666,145 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   return (
     <div className="space-y-3 sm:space-y-3.5 animate-fadeIn pb-20 max-w-[1600px] mx-auto px-1.5 sm:px-0">
       {/* ========================================================================= */}
+      {/* 📑 ⭐ [요청사항 반영] 최상단 전자결재 대기 현황 패널 (미결 및 보류 건만 표시) */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border-2 border-emerald-500/40 dark:border-emerald-600/40 shadow-md space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-xs">
+              <FileSignature className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <span>(주)오륙 전자결재 대기 현황</span>
+                  <span className="text-[10.5px] font-bold text-slate-400">(미결 • 보류 전용)</span>
+                </h2>
+                {isAdmin && (
+                  <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-amber-500 text-slate-950 flex items-center gap-1 shadow-xs">
+                    <Crown className="w-3 h-3" />
+                    <span>ADMIN 대표 결재 모드</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                현재 상신되어 결재 대기(미결) 중이거나 보류된 문서만 모아 표시합니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {pendingCount > 0 && (
+              <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 animate-pulse flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                <span>미결 {pendingCount}건</span>
+              </span>
+            )}
+            {holdCount > 0 && (
+              <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 flex items-center gap-1">
+                <PauseCircle className="w-3 h-3" />
+                <span>보류 {holdCount}건</span>
+              </span>
+            )}
+            {pendingOrHoldDocs.length === 0 && (
+              <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>미결/보류 없음 (완료)</span>
+              </span>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all flex items-center gap-1 shadow-xs ml-auto sm:ml-0"
+            >
+              <span>전체 결재함 이동</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Document List (미결/보류 항목만 1줄로 나열) */}
+        {pendingOrHoldDocs.length > 0 ? (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 overflow-hidden">
+            {pendingOrHoldDocs.map((doc) => {
+              const activeStep = doc.steps.find((s) => s.status === "PENDING" || s.status === "HOLD") || doc.steps[0];
+              const isHold = doc.status === "HOLD";
+
+              return (
+                <div
+                  key={doc.id}
+                  onClick={() => onNavigateTab ? onNavigateTab("electronic_approval") : null}
+                  className="p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-white dark:hover:bg-slate-800 cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
+                    {isHold ? (
+                      <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-amber-500 text-slate-950 shrink-0">
+                        ⏸️ 보류
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-rose-600 text-white shrink-0 animate-pulse">
+                        🔴 미결
+                      </span>
+                    )}
+
+                    <span className="font-mono text-[10.5px] font-bold text-slate-400 shrink-0">
+                      {doc.docNumber}
+                    </span>
+
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
+                      {doc.plant === "삼랑진공장" ? "삼랑진" : "한림"}
+                    </span>
+
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 shrink-0">
+                      {doc.typeName}
+                    </span>
+
+                    <h4 className="text-xs font-black text-slate-900 dark:text-white truncate flex-1">
+                      {doc.title}
+                    </h4>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 text-xs justify-between sm:justify-end">
+                    <span className="text-slate-500 dark:text-slate-400 font-medium">
+                      기안: <strong className="text-slate-700 dark:text-slate-300">{doc.drafter}</strong> ({doc.createdAt?.slice(5)})
+                    </span>
+
+                    {doc.amount && doc.amount !== "-" && (
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[11.5px]">
+                        {doc.amount}
+                      </span>
+                    )}
+
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
+                      대기: <strong>{activeStep.role} ({activeStep.name})</strong>
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onNavigateTab) onNavigateTab("electronic_approval");
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1"
+                    >
+                      <span>{isAdmin ? "👑 대표결재" : "열람/결재"}</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-3 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-slate-800/40 rounded-2xl border border-slate-200/60 dark:border-slate-800 flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>현재 결재를 기다리는 미결 또는 보류 문서가 없습니다. (모든 결재 처리 완료)</span>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
       {/* 🌟 [상단] 작업자 정보 (**공장 ***직위) & 간편 일정/연차 설정 패널 (ADMIN 모드 제외) */}
       {/* ========================================================================= */}
       {!isAdmin && (
@@ -761,42 +927,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
-
-      {/* ========================================================================= */}
-      {/* 📑 ⭐ [요청사항 반영] 스마트 전자결재 바로가기 & 간편 현황 바 */}
-      {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-emerald-950 text-white rounded-2xl p-3 sm:p-3.5 shadow-sm border border-emerald-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30">
-            <FileSignature className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-black text-xs sm:text-sm tracking-tight flex items-center gap-1.5">
-                <span>(주)오륙 스마트 전자결재 시스템</span>
-              </span>
-              <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                특근/휴가/품의 실시간 결재선
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-300 font-medium">
-              모바일·PC에서 특근 신청, 휴가 신청, 부품 품의서를 상신하고 전자 인장으로 결재합니다.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-          >
-            <FileSignature className="w-3.5 h-3.5" />
-            <span>전자결재 바로가기</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
 
       {/* ========================================================================= */}
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}

@@ -1,4 +1,4 @@
-﻿import {
+import {
   collection,
   doc,
   setDoc,
@@ -16,7 +16,7 @@ export const INITIAL_APPROVAL_DOCS = [
   {
     id: "appr_20260903_001",
     docNumber: "ORYUK-2026-0901",
-    type: "OVERTIME", // OVERTIME (특근신청서), LEAVE (휴가신청서), EXPENSE (품의서), GENERAL (일반기안)
+    type: "OVERTIME",
     typeName: "특근 신청서",
     title: "9월 1주차 주말 압출 2호기 및 가공 3호기 특근 승인의 건",
     plant: "삼랑진공장",
@@ -26,15 +26,16 @@ export const INITIAL_APPROVAL_DOCS = [
     createdAt: "2026-09-03 09:30",
     content: "현대 NX4a 및 JA 차종 긴급 납품 물량 대응을 위해 주말 특근(08:00~17:00, 총 6명)을 신청하오니 재가하여 주시기 바랍니다.",
     amount: "₩1,248,000",
-    status: "IN_PROGRESS", // DRAFT, IN_PROGRESS, APPROVED, REJECTED
-    currentStep: 2, // 1: 담당, 2: 팀장/책임, 3: 이사/임원, 4: 대표이사
+    status: "IN_PROGRESS", // IN_PROGRESS(미결), HOLD(보류), APPROVED(승인완료), REJECTED(반려)
+    currentStep: 2, // 1: 담당, 2: 책임, 3: 이사, 4: 대표
     steps: [
       { role: "담당", name: "방상국", title: "선임", status: "APPROVED", date: "2026-09-03 09:30", comment: "기안 상신" },
       { role: "책임", name: "이명재", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "조인주", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
     ],
-    rejectReason: ""
+    rejectReason: "",
+    holdReason: ""
   },
   {
     id: "appr_20260903_002",
@@ -57,7 +58,8 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "이사", name: "조인주", title: "이사", status: "APPROVED", date: "2026-09-02 16:00", comment: "승인 완료" },
       { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-02 17:30", comment: "최종 승인" }
     ],
-    rejectReason: ""
+    rejectReason: "",
+    holdReason: ""
   },
   {
     id: "appr_20260903_003",
@@ -80,7 +82,8 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "이사", name: "조인주", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
     ],
-    rejectReason: ""
+    rejectReason: "",
+    holdReason: ""
   }
 ];
 
@@ -124,7 +127,6 @@ export const subscribeApprovalDocs = (onUpdate) => {
           saveLocalApprovalDocs(list);
           onUpdate(list);
         } else {
-          // Initialize remote db if empty
           const locals = getLocalApprovalDocs();
           locals.forEach((item) => {
             setDoc(doc(db, COLLECTION_NAME, item.id), item).catch(() => {});
@@ -145,7 +147,111 @@ export const subscribeApprovalDocs = (onUpdate) => {
   }
 };
 
-// Save or Create an Approval Document
+// Check Approval Role Permission
+export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
+  if (!docItem || !docItem.steps) {
+    return { canApprove: false, reason: "문서 정보가 없습니다." };
+  }
+
+  if (docItem.status === "APPROVED") {
+    return { canApprove: false, reason: "최종 승인 완료된 문서입니다." };
+  }
+
+  // Find step that is PENDING or HOLD
+  const activeStepIdx = docItem.steps.findIndex((st) => st.status === "PENDING" || st.status === "HOLD");
+  if (activeStepIdx === -1) {
+    return { canApprove: false, reason: "결재 대기 중인 단계가 없습니다." };
+  }
+
+  const activeStep = docItem.steps[activeStepIdx];
+  const stepRole = activeStep.role; // 담당, 책임, 이사, 대표
+  const userName = currentProfile?.name || "";
+  const userTitle = currentProfile?.title || "";
+
+  // 1. ADMIN Mode -> Representative (대표이사) Top Authority
+  if (isAdmin) {
+    return {
+      canApprove: true,
+      stepIndex: activeStepIdx,
+      stepRole,
+      isRepresentative: true,
+      approverName: "대표이사"
+    };
+  }
+
+  // 2. Step 1: 담당 (Drafter)
+  if (stepRole === "담당") {
+    return {
+      canApprove: true,
+      stepIndex: activeStepIdx,
+      stepRole,
+      approverName: userName || "담당자"
+    };
+  }
+
+  // 3. Step 2: 책임 (Plant Lead / Department Head)
+  // 삼랑진공장: 이명재, 설유철 / 한림공장: 김동욱
+  if (stepRole === "책임") {
+    const isLead =
+      (docItem.plant === "한림공장" && (userName === "김동욱" || userTitle === "총괄")) ||
+      (docItem.plant === "삼랑진공장" && (userName === "이명재" || userName === "설유철" || userTitle === "책임")) ||
+      userName === "이명재" ||
+      userName === "김동욱" ||
+      userName === "설유철" ||
+      userName === "조인주";
+
+    if (isLead) {
+      return {
+        canApprove: true,
+        stepIndex: activeStepIdx,
+        stepRole,
+        approverName: userName
+      };
+    }
+    return {
+      canApprove: false,
+      reason: `[${docItem.plant} 책임 ${activeStep.name}] 결재 권한이 필요합니다.`
+    };
+  }
+
+  // 4. Step 3: 이사 (Executive / Director)
+  // 조인주 이사
+  if (stepRole === "이사") {
+    if (userName === "조인주" || userTitle === "이사") {
+      return {
+        canApprove: true,
+        stepIndex: activeStepIdx,
+        stepRole,
+        approverName: "조인주"
+      };
+    }
+    return {
+      canApprove: false,
+      reason: "[이사 조인주] 임원 결재 권한이 필요합니다."
+    };
+  }
+
+  // 5. Step 4: 대표 (CEO / Representative)
+  if (stepRole === "대표") {
+    if (userTitle === "대표" || userName === "대표이사") {
+      return {
+        canApprove: true,
+        stepIndex: activeStepIdx,
+        stepRole,
+        isRepresentative: true,
+        approverName: "대표이사"
+      };
+    }
+    return {
+      canApprove: false,
+      reason: "대표이사(ADMIN) 최종 결재 권한이 필요합니다."
+    };
+  }
+
+  return { canApprove: false, reason: "결재 권한이 없습니다." };
+};
+
+// Save or Create an Approval Document (All Workers can draft)
 export const saveApprovalDocument = async (docData) => {
   const current = getLocalApprovalDocs();
   const id = docData.id || `appr_${Date.now()}`;
@@ -166,6 +272,8 @@ export const saveApprovalDocument = async (docData) => {
     status: docData.status || "IN_PROGRESS",
     currentStep: docData.currentStep || 2,
     createdAt: docData.createdAt || nowStr,
+    rejectReason: docData.rejectReason || "",
+    holdReason: docData.holdReason || "",
     steps: docData.steps || [
       { role: "담당", name: docData.drafter, title: docData.drafterTitle || "선임", status: "APPROVED", date: nowStr, comment: "기안 상신" },
       { role: "책임", name: docData.plant === "한림공장" ? "김동욱" : "이명재", title: "책임", status: "PENDING", date: "", comment: "" },
@@ -219,7 +327,7 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
         comment: comment || "승인"
       };
     }
-    if (idx === stepIndex + 1 && st.status === "WAITING") {
+    if (idx === stepIndex + 1 && (st.status === "WAITING" || st.status === "HOLD")) {
       return { ...st, status: "PENDING" };
     }
     return st;
@@ -232,13 +340,52 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
     ...target,
     steps: updatedSteps,
     currentStep: nextStep,
-    status: isAllApproved ? "APPROVED" : "IN_PROGRESS"
+    status: isAllApproved ? "APPROVED" : "IN_PROGRESS",
+    holdReason: ""
   };
 
   return await saveApprovalDocument(updatedTarget);
 };
 
-// Reject Step
+// Hold Step (보류 처리)
+export const holdDocumentStep = async (docId, stepIndex, holderName, holdReason) => {
+  const current = getLocalApprovalDocs();
+  const target = current.find((d) => d.id === docId);
+  if (!target) return current;
+
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const updatedSteps = target.steps.map((st, idx) => {
+    if (idx === stepIndex) {
+      return {
+        ...st,
+        name: holderName || st.name,
+        status: "HOLD",
+        date: nowStr,
+        comment: holdReason || "보류"
+      };
+    }
+    return st;
+  });
+
+  const updatedTarget = {
+    ...target,
+    steps: updatedSteps,
+    status: "HOLD",
+    holdReason: holdReason || "검토 필요로 인한 보류"
+  };
+
+  return await saveApprovalDocument(updatedTarget);
+};
+
+// Reject Step (반려 처리)
 export const rejectDocumentStep = async (docId, stepIndex, rejectorName, rejectReason) => {
   const current = getLocalApprovalDocs();
   const target = current.find((d) => d.id === docId);

@@ -21,10 +21,11 @@ import {
   DollarSign,
   Send,
   Stamp,
-  Sparkles,
-  ArrowRight,
-  Flame,
-  ShieldCheck
+  PauseCircle,
+  ShieldCheck,
+  Crown,
+  Lock,
+  ArrowRight
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
@@ -32,23 +33,28 @@ import {
   subscribeApprovalDocs,
   saveApprovalDocument,
   approveDocumentStep,
+  holdDocumentStep,
   rejectDocumentStep,
-  deleteApprovalDocument
+  deleteApprovalDocument,
+  checkApprovalPermission
 } from "../services/approvalService";
 
 export const ElectronicApprovalView = () => {
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
-  const [selectedTab, setSelectedTab] = useState("ALL");
+  const [selectedTab, setSelectedTab] = useState("ALL"); // ALL, PENDING, HOLD, MY_DRAFTS, APPROVED, REJECTED
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlant, setSelectedPlant] = useState("ALL");
 
+  // Modals
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [rejectReason, setRejectReason] = useState("");
-  const [isRejecting, setIsRejecting] = useState(false);
+  const [holdReason, setHoldReason] = useState("");
+  const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
 
+  // New Draft Form State (All workers can draft)
   const [draftForm, setDraftForm] = useState({
     type: "OVERTIME",
     typeName: "특근 신청서",
@@ -61,6 +67,7 @@ export const ElectronicApprovalView = () => {
     amount: ""
   });
 
+  // Real-time Cloud Synchronization
   useEffect(() => {
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
@@ -84,17 +91,16 @@ export const ElectronicApprovalView = () => {
     }
   }, [currentProfile]);
 
+  // Filtered Documents
   const filteredDocs = useMemo(() => {
     return approvalDocs.filter((doc) => {
       if (selectedPlant !== "ALL" && doc.plant !== selectedPlant) return false;
 
-      if (selectedTab === "PENDING_ME") {
-        const pendingStep = doc.steps?.find((st) => st.status === "PENDING");
-        if (!pendingStep) return false;
-        const isMyTurn = isAdmin || pendingStep.name === currentProfile?.name ||
-          (pendingStep.role === "책임" && (currentProfile?.name === "이명재" || currentProfile?.name === "김동욱")) ||
-          (pendingStep.role === "이사" && currentProfile?.name === "조인주");
-        return isMyTurn;
+      if (selectedTab === "PENDING") {
+        return doc.status === "IN_PROGRESS";
+      }
+      if (selectedTab === "HOLD") {
+        return doc.status === "HOLD";
       }
       if (selectedTab === "MY_DRAFTS") {
         return doc.drafter === currentProfile?.name;
@@ -118,23 +124,25 @@ export const ElectronicApprovalView = () => {
 
       return true;
     });
-  }, [approvalDocs, selectedTab, selectedPlant, searchQuery, currentProfile, isAdmin]);
+  }, [approvalDocs, selectedTab, selectedPlant, searchQuery, currentProfile]);
 
+  // Statistics
   const stats = useMemo(() => {
     const total = approvalDocs.length;
-    const pendingMe = approvalDocs.filter((doc) => {
-      const pendingStep = doc.steps?.find((st) => st.status === "PENDING");
-      if (!pendingStep) return false;
-      return isAdmin || pendingStep.name === currentProfile?.name ||
-        (pendingStep.role === "책임" && (currentProfile?.name === "이명재" || currentProfile?.name === "김동욱")) ||
-        (pendingStep.role === "이사" && currentProfile?.name === "조인주");
-    }).length;
-    const inProgress = approvalDocs.filter((d) => d.status === "IN_PROGRESS").length;
+    const pending = approvalDocs.filter((d) => d.status === "IN_PROGRESS").length;
+    const hold = approvalDocs.filter((d) => d.status === "HOLD").length;
     const approved = approvalDocs.filter((d) => d.status === "APPROVED").length;
     const rejected = approvalDocs.filter((d) => d.status === "REJECTED").length;
-    return { total, pendingMe, inProgress, approved, rejected };
-  }, [approvalDocs, currentProfile, isAdmin]);
+    const myDrafts = approvalDocs.filter((d) => d.drafter === currentProfile?.name).length;
+    return { total, pending, hold, approved, rejected, myDrafts };
+  }, [approvalDocs, currentProfile]);
 
+  // Permission evaluation for currently opened document
+  const currentPermission = useMemo(() => {
+    return checkApprovalPermission(selectedDoc, currentProfile, isAdmin);
+  }, [selectedDoc, currentProfile, isAdmin]);
+
+  // Handle Save Draft (전작업자 작성 가능)
   const handleSaveDraft = async (e) => {
     e.preventDefault();
     if (!draftForm.title.trim()) {
@@ -163,53 +171,84 @@ export const ElectronicApprovalView = () => {
       content: "",
       amount: ""
     });
+    alert("결재 기안서가 성공적으로 상신되었습니다.");
   };
 
+  // Handle Approve Step (직급/대표 권한 체크)
   const handleApprove = async () => {
     if (!selectedDoc) return;
-    const pendingStepIdx = selectedDoc.steps?.findIndex((st) => st.status === "PENDING");
-    if (pendingStepIdx === -1) {
-      alert("현재 결재 대기 중인 단계가 없습니다.");
+    if (!currentPermission.canApprove) {
+      alert(currentPermission.reason || "결재 권한이 없습니다.");
       return;
     }
 
-    const approverName = currentProfile?.name || "결재자";
+    const approverName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
     const updated = await approveDocumentStep(
       selectedDoc.id,
-      pendingStepIdx,
+      currentPermission.stepIndex,
       approverName,
-      approvalComment || "승인"
+      approvalComment || (isAdmin ? "대표이사 최종 승인" : "승인")
     );
 
     setSelectedDoc(updated);
     setApprovalComment("");
-    alert("결재 승인 및 전자 인장 날인이 완료되었습니다.");
+    setActionType("APPROVE");
+    alert(`[${approverName}] 전자 인장 날인 및 결재 승인이 완료되었습니다.`);
   };
 
+  // Handle Hold Step (보류)
+  const handleHold = async () => {
+    if (!selectedDoc) return;
+    if (!currentPermission.canApprove) {
+      alert(currentPermission.reason || "보류 권한이 없습니다.");
+      return;
+    }
+    if (!holdReason.trim()) {
+      alert("보류 사유를 입력해 주세요.");
+      return;
+    }
+
+    const holderName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
+    const updated = await holdDocumentStep(
+      selectedDoc.id,
+      currentPermission.stepIndex,
+      holderName,
+      holdReason
+    );
+
+    setSelectedDoc(updated);
+    setHoldReason("");
+    setActionType("APPROVE");
+    alert("문서가 [보류] 처리되었습니다.");
+  };
+
+  // Handle Reject Step (반려)
   const handleReject = async () => {
     if (!selectedDoc) return;
+    if (!currentPermission.canApprove) {
+      alert(currentPermission.reason || "반려 권한이 없습니다.");
+      return;
+    }
     if (!rejectReason.trim()) {
       alert("반려 사유를 입력해 주세요.");
       return;
     }
 
-    const pendingStepIdx = selectedDoc.steps?.findIndex((st) => st.status === "PENDING");
-    if (pendingStepIdx === -1) return;
-
-    const rejectorName = currentProfile?.name || "반려자";
+    const rejectorName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
     const updated = await rejectDocumentStep(
       selectedDoc.id,
-      pendingStepIdx,
+      currentPermission.stepIndex,
       rejectorName,
       rejectReason
     );
 
     setSelectedDoc(updated);
     setRejectReason("");
-    setIsRejecting(false);
-    alert("문서가 반려 처리되었습니다.");
+    setActionType("APPROVE");
+    alert("문서가 [반려] 처리되었습니다.");
   };
 
+  // Delete Document
   const handleDelete = async (id, e) => {
     if (e) e.stopPropagation();
     if (window.confirm("이 결재 문서를 완전히 삭제하시겠습니까?")) {
@@ -252,25 +291,30 @@ export const ElectronicApprovalView = () => {
   };
 
   return (
-    <div className="space-y-4 animate-fadeIn">
-      {/* 1. Header & KPI Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+    <div className="space-y-3.5 animate-fadeIn pb-16">
+      {/* ========================================================================= */}
+      {/* 1. Header & Quick Stat Bar */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20">
-              <FileSignature className="w-6 h-6" />
+              <FileSignature className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                  (주)오륙 스마트 전자결재
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                  (주)오륙 스마트 전자결재 목록 현황
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  실시간 연동
-                </span>
+                {isAdmin && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 flex items-center gap-1 shadow-xs">
+                    <Crown className="w-3 h-3" />
+                    <span>대표 결재 권한 활성</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                특근, 휴가, 자재품의 등 전사 결재 문서를 전자 인장으로 신속하게 상신하고 결재합니다.
+                전 작업자 기안 상신 가능 • 직급별 책임/이사 승인 • ADMIN 대표이사 최종 승인
               </p>
             </div>
           </div>
@@ -278,94 +322,130 @@ export const ElectronicApprovalView = () => {
           <button
             type="button"
             onClick={() => setIsDraftModalOpen(true)}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-2"
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>+ 새 결재 기안서 작성</span>
           </button>
         </div>
 
-        {/* 4 KPI Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {/* 5 KPI Summary Status Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {/* 미결 (결재 진행중) */}
           <div
-            onClick={() => setSelectedTab("PENDING_ME")}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
-              selectedTab === "PENDING_ME"
+            onClick={() => setSelectedTab("PENDING")}
+            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+              selectedTab === "PENDING"
                 ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 ring-2 ring-rose-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-bold">내 결재 대기</span>
-              <Clock className="w-4 h-4 text-rose-500" />
+              <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                <span>미결 (결재대기)</span>
+              </span>
             </div>
             <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 font-mono">
-              {stats.pendingMe}건
+              {stats.pending}건
             </div>
           </div>
 
+          {/* 보류 */}
           <div
-            onClick={() => setSelectedTab("ALL")}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
-              selectedTab === "ALL"
-                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
+            onClick={() => setSelectedTab("HOLD")}
+            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+              selectedTab === "HOLD"
+                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 ring-2 ring-amber-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-bold">결재 진행중</span>
-              <FileText className="w-4 h-4 text-blue-500" />
+              <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <PauseCircle className="w-3.5 h-3.5" />
+                <span>보류 문서</span>
+              </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1 font-mono">
-              {stats.inProgress}건
+            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 font-mono">
+              {stats.hold}건
             </div>
           </div>
 
+          {/* 승인 완료 */}
           <div
             onClick={() => setSelectedTab("APPROVED")}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
               selectedTab === "APPROVED"
                 ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-bold">최종 승인 완료</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>최종 승인 완료</span>
+              </span>
             </div>
             <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
               {stats.approved}건
             </div>
           </div>
 
+          {/* 반려 */}
           <div
             onClick={() => setSelectedTab("REJECTED")}
-            className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
               selectedTab === "REJECTED"
-                ? "bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 ring-2 ring-amber-500/30 shadow-xs"
+                ? "bg-slate-200 dark:bg-slate-700 border-slate-400 ring-2 ring-slate-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
-              <span className="font-bold">반려 문서</span>
-              <XCircle className="w-4 h-4 text-amber-500" />
+              <span className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>반려 문서</span>
+              </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 font-mono">
+            <div className="text-xl sm:text-2xl font-black text-slate-700 dark:text-slate-300 mt-1 font-mono">
               {stats.rejected}건
+            </div>
+          </div>
+
+          {/* 전체 결재 */}
+          <div
+            onClick={() => setSelectedTab("ALL")}
+            className={`p-3 rounded-2xl border transition-all cursor-pointer col-span-2 sm:col-span-1 ${
+              selectedTab === "ALL"
+                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
+                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5" />
+                <span>전체 문서 목록</span>
+              </span>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1 font-mono">
+              {stats.total}건
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. Filter Tabs & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      {/* ========================================================================= */}
+      {/* 2. Filter Navigation & Plant Filter / Search */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {[
-            { id: "ALL", label: "전체 결재문서" },
-            { id: "PENDING_ME", label: `결재 대기 (${stats.pendingMe})`, highlight: stats.pendingMe > 0 },
-            { id: "MY_DRAFTS", label: "내 기안함" },
-            { id: "APPROVED", label: "승인 완료" },
-            { id: "REJECTED", label: "반려" }
+            { id: "ALL", label: `전체 목록 (${stats.total})` },
+            { id: "PENDING", label: `🔴 미결/대기 (${stats.pending})`, highlight: stats.pending > 0 },
+            { id: "HOLD", label: `⏸️ 보류 (${stats.hold})`, holdLight: stats.hold > 0 },
+            { id: "APPROVED", label: `✓ 승인완료 (${stats.approved})` },
+            { id: "MY_DRAFTS", label: `내 기안함 (${stats.myDrafts})` },
+            { id: "REJECTED", label: `✕ 반려 (${stats.rejected})` }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -375,6 +455,8 @@ export const ElectronicApprovalView = () => {
                   ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
                   : tab.highlight
                   ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300"
+                  : tab.holdLight
+                  ? "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300"
                   : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
               }`}
             >
@@ -383,6 +465,7 @@ export const ElectronicApprovalView = () => {
           ))}
         </div>
 
+        {/* Plant Filter & Search Box */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <select
             value={selectedPlant}
@@ -407,138 +490,178 @@ export const ElectronicApprovalView = () => {
         </div>
       </div>
 
-      {/* 3. Document Cards List */}
+      {/* ========================================================================= */}
+      {/* 3. ⭐ [요청사항 반영] 결재목록 한 줄(1-Line Row) 깔끔한 테이블 뷰 */}
+      {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         {filteredDocs.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400 space-y-2">
             <FileText className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-            <p>조건에 일치하는 결재 문서가 없습니다.</p>
+            <p>해당 조건의 결재 문서가 없습니다.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {filteredDocs.map((doc) => {
-              const pendingStep = doc.steps?.find((st) => st.status === "PENDING");
-              const isMyPending = pendingStep && (isAdmin || pendingStep.name === currentProfile?.name ||
-                (pendingStep.role === "책임" && (currentProfile?.name === "이명재" || currentProfile?.name === "김동욱")) ||
-                (pendingStep.role === "이사" && currentProfile?.name === "조인주"));
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
+                  <th className="py-3 px-3 w-28 whitespace-nowrap">문서번호</th>
+                  <th className="py-3 px-2.5 w-24 whitespace-nowrap">양식구분</th>
+                  <th className="py-3 px-2 w-20 whitespace-nowrap">공장</th>
+                  <th className="py-3 px-3 min-w-[220px]">문서 제목</th>
+                  <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안자</th>
+                  <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안일시</th>
+                  <th className="py-3 px-2.5 w-24 whitespace-nowrap">소요금액</th>
+                  <th className="py-3 px-3 w-48 text-center whitespace-nowrap">결재선 현황 (담당/책임/이사/대표)</th>
+                  <th className="py-3 px-2.5 w-24 text-center whitespace-nowrap">문서상태</th>
+                  <th className="py-3 px-3 w-20 text-center whitespace-nowrap">열람</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                {filteredDocs.map((doc) => {
+                  const isPending = doc.status === "IN_PROGRESS";
+                  const isHold = doc.status === "HOLD";
+                  const isApproved = doc.status === "APPROVED";
+                  const isRejected = doc.status === "REJECTED";
 
-              return (
-                <div
-                  key={doc.id}
-                  onClick={() => setSelectedDoc(doc)}
-                  className={`p-3.5 sm:p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-                    isMyPending ? "bg-rose-50/40 dark:bg-rose-950/20" : ""
-                  }`}
-                >
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-[10.5px] font-bold text-slate-400">
+                  return (
+                    <tr
+                      key={doc.id}
+                      onClick={() => setSelectedDoc(doc)}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${
+                        isPending ? "bg-rose-50/20 dark:bg-rose-950/10" : isHold ? "bg-amber-50/20 dark:bg-amber-950/10" : ""
+                      }`}
+                    >
+                      {/* 1. 문서번호 */}
+                      <td className="py-2.5 px-3 font-mono text-[11px] font-bold text-slate-500 whitespace-nowrap">
                         {doc.docNumber}
-                      </span>
+                      </td>
 
-                      <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black ${
-                        doc.type === "OVERTIME"
-                          ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                          : doc.type === "LEAVE"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                          : doc.type === "EXPENSE"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                          : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
-                      }`}>
-                        {doc.typeName}
-                      </span>
-
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {doc.plant}
-                      </span>
-
-                      {doc.status === "APPROVED" ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                          ✓ 최종승인
+                      {/* 2. 양식구분 */}
+                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black ${
+                          doc.type === "OVERTIME"
+                            ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                            : doc.type === "LEAVE"
+                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                            : doc.type === "EXPENSE"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                        }`}>
+                          {doc.typeName}
                         </span>
-                      ) : doc.status === "REJECTED" ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
-                          ✕ 반려됨
+                      </td>
+
+                      {/* 3. 공장 */}
+                      <td className="py-2.5 px-2 text-slate-600 dark:text-slate-300 font-bold whitespace-nowrap text-[11px]">
+                        {doc.plant === "삼랑진공장" ? "삼랑진" : "한림"}
+                      </td>
+
+                      {/* 4. 문서 제목 */}
+                      <td className="py-2.5 px-3 font-black text-slate-900 dark:text-white max-w-[340px] truncate">
+                        <span className="hover:underline text-slate-900 dark:text-white">
+                          {doc.title}
                         </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          <span>결재진행중 ({doc.steps.find((s) => s.status === "PENDING")?.role || "결재"} 대기)</span>
-                        </span>
-                      )}
+                      </td>
 
-                      {isMyPending && (
-                        <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-rose-600 text-white animate-pulse">
-                          내 결재 순서
-                        </span>
-                      )}
-                    </div>
+                      {/* 5. 기안자 */}
+                      <td className="py-2.5 px-2.5 whitespace-nowrap text-slate-700 dark:text-slate-300 font-bold text-[11px]">
+                        {doc.drafter} <span className="text-slate-400 font-normal">{doc.drafterTitle}</span>
+                      </td>
 
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
-                      {doc.title}
-                    </h3>
+                      {/* 6. 기안일시 */}
+                      <td className="py-2.5 px-2.5 whitespace-nowrap font-mono text-slate-500 text-[10.5px]">
+                        {doc.createdAt?.slice(5)}
+                      </td>
 
-                    <div className="text-xs text-slate-400 font-medium flex items-center gap-2">
-                      <span>기안자: <strong className="text-slate-700 dark:text-slate-300">{doc.drafter} {doc.drafterTitle}</strong></span>
-                      <span>•</span>
-                      <span>기안일: {doc.createdAt}</span>
-                      {doc.amount && doc.amount !== "-" && (
-                        <>
-                          <span>•</span>
-                          <span>금액: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{doc.amount}</strong></span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+                      {/* 7. 소요금액 */}
+                      <td className="py-2.5 px-2.5 whitespace-nowrap font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400">
+                        {doc.amount || "-"}
+                      </td>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      {doc.steps.map((st, idx) => (
-                        <div key={idx} className="flex flex-col items-center justify-center p-1 w-12 text-center">
-                          <span className="text-[9px] font-bold text-slate-400">{st.role}</span>
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black my-0.5 border ${
-                            st.status === "APPROVED"
-                              ? "bg-emerald-500 text-white border-emerald-600 shadow-xs"
-                              : st.status === "REJECTED"
-                              ? "bg-rose-500 text-white border-rose-600"
-                              : st.status === "PENDING"
-                              ? "bg-amber-100 text-amber-900 border-amber-400 animate-pulse"
-                              : "bg-slate-100 dark:bg-slate-700 text-slate-400 border-slate-200 dark:border-slate-600"
-                          }`}>
-                            {st.status === "APPROVED" ? "인" : st.status === "REJECTED" ? "반" : st.status === "PENDING" ? "대기" : "-"}
-                          </div>
-                          <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300 truncate w-full">
-                            {st.name?.slice(0, 3)}
-                          </span>
+                      {/* 8. 4단계 결재선 도장 미니 배지 */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          {doc.steps.map((st, idx) => (
+                            <div
+                              key={idx}
+                              title={`[${st.role}] ${st.name} : ${st.status}`}
+                              className={`w-6 h-6 rounded-md flex items-center justify-center text-[9.5px] font-black border transition-all ${
+                                st.status === "APPROVED"
+                                  ? "bg-emerald-500 text-white border-emerald-600"
+                                  : st.status === "HOLD"
+                                  ? "bg-amber-400 text-slate-950 border-amber-500 animate-pulse font-bold"
+                                  : st.status === "REJECTED"
+                                  ? "bg-rose-500 text-white border-rose-600"
+                                  : st.status === "PENDING"
+                                  ? "bg-rose-100 text-rose-800 border-rose-400 animate-pulse font-bold"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
+                              }`}
+                            >
+                              {st.status === "APPROVED"
+                                ? "인"
+                                : st.status === "HOLD"
+                                ? "류"
+                                : st.status === "REJECTED"
+                                ? "반"
+                                : st.status === "PENDING"
+                                ? "대"
+                                : st.role?.slice(0, 1)}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </td>
 
-                    <div className="flex flex-col gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDoc(doc);
-                        }}
-                        className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all flex items-center gap-1 shadow-xs"
-                      >
-                        <span>문서열람</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      {/* 9. 문서 상태 */}
+                      <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                        {isApproved ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                            ✓ 승인완료
+                          </span>
+                        ) : isHold ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
+                            ⏸️ 보류중
+                          </span>
+                        ) : isRejected ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
+                            ✕ 반려됨
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
+                            <Clock className="w-2.5 h-2.5" />
+                            <span>미결({doc.steps.find((s) => s.status === "PENDING")?.role || "결재"})</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 10. 열람 버튼 */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDoc(doc);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all shadow-xs"
+                        >
+                          상세
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      {/* 4. Official Document Detail & Approval Popup Dialog */}
+      {/* ========================================================================= */}
+      {/* 4. Official Document Detail & Approval Popup Dialog (직급/ADMIN 권한 반영) */}
+      {/* ========================================================================= */}
       {selectedDoc && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6">
+            {/* Header Dialog Controls */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
@@ -565,7 +688,10 @@ export const ElectronicApprovalView = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedDoc(null)}
+                  onClick={() => {
+                    setSelectedDoc(null);
+                    setActionType("APPROVE");
+                  }}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-black text-sm"
                 >
                   ✕
@@ -597,13 +723,18 @@ export const ElectronicApprovalView = () => {
                           <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
                           <span className="text-[7.5px]">승인</span>
                         </div>
+                      ) : st.status === "HOLD" ? (
+                        <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg]">
+                          <span>보류</span>
+                          <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
+                        </div>
                       ) : st.status === "REJECTED" ? (
                         <div className="w-11 h-11 rounded-full border-2 border-slate-700 text-slate-700 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-6deg]">
                           <span>반려</span>
                           <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
                         </div>
                       ) : st.status === "PENDING" ? (
-                        <span className="text-[10.5px] font-black text-amber-600 dark:text-amber-400 animate-pulse">
+                        <span className="text-[10.5px] font-black text-rose-600 dark:text-rose-400 animate-pulse">
                           결재대기
                         </span>
                       ) : (
@@ -678,6 +809,19 @@ export const ElectronicApprovalView = () => {
               </p>
             </div>
 
+            {/* Hold Reason Box */}
+            {selectedDoc.holdReason && (
+              <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs space-y-1">
+                <span className="font-black text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                  <PauseCircle className="w-3.5 h-3.5" />
+                  <span>결재 보류 사유</span>
+                </span>
+                <p className="text-amber-950 dark:text-amber-200 font-medium">
+                  {selectedDoc.holdReason}
+                </p>
+              </div>
+            )}
+
             {/* Rejection Notice */}
             {selectedDoc.rejectReason && (
               <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-xs space-y-1">
@@ -698,7 +842,7 @@ export const ElectronicApprovalView = () => {
                 {selectedDoc.steps.filter((s) => s.date).map((st, idx) => (
                   <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] flex items-center justify-between text-slate-600 dark:text-slate-300">
                     <span className="font-bold">
-                      [{st.role}] {st.name} {st.status === "APPROVED" ? "✓ 승인" : "✕ 반려"} : {st.comment || "의견 없음"}
+                      [{st.role}] {st.name} {st.status === "APPROVED" ? "✓ 승인" : st.status === "HOLD" ? "⏸️ 보류" : "✕ 반려"} : {st.comment || "의견 없음"}
                     </span>
                     <span className="font-mono text-slate-400">{st.date}</span>
                   </div>
@@ -706,72 +850,130 @@ export const ElectronicApprovalView = () => {
               </div>
             </div>
 
-            {/* Approval Execution Controls */}
-            {selectedDoc.status === "IN_PROGRESS" && (
+            {/* ========================================================================= */}
+            {/* Approval Controls (Role & ADMIN permission check) */}
+            {/* ========================================================================= */}
+            {(selectedDoc.status === "IN_PROGRESS" || selectedDoc.status === "HOLD") && (
               <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                     <Stamp className="w-4 h-4 text-emerald-600" />
-                    <span>전자결재 승인 및 인장 날인 처리</span>
+                    <span>
+                      {isAdmin ? "대표이사 결재 승인 및 인장 날인" : "전자결재 처리 (승인/보류/반려)"}
+                    </span>
                   </span>
                   <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300">
-                    결재자: <strong>{currentProfile?.name || "관리자"}</strong>
+                    현재 사용자: <strong>{isAdmin ? "대표이사(ADMIN)" : `${currentProfile?.name} (${currentProfile?.title || "작업자"})`}</strong>
                   </span>
                 </div>
 
-                {!isRejecting ? (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      placeholder="결재 의견을 입력하세요 (예: 이상 없음 승인)"
-                      value={approvalComment}
-                      onChange={(e) => setApprovalComment(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                    />
+                {currentPermission.canApprove ? (
+                  <>
+                    {actionType === "APPROVE" && (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="결재 의견 (예: 이상 없음 승인)"
+                          value={approvalComment}
+                          onChange={(e) => setApprovalComment(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
+                        />
 
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsRejecting(true)}
-                        className="px-4 py-2 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all"
-                      >
-                        반려 처리
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleApprove}
-                        className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5"
-                      >
-                        <Stamp className="w-3.5 h-3.5" />
-                        <span>승인 및 도장 날인</span>
-                      </button>
-                    </div>
-                  </div>
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => setActionType("HOLD")}
+                            className="px-3.5 py-2 rounded-xl border border-amber-400 text-amber-700 hover:bg-amber-50 text-xs font-bold transition-all"
+                          >
+                            ⏸️ 보류 처리
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActionType("REJECT")}
+                            className="px-3.5 py-2 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all"
+                          >
+                            ✕ 반려 처리
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleApprove}
+                            className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                          >
+                            <Stamp className="w-3.5 h-3.5" />
+                            <span>{isAdmin ? "👑 대표이사 최종 승인 및 날인" : "✓ 승인 및 도장 날인"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {actionType === "HOLD" && (
+                      <div className="space-y-2">
+                        <textarea
+                          rows="2"
+                          placeholder="보류 사유를 구체적으로 입력하세요 (추가 확인 사항 등)."
+                          value={holdReason}
+                          onChange={(e) => setHoldReason(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border-2 border-amber-300 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
+                        ></textarea>
+
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActionType("APPROVE")}
+                            className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleHold}
+                            className="px-5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-md shadow-amber-500/20"
+                          >
+                            보류 확정
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {actionType === "REJECT" && (
+                      <div className="space-y-2">
+                        <textarea
+                          rows="2"
+                          placeholder="반려 사유를 구체적으로 작성해 주세요."
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          className="w-full p-2.5 rounded-xl border-2 border-rose-300 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
+                        ></textarea>
+
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActionType("APPROVE")}
+                            className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleReject}
+                            className="px-5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-500/20"
+                          >
+                            반려 확정
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="space-y-2">
-                    <textarea
-                      rows="2"
-                      placeholder="반려 사유를 구체적으로 작성해 주세요."
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                      className="w-full p-2.5 rounded-xl border-2 border-rose-300 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white"
-                    ></textarea>
-
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsRejecting(false)}
-                        className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold"
-                      >
-                        취소
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleReject}
-                        className="px-5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-500/20"
-                      >
-                        반려 확정
-                      </button>
+                  <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                    <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div>
+                      <span className="font-black text-slate-800 dark:text-slate-200">
+                        {currentPermission.reason}
+                      </span>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        상위 결재자의 승인이 완료된 후 다음 단계 결재선으로 자동 인계됩니다.
+                      </p>
                     </div>
                   </div>
                 )}
@@ -793,7 +995,10 @@ export const ElectronicApprovalView = () => {
 
               <button
                 type="button"
-                onClick={() => setSelectedDoc(null)}
+                onClick={() => {
+                  setSelectedDoc(null);
+                  setActionType("APPROVE");
+                }}
                 className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto"
               >
                 닫기
@@ -803,7 +1008,9 @@ export const ElectronicApprovalView = () => {
         </div>
       )}
 
-      {/* 5. New Draft Registration Modal */}
+      {/* ========================================================================= */}
+      {/* 5. New Draft Registration Modal (전작업자 작성 가능) */}
+      {/* ========================================================================= */}
       {isDraftModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6">
@@ -817,7 +1024,7 @@ export const ElectronicApprovalView = () => {
                     새 전자결재 기안서 작성
                   </h3>
                   <p className="text-xs text-slate-400">
-                    원하시는 양식을 선택하여 결재선을 지정하고 상신합니다.
+                    전 작업자 기안 가능 • 결재선 자동 지정
                   </p>
                 </div>
               </div>
@@ -876,7 +1083,7 @@ export const ElectronicApprovalView = () => {
 
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    기안자
+                    기안자 (전작업자 작성 가능)
                   </label>
                   <input
                     type="text"
