@@ -21,7 +21,7 @@ export const ADMIN_USERS = [
     plant: "본사",
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
     avatar: "A",
-    pin: "470928"
+    pin: "0090"
   }
 ];
 
