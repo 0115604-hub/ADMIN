@@ -25,7 +25,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import * as XLSX from "xlsx";
-import { subscribeExtrusionDowntimeLogs, getLocalExtrusionLogs, saveExtrusionDowntimeBatch } from "../services/extrusionDowntimeService";
+import { subscribeExtrusionDowntimeLogs, getLocalExtrusionLogs, saveExtrusionDowntimeBatch, AVAILABLE_WEEKS, getWeekDaysForWeek, FULL_HISTORICAL_DOWNTIME_LOGS } from "../services/extrusionDowntimeService";
 
 // 1. 압출 라인 (설비명)
 export const EXTRUSION_LINES = [
@@ -59,14 +59,7 @@ const getShortReason = (reason) => {
   return reason.slice(0, 4);
 };
 
-const WEEK_DAYS = [
-  { day: "월", date: "2026-08-24", label: "월 (8/24)" },
-  { day: "화", date: "2026-08-25", label: "화 (8/25)" },
-  { day: "수", date: "2026-08-26", label: "수 (8/26)" },
-  { day: "목", date: "2026-08-27", label: "목 (8/27)" },
-  { day: "금", date: "2026-08-28", label: "금 (8/28)" },
-  { day: "토", date: "2026-08-29", label: "토 (8/29)" }
-];
+// Dynamic WEEK_DAYS computed per selectedWeek in component
 
 const INITIAL_DOWNTIME_LOGS = [
   {
@@ -220,7 +213,14 @@ export const ExtrusionDowntimeView = () => {
     return () => unsub();
   }, []);
 
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState("2026-08");
   const [selectedWeek, setSelectedWeek] = useState("8월 4주차");
+  const [copyToast, setCopyToast] = useState(false);
+
+  // Dynamic Week Days for Selected Week
+  const currentWeekDays = useMemo(() => {
+    return getWeekDaysForWeek(selectedWeek);
+  }, [selectedWeek]);
   const [selectedLineFilter, setSelectedLineFilter] = useState("all");
   const [selectedReasonFilter, setSelectedReasonFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -266,7 +266,7 @@ export const ExtrusionDowntimeView = () => {
       const daysData = {};
       let lineTotalMinutes = 0;
 
-      WEEK_DAYS.forEach((w) => {
+      currentWeekDays.forEach((w) => {
         const dayMatches = lineLogs.filter((l) => l.date === w.date);
         if (dayMatches.length > 0) {
           const sumMinutes = dayMatches.reduce((acc, cur) => acc + Number(cur.durationMinutes || 0), 0);
@@ -300,8 +300,6 @@ export const ExtrusionDowntimeView = () => {
       };
     });
   }, [logs, selectedWeek]);
-
-  const [copyToast, setCopyToast] = useState(false);
 
   const lineMatchingList = useMemo(() => {
     return EXTRUSION_LINES.map((lineName) => {
@@ -372,7 +370,7 @@ export const ExtrusionDowntimeView = () => {
 
   // Daily Column Totals
   const dailyTotals = useMemo(() => {
-    return WEEK_DAYS.map((w) => {
+    return currentWeekDays.map((w) => {
       let sum = 0;
       let count = 0;
       matrixData.forEach((m) => {
@@ -572,7 +570,7 @@ export const ExtrusionDowntimeView = () => {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-200 font-black h-8 text-[11px]">
                   <th className="py-1 px-2 text-left w-[18%]">압출 LINE</th>
-                  {WEEK_DAYS.map((w) => (
+                  {currentWeekDays.map((w) => (
                     <th key={w.date} className="py-1 px-1 w-[11%]">
                       {w.label}
                     </th>
@@ -592,7 +590,7 @@ export const ExtrusionDowntimeView = () => {
                     </td>
 
                     {/* 6 Days */}
-                    {WEEK_DAYS.map((w) => {
+                    {currentWeekDays.map((w) => {
                       const cell = m.daysData[w.date];
                       if (!cell) {
                         return (
