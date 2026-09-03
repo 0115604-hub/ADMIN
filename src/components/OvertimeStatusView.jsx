@@ -38,7 +38,6 @@ import {
 
 export const OvertimeStatusView = () => {
   const { currentProfile, isAdmin } = useAuth();
-  const detailSectionRef = useRef(null);
 
   const [reports, setReports] = useState(() => getLocalOvertimeReports());
   const [filterPlant, setFilterPlant] = useState("전체");
@@ -46,6 +45,12 @@ export const OvertimeStatusView = () => {
     const initial = getLocalOvertimeReports();
     return initial[0]?.id || "report_samrangjin_20260829";
   });
+
+  // Detail Modal State (팝업창)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailReport, setDetailReport] = useState(null);
+
+  // Edit / Create Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
 
@@ -63,19 +68,21 @@ export const OvertimeStatusView = () => {
     return reports.filter((r) => r.plant === filterPlant);
   }, [reports, filterPlant]);
 
-  // Current active selected report for detail view
+  // Current active selected report
   const currentReport = useMemo(() => {
     const found = reports.find((r) => r.id === selectedReportId);
     return found || reports[0];
   }, [reports, selectedReportId]);
 
-  // Current report calculated metrics
-  const currentMetrics = useMemo(() => {
-    return calculateReportMetrics(currentReport);
-  }, [currentReport]);
+  // Open Detail Modal (상세보기 팝업창)
+  const handleOpenDetail = (rep) => {
+    setSelectedReportId(rep.id);
+    setDetailReport(rep);
+    setIsDetailModalOpen(true);
+  };
 
   // Open Edit Modal for a specific report
-  const handleOpenEdit = (reportToEdit = currentReport) => {
+  const handleOpenEdit = (reportToEdit = detailReport || currentReport) => {
     if (!reportToEdit) return;
     setEditFormData({
       id: reportToEdit.id,
@@ -113,15 +120,7 @@ export const OvertimeStatusView = () => {
     setIsEditModalOpen(true);
   };
 
-  // Select Report to View in Detail
-  const handleSelectReport = (rep) => {
-    setSelectedReportId(rep.id);
-    if (detailSectionRef.current) {
-      detailSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  };
-
-  // Handle Form Change
+  // Handle Form Change in Edit Modal
   const handleItemChange = (index, field, value) => {
     if (!editFormData) return;
     const newItems = [...editFormData.items];
@@ -169,6 +168,9 @@ export const OvertimeStatusView = () => {
     const saved = await saveOvertimeReport(reportToSave);
     if (saved) {
       setSelectedReportId(saved.id);
+      if (detailReport && detailReport.id === saved.id) {
+        setDetailReport(saved);
+      }
     }
     setIsEditModalOpen(false);
   };
@@ -187,6 +189,10 @@ export const OvertimeStatusView = () => {
     if (selectedReportId === rep.id) {
       setSelectedReportId(updated[0]?.id || "");
     }
+    if (detailReport && detailReport.id === rep.id) {
+      setIsDetailModalOpen(false);
+      setDetailReport(null);
+    }
   };
 
   // Print
@@ -194,30 +200,31 @@ export const OvertimeStatusView = () => {
     window.print();
   };
 
-  // Export to Excel
-  const handleExportExcel = () => {
-    if (!currentReport) return;
+  // Export to Excel for a given report
+  const handleExportExcel = (targetRep = detailReport || currentReport) => {
+    if (!targetRep) return;
+    const m = calculateReportMetrics(targetRep);
     const rows = [
-      [`${currentReport.plant} 특근보고서`],
-      ["근무일자", currentReport.workDateFormatted, "작성자", `${currentReport.author} ${currentReport.authorTitle || ""}`, "총원", `${currentMetrics.headcount}명`, "총 투입공수", `${currentMetrics.manHours} M/H`, "특근산출비용", `₩${currentMetrics.cost.toLocaleString()}원`],
+      [`${targetRep.plant} 특근보고서`],
+      ["근무일자", targetRep.workDateFormatted, "작성자", `${targetRep.author} ${targetRep.authorTitle || ""}`, "총원", `${m.headcount}명`, "총 투입공수", `${m.manHours} M/H`, "특근산출비용", `₩${m.cost.toLocaleString()}원`],
       [],
       ["구분", "작업내용", "작업자 명단", "특근시간", "인원(명)"]
     ];
 
-    currentReport.items.forEach((item) => {
+    targetRep.items.forEach((item) => {
       rows.push([item.category, item.workContent, item.names, `${item.hours}시간`, `${item.count}명`]);
     });
 
     rows.push([]);
     rows.push(["※ 특근 실시 사유"]);
-    currentReport.reasons.forEach((r, idx) => {
+    targetRep.reasons.forEach((r, idx) => {
       rows.push([`${idx + 1}. ${r}`]);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `${currentReport.plant}_특근보고서`);
-    XLSX.writeFile(wb, `${currentReport.plant}_특근보고서_${currentReport.workDate}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `${targetRep.plant}_특근보고서`);
+    XLSX.writeFile(wb, `${targetRep.plant}_특근보고서_${targetRep.workDate}.xlsx`);
   };
 
   // Helper to check if a report is the latest for its plant
@@ -225,6 +232,12 @@ export const OvertimeStatusView = () => {
     const plantList = reports.filter((r) => r.plant === rep.plant);
     return plantList[0]?.id === rep.id;
   };
+
+  // Metrics for detail modal
+  const activeDetailMetrics = useMemo(() => {
+    if (!detailReport) return null;
+    return calculateReportMetrics(detailReport);
+  }, [detailReport]);
 
   return (
     <div className="space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
@@ -239,14 +252,14 @@ export const OvertimeStatusView = () => {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg font-black text-slate-900 dark:text-white">
-                공장별 특근보고서 관리 및 상세 현황
+                공장별 특근보고서 관리 및 현황
               </h1>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                 총 {reports.length}건 등록됨
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              등록된 특근보고서 목록을 한 줄씩 조회하고, 원하는 보고서를 클릭하여 상세 결재 내역을 확인 및 수정할 수 있습니다.
+              등록된 특근보고서 목록을 한 줄씩 확인하고, <strong>[상세]</strong> 버튼을 누르면 팝업창에서 상세 결재 문서와 작업 명단을 확인하실 수 있습니다.
             </p>
           </div>
         </div>
@@ -255,32 +268,24 @@ export const OvertimeStatusView = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleOpenNewReport("삼랑진공장")}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black transition-all shadow-md shadow-amber-500/20 active:scale-95"
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black transition-all shadow-md shadow-amber-500/20 active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>+ 신규 특근 작성 (날짜지정)</span>
           </button>
 
           <button
-            onClick={handleExportExcel}
+            onClick={() => handleExportExcel(currentReport)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm active:scale-95"
           >
             <Download className="w-3.5 h-3.5 text-emerald-400" />
             <span>엑셀 다운로드</span>
           </button>
-
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all shadow-md shadow-blue-500/25 active:scale-95"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>인쇄 / PDF</span>
-          </button>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ [요청사항 반영] 등록된 특근보고서 전체 목록 (한 줄씩 나열된 리스트 테이블) */}
+      {/* 2. ⭐ 등록된 특근보고서 전체 목록 (한 줄씩 나열된 리스트 테이블) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
         {/* Table Top Filter & Heading */}
@@ -294,7 +299,7 @@ export const OvertimeStatusView = () => {
                 등록된 특근보고서 목록 (전체 한줄 조회)
               </h2>
               <span className="text-[11px] text-slate-400">
-                행을 클릭(탭)하면 하단에 해당 보고서의 상세 결재 문서가 즉시 표시됩니다.
+                목록의 <strong>[상세]</strong> 버튼을 누르면 팝업창으로 상세 결재 내역이 표시됩니다.
               </span>
             </div>
           </div>
@@ -331,13 +336,13 @@ export const OvertimeStatusView = () => {
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-extrabold">
                 <th className="py-3 px-3 w-[6%] text-center">No</th>
                 <th className="py-3 px-3 w-[11%] text-center">공장 구분</th>
-                <th className="py-3 px-4 w-[16%]">근무 일자</th>
+                <th className="py-3 px-4 w-[17%]">근무 일자</th>
                 <th className="py-3 px-3 w-[11%]">작성자</th>
                 <th className="py-3 px-3 w-[10%] text-center">특근 인원</th>
                 <th className="py-3 px-3 w-[10%] text-center">투입 공수</th>
                 <th className="py-3 px-3 w-[13%] text-right">특근 산출비용</th>
                 <th className="py-3 px-3 w-[10%] text-center">결재 상태</th>
-                <th className="py-3 px-3 w-[13%] text-center">보고서 관리</th>
+                <th className="py-3 px-3 w-[12%] text-center">보고서 관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -349,19 +354,14 @@ export const OvertimeStatusView = () => {
                 </tr>
               ) : (
                 displayedReports.map((rep, idx) => {
-                  const isSelected = rep.id === currentReport?.id;
                   const isLatest = isLatestForPlant(rep);
                   const m = calculateReportMetrics(rep);
 
                   return (
                     <tr
                       key={rep.id}
-                      onClick={() => handleSelectReport(rep)}
-                      className={`cursor-pointer transition-all ${
-                        isSelected
-                          ? "bg-indigo-50/80 dark:bg-indigo-950/40 border-l-4 border-l-indigo-600 font-semibold"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                      }`}
+                      onClick={() => handleOpenDetail(rep)}
+                      className="cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-slate-800/60 transition-all group"
                     >
                       {/* 1. No & State */}
                       <td className="py-3 px-3 text-center">
@@ -393,14 +393,9 @@ export const OvertimeStatusView = () => {
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
                           <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="font-black text-xs text-slate-900 dark:text-white">
+                          <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
                             {formatShortWorkDate(rep.workDate)}
                           </span>
-                          {isSelected && (
-                            <span className="ml-1 px-1.5 py-0.5 rounded bg-indigo-600 text-white text-[9px] font-bold">
-                              조회중
-                            </span>
-                          )}
                         </div>
                       </td>
 
@@ -439,11 +434,12 @@ export const OvertimeStatusView = () => {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => handleSelectReport(rep)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:hover:bg-indigo-900 dark:text-indigo-300 font-bold text-[11px] transition-colors"
-                            title="상세 결재 문서 보기"
+                            onClick={() => handleOpenDetail(rep)}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] shadow-sm active:scale-95 transition-all"
+                            title="상세 결재 문서 팝업 열기"
                           >
-                            상세
+                            <Eye className="w-3 h-3" />
+                            <span>상세</span>
                           </button>
                           <button
                             type="button"
@@ -475,227 +471,273 @@ export const OvertimeStatusView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. ⭐ [선택된 보고서] 특근 결재 문서 상세 내역 (와이드 테이블 + 결재란 + 사유) */}
+      {/* 3. ⭐ [요청사항 반영] 특근 결재 문서 상세 팝업창 (DETAIL POPUP MODAL) */}
       {/* ========================================================================= */}
-      <div ref={detailSectionRef} className="space-y-4 pt-2">
-        {/* Active Report Banner */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-md">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className={`px-2.5 py-1 rounded-lg text-xs font-black ${
-              currentReport.plant === "한림공장" ? "bg-emerald-600 text-white" : "bg-amber-500 text-slate-950"
-            }`}>
-              {currentReport.plant}
-            </span>
-            <span className="font-black text-sm sm:text-base">
-              📅 {currentReport.workDateFormatted} 특근 결재 상세 문서
-            </span>
-            {isLatestForPlant(currentReport) && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
-                ⭐ 메인 대시보드 현황 반영중
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleOpenEdit(currentReport)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all"
-            >
-              <Edit3 className="w-3 h-3 text-amber-400" />
-              <span>이 보고서 수정</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 2-Columns Layout: 좌측 와이드 테이블 + 우측 결재/사유 패널 */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:block">
-          {/* ========================================================= */}
-          {/* 좌측: 와이드 특근 상세 테이블 (8 컬럼) */}
-          {/* ========================================================= */}
-          <div className="lg:col-span-8 space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${
-                    currentReport.plant === "한림공장" ? "bg-emerald-500" : "bg-amber-500"
-                  }`}></span>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    {currentReport.plant} 특근 세부 내역 ({currentReport.items.length}개 항목)
-                  </h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400">
-                    근무일자: <strong className="text-slate-800 dark:text-slate-200 font-black">{currentReport.workDateFormatted}</strong>
+      {isDetailModalOpen && detailReport && activeDetailMetrics && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fadeIn overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-5xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-6 animate-scaleUp max-h-[92vh] flex flex-col">
+            {/* Modal Top Header */}
+            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1 ${
+                  detailReport.plant === "한림공장"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "bg-amber-500 text-slate-950 shadow-xs"
+                }`}>
+                  {detailReport.plant === "한림공장" ? <Building2 className="w-3.5 h-3.5" /> : <Factory className="w-3.5 h-3.5" />}
+                  <span>{detailReport.plant}</span>
+                </span>
+                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
+                  📅 {detailReport.workDateFormatted} 특근 결재 상세 문서
+                </h3>
+                {isLatestForPlant(detailReport) && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
+                    ⭐ 메인 대시보드 현황 반영중
                   </span>
+                )}
+              </div>
+
+              {/* Action Buttons in Modal Header */}
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(detailReport)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all shadow-xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-blue-500" />
+                  <span>수정</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportExcel(detailReport)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>엑셀</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>인쇄</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-base font-bold ml-1 transition-colors"
+                  title="닫기"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body (Scrollable) */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* 좌측: 와이드 특근 상세 테이블 (7 컬럼) */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          detailReport.plant === "한림공장" ? "bg-emerald-500" : "bg-amber-500"
+                        }`}></span>
+                        <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                          특근 작업 세부 내역 ({detailReport.items.length}개 항목)
+                        </h4>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        작성자: <strong className="text-slate-800 dark:text-slate-200 font-bold">{detailReport.author} {detailReport.authorTitle || "선임"}</strong>
+                      </span>
+                    </div>
+
+                    {/* 와이드 테이블 */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs text-left border-collapse min-w-[500px]">
+                        <thead>
+                          <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-extrabold">
+                            <th className="py-2.5 px-2.5 w-[18%]">구 분</th>
+                            <th className="py-2.5 px-2.5 w-[22%]">작업내용</th>
+                            <th className="py-2.5 px-2.5 w-[40%]">명 단</th>
+                            <th className="py-2.5 px-2 w-[10%] text-center">시간</th>
+                            <th className="py-2.5 px-2 w-[10%] text-center">인원</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {detailReport.items.map((item, idx) => (
+                            <tr
+                              key={item.id || idx}
+                              className="hover:bg-amber-50/30 dark:hover:bg-slate-800/40 transition-colors"
+                            >
+                              <td className="py-2.5 px-2.5">
+                                <span className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                                  {item.category}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2.5 font-bold text-slate-800 dark:text-slate-200">
+                                {item.workContent}
+                              </td>
+                              <td className="py-2.5 px-2.5 font-medium text-slate-900 dark:text-white leading-relaxed">
+                                {item.names}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-black text-slate-700 dark:text-slate-300">
+                                {item.hours}h
+                              </td>
+                              <td className={`py-2.5 px-2 text-center font-black text-sm ${
+                                detailReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                              }`}>
+                                {item.count}명
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-slate-900 dark:border-slate-600 bg-amber-50/60 dark:bg-amber-950/40 font-black text-xs">
+                            <td colSpan="3" className="py-2.5 px-3 text-right text-slate-800 dark:text-slate-200 font-extrabold">
+                              {detailReport.plant} 총 합 계
+                            </td>
+                            <td className="py-2.5 px-2 text-center text-slate-900 dark:text-white font-black text-xs">
+                              {activeDetailMetrics.manHours} M/H
+                            </td>
+                            <td className={`py-2.5 px-2 text-center font-black text-sm ${
+                              detailReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                            }`}>
+                              {activeDetailMetrics.headcount}명
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 우측: 결재란, 사유 & 구분별 인원 요약 (5 컬럼) */}
+                <div className="lg:col-span-5 space-y-4">
+                  {/* 1. 공식 결재란 */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <Award className={`w-4 h-4 ${detailReport.plant === "한림공장" ? "text-emerald-500" : "text-amber-500"}`} />
+                        <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                          공식 전자 결재란
+                        </h4>
+                      </div>
+                      <span className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-0.5">
+                        <CheckCheck className="w-3 h-3" />
+                        <span>결재 승인 완료</span>
+                      </span>
+                    </div>
+
+                    {/* Approval Matrix */}
+                    <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/40">
+                      <table className="w-full text-center border-collapse text-xs">
+                        <tbody>
+                          <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-300 dark:border-slate-700">
+                            <td rowSpan="2" className="w-9 border-r border-slate-300 dark:border-slate-700 py-2 bg-slate-200/60 dark:bg-slate-700/60 font-black text-[10px]">
+                              결<br />재
+                            </td>
+                            {detailReport.approval.map((ap, idx) => (
+                              <td key={ap.role} className={`py-1 font-extrabold text-[10.5px] ${idx < 3 ? "border-r border-slate-300 dark:border-slate-700" : ""}`}>
+                                {ap.role}
+                              </td>
+                            ))}
+                          </tr>
+                          <tr className="h-11">
+                            {detailReport.approval.map((ap, idx) => (
+                              <td key={ap.role} className={`p-1 align-middle ${idx < 3 ? "border-r border-slate-300 dark:border-slate-700" : ""}`}>
+                                <div className="flex flex-col items-center justify-center">
+                                  <span className="font-black text-[11px] text-slate-900 dark:text-white">{ap.name}</span>
+                                  <span className="text-[8.5px] text-emerald-600 font-extrabold flex items-center gap-0.5">
+                                    <CheckCheck className="w-2 h-2" />
+                                    <span>완료</span>
+                                  </span>
+                                </div>
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Cost Badge */}
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-bold">특근 산출 비용</span>
+                      <span className="font-black text-sm text-rose-600 dark:text-rose-400 font-mono">
+                        ₩{activeDetailMetrics.cost.toLocaleString()}원
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 2. 특근 실시 사유 */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <FileText className="w-3.5 h-3.5 text-blue-500" />
+                      <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                        ※ 특근 실시 사유
+                      </h4>
+                    </div>
+                    <div className="space-y-1.5">
+                      {detailReport.reasons.map((reason, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-slate-800/60 border border-amber-200/60 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed whitespace-pre-wrap"
+                        >
+                          {reason}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3. 구분별 인원 통계 */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
+                    <div className="flex items-center gap-1.5 pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <Layers className="w-3.5 h-3.5 text-purple-500" />
+                      <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                        공정/차종별 인원 구성
+                      </h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {activeDetailMetrics.lines.map(({ name, count }) => (
+                        <div key={name} className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700 flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-600 dark:text-slate-300">{name}</span>
+                          <span className={`font-black ${
+                            detailReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                          }`}>{count}명</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* 와이드 테이블 */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse min-w-[650px]">
-                  <thead>
-                    <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 font-extrabold">
-                      <th className="py-3 px-3 w-[15%]">구 분</th>
-                      <th className="py-3 px-3 w-[20%]">작업내용</th>
-                      <th className="py-3 px-3 w-[45%]">명 단</th>
-                      <th className="py-3 px-2 w-[10%] text-center">작업시간</th>
-                      <th className="py-3 px-2 w-[10%] text-center">인 원</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {currentReport.items.map((item, idx) => (
-                      <tr
-                        key={item.id || idx}
-                        className="hover:bg-amber-50/30 dark:hover:bg-slate-800/40 transition-colors group"
-                      >
-                        <td className="py-2.5 px-3">
-                          <span className="px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-                            {item.category}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">
-                          {item.workContent}
-                        </td>
-                        <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-white leading-relaxed">
-                          {item.names}
-                        </td>
-                        <td className="py-2.5 px-2 text-center font-black text-slate-700 dark:text-slate-300">
-                          {item.hours} 시간
-                        </td>
-                        <td className={`py-2.5 px-2 text-center font-black text-sm ${
-                          currentReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-                        }`}>
-                          {item.count} 명
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {/* Total Footer Row */}
-                  <tfoot>
-                    <tr className="border-t-2 border-slate-900 dark:border-slate-600 bg-amber-50/60 dark:bg-amber-950/40 font-black text-xs">
-                      <td colSpan="3" className="py-3 px-4 text-right text-slate-800 dark:text-slate-200 font-extrabold">
-                        {currentReport.plant} 총 합 계
-                      </td>
-                      <td className="py-3 px-2 text-center text-slate-900 dark:text-white font-black text-sm">
-                        {currentMetrics.manHours} M/H
-                      </td>
-                      <td className={`py-3 px-2 text-center font-black text-base ${
-                        currentReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-                      }`}>
-                        {currentMetrics.headcount} 명
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* ========================================================= */}
-          {/* 우측 사이드 패널: 결재란, 실시 사유 & 구분별 인원 요약 (4 컬럼) */}
-          {/* ========================================================= */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* 1. 공식 결재란 (담당 | 책임 | 이사 | 대표) */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <Award className={`w-4 h-4 ${currentReport.plant === "한림공장" ? "text-emerald-500" : "text-amber-500"}`} />
-                  <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                    {currentReport.plant} 결재 정보
-                  </h3>
-                </div>
-                <span className="text-[11px] font-bold text-slate-400">
-                  작성자: <strong className="text-slate-700 dark:text-slate-300">{currentReport.author} {currentReport.authorTitle || "선임"}</strong>
-                </span>
-              </div>
-
-              {/* Approval Stamp Matrix */}
-              <div className="border border-slate-300 dark:border-slate-700 rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-slate-800/40">
-                <table className="w-full text-center border-collapse text-xs">
-                  <tbody>
-                    <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-300 dark:border-slate-700">
-                      <td rowSpan="2" className="w-10 border-r border-slate-300 dark:border-slate-700 py-3 bg-slate-200/60 dark:bg-slate-700/60 font-black text-[11px]">
-                        결<br />재
-                      </td>
-                      {currentReport.approval.map((ap, idx) => (
-                        <td key={ap.role} className={`py-1.5 font-extrabold text-[11px] ${idx < 3 ? "border-r border-slate-300 dark:border-slate-700" : ""}`}>
-                          {ap.role}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr className="h-14">
-                      {currentReport.approval.map((ap, idx) => (
-                        <td key={ap.role} className={`p-1.5 align-middle ${idx < 3 ? "border-r border-slate-300 dark:border-slate-700" : ""}`}>
-                          <div className="flex flex-col items-center justify-center">
-                            <span className="font-black text-xs text-slate-900 dark:text-white">{ap.name}</span>
-                            <span className="text-[9px] text-emerald-600 font-extrabold flex items-center gap-0.5 mt-0.5">
-                              <CheckCheck className="w-2.5 h-2.5" />
-                              <span>완료</span>
-                            </span>
-                          </div>
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Quick Plant Badge & Stats */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-bold">특근 산출 비용</span>
-                <span className="font-black text-sm text-rose-600 dark:text-rose-400 font-mono">
-                  ₩{currentMetrics.cost.toLocaleString()}원
-                </span>
-              </div>
             </div>
 
-            {/* 2. 특근 실시 사유 패널 */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <FileText className="w-4 h-4 text-blue-500" />
-                <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  ※ 특근 실시 사유
-                </h3>
+            {/* Modal Footer */}
+            <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between">
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-bold flex items-center gap-3">
+                <span>총원: <strong className="text-slate-900 dark:text-white font-black">{activeDetailMetrics.headcount}명</strong></span>
+                <span>총 공수: <strong className="text-purple-600 dark:text-purple-400 font-black">{activeDetailMetrics.manHours} M/H</strong></span>
+                <span>총 비용: <strong className="text-rose-600 dark:text-rose-400 font-black">₩{activeDetailMetrics.cost.toLocaleString()}원</strong></span>
               </div>
-              <div className="space-y-2">
-                {currentReport.reasons.map((reason, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-2xl bg-amber-50/50 dark:bg-slate-800/60 border border-amber-200/60 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed whitespace-pre-wrap"
-                  >
-                    {reason}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. 구분별 인원 통계 */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <Layers className="w-4 h-4 text-purple-500" />
-                <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  공정/차종별 인원 구성
-                </h3>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {currentMetrics.lines.map(({ name, count }) => (
-                  <div key={name} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700 flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-600 dark:text-slate-300">{name}</span>
-                    <span className={`font-black ${
-                      currentReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-                    }`}>{count}명</span>
-                  </div>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-black transition-all active:scale-95 shadow-xs"
+              >
+                닫기
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
-      {/* 🌟 EDIT / CREATE MODAL (날짜 지정 및 내용 수정) */}
+      {/* 4. 🌟 EDIT / CREATE MODAL (날짜 지정 및 내용 수정) */}
       {/* ========================================================================= */}
       {isEditModalOpen && editFormData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto my-6 animate-scaleUp">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
