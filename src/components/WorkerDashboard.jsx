@@ -58,6 +58,7 @@ import {
   rejectDocumentStep
 } from "../services/approvalService";
 import { getLocalAccessLogs, subscribeAccessLogs } from "../services/accessLogService";
+import { parseExtrusionExcelFile, saveExtrusionDowntimeBatch } from "../services/extrusionDowntimeService";
 import {
   getLocalOvertimeReports,
   subscribeOvertimeReports,
@@ -222,6 +223,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
+  const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출") || (assignedProcess?.includes("압출"));
 
   // General Manager Identification
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
@@ -495,6 +497,117 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const totalSales = currentMonthData?.salesSummary?.totalSales || 1756104735;
   const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1248400884.5;
   const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "71.1";
+
+  // Seol Yoo-cheol Extrusion Multi-Files Handler (4~6 Line Excel Files)
+  const [extrusionFiles, setExtrusionFiles] = useState([]);
+  const [extrusionDragActive, setExtrusionDragActive] = useState(false);
+  const [extrusionParsing, setExtrusionParsing] = useState(false);
+  const [extrusionUploading, setExtrusionUploading] = useState(false);
+  const [extrusionUploadSuccess, setExtrusionUploadSuccess] = useState(false);
+  const [extrusionSuccessMessage, setExtrusionSuccessMessage] = useState("");
+  const extrusionFileInputRef = useRef(null);
+
+  const handleExtrusionFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    setExtrusionParsing(true);
+    setExtrusionUploadSuccess(false);
+    setExtrusionSuccessMessage("");
+
+    const newParsedList = [...extrusionFiles];
+    for (const f of Array.from(files)) {
+      try {
+        const parsed = await parseExtrusionExcelFile(f);
+        const existingIdx = newParsedList.findIndex((item) => item.fileName === f.name);
+        if (existingIdx >= 0) {
+          newParsedList[existingIdx] = parsed;
+        } else {
+          newParsedList.push(parsed);
+        }
+      } catch (err) {
+        console.warn("Extrusion file parse warning:", err);
+      }
+    }
+
+    setExtrusionFiles(newParsedList.slice(0, 8)); // Support up to 6~8 line files
+    setExtrusionParsing(false);
+  };
+
+  const handleExtrusionDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setExtrusionDragActive(true);
+    } else if (e.type === "dragleave") {
+      setExtrusionDragActive(false);
+    }
+  };
+
+  const handleExtrusionDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExtrusionDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleExtrusionFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleRemoveExtrusionFile = (idx) => {
+    setExtrusionFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleConfirmExtrusionUpload = async (e) => {
+    if (e) e.preventDefault();
+    if (extrusionFiles.length === 0 && !formData.workContent.trim()) {
+      alert("업무일지 내용을 입력하거나 압출 엑셀 파일을 드래그 업로드해 주세요.");
+      return;
+    }
+
+    setExtrusionUploading(true);
+    try {
+      const allDowntimeRecords = extrusionFiles.flatMap((f) => f.records);
+      const totalMinutes = extrusionFiles.reduce((acc, cur) => acc + (cur.totalMinutes || 0), 0);
+      const lineNames = Array.from(new Set(extrusionFiles.map((f) => f.lineName))).join(", ");
+
+      if (allDowntimeRecords.length > 0) {
+        await saveExtrusionDowntimeBatch(allDowntimeRecords);
+      }
+
+      const newLog = {
+        id: String(Date.now()),
+        date: formData.date,
+        plant: "삼랑진공장",
+        writer: currentProfile?.name || workerFullName,
+        title: officialTitle,
+        process: "압출동 관리",
+        shift: formData.shift || "주간",
+        line: lineNames || "압출 전 라인 (PCM 1호, PCM 3호, TPE 1호, PVC 등)",
+        workContent: formData.workContent || `압출 라인별 주간 비가동내역 엑셀 파일(${extrusionFiles.length}개 라인) 업로드 및 DB 동기화 완료 (총 ${totalMinutes}분 비가동 분석)`,
+        issues: formData.issues || (extrusionFiles.length > 0 ? `업로드 파일: ${extrusionFiles.map((f) => f.fileName).join(", ")}` : "정상 가동 완료"),
+        status: "완료",
+        createdAt: new Date().toLocaleString("ko-KR", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      };
+
+      await saveWorkLog(newLog);
+
+      setExtrusionUploadSuccess(true);
+      setExtrusionSuccessMessage(`압출 라인별 엑셀 ${extrusionFiles.length}개 파일(총 ${totalMinutes}분 비가동)이 데이터베이스에 정상 반영되었습니다.`);
+      setLogSavedToast(true);
+      setTimeout(() => {
+        setLogSavedToast(false);
+        setIsModalOpen(false);
+        setExtrusionUploadSuccess(false);
+      }, 2500);
+    } catch (err) {
+      alert("압출 비가동 엑셀 업로드 중 오류: " + err.message);
+    } finally {
+      setExtrusionUploading(false);
+    }
+  };
 
   // Changyeop Quality 2-Files Handler
   const handleQualityFiles = (files) => {
@@ -2193,6 +2306,269 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             <>
                               <Sparkles className="w-3.5 h-3.5" />
                               <span>{parsedResult.yearMonth} 매입매출 데이터베이스 즉시 반영하기</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : isExtrusionWorker ? (
+            /* ========================================================================= */
+            /* ⭐ [압출동 전용: 설유철 책임] 1. 업무일지 작성 & 2. 압출 라인별 비가동 엑셀 4~6개 드래그 업로드 창 */
+            /* ========================================================================= */
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-5 sm:p-7 border-2 border-emerald-500/40 dark:border-emerald-600/40 shadow-2xl space-y-4 my-6 animate-scaleUp">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20">
+                    <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>압출동 업무일지 작성 & 라인별 비가동 엑셀(4~6개) 일괄 등록</span>
+                    </h3>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                      {workerPlant} • {workerFullName} {officialTitle} [압출동 관리]
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 2 Dedicated Panes Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* PANE 1: 📝 오늘의 업무일지 작성란 */}
+                <div className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700/70">
+                    <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-emerald-600" />
+                      <span>1. 압출동 업무일지 작성</span>
+                    </h4>
+                    <span className="text-[11px] font-bold text-slate-400">
+                      {formData.date}
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleConfirmExtrusionUpload} className="space-y-2.5 text-xs">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">작성일자</label>
+                        <input
+                          type="date"
+                          value={formData.date}
+                          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                          className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">근무형태</label>
+                        <select
+                          value={formData.shift}
+                          onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
+                          className="w-full px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                        >
+                          <option value="주간">주간 (08:00~17:00)</option>
+                          <option value="야간">야간 (20:00~05:00)</option>
+                          <option value="특근">주말 특근</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">작성자</label>
+                        <input
+                          type="text"
+                          value={workerFullName + " " + officialTitle}
+                          disabled
+                          className="w-full px-2 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold text-slate-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                        담당 공정 및 압출 라인
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.line || "압출 전 라인 (PCM 1호, PCM 3호, TPE 1호, PVC 등)"}
+                        onChange={(e) => setFormData({ ...formData, line: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                        주요 작업 실적 및 비가동 내역 요약
+                      </label>
+                      <textarea
+                        rows="3"
+                        placeholder="예: PCM 1호 DT SILL 형교환(45분), PCM 3호 호리젠탈 센터정렬(30분), TPE 1호 형교환 정상화 완료"
+                        value={formData.workContent}
+                        onChange={(e) => setFormData({ ...formData, workContent: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500"
+                      ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                        특이사항 및 설비 조치사항 (선택)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="예: PVC 3존 히터 승온 편차 센서 조치 완료, 정상 가동"
+                        value={formData.issues}
+                        onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1">
+                      {logSavedToast && (
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>일지가 저장되었습니다!</span>
+                        </span>
+                      )}
+                      <button
+                        type="submit"
+                        className="ml-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>오늘의 업무일지 등록</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* PANE 2: 📊 압출동 라인별 비가동 엑셀 파일 4~6개 드래그 앤 드롭 업로드 창 */}
+                <div className="bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl p-4 border-2 border-emerald-300/80 dark:border-emerald-700/80 flex flex-col justify-between space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/70 dark:border-slate-700/70">
+                    <div className="flex items-center gap-1.5">
+                      <UploadCloud className="w-4 h-4 text-emerald-600" />
+                      <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                        2. 압출 라인별 비가동 엑셀 (4~6개) 드래그 업로드
+                      </h4>
+                    </div>
+                    {extrusionFiles.length > 0 && (
+                      <button
+                        onClick={() => { setExtrusionFiles([]); setExtrusionUploadSuccess(false); }}
+                        className="text-[10px] font-bold text-slate-400 hover:text-slate-600 underline"
+                      >
+                        전체 초기화
+                      </button>
+                    )}
+                  </div>
+
+                  <input
+                    ref={extrusionFileInputRef}
+                    type="file"
+                    multiple
+                    accept=".xlsx, .xls"
+                    className="hidden"
+                    onChange={(e) => handleExtrusionFiles(e.target.files)}
+                  />
+
+                  {extrusionFiles.length === 0 ? (
+                    <div
+                      onDragEnter={handleExtrusionDrag}
+                      onDragOver={handleExtrusionDrag}
+                      onDragLeave={handleExtrusionDrag}
+                      onDrop={handleExtrusionDrop}
+                      onClick={() => extrusionFileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 min-h-[190px] ${
+                        extrusionDragActive
+                          ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 scale-[1.01]"
+                          : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-emerald-400 hover:bg-emerald-50/20"
+                      }`}
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shadow-sm">
+                        {extrusionParsing ? (
+                          <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <FileSpreadsheet className="w-6 h-6" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-slate-800 dark:text-slate-200">
+                          {extrusionParsing ? "압출 엑셀 파일들 분석 중..." : "압출 라인별 엑셀 파일 4~6개를 여기에 드래그하세요"}
+                        </p>
+                        <p className="text-[10.5px] text-slate-400 mt-1">
+                          (예: PCM 1호, PCM 3호, TPE 1호, PVC, 5호, 6호 라인 엑셀 파일)
+                        </p>
+                        <span className="inline-block mt-2 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
+                          클릭하여 다중 파일 선택도 가능
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 flex-1 flex flex-col justify-between">
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        {extrusionFiles.map((f, i) => (
+                          <div
+                            key={i}
+                            className="p-2 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-600 text-white shrink-0">
+                                {f.lineName}
+                              </span>
+                              <div className="text-left min-w-0">
+                                <span className="font-bold text-[11px] text-slate-900 dark:text-white block truncate max-w-[170px]">
+                                  {f.fileName}
+                                </span>
+                                <span className="text-[9.5px] text-emerald-700 dark:text-emerald-300 font-medium">
+                                  {f.fileSize} • {f.rowCount}건 ({f.totalMinutes}분 비가동)
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExtrusionFile(i)}
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 transition-colors"
+                              title="파일 제거"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Summary Tile */}
+                      <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+                        <span>준비된 라인 파일: <strong>{extrusionFiles.length}개</strong></span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-black">
+                          총 {extrusionFiles.reduce((acc, c) => acc + (c.totalMinutes || 0), 0)}분 비가동 추출
+                        </span>
+                      </div>
+
+                      {extrusionUploadSuccess ? (
+                        <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span className="truncate">{extrusionSuccessMessage}</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={extrusionUploading}
+                          onClick={handleConfirmExtrusionUpload}
+                          className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                        >
+                          {extrusionUploading ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>압출 데이터베이스 반영 중...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>압출 엑셀 {extrusionFiles.length}개 파일 DB 즉시 반영 및 일지 등록</span>
                             </>
                           )}
                         </button>

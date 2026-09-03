@@ -24,6 +24,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import * as XLSX from "xlsx";
+import { subscribeExtrusionDowntimeLogs, getLocalExtrusionLogs, saveExtrusionDowntimeBatch } from "../services/extrusionDowntimeService";
 
 // 1. 압출 라인 (설비명)
 export const EXTRUSION_LINES = [
@@ -207,14 +208,16 @@ export const ExtrusionDowntimeView = () => {
   const { currentProfile } = useAuth();
   const { selectedMonth } = useMonth();
 
-  const [logs, setLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_DOWNTIME_LOGS;
-    } catch {
-      return INITIAL_DOWNTIME_LOGS;
-    }
-  });
+  const [logs, setLogs] = useState(() => getLocalExtrusionLogs());
+
+  React.useEffect(() => {
+    const unsub = subscribeExtrusionDowntimeLogs((updated) => {
+      if (Array.isArray(updated) && updated.length > 0) {
+        setLogs(updated);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const [selectedWeek, setSelectedWeek] = useState("8월 4주차");
   const [selectedLineFilter, setSelectedLineFilter] = useState("all");
