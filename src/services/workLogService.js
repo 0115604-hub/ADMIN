@@ -24,7 +24,15 @@ function sanitizeLog(obj) {
   for (const key of Object.keys(obj)) {
     const val = obj[key];
     if (val !== undefined && typeof val !== "function") {
-      result[key] = String(val === null ? "" : val);
+      if (typeof val === "object" && val !== null) {
+        try {
+          result[key] = JSON.stringify(val);
+        } catch {
+          result[key] = "";
+        }
+      } else {
+        result[key] = String(val === null ? "" : val);
+      }
     }
   }
   return result;

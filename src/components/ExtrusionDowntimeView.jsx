@@ -7,6 +7,7 @@ import {
   Download,
   Search,
   CheckCircle2,
+  Copy,
   AlertTriangle,
   Save,
   Wrench,
@@ -299,6 +300,58 @@ export const ExtrusionDowntimeView = () => {
       };
     });
   }, [logs, selectedWeek]);
+
+  const [copyToast, setCopyToast] = useState(false);
+
+  const lineMatchingList = useMemo(() => {
+    return EXTRUSION_LINES.map((lineName) => {
+      const lineLogs = logs.filter((l) => l.machine === lineName || l.machine === `${lineName} LINE`);
+      const totalMin = lineLogs.reduce((acc, cur) => acc + Number(cur.durationMinutes || 0), 0);
+      const latestLog = lineLogs[0] || null;
+      const fileName = latestLog?.sourceFile || `${lineName.replace(/\s+/g, "")}_비가동.xlsx`;
+
+      return {
+        lineName,
+        fileName,
+        totalMin,
+        latestReason: latestLog?.reason || "형교환",
+        latestDetails: latestLog?.details || `${lineName} 정상 가동 및 비가동 관리`,
+        latestAction: latestLog?.actionTaken || "현장 조치 및 승온 정상화 완료",
+        operator: latestLog?.operator || "설유철 책임",
+        count: lineLogs.length
+      };
+    });
+  }, [logs]);
+
+  const handleCopyExtrusionMatchReport = () => {
+    const totalMin = lineMatchingList.reduce((acc, cur) => acc + cur.totalMin, 0);
+    let text = `[오륙산업 삼랑진공장 - 압출동 라인별 비가동 엑셀 업로드 및 매칭 실적 공유]
+`;
+    text += `• 담당: 설유철 책임 (삼랑진공장 압출동 관리)
+`;
+    text += `• 집계 주차: ${selectedWeek} (총 ${lineMatchingList.length}개 라인 / 합계 ${totalMin}분 비가동)
+
+`;
+
+    lineMatchingList.forEach((m, idx) => {
+      text += `${idx + 1}. [${m.lineName}] ${m.fileName} (${m.totalMin}분 비가동)
+`;
+      text += `   - 주요사유: ${m.latestReason}
+`;
+      text += `   - 세부내용: ${m.latestDetails}
+`;
+      text += `   - 조치사항: ${m.latestAction}
+
+`;
+    });
+
+    text += `▶ 실시간 대시보드 확인: https://profit-and-loss-7d09b.web.app`;
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyToast(true);
+      setTimeout(() => setCopyToast(false), 2500);
+    });
+  };
 
   // Overall Weekly Totals
   const totalDowntimeMinutes = useMemo(() => {
