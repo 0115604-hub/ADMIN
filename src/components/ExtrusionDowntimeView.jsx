@@ -22,6 +22,7 @@ import * as XLSX from "xlsx";
 import {
   subscribeExtrusionDowntimeLogs,
   getLocalExtrusionLogs,
+  clearAllExtrusionDowntimeLogs,
   AVAILABLE_WEEKS,
   getWeekDaysForWeek,
   EXTRUSION_LINES
@@ -62,6 +63,15 @@ export const ExtrusionDowntimeView = () => {
   const [selectedReasonFilter, setSelectedReasonFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [copyToast, setCopyToast] = useState(false);
+
+  const handleClearAllData = async () => {
+    if (!window.confirm("정말로 등록된 모든 압출 비가동 데이터를 삭제하고 초기화하시겠습니까?\n(새로운 엑셀 파일을 깨끗하게 다시 업로드하실 수 있습니다.)")) {
+      return;
+    }
+    await clearAllExtrusionDowntimeLogs();
+    setLogs([]);
+    alert("모든 비가동 데이터가 삭제되었습니다.\n업무일지에서 새로운 엑셀 파일을 업로드해 주세요.");
+  };
 
   // Real-time Firestore synchronization
   useEffect(() => {
@@ -377,6 +387,15 @@ export const ExtrusionDowntimeView = () => {
             >
               <Download className="w-3.5 h-3.5" />
               <span>엑셀 다운로드</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearAllData}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-black shadow-xs transition-all active:scale-95"
+              title="비가동 데이터 전체 삭제 후 재업로드"
+            >
+              <span>🗑️ 전체 초기화 / 삭제</span>
             </button>
           </div>
         </div>

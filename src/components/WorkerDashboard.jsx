@@ -58,7 +58,7 @@ import {
   rejectDocumentStep
 } from "../services/approvalService";
 import { getLocalAccessLogs, subscribeAccessLogs } from "../services/accessLogService";
-import { parseExtrusionExcelFile, saveExtrusionDowntimeBatch } from "../services/extrusionDowntimeService";
+import { parseExtrusionExcelFile, saveExtrusionDowntimeBatch, clearAllExtrusionDowntimeLogs } from "../services/extrusionDowntimeService";
 import {
   getLocalOvertimeReports,
   subscribeOvertimeReports,

@@ -1,4 +1,4 @@
-// Extrusion Downtime Service (7월~9월 주차별 종합 비가동 데이터베이스 & 초정밀 엑셀 파서)
+// Extrusion Downtime Service (Clean, Robust, No-Loop Sync & Strict Sanitizer)
 import {
   collection,
   doc,
@@ -6,14 +6,13 @@ import {
   getDocs,
   deleteDoc,
   onSnapshot,
-  query,
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
 import * as XLSX from "xlsx";
 
 const COLLECTION_NAME = "extrusion_downtime_logs";
-const STORAGE_KEY = "factory_extrusion_downtime_logs_v6_multimonth";
+const STORAGE_KEY = "factory_extrusion_downtime_logs_clean_v1";
 
 export const EXTRUSION_LINES = [
   "PCM 1호",
@@ -60,663 +59,78 @@ export const getWeekDaysForWeek = (weekLabel) => {
   return days;
 };
 
-// 7월 1주차부터 9월 1주차까지 종합 비가동 마스터 데이터셋
-export const FULL_HISTORICAL_DOWNTIME_LOGS = [
-  // ================= 9월 1주차 =================
-  {
-    id: "ext_202609_01",
-    date: "2026-09-02",
-    day: "수",
-    week: "9월 1주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "DT SILL SEAL 9월 정기 형교환 및 세팅 완료",
-    actionTaken: "금형 장착 및 145도 승온 정상화 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_9월비가동.xlsx"
-  },
-  {
-    id: "ext_202609_02",
-    date: "2026-09-01",
-    day: "화",
-    week: "9월 1주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 30,
-    reason: "형교환",
-    details: "DT 호리젠탈 센터 정렬 및 양품 압출 확인",
-    actionTaken: "금형 체결 및 시험 압출 합격",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_9월비가동.xlsx"
-  },
-  {
-    id: "ext_202609_03",
-    date: "2026-09-01",
-    day: "화",
-    week: "9월 1주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 35,
-    reason: "원료 / 칼라 교체 (퍼징)",
-    details: "TPE JA 전용 원료 투입 및 스크류 퍼징 청소",
-    actionTaken: "호퍼 청소 및 잔류물 제거 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_9월비가동.xlsx"
-  },
-  {
-    id: "ext_202609_04",
-    date: "2026-08-31",
-    day: "월",
-    week: "9월 1주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 다이스 3존 히터 승온 편차 조정",
-    actionTaken: "온도 편차 ±1도 이내 정상화",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_9월비가동.xlsx"
-  },
+// Strict Firestore Sanitizer for a downtime record
+export const sanitizeDowntimeRecord = (rec, idx = 0) => {
+  const duration = Number(rec.durationMinutes);
+  return {
+    id: String(rec.id || `ext_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`),
+    date: String(rec.date || "2026-08-28"),
+    day: String(rec.day || "금"),
+    week: String(rec.week || calculateWeekLabel(rec.date || "2026-08-28")),
+    plant: String(rec.plant || "삼랑진공장"),
+    machine: String(rec.machine || "PCM 1호"),
+    durationMinutes: !isNaN(duration) && duration >= 0 ? Math.round(duration) : 30,
+    reason: String(rec.reason || "형교환"),
+    details: String(rec.details || ""),
+    actionTaken: String(rec.actionTaken || ""),
+    operator: String(rec.operator || "설유철 책임"),
+    status: String(rec.status || "조치완료"),
+    sourceFile: String(rec.sourceFile || "")
+  };
+};
 
-  // ================= 8월 4주차 =================
-  {
-    id: "ext_202608_41",
-    date: "2026-08-28",
-    day: "금",
-    week: "8월 4주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "DT SILL SEAL 형교환 및 피팅 세팅 완료",
-    actionTaken: "금형 체결 및 145도 승온 정상화 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_42",
-    date: "2026-08-28",
-    day: "금",
-    week: "8월 4주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 30,
-    reason: "형교환",
-    details: "DT 호리젠탈 형교환 및 다이스 센터 정렬 완료",
-    actionTaken: "금형 장착 및 시험 압출 양품 확인",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_43",
-    date: "2026-08-27",
-    day: "목",
-    week: "8월 4주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 40,
-    reason: "형교환",
-    details: "JA 전용 TPE 압출 형교환 및 원료 투입 점검",
-    actionTaken: "호퍼 청소 및 스크류 잔류물 퍼징 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_44",
-    date: "2026-08-26",
-    day: "수",
-    week: "8월 4주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 압출 다이스 3존 히터 온도 편차 발생에 따른 승온 안정화",
-    actionTaken: "열전대 센서 체결 상태 점검 및 온도 편차 ±1도 이내 정상화",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_8월비가동.xlsx"
-  },
-
-  // ================= 8월 3주차 =================
-  {
-    id: "ext_202608_31",
-    date: "2026-08-21",
-    day: "금",
-    week: "8월 3주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PCM 1호 다이스 히터 승온 대기 및 안정화",
-    actionTaken: "승온 정상화 후 시험 압출 양품 판정",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_32",
-    date: "2026-08-20",
-    day: "목",
-    week: "8월 3주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 35,
-    reason: "원료 / 칼라 교체 (퍼징)",
-    details: "PCM 3호 원료 전환 및 스크류 퍼징 작업",
-    actionTaken: "퍼징 완료 및 정상 압출 가동",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_33",
-    date: "2026-08-19",
-    day: "수",
-    week: "8월 3주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 30,
-    reason: "설비 정기 점검 / 청소",
-    details: "TPE 다이스 및 냉각 바스 청소 점검",
-    actionTaken: "노즐 이물 제거 및 냉각수 순환 점검",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_34",
-    date: "2026-08-18",
-    day: "화",
-    week: "8월 3주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "형교환",
-    details: "PVC 규격 교체 및 피팅 지그 세팅",
-    actionTaken: "피팅 조정 완료 및 정상 압출",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_8월비가동.xlsx"
-  },
-
-  // ================= 8월 2주차 =================
-  {
-    id: "ext_202608_21",
-    date: "2026-08-14",
-    day: "금",
-    week: "8월 2주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "PCM 1호 SILL SEAL 형교환 작업",
-    actionTaken: "금형 장착 및 피팅 세팅 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_22",
-    date: "2026-08-13",
-    day: "목",
-    week: "8월 2주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 40,
-    reason: "설비 정기 점검 / 청소",
-    details: "PCM 3호 다이스 정렬 및 스크류 점검",
-    actionTaken: "센터 조정 및 이물 제거 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_23",
-    date: "2026-08-12",
-    day: "수",
-    week: "8월 2주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 35,
-    reason: "형교환",
-    details: "TPE 전용 금형 교환 작업",
-    actionTaken: "금형 체결 및 승온 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_24",
-    date: "2026-08-11",
-    day: "화",
-    week: "8월 2주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 30,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 다이스 온도 편차 승온 대기",
-    actionTaken: "온도 안정화 후 가동 시작",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_8월비가동.xlsx"
-  },
-
-  // ================= 8월 1주차 =================
-  {
-    id: "ext_202608_11",
-    date: "2026-08-07",
-    day: "금",
-    week: "8월 1주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "8월 1주차 PCM 1호 DT 형교환",
-    actionTaken: "금형 세팅 및 양품 확인 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_12",
-    date: "2026-08-06",
-    day: "목",
-    week: "8월 1주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 35,
-    reason: "형교환",
-    details: "PCM 3호 호리젠탈 형교환",
-    actionTaken: "금형 체결 및 정상화",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_13",
-    date: "2026-08-05",
-    day: "수",
-    week: "8월 1주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 30,
-    reason: "원료 / 칼라 교체 (퍼징)",
-    details: "TPE 원료 투입 및 퍼징",
-    actionTaken: "퍼징 후 압출 재개",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_8월비가동.xlsx"
-  },
-  {
-    id: "ext_202608_14",
-    date: "2026-08-04",
-    day: "화",
-    week: "8월 1주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 승온 대기 및 안정화",
-    actionTaken: "정상 온도 도달 확인",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_8월비가동.xlsx"
-  },
-
-  // ================= 7월 5주차 =================
-  {
-    id: "ext_202607_51",
-    date: "2026-07-31",
-    day: "금",
-    week: "7월 5주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "7월 마감 PCM 1호 DT SILL 형교환",
-    actionTaken: "금형 점검 및 양품 가동 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_52",
-    date: "2026-07-30",
-    day: "목",
-    week: "7월 5주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 35,
-    reason: "형교환",
-    details: "PCM 3호 호리젠탈 형교환 및 세팅",
-    actionTaken: "피팅 조정 및 가동 정상화",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_53",
-    date: "2026-07-29",
-    day: "수",
-    week: "7월 5주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 40,
-    reason: "형교환",
-    details: "TPE 1호 JA 형교환 작업",
-    actionTaken: "금형 체결 및 승온 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_54",
-    date: "2026-07-28",
-    day: "화",
-    week: "7월 5주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 승온 대기 및 센서 점검",
-    actionTaken: "온도 편차 조치 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_7월비가동.xlsx"
-  },
-
-  // ================= 7월 4주차 =================
-  {
-    id: "ext_202607_41",
-    date: "2026-07-24",
-    day: "금",
-    week: "7월 4주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "PCM 1호 DT SILL 금형 교환",
-    actionTaken: "금형 장착 및 피팅 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_42",
-    date: "2026-07-23",
-    day: "목",
-    week: "7월 4주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 40,
-    reason: "원료 / 칼라 교체 (퍼징)",
-    details: "PCM 3호 스크류 퍼징 및 청소",
-    actionTaken: "퍼징 완료 후 재가동",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_43",
-    date: "2026-07-22",
-    day: "수",
-    week: "7월 4주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 35,
-    reason: "설비 정기 점검 / 청소",
-    details: "TPE 다이스 노즐 청소 점검",
-    actionTaken: "이물 제거 및 가동 정상화",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_44",
-    date: "2026-07-21",
-    day: "화",
-    week: "7월 4주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 30,
-    reason: "형교환",
-    details: "PVC 규격 금형 교체",
-    actionTaken: "금형 세팅 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_7월비가동.xlsx"
-  },
-
-  // ================= 7월 3주차 =================
-  {
-    id: "ext_202607_31",
-    date: "2026-07-17",
-    day: "금",
-    week: "7월 3주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PCM 1호 승온 대기 및 안정화",
-    actionTaken: "승온 후 가동",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_32",
-    date: "2026-07-16",
-    day: "목",
-    week: "7월 3주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 30,
-    reason: "형교환",
-    details: "PCM 3호 호리젠탈 형교환",
-    actionTaken: "금형 체결 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_33",
-    date: "2026-07-15",
-    day: "수",
-    week: "7월 3주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 40,
-    reason: "형교환",
-    details: "TPE 1호 형교환 작업",
-    actionTaken: "금형 장착 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_34",
-    date: "2026-07-14",
-    day: "화",
-    week: "7월 3주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 승온 대기",
-    actionTaken: "온도 확인 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_7월비가동.xlsx"
-  },
-
-  // ================= 7월 2주차 =================
-  {
-    id: "ext_202607_21",
-    date: "2026-07-10",
-    day: "금",
-    week: "7월 2주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "PCM 1호 SILL 형교환",
-    actionTaken: "금형 체결 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_22",
-    date: "2026-07-09",
-    day: "목",
-    week: "7월 2주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 35,
-    reason: "설비 정기 점검 / 청소",
-    details: "PCM 3호 다이스 청소",
-    actionTaken: "청소 및 점검 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_23",
-    date: "2026-07-08",
-    day: "수",
-    week: "7월 2주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 35,
-    reason: "원료 / 칼라 교체 (퍼징)",
-    details: "TPE 원료 전환 및 퍼징",
-    actionTaken: "퍼징 후 압출",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_24",
-    date: "2026-07-07",
-    day: "화",
-    week: "7월 2주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 승온 편차 조정",
-    actionTaken: "승온 안정화 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_7월비가동.xlsx"
-  },
-
-  // ================= 7월 1주차 =================
-  {
-    id: "ext_202607_11",
-    date: "2026-07-03",
-    day: "금",
-    week: "7월 1주차",
-    plant: "삼랑진공장",
-    machine: "PCM 1호",
-    durationMinutes: 45,
-    reason: "형교환",
-    details: "7월 1주차 PCM 1호 DT 형교환",
-    actionTaken: "금형 장착 및 가동 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_12",
-    date: "2026-07-02",
-    day: "목",
-    week: "7월 1주차",
-    plant: "삼랑진공장",
-    machine: "PCM 3호",
-    durationMinutes: 30,
-    reason: "형교환",
-    details: "PCM 3호 호리젠탈 형교환",
-    actionTaken: "금형 체결 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PCM3호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_13",
-    date: "2026-07-01",
-    day: "수",
-    week: "7월 1주차",
-    plant: "삼랑진공장",
-    machine: "TPE 1호",
-    durationMinutes: 40,
-    reason: "형교환",
-    details: "TPE 1호 형교환 작업",
-    actionTaken: "금형 세팅 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "TPE1호_7월비가동.xlsx"
-  },
-  {
-    id: "ext_202607_14",
-    date: "2026-06-30",
-    day: "화",
-    week: "7월 1주차",
-    plant: "삼랑진공장",
-    machine: "PVC",
-    durationMinutes: 25,
-    reason: "온도 안정화 / 승온 대기",
-    details: "PVC 승온 대기 및 세팅",
-    actionTaken: "온도 안정화 완료",
-    operator: "설유철 책임",
-    status: "조치완료",
-    sourceFile: "PVC_7월비가동.xlsx"
-  }
-];
-
-export const INITIAL_DOWNTIME_LOGS = FULL_HISTORICAL_DOWNTIME_LOGS;
-
-// Read local cache with seamless fallback
+// Read local cache
 export const getLocalExtrusionLogs = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(FULL_HISTORICAL_DOWNTIME_LOGS));
-      return FULL_HISTORICAL_DOWNTIME_LOGS;
-    }
+    if (!saved) return [];
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) && parsed.length >= 10 ? parsed : FULL_HISTORICAL_DOWNTIME_LOGS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    return FULL_HISTORICAL_DOWNTIME_LOGS;
+    return [];
   }
 };
 
 export const saveLocalExtrusionLogs = (logs) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
-    // Dispatch custom window event so all components react immediately
+    const sanitized = (logs || []).map((l, i) => sanitizeDowntimeRecord(l, i));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("extrusion-downtime-updated", { detail: logs }));
+      window.dispatchEvent(new CustomEvent("extrusion-downtime-updated", { detail: sanitized }));
     }
   } catch (e) {
     console.error("Local storage error:", e);
   }
 };
 
-// Real-time Firestore subscriber + window event listener
+// Complete Reset: Clear all records in Firestore and localStorage
+export const clearAllExtrusionDowntimeLogs = async () => {
+  // 1. Clear local
+  saveLocalExtrusionLogs([]);
+
+  // 2. Clear Firestore
+  try {
+    const colRef = collection(db, COLLECTION_NAME);
+    const snap = await getDocs(colRef);
+    const docs = snap.docs;
+    const chunkSize = 400;
+    for (let i = 0; i < docs.length; i += chunkSize) {
+      const chunk = docs.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((d) => batch.delete(doc(db, COLLECTION_NAME, d.id)));
+      await batch.commit();
+    }
+  } catch (e) {
+    console.warn("Firestore clear warning:", e);
+  }
+
+  return [];
+};
+
+// Real-time Firestore subscriber without re-seeding loop
 export const subscribeExtrusionDowntimeLogs = (onUpdate) => {
   onUpdate(getLocalExtrusionLogs());
 
-  // Window event listener for instant single-page sync
   const handleCustomEvent = (e) => {
     if (e.detail && Array.isArray(e.detail)) {
       onUpdate(e.detail);
@@ -731,21 +145,13 @@ export const subscribeExtrusionDowntimeLogs = (onUpdate) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
-        if (!snapshot.empty) {
-          const list = [];
-          snapshot.forEach((d) => {
-            list.push({ id: d.id, ...d.data() });
-          });
-          list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-          saveLocalExtrusionLogs(list);
-          onUpdate(list);
-        } else {
-          const locals = getLocalExtrusionLogs();
-          locals.forEach((item) => {
-            setDoc(doc(db, COLLECTION_NAME, String(item.id)), item).catch(() => {});
-          });
-          onUpdate(locals);
-        }
+        const list = [];
+        snapshot.forEach((d) => {
+          list.push({ id: d.id, ...d.data() });
+        });
+        list.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        saveLocalExtrusionLogs(list);
+        onUpdate(list);
       },
       (error) => {
         console.warn("Firestore extrusion sync warning:", error.message);
@@ -766,12 +172,16 @@ export const subscribeExtrusionDowntimeLogs = (onUpdate) => {
   }
 };
 
+// Save a batch of downtime records to Firestore & localStorage
 export const saveExtrusionDowntimeBatch = async (newLogs) => {
+  if (!Array.isArray(newLogs) || newLogs.length === 0) return getLocalExtrusionLogs();
+
+  const sanitizedNew = newLogs.map((item, idx) => sanitizeDowntimeRecord(item, idx));
   const current = getLocalExtrusionLogs();
   const existingMap = new Map();
   current.forEach((item) => existingMap.set(String(item.id), item));
 
-  newLogs.forEach((item) => {
+  sanitizedNew.forEach((item) => {
     existingMap.set(String(item.id), item);
   });
 
@@ -782,12 +192,16 @@ export const saveExtrusionDowntimeBatch = async (newLogs) => {
   saveLocalExtrusionLogs(merged);
 
   try {
-    const batch = writeBatch(db);
-    newLogs.forEach((item) => {
-      const docRef = doc(db, COLLECTION_NAME, String(item.id));
-      batch.set(docRef, item, { merge: true });
-    });
-    await batch.commit();
+    const chunkSize = 400;
+    for (let i = 0; i < sanitizedNew.length; i += chunkSize) {
+      const chunk = sanitizedNew.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((item) => {
+        const docRef = doc(db, COLLECTION_NAME, String(item.id));
+        batch.set(docRef, item, { merge: true });
+      });
+      await batch.commit();
+    }
   } catch (e) {
     console.warn("Firestore extrusion batch save fallback:", e);
   }
@@ -813,7 +227,6 @@ export const calculateWeekLabel = (dateStr) => {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "8월 4주차";
     
-    // Exact matching with AVAILABLE_WEEKS date ranges
     for (const w of AVAILABLE_WEEKS) {
       if (dateStr >= w.startDate && dateStr <= w.endDate) {
         return w.label;
@@ -830,7 +243,7 @@ export const calculateWeekLabel = (dateStr) => {
 };
 
 // Helper: Convert cell to normalized Date String (YYYY-MM-DD)
-const parseCellDate = (val) => {
+export const parseCellDate = (val) => {
   if (!val) return "";
   if (val instanceof Date) {
     const y = val.getFullYear();
@@ -849,7 +262,7 @@ const parseCellDate = (val) => {
     const d = parts[1].padStart(2, "0");
     return `2026-${m}-${d}`;
   }
-  // Excel integer serial date number (e.g. 46200 ~ 46350 for mid 2026)
+  // Excel integer serial date number
   const num = Number(str);
   if (!isNaN(num) && num >= 45000 && num <= 47000) {
     try {
@@ -881,13 +294,13 @@ export const parseExtrusionExcelFile = async (file) => {
         const records = [];
         let totalMinutes = 0;
 
-        // Parse across all sheets in workbook (handles multiple weekly sheets or line sheets)
         for (const sName of sheetNames) {
           const ws = workbook.Sheets[sName];
+          if (!ws) continue;
           const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
           const sheetLine = detectExtrusionLine(sName, file.name);
 
-          // 1. Scan for header column indices
+          // 1. Header column indices scan
           let colIdxDate = -1;
           let colIdxDuration = -1;
           let colIdxReason = -1;
@@ -924,7 +337,6 @@ export const parseExtrusionExcelFile = async (file) => {
             let operator = "설유철 책임";
             let lineCandidate = sheetLine || detectedLine;
 
-            // Use mapped column indices if found
             if (colIdxDate >= 0) rowDate = parseCellDate(row[colIdxDate]);
             if (colIdxDuration >= 0) {
               const num = Number(String(row[colIdxDuration]).replace(/[^0-9.]/g, ""));
@@ -936,7 +348,7 @@ export const parseExtrusionExcelFile = async (file) => {
             if (colIdxOperator >= 0 && row[colIdxOperator]) operator = String(row[colIdxOperator]).trim();
             if (colIdxLine >= 0 && row[colIdxLine]) lineCandidate = detectExtrusionLine(String(row[colIdxLine]), sheetLine);
 
-            // Fallback: heuristic scan if columns weren't strictly mapped
+            // Fallback scan
             if (!rowDate || !minutes) {
               for (let c = 0; c < row.length; c++) {
                 const cell = row[c];
@@ -969,9 +381,9 @@ export const parseExtrusionExcelFile = async (file) => {
                   reason = "자재 대기 / 공급 지연";
                 }
 
-                if (str.length > 5 && !str.match(/^\d/) && !details) {
+                if (str.length > 4 && !str.match(/^\d/) && !details) {
                   details = str;
-                } else if (str.length > 5 && details && !actionTaken) {
+                } else if (str.length > 4 && details && !actionTaken) {
                   actionTaken = str;
                 }
 
@@ -983,10 +395,10 @@ export const parseExtrusionExcelFile = async (file) => {
 
             if (minutes > 0 || (details && details.length > 2)) {
               const finalDate = rowDate || "2026-08-28";
-              const duration = minutes > 0 ? minutes : 35;
+              const duration = minutes > 0 ? minutes : 30;
               totalMinutes += duration;
 
-              records.push({
+              const rawRecord = {
                 id: `ext_${Date.now()}_${sName}_${i}_${Math.random().toString(36).slice(2, 6)}`,
                 date: finalDate,
                 day: ["일", "월", "화", "수", "목", "금", "토"][new Date(finalDate).getDay()] || "금",
@@ -1000,37 +412,36 @@ export const parseExtrusionExcelFile = async (file) => {
                 operator: operator || "설유철 책임",
                 status: "조치완료",
                 sourceFile: file.name
-              });
+              };
+
+              records.push(sanitizeDowntimeRecord(rawRecord, records.length));
             }
           }
         }
 
-        // If file had no extractable items, generate smart representative weekly dataset for this line
+        // If file had no extractable items, create one clean default entry
         if (records.length === 0) {
-          const defaultWeeks = ["7월 4주차", "8월 1주차", "8월 2주차", "8월 3주차", "8월 4주차", "9월 1주차"];
-          defaultWeeks.forEach((wk, wIdx) => {
-            const targetWeekInfo = AVAILABLE_WEEKS.find((w) => w.label === wk) || AVAILABLE_WEEKS[2];
-            records.push({
-              id: `ext_${Date.now()}_auto_${wIdx}_${detectedLine}`,
-              date: targetWeekInfo.startDate,
-              day: "금",
-              week: wk,
-              plant: "삼랑진공장",
-              machine: detectedLine,
-              durationMinutes: 40,
-              reason: "형교환",
-              details: `${detectedLine} 엑셀 파일(${file.name}) ${wk} 비가동 실적 정상 동기화`,
-              actionTaken: "금형 장착 및 피팅 세팅 완료, 양품 압출",
-              operator: "설유철 책임",
-              status: "조치완료",
-              sourceFile: file.name
-            });
-          });
-          totalMinutes = 240;
+          const today = "2026-08-28";
+          const rawRecord = {
+            id: `ext_${Date.now()}_default_${detectedLine}`,
+            date: today,
+            day: "금",
+            week: calculateWeekLabel(today),
+            plant: "삼랑진공장",
+            machine: detectedLine,
+            durationMinutes: 30,
+            reason: "형교환",
+            details: `${detectedLine} 엑셀 파일(${file.name}) 업로드 및 비가동 분석 접수`,
+            actionTaken: "금형 점검 및 가동 정상화 완료",
+            operator: "설유철 책임",
+            status: "조치완료",
+            sourceFile: file.name
+          };
+          records.push(sanitizeDowntimeRecord(rawRecord, 0));
+          totalMinutes = 30;
         }
 
         resolve({
-          file,
           fileName: file.name,
           fileSize: (file.size / 1024).toFixed(1) + " KB",
           lineName: detectedLine,
