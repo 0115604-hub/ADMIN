@@ -25,7 +25,8 @@ import {
   ShieldCheck,
   Crown,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Users
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
@@ -36,7 +37,9 @@ import {
   holdDocumentStep,
   rejectDocumentStep,
   deleteApprovalDocument,
-  checkApprovalPermission
+  checkApprovalPermission,
+  getAutoApprovalSteps,
+  APPROVAL_MANAGERS
 } from "../services/approvalService";
 
 export const ElectronicApprovalView = () => {
@@ -54,14 +57,28 @@ export const ElectronicApprovalView = () => {
   const [holdReason, setHoldReason] = useState("");
   const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
 
-  // New Draft Form State (All workers can draft)
+  // All eligible workers for Drafter dropdown (전작업자 기안 가능)
+  const allWorkers = useMemo(() => {
+    const list = [];
+    PLANTS.forEach((p) => {
+      p.workers.forEach((w) => {
+        list.push({ ...w, plantName: p.name });
+      });
+    });
+    return list;
+  }, []);
+
+  // New Draft Form State (담당: 전작업자)
   const [draftForm, setDraftForm] = useState({
     type: "OVERTIME",
     typeName: "특근 신청서",
     plant: currentProfile?.plant || "삼랑진공장",
-    department: currentProfile?.assignedProcess || "생산1팀",
+    department: currentProfile?.assignedProcess || "압출동 관리",
     drafter: currentProfile?.name || "방상국",
     drafterTitle: currentProfile?.title || "선임",
+    leadName: "설유철", // Default Step 2 (책임)
+    directorName: "이명재", // Step 3 (이사)
+    ceoName: "대표이사", // Step 4 (대표)
     title: "",
     content: "",
     amount: ""
@@ -79,17 +96,41 @@ export const ElectronicApprovalView = () => {
     return () => unsub();
   }, [selectedDoc?.id]);
 
+  // Sync draft form with logged-in user
   useEffect(() => {
     if (currentProfile) {
+      const p = currentProfile.plant || "삼랑진공장";
+      const proc = currentProfile.assignedProcess || "압출동 관리";
+      let autoLead = "설유철";
+      if (p === "한림공장") {
+        autoLead = "김동욱";
+      } else {
+        if (proc.includes("품질")) autoLead = "이창엽";
+        else if (proc.includes("설비")) autoLead = "전재율";
+        else if (proc.includes("가공")) autoLead = "윤경수";
+        else autoLead = "설유철";
+      }
+
       setDraftForm((prev) => ({
         ...prev,
-        plant: currentProfile.plant || "삼랑진공장",
-        department: currentProfile.assignedProcess || "생산1팀",
+        plant: p,
+        department: proc,
         drafter: currentProfile.name || "작업자",
-        drafterTitle: currentProfile.title || "선임"
+        drafterTitle: currentProfile.title || "선임",
+        leadName: autoLead
       }));
     }
   }, [currentProfile]);
+
+  // When plant/process changes in draft form, auto-suggest the responsible lead
+  const handlePlantChange = (newPlant) => {
+    let autoLead = newPlant === "한림공장" ? "김동욱" : "설유철";
+    setDraftForm((prev) => ({
+      ...prev,
+      plant: newPlant,
+      leadName: autoLead
+    }));
+  };
 
   // Filtered Documents
   const filteredDocs = useMemo(() => {
@@ -154,8 +195,17 @@ export const ElectronicApprovalView = () => {
       return;
     }
 
+    const steps = getAutoApprovalSteps(
+      draftForm.plant,
+      draftForm.drafter,
+      draftForm.drafterTitle,
+      draftForm.department,
+      draftForm.leadName
+    );
+
     await saveApprovalDocument({
       ...draftForm,
+      steps,
       status: "IN_PROGRESS"
     });
 
@@ -164,9 +214,12 @@ export const ElectronicApprovalView = () => {
       type: "OVERTIME",
       typeName: "특근 신청서",
       plant: currentProfile?.plant || "삼랑진공장",
-      department: currentProfile?.assignedProcess || "생산1팀",
+      department: currentProfile?.assignedProcess || "압출동 관리",
       drafter: currentProfile?.name || "방상국",
       drafterTitle: currentProfile?.title || "선임",
+      leadName: "설유철",
+      directorName: "이명재",
+      ceoName: "대표이사",
       title: "",
       content: "",
       amount: ""
@@ -269,7 +322,7 @@ export const ElectronicApprovalView = () => {
       defaultContent = "차종 긴급 납품 물량 대응을 위해 아래와 같이 특근을 신청하오니 재가 바랍니다.\n- 일시: 2026-09-06 (일) 08:00 ~ 17:00\n- 대상 공정: 압출 2호기 / 가공 라인\n- 인원: 4명";
     } else if (type === "LEAVE") {
       typeName = "연차/휴가 신청서";
-      defaultTitle = `정기 연차 휴가 신청서 (${currentProfile?.name || "작업자"})`;
+      defaultTitle = `정기 연차 휴가 신청서 (${draftForm.drafter || "작업자"})`;
       defaultContent = "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 신청기간: 2026-09-08 (1일간)\n- 사유: 개인 용무\n- 업무 인수인계: 정상 완료";
     } else if (type === "EXPENSE") {
       typeName = "설비부품/자재 품의서";
@@ -314,7 +367,7 @@ export const ElectronicApprovalView = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                전 작업자 기안 상신 가능 • 직급별 책임/이사 승인 • ADMIN 대표이사 최종 승인
+                담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 자동결재선 적용
               </p>
             </div>
           </div>
@@ -331,7 +384,6 @@ export const ElectronicApprovalView = () => {
 
         {/* 5 KPI Summary Status Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {/* 미결 (결재 진행중) */}
           <div
             onClick={() => setSelectedTab("PENDING")}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
@@ -351,7 +403,6 @@ export const ElectronicApprovalView = () => {
             </div>
           </div>
 
-          {/* 보류 */}
           <div
             onClick={() => setSelectedTab("HOLD")}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
@@ -371,7 +422,6 @@ export const ElectronicApprovalView = () => {
             </div>
           </div>
 
-          {/* 승인 완료 */}
           <div
             onClick={() => setSelectedTab("APPROVED")}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
@@ -391,7 +441,6 @@ export const ElectronicApprovalView = () => {
             </div>
           </div>
 
-          {/* 반려 */}
           <div
             onClick={() => setSelectedTab("REJECTED")}
             className={`p-3 rounded-2xl border transition-all cursor-pointer ${
@@ -411,7 +460,6 @@ export const ElectronicApprovalView = () => {
             </div>
           </div>
 
-          {/* 전체 결재 */}
           <div
             onClick={() => setSelectedTab("ALL")}
             className={`p-3 rounded-2xl border transition-all cursor-pointer col-span-2 sm:col-span-1 ${
@@ -437,7 +485,6 @@ export const ElectronicApprovalView = () => {
       {/* 2. Filter Navigation & Plant Filter / Search */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {[
             { id: "ALL", label: `전체 목록 (${stats.total})` },
@@ -465,7 +512,6 @@ export const ElectronicApprovalView = () => {
           ))}
         </div>
 
-        {/* Plant Filter & Search Box */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <select
             value={selectedPlant}
@@ -491,7 +537,7 @@ export const ElectronicApprovalView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. ⭐ [요청사항 반영] 결재목록 한 줄(1-Line Row) 깔끔한 테이블 뷰 */}
+      {/* 3. 1-Line Row Approval Table List */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         {filteredDocs.length === 0 ? (
@@ -508,10 +554,10 @@ export const ElectronicApprovalView = () => {
                   <th className="py-3 px-2.5 w-24 whitespace-nowrap">양식구분</th>
                   <th className="py-3 px-2 w-20 whitespace-nowrap">공장</th>
                   <th className="py-3 px-3 min-w-[220px]">문서 제목</th>
-                  <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안자</th>
+                  <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안자(담당)</th>
                   <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안일시</th>
                   <th className="py-3 px-2.5 w-24 whitespace-nowrap">소요금액</th>
-                  <th className="py-3 px-3 w-48 text-center whitespace-nowrap">결재선 현황 (담당/책임/이사/대표)</th>
+                  <th className="py-3 px-3 w-48 text-center whitespace-nowrap">결재선 (담당/책임/이사/대표)</th>
                   <th className="py-3 px-2.5 w-24 text-center whitespace-nowrap">문서상태</th>
                   <th className="py-3 px-3 w-20 text-center whitespace-nowrap">열람</th>
                 </tr>
@@ -563,7 +609,7 @@ export const ElectronicApprovalView = () => {
                         </span>
                       </td>
 
-                      {/* 5. 기안자 */}
+                      {/* 5. 기안자(담당: 전작업자) */}
                       <td className="py-2.5 px-2.5 whitespace-nowrap text-slate-700 dark:text-slate-300 font-bold text-[11px]">
                         {doc.drafter} <span className="text-slate-400 font-normal">{doc.drafterTitle}</span>
                       </td>
@@ -656,7 +702,7 @@ export const ElectronicApprovalView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. Official Document Detail & Approval Popup Dialog (직급/ADMIN 권한 반영) */}
+      {/* 4. Official Document Detail & Approval Popup Dialog */}
       {/* ========================================================================= */}
       {selectedDoc && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
@@ -767,7 +813,7 @@ export const ElectronicApprovalView = () => {
                       {selectedDoc.plant} • {selectedDoc.department}
                     </td>
                     <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400">
-                      기안자
+                      기안자(담당)
                     </td>
                     <td className="p-2.5 font-bold text-slate-900 dark:text-white">
                       {selectedDoc.drafter} {selectedDoc.drafterTitle}
@@ -850,9 +896,7 @@ export const ElectronicApprovalView = () => {
               </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* Approval Controls (Role & ADMIN permission check) */}
-            {/* ========================================================================= */}
+            {/* Approval Execution Controls */}
             {(selectedDoc.status === "IN_PROGRESS" || selectedDoc.status === "HOLD") && (
               <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1009,7 +1053,7 @@ export const ElectronicApprovalView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 5. New Draft Registration Modal (전작업자 작성 가능) */}
+      {/* 5. New Draft Registration Modal (담당: 전작업자, 책임: 책임직급, 이사: 이명재, 대표: 대표이사) */}
       {/* ========================================================================= */}
       {isDraftModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
@@ -1024,7 +1068,7 @@ export const ElectronicApprovalView = () => {
                     새 전자결재 기안서 작성
                   </h3>
                   <p className="text-xs text-slate-400">
-                    전 작업자 기안 가능 • 결재선 자동 지정
+                    담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 결재선
                   </p>
                 </div>
               </div>
@@ -1067,13 +1111,14 @@ export const ElectronicApprovalView = () => {
 
             <form onSubmit={handleSaveDraft} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
+                {/* 소속 공장 */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                     소속 공장
                   </label>
                   <select
                     value={draftForm.plant}
-                    onChange={(e) => setDraftForm({ ...draftForm, plant: e.target.value })}
+                    onChange={(e) => handlePlantChange(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
                   >
                     <option value="삼랑진공장">삼랑진공장</option>
@@ -1081,19 +1126,35 @@ export const ElectronicApprovalView = () => {
                   </select>
                 </div>
 
+                {/* 1. 담당 (기안자: 전작업자 선택 가능) */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    기안자 (전작업자 작성 가능)
+                    1. 담당 (기안자: 전작업자)
                   </label>
-                  <input
-                    type="text"
-                    disabled
-                    value={`${draftForm.drafter} ${draftForm.drafterTitle || "선임"}`}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 font-bold text-slate-700 dark:text-slate-300"
-                  />
+                  <select
+                    value={draftForm.drafter}
+                    onChange={(e) => {
+                      const sel = allWorkers.find((w) => w.name === e.target.value);
+                      setDraftForm({
+                        ...draftForm,
+                        drafter: e.target.value,
+                        drafterTitle: sel?.title || "선임",
+                        plant: sel?.plantName || draftForm.plant,
+                        department: sel?.assignedProcess || draftForm.department
+                      });
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                  >
+                    {allWorkers.map((w) => (
+                      <option key={w.id} value={w.name}>
+                        {w.name} ({w.title} • {w.plantName})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
+              {/* 기안 제목 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                   기안 제목
@@ -1101,13 +1162,14 @@ export const ElectronicApprovalView = () => {
                 <input
                   type="text"
                   required
-                  placeholder="예: 9월 1주차 주말 압출 2호기 특근 신청의 건"
+                  placeholder="예: 9월 1주차 주말 생산라인 특근 신청의 건"
                   value={draftForm.title}
                   onChange={(e) => setDraftForm({ ...draftForm, title: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs"
                 />
               </div>
 
+              {/* 소요 금액 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                   소요 금액 / 특근비 (선택 사항)
@@ -1121,12 +1183,13 @@ export const ElectronicApprovalView = () => {
                 />
               </div>
 
+              {/* 상세 내용 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                   기안 상세 내용
                 </label>
                 <textarea
-                  rows="5"
+                  rows="4"
                   required
                   placeholder="구체적인 사유 및 내역을 입력해 주세요."
                   value={draftForm.content}
@@ -1135,21 +1198,64 @@ export const ElectronicApprovalView = () => {
                 ></textarea>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
-                <span className="text-[10.5px] font-bold text-slate-500 block">
-                  자동 결재선 지정:
-                </span>
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 border">1. {draftForm.drafter} (담당)</span>
-                  <span>→</span>
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 border">2. {draftForm.plant === "한림공장" ? "김동욱" : "이명재"} (책임)</span>
-                  <span>→</span>
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 border">3. 조인주 (이사)</span>
-                  <span>→</span>
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-700 border">4. 대표이사 (대표)</span>
+              {/* 자동 결재선 지정 (담당: 전작업자, 책임: 책임직급, 이사: 이명재, 대표: 대표이사) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>자동 결재선 지정 (직급 체계 준수)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">4단계 자동 배정</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  {/* 1. 담당 */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">1. 담당 (기안자)</span>
+                    <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
+                      {draftForm.drafter} {draftForm.drafterTitle}
+                    </strong>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">전작업자</span>
+                  </div>
+
+                  {/* 2. 책임 (선택 가능) */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">2. 책임 (직급)</span>
+                    <select
+                      value={draftForm.leadName}
+                      onChange={(e) => setDraftForm({ ...draftForm, leadName: e.target.value })}
+                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
+                    >
+                      {APPROVAL_MANAGERS.LEADS.filter((m) => draftForm.plant === "한림공장" ? m.plant === "한림공장" : m.plant === "삼랑진공장").map((m) => (
+                        <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {m.name} ({m.title})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">책임 직급</span>
+                  </div>
+
+                  {/* 3. 이사 */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">3. 이사 (임원)</span>
+                    <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
+                      이명재 이사
+                    </strong>
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">총괄 이사</span>
+                  </div>
+
+                  {/* 4. 대표 */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">4. 대표 (CEO)</span>
+                    <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
+                      대표이사
+                    </strong>
+                    <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">ADMIN 승인</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Submit Buttons */}
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"

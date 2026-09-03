@@ -11,6 +11,89 @@ import { db } from "../firebase";
 const COLLECTION_NAME = "approval_documents";
 const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v1";
 
+// List of authorized managers by Title / Hierarchy
+export const APPROVAL_MANAGERS = {
+  LEADS: [
+    { name: "설유철", title: "책임", plant: "삼랑진공장", process: "압출동 관리" },
+    { name: "윤경수", title: "책임", plant: "삼랑진공장", process: "가공동 관리" },
+    { name: "이창엽", title: "책임", plant: "삼랑진공장", process: "품질관리" },
+    { name: "전재율", title: "책임", plant: "삼랑진공장", process: "설비보전" },
+    { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리" }
+  ],
+  DIRECTORS: [
+    { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" }
+  ],
+  CEO: [
+    { name: "대표이사", title: "대표", plant: "본사", process: "대표이사" }
+  ]
+};
+
+// Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 대표이사)
+export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, selectedLeadName) => {
+  const now = new Date();
+  const nowStr = now.toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  // Determine Step 2 (책임)
+  let leadName = selectedLeadName;
+  if (!leadName) {
+    if (plant === "한림공장") {
+      leadName = "김동욱";
+    } else {
+      if (process?.includes("품질")) {
+        leadName = "이창엽";
+      } else if (process?.includes("설비")) {
+        leadName = "전재율";
+      } else if (process?.includes("가공")) {
+        leadName = "윤경수";
+      } else {
+        leadName = "설유철";
+      }
+    }
+  }
+
+  return [
+    {
+      role: "담당",
+      name: drafterName || "작업자",
+      title: drafterTitle || "선임",
+      status: "APPROVED",
+      date: nowStr,
+      comment: "기안 상신"
+    },
+    {
+      role: "책임",
+      name: leadName || (plant === "한림공장" ? "김동욱" : "설유철"),
+      title: "책임",
+      status: "PENDING",
+      date: "",
+      comment: ""
+    },
+    {
+      role: "이사",
+      name: "이명재",
+      title: "이사",
+      status: "WAITING",
+      date: "",
+      comment: ""
+    },
+    {
+      role: "대표",
+      name: "대표이사",
+      title: "대표",
+      status: "WAITING",
+      date: "",
+      comment: ""
+    }
+  ];
+};
+
 // Initial sample approval documents
 export const INITIAL_APPROVAL_DOCS = [
   {
@@ -20,18 +103,18 @@ export const INITIAL_APPROVAL_DOCS = [
     typeName: "특근 신청서",
     title: "9월 1주차 주말 압출 2호기 및 가공 3호기 특근 승인의 건",
     plant: "삼랑진공장",
-    department: "생산1팀",
+    department: "생산1팀 (압출)",
     drafter: "방상국",
     drafterTitle: "선임",
     createdAt: "2026-09-03 09:30",
     content: "현대 NX4a 및 JA 차종 긴급 납품 물량 대응을 위해 주말 특근(08:00~17:00, 총 6명)을 신청하오니 재가하여 주시기 바랍니다.",
     amount: "₩1,248,000",
-    status: "IN_PROGRESS", // IN_PROGRESS(미결), HOLD(보류), APPROVED(승인완료), REJECTED(반려)
-    currentStep: 2, // 1: 담당, 2: 책임, 3: 이사, 4: 대표
+    status: "IN_PROGRESS",
+    currentStep: 2,
     steps: [
       { role: "담당", name: "방상국", title: "선임", status: "APPROVED", date: "2026-09-03 09:30", comment: "기안 상신" },
-      { role: "책임", name: "이명재", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "조인주", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "책임", name: "설유철", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
     ],
     rejectReason: "",
@@ -42,20 +125,20 @@ export const INITIAL_APPROVAL_DOCS = [
     docNumber: "ORYUK-2026-0902",
     type: "LEAVE",
     typeName: "연차/휴가 신청서",
-    title: "정기 연차 휴가 신청의 건 (설유철)",
+    title: "정기 연차 휴가 신청의 건 (양인나)",
     plant: "삼랑진공장",
-    department: "품질관리팀",
-    drafter: "설유철",
-    drafterTitle: "책임",
+    department: "가공동 관리",
+    drafter: "양인나",
+    drafterTitle: "선임",
     createdAt: "2026-09-02 14:20",
     content: "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 일시: 2026년 9월 5일 (금) 1일간\n- 업무 대행자: 방상국 선임",
     amount: "-",
     status: "APPROVED",
     currentStep: 4,
     steps: [
-      { role: "담당", name: "설유철", title: "책임", status: "APPROVED", date: "2026-09-02 14:20", comment: "신청 완료" },
-      { role: "책임", name: "이명재", title: "책임", status: "APPROVED", date: "2026-09-02 15:10", comment: "업무 대행 확인 승인" },
-      { role: "이사", name: "조인주", title: "이사", status: "APPROVED", date: "2026-09-02 16:00", comment: "승인 완료" },
+      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-02 14:20", comment: "신청 완료" },
+      { role: "책임", name: "윤경수", title: "책임", status: "APPROVED", date: "2026-09-02 15:10", comment: "업무 대행 확인 승인" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-02 16:00", comment: "승인 완료" },
       { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-02 17:30", comment: "최종 승인" }
     ],
     rejectReason: "",
@@ -68,7 +151,7 @@ export const INITIAL_APPROVAL_DOCS = [
     typeName: "설비부품 구매 품의서",
     title: "한림공장 CHANNEL 밴딩기 유압 실린더 패킹 교체 구매 건",
     plant: "한림공장",
-    department: "생산2팀",
+    department: "가공동 관리",
     drafter: "우창용",
     drafterTitle: "선임",
     createdAt: "2026-09-03 10:15",
@@ -78,8 +161,8 @@ export const INITIAL_APPROVAL_DOCS = [
     currentStep: 2,
     steps: [
       { role: "담당", name: "우창용", title: "선임", status: "APPROVED", date: "2026-09-03 10:15", comment: "긴급 품의" },
-      { role: "책임", name: "김동욱", title: "총괄", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "조인주", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
     ],
     rejectReason: "",
@@ -147,7 +230,7 @@ export const subscribeApprovalDocs = (onUpdate) => {
   }
 };
 
-// Check Approval Role Permission
+// Check Approval Role Permission (담당: 전작업자, 책임: 책임직급, 이사: 이명재 이사, 대표: ADMIN)
 export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
   if (!docItem || !docItem.steps) {
     return { canApprove: false, reason: "문서 정보가 없습니다." };
@@ -179,7 +262,7 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 2. Step 1: 담당 (Drafter)
+  // 2. Step 1: 담당 (All Workers / 전작업자)
   if (stepRole === "담당") {
     return {
       canApprove: true,
@@ -189,18 +272,17 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 3. Step 2: 책임 (Plant Lead / Department Head)
-  // 삼랑진공장: 이명재, 설유철 / 한림공장: 김동욱
+  // 3. Step 2: 책임 (직급이 '책임'인 사용자 또는 지정된 책임자)
+  // 설유철(책임), 윤경수(책임), 이창엽(책임), 전재율(책임), 김동욱(책임)
   if (stepRole === "책임") {
-    const isLead =
-      (docItem.plant === "한림공장" && (userName === "김동욱" || userTitle === "총괄")) ||
-      (docItem.plant === "삼랑진공장" && (userName === "이명재" || userName === "설유철" || userTitle === "책임")) ||
-      userName === "이명재" ||
-      userName === "김동욱" ||
-      userName === "설유철" ||
-      userName === "조인주";
+    const isStepTarget = activeStep.name === userName;
+    const isLeadTitle = userTitle === "책임" || userTitle === "총괄";
+    const isPlantLead =
+      (docItem.plant === "한림공장" && (userName === "김동욱" || isLeadTitle)) ||
+      (docItem.plant === "삼랑진공장" && (userName === "설유철" || userName === "윤경수" || userName === "이창엽" || userName === "전재율" || isLeadTitle)) ||
+      userName === "이명재"; // 이사는 상위 결재자로서 전결 가능
 
-    if (isLead) {
+    if (isStepTarget || isPlantLead || isLeadTitle) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
@@ -210,30 +292,29 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     }
     return {
       canApprove: false,
-      reason: `[${docItem.plant} 책임 ${activeStep.name}] 결재 권한이 필요합니다.`
+      reason: `[책임 ${activeStep.name}] 결재 권한이 필요합니다. (직급: 책임)`
     };
   }
 
-  // 4. Step 3: 이사 (Executive / Director)
-  // 조인주 이사
+  // 4. Step 3: 이사 (직급이 '이사'인 임원: 이명재 이사)
   if (stepRole === "이사") {
-    if (userName === "조인주" || userTitle === "이사") {
+    if (userName === "이명재" || userTitle === "이사") {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
         stepRole,
-        approverName: "조인주"
+        approverName: "이명재"
       };
     }
     return {
       canApprove: false,
-      reason: "[이사 조인주] 임원 결재 권한이 필요합니다."
+      reason: "[이사 이명재] 임원 결재 권한이 필요합니다. (직급: 이사)"
     };
   }
 
-  // 5. Step 4: 대표 (CEO / Representative)
+  // 5. Step 4: 대표 (대표이사)
   if (stepRole === "대표") {
-    if (userTitle === "대표" || userName === "대표이사") {
+    if (userTitle === "대표" || userName === "대표이사" || isAdmin) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
@@ -274,12 +355,7 @@ export const saveApprovalDocument = async (docData) => {
     createdAt: docData.createdAt || nowStr,
     rejectReason: docData.rejectReason || "",
     holdReason: docData.holdReason || "",
-    steps: docData.steps || [
-      { role: "담당", name: docData.drafter, title: docData.drafterTitle || "선임", status: "APPROVED", date: nowStr, comment: "기안 상신" },
-      { role: "책임", name: docData.plant === "한림공장" ? "김동욱" : "이명재", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "조인주", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
-    ]
+    steps: docData.steps || getAutoApprovalSteps(docData.plant, docData.drafter, docData.drafterTitle, docData.department, docData.leadName)
   };
 
   const existingIdx = current.findIndex((d) => d.id === id);
