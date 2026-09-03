@@ -9,7 +9,7 @@ import {
 import { db } from "../firebase";
 
 const COLLECTION_NAME = "approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v1";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v2";
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -28,6 +28,22 @@ export const APPROVAL_MANAGERS = {
   ]
 };
 
+// Clean and Normalize Document: ensure role '이사' is always '이명재'
+export const normalizeApprovalDoc = (d) => {
+  if (!d || !d.steps) return d;
+  const fixedSteps = d.steps.map((st) => {
+    if (st.role === "이사") {
+      return {
+        ...st,
+        name: "이명재",
+        title: "이사"
+      };
+    }
+    return st;
+  });
+  return { ...d, steps: fixedSteps };
+};
+
 // Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 대표이사)
 export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, selectedLeadName) => {
   const now = new Date();
@@ -40,7 +56,6 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
-  // Determine Step 2 (책임)
   let leadName = selectedLeadName;
   if (!leadName) {
     if (plant === "한림공장") {
@@ -94,7 +109,7 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
   ];
 };
 
-// Initial sample approval documents
+// Initial sample approval documents (All with 이명재 이사)
 export const INITIAL_APPROVAL_DOCS = [
   {
     id: "appr_20260903_001",
@@ -170,7 +185,7 @@ export const INITIAL_APPROVAL_DOCS = [
   }
 ];
 
-// Helper: Read local storage
+// Helper: Read local storage with normalization
 export const getLocalApprovalDocs = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -178,7 +193,8 @@ export const getLocalApprovalDocs = () => {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_APPROVAL_DOCS));
       return INITIAL_APPROVAL_DOCS;
     }
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    return parsed.map(normalizeApprovalDoc);
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
     return INITIAL_APPROVAL_DOCS;
@@ -188,7 +204,8 @@ export const getLocalApprovalDocs = () => {
 // Helper: Save local storage
 export const saveLocalApprovalDocs = (docs) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(docs));
+    const normalized = docs.map(normalizeApprovalDoc);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
     console.error("Local storage write error for approval documents:", e);
   }
@@ -204,7 +221,15 @@ export const subscribeApprovalDocs = (onUpdate) => {
         if (!snapshot.empty) {
           const list = [];
           snapshot.forEach((d) => {
-            list.push({ id: d.id, ...d.data() });
+            const rawDoc = { id: d.id, ...d.data() };
+            const normalized = normalizeApprovalDoc(rawDoc);
+            list.push(normalized);
+
+            // If remote doc had wrong director name, quietly sync correction to Firestore
+            const directorStep = rawDoc.steps?.find((st) => st.role === "이사");
+            if (directorStep && directorStep.name !== "이명재") {
+              setDoc(doc(db, COLLECTION_NAME, d.id), normalized).catch(() => {});
+            }
           });
           list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
           saveLocalApprovalDocs(list);
@@ -230,7 +255,7 @@ export const subscribeApprovalDocs = (onUpdate) => {
   }
 };
 
-// Check Approval Role Permission (담당: 전작업자, 책임: 책임직급, 이사: 이명재 이사, 대표: ADMIN)
+// Check Approval Role Permission
 export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
   if (!docItem || !docItem.steps) {
     return { canApprove: false, reason: "문서 정보가 없습니다." };
@@ -240,7 +265,6 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     return { canApprove: false, reason: "최종 승인 완료된 문서입니다." };
   }
 
-  // Find step that is PENDING or HOLD
   const activeStepIdx = docItem.steps.findIndex((st) => st.status === "PENDING" || st.status === "HOLD");
   if (activeStepIdx === -1) {
     return { canApprove: false, reason: "결재 대기 중인 단계가 없습니다." };
@@ -346,7 +370,7 @@ export const saveApprovalDocument = async (docData) => {
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
-  const fullItem = {
+  const fullItem = normalizeApprovalDoc({
     ...docData,
     id,
     docNumber: docData.docNumber || `ORYUK-${now.getFullYear()}-${String(Date.now()).slice(-4)}`,
@@ -356,7 +380,7 @@ export const saveApprovalDocument = async (docData) => {
     rejectReason: docData.rejectReason || "",
     holdReason: docData.holdReason || "",
     steps: docData.steps || getAutoApprovalSteps(docData.plant, docData.drafter, docData.drafterTitle, docData.department, docData.leadName)
-  };
+  });
 
   const existingIdx = current.findIndex((d) => d.id === id);
   let updated;
@@ -412,13 +436,13 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
   const isAllApproved = updatedSteps.every((st) => st.status === "APPROVED");
   const nextStep = isAllApproved ? 4 : Math.min(stepIndex + 2, 4);
 
-  const updatedTarget = {
+  const updatedTarget = normalizeApprovalDoc({
     ...target,
     steps: updatedSteps,
     currentStep: nextStep,
     status: isAllApproved ? "APPROVED" : "IN_PROGRESS",
     holdReason: ""
-  };
+  });
 
   return await saveApprovalDocument(updatedTarget);
 };
@@ -451,12 +475,12 @@ export const holdDocumentStep = async (docId, stepIndex, holderName, holdReason)
     return st;
   });
 
-  const updatedTarget = {
+  const updatedTarget = normalizeApprovalDoc({
     ...target,
     steps: updatedSteps,
     status: "HOLD",
     holdReason: holdReason || "검토 필요로 인한 보류"
-  };
+  });
 
   return await saveApprovalDocument(updatedTarget);
 };
@@ -489,12 +513,12 @@ export const rejectDocumentStep = async (docId, stepIndex, rejectorName, rejectR
     return st;
   });
 
-  const updatedTarget = {
+  const updatedTarget = normalizeApprovalDoc({
     ...target,
     steps: updatedSteps,
     status: "REJECTED",
     rejectReason: rejectReason || "보완 필요 반려"
-  };
+  });
 
   return await saveApprovalDocument(updatedTarget);
 };
