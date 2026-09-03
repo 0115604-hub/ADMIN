@@ -47,6 +47,11 @@ import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { getLocalAccessLogs, subscribeAccessLogs } from "../services/accessLogService";
 import {
+  getLocalOvertimeReports,
+  subscribeOvertimeReports,
+  getLatestOvertimeSummary
+} from "../services/overtimeService";
+import {
   getWorkLogs,
   saveWorkLog,
   deleteWorkLog,
@@ -250,6 +255,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     });
     return () => unsub();
   }, []);
+
+  // Real-time Overtime Reports State & Summary (마지막 수정본 자동 반영)
+  const [overtimeReports, setOvertimeReports] = useState(() => getLocalOvertimeReports());
+
+  useEffect(() => {
+    const unsub = subscribeOvertimeReports((reports) => {
+      setOvertimeReports(reports);
+    });
+    return () => unsub();
+  }, []);
+
+  const overtimeSummary = useMemo(() => {
+    return getLatestOvertimeSummary(overtimeReports);
+  }, [overtimeReports]);
 
   const handleOpenWorkerLogs = (worker) => {
     const freshLogs = getLocalAccessLogs();
@@ -923,7 +942,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
       {/* ========================================================================= */}
       {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 */}
+      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (마지막 수정본 실시간 자동 연동) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
@@ -936,7 +955,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </h2>
             <span className="text-[10.5px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
               <DollarSign className="w-3 h-3 text-rose-500" />
-              <span>당월 총누적 특근비용: <strong className="font-mono text-xs font-black text-rose-600 dark:text-rose-400">₩{(SAMRANGJIN_OVERTIME.monthCumulativeCost + HANLIM_OVERTIME.monthCumulativeCost).toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
+              <span>당월 총누적 특근비용: <strong className="font-mono text-xs font-black text-rose-600 dark:text-rose-400">₩{overtimeSummary.totalMonthCumulativeCost.toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
             </span>
           </div>
 
@@ -961,22 +980,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   삼랑진공장
                 </span>
                 <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
-                  📅 {SAMRANGJIN_OVERTIME.date}
+                  📅 {overtimeSummary.samrangjin.date}
                 </span>
-                <span className="text-[10px] text-slate-500 font-bold">{SAMRANGJIN_OVERTIME.author}</span>
+                <span className="text-[10px] text-slate-500 font-bold">{overtimeSummary.samrangjin.author} {overtimeSummary.samrangjin.authorTitle || "선임"}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                  ₩{SAMRANGJIN_OVERTIME.cost.toLocaleString()}
+                  ₩{overtimeSummary.samrangjin.cost.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
-                  ({SAMRANGJIN_OVERTIME.headcount}명)
+                  ({overtimeSummary.samrangjin.headcount}명)
                 </span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1">
-              {SAMRANGJIN_OVERTIME.lines.map((ln) => (
+              {overtimeSummary.samrangjin.lines.map((ln) => (
                 <span key={ln.name} className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300">
                   {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
                 </span>
@@ -992,22 +1011,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   한림공장
                 </span>
                 <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
-                  📅 {HANLIM_OVERTIME.date}
+                  📅 {overtimeSummary.hallim.date}
                 </span>
-                <span className="text-[10px] text-slate-500 font-bold">{HANLIM_OVERTIME.author}</span>
+                <span className="text-[10px] text-slate-500 font-bold">{overtimeSummary.hallim.author} {overtimeSummary.hallim.authorTitle || "선임"}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                  ₩{HANLIM_OVERTIME.cost.toLocaleString()}
+                  ₩{overtimeSummary.hallim.cost.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-slate-400 font-bold">
-                  ({HANLIM_OVERTIME.headcount}명)
+                  ({overtimeSummary.hallim.headcount}명)
                 </span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1">
-              {HANLIM_OVERTIME.lines.map((ln) => (
+              {overtimeSummary.hallim.lines.map((ln) => (
                 <span key={ln.name} className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300">
                   {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
                 </span>

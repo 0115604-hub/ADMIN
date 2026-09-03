@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Clock,
   Printer,
@@ -18,106 +18,53 @@ import {
   Award,
   CheckCheck,
   Building2,
-  Factory
+  Factory,
+  Check
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
-
-// Default Initial Overtime Reports (Split into 삼랑진공장 & 한림공장)
-const INITIAL_REPORTS = [
-  {
-    id: "report_samrangjin_20260829",
-    plant: "삼랑진공장",
-    title: "삼랑진공장 특근보고서",
-    workDate: "2026-08-29",
-    workDateFormatted: "2026년 8월 29일 토요일",
-    author: "양인나",
-    authorTitle: "선임",
-    approval: [
-      { role: "담당", name: "양인나", status: "완료" },
-      { role: "책임", name: "윤경수", status: "완료" },
-      { role: "이사", name: "이명재", status: "완료" },
-      { role: "대표", name: "권태형", status: "완료" }
-    ],
-    items: [
-      { id: 1, category: "관리자", workContent: "출하 및 공정관리", names: "유동길", hours: 8, count: 1 },
-      { id: 2, category: "JA", workContent: "조인트", names: "로빈, 찬턴, 크리스토퍼", hours: 8, count: 3 },
-      { id: 3, category: "JA", workContent: "후가공", names: "채수연, 피아, 데이시, 짱", hours: 8, count: 4 },
-      { id: 4, category: "JA", workContent: "검사", names: "김선옥", hours: 8, count: 1 },
-      { id: 5, category: "JA, HR", workContent: "소재준비", names: "이스라엘", hours: 8, count: 1 },
-      { id: 6, category: "NX4", workContent: "소재준비", names: "손선희, 이영숙, 수베트, 치찬, 콩지", hours: 8, count: 5 },
-      { id: 7, category: "NX4", workContent: "조인트", names: "버나드, 돈돈, 알라딘", hours: 8, count: 3 },
-      { id: 8, category: "NX4a", workContent: "조인트", names: "롤란도", hours: 8, count: 1 },
-      { id: 9, category: "NX4a", workContent: "후가공, 검사", names: "김순미, 양인순", hours: 8, count: 2 },
-      { id: 10, category: "압출", workContent: "압출", names: "이상은", hours: 12, count: 1 },
-      { id: 11, category: "압출", workContent: "TPE 압출", names: "지미", hours: 12, count: 1 },
-      { id: 12, category: "압출", workContent: "PCM#3 압출", names: "이수루", hours: 12, count: 1 },
-      { id: 13, category: "압출", workContent: "PCM#1 압출", names: "샤면", hours: 12, count: 1 },
-      { id: 14, category: "코팅", workContent: "코팅", names: "코팅준", hours: 8, count: 1 },
-      { id: 15, category: "공통", workContent: "코팅", names: "이성기, 조마루", hours: 8, count: 2 },
-      { id: 16, category: "CE1, DT HOOD", workContent: "소재준비", names: "쏘달", hours: 8, count: 1 },
-      { id: 17, category: "DT HOOD", workContent: "조인트", names: "롬나차이, 마리오, 제랄드, 포티퐁", hours: 8, count: 4 }
-    ],
-    reasons: [
-      "1. PCM 1호 : DT SILL SEAL\n   →PCM 3호 : DT 호리젠탈\n   →TPE : JA 압출 가동",
-      "2. DT HOOD 코팅 긴급 납품 수량 대응",
-      "3. NX4a 단산까지 수출 창고 입고 요청"
-    ]
-  },
-  {
-    id: "report_hanlim_20260829",
-    plant: "한림공장",
-    title: "한림공장 특근보고서",
-    workDate: "2026-08-29",
-    workDateFormatted: "2026년 8월 29일 토요일",
-    author: "우창용",
-    authorTitle: "선임",
-    approval: [
-      { role: "담당", name: "우창용", status: "완료" },
-      { role: "책임", name: "김동욱", status: "완료" },
-      { role: "이사", name: "이명재", status: "완료" },
-      { role: "대표", name: "권태형", status: "완료" }
-    ],
-    items: [
-      { id: 1, category: "관리자", workContent: "한림 공장 총괄 지원", names: "이명재, 김동욱", hours: 8, count: 2 },
-      { id: 2, category: "CHANNEL", workContent: "밴딩", names: "정상근", hours: 8, count: 1 },
-      { id: 3, category: "CHANNEL", workContent: "가공", names: "링링, 유미", hours: 8, count: 2 },
-      { id: 4, category: "CE1", workContent: "후가공", names: "팔라, 린", hours: 8, count: 2 },
-      { id: 5, category: "DT HOOD", workContent: "후가공", names: "누리", hours: 8, count: 1 },
-      { id: 6, category: "JK1", workContent: "조인트", names: "테란스", hours: 8, count: 1 },
-      { id: 7, category: "JK1", workContent: "후가공", names: "넷플림, 그레이스, 제인", hours: 8, count: 3 }
-    ],
-    reasons: [
-      "1. 한림 가공동 CHANNEL 밴딩 및 사출 가공 지원",
-      "2. CE1 / DT HOOD 후가공 품질 검사 및 납품 대응",
-      "3. JK1 조인트 및 후가공 생산 긴급 납품",
-      "4. PU KD 재고 사전 확보"
-    ]
-  }
-];
-
-const STORAGE_KEY = "official_overtime_reports_store_v4_split_clean";
+import {
+  getLocalOvertimeReports,
+  saveOvertimeReport,
+  deleteOvertimeReport,
+  subscribeOvertimeReports,
+  formatKoreanWorkDate,
+  formatShortWorkDate
+} from "../services/overtimeService";
 
 export const OvertimeStatusView = () => {
-  const { currentProfile } = useAuth();
+  const { currentProfile, isAdmin } = useAuth();
   const printRef = useRef(null);
 
-  const [reports, setReports] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_REPORTS;
-    } catch {
-      return INITIAL_REPORTS;
-    }
+  const [reports, setReports] = useState(() => getLocalOvertimeReports());
+  const [activePlant, setActivePlant] = useState("삼랑진공장");
+  const [selectedReportId, setSelectedReportId] = useState(() => {
+    const initial = getLocalOvertimeReports();
+    return initial[0]?.id || "report_samrangjin_20260829";
   });
-
-  const [selectedReportId, setSelectedReportId] = useState(reports[0]?.id || "report_samrangjin_20260829");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState(null);
 
+  // Real-time Cloud Synchronization for Overtime Reports
+  useEffect(() => {
+    const unsub = subscribeOvertimeReports((syncedReports) => {
+      setReports(syncedReports);
+    });
+    return () => unsub();
+  }, []);
+
+  // Filter reports by active plant
+  const plantReports = useMemo(() => {
+    const list = reports.filter((r) => r.plant === activePlant);
+    return list.length > 0 ? list : reports.filter((r) => r.plant === "삼랑진공장");
+  }, [reports, activePlant]);
+
+  // Current active report
   const currentReport = useMemo(() => {
-    return reports.find((r) => r.id === selectedReportId) || reports[0];
-  }, [reports, selectedReportId]);
+    const found = reports.find((r) => r.id === selectedReportId);
+    if (found && found.plant === activePlant) return found;
+    return plantReports[0] || reports[0];
+  }, [reports, selectedReportId, activePlant, plantReports]);
 
   // Calculations
   const totalCount = useMemo(() => {
@@ -141,6 +88,120 @@ export const OvertimeStatusView = () => {
     });
     return Object.entries(map).map(([category, count]) => ({ category, count }));
   }, [currentReport]);
+
+  // Switch Plant
+  const handleSwitchPlant = (plantName) => {
+    setActivePlant(plantName);
+    const targetReports = reports.filter((r) => r.plant === plantName);
+    if (targetReports.length > 0) {
+      setSelectedReportId(targetReports[0].id);
+    }
+  };
+
+  // Open Edit Modal
+  const handleOpenEdit = () => {
+    if (!currentReport) return;
+    setEditFormData({
+      id: currentReport.id,
+      isNew: false,
+      plant: currentReport.plant,
+      workDate: currentReport.workDate,
+      author: currentReport.author,
+      authorTitle: currentReport.authorTitle || "선임",
+      items: JSON.parse(JSON.stringify(currentReport.items || [])),
+      reasonsText: (currentReport.reasons || []).join("\n\n")
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Open New Report Modal with Date Picker
+  const handleOpenNewReport = () => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    setEditFormData({
+      id: `report_${activePlant === "한림공장" ? "hanlim" : "samrangjin"}_${todayStr.replace(/-/g, "")}_${Date.now()}`,
+      isNew: true,
+      plant: activePlant,
+      workDate: todayStr,
+      author: currentProfile?.name || (activePlant === "한림공장" ? "우창용" : "양인나"),
+      authorTitle: currentProfile?.title || "선임",
+      items: activePlant === "한림공장" ? [
+        { id: 1, category: "CHANNEL", workContent: "밴딩 및 가공", names: "정상근, 링링", hours: 8, count: 2 },
+        { id: 2, category: "JK1", workContent: "조인트 및 후가공", names: "테란스, 넷플림", hours: 8, count: 2 }
+      ] : [
+        { id: 1, category: "JA", workContent: "조인트 및 후가공", names: "로빈, 찬턴, 채수연", hours: 8, count: 3 },
+        { id: 2, category: "NX4", workContent: "소재준비 및 조인트", names: "손선희, 이영숙, 버나드", hours: 8, count: 3 }
+      ],
+      reasonsText: "1. 주간 생산 물량 납품 대응\n\n2. 긴급 조인트 및 후가공 재고 확보"
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Handle Form Change
+  const handleItemChange = (index, field, value) => {
+    if (!editFormData) return;
+    const newItems = [...editFormData.items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setEditFormData({ ...editFormData, items: newItems });
+  };
+
+  const handleAddItemRow = () => {
+    if (!editFormData) return;
+    const newItem = {
+      id: Date.now(),
+      category: editFormData.plant === "한림공장" ? "CHANNEL" : "JA",
+      workContent: "작업내용 입력",
+      names: "작업자명",
+      hours: 8,
+      count: 1
+    };
+    setEditFormData({ ...editFormData, items: [...editFormData.items, newItem] });
+  };
+
+  const handleRemoveItemRow = (index) => {
+    if (!editFormData) return;
+    const newItems = editFormData.items.filter((_, idx) => idx !== index);
+    setEditFormData({ ...editFormData, items: newItems });
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editFormData.workDate) {
+      alert("근무 작업 일자를 지정해 주세요.");
+      return;
+    }
+
+    const reportToSave = {
+      id: editFormData.id,
+      plant: editFormData.plant,
+      title: `${editFormData.plant} 특근보고서`,
+      workDate: editFormData.workDate,
+      author: editFormData.author,
+      authorTitle: editFormData.authorTitle || "선임",
+      items: editFormData.items,
+      reasons: editFormData.reasonsText.split("\n\n").filter((s) => s.trim())
+    };
+
+    const saved = await saveOvertimeReport(reportToSave);
+    if (saved) {
+      setSelectedReportId(saved.id);
+      setActivePlant(saved.plant);
+    }
+    setIsEditModalOpen(false);
+  };
+
+  const handleDeleteCurrentReport = async () => {
+    if (!currentReport) return;
+    if (reports.length <= 1) {
+      alert("최소 1개의 특근보고서는 유지되어야 합니다.");
+      return;
+    }
+    if (!window.confirm(`[${currentReport.plant}] ${currentReport.workDate} 특근보고서를 삭제하시겠습니까?`)) {
+      return;
+    }
+    const updated = await deleteOvertimeReport(currentReport.id);
+    setReports(updated);
+    setSelectedReportId(updated[0]?.id || "");
+  };
 
   // Print
   const handlePrint = () => {
@@ -172,70 +233,10 @@ export const OvertimeStatusView = () => {
     XLSX.writeFile(wb, `${currentReport.plant}_특근보고서_${currentReport.workDate}.xlsx`);
   };
 
-  // Open Edit Modal
-  const handleOpenEdit = () => {
-    setEditFormData({
-      id: currentReport.id,
-      plant: currentReport.plant,
-      workDate: currentReport.workDate,
-      author: currentReport.author,
-      items: JSON.parse(JSON.stringify(currentReport.items || [])),
-      reasonsText: (currentReport.reasons || []).join("\n\n")
-    });
-    setIsEditModalOpen(true);
-  };
-
-  // Handle Form Change
-  const handleItemChange = (index, field, value) => {
-    if (!editFormData) return;
-    const newItems = [...editFormData.items];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setEditFormData({ ...editFormData, items: newItems });
-  };
-
-  const handleAddItemRow = () => {
-    if (!editFormData) return;
-    const newItem = {
-      id: Date.now(),
-      category: "JA",
-      workContent: "작업내용 입력",
-      names: "작업자명",
-      hours: 8,
-      count: 1
-    };
-    setEditFormData({ ...editFormData, items: [...editFormData.items, newItem] });
-  };
-
-  const handleRemoveItemRow = (index) => {
-    if (!editFormData) return;
-    const newItems = editFormData.items.filter((_, idx) => idx !== index);
-    setEditFormData({ ...editFormData, items: newItems });
-  };
-
-  const handleSaveEdit = (e) => {
-    e.preventDefault();
-    const updatedReports = reports.map((r) => {
-      if (r.id === editFormData.id) {
-        return {
-          ...r,
-          workDate: editFormData.workDate,
-          author: editFormData.author,
-          items: editFormData.items,
-          reasons: editFormData.reasonsText.split("\n\n").filter((s) => s.trim())
-        };
-      }
-      return r;
-    });
-
-    setReports(updatedReports);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedReports));
-    setIsEditModalOpen(false);
-  };
-
   return (
     <div className="space-y-6 animate-fadeIn pb-24 max-w-[1600px] mx-auto">
       {/* ========================================================================= */}
-      {/* 1. TOP HEADER & FACTORY SELECTOR (삼랑진공장 / 한림공장 분할) */}
+      {/* 1. TOP HEADER & FACTORY / DATE SELECTOR (삼랑진공장 / 한림공장 & 날짜별 보고서) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -243,7 +244,7 @@ export const OvertimeStatusView = () => {
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg font-black text-slate-900 dark:text-white">
                 공장별 특근보고서 (Overtime Status)
               </h1>
@@ -254,6 +255,11 @@ export const OvertimeStatusView = () => {
               }`}>
                 {currentReport.plant} (총 {totalCount}명)
               </span>
+              {currentReport.id === plantReports[0]?.id && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                  마지막 수정본 (최신)
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               공식 특근 결재 문서 • 근무일시: <strong>{currentReport.workDateFormatted}</strong> | 총 투입공수: <strong>{totalManHours} M/H</strong> | 특근 산출비용: <strong className="text-rose-600 dark:text-rose-400">₩{totalCost.toLocaleString()}원</strong>
@@ -261,31 +267,61 @@ export const OvertimeStatusView = () => {
           </div>
         </div>
 
-        {/* Factory Switcher & Action Buttons */}
+        {/* Factory Switcher, Date Selector & Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Factory Tabs */}
           <div className="flex items-center gap-1 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            {reports.map((rep) => {
-              const isSelected = rep.id === selectedReportId;
+            {["삼랑진공장", "한림공장"].map((plantName) => {
+              const isSelected = activePlant === plantName;
+              const countForPlant = reports.filter((r) => r.plant === plantName).length;
               return (
                 <button
-                  key={rep.id}
-                  onClick={() => setSelectedReportId(rep.id)}
+                  key={plantName}
+                  onClick={() => handleSwitchPlant(plantName)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
                     isSelected
-                      ? rep.plant === "한림공장"
+                      ? plantName === "한림공장"
                         ? "bg-emerald-600 text-white shadow-sm"
                         : "bg-amber-500 text-slate-950 shadow-sm"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
                   }`}
                 >
-                  {rep.plant === "한림공장" ? <Building2 className="w-3.5 h-3.5" /> : <Factory className="w-3.5 h-3.5" />}
-                  <span>{rep.plant} ({rep.items.reduce((s, it) => s + (Number(it.count) || 0), 0)}명)</span>
+                  {plantName === "한림공장" ? <Building2 className="w-3.5 h-3.5" /> : <Factory className="w-3.5 h-3.5" />}
+                  <span>{plantName} ({countForPlant}건)</span>
                 </button>
               );
             })}
           </div>
 
+          {/* Date Selector for Active Plant (when multiple reports exist) */}
+          {plantReports.length > 1 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+              <Calendar className="w-3.5 h-3.5 text-blue-500" />
+              <select
+                value={selectedReportId}
+                onChange={(e) => setSelectedReportId(e.target.value)}
+                className="bg-transparent text-xs font-black text-slate-900 dark:text-white cursor-pointer focus:outline-none"
+              >
+                {plantReports.map((rep, idx) => (
+                  <option key={rep.id} value={rep.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
+                    📅 {rep.workDate} {idx === 0 ? "(최신 수정본)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* New Report Button */}
+          <button
+            onClick={handleOpenNewReport}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all shadow-sm active:scale-95"
+            title="새로운 근무 날짜의 특근보고서 작성"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>신규 특근 작성</span>
+          </button>
+
+          {/* Edit Button */}
           <button
             onClick={handleOpenEdit}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-black text-slate-700 dark:text-slate-200 transition-all shadow-sm active:scale-95"
@@ -294,26 +330,37 @@ export const OvertimeStatusView = () => {
             <span>보고서 수정</span>
           </button>
 
+          {/* Delete Button (when multiple exist) */}
+          {reports.length > 1 && (
+            <button
+              onClick={handleDeleteCurrentReport}
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
+              title="이 특근보고서 삭제"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           <button
             onClick={handleExportExcel}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-black transition-all shadow-sm"
           >
             <Download className="w-3.5 h-3.5 text-emerald-400" />
-            <span>엑셀 다운로드</span>
+            <span>엑셀</span>
           </button>
 
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all shadow-md shadow-blue-500/25 active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all shadow-md shadow-blue-500/25 active:scale-95"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>인쇄 / PDF</span>
+            <span>인쇄</span>
           </button>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ [수정 전 표현 방식] 와이드스크린 가로형 대시보드 (좌측 넓은 표 + 우측 결재/사유 패널) */}
+      {/* 2. ⭐ 와이드스크린 가로형 대시보드 (좌측 넓은 표 + 우측 결재/사유 패널) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 print:block">
         {/* ========================================================= */}
@@ -332,7 +379,7 @@ export const OvertimeStatusView = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-400">
-                  작업일시: <strong className="text-slate-800 dark:text-slate-200">{currentReport.workDateFormatted}</strong>
+                  근무일자: <strong className="text-slate-800 dark:text-slate-200 font-black">{currentReport.workDateFormatted}</strong>
                 </span>
               </div>
             </div>
@@ -448,30 +495,27 @@ export const OvertimeStatusView = () => {
             </div>
 
             {/* Quick Plant Badge & Stats */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold">
-              <span className="text-slate-500 dark:text-slate-400">총 특근 투입 인원</span>
-              <span className={`text-base font-black ${
-                currentReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
-              }`}>
-                {totalCount} 명 ({totalManHours} M/H)
+            <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-bold">특근 산출 비용</span>
+              <span className="font-black text-sm text-rose-600 dark:text-rose-400 font-mono">
+                ₩{totalCost.toLocaleString()}원
               </span>
             </div>
           </div>
 
-          {/* 2. ※ 특 근 실 시 사 유 */}
+          {/* 2. 특근 실시 사유 패널 */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
               <FileText className="w-4 h-4 text-blue-500" />
               <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                ※ 특 근 실 시 사 유
+                ※ 특근 실시 사유
               </h3>
             </div>
-
-            <div className="space-y-2.5 text-xs">
+            <div className="space-y-2">
               {currentReport.reasons.map((reason, idx) => (
                 <div
                   key={idx}
-                  className="p-3 rounded-2xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 text-slate-800 dark:text-slate-200 font-semibold whitespace-pre-line leading-relaxed"
+                  className="p-3 rounded-2xl bg-amber-50/50 dark:bg-slate-800/60 border border-amber-200/60 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed whitespace-pre-wrap"
                 >
                   {reason}
                 </div>
@@ -479,21 +523,17 @@ export const OvertimeStatusView = () => {
             </div>
           </div>
 
-          {/* 3. 공정 / 구분별 투입 인원 요약 */}
+          {/* 3. 구분별 인원 통계 */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <Users className="w-4 h-4 text-emerald-500" />
+              <Layers className="w-4 h-4 text-purple-500" />
               <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                {currentReport.plant} 구분별 투입 인원
+                공정/차종별 인원 구성
               </h3>
             </div>
-
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {categoryStats.map(({ category, count }) => (
-                <div
-                  key={category}
-                  className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 text-xs"
-                >
+                <div key={category} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700 flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-600 dark:text-slate-300">{category}</span>
                   <span className={`font-black ${
                     currentReport.plant === "한림공장" ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
@@ -506,17 +546,20 @@ export const OvertimeStatusView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* EDIT MODAL */}
+      {/* 🌟 EDIT / CREATE MODAL (날짜 지정 및 내용 수정) */}
       {/* ========================================================================= */}
       {isEditModalOpen && editFormData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto my-6 animate-scaleUp">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
                   <Edit3 className="w-5 h-5 text-amber-500" />
-                  <span>{editFormData.plant} 특근보고서 수정</span>
+                  <span>{editFormData.isNew ? `${editFormData.plant} 신규 특근보고서 작성` : `${editFormData.plant} 특근보고서 수정`}</span>
                 </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  근무 일자를 지정하고 투입 인원 및 특근 시간을 입력해 주세요. (저장 시 현황에 마지막 수정본으로 자동 반영됩니다)
+                </p>
               </div>
               <button
                 onClick={() => setIsEditModalOpen(false)}
@@ -527,26 +570,57 @@ export const OvertimeStatusView = () => {
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-5 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* 1. 공장 선택 */}
                 <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">작업 일자</label>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">소속 공장</label>
+                  <select
+                    value={editFormData.plant}
+                    onChange={(e) => setEditFormData({ ...editFormData, plant: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white"
+                  >
+                    <option value="삼랑진공장">삼랑진공장</option>
+                    <option value="한림공장">한림공장</option>
+                  </select>
+                </div>
+
+                {/* 2. 작업 일자 선택 (Date Picker) */}
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    📅 근무 작업 일자
+                  </label>
                   <input
                     type="date"
                     required
                     value={editFormData.workDate}
                     onChange={(e) => setEditFormData({ ...editFormData, workDate: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
+                    className="w-full px-3 py-2.5 rounded-xl border-2 border-indigo-500/50 dark:border-indigo-500/40 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
+                  <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold block mt-1">
+                    {formatKoreanWorkDate(editFormData.workDate)}
+                  </span>
                 </div>
+
+                {/* 3. 작성자 */}
                 <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">작성자</label>
-                  <input
-                    type="text"
-                    required
-                    value={editFormData.author}
-                    onChange={(e) => setEditFormData({ ...editFormData, author: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold"
-                  />
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">작성자 / 직위</label>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      required
+                      placeholder="작성자명"
+                      value={editFormData.author}
+                      onChange={(e) => setEditFormData({ ...editFormData, author: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="직위"
+                      value={editFormData.authorTitle || ""}
+                      onChange={(e) => setEditFormData({ ...editFormData, authorTitle: e.target.value })}
+                      className="w-20 px-2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-center"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -559,7 +633,7 @@ export const OvertimeStatusView = () => {
                   <button
                     type="button"
                     onClick={handleAddItemRow}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-600 font-black hover:bg-blue-100 transition-colors"
+                    className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-300 font-black hover:bg-blue-100 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>행 추가</span>
@@ -664,10 +738,10 @@ export const OvertimeStatusView = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black shadow-md shadow-amber-500/25 active:scale-95 transition-all flex items-center gap-1.5"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black shadow-md shadow-amber-500/25 active:scale-95 transition-all flex items-center gap-1.5"
                 >
                   <Save className="w-4 h-4" />
-                  <span>특근보고서 저장</span>
+                  <span>특근보고서 저장 (현황 자동 반영)</span>
                 </button>
               </div>
             </form>
