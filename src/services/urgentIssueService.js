@@ -9,20 +9,22 @@
 import { db } from "../firebase";
 
 const COLLECTION_NAME = "urgent_issues";
-const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v1";
+const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 
-// Initial urgent issue samples
+// Initial urgent issue samples (Fixed as "긴급공지" + with "전달내용" and "조치결과")
 export const INITIAL_URGENT_ISSUES = [
   {
     id: "issue_init_1",
     plant: "삼랑진공장",
     author: "방상국",
     authorTitle: "선임",
-    level: "EMERGENCY", // EMERGENCY (긴급비상), WARNING (주의), NOTICE (공지)
+    category: "긴급공지",
     title: "압출 2호기 히터 온도 점검 요망",
     content: "압출 2호기 금형 히터 온도 센서 이상 경보 발생. 교대 작업 전 사전 예열 상태 및 온도 확인 필수",
-    isBlinking: true,
-    isResolved: false,
+    actionResult: "센서 커넥터 재체결 및 예열 온도 정상치(180℃) 도달 확인 완료 (가동 재개)",
+    actionAuthor: "설유철",
+    actionAt: "2026-09-03 09:20",
+    isResolved: true,
     createdAt: "2026-09-03 08:30"
   },
   {
@@ -30,10 +32,12 @@ export const INITIAL_URGENT_ISSUES = [
     plant: "한림공장",
     author: "우창용",
     authorTitle: "선임",
-    level: "WARNING",
+    category: "긴급공지",
     title: "CHANNEL 밴딩 라인 신규 원료 투입",
     content: "오후 출하 물량 대응을 위해 신규 원재료 로트 투입 완료. 초품 치수 검사 철저히 진행 요망",
-    isBlinking: true,
+    actionResult: "",
+    actionAuthor: "",
+    actionAt: "",
     isResolved: false,
     createdAt: "2026-09-03 09:15"
   }
@@ -117,8 +121,11 @@ export const saveUrgentIssue = async (issueData) => {
   const fullItem = {
     ...issueData,
     id,
-    isBlinking: issueData.isBlinking !== undefined ? issueData.isBlinking : true,
-    isResolved: issueData.isResolved || false,
+    category: "긴급공지",
+    actionResult: issueData.actionResult || "",
+    actionAuthor: issueData.actionAuthor || "",
+    actionAt: issueData.actionAt || "",
+    isResolved: issueData.isResolved !== undefined ? issueData.isResolved : (Boolean(issueData.actionResult && issueData.actionResult.trim())),
     createdAt: issueData.createdAt || nowStr
   };
 
@@ -157,6 +164,33 @@ export const deleteUrgentIssue = async (id) => {
   return updated;
 };
 
+// Update action result (조치결과 입력 및 조치완료 처리)
+export const updateUrgentIssueActionResult = async (id, actionResult, actionAuthor = "") => {
+  const current = getLocalUrgentIssues();
+  const target = current.find((i) => i.id === id);
+  if (!target) return current;
+
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const trimmed = actionResult ? actionResult.trim() : "";
+  const updatedTarget = {
+    ...target,
+    actionResult: trimmed,
+    actionAuthor: actionAuthor || target.actionAuthor || "작업자",
+    actionAt: trimmed ? nowStr : "",
+    isResolved: Boolean(trimmed)
+  };
+
+  return await saveUrgentIssue(updatedTarget);
+};
+
 // Toggle issue resolution status
 export const toggleIssueResolved = async (id) => {
   const current = getLocalUrgentIssues();
@@ -164,15 +198,5 @@ export const toggleIssueResolved = async (id) => {
   if (!target) return current;
 
   const updatedTarget = { ...target, isResolved: !target.isResolved };
-  return await saveUrgentIssue(updatedTarget);
-};
-
-// Toggle issue blinking status
-export const toggleIssueBlinking = async (id) => {
-  const current = getLocalUrgentIssues();
-  const target = current.find((i) => i.id === id);
-  if (!target) return current;
-
-  const updatedTarget = { ...target, isBlinking: !target.isBlinking };
   return await saveUrgentIssue(updatedTarget);
 };

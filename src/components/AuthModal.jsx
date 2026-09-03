@@ -41,8 +41,7 @@ import {
   subscribeUrgentIssues,
   saveUrgentIssue,
   deleteUrgentIssue,
-  toggleIssueResolved,
-  toggleIssueBlinking
+  updateUrgentIssueActionResult
 } from "../services/urgentIssueService";
 
 export const AuthModal = () => {
@@ -55,7 +54,6 @@ export const AuthModal = () => {
 
   // Urgent Issues State
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
-  const [isBlinkingEnabled, setIsBlinkingEnabled] = useState(true);
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
 
@@ -64,10 +62,18 @@ export const AuthModal = () => {
     plant: "삼랑진공장",
     author: "방상국",
     authorTitle: "선임",
-    level: "EMERGENCY",
     title: "",
     content: "",
-    isBlinking: true
+    actionResult: "",
+    actionAuthor: ""
+  });
+
+  // Action Result Input Modal State (조치결과 전용 모달)
+  const [actionModalData, setActionModalData] = useState({
+    isOpen: false,
+    issue: null,
+    actionResult: "",
+    actionAuthor: "설유철"
   });
 
   // Real-time Cloud Synchronization for Annual Leaves
@@ -90,11 +96,6 @@ export const AuthModal = () => {
   const unresolvedIssues = useMemo(() => {
     return urgentIssues.filter((i) => !i.isResolved);
   }, [urgentIssues]);
-
-  // Determine if active blinking alert should be displayed
-  const hasActiveBlinkingIssue = useMemo(() => {
-    return isBlinkingEnabled && unresolvedIssues.some((i) => i.isBlinking !== false);
-  }, [isBlinkingEnabled, unresolvedIssues]);
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
@@ -135,51 +136,73 @@ export const AuthModal = () => {
       return;
     }
 
+    const hasAction = Boolean(newIssueForm.actionResult && newIssueForm.actionResult.trim());
     await saveUrgentIssue({
       ...newIssueForm,
-      isResolved: false
+      category: "긴급공지",
+      actionAuthor: hasAction ? (newIssueForm.actionAuthor || newIssueForm.author) : "",
+      actionAt: hasAction ? new Date().toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\. /g, "-").replace(/\./g, "") : "",
+      isResolved: hasAction
     });
 
     setNewIssueForm({
       plant: "삼랑진공장",
       author: "방상국",
       authorTitle: "선임",
-      level: "EMERGENCY",
       title: "",
       content: "",
-      isBlinking: true
+      actionResult: "",
+      actionAuthor: ""
     });
     setIsIssueModalOpen(false);
+  };
+
+  // Open Action Result Modal
+  const handleOpenActionModal = (issue, e) => {
+    if (e) e.stopPropagation();
+    setActionModalData({
+      isOpen: true,
+      issue,
+      actionResult: issue.actionResult || "",
+      actionAuthor: issue.actionAuthor || "설유철"
+    });
+  };
+
+  // Save Action Result
+  const handleSaveActionResult = async (e) => {
+    e.preventDefault();
+    if (!actionModalData.issue) return;
+    if (!actionModalData.actionResult.trim()) {
+      alert("조치결과 내용을 입력해 주세요.");
+      return;
+    }
+
+    const updated = await updateUrgentIssueActionResult(
+      actionModalData.issue.id,
+      actionModalData.actionResult,
+      actionModalData.actionAuthor
+    );
+
+    if (updated) {
+      setUrgentIssues((prev) =>
+        prev.map((it) => (it.id === actionModalData.issue.id ? updated : it))
+      );
+    }
+
+    setActionModalData({
+      isOpen: false,
+      issue: null,
+      actionResult: "",
+      actionAuthor: "설유철"
+    });
   };
 
   // Delete Urgent Issue
   const handleDeleteIssue = async (id, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm("이 긴급 이슈 항목을 삭제하시겠습니까?")) {
+    if (window.confirm("이 긴급공지 항목을 삭제하시겠습니까?")) {
       const updated = await deleteUrgentIssue(id);
       setUrgentIssues(updated);
-    }
-  };
-
-  // Toggle Resolved Status
-  const handleToggleResolved = async (id, e) => {
-    if (e) e.stopPropagation();
-    const updatedItem = await toggleIssueResolved(id);
-    if (updatedItem) {
-      setUrgentIssues((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, isResolved: !it.isResolved } : it))
-      );
-    }
-  };
-
-  // Toggle Blinking for Specific Item
-  const handleToggleBlinking = async (id, e) => {
-    if (e) e.stopPropagation();
-    const updatedItem = await toggleIssueBlinking(id);
-    if (updatedItem) {
-      setUrgentIssues((prev) =>
-        prev.map((it) => (it.id === id ? { ...it, isBlinking: !it.isBlinking } : it))
-      );
     }
   };
 
@@ -210,7 +233,7 @@ export const AuthModal = () => {
           {/* Header Brand */}
           <div className="text-center mb-4">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 text-[11px] font-black mb-2 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               <span>ORYUK SMART MES PORTAL</span>
             </div>
 
@@ -226,83 +249,51 @@ export const AuthModal = () => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 🚨 ⭐ [요청사항 반영] 로그인 상단 긴급이슈사항 패널 (점멸 기능 & 작업자 등록) */}
+          {/* 📢 ⭐ [요청사항 반영] 로그인 상단 긴급공지 패널 (전달내용 + 조치결과 관리) */}
           {/* ========================================================================= */}
-          <div
-            className={`mb-5 rounded-2xl border transition-all duration-300 overflow-hidden ${
-              hasActiveBlinkingIssue
-                ? "bg-rose-50/90 dark:bg-rose-950/50 border-rose-400 dark:border-rose-600 ring-2 ring-rose-500/50 shadow-lg shadow-rose-500/20 animate-pulse"
-                : unresolvedIssues.length > 0
-                ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/80 shadow-sm"
-                : "bg-slate-50/80 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
-            }`}
-          >
+          <div className="mb-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/20 shadow-sm overflow-hidden transition-all">
             {/* Panel Top Bar */}
-            <div className="p-3 sm:p-3.5 flex items-center justify-between gap-2 border-b border-slate-200/60 dark:border-slate-700/60">
+            <div className="p-3 sm:p-3.5 flex items-center justify-between gap-2 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5">
-                  {/* Blinking Emergency Strobe Beacon */}
-                  {hasActiveBlinkingIssue ? (
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
-                    </span>
-                  ) : (
-                    <Flame className="w-4 h-4 text-amber-500" />
-                  )}
-
+                  <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs">
+                    <Megaphone className="w-3.5 h-3.5" />
+                  </div>
                   <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🚨 공장 긴급 이슈 및 전달사항</span>
+                    <span>공장 긴급공지 및 이슈사항</span>
                   </h3>
                 </div>
 
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
                   unresolvedIssues.length > 0
                     ? "bg-rose-500 text-white shadow-xs"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    : "bg-emerald-600 text-white shadow-xs"
                 }`}>
-                  {unresolvedIssues.length > 0 ? `발생 ${unresolvedIssues.length}건` : "정상 가동"}
+                  {unresolvedIssues.length > 0 ? `미조치 ${unresolvedIssues.length}건` : "전체 조치완료"}
                 </span>
 
-                {hasActiveBlinkingIssue && (
-                  <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-800 dark:bg-rose-900 dark:text-rose-200 border border-rose-300 dark:border-rose-700 animate-pulse">
-                    ⚡ 점멸 경보 작동중
-                  </span>
-                )}
+                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono">
+                  총 {urgentIssues.length}건
+                </span>
               </div>
 
               {/* Action Buttons in Header */}
               <div className="flex items-center gap-1.5">
-                {/* 점멸 ON/OFF 토글 버튼 */}
-                <button
-                  type="button"
-                  onClick={() => setIsBlinkingEnabled((prev) => !prev)}
-                  className={`px-2 py-1 rounded-lg text-[10.5px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 ${
-                    isBlinkingEnabled
-                      ? "bg-rose-600 text-white ring-1 ring-rose-400"
-                      : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                  }`}
-                  title="점멸 애니메이션 켜기/끄기"
-                >
-                  <Zap className={`w-3 h-3 ${isBlinkingEnabled ? "text-amber-300 animate-bounce" : ""}`} />
-                  <span>점멸 {isBlinkingEnabled ? "ON" : "OFF"}</span>
-                </button>
-
-                {/* 긴급 이슈 등록 버튼 */}
+                {/* 긴급공지 등록 버튼 */}
                 <button
                   type="button"
                   onClick={() => setIsIssueModalOpen(true)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[11px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[11px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95"
                 >
-                  <Plus className="w-3 h-3" />
-                  <span>+ 이슈 등록</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ 긴급공지 등록</span>
                 </button>
 
                 {/* Expand / Collapse Button */}
                 <button
                   type="button"
                   onClick={() => setIsIssueExpanded((prev) => !prev)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                 >
                   {isIssueExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
@@ -311,122 +302,136 @@ export const AuthModal = () => {
 
             {/* Panel Body: Issue Cards List */}
             {isIssueExpanded && (
-              <div className="p-3 sm:p-3.5 space-y-2.5 max-h-60 overflow-y-auto">
+              <div className="p-3 sm:p-3.5 space-y-3 max-h-72 overflow-y-auto">
                 {urgentIssues.length === 0 ? (
                   <div className="py-4 text-center text-xs text-slate-400 dark:text-slate-500 font-bold">
-                    현재 등록된 긴급 이슈가 없습니다. 상단의 <strong>[+ 이슈 등록]</strong> 버튼으로 공지할 수 있습니다.
+                    현재 등록된 긴급공지가 없습니다. 상단의 <strong>[+ 긴급공지 등록]</strong> 버튼으로 등록할 수 있습니다.
                   </div>
                 ) : (
-                  urgentIssues.map((item) => {
-                    const isItemBlinking = isBlinkingEnabled && item.isBlinking !== false && !item.isResolved;
-
-                    return (
-                      <div
-                        key={item.id}
-                        className={`p-3 rounded-xl border transition-all text-xs flex flex-col justify-between gap-2 shadow-xs ${
-                          item.isResolved
-                            ? "bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 opacity-60"
-                            : isItemBlinking
-                            ? "bg-white dark:bg-slate-900 border-rose-300 dark:border-rose-800 ring-1 ring-rose-400/50"
-                            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="space-y-1 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {/* Level Badge */}
-                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black flex items-center gap-0.5 ${
-                                item.level === "EMERGENCY"
-                                  ? "bg-rose-500 text-white"
-                                  : item.level === "WARNING"
-                                  ? "bg-amber-500 text-slate-950"
-                                  : "bg-blue-600 text-white"
-                              }`}>
-                                {item.level === "EMERGENCY" && "🚨 긴급비상"}
-                                {item.level === "WARNING" && "⚠️ 주의경보"}
-                                {item.level === "NOTICE" && "📢 긴급공지"}
-                              </span>
-
-                              {/* Plant Badge */}
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${
-                                item.plant === "한림공장"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                  : item.plant === "삼랑진공장"
-                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
-                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                              }`}>
-                                {item.plant}
-                              </span>
-
-                              {/* Title */}
-                              <h4 className={`font-black text-xs sm:text-[13px] text-slate-900 dark:text-white ${
-                                item.isResolved ? "line-through text-slate-400 dark:text-slate-500" : ""
-                              }`}>
-                                {item.title}
-                              </h4>
-                            </div>
-
-                            {/* Content */}
-                            <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed font-medium whitespace-pre-wrap pl-0.5">
-                              {item.content}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Issue Footer */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10.5px] text-slate-400">
-                          <span className="font-bold flex items-center gap-1">
-                            <span>작성자:</span>
-                            <strong className="text-slate-700 dark:text-slate-300 font-black">
-                              {item.author} {item.authorTitle || "선임"}
-                            </strong>
-                            <span>•</span>
-                            <span className="font-mono">{item.createdAt}</span>
+                  urgentIssues.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-3.5 rounded-2xl border transition-all text-xs flex flex-col gap-2.5 shadow-xs ${
+                        item.isResolved
+                          ? "bg-white/90 dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800"
+                          : "bg-white dark:bg-slate-900 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-500/20"
+                      }`}
+                    >
+                      {/* Top Header of Card */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* Fixed Badge: 긴급공지 */}
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-600 text-white flex items-center gap-0.5 shadow-xs">
+                            <Megaphone className="w-2.5 h-2.5" />
+                            <span>긴급공지</span>
                           </span>
 
-                          <div className="flex items-center gap-1">
-                            {/* 조치완료 토글 */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleResolved(item.id, e)}
-                              className={`px-2 py-0.5 rounded-md font-black text-[10px] transition-all flex items-center gap-0.5 ${
-                                item.isResolved
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
-                                  : "bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                              }`}
-                            >
-                              <Check className="w-2.5 h-2.5" />
-                              <span>{item.isResolved ? "조치완료됨" : "조치완료"}</span>
-                            </button>
+                          {/* Plant Badge */}
+                          <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black ${
+                            item.plant === "한림공장"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/80"
+                              : item.plant === "삼랑진공장"
+                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300/80"
+                              : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300/80"
+                          }`}>
+                            {item.plant}
+                          </span>
 
-                            {/* 점멸 토글 */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleBlinking(item.id, e)}
-                              className={`p-1 rounded-md text-[10px] border transition-all ${
-                                item.isBlinking !== false
-                                  ? "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800"
-                                  : "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border-slate-200 dark:border-slate-700"
-                              }`}
-                              title="개별 점멸 효과 토글"
-                            >
-                              <Zap className="w-3 h-3" />
-                            </button>
+                          {/* Resolution Status Badge */}
+                          {item.isResolved ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-0.5 border border-emerald-300">
+                              <Check className="w-3 h-3 text-emerald-600" />
+                              <span>조치완료</span>
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-0.5 border border-amber-300">
+                              <Clock className="w-3 h-3 text-amber-600" />
+                              <span>조치대기</span>
+                            </span>
+                          )}
 
-                            {/* 삭제 */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteIssue(item.id, e)}
-                              className="p-1 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
-                              title="삭제"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
+                          {/* Title */}
+                          <h4 className="font-black text-xs sm:text-[13px] text-slate-900 dark:text-white">
+                            {item.title}
+                          </h4>
                         </div>
                       </div>
-                    );
-                  })
+
+                      {/* 1. [전달내용] Box */}
+                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60 space-y-1">
+                        <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                          <span>📢 전달내용</span>
+                        </span>
+                        <p className="text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
+                          {item.content}
+                        </p>
+                      </div>
+
+                      {/* 2. ⭐ [요청사항 반영] 전달내용 아래 [조치결과] Box */}
+                      <div className={`p-2.5 rounded-xl border space-y-1.5 ${
+                        item.actionResult
+                          ? "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-200"
+                          : "bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40 border-dashed text-slate-600 dark:text-slate-400"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[10.5px] font-black flex items-center gap-1 ${
+                            item.actionResult ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-400"
+                          }`}>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>조치결과</span>
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenActionModal(item, e)}
+                            className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 ${
+                              item.actionResult
+                                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                : "bg-amber-500 hover:bg-amber-600 text-slate-950"
+                            }`}
+                          >
+                            <span>{item.actionResult ? "✏️ 조치수정" : "✍️ 조치결과 입력"}</span>
+                          </button>
+                        </div>
+
+                        {item.actionResult ? (
+                          <div>
+                            <p className="text-xs leading-relaxed font-semibold text-slate-900 dark:text-white whitespace-pre-wrap">
+                              {item.actionResult}
+                            </p>
+                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
+                              조치자: <strong>{item.actionAuthor || "작업자"}</strong> • {item.actionAt}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 italic">
+                            아직 등록된 조치결과가 없습니다. 조치 완료 후 [조치결과 입력] 버튼을 눌러 내용을 작성해 주세요.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Issue Footer */}
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10.5px] text-slate-400">
+                        <span className="font-bold flex items-center gap-1">
+                          <span>등록자:</span>
+                          <strong className="text-slate-700 dark:text-slate-300 font-black">
+                            {item.author} {item.authorTitle || "선임"}
+                          </strong>
+                          <span>•</span>
+                          <span className="font-mono">{item.createdAt}</span>
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteIssue(item.id, e)}
+                          className="p-1 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors"
+                          title="공지 삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             )}
@@ -686,22 +691,22 @@ export const AuthModal = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 긴급 이슈 등록 팝업 모달 (작업자 등록 창) */}
+      {/* 🌟 1. 긴급공지 등록 팝업 모달 (작업자 등록 창) */}
       {/* ========================================================================= */}
       {isIssueModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                  <Flame className="w-5 h-5" />
+                <div className="p-2 rounded-xl bg-rose-500 text-white shadow-xs">
+                  <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    공장 긴급 이슈 및 전달사항 등록
+                    공장 긴급공지 및 이슈 등록
                   </h3>
                   <p className="text-xs text-slate-400">
-                    로그인 화면 상단에 실시간으로 점멸 전파됩니다.
+                    로그인 화면 상단에 실시간으로 전파됩니다.
                   </p>
                 </div>
               </div>
@@ -715,8 +720,20 @@ export const AuthModal = () => {
             </div>
 
             <form onSubmit={handleSaveNewIssue} className="space-y-4 text-xs">
+              {/* 구분 & 공장 */}
               <div className="grid grid-cols-2 gap-3">
-                {/* 공장 선택 */}
+                {/* 유형 (고정: 긴급공지) */}
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    공지 구분
+                  </label>
+                  <div className="w-full px-3 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                    <Megaphone className="w-3.5 h-3.5" />
+                    <span>📢 긴급공지</span>
+                  </div>
+                </div>
+
+                {/* 발생 공장 선택 */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                     발생 공장
@@ -731,104 +748,75 @@ export const AuthModal = () => {
                     <option value="전사 공통">전사 공통</option>
                   </select>
                 </div>
-
-                {/* 작성자 선택 */}
-                <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    작성자
-                  </label>
-                  <select
-                    value={newIssueForm.author}
-                    onChange={(e) => {
-                      const found = allWorkers.find((w) => w.name === e.target.value);
-                      setNewIssueForm({
-                        ...newIssueForm,
-                        author: e.target.value,
-                        authorTitle: found?.title || "선임"
-                      });
-                    }}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                  >
-                    {allWorkers.map((w) => (
-                      <option key={w.id} value={w.name}>
-                        {w.plantName} • {w.name} {w.title || ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
-              {/* 긴급도 레벨 */}
+              {/* 작성자 선택 */}
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5">
-                  긴급도 / 이슈 유형
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  작성자
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { key: "EMERGENCY", label: "🚨 긴급 비상", desc: "설비정지/품질비상", color: "border-rose-500 bg-rose-50/50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300" },
-                    { key: "WARNING", label: "⚠️ 주의 경보", desc: "사전점검/자재납기", color: "border-amber-500 bg-amber-50/50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300" },
-                    { key: "NOTICE", label: "📢 긴급 공지", desc: "작업지시/전파", color: "border-blue-500 bg-blue-50/50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300" }
-                  ].map((lvl) => {
-                    const isSelected = newIssueForm.level === lvl.key;
-                    return (
-                      <button
-                        type="button"
-                        key={lvl.key}
-                        onClick={() => setNewIssueForm({ ...newIssueForm, level: lvl.key })}
-                        className={`p-2.5 rounded-xl border-2 text-center transition-all flex flex-col items-center justify-center ${
-                          isSelected ? `${lvl.color} font-black shadow-xs ring-2 ring-indigo-500/20` : "border-slate-200 dark:border-slate-700 text-slate-500"
-                        }`}
-                      >
-                        <span className="text-xs font-black">{lvl.label}</span>
-                        <span className="text-[10px] opacity-75 mt-0.5">{lvl.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <select
+                  value={newIssueForm.author}
+                  onChange={(e) => {
+                    const found = allWorkers.find((w) => w.name === e.target.value);
+                    setNewIssueForm({
+                      ...newIssueForm,
+                      author: e.target.value,
+                      authorTitle: found?.title || "선임"
+                    });
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                >
+                  {allWorkers.map((w) => (
+                    <option key={w.id} value={w.name}>
+                      {w.plantName} • {w.name} {w.title || ""}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* 이슈 제목 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  이슈 제목
+                  공지 / 이슈 제목
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="예: 압출 2호기 금형 히터 온도 센서 이상 점검 요망"
+                  placeholder="예: 압출 2호기 금형 히터 온도 점검 요망"
                   value={newIssueForm.title}
                   onChange={(e) => setNewIssueForm({ ...newIssueForm, title: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white"
                 />
               </div>
 
-              {/* 상세 내용 */}
+              {/* 전달 내용 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  상세 전달 내용
+                  📢 전달 내용
                 </label>
                 <textarea
                   rows="3"
                   required
-                  placeholder="구체적인 상황 및 조치 요청 사항을 입력해 주세요."
+                  placeholder="구체적인 상황 및 작업자 전달 사항을 입력해 주세요."
                   value={newIssueForm.content}
                   onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white"
                 ></textarea>
               </div>
 
-              {/* 점멸 활성화 체크박스 */}
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                <input
-                  type="checkbox"
-                  id="chk_blinking"
-                  checked={newIssueForm.isBlinking}
-                  onChange={(e) => setNewIssueForm({ ...newIssueForm, isBlinking: e.target.checked })}
-                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
-                />
-                <label htmlFor="chk_blinking" className="text-xs font-black text-slate-800 dark:text-slate-200 cursor-pointer">
-                  🚨 로그인 화면에서 경보 점멸(Blinking) 효과 활성화
+              {/* 조치 결과 (선택) */}
+              <div>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  ✓ 조치 결과 (선택 입력)
                 </label>
+                <textarea
+                  rows="2"
+                  placeholder="이미 조치가 완료되었거나 조치 내용이 있는 경우 입력해 주세요 (미입력 시 조치대기 상태로 등록됩니다)."
+                  value={newIssueForm.actionResult}
+                  onChange={(e) => setNewIssueForm({ ...newIssueForm, actionResult: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white"
+                ></textarea>
               </div>
 
               {/* Submit Button */}
@@ -845,7 +833,107 @@ export const AuthModal = () => {
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-black shadow-md shadow-rose-500/25 active:scale-95 transition-all flex items-center gap-1.5"
                 >
                   <Send className="w-4 h-4" />
-                  <span>긴급 이슈 즉시 등록 및 전파</span>
+                  <span>긴급공지 즉시 등록</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 2. 조치결과 입력/수정 전용 팝업 모달 */}
+      {/* ========================================================================= */}
+      {actionModalData.isOpen && actionModalData.issue && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-xs">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                    조치결과 입력 및 조치완료 처리
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    해당 공지에 대한 조치 완료 결과를 기록합니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Target Issue Reference Info */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                  {actionModalData.issue.plant}
+                </span>
+                <strong className="text-slate-900 dark:text-white font-black">
+                  {actionModalData.issue.title}
+                </strong>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                📢 {actionModalData.issue.content}
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveActionResult} className="space-y-4 text-xs">
+              {/* 조치자 선택 */}
+              <div>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  조치자
+                </label>
+                <select
+                  value={actionModalData.actionAuthor}
+                  onChange={(e) => setActionModalData({ ...actionModalData, actionAuthor: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                >
+                  {allWorkers.map((w) => (
+                    <option key={w.id} value={w.name}>
+                      {w.plantName} • {w.name} {w.title || ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 조치결과 내용 */}
+              <div>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  ✓ 조치결과 상세 내용
+                </label>
+                <textarea
+                  rows="4"
+                  required
+                  placeholder="예: 센서 커넥터 재체결 및 예열 온도 정상치(180℃) 도달 확인 완료 (설비 정상 가동)"
+                  value={actionModalData.actionResult}
+                  onChange={(e) => setActionModalData({ ...actionModalData, actionResult: e.target.value })}
+                  className="w-full p-3.5 rounded-xl border-2 border-emerald-500/50 dark:border-emerald-500/40 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                ></textarea>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>조치결과 저장 및 완료</span>
                 </button>
               </div>
             </form>
