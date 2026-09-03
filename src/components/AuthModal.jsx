@@ -43,6 +43,7 @@ import {
   deleteUrgentIssue,
   updateUrgentIssueActionResult
 } from "../services/urgentIssueService";
+import { OryukLogo } from "./OryukLogo";
 
 export const AuthModal = () => {
   const { loginWithProfile } = useAuth();
@@ -230,15 +231,23 @@ export const AuthModal = () => {
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
         <div className="p-4 sm:p-6">
-          {/* Header Brand */}
-          <div className="text-center mb-4">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 text-[11px] font-black mb-2 shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          {/* Header Brand with Bright OryukLogo */}
+          <div className="text-center mb-4 flex flex-col items-center">
+            {/* Bright, Elevated Logo Container */}
+            <div className="relative mb-2.5">
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-3xl blur-md opacity-40 animate-pulse"></div>
+              <div className="relative w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center">
+                <OryukLogo className="w-10 h-10 drop-shadow-md" />
+              </div>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[11px] font-black mb-1.5 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>ORYUK SMART MES PORTAL</span>
             </div>
 
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-2">
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-500 bg-clip-text text-transparent">
+              <span className="text-blue-600 dark:text-blue-400">
                 (주)오륙
               </span>
               <span>생산관리 통합시스템</span>

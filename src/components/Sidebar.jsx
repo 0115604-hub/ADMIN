@@ -21,6 +21,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { OryukLogo } from "./OryukLogo";
 
 export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
@@ -109,14 +110,8 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       <div className="p-5 sm:p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0 ${
-              isOperator
-                ? currentProfile?.plant === "한림공장"
-                  ? "bg-gradient-to-tr from-emerald-600 to-teal-700 shadow-emerald-500/25"
-                  : "bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-500/25"
-                : "bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/25"
-            }`}>
-              <Building2 className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-md shadow-blue-500/15 shrink-0 p-1.5">
+              <OryukLogo className="w-7 h-7 drop-shadow-sm" />
             </div>
             <div className="min-w-0">
               <h1 className="font-black text-base tracking-tight text-slate-900 dark:text-white leading-tight truncate">

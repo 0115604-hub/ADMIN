@@ -26,3 +26,28 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.7);
 }
+
+/* ========================================================================= */
+/* ⭐ [요청사항 반영] 고대비 선명한 날짜 지정 캘린더 아이콘 스타일 */
+/* ========================================================================= */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px;
+  background-color: rgba(37, 99, 235, 0.12);
+  filter: invert(0.2) sepia(1) saturate(6) hue-rotate(190deg) brightness(1.1);
+  opacity: 1;
+  transition: all 0.2s ease;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: rgba(56, 189, 248, 0.2);
+  filter: invert(0.85) sepia(1) saturate(4) hue-rotate(170deg) brightness(1.4);
+  opacity: 1;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  background-color: rgba(37, 99, 235, 0.25);
+  filter: invert(0.25) sepia(1) saturate(10) hue-rotate(195deg) drop-shadow(0 0 6px #38bdf8);
+}

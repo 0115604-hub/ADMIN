@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
+import { OryukLogo } from "./OryukLogo";
 
 export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) => {
   const { isOperator, isAdmin, logout } = useAuth();
@@ -49,8 +50,8 @@ export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) 
           </button>
         ) : isOperator ? (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md bg-gradient-to-tr from-blue-600 to-indigo-600 shadow-blue-500/20">
-              <Building2 className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-1">
+              <OryukLogo className="w-6 h-6" />
             </div>
             <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
               (주)오륙 생산관리현황
@@ -74,9 +75,11 @@ export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) 
 
       {/* Center / Right: Clean Segmented Month Switcher & Logout */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* ⭐ Sleek Interactive Month Selection Box */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-blue-500 shadow-inner transition-all">
-          <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+        {/* ⭐ [요청반영] 고대비 선명한 당월/월선택 박스 & 캘린더 아이콘 */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-blue-500/40 dark:border-blue-500/50 shadow-sm hover:border-blue-600 transition-all">
+          <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+          </div>
           <select
             value={selectedMonth}
             onChange={(e) => changeMonth(e.target.value)}
@@ -89,7 +92,7 @@ export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) 
             ))}
           </select>
           {isCurrentMonth(selectedMonth) && (
-            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-extrabold text-[10px]">
+            <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-blue-600 text-white font-black text-[10px] shadow-xs">
               당월
             </span>
           )}

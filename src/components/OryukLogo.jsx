@@ -19,26 +19,26 @@ export const OryukLogo = ({
       className={className}
     >
       <defs>
-        {/* Harmonious Blue Gradients */}
+        {/* Luminous & High-Contrast Vibrant Corporate Blue Gradients */}
         <linearGradient id="oryuk-dot1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#38bdf8" />
-          <stop offset="100%" stopColor="#0ea5e9" />
+          <stop offset="0%" stopColor="#67e8f9" />
+          <stop offset="100%" stopColor="#06b6d4" />
         </linearGradient>
         <linearGradient id="oryuk-dot2" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#0284c7" />
+        </linearGradient>
+        <linearGradient id="oryuk-dot3" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#60a5fa" />
           <stop offset="100%" stopColor="#2563eb" />
         </linearGradient>
-        <linearGradient id="oryuk-dot3" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2563eb" />
+        <linearGradient id="oryuk-dot4" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3b82f6" />
           <stop offset="100%" stopColor="#1d4ed8" />
         </linearGradient>
-        <linearGradient id="oryuk-dot4" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1e40af" />
-          <stop offset="100%" stopColor="#172554" />
-        </linearGradient>
         <linearGradient id="oryuk-dot5" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#1d4ed8" />
-          <stop offset="100%" stopColor="#1e3a8a" />
+          <stop offset="0%" stopColor="#0ea5e9" />
+          <stop offset="100%" stopColor="#2563eb" />
         </linearGradient>
       </defs>
 

@@ -848,13 +848,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             {/* Right: 해당월 선택 박스 + 일정/연차 구분 간편 지정 */}
             <div className="flex items-center gap-2 flex-wrap pt-1 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
-              {/* ⭐ 해당월 선택 박스 (누르면 해당월 선택, 기본 당월) */}
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 shadow-xs">
-                <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+              {/* ⭐ [요청반영] 해당월 선택 박스 (고대비 선명한 블루 캘린더 아이콘) */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-500/40 dark:border-blue-500/50 shadow-sm hover:border-blue-600 transition-all">
+                <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
+                  <Calendar className="w-3.5 h-3.5 shrink-0" />
+                </div>
                 <select
                   value={selectedMonth}
                   onChange={(e) => changeMonth(e.target.value)}
-                  className="bg-transparent text-xs font-black text-blue-900 dark:text-blue-200 cursor-pointer focus:outline-none pr-0.5"
+                  className="bg-transparent text-xs font-black text-slate-900 dark:text-white cursor-pointer focus:outline-none pr-0.5"
                 >
                   {availableMonths.map((ym) => {
                     const parts = ym.split("-");
@@ -866,6 +868,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     );
                   })}
                 </select>
+                {isCurrentMonth(selectedMonth) && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-blue-600 text-white font-black text-[9.5px]">
+                    당월
+                  </span>
+                )}
               </div>
 
               {/* If current worker already has an active or scheduled leave, show cancellation chip */}
@@ -899,20 +906,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <option value="외출">외출</option>
                 </select>
 
-                <input
-                  type="date"
-                  required
-                  value={leaveForm.startDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setLeaveForm((prev) => ({
-                      ...prev,
-                      startDate: val,
-                      endDate: val
-                    }));
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                />
+                {/* ⭐ [요청반영] 고대비 선명한 날짜 지정 입력창 & 캘린더 아이콘 */}
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-xl border-2 border-blue-400/60 dark:border-blue-500/60 bg-white dark:bg-slate-800 shadow-xs">
+                  <div className="p-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300">
+                    <Calendar className="w-3.5 h-3.5" />
+                  </div>
+                  <input
+                    type="date"
+                    required
+                    value={leaveForm.startDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setLeaveForm((prev) => ({
+                        ...prev,
+                        startDate: val,
+                        endDate: val
+                      }));
+                    }}
+                    className="bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                  />
+                </div>
 
                 <button
                   type="submit"
