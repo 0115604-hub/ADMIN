@@ -129,13 +129,23 @@ const EXTRUSION_SUMMARY = [
   }
 ];
 
-// Quality 4 Core Items Summary (Sorted by Inspection Volume)
-const QUALITY_SUMMARY = [
+// Quality 4 Core Items Summary (당월 누적 불량률)
+const QUALITY_MONTHLY_SUMMARY = [
   { id: "ja", name: "JA G-RUN", inspectQty: 57596, defectQty: 732, defectRate: 1.27, isMax: false },
   { id: "nx4a", name: "NX4a G-RUN", inspectQty: 50400, defectQty: 302, defectRate: 0.60, isMax: false },
   { id: "nx4", name: "NX4 G-RUN", inspectQty: 25880, defectQty: 34, defectRate: 0.13, isMax: false },
   { id: "hr", name: "HR G-RUN", inspectQty: 20858, defectQty: 270, defectRate: 1.29, isMax: true }
 ];
+
+// Quality 4 Core Items Summary (일일 불량률)
+const QUALITY_DAILY_SUMMARY = [
+  { id: "ja", name: "JA G-RUN", inspectQty: 1563, defectQty: 7, defectRate: 0.45, isMax: false },
+  { id: "nx4a", name: "NX4a G-RUN", inspectQty: 960, defectQty: 4, defectRate: 0.42, isMax: false },
+  { id: "nx4", name: "NX4 G-RUN", inspectQty: 1100, defectQty: 3, defectRate: 0.27, isMax: false },
+  { id: "hr", name: "HR G-RUN", inspectQty: 627, defectQty: 7, defectRate: 1.12, isMax: true }
+];
+
+const QUALITY_SUMMARY = QUALITY_MONTHLY_SUMMARY;
 
 // Split Overtime Summary (삼랑진공장 & 한림공장)
 const SAMRANGJIN_OVERTIME = {
@@ -882,9 +892,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. ⭐ [3위치] 일일품질현황 요약 */}
+      {/* 3. ⭐ [3위치] 일일품질현황 요약 (좌측: 당월불량률 / 우측: 일일불량률) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600">
@@ -906,37 +916,105 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        {/* 4 Core Item Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          {QUALITY_SUMMARY.map((item) => (
-            <div
-              key={item.id}
-              className={`p-2.5 rounded-xl border flex flex-col justify-between ${
-                item.isMax
-                  ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50"
-                  : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-xs text-slate-900 dark:text-white truncate">{item.name}</span>
-                {item.isMax && (
-                  <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-rose-500 text-white">
-                    최고불량
-                  </span>
-                )}
-              </div>
-              <div className="flex items-baseline justify-between mt-1">
-                <span className={`text-base font-black ${
-                  item.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
-                }`}>
-                  {item.defectRate}%
-                </span>
-                <span className="text-[10px] text-slate-400 font-bold">
-                  {item.inspectQty.toLocaleString()}EA
+        {/* 2-Halves Split: Left (당월 불량률) vs Right (일일 불량률) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          {/* ========================================== */}
+          {/* 1. [왼쪽] 당월 불량률 (월간 누적 실적) */}
+          {/* ========================================== */}
+          <div className="p-3 rounded-2xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                <span className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                  당월 불량률 (월간 누적)
                 </span>
               </div>
+              <span className="text-[10.5px] font-bold text-indigo-600/80 dark:text-indigo-400 font-mono">
+                월간 총 154,734 EA (1,338건 • 0.86%)
+              </span>
             </div>
-          ))}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {QUALITY_MONTHLY_SUMMARY.map((item) => (
+                <div
+                  key={item.id}
+                  className={`p-2.5 rounded-xl border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-xs ${
+                    item.isMax
+                      ? "border-rose-300 dark:border-rose-900/60 ring-1 ring-rose-500/20"
+                      : "border-slate-200/70 dark:border-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-[11px] text-slate-800 dark:text-slate-200 truncate">{item.name}</span>
+                    {item.isMax && (
+                      <span className="text-[8.5px] font-black px-1.2 py-0.2 rounded bg-rose-500 text-white">
+                        최고
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline justify-between mt-1.5">
+                    <span className={`text-base font-black font-mono ${
+                      item.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400"
+                    }`}>
+                      {item.defectRate}%
+                    </span>
+                    <span className="text-[9.5px] text-slate-400 font-bold font-mono">
+                      {item.inspectQty.toLocaleString()}EA
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ========================================== */}
+          {/* 2. [오른쪽] 일일 불량률 (당일 실적) */}
+          {/* ========================================== */}
+          <div className="p-3 rounded-2xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">
+                  일일 불량률 (당일 실적)
+                </span>
+              </div>
+              <span className="text-[10.5px] font-bold text-emerald-600/80 dark:text-emerald-400 font-mono">
+                당일 총 4,810 EA (21건 • 0.44%)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {QUALITY_DAILY_SUMMARY.map((item) => (
+                <div
+                  key={item.id}
+                  className={`p-2.5 rounded-xl border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-xs ${
+                    item.isMax
+                      ? "border-rose-300 dark:border-rose-900/60 ring-1 ring-rose-500/20"
+                      : "border-slate-200/70 dark:border-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-[11px] text-slate-800 dark:text-slate-200 truncate">{item.name}</span>
+                    {item.isMax && (
+                      <span className="text-[8.5px] font-black px-1.2 py-0.2 rounded bg-rose-500 text-white">
+                        최고
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline justify-between mt-1.5">
+                    <span className={`text-base font-black font-mono ${
+                      item.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                    }`}>
+                      {item.defectRate}%
+                    </span>
+                    <span className="text-[9.5px] text-slate-400 font-bold font-mono">
+                      {item.inspectQty.toLocaleString()}EA
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
