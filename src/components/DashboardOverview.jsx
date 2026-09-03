@@ -60,11 +60,25 @@ export const DashboardOverview = ({
   const netProfit = totalSales - ledgerPurchases;
   const profitMargin = totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(1) : 0;
 
-  // Calculate MoM
-  const prevMonthKey = selectedMonth === "2026-08" ? "2026-07" : null;
+  // Calculate MoM dynamically
+  const getPrevMonthKey = (ym) => {
+    if (!ym) return null;
+    const [yearStr, monthStr] = ym.split("-");
+    let y = parseInt(yearStr, 10);
+    let m = parseInt(monthStr, 10);
+    if (isNaN(y) || isNaN(m)) return null;
+    m -= 1;
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    }
+    return `${y}-${String(m).padStart(2, "0")}`;
+  };
+
+  const prevMonthKey = getPrevMonthKey(selectedMonth);
   const prevMonthData = prevMonthKey ? allMonthlyData[prevMonthKey] : null;
-  const salesMoM = prevMonthData ? totalSales - (prevMonthData.salesSummary?.totalSales || 0) : null;
-  const purchaseMoM = prevMonthData ? ledgerPurchases - (prevMonthData.purchaseSummary?.ledgerBenchmark || 0) : null;
+  const salesMoM = prevMonthData && prevMonthData.salesSummary?.totalSales ? totalSales - (prevMonthData.salesSummary?.totalSales || 0) : null;
+  const purchaseMoM = prevMonthData && prevMonthData.purchaseSummary?.ledgerBenchmark ? ledgerPurchases - (prevMonthData.purchaseSummary?.ledgerBenchmark || 0) : null;
 
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;

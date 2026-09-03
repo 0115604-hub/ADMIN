@@ -191,7 +191,7 @@ const HANLIM_OVERTIME = {
 
 export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const { currentProfile, isOperator, isAdmin } = useAuth();
-  const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth } = useMonth();
+  const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
   const { formatAmount } = useCurrency();
 
   const workerPlant = currentProfile?.plant || "삼랑진공장";
@@ -683,7 +683,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     const label = `${parts[0]}년 ${parts[1]}월`;
                     return (
                       <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
-                        {label} {ym === "2026-08" ? "(당월)" : ""}
+                        {label} {isCurrentMonth(ym) ? "(당월)" : ""}
                       </option>
                     );
                   })}

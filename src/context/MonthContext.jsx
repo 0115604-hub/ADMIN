@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import initialMultiMonthData from "../data/multiMonthMasterData.json";
@@ -32,20 +32,72 @@ function sanitizeForFirestore(obj) {
   return result;
 }
 
-export const CURRENT_DEFAULT_MONTH = "2026-08";
+// Dynamic current year-month based on live login date (e.g. "2026-09" for September 2026)
+export const getCurrentYearMonth = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+};
 
-export const DEFAULT_MONTH_LIST = [
-  "2026-08",
-  "2026-07",
-  "2026-06",
-  "2026-05",
-  "2026-04",
-  "2026-03",
-  "2026-02",
-  "2026-01"
-];
+export const CURRENT_DEFAULT_MONTH = getCurrentYearMonth();
+
+// Generate list of months starting from current month going back
+export const generateDefaultMonthList = () => {
+  const currentYM = getCurrentYearMonth();
+  const [currentYear, currentMonth] = currentYM.split("-").map(Number);
+  const months = [];
+
+  const targetYear = 2026;
+  for (let m = currentMonth; m >= 1; m--) {
+    months.push(`${currentYear}-${String(m).padStart(2, "0")}`);
+  }
+  if (currentYear > targetYear) {
+    for (let y = currentYear - 1; y >= targetYear; y--) {
+      for (let m = 12; m >= 1; m--) {
+        months.push(`${y}-${String(m).padStart(2, "0")}`);
+      }
+    }
+  }
+
+  const base2026 = ["2026-08", "2026-07", "2026-06", "2026-05", "2026-04", "2026-03", "2026-02", "2026-01"];
+  return Array.from(new Set([...months, ...base2026])).sort().reverse();
+};
+
+export const DEFAULT_MONTH_LIST = generateDefaultMonthList();
+
+export const createEmptyMonthlyData = (yearMonth) => ({
+  yearMonth,
+  salesSummary: { totalSales: 0, salesTarget: 0, achievementRate: 0, totalQty: 0, itemCount: 0, vehicleGroupCount: 0 },
+  purchaseSummary: { totalPurchase: 0, purchaseTarget: 0, ledgerBenchmark: 0, totalExpenses: 0 },
+  expenseSummary: { totalExpense: 0 },
+  pnlSummary: { grossProfit: 0, operatingProfit: 0, netProfit: 0, profitMargin: 0 },
+  vehicleSales: [],
+  materialPurchases: [],
+  purchaseExpenses: [],
+  jajaeGroups: [],
+  closingLedger: {
+    beginningBalance: 0,
+    salesAmount: 0,
+    collectedAmount: 0,
+    endingBalance: 0,
+    entries: []
+  },
+  productionSummary: {
+    totalProductionMh: 0,
+    extrusionTotalMinutes: 0,
+    downtimeMinutes: 0
+  },
+  qualitySummary: {
+    totalInspected: 0,
+    totalDefects: 0,
+    defectRate: 0
+  }
+});
 
 export const MonthProvider = ({ children }) => {
+  const currentYearMonth = getCurrentYearMonth();
+
   // Load persistent monthly data from localStorage or fallback to default multi-month master data
   const [allMonthlyData, setAllMonthlyData] = useState(() => {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -64,15 +116,22 @@ export const MonthProvider = ({ children }) => {
     return initialMultiMonthData;
   });
 
-  // Always default to the current active month ("2026-08" 당월)
-  const dataMonths = Object.keys(allMonthlyData);
-  const availableMonths = Array.from(new Set([...DEFAULT_MONTH_LIST, ...dataMonths])).sort().reverse();
-  const [selectedMonth, setSelectedMonth] = useState("2026-08");
+  // Always default to the live current month based on actual login date (당월)
+  const defaultMonths = useMemo(() => generateDefaultMonthList(), []);
+  const dataMonths = useMemo(() => Object.keys(allMonthlyData), [allMonthlyData]);
+  const availableMonths = useMemo(() => {
+    return Array.from(new Set([...defaultMonths, ...dataMonths])).sort().reverse();
+  }, [defaultMonths, dataMonths]);
+
+  const [selectedMonth, setSelectedMonth] = useState(() => getCurrentYearMonth());
 
   const resetToCurrentMonth = () => {
-    setSelectedMonth("2026-08");
-    localStorage.setItem("admin_selected_month_v4", "2026-08");
+    const liveCurrentMonth = getCurrentYearMonth();
+    setSelectedMonth(liveCurrentMonth);
+    localStorage.setItem("admin_selected_month_v4", liveCurrentMonth);
   };
+
+  const isCurrentMonth = (ym) => ym === currentYearMonth;
 
   // Real-time Cloud Sync with Firestore
   useEffect(() => {
@@ -125,8 +184,13 @@ export const MonthProvider = ({ children }) => {
     }
   }, []);
 
-  // Current active month's data package
-  const currentMonthData = allMonthlyData[selectedMonth] || allMonthlyData["2026-08"] || allMonthlyData[availableMonths[0]] || null;
+  // Current active month's data package (with fallback to structured empty month if not yet uploaded)
+  const currentMonthData = useMemo(() => {
+    if (allMonthlyData[selectedMonth]) {
+      return allMonthlyData[selectedMonth];
+    }
+    return createEmptyMonthlyData(selectedMonth);
+  }, [allMonthlyData, selectedMonth]);
 
   // Change active month
   const changeMonth = (yearMonth) => {
@@ -134,7 +198,7 @@ export const MonthProvider = ({ children }) => {
     localStorage.setItem("admin_selected_month_v4", yearMonth);
   };
 
-  // Add / Update Monthly Data from Workbook Upload (Strictly uses the latest uploaded file and replaces old file data)
+  // Add / Update Monthly Data from Workbook Upload
   const uploadMonthlyData = async (yearMonth, monthPackage, fileMeta = {}) => {
     const cleanPackage = sanitizeForFirestore(monthPackage);
 
@@ -153,7 +217,6 @@ export const MonthProvider = ({ children }) => {
       isLatest: true
     };
 
-    // Cleanly overwrite the month with the newest file's data (replacing previous file)
     const updated = {
       ...allMonthlyData,
       [yearMonth]: {
@@ -169,7 +232,7 @@ export const MonthProvider = ({ children }) => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
     localStorage.setItem("admin_selected_month_v4", yearMonth);
 
-    // Sync to Firestore Cloud Database so all mobile devices & PCs update immediately to the latest file
+    // Sync to Firestore Cloud Database
     try {
       const docRef = doc(db, ...FIRESTORE_DOC_PATH);
       const sanitizedStore = sanitizeForFirestore(updated);
@@ -179,7 +242,7 @@ export const MonthProvider = ({ children }) => {
         latestFile: latestFileRecord,
         updatedAt: new Date().toISOString()
       }, { merge: true });
-      console.log(`[${yearMonth}] Latest uploaded file (${latestFileRecord.fileName}) successfully synced to Firestore cloud. Previous file replaced.`);
+      console.log(`[${yearMonth}] Latest uploaded file (${latestFileRecord.fileName}) successfully synced to Firestore cloud.`);
     } catch (e) {
       console.error("Firestore monthly store upload error:", e);
     }
@@ -191,6 +254,8 @@ export const MonthProvider = ({ children }) => {
     <MonthContext.Provider
       value={{
         selectedMonth,
+        currentYearMonth,
+        isCurrentMonth,
         availableMonths,
         currentMonthData,
         allMonthlyData,
@@ -205,3 +270,4 @@ export const MonthProvider = ({ children }) => {
 };
 
 export const useMonth = () => useContext(MonthContext);
+

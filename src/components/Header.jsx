@@ -14,7 +14,7 @@ import { useMonth } from "../context/MonthContext";
 
 export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) => {
   const { isOperator, isAdmin, logout } = useAuth();
-  const { selectedMonth, availableMonths, changeMonth } = useMonth();
+  const { selectedMonth, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
 
   const formatMonthShort = (ym) => {
     const parts = ym.split("-");
@@ -84,11 +84,11 @@ export const Header = ({ title, activeTab, onBackToSummary, onOpenMobileMenu }) 
           >
             {availableMonths.map((ym) => (
               <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
-                {formatMonthShort(ym)} {ym === "2026-08" ? "(당월)" : ""}
+                {formatMonthShort(ym)} {isCurrentMonth(ym) ? "(당월)" : ""}
               </option>
             ))}
           </select>
-          {selectedMonth === "2026-08" && (
+          {isCurrentMonth(selectedMonth) && (
             <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-extrabold text-[10px]">
               당월
             </span>
