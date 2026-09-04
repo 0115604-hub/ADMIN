@@ -14,7 +14,7 @@ const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-5417404489", // '테스트' group chat ID
+  chatId: "-4186792536", // '오륙 통합방' group chat ID
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
