@@ -297,15 +297,15 @@ export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
   return await sendTelegramMessage(message);
 };
 
-/**
- * 9. 🌅 매일 오전 7시 작업자 연차/근태 현황 브리핑 (시인성 극대화)
- */
 export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
   const todayStr = targetDateStr || new Date().toISOString().split("T")[0];
   const dateObj = new Date(todayStr + "T00:00:00");
   const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
   const dayName = daysOfWeek[dateObj.getDay()];
-  const displayDate = `${dateObj.getFullYear()}년 ${String(dateObj.getMonth() + 1).padStart(2, "0")}월 ${String(dateObj.getDate()).padStart(2, "0")}일 (${dayName})`;
+  const yyyy = dateObj.getFullYear();
+  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const dd = String(dateObj.getDate()).padStart(2, "0");
+  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName})`;
 
   const leaves = getLocalAnnualLeaves();
 
@@ -317,45 +317,27 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
     return start <= todayStr && todayStr <= end;
   });
 
-  let message = `<b>🌅 [일일 근태 및 연차 현황 브리핑]</b>\n`;
-  message += `📅 <b>일자:</b> ${displayDate}\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  let totalWorkers = 0;
-  let totalOnLeave = 0;
-
-  PLANTS.forEach((plant) => {
-    const plantWorkers = plant.workers;
-    totalWorkers += plantWorkers.length;
-
-    const plantLeaves = activeLeaves.filter((l) => {
-      return l.plant === plant.name || plantWorkers.some((w) => w.name === l.userName || w.id === l.userId);
+  // Compile single line of leave workers
+  let leaveSummary = "없음 (전원 정상 출근)";
+  if (activeLeaves.length > 0) {
+    const list = activeLeaves.map((l) => {
+      const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
+      const typeShort = l.leaveType || "연차";
+      return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
     });
+    leaveSummary = list.join(", ");
+  }
 
-    const onLeaveNames = new Set(plantLeaves.map((l) => l.userName));
-    const workingWorkers = plantWorkers.filter((w) => !onLeaveNames.has(w.name));
+  const message = `
+<b>🌅 [오륙MES]</b>
+📅 <b>${dateFormatted}</b>
+━━━━━━━━━━━━━━━━━━━━
+🌴 <b>연차 사용자:</b> ${leaveSummary}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
 
-    totalOnLeave += plantLeaves.length;
-
-    message += `🏭 <b>${plant.name}</b> (총 ${plantWorkers.length}명 / <b>출근 ${workingWorkers.length}명</b>)\n`;
-
-    if (plantLeaves.length > 0) {
-      message += `🌴 <b>연차/휴무: ${plantLeaves.length}명</b>\n`;
-      plantLeaves.forEach((l) => {
-        message += `   • <b>${l.userName} ${l.title || "선임"}:</b> ${l.leaveType || "연차"} ${l.reason ? `(${l.reason})` : ""}\n`;
-      });
-    } else {
-      message += `🌴 <b>연차/휴무: 0명</b> (전원 정상 출근)\n`;
-    }
-
-    message += `• <b>출근:</b> ${workingWorkers.map((w) => `${w.name} ${w.title}`).join(", ")}\n\n`;
-  });
-
-  message += `━━━━━━━━━━━━━━━━━━━━\n`;
-  message += `📊 <b>[총괄 요약]</b> 총 ${totalWorkers}명 중 <b>출근 ${totalWorkers - totalOnLeave}명</b> / <b>연차 ${totalOnLeave}명</b>\n`;
-  message += `🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
-
-  const sendResult = await sendTelegramMessage(message.trim());
+  const sendResult = await sendTelegramMessage(message);
 
   // Record briefing date in Firestore & LocalStorage
   if (sendResult.success) {
