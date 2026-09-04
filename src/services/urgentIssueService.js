@@ -7,6 +7,7 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { sendQualityAlertTelegram, sendQualityActionTelegram } from "./telegramService";
 
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
@@ -146,6 +147,13 @@ export const saveUrgentIssue = async (issueData) => {
     console.warn("Firestore save urgent issue fallback to local:", e);
   }
 
+  // Trigger real-time Telegram notification for new alert / issue
+  if (existingIdx < 0) {
+    sendQualityAlertTelegram(fullItem).catch((err) => {
+      console.warn("Telegram alert error:", err);
+    });
+  }
+
   return fullItem;
 };
 
@@ -188,7 +196,16 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     isResolved: Boolean(trimmed)
   };
 
-  return await saveUrgentIssue(updatedTarget);
+  const saved = await saveUrgentIssue(updatedTarget);
+
+  // Trigger real-time Telegram notification for action completed
+  if (trimmed) {
+    sendQualityActionTelegram(updatedTarget).catch((err) => {
+      console.warn("Telegram action notification error:", err);
+    });
+  }
+
+  return saved;
 };
 
 // Toggle issue resolution status
