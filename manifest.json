@@ -1,0 +1,16 @@
+﻿{
+  "short_name": "오륙생산관리",
+  "name": "(주)오륙 생산관리 통합시스템",
+  "icons": [
+    {
+      "src": "/oryuk_logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "display": "standalone",
+  "orientation": "portrait"
+}
