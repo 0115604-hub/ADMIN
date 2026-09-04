@@ -847,16 +847,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     await deleteWorkLog(id);
   };
 
-  const filteredLogs = workLogs.filter((log) => {
-    const writerWithTitle = `${log.writer} ${log.title || ""} ${log.process || ""}`;
-    const matchSearch =
-      writerWithTitle.includes(searchTerm) ||
-      log.workContent.includes(searchTerm) ||
-      log.line.includes(searchTerm) ||
-      (log.issues && log.issues.includes(searchTerm));
-    const matchPlant = filterPlant === "all" || log.plant === filterPlant;
-    return matchSearch && matchPlant;
-  });
+  const filteredLogs = useMemo(() => {
+    return workLogs
+      .filter((log) => {
+        const writerWithTitle = `${log.writer} ${log.title || ""} ${log.process || ""}`;
+        const matchSearch =
+          writerWithTitle.includes(searchTerm) ||
+          log.workContent.includes(searchTerm) ||
+          log.line.includes(searchTerm) ||
+          (log.issues && log.issues.includes(searchTerm));
+        const matchPlant = filterPlant === "all" || log.plant === filterPlant;
+        return matchSearch && matchPlant;
+      })
+      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  }, [workLogs, searchTerm, filterPlant]);
 
   return (
     <div className="space-y-3 sm:space-y-3.5 animate-fadeIn pb-20 max-w-[1600px] mx-auto px-1.5 sm:px-0">
@@ -1556,16 +1560,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </td>
                 </tr>
               ) : (
-                filteredLogs.map((log) => (
-                  <tr
-                    key={log.id}
-                    onClick={() => setSelectedLogDetail(log)}
-                    className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-10 group text-[11px]"
-                    title="클릭하여 상세내용 확인 및 결재 진행"
-                  >
-                    <td className="py-1.5 px-2 text-center font-bold font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                      {log.date ? (log.date.length === 10 ? log.date.slice(5) : log.date) : ""}
-                    </td>
+                filteredLogs.map((log, index) => {
+                  const currentDate = log.date ? (log.date.length === 10 ? log.date.slice(5) : log.date) : "";
+                  const prevLog = index > 0 ? filteredLogs[index - 1] : null;
+                  const prevDate = prevLog?.date ? (prevLog.date.length === 10 ? prevLog.date.slice(5) : prevLog.date) : "";
+                  const isSameDateAsPrev = index > 0 && currentDate === prevDate;
+
+                  return (
+                    <tr
+                      key={log.id}
+                      onClick={() => setSelectedLogDetail(log)}
+                      className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-10 group text-[11px]"
+                      title="클릭하여 상세내용 확인 및 결재 진행"
+                    >
+                      <td className="py-1.5 px-2 text-center font-bold font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        {!isSameDateAsPrev ? (
+                          <span className="inline-block px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-black text-[11px]">
+                            {currentDate}
+                          </span>
+                        ) : null}
+                      </td>
                     <td className="py-1.5 px-2 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                         log.plant === "한림공장"
@@ -1638,7 +1652,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
