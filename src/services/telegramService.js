@@ -2,6 +2,9 @@ import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { PLANTS } from "../context/AuthContext";
 import { getLocalAnnualLeaves } from "./annualLeaveService";
+import { getLocalApprovalDocs } from "./approvalService";
+import { getLocalWorkLogs } from "./workLogService";
+import { getLocalUrgentIssues } from "./urgentIssueService";
 
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
@@ -121,7 +124,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
 };
 
 /**
- * 1. 🚨 품질경보 / 📢 공지사항 즉시 알림 (시인성 극대화)
+ * 1. 🚨 품질경보 / 📢 공지사항 즉시 알림
  */
 export const sendQualityAlertTelegram = async (issue) => {
   const isNotice = issue.category === "공지사항" || issue.category === "공유사항";
@@ -147,7 +150,7 @@ ${issue.actionResult ? `\n🛠️ <b>조치결과:</b>\n${issue.actionResult} ($
 };
 
 /**
- * 2. ✅ 품질경보 조치완료 즉시 알림 (시인성 극대화)
+ * 2. ✅ 품질경보 조치완료 즉시 알림
  */
 export const sendQualityActionTelegram = async (issue) => {
   const message = `
@@ -168,7 +171,7 @@ ${issue.actionResult}
 };
 
 /**
- * 3. 🗑️ 품질경보 삭제/해제 즉시 알림 (시인성 극대화)
+ * 3. 🗑️ 품질경보 삭제/해제 즉시 알림
  */
 export const sendQualityDeleteTelegram = async (issue, deleterName = "") => {
   const isNotice = issue.category === "공지사항" || issue.category === "공유사항";
@@ -297,7 +300,10 @@ export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
   return await sendTelegramMessage(message);
 };
 
-export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
+/**
+ * 9. 🌅 매일 아침 07:30 통합 모닝 브리핑 (연차 + 미결재 + 품질경보 미삭제)
+ */
+export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => {
   const todayStr = targetDateStr || new Date().toISOString().split("T")[0];
   const dateObj = new Date(todayStr + "T00:00:00");
   const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
@@ -305,11 +311,10 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
   const yyyy = dateObj.getFullYear();
   const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
   const dd = String(dateObj.getDate()).padStart(2, "0");
-  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName})`;
+  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName}) 07:30`;
 
+  // 1. 연차 현황
   const leaves = getLocalAnnualLeaves();
-
-  // Find leaves active today (startDate <= today <= endDate)
   const activeLeaves = leaves.filter((l) => {
     if (!l.startDate) return false;
     const start = l.startDate;
@@ -317,7 +322,6 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
     return start <= todayStr && todayStr <= end;
   });
 
-  // Compile single line of leave workers
   let leaveSummary = "없음 (전원 정상 출근)";
   if (activeLeaves.length > 0) {
     const list = activeLeaves.map((l) => {
@@ -328,11 +332,40 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
     leaveSummary = list.join(", ");
   }
 
+  // 2. 미결재 현황 (전자결재 + 업무일지)
+  const approvalDocs = getLocalApprovalDocs();
+  const pendingDocs = approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
+
+  const workLogs = getLocalWorkLogs();
+  const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
+
+  let approvalSummary = "없음 (전건 결재완료 ✓)";
+  const totalPending = pendingDocs.length + pendingLogs.length;
+  if (totalPending > 0) {
+    const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
+    const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
+    const previewList = [...docTitles, ...logTitles].slice(0, 3);
+    const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
+    approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
+  }
+
+  // 3. 품질경보 미삭제 / 미조치 현황
+  const urgentIssues = getLocalUrgentIssues();
+  let urgentSummary = "없음 (전건 종결완료 ✓)";
+  if (urgentIssues.length > 0) {
+    const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
+    const previewList = issueTitles.slice(0, 2);
+    const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
+    urgentSummary = `총 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+  }
+
   const message = `
-<b>🌅 [오륙MES]</b>
+<b>🌅 [오륙MES 일일 모닝 브리핑]</b>
 📅 <b>${dateFormatted}</b>
 ━━━━━━━━━━━━━━━━━━━━
-🌴 <b>연차 사용자:</b> ${leaveSummary}
+🌴 <b>금일 연차자:</b> ${leaveSummary}
+📑 <b>전일 미결재:</b> ${approvalSummary}
+🚨 <b>품질경보 미삭제:</b> ${urgentSummary}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
@@ -342,34 +375,38 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
   // Record briefing date in Firestore & LocalStorage
   if (sendResult.success) {
     try {
-      localStorage.setItem("oryuk_last_daily_leave_sent", todayStr);
+      localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
       await setDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]), {
         lastSentDate: todayStr,
         sentAt: new Date().toISOString()
       }, { merge: true });
     } catch (e) {
-      console.warn("Failed to record briefing date:", e);
+      console.warn("Failed to record morning briefing date:", e);
     }
   }
 
   return sendResult;
 };
 
+// Backward-compatible alias
+export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
+
 /**
- * Check and Auto-Send Daily 7:00 AM Briefing
+ * Check and Auto-Send Daily 07:30 AM Morning Briefing
  */
-export const checkAndAutoSendDailyLeaveBriefing = async () => {
+export const checkAndAutoSendDailyMorningBriefing = async () => {
   const now = new Date();
   const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
   const todayStr = now.toISOString().split("T")[0];
 
-  // Only auto-trigger after 7:00 AM (07:00+)
-  if (currentHour < 7) {
-    return { skipped: true, reason: "BEFORE_07_AM" };
+  // Only auto-trigger at 07:30 AM or later (07:30+)
+  if (currentHour < 7 || (currentHour === 7 && currentMinute < 30)) {
+    return { skipped: true, reason: "BEFORE_07_30_AM" };
   }
 
   // Check if already sent today
-  const lastLocal = localStorage.getItem("oryuk_last_daily_leave_sent");
+  const lastLocal = localStorage.getItem("oryuk_last_morning_briefing_sent");
   if (lastLocal === todayStr) {
     return { skipped: true, reason: "ALREADY_SENT_TODAY_LOCAL" };
   }
@@ -377,16 +414,18 @@ export const checkAndAutoSendDailyLeaveBriefing = async () => {
   try {
     const snap = await getDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]));
     if (snap.exists() && snap.data().lastSentDate === todayStr) {
-      localStorage.setItem("oryuk_last_daily_leave_sent", todayStr);
+      localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
       return { skipped: true, reason: "ALREADY_SENT_TODAY_CLOUD" };
     }
   } catch (e) {
-    console.warn("Briefing check cloud read error:", e);
+    console.warn("Morning briefing check cloud read error:", e);
   }
 
-  console.log(`⏰ [07:00 Daily Briefing] Auto-sending morning leave briefing for ${todayStr}...`);
-  return await sendDailyLeaveBriefingTelegram(todayStr);
+  console.log(`⏰ [07:30 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
+  return await sendDailyMorningBriefingTelegram(todayStr);
 };
+
+export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
  * Test Connection Function
@@ -404,7 +443,7 @@ export const testTelegramConnection = async (token, chatId) => {
 
 • 🚨 <b>품질경보:</b> 작성 즉시 / 조치 즉시 / 삭제 즉시
 • 📑 <b>전자결재:</b> 기안 상신 / 승인 / 반려 / 보류
-• 🌅 <b>일일근태:</b> 매일 오전 07:00 출근 및 연차 현황
+• 🌅 <b>모닝브리핑:</b> 매일 07:30 (연차 + 미결재 + 품질경보 미삭제)
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();

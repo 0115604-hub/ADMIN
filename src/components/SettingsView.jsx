@@ -138,7 +138,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                현장에서 품질경보(🚨) 등록 또는 조치완료(✅) 시 지정된 텔레그램 채팅방으로 자동 알림을 전송합니다.
+                품질경보 즉시발송(등록/조치/삭제), 전자결재 실시간 알림, 매일 아침 07:30 통합 모닝브리핑을 전송합니다.
               </p>
             </div>
           </div>
@@ -179,17 +179,17 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
             <div className="space-y-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                수신 Chat ID (개인 또는 그룹방 ID)
+                수신 Chat ID (단톡방/개인 Chat ID)
               </label>
               <input
                 type="text"
-                placeholder="예: -1001234567890 또는 12345678"
+                placeholder="예: -5417404489 또는 -100..."
                 value={telegramConfig.chatId || ""}
                 onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                알림을 받을 채팅방 ID (그룹방은 보통 -100으로 시작)
+                알림을 받을 채팅방 ID (단톡방은 음수 ID)
               </p>
             </div>
           </div>
@@ -197,13 +197,13 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
           {/* Guide Box */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 text-xs space-y-1 text-slate-700 dark:text-slate-300">
             <p className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1">
-              <span>💡 1분 텔레그램 봇 생성 및 Chat ID 확인 방법:</span>
+              <span>💡 텔레그램 봇 및 그룹방 연동 가이드:</span>
             </p>
             <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
-              <li>텔레그램 검색창에 <strong>@BotFather</strong> 검색 후 대화 시작 ➜ <code>/newbot</code> 입력</li>
-              <li>봇 이름과 사용자명(예: <code>oryuk_mes_bot</code>)을 설정하면 <strong>HTTP API Token</strong>이 발급됩니다.</li>
-              <li>생성된 봇을 대화방(또는 알림을 받을 그룹방)에 초대하고 메시지를 하나 보냅니다.</li>
-              <li><strong>@GetIDsBot</strong> 또는 <strong>@userinfobot</strong>을 방에 초대하거나 검색하여 <strong>Chat ID</strong>를 확인합니다.</li>
+              <li>현재 <strong>@oryuk_alert_bot (오륙MES알림)</strong>이 설정되어 있습니다.</li>
+              <li>임직원 단톡방에 봇을 멤버로 초대한 뒤 위의 [테스트 발송]을 누르면 연동이 확인됩니다.</li>
+              <li><strong>매일 아침 07:30</strong>: 연차자 명단 + 전일 미결재 + 품질경보 미삭제 현황 자동 전송</li>
+              <li><strong>실시간</strong>: 품질경보 발생/조치/삭제, 전자결재 상신/승인/반려/보류 즉시 전송</li>
             </ol>
           </div>
 
@@ -217,7 +217,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
               {testResult.success ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>✅ 텔레그램 테스트 메시지가 성공적으로 전송되었습니다! (설정이 자동 저장되었습니다)</span>
+                  <span>✅ 텔레그램 테스트 메시지가 성공적으로 전송되었습니다!</span>
                 </>
               ) : (
                 <>
@@ -246,10 +246,10 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 disabled={sendingBriefing}
                 onClick={handleSendDailyLeaveBriefing}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                title="매일 아침 7시에 자동 전송되는 금일 작업자 연차 및 근태 현황을 지금 즉시 전송합니다"
+                title="매일 아침 7시 30분에 자동 전송되는 금일 모닝 브리핑(연차+미결재+품질경보)을 지금 즉시 전송합니다"
               >
                 <span>🌅</span>
-                <span>{sendingBriefing ? "브리핑 전송 중..." : "오늘 연차현황 즉시 발송"}</span>
+                <span>{sendingBriefing ? "브리핑 전송 중..." : "오늘 모닝 브리핑 즉시 발송"}</span>
               </button>
             </div>
 
