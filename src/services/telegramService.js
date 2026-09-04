@@ -7,8 +7,8 @@ const CONFIG_DOC_PATH = ["system_config", "telegram"];
 // Default Configuration
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
-  botToken: "", // Will be filled with user's bot token
-  chatId: "",   // Target chat or group chat ID
+  botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
+  chatId: "-5417404489",
   sendQualityAlerts: true,
   sendActionReports: true
 };
