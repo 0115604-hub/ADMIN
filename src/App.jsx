@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { ArrowUp } from "lucide-react";
 import { Sidebar, ADMIN_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
@@ -40,6 +41,7 @@ export const App = () => {
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showTopBtn, setShowTopBtn] = useState(false);
 
   // Sync default tab and always reset to current month (당월) upon user login
   useEffect(() => {
@@ -50,6 +52,28 @@ export const App = () => {
       }
     }
   }, [currentProfile?.id]);
+
+  // Scroll to top on active tab change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [activeTab]);
+
+  // Track window scroll position for floating Top button
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 280) {
+        setShowTopBtn(true);
+      } else {
+        setShowTopBtn(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   // Load data
   const loadData = async (forceRefresh = false) => {
@@ -180,7 +204,7 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-3 sm:p-6 lg:p-6 flex-1 overflow-y-auto">
+        <main className="p-3 sm:p-6 lg:p-6 flex-1">
           {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
@@ -296,6 +320,18 @@ export const App = () => {
           )}
         </main>
       </div>
+
+      {/* Floating Scroll-to-Top Button */}
+      {showTopBtn && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-40 p-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-1.5 text-xs font-black cursor-pointer animate-fadeIn border border-blue-400/40"
+          title="맨 위로 이동"
+        >
+          <ArrowUp className="w-4 h-4" />
+          <span>TOP</span>
+        </button>
+      )}
 
       {/* Transaction Add/Edit Modal (Admin Only) */}
       {isAdmin && (

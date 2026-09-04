@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   FileCheck2,
   FileSignature,
@@ -26,7 +26,13 @@ import {
   Crown,
   Lock,
   ArrowRight,
-  Users
+  Users,
+  Image as ImageIcon,
+  Camera,
+  Eye,
+  Download,
+  ZoomIn,
+  UploadCloud
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
@@ -42,6 +48,53 @@ import {
   APPROVAL_MANAGERS
 } from "../services/approvalService";
 
+// Client-side instant image compression (keeps Firestore & storage fast & light)
+const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve({
+          id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          size: (dataUrl.length * (3 / 4) / 1024).toFixed(1) + " KB",
+          dataUrl
+        });
+      };
+      img.onerror = () => {
+        resolve({
+          id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + " KB",
+          dataUrl: event.target.result
+        });
+      };
+    };
+  });
+};
+
 export const ElectronicApprovalView = () => {
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
@@ -56,6 +109,12 @@ export const ElectronicApprovalView = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [holdReason, setHoldReason] = useState("");
   const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
+  const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
+
+  // Draft Images State
+  const fileInputRef = useRef(null);
+  const [imageDragActive, setImageDragActive] = useState(false);
+  const [isProcessingImages, setIsProcessingImages] = useState(false);
 
   // All eligible workers for Drafter dropdown (전작업자 기안 가능)
   const allWorkers = useMemo(() => {
@@ -81,7 +140,8 @@ export const ElectronicApprovalView = () => {
     ceoName: "대표이사", // Step 4 (대표)
     title: "",
     content: "",
-    amount: ""
+    amount: "",
+    images: []
   });
 
   // Real-time Cloud Synchronization
@@ -183,6 +243,56 @@ export const ElectronicApprovalView = () => {
     return checkApprovalPermission(selectedDoc, currentProfile, isAdmin);
   }, [selectedDoc, currentProfile, isAdmin]);
 
+  // Image upload and drag handlers for draft form
+  const handleImageFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    setIsProcessingImages(true);
+    try {
+      const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (validFiles.length === 0) {
+        alert("이미지 파일(JPG, PNG, GIF, WebP 등)만 첨부할 수 있습니다.");
+        setIsProcessingImages(false);
+        return;
+      }
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setDraftForm((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...processed].slice(0, 10)
+      }));
+    } catch (err) {
+      console.error("Image processing error:", err);
+      alert("사진 첨부 중 오류가 발생했습니다.");
+    } finally {
+      setIsProcessingImages(false);
+    }
+  };
+
+  const handleImageDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setImageDragActive(true);
+    } else if (e.type === "dragleave") {
+      setImageDragActive(false);
+    }
+  };
+
+  const handleImageDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setImageDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleImageFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleRemoveDraftImage = (idx) => {
+    setDraftForm((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== idx)
+    }));
+  };
+
   // Handle Save Draft (전작업자 작성 가능)
   const handleSaveDraft = async (e) => {
     e.preventDefault();
@@ -222,9 +332,10 @@ export const ElectronicApprovalView = () => {
       ceoName: "대표이사",
       title: "",
       content: "",
-      amount: ""
+      amount: "",
+      images: []
     });
-    alert("결재 기안서가 성공적으로 상신되었습니다.");
+    alert("결재 기안서(사진 첨부 포함)가 성공적으로 상신되었습니다.");
   };
 
   // Handle Approve Step (직급/대표 권한 체크)
@@ -855,6 +966,49 @@ export const ElectronicApprovalView = () => {
               </p>
             </div>
 
+            {/* Attached Photos View Section */}
+            {selectedDoc.images && selectedDoc.images.length > 0 && (
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-emerald-600" />
+                    <span>첨부 사진 및 현장 증빙자료 ({selectedDoc.images.length}장)</span>
+                  </span>
+                  <span className="text-[10.5px] text-slate-400">클릭하여 확대 및 다운로드</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {selectedDoc.images.map((img, idx) => (
+                    <div
+                      key={img.id || idx}
+                      onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진_${idx + 1}` })}
+                      className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 bg-white dark:bg-slate-900 transition-all shadow-xs flex flex-col"
+                    >
+                      <div className="relative aspect-video sm:aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <img
+                          src={img.dataUrl}
+                          alt={img.name || `첨부사진 ${idx + 1}`}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="px-2 py-1 rounded-lg bg-slate-900/80 text-white text-[10px] font-bold flex items-center gap-1">
+                            <ZoomIn className="w-3 h-3" />
+                            <span>확대보기</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-1.5 px-2 bg-white dark:bg-slate-900 text-[10px] flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-[90px]">
+                          {img.name || `사진 ${idx + 1}`}
+                        </span>
+                        <span className="text-slate-400 font-mono text-[9px]">{img.size || ""}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Hold Reason Box */}
             {selectedDoc.holdReason && (
               <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs space-y-1">
@@ -1198,6 +1352,103 @@ export const ElectronicApprovalView = () => {
                 ></textarea>
               </div>
 
+              {/* 사진 및 현장 증빙자료 첨부 (선택) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 text-xs">
+                    <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>사진 및 현장 증빙자료 첨부 (선택)</span>
+                  </label>
+                  <span className="text-[10.5px] text-slate-400 font-medium">
+                    {draftForm.images?.length || 0}/10장 첨부됨
+                  </span>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleImageFiles(e.target.files)}
+                />
+
+                {/* Drag & Drop Upload Zone */}
+                <div
+                  onDragEnter={handleImageDrag}
+                  onDragOver={handleImageDrag}
+                  onDragLeave={handleImageDrag}
+                  onDrop={handleImageDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
+                    imageDragActive
+                      ? "border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 scale-[1.01]"
+                      : "border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/50 hover:border-emerald-400 hover:bg-emerald-50/20"
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shadow-xs">
+                    {isProcessingImages ? (
+                      <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Camera className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      {isProcessingImages ? "사진 압축 및 처리 중..." : "사진을 드래그하거나 클릭하여 첨부하세요"}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      스마트폰 현장 사진, 영수증, 설비 고장/수리 부위 등 (JPG, PNG, WebP 지원)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Attached Image Thumbnails */}
+                {draftForm.images && draftForm.images.length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1">
+                    {draftForm.images.map((img, idx) => (
+                      <div
+                        key={img.id || idx}
+                        className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs"
+                      >
+                        <img
+                          src={img.dataUrl}
+                          alt={img.name || `첨부사진 ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewImageModal({ url: img.dataUrl, name: img.name });
+                            }}
+                            className="p-1 rounded-lg bg-white/90 text-slate-800 hover:bg-white shadow-xs"
+                            title="크게보기"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveDraftImage(idx);
+                            }}
+                            className="p-1 rounded-lg bg-rose-600 text-white hover:bg-rose-700 shadow-xs"
+                            title="삭제"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <span className="absolute bottom-1 left-1 right-1 px-1 py-0.5 rounded bg-slate-900/70 text-white text-[9px] truncate text-center font-mono">
+                          {img.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* 자동 결재선 지정 (담당: 전작업자, 책임: 책임직급, 이사: 이명재, 대표: 대표이사) */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -1273,6 +1524,47 @@ export const ElectronicApprovalView = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox / High-Res Image Preview Modal */}
+      {previewImageModal && (
+        <div
+          className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn"
+          onClick={() => setPreviewImageModal(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col items-center justify-center p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between px-4 py-2 border-b border-slate-800 text-white text-xs">
+              <span className="font-bold truncate max-w-[240px] sm:max-w-md">{previewImageModal.name || "첨부 사진 확대"}</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImageModal.url}
+                  download={previewImageModal.name || "첨부사진.jpg"}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition-all"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>다운로드</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageModal(null)}
+                  className="p-1 text-slate-400 hover:text-white text-sm font-black"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="p-2 overflow-auto max-h-[80vh] flex items-center justify-center">
+              <img
+                src={previewImageModal.url}
+                alt={previewImageModal.name}
+                className="max-w-full max-h-[76vh] object-contain rounded-xl shadow-md"
+              />
+            </div>
           </div>
         </div>
       )}

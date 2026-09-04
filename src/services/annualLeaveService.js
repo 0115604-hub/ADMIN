@@ -220,6 +220,16 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800"
     };
   }
+  if (type.includes("RNA 회의") || type.includes("RNA")) {
+    return {
+      type: "RNA 회의",
+      emoji: "👔",
+      activeLabel: "RNA 회의",
+      scheduledLabelPrefix: "RNA 회의예정",
+      activeBadge: "bg-purple-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
+    };
+  }
   if (type.includes("외출")) {
     return {
       type: "외출",

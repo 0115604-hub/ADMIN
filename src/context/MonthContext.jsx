@@ -40,11 +40,20 @@ export const getCurrentYearMonth = () => {
   return `${year}-${month}`;
 };
 
+// Helper: Get Year-Month offset (e.g. offset = 1 returns next month "2026-10")
+export const getOffsetYearMonth = (offset = 1) => {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+};
+
 export const CURRENT_DEFAULT_MONTH = getCurrentYearMonth();
 
-// Generate list of months starting from current month going back
+// Generate list of months starting from current login month (당월) going back
 export const generateDefaultMonthList = () => {
-  const currentYM = getCurrentYearMonth();
+  const currentYM = getCurrentYearMonth(); // 당월 (예: 2026-09)
   const [currentYear, currentMonth] = currentYM.split("-").map(Number);
   const months = [];
 

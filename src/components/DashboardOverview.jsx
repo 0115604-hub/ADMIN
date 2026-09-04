@@ -416,7 +416,7 @@ export const DashboardOverview = ({
                     <div className={`w-9 h-9 rounded-2xl text-white flex items-center justify-center font-black text-xs shadow-sm ${
                       isHallim ? "bg-emerald-600" : "bg-amber-500"
                     }`}>
-                      {log.writer[0]}
+                      {log.writer ? log.writer[0] : "작"}
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">

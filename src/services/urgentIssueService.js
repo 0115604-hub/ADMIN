@@ -1,4 +1,4 @@
-﻿import {
+import {
   collection,
   doc,
   setDoc,
@@ -11,14 +11,14 @@ import { db } from "../firebase";
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 
-// Initial urgent issue samples (Fixed as "긴급공지" + with "전달내용" and "조치결과")
+// Initial urgent issue samples (Fixed as "품질경보" and "공지사항" + with "전달내용" and "조치결과")
 export const INITIAL_URGENT_ISSUES = [
   {
     id: "issue_init_1",
     plant: "삼랑진공장",
     author: "방상국",
     authorTitle: "선임",
-    category: "긴급공지",
+    category: "품질경보",
     title: "압출 2호기 히터 온도 점검 요망",
     content: "압출 2호기 금형 히터 온도 센서 이상 경보 발생. 교대 작업 전 사전 예열 상태 및 온도 확인 필수",
     actionResult: "센서 커넥터 재체결 및 예열 온도 정상치(180℃) 도달 확인 완료 (가동 재개)",
@@ -32,7 +32,7 @@ export const INITIAL_URGENT_ISSUES = [
     plant: "한림공장",
     author: "우창용",
     authorTitle: "선임",
-    category: "긴급공지",
+    category: "공지사항",
     title: "CHANNEL 밴딩 라인 신규 원료 투입",
     content: "오후 출하 물량 대응을 위해 신규 원재료 로트 투입 완료. 초품 치수 검사 철저히 진행 요망",
     actionResult: "",
@@ -121,7 +121,7 @@ export const saveUrgentIssue = async (issueData) => {
   const fullItem = {
     ...issueData,
     id,
-    category: "긴급공지",
+    category: issueData.category || "품질경보",
     actionResult: issueData.actionResult || "",
     actionAuthor: issueData.actionAuthor || "",
     actionAt: issueData.actionAt || "",

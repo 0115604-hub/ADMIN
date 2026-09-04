@@ -214,7 +214,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
   return (
     <>
       {/* Desktop Fixed Sidebar */}
-      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200 min-h-screen">
+      <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col justify-between hidden md:flex shrink-0 transition-colors duration-200 sticky top-0 h-screen overflow-y-auto">
         {sidebarContent}
       </aside>
 

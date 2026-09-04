@@ -60,6 +60,7 @@ export const AuthModal = () => {
 
   // New Issue Form State
   const [newIssueForm, setNewIssueForm] = useState({
+    category: "품질경보",
     plant: "삼랑진공장",
     author: "방상국",
     authorTitle: "선임",
@@ -125,7 +126,7 @@ export const AuthModal = () => {
     }
   };
 
-  // Submit New Urgent Issue
+  // Submit New Urgent Issue (품질경보: 기존색상 / 공유사항: 녹색)
   const handleSaveNewIssue = async (e) => {
     e.preventDefault();
     if (!newIssueForm.title.trim()) {
@@ -140,13 +141,14 @@ export const AuthModal = () => {
     const hasAction = Boolean(newIssueForm.actionResult && newIssueForm.actionResult.trim());
     await saveUrgentIssue({
       ...newIssueForm,
-      category: "긴급공지",
+      category: newIssueForm.category || "품질경보",
       actionAuthor: hasAction ? (newIssueForm.actionAuthor || newIssueForm.author) : "",
       actionAt: hasAction ? new Date().toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\. /g, "-").replace(/\./g, "") : "",
       isResolved: hasAction
     });
 
     setNewIssueForm({
+      category: "품질경보",
       plant: "삼랑진공장",
       author: "방상국",
       authorTitle: "선임",
@@ -157,6 +159,14 @@ export const AuthModal = () => {
     });
     setIsIssueModalOpen(false);
   };
+
+  // Delete Issue Authorization Modal State (삼랑진공장: 이명재 / 한림공장: 김동욱 권한 부여)
+  const [deleteModalData, setDeleteModalData] = useState({
+    isOpen: false,
+    issue: null,
+    pinInput: "",
+    errorMsg: ""
+  });
 
   // Open Action Result Modal
   const handleOpenActionModal = (issue, e) => {
@@ -169,7 +179,7 @@ export const AuthModal = () => {
     });
   };
 
-  // Save Action Result
+  // Save Action Result (누구나 작성 및 수정 가능)
   const handleSaveActionResult = async (e) => {
     e.preventDefault();
     if (!actionModalData.issue) return;
@@ -198,13 +208,59 @@ export const AuthModal = () => {
     });
   };
 
-  // Delete Urgent Issue
-  const handleDeleteIssue = async (id, e) => {
+  // Open Delete Authority Modal (삭제는 삼랑진공장: 이명재, 한림공장: 김동욱에게만 권한 부여)
+  const handleOpenDeleteModal = (issue, e) => {
     if (e) e.stopPropagation();
-    if (window.confirm("이 긴급공지 항목을 삭제하시겠습니까?")) {
-      const updated = await deleteUrgentIssue(id);
-      setUrgentIssues(updated);
+    setDeleteModalData({
+      isOpen: true,
+      issue,
+      pinInput: "",
+      errorMsg: ""
+    });
+  };
+
+  // Confirm Delete with Authority Verification
+  const handleConfirmDelete = async (e) => {
+    e.preventDefault();
+    const issue = deleteModalData.issue;
+    if (!issue) return;
+
+    const plant = issue.plant;
+    const inputPin = deleteModalData.pinInput.trim();
+
+    // Authority Rules:
+    // 삼랑진공장: 이명재 이사 (PIN: 11) or ADMIN (PIN: 0090)
+    // 한림공장: 김동욱 책임 (PIN: 11) or ADMIN (PIN: 0090)
+    let isAuthorized = false;
+    let expectedManager = "";
+
+    if (plant === "삼랑진공장") {
+      expectedManager = "이명재 이사";
+      isAuthorized = (inputPin === "11" || inputPin === "0090");
+    } else if (plant === "한림공장") {
+      expectedManager = "김동욱 책임";
+      isAuthorized = (inputPin === "11" || inputPin === "0090");
+    } else {
+      expectedManager = "이명재 이사 또는 김동욱 책임";
+      isAuthorized = (inputPin === "11" || inputPin === "0090");
     }
+
+    if (!isAuthorized) {
+      setDeleteModalData((prev) => ({
+        ...prev,
+        errorMsg: `삭제 권한이 없습니다. (${expectedManager}의 확인 PIN 번호가 일치하지 않습니다.)`
+      }));
+      return;
+    }
+
+    const updated = await deleteUrgentIssue(issue.id);
+    setUrgentIssues(updated);
+    setDeleteModalData({
+      isOpen: false,
+      issue: null,
+      pinInput: "",
+      errorMsg: ""
+    });
   };
 
   // All workers list for author dropdown
@@ -258,7 +314,7 @@ export const AuthModal = () => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 📢 ⭐ [요청사항 반영] 로그인 상단 긴급공지 패널 (깔끔한 2줄 요약 형태) */}
+          {/* 📢 ⭐ [요청사항 반영] 로그인 상단 품질경보 및 공지사항 패널 (깔끔한 2줄 요약 형태) */}
           {/* ========================================================================= */}
           <div className="mb-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-sm overflow-hidden transition-all">
             {/* Panel Top Bar */}
@@ -268,7 +324,7 @@ export const AuthModal = () => {
                   <Megaphone className="w-3 h-3" />
                 </div>
                 <h3 className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>공장 긴급공지 및 전달사항</span>
+                  <span>품질경보 및 공지사항</span>
                 </h3>
 
                 <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${
@@ -288,16 +344,16 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={() => setIsIssueModalOpen(true)}
-                  className="px-2 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[10.5px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[10.5px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
                 >
                   <Plus className="w-3 h-3" />
-                  <span>+ 공지등록</span>
+                  <span>+ 등록</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setIsIssueExpanded((prev) => !prev)}
-                  className="p-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                  className="p-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
                 >
                   {isIssueExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                 </button>
@@ -309,62 +365,72 @@ export const AuthModal = () => {
               <div className="p-2 sm:p-2.5 space-y-2 max-h-60 overflow-y-auto">
                 {urgentIssues.length === 0 ? (
                   <div className="py-3 text-center text-xs text-slate-400 dark:text-slate-500 font-bold">
-                    현재 등록된 긴급공지가 없습니다.
+                    현재 등록된 품질경보 및 공지사항이 없습니다.
                   </div>
                 ) : (
-                  urgentIssues.map((item) => (
-                    <div
-                      key={item.id}
-                      className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs ${
-                        item.isResolved
-                          ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
-                          : "bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/80 ring-1 ring-rose-400/20"
-                      }`}
-                    >
-                      {/* 1번째 줄: [긴급공지] [공장] 전달내용 (작성자 시간) + [조치상태] [삭제] */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-rose-600 text-white shrink-0">
-                            긴급공지
-                          </span>
-                          <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
-                            item.plant === "한림공장"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                              : item.plant === "삼랑진공장"
-                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
-                              : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                          }`}>
-                            {item.plant}
-                          </span>
-                          <span className="font-black text-slate-900 dark:text-white truncate text-[11.5px]">
-                            {item.content || item.title}
-                          </span>
-                          <span className="text-[10px] text-slate-400 shrink-0 font-medium hidden sm:inline">
-                            ({item.author} • {item.createdAt})
-                          </span>
-                        </div>
+                  urgentIssues.map((item) => {
+                    const isNotice = item.category === "공지사항" || item.category === "공유사항";
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs ${
+                          item.isResolved
+                            ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
+                            : isNotice
+                            ? "bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/25"
+                            : "bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/80 ring-1 ring-rose-400/20"
+                        }`}
+                      >
+                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [조치상태] [삭제] */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            {isNotice ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-600 text-white shrink-0 shadow-xs">
+                                공지사항
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-rose-600 text-white shrink-0 shadow-xs">
+                                품질경보
+                              </span>
+                            )}
+                            <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
+                              item.plant === "한림공장"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                : item.plant === "삼랑진공장"
+                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                                : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                            }`}>
+                              {item.plant}
+                            </span>
+                            <span className="font-black text-slate-900 dark:text-white truncate text-[11.5px]">
+                              {item.content || item.title}
+                            </span>
+                            <span className="text-[10px] text-slate-400 shrink-0 font-medium hidden sm:inline">
+                              ({item.author} • {item.createdAt})
+                            </span>
+                          </div>
 
-                        {/* Right: Status & Delete */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          {item.isResolved ? (
-                            <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                              ✓완료
-                            </span>
-                          ) : (
-                            <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                              ⏳대기
-                            </span>
-                          )}
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteIssue(item.id, e)}
-                            className="p-0.5 text-slate-300 hover:text-rose-500 transition-colors"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Right: Status & Delete */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {item.isResolved ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                ✓완료
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                ⏳대기
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenDeleteModal(item, e)}
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                              title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
 
                       {/* 2번째 줄: └ ✓ 조치: [조치내용] (조치자 시간) + [조치입력/수정] */}
                       <div className="flex items-center justify-between gap-2 pl-1">
@@ -404,7 +470,8 @@ export const AuthModal = () => {
                         </button>
                       </div>
                     </div>
-                  ))
+                  );
+                })
                 )}
               </div>
             )}
@@ -664,7 +731,7 @@ export const AuthModal = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 1. 긴급공지 등록 팝업 모달 (작업자 등록 창) */}
+      {/* 🌟 1. 품질이슈 및 공유사항 등록 팝업 모달 (작업자 등록 창) */}
       {/* ========================================================================= */}
       {isIssueModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn overflow-y-auto">
@@ -676,7 +743,7 @@ export const AuthModal = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    공장 긴급공지 및 이슈 등록
+                    품질경보 및 공지사항 등록
                   </h3>
                   <p className="text-xs text-slate-400">
                     로그인 화면 상단에 실시간으로 전파됩니다.
@@ -686,7 +753,7 @@ export const AuthModal = () => {
               <button
                 type="button"
                 onClick={() => setIsIssueModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -695,14 +762,34 @@ export const AuthModal = () => {
             <form onSubmit={handleSaveNewIssue} className="space-y-4 text-xs">
               {/* 구분 & 공장 */}
               <div className="grid grid-cols-2 gap-3">
-                {/* 유형 (고정: 긴급공지) */}
+                {/* 이슈 구분 선택: 품질경보 (기존 붉은색) vs 공지사항 (녹색) */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    공지 구분
+                    구분
                   </label>
-                  <div className="w-full px-3 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 font-black text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
-                    <Megaphone className="w-3.5 h-3.5" />
-                    <span>📢 긴급공지</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setNewIssueForm({ ...newIssueForm, category: "품질경보" })}
+                      className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
+                        newIssueForm.category === "품질경보"
+                          ? "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-1 ring-rose-500/30"
+                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      <span>🚨 품질경보</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewIssueForm({ ...newIssueForm, category: "공지사항" })}
+                      className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
+                        newIssueForm.category === "공지사항"
+                          ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/30"
+                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      <span>📢 공지사항</span>
+                    </button>
                   </div>
                 </div>
 
@@ -748,10 +835,10 @@ export const AuthModal = () => {
                 </select>
               </div>
 
-              {/* 이슈 제목 */}
+              {/* 제목 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  공지 / 이슈 제목
+                  제목
                 </label>
                 <input
                   type="text"
@@ -797,16 +884,16 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={() => setIsIssueModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-black shadow-md shadow-rose-500/25 active:scale-95 transition-all flex items-center gap-1.5"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-black shadow-md shadow-rose-500/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Send className="w-4 h-4" />
-                  <span>긴급공지 즉시 등록</span>
+                  <span>등록</span>
                 </button>
               </div>
             </form>
@@ -830,7 +917,7 @@ export const AuthModal = () => {
                     조치결과 입력 및 조치완료 처리
                   </h3>
                   <p className="text-xs text-slate-400">
-                    해당 공지에 대한 조치 완료 결과를 기록합니다.
+                    해당 품질경보 및 공지사항에 대한 조치 완료 결과를 기록합니다.
                   </p>
                 </div>
               </div>
@@ -897,16 +984,127 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-1.5"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   <span>조치결과 저장 및 완료</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 3. 공장 품질경보 및 공지사항 삭제 전용 권한 확인 모달 (이명재 / 김동욱 권한 검증) */}
+      {/* ========================================================================= */}
+      {deleteModalData.isOpen && deleteModalData.issue && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs">
+                  <Shield className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    품질경보 및 공지사항 삭제 권한 확인
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    공장별 총괄관리자 전용 삭제 인증
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Target Issue Info Card */}
+            <div className="p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/60 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                  deleteModalData.issue.plant === "한림공장"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                }`}>
+                  {deleteModalData.issue.plant}
+                </span>
+                <span className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                  작성자: {deleteModalData.issue.author} ({deleteModalData.issue.createdAt})
+                </span>
+              </div>
+              <div className="font-black text-slate-900 dark:text-white truncate pt-1">
+                {deleteModalData.issue.title || deleteModalData.issue.content}
+              </div>
+            </div>
+
+            {/* Authority Notice */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-black">
+                <Crown className="w-3.5 h-3.5 text-amber-500" />
+                <span>
+                  {deleteModalData.issue.plant === "한림공장"
+                    ? "한림공장 삭제 권한자: 김동욱 책임"
+                    : deleteModalData.issue.plant === "삼랑진공장"
+                    ? "삼랑진공장 삭제 권한자: 이명재 이사"
+                    : "삭제 권한자: 총괄관리자 (이명재 이사 / 김동욱 책임)"}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                삭제를 진행하려면 해당 총괄관리자의 확인 PIN을 입력해 주세요.
+              </p>
+            </div>
+
+            {/* PIN Input Form */}
+            <form onSubmit={handleConfirmDelete} className="space-y-3 pt-1">
+              <div>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs">
+                  총괄관리자 확인 PIN (2자리)
+                </label>
+                <input
+                  type="password"
+                  maxLength={6}
+                  required
+                  autoFocus
+                  placeholder="PIN 번호 입력"
+                  value={deleteModalData.pinInput}
+                  onChange={(e) => setDeleteModalData({ ...deleteModalData, pinInput: e.target.value, errorMsg: "" })}
+                  className="w-full text-center tracking-widest text-lg font-mono font-black px-4 py-2.5 rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-rose-600 shadow-xs"
+                />
+              </div>
+
+              {deleteModalData.errorMsg && (
+                <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-xs font-bold text-center animate-shake flex items-center justify-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{deleteModalData.errorMsg}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 text-xs cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs shadow-md shadow-rose-500/25 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>권한 인증 후 삭제</span>
                 </button>
               </div>
             </form>
