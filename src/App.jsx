@@ -28,6 +28,7 @@ import {
   deleteTransaction,
   clearAllTransactions
 } from "./services/dbService";
+import { checkAndAutoSendDailyLeaveBriefing } from "./services/telegramService";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
@@ -95,6 +96,12 @@ export const App = () => {
 
   useEffect(() => {
     loadData();
+    // Daily 07:00 AM Leave Briefing Check
+    checkAndAutoSendDailyLeaveBriefing();
+    const timer = setInterval(() => {
+      checkAndAutoSendDailyLeaveBriefing();
+    }, 60000); // Check every 60 seconds
+    return () => clearInterval(timer);
   }, []);
 
   // Save Transaction

@@ -12,6 +12,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { sendWorkLogApprovedTelegram } from "./telegramService";
 
 export const INITIAL_WORK_LOGS = [];
 
@@ -257,6 +258,11 @@ export const approveWorkLog = async (id, approver = {}) => {
   } catch (e) {
     console.error("Firestore approve sync error:", e);
   }
+
+  // Telegram notification on work log approval
+  sendWorkLogApprovedTelegram(updatedLog, approver).catch((err) => {
+    console.warn("Telegram work log approval alert error:", err);
+  });
 
   return updatedLocal;
 };

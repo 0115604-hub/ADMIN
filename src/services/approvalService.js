@@ -7,6 +7,12 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
+import {
+  sendApprovalDraftTelegram,
+  sendApprovalStepTelegram,
+  sendApprovalHoldTelegram,
+  sendApprovalRejectTelegram
+} from "./telegramService";
 
 const COLLECTION_NAME = "approval_documents";
 const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v2";
@@ -399,6 +405,13 @@ export const saveApprovalDocument = async (docData) => {
     console.warn("Firestore save approval document fallback to local:", e);
   }
 
+  // Telegram alert on new draft submission
+  if (existingIdx < 0) {
+    sendApprovalDraftTelegram(fullItem).catch((err) => {
+      console.warn("Telegram draft alert error:", err);
+    });
+  }
+
   return fullItem;
 };
 
@@ -444,7 +457,14 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
     holdReason: ""
   });
 
-  return await saveApprovalDocument(updatedTarget);
+  const saved = await saveApprovalDocument(updatedTarget);
+
+  // Telegram notification on step approval
+  sendApprovalStepTelegram(updatedTarget, approverName, comment, isAllApproved).catch((err) => {
+    console.warn("Telegram approval step alert error:", err);
+  });
+
+  return saved;
 };
 
 // Hold Step (보류 처리)
@@ -482,7 +502,14 @@ export const holdDocumentStep = async (docId, stepIndex, holderName, holdReason)
     holdReason: holdReason || "검토 필요로 인한 보류"
   });
 
-  return await saveApprovalDocument(updatedTarget);
+  const saved = await saveApprovalDocument(updatedTarget);
+
+  // Telegram notification on hold
+  sendApprovalHoldTelegram(updatedTarget, holderName, holdReason).catch((err) => {
+    console.warn("Telegram hold alert error:", err);
+  });
+
+  return saved;
 };
 
 // Reject Step (반려 처리)
@@ -520,7 +547,14 @@ export const rejectDocumentStep = async (docId, stepIndex, rejectorName, rejectR
     rejectReason: rejectReason || "보완 필요 반려"
   });
 
-  return await saveApprovalDocument(updatedTarget);
+  const saved = await saveApprovalDocument(updatedTarget);
+
+  // Telegram notification on rejection
+  sendApprovalRejectTelegram(updatedTarget, rejectorName, rejectReason).catch((err) => {
+    console.warn("Telegram reject alert error:", err);
+  });
+
+  return saved;
 };
 
 // Delete Document

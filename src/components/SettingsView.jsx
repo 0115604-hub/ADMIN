@@ -21,7 +21,8 @@ import {
   getLocalTelegramConfig,
   saveTelegramConfig,
   subscribeTelegramConfig,
-  testTelegramConnection
+  testTelegramConnection,
+  sendDailyLeaveBriefingTelegram
 } from "../services/telegramService";
 
 export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
@@ -65,6 +66,26 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
       setTestResult({ success: false, error: err.message });
     } finally {
       setTestingTelegram(false);
+    }
+  };
+
+  const [sendingBriefing, setSendingBriefing] = useState(false);
+  const [briefingToast, setBriefingToast] = useState(false);
+
+  const handleSendDailyLeaveBriefing = async () => {
+    setSendingBriefing(true);
+    try {
+      const res = await sendDailyLeaveBriefingTelegram();
+      if (res.success) {
+        setBriefingToast(true);
+        setTimeout(() => setBriefingToast(false), 3000);
+      } else {
+        alert("전송 실패: " + (res.error || "설정을 확인해주세요."));
+      }
+    } catch (err) {
+      alert("오류 발생: " + err.message);
+    } finally {
+      setSendingBriefing(false);
     }
   };
 
@@ -209,17 +230,35 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-            <button
-              type="button"
-              disabled={testingTelegram}
-              onClick={handleTestTelegram}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Send className="w-3.5 h-3.5 text-sky-500" />
-              <span>{testingTelegram ? "전송 중..." : "테스트 메시지 발송"}</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                disabled={testingTelegram}
+                onClick={handleTestTelegram}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              >
+                <Send className="w-3.5 h-3.5 text-sky-500" />
+                <span>{testingTelegram ? "전송 중..." : "테스트 발송"}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={sendingBriefing}
+                onClick={handleSendDailyLeaveBriefing}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                title="매일 아침 7시에 자동 전송되는 금일 작업자 연차 및 근태 현황을 지금 즉시 전송합니다"
+              >
+                <span>🌅</span>
+                <span>{sendingBriefing ? "브리핑 전송 중..." : "오늘 연차현황 즉시 발송"}</span>
+              </button>
+            </div>
 
             <div className="flex items-center gap-2">
+              {briefingToast && (
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> 연차 브리핑 전송됨!
+                </span>
+              )}
               {savedConfigToast && (
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> 저장 완료!
