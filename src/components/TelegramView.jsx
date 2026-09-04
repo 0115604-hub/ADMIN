@@ -237,7 +237,7 @@ export const TelegramView = () => {
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 dark:text-white text-sm">
-                  🏭 일반 현장 알림 채널
+                  일반 현장 알림 채널
                 </h4>
                 <p className="text-[11px] text-slate-400">
                   단톡방: <strong>오륙 통합방</strong> (ID: <code>{telegramConfig.chatId || "미설정"}</code>)
@@ -250,7 +250,7 @@ export const TelegramView = () => {
           </div>
 
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-            🌅 <strong>일일 모닝브리핑</strong> (연차+미결재+품질경보미삭제) 및 🚨 <strong>품질경보/전자결재 실시간 알림</strong>이 전 임직원 방으로 전송됩니다.
+            <strong>일일 모닝브리핑</strong> (연차+미결재+품질경보미조치) 및 <strong>품질경보/전자결재 실시간 알림</strong>이 전 임직원 통합방으로 전송됩니다.
           </p>
 
           <div className="grid grid-cols-2 gap-2">
@@ -258,9 +258,8 @@ export const TelegramView = () => {
               type="button"
               disabled={sendingBriefing}
               onClick={handleSendDailyBriefing}
-              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
             >
-              <span>🌅</span>
               <span>{sendingBriefing ? "전송 중..." : "07:30 모닝브리핑"}</span>
             </button>
 
@@ -268,9 +267,8 @@ export const TelegramView = () => {
               type="button"
               disabled={sendingQuality}
               onClick={handleSendQualityAlertTest}
-              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+              className="flex items-center justify-center gap-1 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
             >
-              <span>🚨</span>
               <span>{sendingQuality ? "전송 중..." : "품질경보 테스트"}</span>
             </button>
           </div>

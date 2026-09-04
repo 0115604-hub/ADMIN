@@ -409,8 +409,10 @@ export const AuthModal = () => {
                 <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs">
                   <Megaphone className="w-3 h-3" />
                 </div>
-                <h3 className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>품질경보 및 공지사항</span>
+                <h3 className="font-black text-xs flex items-center gap-1.5">
+                  <span className="text-rose-600 dark:text-rose-400 font-black">품질경보</span>
+                  <span className="text-slate-400 font-bold">/</span>
+                  <span className="text-slate-800 dark:text-slate-200 font-bold">공지사항</span>
                 </h3>
 
                 <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${
@@ -500,8 +502,12 @@ export const AuthModal = () => {
                             }`}>
                               {item.plant}
                             </span>
-                            <span className="font-black text-slate-900 dark:text-white truncate text-[11.5px]">
-                              {item.content || item.title}
+                            <span className={`truncate text-[11.5px] ${
+                              !isNotice
+                                ? "font-black text-rose-600 dark:text-rose-400"
+                                : "font-black text-slate-900 dark:text-white"
+                            }`}>
+                              {item.title ? `${item.title} - ${item.content}` : item.content}
                             </span>
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium hidden sm:inline">
                               ({item.author} • {item.createdAt})
