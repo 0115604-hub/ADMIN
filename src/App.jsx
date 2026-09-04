@@ -14,6 +14,7 @@ import { ExtrusionDowntimeView } from "./components/ExtrusionDowntimeView";
 import { DailyQualityView } from "./components/DailyQualityView";
 import { OvertimeStatusView } from "./components/OvertimeStatusView";
 import { ElectronicApprovalView } from "./components/ElectronicApprovalView";
+import { TelegramView } from "./components/TelegramView";
 import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
@@ -317,6 +318,10 @@ export const App = () => {
 
                   {activeTab === "operator_workspace" && (
                     <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                  )}
+
+                  {activeTab === "telegram" && (
+                    <TelegramView />
                   )}
 
                   {activeTab === "settings" && (
