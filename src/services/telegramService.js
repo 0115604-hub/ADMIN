@@ -121,7 +121,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
 };
 
 /**
- * 1. 품질경보 / 공지사항 즉시 알림
+ * 1. 🚨 품질경보 / 📢 공지사항 즉시 알림 (시인성 극대화)
  */
 export const sendQualityAlertTelegram = async (issue) => {
   const isNotice = issue.category === "공지사항" || issue.category === "공유사항";
@@ -129,152 +129,176 @@ export const sendQualityAlertTelegram = async (issue) => {
   const headerTitle = isNotice ? "공지사항 등록" : "품질경보 발생";
 
   const message = `
-<b>${headerEmoji} [(주)오륙 ${headerTitle} 알림]</b>
-
+<b>${headerEmoji} [${headerTitle}]</b>
+━━━━━━━━━━━━━━━━━━━━
 🏭 <b>공장:</b> ${issue.plant || "삼랑진공장"}
 👤 <b>작성자:</b> ${issue.author} ${issue.authorTitle || "선임"}
 📅 <b>일시:</b> ${issue.createdAt || new Date().toLocaleString("ko-KR")}
+📌 <b>제목:</b> <b>${issue.title || "-"}</b>
 
-📌 <b>구분:</b> ${issue.category || (isNotice ? "공지사항" : "품질경보")}
-📌 <b>제목:</b> ${issue.title || "-"}
 📝 <b>전달내용:</b>
 ${issue.content || issue.title}
 ${issue.actionResult ? `\n🛠️ <b>조치결과:</b>\n${issue.actionResult} (${issue.actionAuthor || "조치자"})` : ""}
-
-🔗 <b>생산관리시스템 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
   return await sendTelegramMessage(message);
 };
 
 /**
- * 2. 품질경보 조치완료 즉시 알림
+ * 2. ✅ 품질경보 조치완료 즉시 알림 (시인성 극대화)
  */
 export const sendQualityActionTelegram = async (issue) => {
   const message = `
-<b>✅ [(주)오륙 품질경보 조치완료 보고]</b>
-
+<b>✅ [품질경보 조치완료 보고]</b>
+━━━━━━━━━━━━━━━━━━━━
 🏭 <b>공장:</b> ${issue.plant || "삼랑진공장"}
 👤 <b>조치자:</b> ${issue.actionAuthor || "작업자"}
-📅 <b>조치일시:</b> ${issue.actionAt || new Date().toLocaleString("ko-KR")}
+📅 <b>일시:</b> ${issue.actionAt || new Date().toLocaleString("ko-KR")}
+📌 <b>대상:</b> ${issue.title || issue.content}
 
-📌 <b>대상 이슈:</b> ${issue.title || issue.content}
 🛠️ <b>조치결과 상세:</b>
 ${issue.actionResult}
-
-🔗 <b>생산관리시스템 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
   return await sendTelegramMessage(message);
 };
 
 /**
- * 3. 전자결재 관련 즉시 알림 (기안 상신 / 결재 승인 / 보류 / 반려)
+ * 3. 🗑️ 품질경보 삭제/해제 즉시 알림 (시인성 극대화)
+ */
+export const sendQualityDeleteTelegram = async (issue, deleterName = "") => {
+  const isNotice = issue.category === "공지사항" || issue.category === "공유사항";
+  const itemType = isNotice ? "공지사항" : "품질경보";
+
+  const message = `
+<b>🗑️ [${itemType} 삭제/종결 알림]</b>
+━━━━━━━━━━━━━━━━━━━━
+🏭 <b>공장:</b> ${issue.plant || "삼랑진공장"}
+👤 <b>삭제권한자:</b> ${deleterName || "총괄관리자"}
+📅 <b>삭제일시:</b> ${new Date().toLocaleString("ko-KR")}
+📌 <b>삭제대상:</b> ${issue.title || issue.content}
+
+ℹ️ 해당 ${itemType} 항목이 시스템에서 삭제/종결 처리되었습니다.
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message);
+};
+
+/**
+ * 4. 📑 전자결재 기안 상신 즉시 알림
  */
 export const sendApprovalDraftTelegram = async (docItem) => {
-  const message = `
-<b>📑 [(주)오륙 전자결재 기안 상신]</b>
+  const nextApprover = docItem.steps?.find((s) => s.status === "PENDING")?.name || "책임/임원";
 
+  const message = `
+<b>📑 [전자결재 기안 상신]</b>
+━━━━━━━━━━━━━━━━━━━━
 🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"} (${docItem.department || "생산부"})
-📅 <b>상신일시:</b> ${docItem.createdAt || new Date().toLocaleString("ko-KR")}
-
-📌 <b>문서번호:</b> <code>${docItem.docNumber || docItem.id}</code>
 📝 <b>결재제목:</b> <b>${docItem.title}</b>
-📋 <b>기안내용 요약:</b>
-${docItem.content ? (docItem.content.length > 150 ? docItem.content.slice(0, 150) + "..." : docItem.content) : "-"}
+👉 <b>결재대기:</b> <b>${nextApprover}</b>
+📅 <b>일시:</b> ${docItem.createdAt || new Date().toLocaleString("ko-KR")}
 
-👉 <b>결재 대기자:</b> ${docItem.steps ? (docItem.steps.find((s) => s.status === "PENDING")?.name || "책임/임원") : "결재권자"}
-🔗 <b>전자결재 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
-`.trim();
-
-  return await sendTelegramMessage(message);
-};
-
-export const sendApprovalStepTelegram = async (docItem, approverName, comment = "승인 완료", isFinal = false) => {
-  const statusEmoji = isFinal ? "👑" : "✍️";
-  const statusTitle = isFinal ? "전자결재 최종 승인 완료" : "전자결재 중간 승인";
-
-  const message = `
-<b>${statusEmoji} [(주)오륙 ${statusTitle}]</b>
-
-🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-📝 <b>결재제목:</b> <b>${docItem.title}</b>
-
-✅ <b>결재자:</b> ${approverName} (${isFinal ? "최종 결재" : "승인"})
-💬 <b>지시/코멘트:</b> ${comment || "확인 및 승인"}
-📅 <b>결재일시:</b> ${new Date().toLocaleString("ko-KR")}
-
-🔗 <b>생산관리시스템 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
-`.trim();
-
-  return await sendTelegramMessage(message);
-};
-
-export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
-  const message = `
-<b>❌ [(주)오륙 전자결재 반려 알림]</b>
-
-🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-📝 <b>결재제목:</b> <b>${docItem.title}</b>
-
-🚫 <b>반려자:</b> ${rejectorName}
-⚠️ <b>반려 사유:</b>
-${reason || "내용 보완 후 재상신 요망"}
-📅 <b>반려일시:</b> ${new Date().toLocaleString("ko-KR")}
-
-🔗 <b>생산관리시스템 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
-`.trim();
-
-  return await sendTelegramMessage(message);
-};
-
-export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
-  const message = `
-<b>⏸️ [(주)오륙 전자결재 보류 알림]</b>
-
-🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-📝 <b>결재제목:</b> <b>${docItem.title}</b>
-
-⏳ <b>보류자:</b> ${holderName}
-💬 <b>보류 사유:</b> ${reason || "검토 필요"}
-📅 <b>보류일시:</b> ${new Date().toLocaleString("ko-KR")}
-
-🔗 <b>생산관리시스템 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
-`.trim();
-
-  return await sendTelegramMessage(message);
-};
-
-export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
-  const message = `
-<b>✍️ [(주)오륙 일일업무일지 결재 승인]</b>
-
-🏭 <b>공장:</b> ${logItem.plant || "삼랑진공장"}
-👤 <b>작성자:</b> ${logItem.writer} ${logItem.title || ""} (${logItem.process || "생산"})
-📅 <b>업무일자:</b> ${logItem.date || ""}
-
-👑 <b>결재자:</b> ${approver.name || "총괄관리자"} ${approver.title || ""}
-💬 <b>지시사항:</b> ${approver.comment || "확인 및 전자결재 승인 완료"}
-
-🔗 <b>생산관리시스템 바로가기:</b>
-https://profit-and-loss-7d09b.web.app
+📋 <b>내용요약:</b>
+${docItem.content ? (docItem.content.length > 120 ? docItem.content.slice(0, 120) + "..." : docItem.content) : "-"}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
 
   return await sendTelegramMessage(message);
 };
 
 /**
- * 4. 매일 오전 7시 작업자 연차/근태 현황 브리핑
+ * 5. 👑 전자결재 승인 즉시 알림
+ */
+export const sendApprovalStepTelegram = async (docItem, approverName, comment = "승인 완료", isFinal = false) => {
+  const statusEmoji = isFinal ? "👑" : "✍️";
+  const statusTitle = isFinal ? "전자결재 최종 승인 완료" : "전자결재 승인 완료";
+
+  const message = `
+<b>${statusEmoji} [${statusTitle}]</b>
+━━━━━━━━━━━━━━━━━━━━
+🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
+👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
+📝 <b>결재제목:</b> <b>${docItem.title}</b>
+✅ <b>결재자:</b> <b>${approverName}</b> (${isFinal ? "최종 결재" : "중간 승인"})
+💬 <b>코멘트:</b> ${comment || "확인 및 승인"}
+📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message);
+};
+
+/**
+ * 6. ❌ 전자결재 반려 즉시 알림
+ */
+export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
+  const message = `
+<b>❌ [전자결재 반려 알림]</b>
+━━━━━━━━━━━━━━━━━━━━
+🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
+👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
+📝 <b>결재제목:</b> <b>${docItem.title}</b>
+🚫 <b>반려자:</b> <b>${rejectorName}</b>
+⚠️ <b>반려사유:</b>
+${reason || "내용 보완 후 재상신 요망"}
+📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message);
+};
+
+/**
+ * 7. ⏸️ 전자결재 보류 즉시 알림
+ */
+export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
+  const message = `
+<b>⏸️ [전자결재 보류 알림]</b>
+━━━━━━━━━━━━━━━━━━━━
+🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
+👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
+📝 <b>결재제목:</b> <b>${docItem.title}</b>
+⏳ <b>보류자:</b> <b>${holderName}</b>
+💬 <b>보류사유:</b> ${reason || "검토 필요"}
+📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message);
+};
+
+/**
+ * 8. ✍️ 일일업무일지 결재 즉시 알림
+ */
+export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
+  const message = `
+<b>✍️ [일일업무일지 결재 승인]</b>
+━━━━━━━━━━━━━━━━━━━━
+🏭 <b>공장:</b> ${logItem.plant || "삼랑진공장"}
+👤 <b>작성자:</b> ${logItem.writer} ${logItem.title || ""} (${logItem.process || "생산"})
+👑 <b>결재자:</b> <b>${approver.name || "총괄관리자"} ${approver.title || ""}</b>
+💬 <b>지시사항:</b> ${approver.comment || "확인 및 결재 승인"}
+📅 <b>업무일자:</b> ${logItem.date || ""}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message);
+};
+
+/**
+ * 9. 🌅 매일 오전 7시 작업자 연차/근태 현황 브리핑 (시인성 극대화)
  */
 export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
   const todayStr = targetDateStr || new Date().toISOString().split("T")[0];
@@ -293,7 +317,9 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
     return start <= todayStr && todayStr <= end;
   });
 
-  let message = `<b>🌅 [(주)오륙 MES] ${displayDate} 일일 근태 및 연차 현황</b>\n\n`;
+  let message = `<b>🌅 [일일 근태 및 연차 현황 브리핑]</b>\n`;
+  message += `📅 <b>일자:</b> ${displayDate}\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
   let totalWorkers = 0;
   let totalOnLeave = 0;
@@ -311,7 +337,7 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
 
     totalOnLeave += plantLeaves.length;
 
-    message += `🏭 <b>${plant.name}</b> (총 ${plantWorkers.length}명 중 출근 ${workingWorkers.length}명)\n`;
+    message += `🏭 <b>${plant.name}</b> (총 ${plantWorkers.length}명 / <b>출근 ${workingWorkers.length}명</b>)\n`;
 
     if (plantLeaves.length > 0) {
       message += `🌴 <b>연차/휴무: ${plantLeaves.length}명</b>\n`;
@@ -322,11 +348,12 @@ export const sendDailyLeaveBriefingTelegram = async (targetDateStr = null) => {
       message += `🌴 <b>연차/휴무: 0명</b> (전원 정상 출근)\n`;
     }
 
-    message += `• <b>출근자:</b> ${workingWorkers.map((w) => `${w.name} ${w.title}`).join(", ")}\n\n`;
+    message += `• <b>출근:</b> ${workingWorkers.map((w) => `${w.name} ${w.title}`).join(", ")}\n\n`;
   });
 
+  message += `━━━━━━━━━━━━━━━━━━━━\n`;
   message += `📊 <b>[총괄 요약]</b> 총 ${totalWorkers}명 중 <b>출근 ${totalWorkers - totalOnLeave}명</b> / <b>연차 ${totalOnLeave}명</b>\n`;
-  message += `🔗 <b>생산관리시스템:</b> https://profit-and-loss-7d09b.web.app`;
+  message += `🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
 
   const sendResult = await sendTelegramMessage(message.trim());
 
@@ -388,12 +415,16 @@ export const testTelegramConnection = async (token, chatId) => {
   }
 
   const testMessage = `
-<b>🔔 [(주)오륙 MES] 텔레그램 알림 연동 테스트 성공</b>
-
+<b>🔔 [텔레그램 연동 정상 연결]</b>
+━━━━━━━━━━━━━━━━━━━━
 ✅ 텔레그램 봇과 정상적으로 연결되었습니다.
-앞으로 <b>품질경보 🚨</b>, <b>전자결재 📑</b>, <b>매일 아침 7시 연차현황 🌅</b> 알림이 본 채팅방으로 실시간 전송됩니다.
+앞으로 아래 알림이 본 채팅방으로 실시간 전송됩니다:
 
-🔗 <b>생산관리시스템:</b> https://profit-and-loss-7d09b.web.app
+• 🚨 <b>품질경보:</b> 작성 즉시 / 조치 즉시 / 삭제 즉시
+• 📑 <b>전자결재:</b> 기안 상신 / 승인 / 반려 / 보류
+• 🌅 <b>일일근태:</b> 매일 오전 07:00 출근 및 연차 현황
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
   return await sendTelegramMessage(testMessage, {

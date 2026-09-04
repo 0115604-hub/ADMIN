@@ -7,7 +7,11 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { sendQualityAlertTelegram, sendQualityActionTelegram } from "./telegramService";
+import {
+  sendQualityAlertTelegram,
+  sendQualityActionTelegram,
+  sendQualityDeleteTelegram
+} from "./telegramService";
 
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
@@ -158,8 +162,9 @@ export const saveUrgentIssue = async (issueData) => {
 };
 
 // Delete an urgent issue
-export const deleteUrgentIssue = async (id) => {
+export const deleteUrgentIssue = async (id, deleterName = "") => {
   const current = getLocalUrgentIssues();
+  const target = current.find((i) => i.id === id);
   const updated = current.filter((i) => i.id !== id);
   saveLocalUrgentIssues(updated);
 
@@ -167,6 +172,13 @@ export const deleteUrgentIssue = async (id) => {
     await deleteDoc(doc(db, COLLECTION_NAME, id));
   } catch (e) {
     console.warn("Firestore delete urgent issue fallback to local:", e);
+  }
+
+  // Trigger Telegram notification on delete
+  if (target) {
+    sendQualityDeleteTelegram(target, deleterName).catch((err) => {
+      console.warn("Telegram delete alert error:", err);
+    });
   }
 
   return updated;

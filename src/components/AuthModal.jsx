@@ -300,7 +300,7 @@ export const AuthModal = () => {
       return;
     }
 
-    const updated = await deleteUrgentIssue(issue.id);
+    const updated = await deleteUrgentIssue(issue.id, expectedManager);
     setUrgentIssues(updated);
     setDeleteModalData({
       isOpen: false,
