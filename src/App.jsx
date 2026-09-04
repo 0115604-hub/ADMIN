@@ -218,7 +218,7 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-3 sm:p-6 lg:p-6 flex-1">
+        <main className="p-2.5 sm:p-4 lg:p-5 flex-1">
           {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
