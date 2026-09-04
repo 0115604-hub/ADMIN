@@ -472,52 +472,7 @@ export const ExtrusionDowntimeView = () => {
         </div>
       )}
 
-      {/* 1. Header Navigation Bar */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="px-3 py-0.5 rounded-full text-xs font-black bg-teal-100 text-teal-800 border border-teal-200">
-              삼랑진공장 압출동
-            </span>
-            <span className="px-3 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-              담당: 설유철 책임
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-200">
-              {currentMonthStr} 당월 기준 집계 중
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Wrench className="w-6 h-6 text-teal-600" />
-            압출동 비가동 및 생산 관리 대장
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            엑셀 다운로드
-          </button>
-          <button
-            onClick={handleCreateNextWeek}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            다음주 시트 생성
-          </button>
-          <button
-            onClick={handleResetData}
-            title="엑셀 원본 데이터로 복원"
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 transition active:scale-95 cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* 2. 4 Lines Selector Tabs */}
+      {/* 4 Lines Selector Tabs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {Object.keys(dataStore).map((lineKey) => {
           const lObj = dataStore[lineKey];
@@ -765,7 +720,7 @@ export const ExtrusionDowntimeView = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+          <div className="flex items-center gap-3 text-xs font-bold text-slate-600 flex-wrap">
             <div className="flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-rose-500" />
               <span>주간 비가동: <strong className="text-rose-600 font-black">{weeklyTotals.totalMin.toLocaleString()}분</strong> ({weeklyTotals.totalHours}h)</span>
@@ -775,6 +730,20 @@ export const ExtrusionDowntimeView = () => {
               <Scale className="w-3.5 h-3.5 text-blue-600" />
               <span>주간 LOSS: <strong className="text-blue-700 font-black">{weeklyTotals.totalKg}Kg</strong></span>
             </div>
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer ml-1"
+            >
+              <Download className="w-3.5 h-3.5" />
+              엑셀
+            </button>
+            <button
+              onClick={handleResetData}
+              title="엑셀 원본 데이터로 복원"
+              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition active:scale-95 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
