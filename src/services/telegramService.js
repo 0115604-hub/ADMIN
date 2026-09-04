@@ -17,7 +17,7 @@ export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
   chatId: "-4186792536", // '오륙 통합방' (일반 현장 단톡방)
-  pnlChatId: "290615483", // 권태형 대표님 1:1 대화방 (경영/손익 P&L 전용 수신)
+  pnlChatId: "-1003939516875", // '경영방' 단톡방 (경영/손익 P&L 전용 수신)
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
