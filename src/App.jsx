@@ -28,7 +28,10 @@ import {
   deleteTransaction,
   clearAllTransactions
 } from "./services/dbService";
-import { checkAndAutoSendDailyLeaveBriefing } from "./services/telegramService";
+import {
+  checkAndAutoSendDailyMorningBriefing,
+  checkAndAutoSendDailyPnLBriefing
+} from "./services/telegramService";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
@@ -96,10 +99,12 @@ export const App = () => {
 
   useEffect(() => {
     loadData();
-    // Daily 07:00 AM Leave Briefing Check
-    checkAndAutoSendDailyLeaveBriefing();
+    // Daily 07:00 AM P&L Briefing & 07:30 AM Morning Briefing Check
+    checkAndAutoSendDailyPnLBriefing();
+    checkAndAutoSendDailyMorningBriefing();
     const timer = setInterval(() => {
-      checkAndAutoSendDailyLeaveBriefing();
+      checkAndAutoSendDailyPnLBriefing();
+      checkAndAutoSendDailyMorningBriefing();
     }, 60000); // Check every 60 seconds
     return () => clearInterval(timer);
   }, []);

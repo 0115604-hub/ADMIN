@@ -22,7 +22,8 @@ import {
   saveTelegramConfig,
   subscribeTelegramConfig,
   testTelegramConnection,
-  sendDailyLeaveBriefingTelegram
+  sendDailyLeaveBriefingTelegram,
+  sendDailyPnLBriefingTelegram
 } from "../services/telegramService";
 
 export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
@@ -71,6 +72,26 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
   const [sendingBriefing, setSendingBriefing] = useState(false);
   const [briefingToast, setBriefingToast] = useState(false);
+
+  const [sendingPnL, setSendingPnL] = useState(false);
+  const [pnlToast, setPnlToast] = useState(false);
+
+  const handleSendDailyPnL = async () => {
+    setSendingPnL(true);
+    try {
+      const res = await sendDailyPnLBriefingTelegram();
+      if (res.success) {
+        setPnlToast(true);
+        setTimeout(() => setPnlToast(false), 3000);
+      } else {
+        alert("전송 실패: " + (res.error || "설정을 확인해주세요."));
+      }
+    } catch (err) {
+      alert("오류 발생: " + err.message);
+    } finally {
+      setSendingPnL(false);
+    }
+  };
 
   const handleSendDailyLeaveBriefing = async () => {
     setSendingBriefing(true);
@@ -160,36 +181,53 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
         {/* Inputs */}
         <form onSubmit={handleSaveTelegramConfig} className="space-y-3.5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             <div className="space-y-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 텔레그램 Bot Token (API 토큰)
               </label>
               <input
                 type="text"
-                placeholder="예: 7123456789:AAHq..."
+                placeholder="예: 8544872588:AAFb..."
                 value={telegramConfig.botToken || ""}
                 onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                @BotFather 에서 발급받은 HTTP API Token을 입력합니다.
+                @BotFather 에서 발급받은 API Token
               </p>
             </div>
 
             <div className="space-y-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                수신 Chat ID (단톡방/개인 Chat ID)
+                ① 일반 알림 단톡방 Chat ID (필수)
               </label>
               <input
                 type="text"
-                placeholder="예: -5417404489 또는 -100..."
+                placeholder="예: -4186792536 (오륙 통합방)"
                 value={telegramConfig.chatId || ""}
                 onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                알림을 받을 채팅방 ID (단톡방은 음수 ID)
+                품질경보/전자결재/07:30 모닝브리핑 수신방
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                <span>② 경영/손익(P&L) 전용 Chat ID</span>
+                <span className="text-[10px] text-blue-600 font-normal">선택사항</span>
+              </label>
+              <input
+                type="text"
+                placeholder="미입력 시 ①번 방으로 통합 발송"
+                value={telegramConfig.pnlChatId || ""}
+                onChange={(e) => setTelegramConfig({ ...telegramConfig, pnlChatId: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-slate-400">
+                07:00 월간 손익 결산 전용방 (경영진방/1:1)
               </p>
             </div>
           </div>
@@ -201,9 +239,9 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
             </p>
             <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
               <li>현재 <strong>@oryuk_alert_bot (오륙MES알림)</strong>이 설정되어 있습니다.</li>
-              <li>임직원 단톡방에 봇을 멤버로 초대한 뒤 위의 [테스트 발송]을 누르면 연동이 확인됩니다.</li>
-              <li><strong>매일 아침 07:30</strong>: 연차자 명단 + 전일 미결재 + 품질경보 미삭제 현황 자동 전송</li>
-              <li><strong>실시간</strong>: 품질경보 발생/조치/삭제, 전자결재 상신/승인/반려/보류 즉시 전송</li>
+              <li><strong>매일 아침 07:00</strong>: 📊 <strong>월간 손익(P&L) 결산 브리핑(스타일 A)</strong> 자동 발송 (경영/손익 전용방 또는 기본방)</li>
+              <li><strong>매일 아침 07:30</strong>: 🌅 <strong>일일 근태/미결재/품질경보 모닝브리핑</strong> 자동 발송 (오륙 통합방)</li>
+              <li><strong>실시간 알림</strong>: 🚨 품질경보 발생/조치/삭제, 📑 전자결재 상신/승인/반려/보류 즉시 전송</li>
             </ol>
           </div>
 
@@ -249,14 +287,30 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 title="매일 아침 7시 30분에 자동 전송되는 금일 모닝 브리핑(연차+미결재+품질경보)을 지금 즉시 전송합니다"
               >
                 <span>🌅</span>
-                <span>{sendingBriefing ? "브리핑 전송 중..." : "오늘 모닝 브리핑 즉시 발송"}</span>
+                <span>{sendingBriefing ? "전송 중..." : "07:30 모닝브리핑 발송"}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={sendingPnL}
+                onClick={handleSendDailyPnL}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                title="매일 아침 7시에 자동 전송되는 월간 손익 결산 요약(스타일 A)을 지금 즉시 전송합니다"
+              >
+                <span>📊</span>
+                <span>{sendingPnL ? "전송 중..." : "07:00 손익결산 발송"}</span>
               </button>
             </div>
 
             <div className="flex items-center gap-2">
+              {pnlToast && (
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> 손익 결산 전송됨!
+                </span>
+              )}
               {briefingToast && (
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> 연차 브리핑 전송됨!
+                  <Check className="w-3.5 h-3.5" /> 모닝브리핑 전송됨!
                 </span>
               )}
               {savedConfigToast && (

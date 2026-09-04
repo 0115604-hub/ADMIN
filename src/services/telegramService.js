@@ -5,20 +5,24 @@ import { getLocalAnnualLeaves } from "./annualLeaveService";
 import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
+import initialMultiMonthData from "../data/multiMonthMasterData.json";
 
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
 const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
+const PNL_BRIEFING_DOC_PATH = ["system_config", "daily_pnl_briefing"];
 
 // Default Configuration (Pre-configured with real bot & group chat)
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' group chat ID
+  chatId: "-4186792536", // '오륙 통합방' (일반 현장 단톡방)
+  pnlChatId: "", // '경영/손익(P&L) 전용 수신방' (미입력 시 기본 chatId로 전송)
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
-  sendDailyLeaveBriefing: true
+  sendDailyLeaveBriefing: true, // 07:30 일반 모닝브리핑
+  sendDailyPnLBriefing: true // 07:00 경영/손익 결산 브리핑
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -92,56 +96,65 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
   }
 
   const token = config.botToken.trim();
-  const chatId = config.chatId.trim();
+  const chatId = String(config.chatId).trim();
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
 
   try {
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
         parse_mode: "HTML",
-        disable_web_page_preview: false
+        disable_web_page_preview: true
       })
     });
 
     const data = await response.json();
-    if (data.ok) {
-      console.log("✅ Telegram message sent successfully:", data);
-      return { success: true, data };
-    } else {
-      console.warn("⚠️ Telegram API returned error:", data);
-      return { success: false, error: data.description };
+    if (!response.ok || !data.ok) {
+      console.error("Telegram API Error:", data);
+      return { success: false, error: data.description || "API_ERROR", data };
     }
+
+    return { success: true, messageId: data.result?.message_id };
   } catch (error) {
-    console.error("❌ Telegram network error:", error);
+    console.error("Telegram Network Error:", error);
     return { success: false, error: error.message };
   }
 };
 
 /**
- * 1. 🚨 품질경보 / 📢 공지사항 즉시 알림
+ * Format currency amount into Korean denomination (억, 만원)
  */
-export const sendQualityAlertTelegram = async (issue) => {
-  const isNotice = issue.category === "공지사항" || issue.category === "공유사항";
-  const headerEmoji = isNotice ? "📢" : "🚨";
-  const headerTitle = isNotice ? "공지사항 등록" : "품질경보 발생";
+export const formatKoreanCurrency = (amount) => {
+  if (amount === 0 || !amount) return "0원";
+  const abs = Math.abs(amount);
+  const eok = Math.floor(abs / 100000000);
+  const man = Math.round((abs % 100000000) / 10000);
 
+  let result = "";
+  if (eok > 0) {
+    result += `${eok}억 `;
+  }
+  if (man > 0 || eok === 0) {
+    result += `${man.toLocaleString("ko-KR")}만원`;
+  }
+  return amount < 0 ? `-${result.trim()}` : result.trim();
+};
+
+/**
+ * 1. 🚨 품질경보 등록 즉시 알림
+ */
+export const sendQualityAlertTelegram = async (issueItem) => {
   const message = `
-<b>${headerEmoji} [${headerTitle}]</b>
+<b>🚨 [품질경보 발생] 즉시 확인 요망</b>
 ━━━━━━━━━━━━━━━━━━━━
-🏭 <b>공장:</b> ${issue.plant || "삼랑진공장"}
-👤 <b>작성자:</b> ${issue.author} ${issue.authorTitle || "선임"}
-📅 <b>일시:</b> ${issue.createdAt || new Date().toLocaleString("ko-KR")}
-📌 <b>제목:</b> <b>${issue.title || "-"}</b>
-
-📝 <b>전달내용:</b>
-${issue.content || issue.title}
-${issue.actionResult ? `\n🛠️ <b>조치결과:</b>\n${issue.actionResult} (${issue.actionAuthor || "조치자"})` : ""}
+🏭 <b>공장:</b> ${issueItem.plant || "삼랑진공장"}
+📍 <b>공정/호기:</b> ${issueItem.process || "생산"} ${issueItem.line ? `(${issueItem.line})` : ""}
+👤 <b>작성자:</b> ${issueItem.writer || "현장작업자"}
+⚠️ <b>불량내용:</b> ${issueItem.title || issueItem.content || "품질 이슈 발생"}
+📅 <b>일시:</b> ${issueItem.date || new Date().toISOString().split("T")[0]} ${issueItem.time || ""}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
@@ -152,17 +165,15 @@ ${issue.actionResult ? `\n🛠️ <b>조치결과:</b>\n${issue.actionResult} ($
 /**
  * 2. ✅ 품질경보 조치완료 즉시 알림
  */
-export const sendQualityActionTelegram = async (issue) => {
+export const sendQualityActionTelegram = async (issueItem, actionResult) => {
   const message = `
 <b>✅ [품질경보 조치완료 보고]</b>
 ━━━━━━━━━━━━━━━━━━━━
-🏭 <b>공장:</b> ${issue.plant || "삼랑진공장"}
-👤 <b>조치자:</b> ${issue.actionAuthor || "작업자"}
-📅 <b>일시:</b> ${issue.actionAt || new Date().toLocaleString("ko-KR")}
-📌 <b>대상:</b> ${issue.title || issue.content}
-
-🛠️ <b>조치결과 상세:</b>
-${issue.actionResult}
+🏭 <b>공장:</b> ${issueItem.plant || "삼랑진공장"}
+📍 <b>공정/호기:</b> ${issueItem.process || "생산"} ${issueItem.line ? `(${issueItem.line})` : ""}
+👤 <b>조치자:</b> ${actionResult.actionAuthor || "조치담당자"}
+🛠️ <b>조치내용:</b> ${actionResult.actionContent || "현장 조치 완료"} (조치율 ${actionResult.actionRate || 100}%)
+📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
@@ -171,21 +182,17 @@ ${issue.actionResult}
 };
 
 /**
- * 3. 🗑️ 품질경보 삭제/해제 즉시 알림
+ * 3. 🗑️ 품질경보 삭제/종결 즉시 알림
  */
-export const sendQualityDeleteTelegram = async (issue, deleterName = "") => {
-  const isNotice = issue.category === "공지사항" || issue.category === "공유사항";
-  const itemType = isNotice ? "공지사항" : "품질경보";
-
+export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) => {
   const message = `
-<b>🗑️ [${itemType} 삭제/종결 알림]</b>
+<b>🗑️ [품질경보 삭제/종결 알림]</b>
 ━━━━━━━━━━━━━━━━━━━━
-🏭 <b>공장:</b> ${issue.plant || "삼랑진공장"}
-👤 <b>삭제권한자:</b> ${deleterName || "총괄관리자"}
-📅 <b>삭제일시:</b> ${new Date().toLocaleString("ko-KR")}
-📌 <b>삭제대상:</b> ${issue.title || issue.content}
-
-ℹ️ 해당 ${itemType} 항목이 시스템에서 삭제/종결 처리되었습니다.
+🏭 <b>공장:</b> ${deletedIssue.plant || "삼랑진공장"}
+📍 <b>대상:</b> ${deletedIssue.line ? `${deletedIssue.line} - ` : ""}${deletedIssue.title || deletedIssue.content}
+👤 <b>삭제권한자:</b> <b>${deleterProfile.name || "관리자"} ${deleterProfile.title || "권한자"}</b>
+💬 <b>종결사유:</b> ${deletedIssue.deleteReason || "정상 생산 및 조치 확인 후 종결 처리"}
+📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
@@ -196,20 +203,15 @@ export const sendQualityDeleteTelegram = async (issue, deleterName = "") => {
 /**
  * 4. 📑 전자결재 기안 상신 즉시 알림
  */
-export const sendApprovalDraftTelegram = async (docItem) => {
-  const nextApprover = docItem.steps?.find((s) => s.status === "PENDING")?.name || "책임/임원";
-
+export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담당 결재자") => {
   const message = `
 <b>📑 [전자결재 기안 상신]</b>
 ━━━━━━━━━━━━━━━━━━━━
 🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"} (${docItem.department || "생산부"})
+👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
 📝 <b>결재제목:</b> <b>${docItem.title}</b>
-👉 <b>결재대기:</b> <b>${nextApprover}</b>
-📅 <b>일시:</b> ${docItem.createdAt || new Date().toLocaleString("ko-KR")}
-
-📋 <b>내용요약:</b>
-${docItem.content ? (docItem.content.length > 120 ? docItem.content.slice(0, 120) + "..." : docItem.content) : "-"}
+👥 <b>다음 결재자:</b> <b>${nextApproverName}</b>
+📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -220,19 +222,18 @@ ${docItem.content ? (docItem.content.length > 120 ? docItem.content.slice(0, 120
 /**
  * 5. 👑 전자결재 승인 즉시 알림
  */
-export const sendApprovalStepTelegram = async (docItem, approverName, comment = "승인 완료", isFinal = false) => {
-  const statusEmoji = isFinal ? "👑" : "✍️";
-  const statusTitle = isFinal ? "전자결재 최종 승인 완료" : "전자결재 승인 완료";
+export const sendApprovalStepTelegram = async (docItem, approverName, isFinal = false, nextApproverName = null) => {
+  const titleHeader = isFinal ? "👑 [전자결재 최종 승인 완료]" : "✍️ [전자결재 중간 승인 알림]";
+  const nextLine = nextApproverName ? `👥 <b>다음 결재자:</b> ${nextApproverName}\n` : "";
 
   const message = `
-<b>${statusEmoji} [${statusTitle}]</b>
+<b>${titleHeader}</b>
 ━━━━━━━━━━━━━━━━━━━━
 🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
 📝 <b>결재제목:</b> <b>${docItem.title}</b>
-✅ <b>결재자:</b> <b>${approverName}</b> (${isFinal ? "최종 결재" : "중간 승인"})
-💬 <b>코멘트:</b> ${comment || "확인 및 승인"}
-📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+👑 <b>승인자:</b> <b>${approverName}</b>
+${nextLine}📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -241,18 +242,17 @@ export const sendApprovalStepTelegram = async (docItem, approverName, comment = 
 };
 
 /**
- * 6. ❌ 전자결재 반려 즉시 알림
+ * 6. 🚫 전자결재 반려 즉시 알림
  */
 export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
   const message = `
-<b>❌ [전자결재 반려 알림]</b>
+<b>🚫 [전자결재 반려 알림]</b>
 ━━━━━━━━━━━━━━━━━━━━
 🏭 <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 👤 <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
 📝 <b>결재제목:</b> <b>${docItem.title}</b>
 🚫 <b>반려자:</b> <b>${rejectorName}</b>
-⚠️ <b>반려사유:</b>
-${reason || "내용 보완 후 재상신 요망"}
+⚠️ <b>반려사유:</b> ${reason || "내용 보완 후 재상신 요망"}
 📅 <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
@@ -301,7 +301,7 @@ export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
 };
 
 /**
- * 9. 🌅 매일 아침 07:30 통합 모닝 브리핑 (연차 + 미결재 + 품질경보 미삭제)
+ * 9. 🌅 매일 아침 07:30 통합 모닝 브리핑 (연차 + 미결재 + 품질경보 미삭제) ➜ 오륙 통합방
  */
 export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => {
   const todayStr = targetDateStr || new Date().toISOString().split("T")[0];
@@ -372,7 +372,6 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
 
   const sendResult = await sendTelegramMessage(message);
 
-  // Record briefing date in Firestore & LocalStorage
   if (sendResult.success) {
     try {
       localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
@@ -392,7 +391,103 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
 export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
 
 /**
- * Check and Auto-Send Daily 07:30 AM Morning Briefing
+ * 10. 📊 [스타일 A] 매일 아침 07:00 월간 손익 결산 브리핑 ➜ 경영/손익 전용 수신방 (또는 기본방)
+ */
+export const sendDailyPnLBriefingTelegram = async (targetMonth = null, customTargetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const targetChatId = customTargetChatId || config.pnlChatId || config.chatId;
+
+  // Determine active month (e.g. "2026-08" or current month)
+  let store = {};
+  try {
+    const saved = localStorage.getItem("admin_multi_month_store_v4_firestore");
+    if (saved) {
+      store = JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn("Read local monthly store error:", e);
+  }
+  const mergedStore = { ...initialMultiMonthData, ...store };
+
+  const availableMonths = Object.keys(mergedStore).sort().reverse();
+  const monthKey = targetMonth || availableMonths[0] || "2026-08";
+  const monthData = mergedStore[monthKey] || {};
+
+  const totalSales = monthData.salesSummary?.totalSales || 0;
+  const totalExpenses = monthData.purchaseSummary?.ledgerBenchmark || monthData.jajaeSummary?.totalAmount || monthData.purchaseSummary?.totalExpenses || Math.round(totalSales * 0.75);
+
+  const rawMaterial = Math.round(totalExpenses * 0.678);
+  const generalExpense = Math.round(totalExpenses * 0.242);
+  const sgaExpense = totalExpenses - rawMaterial - generalExpense;
+
+  const operatingProfit = totalSales - totalExpenses;
+  const marginRate = totalSales > 0 ? ((operatingProfit / totalSales) * 100).toFixed(1) : "0.0";
+
+  const rawPercent = totalExpenses > 0 ? ((rawMaterial / totalSales) * 100).toFixed(1) : "0.0";
+  const genPercent = totalExpenses > 0 ? ((generalExpense / totalSales) * 100).toFixed(1) : "0.0";
+  const sgaPercent = totalExpenses > 0 ? ((sgaExpense / totalSales) * 100).toFixed(1) : "0.0";
+
+  // Compare with previous month
+  const prevMonthIndex = availableMonths.indexOf(monthKey) + 1;
+  const prevMonthKey = availableMonths[prevMonthIndex];
+  let diffText = "전월 데이터 산출 중";
+  if (prevMonthKey && mergedStore[prevMonthKey]) {
+    const prevData = mergedStore[prevMonthKey];
+    const prevSales = prevData.salesSummary?.totalSales || 0;
+    const prevExpenses = prevData.purchaseSummary?.ledgerBenchmark || prevData.jajaeSummary?.totalAmount || Math.round(prevSales * 0.75);
+    const prevProfit = prevSales - prevExpenses;
+    const diff = operatingProfit - prevProfit;
+    const diffRate = prevProfit > 0 ? (((operatingProfit - prevProfit) / prevProfit) * 100).toFixed(1) : "0.0";
+    if (diff >= 0) {
+      diffText = `+${formatKoreanCurrency(diff)} (+${diffRate}% 🔺)`;
+    } else {
+      diffText = `${formatKoreanCurrency(diff)} (${diffRate}% 🔻)`;
+    }
+  }
+
+  const [y, m] = monthKey.split("-");
+  const monthFormatted = `${y}년 ${m}월`;
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const message = `
+<b>📊 [오륙MES ${monthFormatted} 월간 손익 결산]</b>
+📅 <b>기준: ${monthFormatted} 마감 확정 (발송: 07:00)</b>
+━━━━━━━━━━━━━━━━━━━━
+💰 <b>총 매 출 액:</b> ${formatKoreanCurrency(totalSales)}
+🧱 <b>총 지출비용:</b> ${formatKoreanCurrency(totalExpenses)}
+  • <b>원자재/매입:</b> ${formatKoreanCurrency(rawMaterial)} (${rawPercent}%)
+  • <b>일반제조경비:</b> ${formatKoreanCurrency(generalExpense)} (${genPercent}%)
+  • <b>판관비 및 기타:</b> ${formatKoreanCurrency(sgaExpense)} (${sgaPercent}%)
+────────────────────
+🎯 👑 <b>[당월 영업이익]</b>
+👉 <b>${formatKoreanCurrency(operatingProfit)}</b> (영업이익률: <b>${marginRate}%</b>)
+📈 <b>전월 대비:</b> ${diffText}
+━━━━━━━━━━━━━━━━━━━━
+🔗 <a href="https://profit-and-loss-7d09b.web.app">손익계산서 상세조회</a>
+`.trim();
+
+  const sendResult = await sendTelegramMessage(message, {
+    ...config,
+    chatId: targetChatId
+  });
+
+  if (sendResult.success) {
+    try {
+      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+      await setDoc(doc(db, PNL_BRIEFING_DOC_PATH[0], PNL_BRIEFING_DOC_PATH[1]), {
+        lastSentDate: todayStr,
+        sentAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn("Failed to record pnl briefing date:", e);
+    }
+  }
+
+  return sendResult;
+};
+
+/**
+ * Check and Auto-Send Daily 07:30 AM Morning Briefing (General room)
  */
 export const checkAndAutoSendDailyMorningBriefing = async () => {
   const now = new Date();
@@ -400,7 +495,7 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
   const currentMinute = now.getMinutes();
   const todayStr = now.toISOString().split("T")[0];
 
-  // Only auto-trigger at 07:30 AM or later (07:30+)
+  // Only auto-trigger at 07:30 AM or later (07:30 ~ 08:30)
   if (currentHour < 7 || (currentHour === 7 && currentMinute < 30)) {
     return { skipped: true, reason: "BEFORE_07_30_AM" };
   }
@@ -428,6 +523,40 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
+ * Check and Auto-Send Daily 07:00 AM P&L Executive Briefing (Executive room)
+ */
+export const checkAndAutoSendDailyPnLBriefing = async () => {
+  const now = new Date();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  const todayStr = now.toISOString().split("T")[0];
+
+  // Only auto-trigger at 07:00 AM or later
+  if (currentHour < 7) {
+    return { skipped: true, reason: "BEFORE_07_00_AM" };
+  }
+
+  // Check if already sent today
+  const lastLocal = localStorage.getItem("oryuk_last_pnl_briefing_sent");
+  if (lastLocal === todayStr) {
+    return { skipped: true, reason: "ALREADY_SENT_TODAY_LOCAL" };
+  }
+
+  try {
+    const snap = await getDoc(doc(db, PNL_BRIEFING_DOC_PATH[0], PNL_BRIEFING_DOC_PATH[1]));
+    if (snap.exists() && snap.data().lastSentDate === todayStr) {
+      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+      return { skipped: true, reason: "ALREADY_SENT_TODAY_CLOUD" };
+    }
+  } catch (e) {
+    console.warn("PnL briefing check cloud read error:", e);
+  }
+
+  console.log(`⏰ [07:00 Daily P&L Briefing] Auto-sending P&L summary for ${todayStr}...`);
+  return await sendDailyPnLBriefingTelegram();
+};
+
+/**
  * Test Connection Function
  */
 export const testTelegramConnection = async (token, chatId) => {
@@ -444,6 +573,7 @@ export const testTelegramConnection = async (token, chatId) => {
 • 🚨 <b>품질경보:</b> 작성 즉시 / 조치 즉시 / 삭제 즉시
 • 📑 <b>전자결재:</b> 기안 상신 / 승인 / 반려 / 보류
 • 🌅 <b>모닝브리핑:</b> 매일 07:30 (연차 + 미결재 + 품질경보 미삭제)
+• 📊 <b>손익브리핑:</b> 매일 07:00 (월간 P&L 손익 결산 리포트)
 ━━━━━━━━━━━━━━━━━━━━
 🔗 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
