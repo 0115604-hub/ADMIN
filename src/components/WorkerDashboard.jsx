@@ -44,7 +44,8 @@ import {
   Crown,
   Lock,
   FileSignature,
-  Stamp
+  Stamp,
+  Send
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -907,14 +908,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all shadow-xs shrink-0 self-end sm:self-auto cursor-pointer active:scale-95"
-        >
-          <span>전체 결재함</span>
-          <ArrowRight className="w-3 h-3" />
-        </button>
+        <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => onNavigateTab && onNavigateTab("settings")}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
+            title="텔레그램 품질경보 실시간 알림 봇 연동 설정"
+          >
+            <Send className="w-3 h-3 text-sky-500" />
+            <span>텔레그램 설정</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
+          >
+            <span>전체 결재함</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       {/* 🌟 작업자 정보 & 간편 일정/연차 설정 패널 */}

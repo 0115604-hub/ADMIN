@@ -44,6 +44,12 @@ import {
   updateUrgentIssueActionResult
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
+import {
+  getLocalTelegramConfig,
+  saveTelegramConfig,
+  subscribeTelegramConfig,
+  testTelegramConnection
+} from "../services/telegramService";
 
 export const AuthModal = () => {
   const { loginWithProfile } = useAuth();
@@ -77,6 +83,47 @@ export const AuthModal = () => {
     actionResult: "",
     actionAuthor: "설유철"
   });
+
+  // Telegram Config State
+  const [telegramConfig, setTelegramConfig] = useState(() => getLocalTelegramConfig());
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [testingTelegram, setTestingTelegram] = useState(false);
+  const [telegramTestResult, setTelegramTestResult] = useState(null);
+  const [telegramSavedToast, setTelegramSavedToast] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribeTelegramConfig((cfg) => {
+      setTelegramConfig(cfg);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleSaveTelegramConfig = async (e) => {
+    if (e) e.preventDefault();
+    await saveTelegramConfig(telegramConfig);
+    setTelegramSavedToast(true);
+    setTimeout(() => setTelegramSavedToast(false), 2500);
+  };
+
+  const handleTestTelegram = async () => {
+    if (!telegramConfig.botToken || !telegramConfig.chatId) {
+      alert("Bot Token과 Chat ID를 모두 입력해주세요.");
+      return;
+    }
+    setTestingTelegram(true);
+    setTelegramTestResult(null);
+    try {
+      const res = await testTelegramConnection(telegramConfig.botToken, telegramConfig.chatId);
+      setTelegramTestResult(res);
+      if (res.success) {
+        await saveTelegramConfig(telegramConfig);
+      }
+    } catch (err) {
+      setTelegramTestResult({ success: false, error: err.message });
+    } finally {
+      setTestingTelegram(false);
+    }
+  };
 
   // Real-time Cloud Synchronization for Annual Leaves
   useEffect(() => {
@@ -341,6 +388,19 @@ export const AuthModal = () => {
 
               {/* Action Buttons in Header */}
               <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTelegramModalOpen(true);
+                    setTelegramTestResult(null);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10.5px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
+                  title="품질경보 텔레그램 실시간 알림 봇 연동 설정"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>🔔 텔레그램 연동</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setIsIssueModalOpen(true)}
@@ -1106,6 +1166,150 @@ export const AuthModal = () => {
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>권한 인증 후 삭제</span>
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 4. 텔레그램 봇 실시간 알림 설정 모달 */}
+      {/* ========================================================================= */}
+      {isTelegramModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border-2 border-sky-400 dark:border-sky-600 shadow-2xl space-y-4 my-auto animate-scaleUp">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-sky-500 text-white shadow-md shadow-sky-500/30">
+                  <Send className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>텔레그램 실시간 알림 연동</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                      품질경보 전송
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    현장 품질경보 및 조치완료 시 단톡방으로 자동 발송
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTelegramModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveTelegramConfig} className="space-y-3.5">
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                  실시간 알림 사용 상태
+                </span>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={telegramConfig.enabled}
+                    onChange={(e) => setTelegramConfig({ ...telegramConfig, enabled: e.target.checked })}
+                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300"
+                  />
+                  <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
+                    {telegramConfig.enabled ? "켜짐(ON)" : "꺼짐(OFF)"}
+                  </span>
+                </label>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  텔레그램 Bot Token (API 토큰)
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: 7812345678:AAHqK_..."
+                  value={telegramConfig.botToken || ""}
+                  onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                />
+                <p className="text-[10.5px] text-slate-400">
+                  @BotFather 에서 발급받은 봇 토큰을 입력합니다.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  수신 Chat ID (단톡방 또는 개인 ID)
+                </label>
+                <input
+                  type="text"
+                  placeholder="예: -1002345678901 또는 12345678"
+                  value={telegramConfig.chatId || ""}
+                  onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
+                />
+                <p className="text-[10.5px] text-slate-400">
+                  알림을 받을 채팅방 ID (그룹방은 보통 -100으로 시작)
+                </p>
+              </div>
+
+              {/* Guide */}
+              <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200/70 dark:border-sky-900/60 text-xs space-y-1">
+                <p className="font-bold text-sky-900 dark:text-sky-300">
+                  💡 1분 연동 순서:
+                </p>
+                <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
+                  <li>텔레그램 <strong>@BotFather</strong> 대화방에서 <code>/newbot</code>으로 봇 생성 ➜ 토큰 복사</li>
+                  <li>알림 받을 텔레그램 단톡방에 생성된 봇을 초대한 후 글 1회 입력</li>
+                  <li><strong>@GetIDsBot</strong>을 방에 초대하여 방의 <strong>Chat ID</strong> 확인 후 입력</li>
+                </ol>
+              </div>
+
+              {/* Test Status Feedback */}
+              {telegramTestResult && (
+                <div className="p-3 rounded-xl border text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200">
+                  {telegramTestResult.success ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>✅ 텔레그램 테스트 메시지가 성공적으로 전송되었습니다!</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>❌ 전송 실패: {telegramTestResult.error || "Token 또는 Chat ID를 다시 확인해주세요."}</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  disabled={testingTelegram}
+                  onClick={handleTestTelegram}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5 text-sky-500" />
+                  <span>{testingTelegram ? "전송 중..." : "테스트 발송"}</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {telegramSavedToast && (
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> 저장됨!
+                    </span>
+                  )}
+                  <button
+                    type="submit"
+                    className="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-black shadow-md shadow-sky-500/25 transition-all cursor-pointer"
+                  >
+                    <span>설정 저장하기</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
