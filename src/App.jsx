@@ -206,6 +206,7 @@ export const App = () => {
         <Header
           title={getTabTitle()}
           activeTab={activeTab}
+          setActiveTab={setActiveTab}
           onBackToSummary={() => setActiveTab("worker_dashboard")}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
           onOpenNewModal={() => {

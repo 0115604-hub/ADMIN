@@ -18,11 +18,11 @@ import {
   Wrench,
   ShieldCheck,
   FileSignature,
-  Send,
   X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { OryukLogo } from "./OryukLogo";
+import { TelegramLogo } from "./TelegramLogo";
 
 export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
@@ -32,7 +32,7 @@ export const ADMIN_TABS = [
   { id: "closing_ledger", label: "매입DATA", icon: Calculator },
   { id: "purchase_costs", label: "계정과목별 매입", icon: Layers },
   { id: "statement", label: "월간 손익계산서", icon: FileText },
-  { id: "telegram", label: "telegram", icon: Send },
+  { id: "telegram", label: "telegram", icon: TelegramLogo },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];
 
