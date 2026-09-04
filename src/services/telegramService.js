@@ -395,7 +395,16 @@ export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
  */
 export const sendDailyPnLBriefingTelegram = async (targetMonth = null, customTargetChatId = null) => {
   const config = getLocalTelegramConfig();
-  const targetChatId = customTargetChatId || config.pnlChatId || config.chatId;
+  const targetChatId = customTargetChatId || config.pnlChatId;
+
+  if (!targetChatId) {
+    console.log("PnL briefing skipped: 경영/손익 전용 Chat ID(pnlChatId)가 설정되지 않아 일반 단톡방 발송을 차단했습니다.");
+    return {
+      success: false,
+      reason: "PNL_CHAT_ID_NOT_CONFIGURED",
+      error: "경영/손익(P&L) 전용 Chat ID를 먼저 설정해주세요. (일반 단톡방 발송 방지)"
+    };
+  }
 
   // Determine active month (e.g. "2026-08" or current month)
   let store = {};
@@ -530,6 +539,12 @@ export const checkAndAutoSendDailyPnLBriefing = async () => {
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
   const todayStr = now.toISOString().split("T")[0];
+
+  // Check if PnL dedicated room is configured
+  const config = getLocalTelegramConfig();
+  if (!config.pnlChatId) {
+    return { skipped: true, reason: "PNL_CHAT_ID_NOT_CONFIGURED" };
+  }
 
   // Only auto-trigger at 07:00 AM or later
   if (currentHour < 7) {
