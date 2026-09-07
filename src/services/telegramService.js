@@ -125,6 +125,47 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
 };
 
 /**
+ * Send a photo with optional caption via Telegram Bot API
+ */
+export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig = null) => {
+  const config = customConfig || getLocalTelegramConfig();
+  if (!config.enabled || !config.botToken || !config.chatId) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
+
+  const token = config.botToken.trim();
+  const chatId = String(config.chatId).trim();
+  const endpoint = `https://api.telegram.org/bot${token}/sendPhoto`;
+
+  try {
+    const resBlob = await (await fetch(photoDataUrl)).blob();
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+    if (caption) {
+      formData.append("caption", caption);
+      formData.append("parse_mode", "HTML");
+    }
+    formData.append("photo", resBlob, "photo.jpg");
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      console.warn("Telegram sendPhoto failed, fallback to text message:", data);
+      return { success: false, error: data.description || "API_ERROR", data };
+    }
+
+    return { success: true, messageId: data.result?.message_id };
+  } catch (error) {
+    console.warn("Telegram sendPhoto Network Error:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Format currency amount into Korean denomination (억, 만원)
  */
 export const formatKoreanCurrency = (amount) => {
@@ -144,7 +185,7 @@ export const formatKoreanCurrency = (amount) => {
 };
 
 /**
- * 1. 품질경보 등록 즉시 알림
+ * 1. 품질경보 등록 즉시 알림 (사진 첨부 지원)
  */
 export const sendQualityAlertTelegram = async (issueItem) => {
   const plant = issueItem?.plant || "삼랑진공장";
@@ -152,6 +193,7 @@ export const sendQualityAlertTelegram = async (issueItem) => {
   const writer = issueItem?.writer || issueItem?.author || "현장작업자";
   const title = issueItem?.title || issueItem?.content || "품질 이슈 발생";
   const content = issueItem?.content && issueItem.content !== issueItem.title ? `\n• <b>전달내용:</b> ${issueItem.content}` : "";
+  const photoCount = issueItem?.images?.length ? `\n• <b>첨부사진:</b> 총 ${issueItem.images.length}장 첨부됨` : "";
   const dateStr = issueItem?.date || new Date().toISOString().split("T")[0];
   const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
@@ -161,17 +203,27 @@ export const sendQualityAlertTelegram = async (issueItem) => {
 • <b>공장:</b> ${plant}
 • <b>공정/호기:</b> ${processInfo}
 • <b>작성자:</b> <b>${writer}</b>
-• <b>불량제목:</b> <b>${title}</b>${content}
+• <b>불량제목:</b> <b>${title}</b>${content}${photoCount}
 • <b>일시:</b> ${dateStr} ${timeStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
+  // If photo attached, send photo directly
+  if (issueItem?.images && issueItem.images.length > 0 && issueItem.images[0].dataUrl) {
+    try {
+      const photoRes = await sendTelegramPhoto(issueItem.images[0].dataUrl, message);
+      if (photoRes.success) return photoRes;
+    } catch (e) {
+      console.warn("sendPhoto fallback to sendMessage:", e);
+    }
+  }
+
   return await sendTelegramMessage(message);
 };
 
 /**
- * 2. 품질경보 조치완료 즉시 알림
+ * 2. 품질경보 조치완료 즉시 알림 (사진 첨부 지원)
  */
 export const sendQualityActionTelegram = async (issueItem, actionResult = null) => {
   const plant = issueItem?.plant || "삼랑진공장";
@@ -180,6 +232,8 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null) 
   const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "조치담당자";
   const content = actionResult?.actionContent || issueItem?.actionResult || "현장 조치 완료";
   const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
+  const actionImages = actionResult?.images || issueItem?.actionImages || [];
+  const photoCount = actionImages.length ? `\n• <b>조치사진:</b> 총 ${actionImages.length}장 첨부됨` : "";
 
   const message = `
 <b>[품질경보 조치완료 보고]</b>
@@ -188,11 +242,20 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null) 
 • <b>공정/호기:</b> ${processInfo}
 • <b>대상:</b> <b>${title}</b>
 • <b>조치자:</b> <b>${author}</b>
-• <b>조치내용:</b> ${content} (조치율 ${rate}%)
+• <b>조치내용:</b> ${content} (조치율 ${rate}%)${photoCount}
 • <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
+
+  if (actionImages.length > 0 && actionImages[0].dataUrl) {
+    try {
+      const photoRes = await sendTelegramPhoto(actionImages[0].dataUrl, message);
+      if (photoRes.success) return photoRes;
+    } catch (e) {
+      console.warn("sendPhoto action fallback to sendMessage:", e);
+    }
+  }
 
   return await sendTelegramMessage(message);
 };

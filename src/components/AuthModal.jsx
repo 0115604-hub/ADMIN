@@ -28,7 +28,11 @@ import {
   Radio,
   Megaphone,
   Clock,
-  Send
+  Send,
+  Camera,
+  Image as ImageIcon,
+  Download,
+  ZoomIn
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
@@ -52,6 +56,45 @@ import {
   testTelegramConnection
 } from "../services/telegramService";
 
+// Client-side instant image compression
+const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve({
+          id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: file.name,
+          size: (dataUrl.length * (3 / 4) / 1024).toFixed(1) + " KB",
+          dataUrl
+        });
+      };
+    };
+  });
+};
+
 export const AuthModal = () => {
   const { loginWithProfile } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
@@ -65,7 +108,7 @@ export const AuthModal = () => {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
 
-  // New Issue Form State
+  // New Issue Form State (사진 첨부 지원)
   const [newIssueForm, setNewIssueForm] = useState({
     category: "품질경보",
     plant: "삼랑진공장",
@@ -73,17 +116,25 @@ export const AuthModal = () => {
     authorTitle: "선임",
     title: "",
     content: "",
+    images: [],
     actionResult: "",
-    actionAuthor: ""
+    actionAuthor: "",
+    actionImages: []
   });
 
-  // Action Result Input Modal State (조치결과 전용 모달)
+  // Action Result Input Modal State (조치결과 전용 모달 + 조치사진 지원)
   const [actionModalData, setActionModalData] = useState({
     isOpen: false,
     issue: null,
     actionResult: "",
-    actionAuthor: "설유철"
+    actionAuthor: "설유철",
+    actionImages: []
   });
+
+  // Lightbox & Image Processing State
+  const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
+  const [isProcessingIssueImages, setIsProcessingIssueImages] = useState(false);
+  const [isProcessingActionImages, setIsProcessingActionImages] = useState(false);
 
   // Telegram Config & Admin Access State
   const [telegramConfig, setTelegramConfig] = useState(() => getLocalTelegramConfig());
@@ -212,7 +263,57 @@ export const AuthModal = () => {
     }
   };
 
-  // Submit New Urgent Issue (품질경보: 기존색상 / 공유사항: 녹색)
+  // Handle Image Upload for New Quality Alert Form
+  const handleIssueImageFiles = async (files) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) return;
+    setIsProcessingIssueImages(true);
+    try {
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setNewIssueForm((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...processed].slice(0, 5)
+      }));
+    } catch (err) {
+      console.error("Issue image upload error:", err);
+    } finally {
+      setIsProcessingIssueImages(false);
+    }
+  };
+
+  const handleRemoveIssueImage = (idx) => {
+    setNewIssueForm((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Handle Image Upload for Action Result Modal
+  const handleActionImageFiles = async (files) => {
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (validFiles.length === 0) return;
+    setIsProcessingActionImages(true);
+    try {
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setActionModalData((prev) => ({
+        ...prev,
+        actionImages: [...(prev.actionImages || []), ...processed].slice(0, 5)
+      }));
+    } catch (err) {
+      console.error("Action image upload error:", err);
+    } finally {
+      setIsProcessingActionImages(false);
+    }
+  };
+
+  const handleRemoveActionImage = (idx) => {
+    setActionModalData((prev) => ({
+      ...prev,
+      actionImages: (prev.actionImages || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Submit New Urgent Issue (품질경보: 기존색상 / 공유사항: 녹색 + 사진 첨부)
   const handleSaveNewIssue = async (e) => {
     e.preventDefault();
     if (!newIssueForm.title.trim()) {
@@ -228,6 +329,8 @@ export const AuthModal = () => {
     await saveUrgentIssue({
       ...newIssueForm,
       category: newIssueForm.category || "품질경보",
+      images: newIssueForm.images || [],
+      actionImages: newIssueForm.actionImages || [],
       actionAuthor: hasAction ? (newIssueForm.actionAuthor || newIssueForm.author) : "",
       actionAt: hasAction ? new Date().toLocaleString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\. /g, "-").replace(/\./g, "") : "",
       isResolved: hasAction
@@ -240,8 +343,10 @@ export const AuthModal = () => {
       authorTitle: "선임",
       title: "",
       content: "",
+      images: [],
       actionResult: "",
-      actionAuthor: ""
+      actionAuthor: "",
+      actionImages: []
     });
     setIsIssueModalOpen(false);
   };
@@ -261,11 +366,12 @@ export const AuthModal = () => {
       isOpen: true,
       issue,
       actionResult: issue.actionResult || "",
-      actionAuthor: issue.actionAuthor || "설유철"
+      actionAuthor: issue.actionAuthor || "설유철",
+      actionImages: issue.actionImages || []
     });
   };
 
-  // Save Action Result (누구나 작성 및 수정 가능)
+  // Save Action Result (누구나 작성 및 수정 가능 + 사진 첨부)
   const handleSaveActionResult = async (e) => {
     e.preventDefault();
     if (!actionModalData.issue) return;
@@ -277,7 +383,8 @@ export const AuthModal = () => {
     const updated = await updateUrgentIssueActionResult(
       actionModalData.issue.id,
       actionModalData.actionResult,
-      actionModalData.actionAuthor
+      actionModalData.actionAuthor,
+      actionModalData.actionImages || []
     );
 
     if (updated) {
@@ -290,7 +397,8 @@ export const AuthModal = () => {
       isOpen: false,
       issue: null,
       actionResult: "",
-      actionAuthor: "설유철"
+      actionAuthor: "설유철",
+      actionImages: []
     });
   };
 
@@ -536,43 +644,110 @@ export const AuthModal = () => {
                           </div>
                         </div>
 
-                      {/* 2번째 줄: └ ✓ 조치: [조치내용] (조치자 시간) + [조치입력/수정] */}
-                      <div className="flex items-center justify-between gap-2 pl-1">
-                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                          <span className="text-slate-400 font-bold shrink-0 text-[11px]">└</span>
-                          {item.actionResult ? (
-                            <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
-                              <span className="font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
-                                ✓ 조치결과:
-                              </span>
-                              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                                {item.actionResult}
-                              </span>
-                              <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 shrink-0 font-bold hidden sm:inline">
-                                ({item.actionAuthor || "작업자"} • {item.actionAt})
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                              <span className="font-bold">⏳ 조치결과:</span>
-                              <span className="text-slate-400 italic text-[10.5px]">아직 등록된 조치결과가 없습니다.</span>
-                            </div>
-                          )}
+                        {/* 2번째 줄: └ ✓ 조치: [조치내용] (조치자 시간) + [조치입력/수정] */}
+                        <div className="flex items-center justify-between gap-2 pl-1">
+                          <div className="flex items-center gap-1 min-w-0 flex-1">
+                            <span className="text-slate-400 font-bold shrink-0 text-[11px]">└</span>
+                            {item.actionResult ? (
+                              <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
+                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
+                                  ✓ 조치결과:
+                                </span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                  {item.actionResult}
+                                </span>
+                                <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 shrink-0 font-bold hidden sm:inline">
+                                  ({item.actionAuthor || "작업자"} • {item.actionAt})
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                <span className="font-bold">⏳ 조치결과:</span>
+                                <span className="text-slate-400 italic text-[10.5px]">아직 등록된 조치결과가 없습니다.</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right: Action Input / Edit Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenActionModal(item, e)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 ${
+                              item.actionResult
+                                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60"
+                                : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
+                            }`}
+                          >
+                            {item.actionResult ? "✏️ 수정" : "✍️ 조치입력"}
+                          </button>
                         </div>
 
-                        {/* Right: Action Input / Edit Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenActionModal(item, e)}
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 ${
-                            item.actionResult
-                              ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60"
-                              : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
-                          }`}
-                        >
-                          {item.actionResult ? "✏️ 수정" : "✍️ 조치입력"}
-                        </button>
-                      </div>
+                        {/* 3번째 줄: 첨부 사진 썸네일 (현장 사진 & 조치 사진) */}
+                        {((item.images && item.images.length > 0) || (item.actionImages && item.actionImages.length > 0)) && (
+                          <div className="flex items-center gap-2 pt-1 pl-4 flex-wrap border-t border-slate-100 dark:border-slate-800/80">
+                            {/* 현장 첨부 사진 */}
+                            {item.images && item.images.length > 0 && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[9.5px] font-black text-rose-600 dark:text-rose-400 flex items-center gap-0.5">
+                                  <Camera className="w-2.5 h-2.5" />
+                                  <span>현장사진({item.images.length}):</span>
+                                </span>
+                                {item.images.map((img, idx) => (
+                                  <button
+                                    key={img.id || idx}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewImageModal({ url: img.dataUrl, name: img.name || `품질경보사진_${idx + 1}` });
+                                    }}
+                                    className="group relative rounded-md overflow-hidden border border-rose-300 dark:border-rose-900/60 hover:border-rose-500 transition-all shadow-2xs cursor-pointer"
+                                    title="클릭하여 원본 사진 크게 보기"
+                                  >
+                                    <img
+                                      src={img.dataUrl}
+                                      alt={img.name || "품질경보 사진"}
+                                      className="w-6 h-6 sm:w-7 sm:h-7 object-cover group-hover:scale-110 transition-transform"
+                                    />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                      <ZoomIn className="w-2.5 h-2.5" />
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* 조치 완료 첨부 사진 */}
+                            {item.actionImages && item.actionImages.length > 0 && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[9.5px] font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                  <Camera className="w-2.5 h-2.5" />
+                                  <span>조치사진({item.actionImages.length}):</span>
+                                </span>
+                                {item.actionImages.map((img, idx) => (
+                                  <button
+                                    key={img.id || idx}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` });
+                                    }}
+                                    className="group relative rounded-md overflow-hidden border border-emerald-300 dark:border-emerald-900/60 hover:border-emerald-500 transition-all shadow-2xs cursor-pointer"
+                                    title="클릭하여 원본 사진 크게 보기"
+                                  >
+                                    <img
+                                      src={img.dataUrl}
+                                      alt={img.name || "조치 사진"}
+                                      className="w-6 h-6 sm:w-7 sm:h-7 object-cover group-hover:scale-110 transition-transform"
+                                    />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                      <ZoomIn className="w-2.5 h-2.5" />
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                     </div>
                   );
                 })
@@ -969,6 +1144,79 @@ export const AuthModal = () => {
                 ></textarea>
               </div>
 
+              {/* 📷 현장 사진 첨부 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                    <Camera className="w-3.5 h-3.5 text-rose-500" />
+                    <span>현장 사진 첨부 (선택, 최대 5장)</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {newIssueForm.images?.length || 0}/5장
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="new-issue-image-input"
+                    accept="image/*"
+                    multiple
+                    disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 5}
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        handleIssueImageFiles(e.target.files);
+                        e.target.value = "";
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="new-issue-image-input"
+                    className={`w-full p-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      (newIssueForm.images?.length || 0) >= 5
+                        ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                        : "border-slate-300 dark:border-slate-700 hover:border-rose-400 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <Camera className="w-4 h-4 text-rose-500" />
+                    <span className="text-xs font-bold">
+                      {isProcessingIssueImages
+                        ? "사진 압축 처리 중..."
+                        : (newIssueForm.images?.length || 0) >= 5
+                        ? "최대 5장 첨부 완료"
+                        : "현장 사진 촬영 또는 파일 선택"}
+                    </span>
+                  </label>
+                </div>
+
+                {newIssueForm.images && newIssueForm.images.length > 0 && (
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {newIssueForm.images.map((img, idx) => (
+                      <div
+                        key={img.id || idx}
+                        className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs"
+                      >
+                        <img
+                          src={img.dataUrl}
+                          alt={img.name}
+                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name })}
+                          className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIssueImage(idx)}
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition-colors cursor-pointer"
+                          title="삭제"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* 조치 결과 (선택) */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
@@ -1027,7 +1275,7 @@ export const AuthModal = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
+                onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
               >
                 ✕
@@ -1081,6 +1329,79 @@ export const AuthModal = () => {
                   onChange={(e) => setActionModalData({ ...actionModalData, actionResult: e.target.value })}
                   className="w-full p-3.5 rounded-xl border-2 border-emerald-500/50 dark:border-emerald-500/40 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 ></textarea>
+              </div>
+
+              {/* 📷 조치 사진 첨부 */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                    <Camera className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>조치 후 사진 첨부 (선택, 최대 5장)</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {actionModalData.actionImages?.length || 0}/5장
+                  </span>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="action-issue-image-input"
+                    accept="image/*"
+                    multiple
+                    disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 5}
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        handleActionImageFiles(e.target.files);
+                        e.target.value = "";
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="action-issue-image-input"
+                    className={`w-full p-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      (actionModalData.actionImages?.length || 0) >= 5
+                        ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                        : "border-slate-300 dark:border-slate-700 hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <Camera className="w-4 h-4 text-emerald-500" />
+                    <span className="text-xs font-bold">
+                      {isProcessingActionImages
+                        ? "사진 압축 처리 중..."
+                        : (actionModalData.actionImages?.length || 0) >= 5
+                        ? "최대 5장 첨부 완료"
+                        : "조치 완료 사진 촬영 또는 파일 선택"}
+                    </span>
+                  </label>
+                </div>
+
+                {actionModalData.actionImages && actionModalData.actionImages.length > 0 && (
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {actionModalData.actionImages.map((img, idx) => (
+                      <div
+                        key={img.id || idx}
+                        className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs"
+                      >
+                        <img
+                          src={img.dataUrl}
+                          alt={img.name}
+                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name })}
+                          className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveActionImage(idx)}
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition-colors cursor-pointer"
+                          title="삭제"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Submit Button */}
@@ -1462,6 +1783,56 @@ export const AuthModal = () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 Lightbox / High-Res Image Preview Modal */}
+      {/* ========================================================================= */}
+      {previewImageModal && (
+        <div
+          className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn"
+          onClick={() => setPreviewImageModal(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="w-full flex items-center justify-between p-3.5 px-5 bg-slate-950/80 border-b border-slate-800 text-white text-xs">
+              <span className="font-bold truncate max-w-[240px] sm:max-w-md">
+                {previewImageModal.name || "첨부 사진 확인"}
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewImageModal.url}
+                  download={previewImageModal.name || "품질경보사진.jpg"}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors flex items-center gap-1 text-[11px]"
+                  title="사진 다운로드"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">다운로드</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewImageModal(null)}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white transition-colors cursor-pointer"
+                  title="닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Image display */}
+            <div className="p-3 sm:p-6 flex items-center justify-center max-h-[75vh] overflow-auto">
+              <img
+                src={previewImageModal.url}
+                alt={previewImageModal.name}
+                className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-lg"
+              />
+            </div>
           </div>
         </div>
       )}

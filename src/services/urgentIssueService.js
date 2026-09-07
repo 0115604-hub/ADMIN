@@ -127,6 +127,8 @@ export const saveUrgentIssue = async (issueData) => {
     ...issueData,
     id,
     category: issueData.category || "품질경보",
+    images: issueData.images || [],
+    actionImages: issueData.actionImages || [],
     actionResult: issueData.actionResult || "",
     actionAuthor: issueData.actionAuthor || "",
     actionAt: issueData.actionAt || "",
@@ -185,7 +187,7 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
 };
 
 // Update action result (조치결과 입력 및 조치완료 처리)
-export const updateUrgentIssueActionResult = async (id, actionResult, actionAuthor = "") => {
+export const updateUrgentIssueActionResult = async (id, actionResult, actionAuthor = "", actionImages = []) => {
   const current = getLocalUrgentIssues();
   const target = current.find((i) => i.id === id);
   if (!target) return current;
@@ -204,6 +206,7 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     ...target,
     actionResult: trimmed,
     actionAuthor: actionAuthor || target.actionAuthor || "작업자",
+    actionImages: actionImages && actionImages.length > 0 ? actionImages : (target.actionImages || []),
     actionAt: trimmed ? nowStr : "",
     isResolved: Boolean(trimmed)
   };
@@ -215,7 +218,8 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     sendQualityActionTelegram(updatedTarget, {
       actionAuthor: updatedTarget.actionAuthor,
       actionContent: trimmed,
-      actionRate: 100
+      actionRate: 100,
+      images: updatedTarget.actionImages
     }).catch((err) => {
       console.warn("Telegram action notification error:", err);
     });
