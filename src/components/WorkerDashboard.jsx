@@ -98,8 +98,7 @@ import {
   getTodayCommonSchedules
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
-import { parseExcelFile } from "../utils/excelHelper";
-import { getKSTDateString } from "../utils/dateUtils";
+import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, PVC, TPE) - Real Excel Verified
 const EXTRUSION_SUMMARY = [
@@ -2145,7 +2144,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               ) : (
                                 <Laptop className="w-2.5 h-2.5 text-blue-500 shrink-0" />
                               )}
-                              <span className="truncate">{lastLog.timestamp ? lastLog.timestamp.replace(/^\d{4}\.\s?/, "") : "접속"}</span>
+                              <span className="truncate">{formatRelativeAccessTime(lastLog.timestamp)}</span>
                             </span>
                           ) : (
                             <span className="text-slate-400 font-medium inline-flex items-center gap-1">
@@ -2576,8 +2575,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         </div>
                       </div>
 
-                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
-                        {entry.timestamp}
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700" title={entry.timestamp}>
+                        {formatRelativeAccessTime(entry.timestamp)}
                       </span>
                     </div>
 

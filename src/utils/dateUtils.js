@@ -135,3 +135,64 @@ export const getKSTTimeInfo = (date = new Date()) => {
 
 // Alias
 export const getKoreanTodayDateStr = getKSTDateString;
+
+/**
+ * Format access timestamp into human relative string:
+ * - Today: "오늘 HH:mm"
+ * - Yesterday: "어제 HH:mm"
+ * - Older: "M/D HH:mm" (e.g. "9/5 14:20")
+ * - Null/empty/invalid: "미접속"
+ */
+export const formatRelativeAccessTime = (timestampStr) => {
+  if (!timestampStr || typeof timestampStr !== "string") return "미접속";
+  const trimmed = timestampStr.trim();
+  if (!trimmed) return "미접속";
+
+  try {
+    // Matches formats like "2026. 09. 07. 13:05:00", "2026.09.07 13:05", "2026-09-07 13:05:00", "2026-09-07T13:05:00"
+    const match = trimmed.match(/(\d{4})[^\d](\s*\d{1,2})[^\d](\s*\d{1,2})[^\d\w]*\s+(\d{1,2}):(\d{1,2})/);
+
+    let yyyy, mm, dd, hh, min;
+    if (match) {
+      yyyy = match[1];
+      mm = match[2].trim().padStart(2, "0");
+      dd = match[3].trim().padStart(2, "0");
+      hh = match[4].trim().padStart(2, "0");
+      min = match[5].trim().padStart(2, "0");
+    } else {
+      const d = new Date(trimmed);
+      if (isNaN(d.getTime())) return trimmed;
+      const kstStr = getKSTFormattedString(d);
+      const m2 = kstStr.match(/(\d{4})\.(\d{2})\.(\d{2})\(.*?\)\s*(\d{2}):(\d{2})/);
+      if (m2) {
+        yyyy = m2[1];
+        mm = m2[2];
+        dd = m2[3];
+        hh = m2[4];
+        min = m2[5];
+      } else {
+        return trimmed;
+      }
+    }
+
+    const itemDateStr = `${yyyy}-${mm}-${dd}`;
+    const todayStr = getKSTDateString(new Date());
+
+    const todayDate = new Date();
+    const yesterdayDate = new Date(todayDate.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = getKSTDateString(yesterdayDate);
+
+    if (itemDateStr === todayStr) {
+      return `오늘 ${hh}:${min}`;
+    } else if (itemDateStr === yesterdayStr) {
+      return `어제 ${hh}:${min}`;
+    } else {
+      const monthNum = parseInt(mm, 10);
+      const dayNum = parseInt(dd, 10);
+      return `${monthNum}/${dayNum} ${hh}:${min}`;
+    }
+  } catch (e) {
+    return timestampStr;
+  }
+};
+
