@@ -101,7 +101,7 @@ import {
   cleanupExpiredCommonSchedules,
   formatCommonSchedulesForTelegram
 } from "../services/commonScheduleService";
-import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
+import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
@@ -805,14 +805,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setCommonScheduleSaving(true);
     try {
       const todayStr = getKSTDateString();
-      await saveCommonSchedule({
+      const newSchedule = {
         ...commonScheduleForm,
         startDate: todayStr,
         endDate: todayStr,
         date: todayStr,
-        author: currentProfile?.name || "관리자"
-      });
-      setToastMessage("일정이 정상적으로 등록되었습니다.");
+        author: currentProfile?.name || "ADMIN"
+      };
+      await saveCommonSchedule(newSchedule);
+
+      // 🚀 경영방으로 신규 일정 등록 알림 즉시 발송
+      try {
+        await sendCommonScheduleRegisteredTelegram(newSchedule);
+      } catch (telErr) {
+        console.warn("Telegram notification send error:", telErr);
+      }
+
+      setToastMessage("일정이 등록되었으며, 경영방으로 알림이 발송되었습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setCommonScheduleForm({

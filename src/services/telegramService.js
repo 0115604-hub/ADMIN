@@ -936,6 +936,38 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
+ * 11. 태형&미영 신규 일정 등록 즉시 경영방 알림 발송
+ * 발송 채널: '경영총괄' (-1003939516875)
+ */
+export const sendCommonScheduleRegisteredTelegram = async (scheduleItem) => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled) return { success: false, reason: "DISABLED" };
+
+  const targetChatId = config.pnlChatId || "-1003939516875";
+  const nowFormatted = getKSTFormattedString();
+  const targetTag = scheduleItem.target ? `[${scheduleItem.target}]` : "[공통]";
+  const timeStr = scheduleItem.time && scheduleItem.time !== "종일" ? scheduleItem.time : "종일";
+  const authorStr = scheduleItem.author || "ADMIN";
+
+  const message = `
+<b>🟪 [태형&미영] 신규 일정 등록 알림</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>구분:</b> <b>${targetTag}</b>
+• <b>시간:</b> <b>${timeStr}</b>
+• <b>일정내용:</b> <b>${scheduleItem.title || "사내 공통일정"}</b>
+• <b>등록일시:</b> ${nowFormatted}
+• <b>등록자:</b> <b>${authorStr}</b>
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message, {
+    ...config,
+    chatId: targetChatId
+  });
+};
+
+/**
  * Test Connection Function
  */
 export const testTelegramConnection = async (token, chatId) => {
