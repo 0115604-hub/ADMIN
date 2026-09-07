@@ -1,8 +1,12 @@
 import * as XLSX from "xlsx";
 
 /**
- * Universal Multi-Sheet Workbook Parser for Monthly P&L
- * Automatically detects Year-Month, parses '매입-매출 정리본', '자재매입', and cost sheets.
+ * Universal Multi-Format Excel Parser for Monthly P&L and Material Purchases
+ * Supports:
+ * 1. Standard Multi-Sheet P&L (매입-매출 정리본, 자재매입, 원자재/부자재 내역 등)
+ * 2. Dedicated Purchase Ledger sheets (매입명세표, 매입DATA, 지출내역 등)
+ * 3. Cost & Settlement sheets (월간_종합결산요약, 노무비_이자_공과금_수기결산)
+ * 4. Any single or multi-sheet Excel file with sales, purchases, or ledger transactions
  */
 export const parseExcelFile = async (file) => {
   return new Promise((resolve, reject) => {
@@ -12,28 +16,67 @@ export const parseExcelFile = async (file) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
-
-        // 1. Detect Target Year-Month
-        let detectedYearMonth = "2026-08"; // default
+        const sheetNames = workbook.SheetNames || [];
         const fileName = file.name || "";
 
-        // Detect from file name (e.g. 2026-08, 2026-07, 2026.08, 8월)
-        const fnMatch = fileName.match(/(\d{4})[-._](\d{1,2})/);
+        // ---------------------------------------------------------------------
+        // 1. Intelligent Year-Month Detection (Filename -> Sheet names -> Cells)
+        // ---------------------------------------------------------------------
+        let detectedYearMonth = "";
+
+        // From Filename
+        let fnMatch = fileName.match(/(\d{4})년\s*(\d{1,2})월?/);
+        if (!fnMatch) fnMatch = fileName.match(/(\d{4})[-._](\d{1,2})/);
+        if (!fnMatch) fnMatch = fileName.match(/(\d{4})(\d{2})/);
+        if (!fnMatch) {
+          const shortMatch = fileName.match(/(\d{2})년\s*(\d{1,2})월/);
+          if (shortMatch) fnMatch = [null, "20" + shortMatch[1], shortMatch[2]];
+        }
+        if (!fnMatch) {
+          const monthOnly = fileName.match(/(\d{1,2})월/);
+          if (monthOnly) fnMatch = [null, "2026", monthOnly[1]];
+        }
         if (fnMatch) {
           detectedYearMonth = `${fnMatch[1]}-${String(fnMatch[2]).padStart(2, "0")}`;
-        } else if (fileName.includes("8월")) {
-          detectedYearMonth = "2026-08";
-        } else if (fileName.includes("7월")) {
-          detectedYearMonth = "2026-07";
         }
 
-        // 2. Inspect Sheets
-        const sheetNames = workbook.SheetNames;
+        // From Sheet Names
+        if (!detectedYearMonth) {
+          for (const s of sheetNames) {
+            let sm = s.match(/(\d{4})년\s*(\d{1,2})월?/);
+            if (!sm) sm = s.match(/(\d{4})[-._](\d{1,2})/);
+            if (!sm) sm = s.match(/(\d{1,2})월/);
+            if (sm) {
+              const y = sm[1].length === 4 ? sm[1] : "2026";
+              const m = sm[2] ? sm[2] : sm[1];
+              detectedYearMonth = `${y}-${String(m).padStart(2, "0")}`;
+              break;
+            }
+          }
+        }
 
-        // Find Master Sheet
-        const masterSheetName = sheetNames.find((s) => s.includes("정리본") || s.includes("매입-매출") || s.includes("손익"));
-        const jajaeSheetName = sheetNames.find((s) => s.includes("자재매입") || s.includes("자재"));
+        // From Cells (top 5 rows of all sheets)
+        if (!detectedYearMonth) {
+          for (const s of sheetNames) {
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[s], { header: 1, defval: "" });
+            for (let r = 0; r < Math.min(rows.length, 5); r++) {
+              const rowStr = (rows[r] || []).join(" ");
+              let cm = rowStr.match(/(\d{4})년\s*(\d{1,2})월/);
+              if (!cm) cm = rowStr.match(/(\d{4})[-._](\d{1,2})/);
+              if (cm) {
+                detectedYearMonth = `${cm[1]}-${String(cm[2]).padStart(2, "0")}`;
+                break;
+              }
+            }
+            if (detectedYearMonth) break;
+          }
+        }
 
+        if (!detectedYearMonth) detectedYearMonth = "2026-08";
+
+        // ---------------------------------------------------------------------
+        // 2. Identify & Categorize Sheets
+        // ---------------------------------------------------------------------
         let vehicleSales = [];
         let salesSummary = null;
         let jajaeGroups = [];
@@ -42,24 +85,40 @@ export const parseExcelFile = async (file) => {
         let totalPurchases = 0;
         const allTransactions = [];
 
-        // Parse Master Sheet if present
+        const masterSheetName = sheetNames.find((s) =>
+          /정리본|매입-매출|매입매출|매출현황|손익|매출/i.test(s) && !/세금계산서/i.test(s)
+        );
+        const jajaeSheetName = sheetNames.find((s) =>
+          /자재매입|자재/i.test(s) && !/명세/i.test(s)
+        );
+        const myungseSheetName = sheetNames.find((s) =>
+          /명세표|명세|매입DATA|지출|전표/i.test(s)
+        );
+        const summarySheetName = sheetNames.find((s) =>
+          /종합결산|종합요약|결산요약/i.test(s)
+        );
+        const laborSheetName = sheetNames.find((s) =>
+          /노무비|인건비|공과금/i.test(s)
+        );
+
+        // ---------------------------------------------------------------------
+        // 3. Parse Master Sales Sheet (정리본 / 매입매출)
+        // ---------------------------------------------------------------------
         if (masterSheetName && workbook.Sheets[masterSheetName]) {
           const wsMaster = workbook.Sheets[masterSheetName];
           const masterRows = XLSX.utils.sheet_to_json(wsMaster, { header: 1, defval: "" });
 
-          // Detect month from sheet title if available (e.g. 2026년 08월 매출 현황표)
-          if (masterRows[1] && String(masterRows[1][0]).includes("2026년")) {
-            const m = String(masterRows[1][0]).match(/(\d{4})년\s*(\d{1,2})월/);
-            if (m) {
-              detectedYearMonth = `${m[1]}-${String(m[2]).padStart(2, "0")}`;
-            }
+          // Detect month from sheet title if available
+          if (masterRows[1] && String(masterRows[1][0] || masterRows[1][1] || "").includes("년")) {
+            const m = String(masterRows[1][0] || masterRows[1][1] || "").match(/(\d{4})년\s*(\d{1,2})월/);
+            if (m) detectedYearMonth = `${m[1]}-${String(m[2]).padStart(2, "0")}`;
           }
 
           let currentProcess = "내수상품매출";
           let currentVehicle = "";
           const rawSalesItems = [];
 
-          for (let r = 4; r < masterRows.length; r++) {
+          for (let r = 3; r < masterRows.length; r++) {
             const row = masterRows[r];
             const c1 = String(row[1] || "").trim();
             const c2 = String(row[2] || "").trim();
@@ -189,7 +248,9 @@ export const parseExcelFile = async (file) => {
           };
         }
 
-        // Parse Jajae Sheet if present
+        // ---------------------------------------------------------------------
+        // 4. Parse Jajae Material Sheet (자재매입)
+        // ---------------------------------------------------------------------
         if (jajaeSheetName && workbook.Sheets[jajaeSheetName]) {
           const wsJajae = workbook.Sheets[jajaeSheetName];
           const jajaeRows = XLSX.utils.sheet_to_json(wsJajae, { header: 1, defval: "" });
@@ -303,30 +364,170 @@ export const parseExcelFile = async (file) => {
           };
         }
 
+        // ---------------------------------------------------------------------
+        // 5. Parse Direct Purchase Ledger Sheets (매입명세표, 매입DATA, 지출내역)
+        // ---------------------------------------------------------------------
+        if (myungseSheetName && workbook.Sheets[myungseSheetName] && jajaeGroups.length === 0) {
+          const wsMyungse = workbook.Sheets[myungseSheetName];
+          const rows = XLSX.utils.sheet_to_json(wsMyungse, { header: 1, defval: "" });
+
+          let headerIdx = 0;
+          for (let r = 0; r < Math.min(rows.length, 5); r++) {
+            const rStr = rows[r].join(" ");
+            if (rStr.includes("공급가액") || rStr.includes("금액") || rStr.includes("거래처") || rStr.includes("품목")) {
+              headerIdx = r;
+              break;
+            }
+          }
+
+          const headers = (rows[headerIdx] || []).map((h) => String(h).trim());
+          const dateCol = headers.findIndex((h) => /일자|날짜|date/i.test(h));
+          const catCol = headers.findIndex((h) => /계정과목|카테고리|구분|분류/i.test(h));
+          const clientCol = headers.findIndex((h) => /거래처|매입업체|구매처|공급처|업체명/i.test(h));
+          const itemCol = headers.findIndex((h) => /품목|항목|품명/i.test(h));
+          const amtCol = headers.findIndex((h) => /공급가액|금액|amount/i.test(h));
+          const memoCol = headers.findIndex((h) => /메모|비고|비 고/i.test(h));
+
+          const jMap = {};
+          let parsedSum = 0;
+
+          for (let r = headerIdx + 1; r < rows.length; r++) {
+            const row = rows[r];
+            const amt = Number(String(row[amtCol >= 0 ? amtCol : 6] || "").replace(/,/g, ""));
+            if (isNaN(amt) || amt <= 0) continue;
+
+            const dateVal = String(row[dateCol >= 0 ? dateCol : 1] || "").trim() || `${detectedYearMonth}-28`;
+            const catVal = String(row[catCol >= 0 ? catCol : 3] || "원자재").trim();
+            const clientVal = String(row[clientCol >= 0 ? clientCol : 4] || "매입처").trim();
+            const itemVal = String(row[itemCol >= 0 ? itemCol : 5] || "품목").trim();
+            const memoVal = String(row[memoCol >= 0 ? memoCol : 7] || "").trim();
+
+            parsedSum += amt;
+            allTransactions.push({
+              id: `myungse_${detectedYearMonth}_${r}`,
+              date: dateVal,
+              type: "expense",
+              category: catVal,
+              client: clientVal,
+              title: itemVal,
+              amount: amt,
+              paymentMethod: "세금계산서",
+              memo: memoVal
+            });
+
+            const grpName = catVal || "기타 매입";
+            if (!jMap[grpName]) {
+              jMap[grpName] = {
+                groupName: grpName,
+                color: "#3B82F6",
+                itemCount: 0,
+                totalAmount: 0,
+                suppliers: new Set(),
+                items: []
+              };
+            }
+            jMap[grpName].itemCount++;
+            jMap[grpName].totalAmount += amt;
+            if (clientVal) jMap[grpName].suppliers.add(clientVal);
+            jMap[grpName].items.push({
+              partName: itemVal,
+              supplier: clientVal,
+              amount: amt,
+              memo: memoVal,
+              category: catVal
+            });
+          }
+
+          totalPurchases = parsedSum;
+          jajaeGroups = Object.values(jMap)
+            .sort((a, b) => b.totalAmount - a.totalAmount)
+            .map((g, idx) => ({
+              rank: idx + 1,
+              groupName: g.groupName,
+              color: "#3B82F6",
+              itemCount: g.itemCount,
+              totalAmount: g.totalAmount,
+              share: Number(((g.totalAmount / (parsedSum || 1)) * 100).toFixed(2)),
+              mainSuppliers: Array.from(g.suppliers).slice(0, 4).join(", "),
+              items: g.items
+            }));
+
+          jajaeSummary = {
+            yearMonth: detectedYearMonth,
+            totalAmount: parsedSum,
+            itemCount: allTransactions.length,
+            groupCount: jajaeGroups.length
+          };
+        }
+
+        // ---------------------------------------------------------------------
+        // 6. Parse Summary / Expense Sheets (월간_종합결산요약, 노무비 수기결산)
+        // ---------------------------------------------------------------------
+        if (summarySheetName && workbook.Sheets[summarySheetName]) {
+          const wsSum = workbook.Sheets[summarySheetName];
+          const sRows = XLSX.utils.sheet_to_json(wsSum, { header: 1, defval: "" });
+          for (let r = 0; r < sRows.length; r++) {
+            const rStr = sRows[r].join(" ");
+            if (rStr.includes("총 매출액") || rStr.includes("매출액") || rStr.includes("Sales")) {
+              const nextRow = sRows[r + 1] || [];
+              for (let c = 0; c < nextRow.length; c++) {
+                const val = Number(String(nextRow[c] || "").replace(/,/g, ""));
+                if (val > 10000000) {
+                  if (!totalSales) totalSales = val;
+                  else if (!totalPurchases && val !== totalSales) totalPurchases = val;
+                }
+              }
+            }
+          }
+        }
+
+        // ---------------------------------------------------------------------
+        // 7. Universal Fallback (If no transactions parsed yet, scan all sheets)
+        // ---------------------------------------------------------------------
+        if (allTransactions.length === 0 && jajaeGroups.length === 0 && totalSales === 0 && totalPurchases === 0) {
+          for (const s of sheetNames) {
+            const ws = workbook.Sheets[s];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            for (let r = 1; r < rows.length; r++) {
+              const row = rows[r];
+              for (let c = 0; c < row.length; c++) {
+                const val = Number(String(row[c] || "").replace(/,/g, ""));
+                if (!isNaN(val) && val > 10000) {
+                  totalPurchases += val;
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        const finalSalesVal = totalSales || (salesSummary?.totalSales || 0);
+        const finalPurchasesVal = totalPurchases || (jajaeSummary?.totalAmount || 0);
+
         const parsedPackage = {
           yearMonth: detectedYearMonth,
           sheetCount: sheetNames.length,
-          totalSales: totalSales || (salesSummary?.totalSales || 0),
-          totalExpenses: totalPurchases || (jajaeSummary?.totalAmount || 0),
+          totalSales: finalSalesVal,
+          totalExpenses: finalPurchasesVal,
           salesSummary: salesSummary || {
             yearMonth: detectedYearMonth,
-            totalSales: totalSales,
+            totalSales: finalSalesVal,
             totalQty: 0,
             itemCount: 0,
-            vehicleGroupCount: 0
+            vehicleGroupCount: vehicleSales.length
           },
           vehicleSales: vehicleSales || [],
           jajaeSummary: jajaeSummary || {
             yearMonth: detectedYearMonth,
-            totalAmount: totalPurchases,
-            itemCount: 0,
-            groupCount: 0
+            totalAmount: finalPurchasesVal,
+            itemCount: allTransactions.length,
+            groupCount: jajaeGroups.length
           },
           jajaeGroups: jajaeGroups || [],
           purchaseSummary: {
             yearMonth: detectedYearMonth,
-            ledgerBenchmark: totalPurchases || (jajaeSummary?.totalAmount || 0),
-            totalExpenses: totalPurchases || (jajaeSummary?.totalAmount || 0)
+            ledgerBenchmark: finalPurchasesVal,
+            totalExpenses: finalPurchasesVal
           },
           items: allTransactions
         };
@@ -341,3 +542,4 @@ export const parseExcelFile = async (file) => {
     reader.readAsArrayBuffer(file);
   });
 };
+

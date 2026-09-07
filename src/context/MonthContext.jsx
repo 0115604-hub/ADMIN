@@ -226,10 +226,33 @@ export const MonthProvider = ({ children }) => {
       isLatest: true
     };
 
+    const existing = allMonthlyData[yearMonth] || {};
+    const finalSales = cleanPackage.totalSales > 0 ? cleanPackage.totalSales : (existing.totalSales || 0);
+    const finalExpenses = cleanPackage.totalExpenses > 0 ? cleanPackage.totalExpenses : (existing.totalExpenses || 0);
+    const finalSalesSummary = (cleanPackage.salesSummary && cleanPackage.salesSummary.totalSales > 0)
+      ? cleanPackage.salesSummary
+      : (existing.salesSummary || cleanPackage.salesSummary);
+    const finalVehicleSales = (cleanPackage.vehicleSales && cleanPackage.vehicleSales.length > 0)
+      ? cleanPackage.vehicleSales
+      : (existing.vehicleSales || []);
+    const finalJajaeSummary = (cleanPackage.jajaeSummary && cleanPackage.jajaeSummary.totalAmount > 0)
+      ? cleanPackage.jajaeSummary
+      : (existing.jajaeSummary || cleanPackage.jajaeSummary);
+    const finalJajaeGroups = (cleanPackage.jajaeGroups && cleanPackage.jajaeGroups.length > 0)
+      ? cleanPackage.jajaeGroups
+      : (existing.jajaeGroups || []);
+
     const updated = {
       ...allMonthlyData,
       [yearMonth]: {
+        ...existing,
         ...cleanPackage,
+        totalSales: finalSales,
+        totalExpenses: finalExpenses,
+        salesSummary: finalSalesSummary,
+        vehicleSales: finalVehicleSales,
+        jajaeSummary: finalJajaeSummary,
+        jajaeGroups: finalJajaeGroups,
         yearMonth,
         latestFile: latestFileRecord,
         lastUpdated: new Date().toISOString()

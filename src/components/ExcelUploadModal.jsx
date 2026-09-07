@@ -35,11 +35,12 @@ export const ExcelUploadModal = ({ isOpen, onClose, onBulkUpload }) => {
 
     try {
       const parsed = await parseExcelFile(selectedFile, ym);
-      if (parsed.length === 0) {
+      const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
+      if (items.length === 0) {
         setErrorMsg("유효한 매출/매입 데이터가 발견되지 않았습니다.");
         setPreviewData([]);
       } else {
-        setPreviewData(parsed);
+        setPreviewData(items);
       }
     } catch (err) {
       setErrorMsg("엑셀 파일 분석 실패: " + (err.message || "올바른 엑셀 파일인지 확인해 주세요."));

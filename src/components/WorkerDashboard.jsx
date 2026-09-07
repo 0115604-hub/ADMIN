@@ -3812,27 +3812,63 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-3 flex-1 flex flex-col justify-between">
-                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                          <div className="text-left min-w-0">
-                            <span className="font-black text-xs text-slate-900 dark:text-white block truncate max-w-[170px]">
-                              {parsedResult.fileName}
-                            </span>
-                            <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold">
-                              {parsedResult.yearMonth} 기준 • 추출 {parsedResult.items?.length || 0}건
-                            </span>
+                    <div className="space-y-2.5 flex-1 flex flex-col justify-between text-xs">
+                      <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                        {/* File Meta Header */}
+                        <div className="flex items-center justify-between gap-2 border-b border-emerald-200/60 dark:border-emerald-800/60 pb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-black text-xs text-slate-900 dark:text-white block truncate" title={parsedResult.fileName}>
+                                {parsedResult.fileName}
+                              </span>
+                              <span className="text-[10.5px] text-slate-400 font-medium">
+                                용량: {parsedResult.fileSize} • 시트 {parsedResult.sheetCount || 1}개
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Month Selector */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] font-bold text-slate-500">반영월:</span>
+                            <select
+                              value={parsedResult.yearMonth || selectedMonth || "2026-08"}
+                              onChange={(e) => setParsedResult((prev) => ({ ...prev, yearMonth: e.target.value }))}
+                              className="px-2 py-1 rounded-lg border border-emerald-400 dark:border-emerald-600 bg-white dark:bg-slate-800 font-black text-xs text-emerald-900 dark:text-emerald-100 cursor-pointer shadow-2xs"
+                            >
+                              {DEFAULT_MONTH_LIST.map((m) => (
+                                <option key={m} value={m}>
+                                  {m.slice(0, 4)}년 {parseInt(m.slice(5), 10)}월
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </div>
-                        <span className="text-xs font-black text-slate-900 dark:text-white">
-                          매출: {formatAmount(parsedResult.totalSales || 0)}
-                        </span>
+
+                        {/* Extracted Stats Grid */}
+                        <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                          <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-900/40">
+                            <span className="text-[10px] font-bold text-slate-500 block">추출 총 매출액</span>
+                            <span className="text-xs font-black text-blue-700 dark:text-blue-300">
+                              {parsedResult.totalSales > 0 ? formatAmount(parsedResult.totalSales) : "기존 매출 유지"}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-900/40">
+                            <span className="text-[10px] font-bold text-slate-500 block">추출 총 매입/비용</span>
+                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-300">
+                              {parsedResult.totalExpenses > 0 ? formatAmount(parsedResult.totalExpenses) : "기존 매입 유지"}
+                            </span>
+                          </div>
+                          <div className="p-1.5 rounded-lg bg-white/60 dark:bg-slate-800/60 text-[10.5px] text-slate-600 dark:text-slate-300 font-bold col-span-2 flex items-center justify-between">
+                            <span>자재/전표 거래내역: <strong className="text-emerald-600 dark:text-emerald-400">{parsedResult.items?.length || 0}건</strong></span>
+                            <span>차종별 매출군: <strong className="text-blue-600 dark:text-blue-400">{parsedResult.vehicleSales?.length || 0}개</strong></span>
+                          </div>
+                        </div>
                       </div>
 
                       {uploadSuccess ? (
                         <div className="p-2.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span className="truncate">{successMessage}</span>
                         </div>
                       ) : (
@@ -3840,7 +3876,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           type="button"
                           disabled={uploading}
                           onClick={handleConfirmExcelUpload}
-                          className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                          className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           {uploading ? (
                             <>
@@ -3850,7 +3886,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           ) : (
                             <>
                               <Sparkles className="w-3.5 h-3.5" />
-                              <span>{parsedResult.yearMonth} 매입매출 데이터베이스 즉시 반영하기</span>
+                              <span>{parsedResult.yearMonth || selectedMonth} 매입매출 데이터베이스 즉시 반영하기</span>
                             </>
                           )}
                         </button>
