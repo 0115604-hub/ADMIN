@@ -22,6 +22,18 @@ export const ADMIN_USERS = [
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
     avatar: "A",
     pin: "0090"
+  },
+  {
+    id: "exec_my",
+    name: "최미영",
+    title: "전무",
+    displayName: "최미영 전무",
+    role: "ADMIN",
+    roleLabel: "본사 • 최미영 전무",
+    plant: "본사",
+    badgeColor: "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300",
+    avatar: "최",
+    pin: "11"
   }
 ];
 

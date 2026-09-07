@@ -1110,7 +1110,7 @@ export const AuthModal = () => {
               {/* ========================================================================= */}
               {/* 3. BOTTOM ACTIONS: ADMIN */}
               {/* ========================================================================= */}
-              <div className="pt-1.5 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">
+              <div className="pt-1.5 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 flex-wrap">
                 {ADMIN_USERS.map((admin) => (
                   <button
                     key={admin.id}
@@ -1118,7 +1118,7 @@ export const AuthModal = () => {
                     className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-[11px] sm:text-xs font-black transition-all shadow-2xs group active:scale-95 cursor-pointer"
                   >
                     <Shield className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>ADMIN 관리자</span>
+                    <span>{admin.displayName || admin.name}</span>
                     <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 ))}

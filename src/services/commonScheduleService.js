@@ -20,14 +20,23 @@ const DEFAULT_COMMON_SCHEDULES = [
     date: new Date().toISOString().split("T")[0],
     time: "14:00",
     target: "전무",
-    title: "한림공장 압출라인 2호기 정기 설비점검 및 안전진단",
-    author: "이명재",
+    title: "본사-공장 합동 결산 및 9월 예산 집행 점검",
+    author: "최미영",
     createdAt: new Date().toISOString()
   },
   {
     id: "sched_default_3",
     date: new Date().toISOString().split("T")[0],
     time: "16:00",
+    target: "이사",
+    title: "삼랑진공장 압출라인 2호기 정기 설비점검 및 안전진단",
+    author: "이명재",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "sched_default_4",
+    date: new Date().toISOString().split("T")[0],
+    time: "17:30",
     target: "공통",
     title: "전사 품질안전보건 정기 교육 및 9월 납품계획 공유",
     author: "관리자",

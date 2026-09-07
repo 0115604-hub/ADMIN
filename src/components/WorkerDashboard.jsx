@@ -1125,6 +1125,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
                       : item.target === "전무"
                       ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                      : item.target === "이사"
+                      ? "bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700"
                       : item.target === "한림" || item.target === "한림공장"
                       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                       : item.target === "삼랑진" || item.target === "삼랑진공장"
@@ -3569,7 +3571,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     공통일정 등록
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    전무, 대표, 공통 등 대상을 선택하여 일정을 등록합니다.
+                    대표, 전무, 이사, 공통 등 대상을 선택하여 일정을 등록합니다.
                   </p>
                 </div>
               </div>
@@ -3588,11 +3590,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                   대상 선택
                 </label>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                   {[
                     { key: "공통", label: "공통", activeBg: "bg-purple-600 text-white border-purple-600 shadow-xs" },
                     { key: "대표", label: "대표", activeBg: "bg-amber-600 text-white border-amber-600 shadow-xs" },
                     { key: "전무", label: "전무", activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
+                    { key: "이사", label: "이사", activeBg: "bg-cyan-600 text-white border-cyan-600 shadow-xs" },
                     { key: "삼랑진", label: "삼랑진", activeBg: "bg-rose-600 text-white border-rose-600 shadow-xs" },
                     { key: "한림", label: "한림", activeBg: "bg-emerald-600 text-white border-emerald-600 shadow-xs" }
                   ].map((item) => {
