@@ -586,10 +586,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [commonScheduleForm, setCommonScheduleForm] = useState({
     date: new Date().toISOString().split("T")[0],
     time: "09:30",
-    target: "전사공통",
+    target: "공통",
     title: ""
   });
   const [commonScheduleSaving, setCommonScheduleSaving] = useState(false);
+  const [commonScheduleModalOpen, setCommonScheduleModalOpen] = useState(false);
   const [dailyPnLModalOpen, setDailyPnLModalOpen] = useState(false);
   const [sendingDailyPnL, setSendingDailyPnL] = useState(false);
   const [customPnLBriefing, setCustomPnLBriefing] = useState(null);
@@ -608,7 +609,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [commonSchedules, todayDateStr]);
 
   const handleRegisterCommonSchedule = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!commonScheduleForm.title?.trim()) {
       alert("공통일정 내용을 입력해 주세요.");
       return;
@@ -619,13 +620,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         ...commonScheduleForm,
         author: currentProfile?.name || "관리자"
       });
-      setToastMessage("전사 공통일정이 정상적으로 등록되었습니다.");
+      setToastMessage("공통일정이 정상적으로 등록되었습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setCommonScheduleForm((prev) => ({
         ...prev,
         title: ""
       }));
+      setCommonScheduleModalOpen(false);
     } catch (err) {
       alert("공통일정 등록 중 오류 발생: " + err.message);
     } finally {
@@ -1080,138 +1082,97 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
       {/* ========================================================================= */}
-      {/* 📌 전사 공통일정 (결재 패널 바로 상단 위치 • 공통일정 등록 & 실시간 공유) */}
+      {/* 📌 전사 공통일정 (1줄 간결 바 • 결재 패널 상단) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 border border-indigo-500/40 dark:border-indigo-600/40 shadow-2xs space-y-2 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <div className="p-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs shrink-0">
-              <CalendarDays className="w-3.5 h-3.5" />
-            </div>
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
-              📌 전사 공통일정 (오늘의 주요 일정)
-            </h3>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-              📅 {todayDateStr} 기준 ({todayCommonSchedules.length}건)
-            </span>
+      <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-indigo-500/40 dark:border-indigo-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+          <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-xs shrink-0">
+            <CalendarDays className="w-3.5 h-3.5" />
+          </div>
+          <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
+            전사 공통일정
+          </span>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {todayCommonSchedules.length > 0 ? (
+              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-300 flex items-center gap-1">
+                <CalendarDays className="w-3 h-3 text-indigo-600" />
+                <span>오늘 {todayCommonSchedules.length}건</span>
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-slate-500" />
+                <span>등록된 일정 없음</span>
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
-            {/* 아침 손익결산 브리핑 예시 및 발송 모달 오픈 버튼 */}
-            <button
-              type="button"
-              onClick={() => setDailyPnLModalOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
-              title="매일아침 손익결산 메시지 예시화면 및 텔레그램 발송"
-            >
-              <Send className="w-3 h-3 text-white" />
-              <span>📱 아침 손익결산 브리핑 예시</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 1. Admin/Manager Quick Input Form (공통일정 등록 바) */}
-        {(isAdmin || isGeneralManager) && (
-          <form onSubmit={handleRegisterCommonSchedule} className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center p-2 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
-            <div className="sm:col-span-2 min-w-0">
-              <select
-                value={commonScheduleForm.target}
-                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, target: e.target.value })}
-                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
-              >
-                <option value="전사공통">전사공통</option>
-                <option value="삼랑진공장">삼랑진</option>
-                <option value="한림공장">한림</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-2 min-w-0">
-              <input
-                type="date"
-                required
-                value={commonScheduleForm.date}
-                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, date: e.target.value })}
-                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
-              />
-            </div>
-
-            <div className="sm:col-span-2 min-w-0">
-              <input
-                type="text"
-                placeholder="시간 (예: 09:30)"
-                value={commonScheduleForm.time}
-                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, time: e.target.value })}
-                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-              />
-            </div>
-
-            <div className="sm:col-span-4 min-w-0">
-              <input
-                type="text"
-                required
-                placeholder="공통일정 내용 (예: 주간 경영전략 회의)"
-                value={commonScheduleForm.title}
-                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, title: e.target.value })}
-                className="w-full px-2.5 py-1 rounded-lg border border-indigo-400 dark:border-indigo-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
-              />
-            </div>
-
-            <div className="sm:col-span-2 min-w-0">
-              <button
-                type="submit"
-                disabled={commonScheduleSaving}
-                className="w-full py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs shadow-2xs transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-              >
-                <Plus className="w-3 h-3" />
-                <span>{commonScheduleSaving ? "등록중..." : "+ 일정 등록"}</span>
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* 2. Today's Common Schedule List Chips */}
-        <div className="flex flex-wrap gap-1.5 pt-0.5 items-center">
-          {todayCommonSchedules.length > 0 ? (
-            todayCommonSchedules.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs hover:border-indigo-400 transition-all"
-              >
-                <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
-                  item.target === "전사공통"
-                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                    : item.target === "한림공장"
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                    : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
-                }`}>
-                  {item.target || "공통"}
-                </span>
-                {item.time && item.time !== "종일" && (
-                  <span className="font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                    [{item.time}]
+          {/* Today's Schedule Chips List in 1-line */}
+          {todayCommonSchedules.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
+              {todayCommonSchedules.map((item) => (
+                <div
+                  key={item.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs shrink-0 hover:border-indigo-400 transition-all"
+                >
+                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                    item.target === "대표"
+                      ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                      : item.target === "전무"
+                      ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                      : item.target === "한림" || item.target === "한림공장"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                      : item.target === "삼랑진" || item.target === "삼랑진공장"
+                      ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
+                      : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
+                  }`}>
+                    {item.target || "공통"}
                   </span>
-                )}
-                <span className="font-bold text-slate-800 dark:text-slate-200">
-                  {item.title}
-                </span>
-                {(isAdmin || isGeneralManager) && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCommonSchedule(item.id)}
-                    className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
-                    title="일정 삭제"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="text-xs text-slate-500 dark:text-slate-400 py-1 px-2 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>오늘 등록된 전사 공통일정이 없습니다. (정상 생산 가동 진행)</span>
+                  {item.time && item.time !== "종일" && (
+                    <span className="font-mono text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400">
+                      [{item.time}]
+                    </span>
+                  )}
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate max-w-[130px] sm:max-w-[200px]">
+                    {item.title}
+                  </span>
+                  {(isAdmin || isGeneralManager) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCommonSchedule(item.id)}
+                      className="ml-0.5 p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                      title="일정 삭제"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
+        </div>
+
+        {/* Right side buttons */}
+        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+          {(isAdmin || isGeneralManager) && (
+            <button
+              type="button"
+              onClick={() => setCommonScheduleModalOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+            >
+              <Plus className="w-3 h-3" />
+              <span>+ 일정 등록</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setDailyPnLModalOpen(true)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+            title="매일아침 손익결산 메시지 예시화면 및 텔레그램 발송"
+          >
+            <Send className="w-3 h-3 text-white" />
+            <span>📱 손익결산 브리핑</span>
+          </button>
         </div>
       </div>
 
@@ -3584,6 +3545,149 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📌 전사 공통일정 등록 모달 */}
+      {/* ========================================================================= */}
+      {commonScheduleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full border border-indigo-500/40 shadow-2xl p-4 sm:p-5 space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
+                  <CalendarDays className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                    공통일정 등록
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    전무, 대표, 공통 등 대상을 선택하여 일정을 등록합니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCommonScheduleModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleRegisterCommonSchedule} className="space-y-3.5">
+              {/* 구분/대상 선택 버튼 그룹 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  대상 선택
+                </label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {[
+                    { key: "공통", label: "공통", activeBg: "bg-purple-600 text-white border-purple-600 shadow-xs" },
+                    { key: "대표", label: "대표", activeBg: "bg-amber-600 text-white border-amber-600 shadow-xs" },
+                    { key: "전무", label: "전무", activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
+                    { key: "삼랑진", label: "삼랑진", activeBg: "bg-rose-600 text-white border-rose-600 shadow-xs" },
+                    { key: "한림", label: "한림", activeBg: "bg-emerald-600 text-white border-emerald-600 shadow-xs" }
+                  ].map((item) => {
+                    const isSelected = commonScheduleForm.target === item.key || (item.key === "공통" && commonScheduleForm.target === "전사공통");
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setCommonScheduleForm({ ...commonScheduleForm, target: item.key })}
+                        className={`py-1.5 px-1 rounded-xl text-xs font-black border transition-all cursor-pointer text-center ${
+                          isSelected
+                            ? item.activeBg
+                            : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 일자 & 시간 */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    일자
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={commonScheduleForm.date}
+                    onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, date: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    시간
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="예: 09:30, 14:00, 종일"
+                    value={commonScheduleForm.time}
+                    onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, time: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Time Presets */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 font-bold">빠른 시간:</span>
+                {["09:30", "14:00", "16:00", "종일"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setCommonScheduleForm({ ...commonScheduleForm, time: t })}
+                    className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {/* 일정 내용 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  일정 내용
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="예: 본사 임원 주간 회의 / 한림공장 안전진단"
+                  value={commonScheduleForm.title}
+                  onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, title: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-indigo-400 dark:border-indigo-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCommonScheduleModalOpen(false)}
+                  className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={commonScheduleSaving}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs shadow-md transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{commonScheduleSaving ? "등록 중..." : "일정 등록"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

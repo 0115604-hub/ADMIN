@@ -10,18 +10,27 @@ const DEFAULT_COMMON_SCHEDULES = [
     id: "sched_default_1",
     date: new Date().toISOString().split("T")[0],
     time: "09:30",
-    target: "전사공통",
+    target: "대표",
     title: "주간 경영전략 및 원자재 수급 점검 회의 (본관 2층 대회의실)",
-    author: "관리자",
+    author: "권태형",
     createdAt: new Date().toISOString()
   },
   {
     id: "sched_default_2",
     date: new Date().toISOString().split("T")[0],
     time: "14:00",
-    target: "한림공장",
+    target: "전무",
     title: "한림공장 압출라인 2호기 정기 설비점검 및 안전진단",
-    author: "김동욱",
+    author: "이명재",
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: "sched_default_3",
+    date: new Date().toISOString().split("T")[0],
+    time: "16:00",
+    target: "공통",
+    title: "전사 품질안전보건 정기 교육 및 9월 납품계획 공유",
+    author: "관리자",
     createdAt: new Date().toISOString()
   }
 ];
@@ -44,7 +53,7 @@ export const saveCommonSchedule = async (scheduleItem) => {
     id: scheduleItem.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
     date: scheduleItem.date || new Date().toISOString().split("T")[0],
     time: scheduleItem.time || "종일",
-    target: scheduleItem.target || "전사공통",
+    target: scheduleItem.target || "공통",
     title: scheduleItem.title?.trim() || "사내 공통일정",
     author: scheduleItem.author || "관리자",
     createdAt: scheduleItem.createdAt || new Date().toISOString()
