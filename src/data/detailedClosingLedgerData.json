@@ -1420,5 +1420,921 @@
         ]
       }
     ]
+  },
+  "2026-09": {
+    "month": "2026-09",
+    "categories": [
+      {
+        "id": "raw_materials",
+        "name": "원자재",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 1,
+            "vendor": "-",
+            "item": "EA1-73B",
+            "supplyAmt": 40400000,
+            "taxAmt": 4040000,
+            "totalAmt": 44440000,
+            "memo": ""
+          },
+          {
+            "id": 2,
+            "vendor": "삼랑진\r\nT&C\r\n박수진마감",
+            "item": "NX4 G/RUN FRT A",
+            "supplyAmt": 40230000,
+            "taxAmt": 4023000,
+            "totalAmt": 44253000,
+            "memo": ""
+          },
+          {
+            "id": 3,
+            "vendor": "-",
+            "item": "XA1-65B_001 (명례)",
+            "supplyAmt": 37280000,
+            "taxAmt": 3728000,
+            "totalAmt": 41008000,
+            "memo": ""
+          },
+          {
+            "id": 4,
+            "vendor": "-",
+            "item": "NX4 G/RUN FRT B",
+            "supplyAmt": 36235480,
+            "taxAmt": 3623548,
+            "totalAmt": 39859028,
+            "memo": ""
+          },
+          {
+            "id": 5,
+            "vendor": "-",
+            "item": "B64E",
+            "supplyAmt": 30480000,
+            "taxAmt": 3048000,
+            "totalAmt": 33528000,
+            "memo": ""
+          },
+          {
+            "id": 6,
+            "vendor": "-",
+            "item": "DS DR SIDE SECT D, HALF RR (475mm)",
+            "supplyAmt": 28726880,
+            "taxAmt": 2872688,
+            "totalAmt": 31599568,
+            "memo": "소재매입"
+          },
+          {
+            "id": 7,
+            "vendor": "-",
+            "item": "NX4 G/RUN FRT C",
+            "supplyAmt": 16988400,
+            "taxAmt": 1698840,
+            "totalAmt": 18687240,
+            "memo": ""
+          },
+          {
+            "id": 8,
+            "vendor": "-",
+            "item": "XA1-80B_001 (명례)",
+            "supplyAmt": 13800000,
+            "taxAmt": 1380000,
+            "totalAmt": 15180000,
+            "memo": ""
+          },
+          {
+            "id": 9,
+            "vendor": "-",
+            "item": "GM-B64EM",
+            "supplyAmt": 11080000,
+            "taxAmt": 1108000,
+            "totalAmt": 12188000,
+            "memo": ""
+          },
+          {
+            "id": 10,
+            "vendor": "-",
+            "item": "DT HOOD SEAL FRT \"A\"",
+            "supplyAmt": 9096000,
+            "taxAmt": 909600,
+            "totalAmt": 10005600,
+            "memo": ""
+          },
+          {
+            "id": 11,
+            "vendor": "-",
+            "item": "IA4-68B",
+            "supplyAmt": 8610000,
+            "taxAmt": 861000,
+            "totalAmt": 9471000,
+            "memo": ""
+          },
+          {
+            "id": 12,
+            "vendor": "화승코퍼레이션",
+            "item": "IA4-75B_1",
+            "supplyAmt": 7785000,
+            "taxAmt": 778500,
+            "totalAmt": 8563500,
+            "memo": ""
+          },
+          {
+            "id": 13,
+            "vendor": "-",
+            "item": "ED2-50B_001",
+            "supplyAmt": 7125000,
+            "taxAmt": 712500,
+            "totalAmt": 7837500,
+            "memo": ""
+          },
+          {
+            "id": 14,
+            "vendor": "-",
+            "item": "IA4-80B (G)",
+            "supplyAmt": 6020000,
+            "taxAmt": 602000,
+            "totalAmt": 6622000,
+            "memo": ""
+          },
+          {
+            "id": 15,
+            "vendor": "-",
+            "item": "ED2-53B",
+            "supplyAmt": 5190000,
+            "taxAmt": 519000,
+            "totalAmt": 5709000,
+            "memo": ""
+          },
+          {
+            "id": 16,
+            "vendor": "-",
+            "item": "DT HOOD SEAL FRT \"B\"",
+            "supplyAmt": 3192000,
+            "taxAmt": 319200,
+            "totalAmt": 3511200,
+            "memo": ""
+          },
+          {
+            "id": 17,
+            "vendor": "-",
+            "item": "IA4-78B",
+            "supplyAmt": 3125000,
+            "taxAmt": 312500,
+            "totalAmt": 3437500,
+            "memo": ""
+          },
+          {
+            "id": 18,
+            "vendor": "-",
+            "item": "NE1a Door Side FR  \"A\"",
+            "supplyAmt": 2304000,
+            "taxAmt": 230400,
+            "totalAmt": 2534400,
+            "memo": "138136260"
+          },
+          {
+            "id": 19,
+            "vendor": "-",
+            "item": "NE1a Door Side RR  \"A\"",
+            "supplyAmt": 1363500,
+            "taxAmt": 136350,
+            "totalAmt": 1499850,
+            "memo": ""
+          },
+          {
+            "id": 20,
+            "vendor": "-",
+            "item": "ED2-52B",
+            "supplyAmt": 566500,
+            "taxAmt": 56650,
+            "totalAmt": 623150,
+            "memo": ""
+          },
+          {
+            "id": 21,
+            "vendor": "해동무역\r\n삼랑진",
+            "item": "W60712$2",
+            "supplyAmt": 113857380,
+            "taxAmt": 11385738,
+            "totalAmt": 125243118,
+            "memo": ""
+          },
+          {
+            "id": 22,
+            "vendor": "-",
+            "item": "W60594BJ2",
+            "supplyAmt": 36536850,
+            "taxAmt": 3653685,
+            "totalAmt": 40190535,
+            "memo": ""
+          },
+          {
+            "id": 23,
+            "vendor": "-",
+            "item": "W60593$W3",
+            "supplyAmt": 29698620,
+            "taxAmt": 2969862,
+            "totalAmt": 32668482,
+            "memo": ""
+          },
+          {
+            "id": 24,
+            "vendor": "-",
+            "item": "W60923",
+            "supplyAmt": 27179690,
+            "taxAmt": 2717969,
+            "totalAmt": 29897659,
+            "memo": ""
+          },
+          {
+            "id": 25,
+            "vendor": "-",
+            "item": "W60052",
+            "supplyAmt": 21848760,
+            "taxAmt": 2184876,
+            "totalAmt": 24033636,
+            "memo": ""
+          },
+          {
+            "id": 26,
+            "vendor": "-",
+            "item": "W60513M",
+            "supplyAmt": 16051400,
+            "taxAmt": 1605140,
+            "totalAmt": 17656540,
+            "memo": ""
+          },
+          {
+            "id": 27,
+            "vendor": "-",
+            "item": "W60712$2TA",
+            "supplyAmt": 15664600,
+            "taxAmt": 1566460,
+            "totalAmt": 17231060,
+            "memo": ""
+          },
+          {
+            "id": 28,
+            "vendor": "-",
+            "item": "W60905$OS",
+            "supplyAmt": 12068420,
+            "taxAmt": 1206842,
+            "totalAmt": 13275262,
+            "memo": ""
+          },
+          {
+            "id": 29,
+            "vendor": "해동무역\r\n조영",
+            "item": "W60664$OS",
+            "supplyAmt": 11285240,
+            "taxAmt": 1128524,
+            "totalAmt": 12413764,
+            "memo": ""
+          },
+          {
+            "id": 30,
+            "vendor": "-",
+            "item": "W6085YU",
+            "supplyAmt": 4611200,
+            "taxAmt": 461120,
+            "totalAmt": 5072320,
+            "memo": ""
+          },
+          {
+            "id": 31,
+            "vendor": "-",
+            "item": "w60922",
+            "supplyAmt": 2082500,
+            "taxAmt": 208250,
+            "totalAmt": 2290750,
+            "memo": ""
+          },
+          {
+            "id": 32,
+            "vendor": "-",
+            "item": "W6082$NA",
+            "supplyAmt": 1635130,
+            "taxAmt": 163513,
+            "totalAmt": 1798643,
+            "memo": ""
+          },
+          {
+            "id": 33,
+            "vendor": "-",
+            "item": "EPDM PAD (5T*40W*70L) T형 패드",
+            "supplyAmt": 1440000,
+            "taxAmt": 144000,
+            "totalAmt": 1584000,
+            "memo": ""
+          },
+          {
+            "id": 34,
+            "vendor": "-",
+            "item": "W60054",
+            "supplyAmt": 975240,
+            "taxAmt": 97524,
+            "totalAmt": 1072764,
+            "memo": ""
+          },
+          {
+            "id": 35,
+            "vendor": "-",
+            "item": "EPDM PAD 5*10*70",
+            "supplyAmt": 190000,
+            "taxAmt": 19000,
+            "totalAmt": 209000,
+            "memo": ""
+          },
+          {
+            "id": 36,
+            "vendor": "-",
+            "item": "EPDM PAD (3T*10W*70L)-블랙",
+            "supplyAmt": 165000,
+            "taxAmt": 16500,
+            "totalAmt": 181500,
+            "memo": ""
+          },
+          {
+            "id": 37,
+            "vendor": "-",
+            "item": "EPDM PAD (3T*10W*70L)-아이보리",
+            "supplyAmt": 107000,
+            "taxAmt": 10700,
+            "totalAmt": 117700,
+            "memo": ""
+          },
+          {
+            "id": 44,
+            "vendor": "-",
+            "item": "SX553A",
+            "supplyAmt": 18326000,
+            "taxAmt": 1832600,
+            "totalAmt": 20158600,
+            "memo": ""
+          },
+          {
+            "id": 45,
+            "vendor": "화승네트웍스",
+            "item": "COMPOUND SD#75 BK",
+            "supplyAmt": 12520000,
+            "taxAmt": 1252000,
+            "totalAmt": 13772000,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "sub_materials",
+        "name": "부자재",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 38,
+            "vendor": "글라스\r\n㈜지텍 납품",
+            "item": "9BQC PRI LH",
+            "supplyAmt": 13706000,
+            "taxAmt": 1370600,
+            "totalAmt": 15076600,
+            "memo": "41710000"
+          },
+          {
+            "id": 39,
+            "vendor": "-",
+            "item": "9BQC PRI RH",
+            "supplyAmt": 10964800,
+            "taxAmt": 1096480,
+            "totalAmt": 12061280,
+            "memo": ""
+          },
+          {
+            "id": 40,
+            "vendor": "㈜ 세동",
+            "item": "9BQC D/V BAR LH",
+            "supplyAmt": 5750352,
+            "taxAmt": 575035,
+            "totalAmt": 6325387,
+            "memo": ""
+          },
+          {
+            "id": 41,
+            "vendor": "-",
+            "item": "9BQC D/V BAR RH",
+            "supplyAmt": 5750352,
+            "taxAmt": 575035,
+            "totalAmt": 6325387,
+            "memo": ""
+          },
+          {
+            "id": 42,
+            "vendor": "우봉",
+            "item": "아마쉘 PAD 5T*5W*60L",
+            "supplyAmt": 349600,
+            "taxAmt": 34960,
+            "totalAmt": 384560,
+            "memo": ""
+          },
+          {
+            "id": 43,
+            "vendor": "-",
+            "item": "아마쉘 PAD 7T*10W*50L",
+            "supplyAmt": 216700,
+            "taxAmt": 21670,
+            "totalAmt": 238370,
+            "memo": ""
+          },
+          {
+            "id": 46,
+            "vendor": "우진금속",
+            "item": "심금STS430A 0.4*45.5",
+            "supplyAmt": 12254274,
+            "taxAmt": 1225427,
+            "totalAmt": 13479701,
+            "memo": ""
+          },
+          {
+            "id": 47,
+            "vendor": "-",
+            "item": "WIRE GLASS CORD (Ø0.4mm)",
+            "supplyAmt": 8821800,
+            "taxAmt": 882180,
+            "totalAmt": 9703980,
+            "memo": ""
+          },
+          {
+            "id": 48,
+            "vendor": "-",
+            "item": "M46-0595-02(국산 BLACK)-장유",
+            "supplyAmt": 3360000,
+            "taxAmt": 336000,
+            "totalAmt": 3696000,
+            "memo": ""
+          },
+          {
+            "id": 49,
+            "vendor": "-",
+            "item": "M46-0580-02(ITW-파랑색)",
+            "supplyAmt": 2950000,
+            "taxAmt": 295000,
+            "totalAmt": 3245000,
+            "memo": ""
+          },
+          {
+            "id": 50,
+            "vendor": "-",
+            "item": "M46-0580-02(ITW-오렌지)",
+            "supplyAmt": 2360000,
+            "taxAmt": 236000,
+            "totalAmt": 2596000,
+            "memo": ""
+          },
+          {
+            "id": 51,
+            "vendor": "-",
+            "item": "70*4.5T*140",
+            "supplyAmt": 990000,
+            "taxAmt": 99000,
+            "totalAmt": 1089000,
+            "memo": ""
+          },
+          {
+            "id": 52,
+            "vendor": "-",
+            "item": "M46-0580-01 (WHITE)",
+            "supplyAmt": 765000,
+            "taxAmt": 76500,
+            "totalAmt": 841500,
+            "memo": ""
+          },
+          {
+            "id": 53,
+            "vendor": "-",
+            "item": "T300 JOINT CLIP BK",
+            "supplyAmt": 730000,
+            "taxAmt": 73000,
+            "totalAmt": 803000,
+            "memo": ""
+          },
+          {
+            "id": 54,
+            "vendor": "-",
+            "item": "LQ2 클립 (WH)",
+            "supplyAmt": 610000,
+            "taxAmt": 61000,
+            "totalAmt": 671000,
+            "memo": ""
+          },
+          {
+            "id": 55,
+            "vendor": "-",
+            "item": "LQ2 클립 (BR)",
+            "supplyAmt": 610000,
+            "taxAmt": 61000,
+            "totalAmt": 671000,
+            "memo": ""
+          },
+          {
+            "id": 56,
+            "vendor": "-",
+            "item": "CLIP,D/S B-PLR MOLD(BLACK)",
+            "supplyAmt": 545400,
+            "taxAmt": 54540,
+            "totalAmt": 599940,
+            "memo": ""
+          },
+          {
+            "id": 57,
+            "vendor": "-",
+            "item": "실리콘 MEM-0349",
+            "supplyAmt": 520000,
+            "taxAmt": 52000,
+            "totalAmt": 572000,
+            "memo": ""
+          },
+          {
+            "id": 58,
+            "vendor": "-",
+            "item": "OV1k Insert Resin LH #X",
+            "supplyAmt": 491600,
+            "taxAmt": 49160,
+            "totalAmt": 540760,
+            "memo": ""
+          },
+          {
+            "id": 59,
+            "vendor": "-",
+            "item": "OV1k Insert Resin RH #X",
+            "supplyAmt": 491600,
+            "taxAmt": 49160,
+            "totalAmt": 540760,
+            "memo": ""
+          },
+          {
+            "id": 60,
+            "vendor": "-",
+            "item": "OV1k Insert Resin LH #Y",
+            "supplyAmt": 482400,
+            "taxAmt": 48240,
+            "totalAmt": 530640,
+            "memo": ""
+          },
+          {
+            "id": 61,
+            "vendor": "-",
+            "item": "OV1k Insert Resin RH #Y",
+            "supplyAmt": 482400,
+            "taxAmt": 48240,
+            "totalAmt": 530640,
+            "memo": ""
+          },
+          {
+            "id": 62,
+            "vendor": "-",
+            "item": "스리본드 방청제 1521B 3kg",
+            "supplyAmt": 436800,
+            "taxAmt": 43680,
+            "totalAmt": 480480,
+            "memo": ""
+          },
+          {
+            "id": 63,
+            "vendor": "-",
+            "item": "접착제 SC-P-1512",
+            "supplyAmt": 428700,
+            "taxAmt": 42870,
+            "totalAmt": 471570,
+            "memo": ""
+          },
+          {
+            "id": 64,
+            "vendor": "-",
+            "item": "DCX DS ROOP CLIP(YE)",
+            "supplyAmt": 390000,
+            "taxAmt": 39000,
+            "totalAmt": 429000,
+            "memo": ""
+          },
+          {
+            "id": 65,
+            "vendor": "-",
+            "item": "CLIP 82210-4E000(WHITE)",
+            "supplyAmt": 380000,
+            "taxAmt": 38000,
+            "totalAmt": 418000,
+            "memo": ""
+          },
+          {
+            "id": 66,
+            "vendor": "-",
+            "item": "CLIP 82220-4E000(YELLOW)",
+            "supplyAmt": 380000,
+            "taxAmt": 38000,
+            "totalAmt": 418000,
+            "memo": ""
+          },
+          {
+            "id": 67,
+            "vendor": "-",
+            "item": "FCA DT INSERT RH R부",
+            "supplyAmt": 368500,
+            "taxAmt": 36850,
+            "totalAmt": 405350,
+            "memo": ""
+          },
+          {
+            "id": 68,
+            "vendor": "-",
+            "item": "FCA DT INSERT LH R부",
+            "supplyAmt": 368500,
+            "taxAmt": 36850,
+            "totalAmt": 405350,
+            "memo": ""
+          },
+          {
+            "id": 69,
+            "vendor": "-",
+            "item": "SC-B-4550",
+            "supplyAmt": 354840,
+            "taxAmt": 35484,
+            "totalAmt": 390324,
+            "memo": ""
+          },
+          {
+            "id": 70,
+            "vendor": "-",
+            "item": "BOND SC-H-50",
+            "supplyAmt": 182100,
+            "taxAmt": 18210,
+            "totalAmt": 200310,
+            "memo": ""
+          },
+          {
+            "id": 71,
+            "vendor": "-",
+            "item": "OV1k 형상패드(1.5*20*20)",
+            "supplyAmt": 165000,
+            "taxAmt": 16500,
+            "totalAmt": 181500,
+            "memo": ""
+          },
+          {
+            "id": 72,
+            "vendor": "-",
+            "item": "EG CLIP(W)",
+            "supplyAmt": 126000,
+            "taxAmt": 12600,
+            "totalAmt": 138600,
+            "memo": ""
+          },
+          {
+            "id": 73,
+            "vendor": "-",
+            "item": "EG CLIP(Y)",
+            "supplyAmt": 126000,
+            "taxAmt": 12600,
+            "totalAmt": 138600,
+            "memo": ""
+          },
+          {
+            "id": 74,
+            "vendor": "화승 R&A 물품대(박수진)",
+            "item": "CAP 82210-4E000",
+            "supplyAmt": 81000,
+            "taxAmt": 8100,
+            "totalAmt": 89100,
+            "memo": ""
+          },
+          {
+            "id": 75,
+            "vendor": "-",
+            "item": "CAP 82220-4E000",
+            "supplyAmt": 81000,
+            "taxAmt": 8100,
+            "totalAmt": 89100,
+            "memo": ""
+          },
+          {
+            "id": 76,
+            "vendor": "-",
+            "item": "FCA DT INSERT RH S부",
+            "supplyAmt": 60400,
+            "taxAmt": 6040,
+            "totalAmt": 66440,
+            "memo": ""
+          },
+          {
+            "id": 77,
+            "vendor": "-",
+            "item": "FCA DT INSERT LH S부",
+            "supplyAmt": 60400,
+            "taxAmt": 6040,
+            "totalAmt": 66440,
+            "memo": ""
+          },
+          {
+            "id": 78,
+            "vendor": "-",
+            "item": "PU D/C END CAP①",
+            "supplyAmt": 28000,
+            "taxAmt": 2800,
+            "totalAmt": 30800,
+            "memo": ""
+          },
+          {
+            "id": 79,
+            "vendor": "-",
+            "item": "PU D/C END CAP②",
+            "supplyAmt": 28000,
+            "taxAmt": 2800,
+            "totalAmt": 30800,
+            "memo": ""
+          },
+          {
+            "id": 80,
+            "vendor": "-",
+            "item": "PU D/C END CAP③",
+            "supplyAmt": 28000,
+            "taxAmt": 2800,
+            "totalAmt": 30800,
+            "memo": ""
+          },
+          {
+            "id": 81,
+            "vendor": "-",
+            "item": "PU D/C END CAP④",
+            "supplyAmt": 28000,
+            "taxAmt": 2800,
+            "totalAmt": 30800,
+            "memo": ""
+          },
+          {
+            "id": 82,
+            "vendor": "-",
+            "item": "HSW-6000L",
+            "supplyAmt": 5788272,
+            "taxAmt": 578827,
+            "totalAmt": 6367099,
+            "memo": ""
+          },
+          {
+            "id": 83,
+            "vendor": "-",
+            "item": "HSP-700",
+            "supplyAmt": 1592430,
+            "taxAmt": 159243,
+            "totalAmt": 1751673,
+            "memo": ""
+          },
+          {
+            "id": 84,
+            "vendor": "-",
+            "item": "HSC-2000-B-3",
+            "supplyAmt": 514800,
+            "taxAmt": 51480,
+            "totalAmt": 566280,
+            "memo": ""
+          },
+          {
+            "id": 85,
+            "vendor": "-",
+            "item": "HSW-595V",
+            "supplyAmt": 434109,
+            "taxAmt": 43411,
+            "totalAmt": 477520,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "outsourcing",
+        "name": "외주가공비",
+        "group": "제조 직접 원가",
+        "items": []
+      },
+      {
+        "id": "packaging",
+        "name": "포장재/운반용기",
+        "group": "제조 직접 원가",
+        "items": [
+          {
+            "id": 86,
+            "vendor": "조영마감",
+            "item": "1116*949*98",
+            "supplyAmt": 1524000,
+            "taxAmt": 152400,
+            "totalAmt": 1676400,
+            "memo": ""
+          },
+          {
+            "id": 87,
+            "vendor": "-",
+            "item": "1100*930*285",
+            "supplyAmt": 1035000,
+            "taxAmt": 103500,
+            "totalAmt": 1138500,
+            "memo": ""
+          },
+          {
+            "id": 88,
+            "vendor": "-",
+            "item": "920*1080",
+            "supplyAmt": 337500,
+            "taxAmt": 33750,
+            "totalAmt": 371250,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "labor_subcontract",
+        "name": "도급노무비",
+        "group": "인건비 & 공과금",
+        "items": []
+      },
+      {
+        "id": "labor_executive",
+        "name": "임원보수/퇴직급여",
+        "group": "인건비 & 공과금",
+        "items": []
+      },
+      {
+        "id": "insurance_welfare",
+        "name": "4대보험/복리후생",
+        "group": "인건비 & 공과금",
+        "items": []
+      },
+      {
+        "id": "electricity",
+        "name": "전력비(한전)",
+        "group": "공장 유틸리티 & 설비",
+        "items": [
+          {
+            "id": 89,
+            "vendor": "한국전력공사",
+            "item": "메인 공장 9월 전기요금",
+            "supplyAmt": 41250000,
+            "taxAmt": 4125000,
+            "totalAmt": 45375000,
+            "memo": "삼랑진공장"
+          }
+        ]
+      },
+      {
+        "id": "water_gas",
+        "name": "수도/가스/연료비",
+        "group": "공장 유틸리티 & 설비",
+        "items": []
+      },
+      {
+        "id": "maintenance",
+        "name": "기계설비수선유지비",
+        "group": "공장 유틸리티 & 설비",
+        "items": []
+      },
+      {
+        "id": "tools_supplies",
+        "name": "소모공구/작업용품",
+        "group": "공장 유틸리티 & 설비",
+        "items": []
+      },
+      {
+        "id": "safety_environment",
+        "name": "안전용품/환경처리",
+        "group": "공장 유틸리티 & 설비",
+        "items": []
+      },
+      {
+        "id": "logistics",
+        "name": "용차/운반비",
+        "group": "물류 & 운영 경비",
+        "items": [
+          {
+            "id": 90,
+            "vendor": "용진운수 / 화물물류",
+            "item": "9월 완제품 및 원자재 운반비",
+            "supplyAmt": 8500000,
+            "taxAmt": 850000,
+            "totalAmt": 9350000,
+            "memo": ""
+          }
+        ]
+      },
+      {
+        "id": "vehicle_fuel",
+        "name": "차량유지/유류비",
+        "group": "물류 & 운영 경비",
+        "items": []
+      },
+      {
+        "id": "rent_lease",
+        "name": "임차료(공장/기숙사)",
+        "group": "물류 & 운영 경비",
+        "items": []
+      },
+      {
+        "id": "comm_fee_office",
+        "name": "지급수수료/통신/사무",
+        "group": "물류 & 운영 경비",
+        "items": []
+      }
+    ]
   }
 }

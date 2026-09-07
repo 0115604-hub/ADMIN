@@ -197,7 +197,12 @@ export const ClosingLedgerView = () => {
       },
       "2026-08": {
         uploadedEntities: {},
-        categories: buildDefaultCategories(),
+        categories: detailedClosingMaster["2026-08"]?.categories || buildDefaultCategories(),
+        manualLedger: buildDefaultManualLedger()
+      },
+      "2026-09": {
+        uploadedEntities: {},
+        categories: detailedClosingMaster["2026-09"]?.categories || buildDefaultCategories(),
         manualLedger: buildDefaultManualLedger()
       }
     };
@@ -209,12 +214,16 @@ export const ClosingLedgerView = () => {
   // Current Month's active state
   const currentMonthStore = closingStore[selectedMonth] || {
     uploadedEntities: {},
-    categories: buildDefaultCategories(),
+    categories: detailedClosingMaster[selectedMonth]?.categories || buildDefaultCategories(),
     manualLedger: buildDefaultManualLedger()
   };
 
   const [uploadedEntities, setUploadedEntities] = useState(currentMonthStore.uploadedEntities || {});
-  const [categories, setCategories] = useState(currentMonthStore.categories || buildDefaultCategories());
+  const [categories, setCategories] = useState(
+    currentMonthStore.categories && currentMonthStore.categories.some((c) => c.items?.length > 0)
+      ? currentMonthStore.categories
+      : detailedClosingMaster[selectedMonth]?.categories || buildDefaultCategories()
+  );
   const [manualLedger, setManualLedger] = useState(currentMonthStore.manualLedger || buildDefaultManualLedger());
   const [selectedGroup, setSelectedGroup] = useState("all");
   const [selectedCategoryDetailId, setSelectedCategoryDetailId] = useState(null);
@@ -228,11 +237,14 @@ export const ClosingLedgerView = () => {
 
   // Sync state strictly when selectedMonth changes
   useEffect(() => {
-    const monthData = closingStore[selectedMonth] || {
-      uploadedEntities: {},
-      categories: buildDefaultCategories(),
-      manualLedger: buildDefaultManualLedger()
-    };
+    const rawMonthData = closingStore[selectedMonth];
+    const monthData = rawMonthData && rawMonthData.categories && rawMonthData.categories.some((c) => c.items?.length > 0)
+      ? rawMonthData
+      : {
+          uploadedEntities: rawMonthData?.uploadedEntities || {},
+          categories: detailedClosingMaster[selectedMonth]?.categories || buildDefaultCategories(),
+          manualLedger: rawMonthData?.manualLedger || buildDefaultManualLedger()
+        };
     setUploadedEntities(monthData.uploadedEntities || {});
     setCategories(monthData.categories || buildDefaultCategories());
     setManualLedger(monthData.manualLedger || buildDefaultManualLedger());
