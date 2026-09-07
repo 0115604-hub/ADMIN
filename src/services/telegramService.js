@@ -268,21 +268,34 @@ export const formatKoreanCurrency = (amount) => {
 };
 
 /**
- * 1. 품질경보 및 공지사항 등록 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
+ * 1. 품질경보 / 사내공지 / 회의일정 등록 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
 export const sendQualityAlertTelegram = async (issueItem) => {
   const plant = issueItem?.plant || "삼랑진공장";
   const writer = issueItem?.author || issueItem?.writer || "현장작업자";
-  const title = issueItem?.title || issueItem?.content || "품질 이슈 발생";
+  const title = issueItem?.title || issueItem?.content || "안내 사항";
   const content = issueItem?.content && issueItem.content !== issueItem.title ? issueItem.content : "";
   const images = (issueItem?.images || []).slice(0, 3);
   const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 현장 사진 ${images.length}장 첨부됨` : "";
   const dateStr = issueItem?.date || new Date().toISOString().split("T")[0];
   const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
-  const isNotice = issueItem?.category === "공지사항" || issueItem?.category === "공유사항";
+  const category = issueItem?.category || "품질경보";
 
   let message = "";
-  if (isNotice) {
+  if (category === "회의일정") {
+    message = `
+<b>🟪 [사내 회의일정] 회의 및 일정 안내</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>대상:</b> ${plant}
+• <b>등록자:</b> <b>${writer}</b>
+• <b>회의제목:</b> <b>${title}</b>
+${content ? `\n<b>[회의 일정/안건]</b>\n${content}\n` : ""}
+• <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
+※ 관련 작업자분들은 시스템에서 [회신]을 등록해 주세요.
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+  } else if (category === "공지사항" || category === "사내공지" || category === "공유사항") {
     message = `
 <b>🟩 [사내 공지사항] 업무 협조 안내</b>
 ━━━━━━━━━━━━━━━━━━━━━
@@ -360,14 +373,53 @@ ${content} (조치율 ${rate}%)
 };
 
 /**
- * 3. 품질경보 삭제/종결 즉시 알림
+ * 3. 회의일정 회신 등록 알림
+ */
+export const sendMeetingReplyTelegram = async (issueItem, replyItem) => {
+  const plant = issueItem?.plant || "삼랑진공장";
+  const title = issueItem?.title || issueItem?.content || "회의일정";
+  const author = replyItem?.author || "작업자";
+  const titleStr = replyItem?.authorTitle ? ` ${replyItem.authorTitle}` : "";
+  const status = replyItem?.attendanceStatus || "참석";
+  const content = replyItem?.content || "확인 및 회신";
+  const nowStr = replyItem?.createdAt || new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const message = `
+<b>🟪 [회의일정 회신 등록]</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>회의:</b> <b>${title}</b> (${plant})
+• <b>회신자:</b> <b>${author}${titleStr}</b> [${status}]
+• <b>회신내용:</b> ${content}
+• <b>회신일시:</b> ${nowStr}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message);
+};
+
+/**
+ * 4. 품질경보 / 사내공지 / 회의일정 삭제/종결 즉시 알림
  */
 export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) => {
   const deleterName = typeof deleterProfile === "string"
     ? (deleterProfile || "총괄관리자")
     : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "총괄관리자");
-  const isNotice = deletedIssue?.category === "공지사항" || deletedIssue?.category === "공유사항";
-  const header = isNotice ? "<b>🟩 [공지사항 종결/삭제 알림]</b>" : "<b>🟥 [품질경보 종결/삭제 알림]</b>";
+  const category = deletedIssue?.category || "품질경보";
+  let header = "<b>🟥 [품질경보 종결/삭제 알림]</b>";
+  if (category === "회의일정") {
+    header = "<b>🟪 [회의일정 종결/삭제 알림]</b>";
+  } else if (category === "공지사항" || category === "사내공지" || category === "공유사항") {
+    header = "<b>🟩 [공지사항 종결/삭제 알림]</b>";
+  }
+
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -381,9 +433,9 @@ export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) =>
 ${header}
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${deletedIssue?.plant || "삼랑진공장"}
-• <b>대상:</b> <b>${deletedIssue?.title || deletedIssue?.content || "품질경보"}</b>
+• <b>대상:</b> <b>${deletedIssue?.title || deletedIssue?.content || "항목"}</b>
 • <b>삭제권한자:</b> <b>${deleterName}</b>
-• <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 생산 및 조치 확인 후 종결 처리"}
+• <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 완료 및 확인 후 종결 처리"}
 • <b>삭제일시:</b> ${nowStr}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
@@ -393,11 +445,11 @@ ${header}
 };
 
 /**
- * 4. 전자결재 기안 상신 즉시 알림
+ * 5. 전자결재 기안 상신 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담당 결재자") => {
   const message = `
-<b>🟪 [전자결재 기안 상신]</b>
+<b>🟦 [전자결재 기안 상신]</b>
 ----------------------------------------
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
@@ -412,10 +464,10 @@ export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담
 };
 
 /**
- * 5. 전자결재 승인 즉시 알림
+ * 6. 전자결재 승인 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalStepTelegram = async (docItem, approverName, isFinal = false, nextApproverName = null) => {
-  const titleHeader = isFinal ? "🟪 [전자결재 최종 승인 완료]" : "🟪 [전자결재 중간 승인 알림]";
+  const titleHeader = isFinal ? "🟦 [전자결재 최종 승인 완료]" : "🟦 [전자결재 중간 승인 알림]";
   const nextLine = nextApproverName ? `• <b>다음 결재자:</b> ${nextApproverName}\n` : "";
 
   const message = `
@@ -434,11 +486,11 @@ ${nextLine}• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 };
 
 /**
- * 6. 전자결재 반려 즉시 알림
+ * 7. 전자결재 반려 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
   const message = `
-<b>🟪 [전자결재 반려 알림]</b>
+<b>🟦 [전자결재 반려 알림]</b>
 ----------------------------------------
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
@@ -454,11 +506,11 @@ export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) 
 };
 
 /**
- * 7. 전자결재 보류 즉시 알림
+ * 8. 전자결재 보류 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
   const message = `
-<b>🟪 [전자결재 보류 알림]</b>
+<b>🟦 [전자결재 보류 알림]</b>
 ----------------------------------------
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
@@ -646,7 +698,8 @@ export const testTelegramConnection = async (token, chatId) => {
 
 • <b>품질경보 (적색):</b> 등록 / 조치완료 / 종결삭제
 • <b>사내공지 (녹색):</b> 등록 / 종결삭제
-• <b>전자결재 (보라색):</b> 기안 상신 / 승인 / 반려 / 보류
+• <b>회의일정 (보라색):</b> 등록 / 회신 / 종결삭제
+• <b>전자결재 (파랑색):</b> 기안 상신 / 승인 / 반려 / 보류
 • <b>기타업무 (검정):</b> 업무일지 결재 / 07:30 모닝브리핑
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>

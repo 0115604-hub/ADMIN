@@ -40,7 +40,11 @@ import {
   ChevronsRight,
   ListOrdered,
   RotateCcw,
-  Filter
+  Filter,
+  Calendar,
+  MessageSquare,
+  MessageCircle,
+  Users
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
@@ -54,7 +58,9 @@ import {
   saveUrgentIssue,
   deleteUrgentIssue,
   restoreUrgentIssue,
-  updateUrgentIssueActionResult
+  updateUrgentIssueActionResult,
+  addIssueReply,
+  deleteIssueReply
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
@@ -143,6 +149,14 @@ export const AuthModal = () => {
     actionAuthor: "설유철",
     actionImages: []
   });
+
+  // Reply Form State for Meeting Schedule & Issue Comments (회신란)
+  const [replyForm, setReplyForm] = useState({
+    author: "방상국",
+    attendanceStatus: "참석",
+    content: ""
+  });
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   // Lightbox & Image Processing State
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
@@ -426,7 +440,53 @@ export const AuthModal = () => {
     });
   };
 
-  // Open Delete Authority Modal (삭제는 삼랑진공장: 이명재, 한림공장: 김동욱에게만 권한 부여)
+  // Add Reply to Meeting Schedule or Issue (회신란)
+  const handleAddReply = async (issueId, e) => {
+    if (e) e.preventDefault();
+    if (!issueId) return;
+    if (!replyForm.content.trim()) {
+      alert("회신 내용을 입력해 주세요.");
+      return;
+    }
+    setIsSubmittingReply(true);
+    try {
+      const authorObj = allWorkers.find((w) => w.name === replyForm.author);
+      const updated = await addIssueReply(issueId, {
+        author: replyForm.author,
+        authorTitle: authorObj?.title || "선임",
+        plant: authorObj?.plantName || "삼랑진공장",
+        attendanceStatus: replyForm.attendanceStatus,
+        content: replyForm.content.trim()
+      });
+      if (updated) {
+        setUrgentIssues((prev) => prev.map((it) => (it.id === issueId ? updated : it)));
+        setDetailIssueModal(updated);
+        setReplyForm((prev) => ({ ...prev, content: "" }));
+      }
+    } catch (err) {
+      console.error("Add reply error:", err);
+      alert("회신 등록 중 오류가 발생했습니다.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  // Delete Reply (회신 삭제)
+  const handleDeleteReply = async (issueId, replyId, e) => {
+    if (e) e.stopPropagation();
+    if (!confirm("해당 회신을 삭제하시겠습니까?")) return;
+    try {
+      const updated = await deleteIssueReply(issueId, replyId);
+      if (updated) {
+        setUrgentIssues((prev) => prev.map((it) => (it.id === issueId ? updated : it)));
+        setDetailIssueModal(updated);
+      }
+    } catch (err) {
+      console.error("Delete reply error:", err);
+    }
+  };
+
+  // Open Delete Authority Modal (삭제 권한: 이명재 이사, 김동욱 책임)
   const handleOpenDeleteModal = (issue, e) => {
     if (e) e.stopPropagation();
     setDeleteModalData({
@@ -437,7 +497,7 @@ export const AuthModal = () => {
     });
   };
 
-  // Confirm Delete with Authority Verification
+  // Confirm Delete with Authority Verification (이명재 / 김동욱 전용)
   const handleConfirmDelete = async (e) => {
     e.preventDefault();
     if (deleteModalData.isDeleting) return;
@@ -449,26 +509,24 @@ export const AuthModal = () => {
     const inputPin = deleteModalData.pinInput.trim();
 
     // Authority Rules:
-    // 삼랑진공장: 이명재 이사 (PIN: 11) or ADMIN (PIN: 0090)
-    // 한림공장: 김동욱 책임 (PIN: 11) or ADMIN (PIN: 0090)
-    let isAuthorized = false;
-    let expectedManager = "";
+    // 이명재 이사 (PIN: 11) or 김동욱 책임 (PIN: 11) or ADMIN (PIN: 0090)
+    let isAuthorized = (inputPin === "11" || inputPin === "0090");
+    let expectedManager = "이명재 이사";
 
-    if (plant === "삼랑진공장") {
-      expectedManager = "이명재 이사";
-      isAuthorized = (inputPin === "11" || inputPin === "0090");
-    } else if (plant === "한림공장") {
-      expectedManager = "김동욱 책임";
-      isAuthorized = (inputPin === "11" || inputPin === "0090");
-    } else {
-      expectedManager = "이명재 이사 또는 김동욱 책임";
-      isAuthorized = (inputPin === "11" || inputPin === "0090");
+    if (inputPin === "11") {
+      if (plant === "한림공장") {
+        expectedManager = "김동욱 책임";
+      } else {
+        expectedManager = "이명재 이사";
+      }
+    } else if (inputPin === "0090") {
+      expectedManager = "총괄관리자(Admin)";
     }
 
     if (!isAuthorized) {
       setDeleteModalData((prev) => ({
         ...prev,
-        errorMsg: `삭제 권한이 없습니다. (${expectedManager}의 확인 PIN 번호가 일치하지 않습니다.)`
+        errorMsg: "삭제 권한이 없습니다. (이명재 이사 또는 김동욱 책임의 확인 PIN 번호가 일치하지 않습니다.)"
       }));
       return;
     }
@@ -586,7 +644,9 @@ export const AuthModal = () => {
                 <h3 className="font-black text-xs flex items-center gap-1">
                   <span className="text-rose-600 dark:text-rose-400 font-black">품질경보</span>
                   <span className="text-slate-400 font-bold">/</span>
-                  <span className="text-slate-800 dark:text-slate-200 font-bold">공지사항</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">사내공지</span>
+                  <span className="text-slate-400 font-bold">/</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-bold">회의일정</span>
                 </h3>
 
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-xs flex items-center gap-1 ${
@@ -607,7 +667,7 @@ export const AuthModal = () => {
                   type="button"
                   onClick={() => setIsIssueModalOpen(true)}
                   className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[10px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer shrink-0"
-                  title="신규 품질경보 및 공지사항 등록"
+                  title="신규 품질경보, 사내공지, 회의일정 등록"
                 >
                   <Plus className="w-3 h-3" />
                   <span>+ 등록</span>
@@ -639,14 +699,17 @@ export const AuthModal = () => {
               <div className="p-2 sm:p-2.5 space-y-2 max-h-60 overflow-y-auto">
                 {activeIssues.length === 0 ? (
                   <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white/60 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
-                    <p>현재 진행 중인 품질경보 및 공지사항이 없습니다.</p>
+                    <p>현재 진행 중인 품질경보, 공지사항 및 회의일정이 없습니다.</p>
                     <p className="text-[10.5px] text-slate-400 font-normal">
                       (과거 종결/삭제된 내역은 상단 제목 클릭 후 [종결] 탭에서 확인 및 복구 가능)
                     </p>
                   </div>
                 ) : (
                   activeIssues.map((item) => {
-                    const isNotice = item.category === "공지사항" || item.category === "공유사항";
+                    const isMeeting = item.category === "회의일정";
+                    const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
+                    const replyCount = item.replies?.length || 0;
+
                     return (
                       <div
                         key={item.id}
@@ -660,18 +723,24 @@ export const AuthModal = () => {
                         className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                           item.isResolved
                             ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
+                            : isMeeting
+                            ? "bg-white dark:bg-slate-900 border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-400/25"
                             : isNotice
                             ? "bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/25"
                             : "bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/80 ring-1 ring-rose-400/20"
                         }`}
-                        title="탭하여 상세 내용 및 현장 사진 확인"
+                        title="탭하여 상세 내용, 회신란 및 현장 사진 확인"
                       >
-                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [상세보기] [조치상태] [삭제] */}
+                        {/* 1번째 줄: [품질경보/사내공지/회의일정] [공장] 전달내용 (작성자 시간) + [회신건수] [상세보기] [조치상태] [삭제] */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            {isNotice ? (
+                            {isMeeting ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-purple-600 text-white shrink-0 shadow-xs">
+                                회의일정
+                              </span>
+                            ) : isNotice ? (
                               <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-600 text-white shrink-0 shadow-xs">
-                                공지사항
+                                사내공지
                               </span>
                             ) : (
                               <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-rose-600 text-white shrink-0 shadow-xs">
@@ -688,7 +757,9 @@ export const AuthModal = () => {
                               {item.plant}
                             </span>
                             <span className={`truncate text-[11.5px] group-hover:underline ${
-                              !isNotice
+                              isMeeting
+                                ? "font-black text-purple-700 dark:text-purple-300"
+                                : !isNotice
                                 ? "font-black text-rose-600 dark:text-rose-400"
                                 : "font-black text-slate-900 dark:text-white"
                             }`}>
@@ -699,8 +770,14 @@ export const AuthModal = () => {
                             </span>
                           </div>
 
-                          {/* Right: Detail badge, Status & Delete */}
+                          {/* Right: Reply count, Detail badge, Status & Delete */}
                           <div className="flex items-center gap-1 shrink-0">
+                            {replyCount > 0 && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800 flex items-center gap-0.5">
+                                <MessageCircle className="w-2.5 h-2.5" />
+                                <span>회신 {replyCount}</span>
+                              </span>
+                            )}
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 group-hover:bg-rose-100 group-hover:text-rose-700 dark:group-hover:bg-rose-950 dark:group-hover:text-rose-300 transition-colors">
                               <Eye className="w-2.5 h-2.5" />
                               <span className="hidden sm:inline">상세보기</span>
@@ -721,7 +798,7 @@ export const AuthModal = () => {
                                 handleOpenDeleteModal(item, e);
                               }}
                               className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
-                              title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
+                              title={`${item.plant} 삭제 (권한자: 이명재 이사, 김동욱 책임)`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -732,7 +809,18 @@ export const AuthModal = () => {
                         <div className="flex items-center justify-between gap-2 pl-1">
                           <div className="flex items-center gap-1 min-w-0 flex-1">
                             <span className="text-slate-400 font-bold shrink-0 text-[11px]">└</span>
-                            {item.actionResult ? (
+                            {isMeeting ? (
+                              <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
+                                <span className="font-extrabold text-purple-600 dark:text-purple-400 shrink-0">
+                                  💬 최근 회신:
+                                </span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                  {item.replies && item.replies.length > 0
+                                    ? `${item.replies[item.replies.length - 1].author} [${item.replies[item.replies.length - 1].attendanceStatus}]: ${item.replies[item.replies.length - 1].content}`
+                                    : "등록된 회신이 없습니다 (상세보기에서 회신 작성 가능)"}
+                                </span>
+                              </div>
+                            ) : item.actionResult ? (
                               <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
                                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
                                   ✓ 조치결과:
@@ -752,20 +840,26 @@ export const AuthModal = () => {
                             )}
                           </div>
 
-                          {/* Right: Action Input / Edit Button */}
+                          {/* Right: Action Input / Edit / Reply Button */}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenActionModal(item, e);
+                              if (isMeeting) {
+                                setDetailIssueModal(item);
+                              } else {
+                                handleOpenActionModal(item, e);
+                              }
                             }}
                             className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
-                              item.actionResult
+                              isMeeting
+                                ? "bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-300/60"
+                                : item.actionResult
                                 ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60"
                                 : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
                             }`}
                           >
-                            {item.actionResult ? "✏️ 수정" : "✍️ 조치입력"}
+                            {isMeeting ? "💬 회신작성" : item.actionResult ? "✏️ 수정" : "✍️ 조치입력"}
                           </button>
                         </div>
 
@@ -1125,6 +1219,8 @@ export const AuthModal = () => {
                   <div className={`p-2.5 rounded-2xl text-white shadow-md shrink-0 ${
                     isDeleted
                       ? "bg-slate-700 ring-2 ring-slate-600/50"
+                      : item.category === "회의일정"
+                      ? "bg-purple-600 ring-2 ring-purple-500/40"
                       : item.isResolved
                       ? "bg-emerald-600 ring-2 ring-emerald-500/40"
                       : isNotice
@@ -1138,11 +1234,13 @@ export const AuthModal = () => {
                       <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black text-white shadow-xs ${
                         isDeleted
                           ? "bg-slate-700 text-slate-200 border border-slate-600"
+                          : item.category === "회의일정"
+                          ? "bg-purple-600"
                           : isNotice
                           ? "bg-emerald-600"
                           : "bg-rose-600"
                       }`}>
-                        {isDeleted ? "🗑️ 삭제/종결" : isNotice ? "📢 공지사항" : "🚨 품질경보"}
+                        {isDeleted ? "🗑️ 삭제/종결" : item.category === "회의일정" ? "📅 회의일정" : isNotice ? "📢 사내공지" : "🚨 품질경보"}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                         item.plant === "한림공장"
@@ -1159,11 +1257,11 @@ export const AuthModal = () => {
                         </span>
                       ) : item.isResolved ? (
                         <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
-                          ✓ 종결 (조치완료)
+                          ✓ 종결 (완료)
                         </span>
                       ) : (
                         <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs animate-pulse">
-                          ⏳ 미결 (조치대기)
+                          ⏳ 진행/미결
                         </span>
                       )}
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
@@ -1223,6 +1321,8 @@ export const AuthModal = () => {
                 <div className={`p-4 rounded-2xl border space-y-2 ${
                   isDeleted
                     ? "bg-slate-100/70 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700"
+                    : item.category === "회의일정"
+                    ? "bg-purple-50/40 dark:bg-purple-950/20 border-purple-200/70 dark:border-purple-900/50"
                     : isNotice
                     ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-900/50"
                     : "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/50"
@@ -1231,6 +1331,8 @@ export const AuthModal = () => {
                     <h4 className={`text-sm font-black leading-snug ${
                       isDeleted
                         ? "text-slate-600 dark:text-slate-400 line-through decoration-rose-500/70"
+                        : item.category === "회의일정"
+                        ? "text-purple-950 dark:text-purple-200"
                         : "text-slate-900 dark:text-white"
                     }`}>
                       {item.title}
@@ -1251,7 +1353,7 @@ export const AuthModal = () => {
                     <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                       <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-black">
                         <Camera className="w-3.5 h-3.5" />
-                        <span>현장 사진 ({item.images.length}장)</span>
+                        <span>첨부 사진 ({item.images.length}장)</span>
                       </span>
                       <span className="text-[10.5px] text-slate-400 font-normal">탭하여 원본 확대</span>
                     </div>
@@ -1259,12 +1361,12 @@ export const AuthModal = () => {
                       {item.images.map((img, idx) => (
                         <div
                           key={img.id || idx}
-                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `현장사진_${idx + 1}` })}
+                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진_${idx + 1}` })}
                           className="group relative rounded-2xl overflow-hidden border border-rose-300 dark:border-rose-900/60 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-rose-500 transition-all"
                         >
                           <img
                             src={img.dataUrl}
-                            alt={img.name || `현장사진 ${idx + 1}`}
+                            alt={img.name || `첨부사진 ${idx + 1}`}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                           />
                           <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
@@ -1279,61 +1381,231 @@ export const AuthModal = () => {
                   </div>
                 )}
 
-                {/* 3. 조치 결과 섹션 */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
+                {/* 2.5 💬 [요청사항 반영] 참석 및 확인 회신란 (회신 댓글 & 실시간 텔레그램 연동) */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/80 via-indigo-50/50 to-purple-50/40 dark:from-purple-950/50 dark:via-indigo-950/30 dark:to-purple-950/20 border border-purple-200 dark:border-purple-800/60 space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>조치 결과</span>
-                    </div>
-                    {item.actionAuthor && (
-                      <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold">
-                        조치자: {item.actionAuthor} • {item.actionAt}
+                    <div className="flex items-center gap-1.5 text-xs font-black text-purple-700 dark:text-purple-300">
+                      <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      <span>참석 및 확인 회신란</span>
+                      <span className="px-2 py-0.2 rounded-full text-[10.5px] bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-200 font-bold">
+                        {item.replies?.length || 0}건
                       </span>
+                    </div>
+                    <span className="text-[10.5px] text-purple-600 dark:text-purple-400 font-medium hidden sm:inline">
+                      * 전작업자 회신 가능 (회신 시 텔레그램 자동 전파)
+                    </span>
+                  </div>
+
+                  {/* 회신 목록 리스트 */}
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                    {!item.replies || item.replies.length === 0 ? (
+                      <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-800/60 border border-dashed border-purple-200 dark:border-purple-800 text-center text-slate-400 text-xs">
+                        등록된 회신이 없습니다. 아래 폼에서 참석 여부 및 확인 의견을 회신해 주세요.
+                      </div>
+                    ) : (
+                      item.replies.map((rep) => (
+                        <div
+                          key={rep.id}
+                          className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-purple-100 dark:border-purple-800/60 shadow-2xs flex items-start justify-between gap-2 text-xs"
+                        >
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-slate-900 dark:text-white">
+                                {rep.author} {rep.authorTitle || ""}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                ({rep.plant})
+                              </span>
+                              <span className={`px-2 py-0.2 rounded-full text-[9.5px] font-black shrink-0 ${
+                                rep.attendanceStatus === "참석"
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                  : rep.attendanceStatus === "미참석" || rep.attendanceStatus === "불참"
+                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                                  : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                              }`}>
+                                {rep.attendanceStatus === "참석" ? "✓ 참석" : rep.attendanceStatus === "미참석" || rep.attendanceStatus === "불참" ? "✕ 불참" : "💬 확인"}
+                              </span>
+                              <span className="text-[9.5px] text-slate-400 ml-auto font-mono">
+                                {rep.createdAt}
+                              </span>
+                            </div>
+                            <p className="text-slate-700 dark:text-slate-200 font-medium leading-relaxed pl-0.5">
+                              {rep.content}
+                            </p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteReply(item.id, rep.id, e)}
+                            className="p-1 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors shrink-0"
+                            title="회신 삭제"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))
                     )}
                   </div>
 
-                  {item.actionResult ? (
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap pl-1">
-                      {item.actionResult}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic pl-1">
-                      아직 등록된 조치결과가 없습니다.
-                    </p>
-                  )}
-
-                  {/* 조치 첨부 사진 */}
-                  {item.actionImages && item.actionImages.length > 0 && (
-                    <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/40 space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                        <span>조치 완료 사진 ({item.actionImages.length}장)</span>
-                        <span className="text-[10px] text-slate-400 font-normal">탭하여 원본 확대</span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {item.actionImages.map((img, idx) => (
-                          <div
-                            key={img.id || idx}
-                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` })}
-                            className="group relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-emerald-500 transition-all"
+                  {/* 회신 입력 폼 */}
+                  {!isDeleted && (
+                    <form onSubmit={(e) => handleAddReply(item.id, e)} className="pt-2 border-t border-purple-200/60 dark:border-purple-800/60 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        {/* 작성자 선택 */}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <label className="font-bold text-slate-600 dark:text-slate-400 text-[11px] shrink-0">
+                            회신자:
+                          </label>
+                          <select
+                            value={replyForm.author}
+                            onChange={(e) => setReplyForm({ ...replyForm, author: e.target.value })}
+                            className="px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs"
                           >
-                            <img
-                              src={img.dataUrl}
-                              alt={img.name || `조치사진 ${idx + 1}`}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                              <ZoomIn className="w-5 h-5" />
-                            </div>
-                            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
-                              {idx + 1}/{item.actionImages.length}
-                            </span>
-                          </div>
+                            {allWorkers.map((w) => (
+                              <option key={w.id} value={w.name}>
+                                {w.plantName} • {w.name} {w.title || ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 참석 상태 탭 */}
+                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-purple-200 dark:border-purple-700">
+                          <button
+                            type="button"
+                            onClick={() => setReplyForm({ ...replyForm, attendanceStatus: "참석" })}
+                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition-all ${
+                              replyForm.attendanceStatus === "참석"
+                                ? "bg-emerald-600 text-white shadow-xs"
+                                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            ✓ 참석
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReplyForm({ ...replyForm, attendanceStatus: "미참석" })}
+                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition-all ${
+                              replyForm.attendanceStatus === "미참석"
+                                ? "bg-rose-600 text-white shadow-xs"
+                                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            ✕ 불참
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setReplyForm({ ...replyForm, attendanceStatus: "확인" })}
+                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition-all ${
+                              replyForm.attendanceStatus === "확인"
+                                ? "bg-purple-600 text-white shadow-xs"
+                                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                            }`}
+                          >
+                            💬 의견
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 빠른 입력 칩 */}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] text-slate-400 font-bold">빠른입력:</span>
+                        {[
+                          "확인했습니다. 참석하겠습니다.",
+                          "일정 확인 완료했습니다.",
+                          "현장 긴급 작업으로 불참합니다."
+                        ].map((txt) => (
+                          <button
+                            key={txt}
+                            type="button"
+                            onClick={() => setReplyForm({ ...replyForm, content: txt })}
+                            className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 hover:border-purple-400 text-[10px] text-slate-600 dark:text-slate-300 font-medium transition-colors cursor-pointer"
+                          >
+                            {txt}
+                          </button>
                         ))}
                       </div>
-                    </div>
+
+                      {/* 입력창 + 등록 버튼 */}
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          required
+                          placeholder="회신 의견 및 전달 사항을 입력해 주세요."
+                          value={replyForm.content}
+                          onChange={(e) => setReplyForm({ ...replyForm, content: e.target.value })}
+                          className="flex-1 px-3 py-2 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSubmittingReply}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs shadow-md shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{isSubmittingReply ? "등록중..." : "회신 등록"}</span>
+                        </button>
+                      </div>
+                    </form>
                   )}
                 </div>
+
+                {/* 3. 조치 결과 섹션 (품질경보/공지사항인 경우 또는 조치내용이 있을 때) */}
+                {item.category !== "회의일정" && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>조치 결과</span>
+                      </div>
+                      {item.actionAuthor && (
+                        <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold">
+                          조치자: {item.actionAuthor} • {item.actionAt}
+                        </span>
+                      )}
+                    </div>
+
+                    {item.actionResult ? (
+                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap pl-1">
+                        {item.actionResult}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 italic pl-1">
+                        아직 등록된 조치결과가 없습니다.
+                      </p>
+                    )}
+
+                    {/* 조치 첨부 사진 */}
+                    {item.actionImages && item.actionImages.length > 0 && (
+                      <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/40 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                          <span>조치 완료 사진 ({item.actionImages.length}장)</span>
+                          <span className="text-[10px] text-slate-400 font-normal">탭하여 원본 확대</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {item.actionImages.map((img, idx) => (
+                            <div
+                              key={img.id || idx}
+                              onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` })}
+                              className="group relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-emerald-500 transition-all"
+                            >
+                              <img
+                                src={img.dataUrl}
+                                alt={img.name || `조치사진 ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                <ZoomIn className="w-5 h-5" />
+                              </div>
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
+                                {idx + 1}/{item.actionImages.length}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 선택된 항목 관리 버튼 바 */}
                 <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
@@ -1356,21 +1628,23 @@ export const AuthModal = () => {
                       className="px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>현재 선택 항목 삭제</span>
+                      <span>현재 선택 항목 삭제 (이명재/김동욱)</span>
                     </button>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const issueToAct = item;
-                      handleOpenActionModal(issueToAct);
-                    }}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{item.actionResult ? "현재 항목 조치 수정" : "현재 항목 조치결과 입력"}</span>
-                  </button>
+                  {item.category !== "회의일정" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const issueToAct = item;
+                        handleOpenActionModal(issueToAct);
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{item.actionResult ? "현재 항목 조치 수정" : "현재 항목 조치결과 입력"}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* ========================================================================= */}
@@ -1483,6 +1757,7 @@ export const AuthModal = () => {
                     ) : (
                       paginatedIssues.map((it, idx) => {
                         const isCurrent = it.id === item.id;
+                        const isItMeeting = it.category === "회의일정";
                         const isItNotice = it.category === "공지사항" || it.category === "공유사항";
                         const isItDeleted = Boolean(it.isDeleted);
                         const isItResolved = Boolean(it.isResolved);
@@ -1522,11 +1797,13 @@ export const AuthModal = () => {
                               <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 shadow-2xs ${
                                 isItDeleted
                                   ? "bg-slate-600"
+                                  : isItMeeting
+                                  ? "bg-purple-600"
                                   : isItNotice
                                   ? "bg-emerald-600"
                                   : "bg-rose-600"
                               }`}>
-                                {isItDeleted ? "삭제" : isItNotice ? "공지" : "경보"}
+                                {isItDeleted ? "삭제" : isItMeeting ? "회의" : isItNotice ? "공지" : "경보"}
                               </span>
 
                               {/* Plant Badge */}
@@ -1552,6 +1829,13 @@ export const AuthModal = () => {
                               }`}>
                                 {it.title ? `${it.title} - ${it.content}` : it.content}
                               </span>
+
+                              {/* Reply count indicator */}
+                              {it.replies && it.replies.length > 0 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 shrink-0 font-bold shadow-2xs">
+                                  💬 {it.replies.length}
+                                </span>
+                              )}
 
                               {/* Photo count indicator */}
                               {totalImgCount > 0 && (
@@ -1736,15 +2020,25 @@ export const AuthModal = () => {
           <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-500 text-white shadow-xs">
+                <div className={`p-2 rounded-xl text-white shadow-xs ${
+                  newIssueForm.category === "회의일정"
+                    ? "bg-purple-600"
+                    : newIssueForm.category === "공지사항"
+                    ? "bg-emerald-600"
+                    : "bg-rose-500"
+                }`}>
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    품질경보 및 공지사항 등록
+                    {newIssueForm.category === "회의일정"
+                      ? "사내 회의일정 등록"
+                      : newIssueForm.category === "공지사항"
+                      ? "사내 공지사항 등록"
+                      : "품질경보 긴급 등록"}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    로그인 화면 상단에 실시간으로 전파됩니다.
+                    전작업자 작성 가능 • 등록 즉시 텔레그램 및 로그인 화면에 전파됩니다.
                   </p>
                 </div>
               </div>
@@ -1759,13 +2053,14 @@ export const AuthModal = () => {
 
             <form onSubmit={handleSaveNewIssue} className="space-y-4 text-xs">
               {/* 구분 & 공장 */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* 이슈 구분 선택: 품질경보 (기존 붉은색) vs 공지사항 (녹색) */}
+              <div className="space-y-3">
+                {/* 3단 이슈 구분 선택: 품질경보(적색) / 사내공지(녹색) / 회의일정(보라색) */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    구분
+                    구분 (3대 분류)
                   </label>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {/* 1. 품질경보 (적색) */}
                     <button
                       type="button"
                       onClick={() => setNewIssueForm({ ...newIssueForm, category: "품질경보" })}
@@ -1777,6 +2072,8 @@ export const AuthModal = () => {
                     >
                       <span>🚨 품질경보</span>
                     </button>
+
+                    {/* 2. 사내공지 (녹색) */}
                     <button
                       type="button"
                       onClick={() => setNewIssueForm({ ...newIssueForm, category: "공지사항" })}
@@ -1786,89 +2083,124 @@ export const AuthModal = () => {
                           : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <span>📢 공지사항</span>
+                      <span>📢 사내공지</span>
+                    </button>
+
+                    {/* 3. 회의일정 (보라색) */}
+                    <button
+                      type="button"
+                      onClick={() => setNewIssueForm({ ...newIssueForm, category: "회의일정" })}
+                      className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
+                        newIssueForm.category === "회의일정"
+                          ? "bg-purple-50 dark:bg-purple-950/70 border-purple-500 text-purple-700 dark:text-purple-300 shadow-xs ring-1 ring-purple-500/30"
+                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      <span>📅 회의일정</span>
                     </button>
                   </div>
                 </div>
 
-                {/* 발생 공장 선택 */}
-                <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    발생 공장
-                  </label>
-                  <select
-                    value={newIssueForm.plant}
-                    onChange={(e) => setNewIssueForm({ ...newIssueForm, plant: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                  >
-                    <option value="삼랑진공장">삼랑진공장</option>
-                    <option value="한림공장">한림공장</option>
-                    <option value="전사 공통">전사 공통</option>
-                  </select>
-                </div>
-              </div>
+                {/* 대상 공장 & 작성자 (전작업자 선택 가능) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      대상 공장
+                    </label>
+                    <select
+                      value={newIssueForm.plant}
+                      onChange={(e) => setNewIssueForm({ ...newIssueForm, plant: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    >
+                      <option value="삼랑진공장">삼랑진공장</option>
+                      <option value="한림공장">한림공장</option>
+                      <option value="전사 공통">전사 공통</option>
+                    </select>
+                  </div>
 
-              {/* 작성자 선택 */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  작성자
-                </label>
-                <select
-                  value={newIssueForm.author}
-                  onChange={(e) => {
-                    const found = allWorkers.find((w) => w.name === e.target.value);
-                    setNewIssueForm({
-                      ...newIssueForm,
-                      author: e.target.value,
-                      authorTitle: found?.title || "선임"
-                    });
-                  }}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                >
-                  {allWorkers.map((w) => (
-                    <option key={w.id} value={w.name}>
-                      {w.plantName} • {w.name} {w.title || ""}
-                    </option>
-                  ))}
-                </select>
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      작성자 (전작업자)
+                    </label>
+                    <select
+                      value={newIssueForm.author}
+                      onChange={(e) => {
+                        const found = allWorkers.find((w) => w.name === e.target.value);
+                        setNewIssueForm({
+                          ...newIssueForm,
+                          author: e.target.value,
+                          authorTitle: found?.title || "선임"
+                        });
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    >
+                      {allWorkers.map((w) => (
+                        <option key={w.id} value={w.name}>
+                          {w.plantName} • {w.name} {w.title || ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* 제목 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  제목
+                  {newIssueForm.category === "회의일정" ? "회의 제목" : "제목"}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="예: 압출 2호기 금형 히터 온도 점검 요망"
+                  placeholder={
+                    newIssueForm.category === "회의일정"
+                      ? "예: 9월 2주차 생산성 향상 및 품질 개선 주간 회의"
+                      : newIssueForm.category === "공지사항"
+                      ? "예: 9월 정기 소방 안전점검 및 현장 정리정돈 안내"
+                      : "예: 압출 2호기 금형 히터 온도 점검 요망"
+                  }
                   value={newIssueForm.title}
                   onChange={(e) => setNewIssueForm({ ...newIssueForm, title: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white"
                 />
               </div>
 
-              {/* 전달 내용 */}
+              {/* 전달 내용 / 회의 일정 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  📢 전달 내용
+                  {newIssueForm.category === "회의일정" ? "📅 회의 일정 및 안건 내용" : "📢 전달 내용"}
                 </label>
                 <textarea
                   rows="3"
                   required
-                  placeholder="구체적인 상황 및 작업자 전달 사항을 입력해 주세요."
+                  placeholder={
+                    newIssueForm.category === "회의일정"
+                      ? "• 일시: 2026-09-08(화) 14:00\n• 장소: 삼랑진공장 2층 대회의실\n• 안건: 압출 라인 히터 개선 및 불량율 저감 대책 회의 (각 라인 선임 필참)"
+                      : "구체적인 상황 및 작업자 전달 사항을 입력해 주세요."
+                  }
                   value={newIssueForm.content}
                   onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
                   className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white"
                 ></textarea>
+                {newIssueForm.category === "회의일정" && (
+                  <p className="text-[10.5px] text-purple-600 dark:text-purple-400 font-medium mt-1">
+                    * 회의일정은 전작업자가 등록할 수 있으며, 등록 후 모든 작업자가 회신란을 통해 참석 여부를 기록할 수 있습니다.
+                  </p>
+                )}
               </div>
 
               {/* 📷 현장 사진 첨부 */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                    <Camera className="w-3.5 h-3.5 text-rose-500" />
-                    <span>현장 사진 첨부 (선택, 최대 3장)</span>
+                    <Camera className={`w-3.5 h-3.5 ${
+                      newIssueForm.category === "회의일정"
+                        ? "text-purple-500"
+                        : newIssueForm.category === "공지사항"
+                        ? "text-emerald-500"
+                        : "text-rose-500"
+                    }`} />
+                    <span>첨부 사진 (선택, 최대 3장)</span>
                   </label>
                   <span className="text-[10px] text-slate-400 font-mono">
                     {newIssueForm.images?.length || 0}/3장
@@ -1898,10 +2230,20 @@ export const AuthModal = () => {
                       className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
                         (newIssueForm.images?.length || 0) >= 3
                           ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                          : newIssueForm.category === "회의일정"
+                          ? "border-purple-500 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-200 ring-1 ring-purple-500/30 font-black"
+                          : newIssueForm.category === "공지사항"
+                          ? "border-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/30 font-black"
                           : "border-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-200 ring-1 ring-rose-500/30 font-black"
                       }`}
                     >
-                      <Camera className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                      <Camera className={`w-4 h-4 shrink-0 ${
+                        newIssueForm.category === "회의일정"
+                          ? "text-purple-600 dark:text-purple-400"
+                          : newIssueForm.category === "공지사항"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-rose-600 dark:text-rose-400"
+                      }`} />
                       <span className="text-xs font-black truncate">
                         {isProcessingIssueImages
                           ? "압축 처리 중..."
@@ -1971,19 +2313,21 @@ export const AuthModal = () => {
                 )}
               </div>
 
-              {/* 조치 결과 (선택) */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  ✓ 조치 결과 (선택 입력)
-                </label>
-                <textarea
-                  rows="2"
-                  placeholder="이미 조치가 완료되었거나 조치 내용이 있는 경우 입력해 주세요 (미입력 시 조치대기 상태로 등록됩니다)."
-                  value={newIssueForm.actionResult}
-                  onChange={(e) => setNewIssueForm({ ...newIssueForm, actionResult: e.target.value })}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white"
-                ></textarea>
-              </div>
+              {/* 조치 결과 (선택 - 회의일정이 아닐 때 주로 활용) */}
+              {newIssueForm.category !== "회의일정" && (
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    ✓ 조치 결과 (선택 입력)
+                  </label>
+                  <textarea
+                    rows="2"
+                    placeholder="이미 조치가 완료되었거나 조치 내용이 있는 경우 입력해 주세요 (미입력 시 조치대기 상태로 등록됩니다)."
+                    value={newIssueForm.actionResult}
+                    onChange={(e) => setNewIssueForm({ ...newIssueForm, actionResult: e.target.value })}
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white"
+                  ></textarea>
+                </div>
+              )}
 
               {/* Submit Button */}
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
@@ -1996,10 +2340,22 @@ export const AuthModal = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-black shadow-md shadow-rose-500/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  className={`px-6 py-2.5 rounded-xl text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
+                    newIssueForm.category === "회의일정"
+                      ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
+                      : newIssueForm.category === "공지사항"
+                      ? "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-emerald-500/25"
+                      : "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 shadow-rose-500/25"
+                  }`}
                 >
                   <Send className="w-4 h-4" />
-                  <span>등록</span>
+                  <span>
+                    {newIssueForm.category === "회의일정"
+                      ? "회의일정 등록"
+                      : newIssueForm.category === "공지사항"
+                      ? "사내공지 등록"
+                      : "품질경보 등록"}
+                  </span>
                 </button>
               </div>
             </form>

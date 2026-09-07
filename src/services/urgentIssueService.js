@@ -10,13 +10,14 @@ import { db } from "../firebase";
 import {
   sendQualityAlertTelegram,
   sendQualityActionTelegram,
-  sendQualityDeleteTelegram
+  sendQualityDeleteTelegram,
+  sendMeetingReplyTelegram
 } from "./telegramService";
 
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 
-// Initial urgent issue samples (Fixed as "품질경보" and "공지사항" + with "전달내용" and "조치결과")
+// Initial urgent issue samples (Categorized as "품질경보", "공지사항", "회의일정")
 export const INITIAL_URGENT_ISSUES = [
   {
     id: "issue_init_1",
@@ -30,6 +31,7 @@ export const INITIAL_URGENT_ISSUES = [
     actionAuthor: "설유철",
     actionAt: "2026-09-03 09:20",
     isResolved: true,
+    replies: [],
     createdAt: "2026-09-03 08:30"
   },
   {
@@ -44,7 +46,42 @@ export const INITIAL_URGENT_ISSUES = [
     actionAuthor: "",
     actionAt: "",
     isResolved: false,
+    replies: [],
     createdAt: "2026-09-03 09:15"
+  },
+  {
+    id: "issue_init_3",
+    plant: "삼랑진공장",
+    author: "전찬우",
+    authorTitle: "선임",
+    category: "회의일정",
+    title: "9월 2주차 생산성 향상 및 품질 개선 주간 회의",
+    content: "• 일시: 2026-09-08(화) 14:00\n• 장소: 삼랑진공장 2층 대회의실\n• 안건: 압출 라인 히터 개선 및 불량율 저감 대책 회의 (각 라인 선임 필참)",
+    actionResult: "",
+    actionAuthor: "",
+    actionAt: "",
+    isResolved: false,
+    replies: [
+      {
+        id: "rep_init_1",
+        author: "방상국",
+        authorTitle: "선임",
+        plant: "삼랑진공장",
+        attendanceStatus: "참석",
+        content: "확인했습니다. 2호기 데이터 정리하여 참석하겠습니다.",
+        createdAt: "2026-09-07 10:00"
+      },
+      {
+        id: "rep_init_2",
+        author: "설유철",
+        authorTitle: "선임",
+        plant: "삼랑진공장",
+        attendanceStatus: "참석",
+        content: "참석 예정입니다.",
+        createdAt: "2026-09-07 10:30"
+      }
+    ],
+    createdAt: "2026-09-07 09:00"
   }
 ];
 
@@ -123,6 +160,7 @@ export const saveUrgentIssue = async (issueData) => {
     actionResult: issueData.actionResult || "",
     actionAuthor: issueData.actionAuthor || "",
     actionAt: issueData.actionAt || "",
+    replies: issueData.replies || [],
     isResolved: issueData.isResolved !== undefined ? issueData.isResolved : (Boolean(issueData.actionResult && issueData.actionResult.trim())),
     isDeleted: issueData.isDeleted === true,
     deletedAt: issueData.deletedAt || "",
@@ -155,6 +193,64 @@ export const saveUrgentIssue = async (issueData) => {
   }
 
   return fullItem;
+};
+
+// Add a Reply / Attendance Response (회신란)
+export const addIssueReply = async (issueId, replyData) => {
+  const current = getLocalUrgentIssues();
+  const target = current.find((i) => i.id === issueId);
+  if (!target) return null;
+
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const newReply = {
+    id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    author: replyData.author || "작업자",
+    authorTitle: replyData.authorTitle || "선임",
+    plant: replyData.plant || target.plant || "삼랑진공장",
+    attendanceStatus: replyData.attendanceStatus || "참석",
+    content: replyData.content ? replyData.content.trim() : "확인했습니다.",
+    createdAt: nowStr
+  };
+
+  const updatedReplies = [...(target.replies || []), newReply];
+  const updatedItem = {
+    ...target,
+    replies: updatedReplies
+  };
+
+  const saved = await saveUrgentIssue(updatedItem);
+
+  // Trigger real-time Telegram notification for reply
+  try {
+    await sendMeetingReplyTelegram(target, newReply);
+  } catch (err) {
+    console.warn("Telegram meeting reply alert error:", err);
+  }
+
+  return saved;
+};
+
+// Delete a Reply
+export const deleteIssueReply = async (issueId, replyId) => {
+  const current = getLocalUrgentIssues();
+  const target = current.find((i) => i.id === issueId);
+  if (!target) return null;
+
+  const updatedReplies = (target.replies || []).filter((r) => r.id !== replyId);
+  const updatedItem = {
+    ...target,
+    replies: updatedReplies
+  };
+
+  return await saveUrgentIssue(updatedItem);
 };
 
 // In-flight deletion lock to prevent duplicate Telegram messages and race conditions
