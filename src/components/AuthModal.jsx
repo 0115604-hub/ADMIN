@@ -623,61 +623,61 @@ export const AuthModal = () => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 📢 ⭐ [요청사항 반영] 품질경보패널: [전체] / [등록] 2가지 탭 UI */}
+          {/* 📢 ⭐ [요청사항 반영] 품질경보패널: [종결] / [등록] 2가지 탭 UI */}
           {/* ========================================================================= */}
           <div className="mb-3 sm:mb-4 rounded-xl sm:rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs overflow-hidden transition-all min-w-0">
-            {/* Panel Top Bar: 2 Tabs [전체] [등록] + Telegram & Fold/Unfold */}
+            {/* Panel Top Bar: 2 Tabs [종결] [등록] + Fold/Unfold */}
             <div className="p-1.5 sm:p-2.5 flex items-center justify-between gap-1.5 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
-              {/* Left: Title & Summary */}
+              {/* Left: Compact Title & Summary */}
               <div
                 onClick={() => {
+                  setIssueFilterTab("all");
                   if (urgentIssues.length > 0) {
                     setDetailIssueModal(urgentIssues[0]);
                     setIssueModalPage(1);
                   }
                 }}
                 className="flex items-center gap-1.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
-                title="탭하여 품질경보/공지사항 전체 관리 및 이력 팝업 열기"
+                title="탭하여 품질경보/공지사항/회의일정 전체 관리 및 이력 팝업 열기"
               >
                 <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs shrink-0">
                   <Megaphone className="w-3 h-3" />
                 </div>
-                <h3 className="font-black text-[11px] sm:text-xs flex items-center gap-1 shrink-0">
-                  <span className="text-rose-600 dark:text-rose-400 font-black">품질경보</span>
-                  <span className="text-slate-300 dark:text-slate-600 font-bold">/</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">사내공지</span>
-                  <span className="text-slate-300 dark:text-slate-600 font-bold">/</span>
-                  <span className="text-purple-600 dark:text-purple-400 font-bold">회의일정</span>
+                <h3 className="font-black text-xs text-slate-900 dark:text-white shrink-0 truncate">
+                  품질·공지·회의
                 </h3>
 
-                <span className={`text-[9.5px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full shrink-0 shadow-xs flex items-center gap-0.5 ${
+                <span className={`text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full shrink-0 shadow-xs flex items-center gap-0.5 ${
                   unresolvedIssues.length > 0
                     ? "bg-amber-500 text-slate-950 ring-1 ring-amber-400 animate-pulse"
                     : "bg-emerald-600 text-white"
                 }`}>
-                  {unresolvedIssues.length > 0 ? `⏳ 미결 ${unresolvedIssues.length}` : "✓ 종결"}
+                  {unresolvedIssues.length > 0 ? `미결 ${unresolvedIssues.length}` : "✓ 완료"}
                 </span>
               </div>
 
-              {/* Right: [전체] [등록] 2대 탭 및 유틸 버튼 */}
+              {/* Right: [종결] [등록] 2대 탭 및 펼치기 버튼 */}
               <div className="flex items-center gap-1 shrink-0">
-                {/* 2 Tabs: [전체] & [등록] */}
+                {/* 2 Tabs: [종결] & [등록] */}
                 <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-rose-200 dark:border-rose-900/60 shadow-2xs">
-                  {/* 1. [전체] 탭 */}
+                  {/* 1. [종결] 탭 */}
                   <button
                     type="button"
                     onClick={() => {
-                      if (urgentIssues.length > 0) {
+                      setIssueFilterTab("closed");
+                      if (closedIssues.length > 0) {
+                        setDetailIssueModal(closedIssues[0]);
+                      } else if (urgentIssues.length > 0) {
                         setDetailIssueModal(urgentIssues[0]);
-                        setIssueModalPage(1);
                       }
+                      setIssueModalPage(1);
                     }}
-                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
-                    title="전체 목록 및 이력 팝업 열기"
+                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                    title="종결(완료/삭제) 이력 팝업 열기"
                   >
-                    <span>📋 전체</span>
-                    <span className="px-1 py-0.2 rounded-full bg-blue-800 text-white text-[9px] sm:text-[9.5px] font-mono font-bold">
-                      {urgentIssues.length}
+                    <span>✓ 종결</span>
+                    <span className="px-1 py-0.2 rounded-full bg-emerald-800 text-white text-[9px] sm:text-[9.5px] font-mono font-bold">
+                      {closedIssues.length}
                     </span>
                   </button>
 
@@ -685,24 +685,13 @@ export const AuthModal = () => {
                   <button
                     type="button"
                     onClick={() => setIsIssueModalOpen(true)}
-                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-0.5 active:scale-95 cursor-pointer"
+                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 transition-all flex items-center gap-0.5 active:scale-95 cursor-pointer shadow-xs"
                     title="신규 품질경보, 사내공지, 회의일정 등록"
                   >
-                    <Plus className="w-3 h-3 text-rose-500" />
+                    <Plus className="w-3 h-3 text-rose-400 dark:text-rose-600" />
                     <span>등록</span>
                   </button>
                 </div>
-
-                {/* Telegram Admin Icon Button */}
-                <button
-                  type="button"
-                  onClick={handleOpenTelegram}
-                  className="p-1 sm:px-1.5 sm:py-1 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black transition-all flex items-center gap-0.5 shadow-2xs active:scale-95 cursor-pointer shrink-0"
-                  title="텔레그램 실시간 알림 연동 관리 (Admin 전용)"
-                >
-                  <TelegramLogo className="w-3 h-3" />
-                  <span className="hidden sm:inline">텔레그램</span>
-                </button>
 
                 {/* Fold/Unfold Button */}
                 <button
@@ -827,21 +816,38 @@ export const AuthModal = () => {
                           </div>
                         </div>
 
-                        {/* 2번째 줄: └ ✓ 조치: [조치내용] (조치자 시간) + [조치입력/수정] */}
+                        {/* 2번째 줄: └ ✓ 조치/회의결과: [내용] (작성자 시간) + [조치/결과입력] */}
                         <div className="flex items-center justify-between gap-2 pl-1">
                           <div className="flex items-center gap-1 min-w-0 flex-1">
                             <span className="text-slate-400 font-bold shrink-0 text-[11px]">└</span>
                             {isMeeting ? (
-                              <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
-                                <span className="font-extrabold text-purple-600 dark:text-purple-400 shrink-0">
-                                  💬 최근 회신:
-                                </span>
-                                <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                                  {item.replies && item.replies.length > 0
-                                    ? `${item.replies[item.replies.length - 1].author} [${item.replies[item.replies.length - 1].attendanceStatus}]: ${item.replies[item.replies.length - 1].content}`
-                                    : "등록된 회신이 없습니다 (상세보기에서 회신 작성 가능)"}
-                                </span>
-                              </div>
+                              item.actionResult ? (
+                                <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
+                                  <span className="font-extrabold text-purple-600 dark:text-purple-400 shrink-0">
+                                    ✓ 회의결과:
+                                  </span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                    {item.actionResult}
+                                  </span>
+                                  <span className="text-[9.5px] text-purple-600 dark:text-purple-400 shrink-0 font-bold hidden sm:inline">
+                                    ({item.actionAuthor || "작업자"} • {item.actionAt})
+                                  </span>
+                                </div>
+                              ) : item.replies && item.replies.length > 0 ? (
+                                <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
+                                  <span className="font-extrabold text-purple-600 dark:text-purple-400 shrink-0">
+                                    💬 최근 회신:
+                                  </span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
+                                    {item.replies[item.replies.length - 1].author} [{item.replies[item.replies.length - 1].attendanceStatus}]: {item.replies[item.replies.length - 1].content}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 font-medium">
+                                  <span className="font-bold">⏳ 회의결과:</span>
+                                  <span className="text-slate-400 italic text-[10.5px]">아직 등록된 회의결과가 없습니다.</span>
+                                </div>
+                              )
                             ) : item.actionResult ? (
                               <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
                                 <span className="font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -863,26 +869,39 @@ export const AuthModal = () => {
                           </div>
 
                           {/* Right: Action Input / Edit / Reply Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (isMeeting) {
-                                setDetailIssueModal(item);
-                              } else {
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleOpenActionModal(item, e);
-                              }
-                            }}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
-                              isMeeting
-                                ? "bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-300/60"
-                                : item.actionResult
-                                ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60"
-                                : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
-                            }`}
-                          >
-                            {isMeeting ? "💬 회신작성" : item.actionResult ? "✏️ 수정" : "✍️ 조치입력"}
-                          </button>
+                              }}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
+                                isMeeting
+                                  ? item.actionResult
+                                    ? "bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300/80"
+                                    : "bg-purple-600 hover:bg-purple-700 text-white shadow-xs"
+                                  : item.actionResult
+                                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60"
+                                  : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
+                              }`}
+                            >
+                              {isMeeting ? (item.actionResult ? "✏️ 결과수정" : "✍️ 결과입력") : (item.actionResult ? "✏️ 수정" : "✍️ 조치입력")}
+                            </button>
+                            {isMeeting && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDetailIssueModal(item);
+                                }}
+                                className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition-colors cursor-pointer"
+                                title="참석/불참 회신 작성"
+                              >
+                                💬 회신
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* 3번째 줄: 첨부 사진 썸네일 (현장 사진 & 조치 사진) */}
@@ -1571,8 +1590,74 @@ export const AuthModal = () => {
                   )}
                 </div>
 
-                {/* 3. 조치 결과 섹션 (품질경보/공지사항인 경우 또는 조치내용이 있을 때) */}
-                {item.category !== "회의일정" && (
+                {/* 3. 회의결과 (회의일정) 또는 조치결과 (품질경보/공지사항) 섹션 */}
+                {item.category === "회의일정" ? (
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50/90 via-indigo-50/50 to-purple-50/50 dark:from-purple-950/60 dark:via-indigo-950/40 dark:to-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-2.5 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-purple-700 dark:text-purple-300">
+                        <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                        <span>회의 결과 및 결정 사항</span>
+                      </div>
+                      {item.actionAuthor && (
+                        <span className="text-[10.5px] text-purple-600 dark:text-purple-400 font-bold">
+                          기록/작성자: {item.actionAuthor} • {item.actionAt}
+                        </span>
+                      )}
+                    </div>
+
+                    {item.actionResult ? (
+                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap pl-1">
+                        {item.actionResult}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between pl-1">
+                        <p className="text-xs text-slate-400 italic">
+                          아직 등록된 회의결과가 없습니다.
+                        </p>
+                        {!isDeleted && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenActionModal(item)}
+                            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-black text-[11px] shadow-xs cursor-pointer active:scale-95 transition-all"
+                          >
+                            ✍️ 회의결과 입력
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 회의 결과 첨부 사진 */}
+                    {item.actionImages && item.actionImages.length > 0 && (
+                      <div className="pt-2 border-t border-purple-200/60 dark:border-purple-900/40 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-purple-700 dark:text-purple-300">
+                          <span>회의록 / 결과 사진 ({item.actionImages.length}장)</span>
+                          <span className="text-[10px] text-slate-400 font-normal">탭하여 원본 확대</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {item.actionImages.map((img, idx) => (
+                            <div
+                              key={img.id || idx}
+                              onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `회의결과사진_${idx + 1}` })}
+                              className="group relative rounded-2xl overflow-hidden border border-purple-300 dark:border-purple-800 bg-white dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-purple-500 transition-all"
+                            >
+                              <img
+                                src={img.dataUrl}
+                                alt={img.name || `회의결과사진 ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                <ZoomIn className="w-5 h-5" />
+                              </div>
+                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
+                                {idx + 1}/{item.actionImages.length}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
@@ -1654,23 +1739,33 @@ export const AuthModal = () => {
                     </button>
                   )}
 
-                  {item.category !== "회의일정" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const issueToAct = item;
-                        handleOpenActionModal(issueToAct);
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{item.actionResult ? "현재 항목 조치 수정" : "현재 항목 조치결과 입력"}</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const issueToAct = item;
+                      handleOpenActionModal(issueToAct);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-white text-xs font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
+                      item.category === "회의일정"
+                        ? "bg-purple-600 hover:bg-purple-700 shadow-purple-600/20"
+                        : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                    }`}
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>
+                      {item.category === "회의일정"
+                        ? item.actionResult
+                          ? "회의결과 수정"
+                          : "회의결과 입력"
+                        : item.actionResult
+                        ? "현재 항목 조치 수정"
+                        : "현재 항목 조치결과 입력"}
+                    </span>
+                  </button>
                 </div>
 
                 {/* ========================================================================= */}
-                {/* 🌟 4. [요청사항 반영] [전체] [등록] 2가지 탭 & 시인성 개선 목록 (페이지당 5개) */}
+                {/* 🌟 4. [요청사항 반영] [종결] [등록] 2가지 탭 & 시인성 개선 목록 (페이지당 5개) */}
                 {/* ========================================================================= */}
                 <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1680,24 +1775,31 @@ export const AuthModal = () => {
                         등록 내역 이력
                       </h5>
                       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
-                        (전체 {urgentIssues.length}건 • 미결 {unresolvedIssues.length}건)
+                        (선택 탭 {filteredIssues.length}건 / 전체 {urgentIssues.length}건)
                       </span>
                     </div>
 
-                    {/* [전체] [등록] 2단 구분 탭 UI */}
+                    {/* [종결] [등록] 2단 구분 탭 UI */}
                     <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
-                      {/* 1. [전체] 탭 */}
+                      {/* 1. [종결] 탭 */}
                       <button
                         type="button"
                         onClick={() => {
-                          setIssueFilterTab("all");
+                          setIssueFilterTab((prev) => (prev === "closed" ? "all" : "closed"));
                           setIssueModalPage(1);
                         }}
-                        className="px-3 py-1 rounded-lg text-xs font-black bg-blue-600 text-white shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                          issueFilterTab === "closed"
+                            ? "bg-emerald-600 text-white shadow-xs"
+                            : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-300"
+                        }`}
+                        title={issueFilterTab === "closed" ? "전체 보기로 전환" : "종결/삭제 항목만 보기"}
                       >
-                        <span>📋 전체</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-blue-800 text-white">
-                          {urgentIssues.length}
+                        <span>✓ 종결</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                          issueFilterTab === "closed" ? "bg-emerald-800 text-white" : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        }`}>
+                          {closedIssues.length}
                         </span>
                       </button>
 
@@ -1714,7 +1816,7 @@ export const AuthModal = () => {
                   </div>
 
                   <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
-                    * 리스트 항목을 클릭하면 상단에서 상세 안건, 회신 내용 및 현장 조치 사진을 즉시 조회할 수 있습니다.
+                    * 리스트 항목을 클릭하면 상단에서 상세 안건, 회신 내용, 조치 및 회의결과 사진을 즉시 조회할 수 있습니다.
                   </p>
 
                   {/* 5개 목록 테이블/카드 */}
@@ -2340,212 +2442,238 @@ export const AuthModal = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🌟 2. 조치결과 입력/수정 전용 팝업 모달 */}
       {/* ========================================================================= */}
-      {actionModalData.isOpen && actionModalData.issue && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-lg w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
-            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-xs">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    조치결과 입력 및 조치완료 처리
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400">
-                    해당 품질경보 및 공지사항에 대한 조치 완료 결과를 기록합니다.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Target Issue Reference Info */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                  {actionModalData.issue.plant}
-                </span>
-                <strong className="text-slate-900 dark:text-white font-black">
-                  {actionModalData.issue.title}
-                </strong>
-              </div>
-              <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
-                📢 {actionModalData.issue.content}
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveActionResult} className="space-y-3 sm:space-y-4 text-xs">
-              {/* 조치자 선택 */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  조치자
-                </label>
-                <select
-                  value={actionModalData.actionAuthor}
-                  onChange={(e) => setActionModalData({ ...actionModalData, actionAuthor: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                >
-                  {allWorkers.map((w) => (
-                    <option key={w.id} value={w.name}>
-                      {w.plantName} • {w.name} {w.title || ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 조치결과 내용 */}
-              <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  ✓ 조치결과 상세 내용
-                </label>
-                <textarea
-                  rows="4"
-                  required
-                  placeholder="예: 센서 커넥터 재체결 및 예열 온도 정상치(180℃) 도달 확인 완료 (설비 정상 가동)"
-                  value={actionModalData.actionResult}
-                  onChange={(e) => setActionModalData({ ...actionModalData, actionResult: e.target.value })}
-                  className="w-full p-3.5 rounded-xl border-2 border-emerald-500/50 dark:border-emerald-500/40 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                ></textarea>
-              </div>
-
-              {/* 📷 조치 사진 첨부 */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                    <Camera className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>조치 후 사진 첨부 (선택, 최대 3장)</span>
-                  </label>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {actionModalData.actionImages?.length || 0}/3장
-                  </span>
-                </div>
-
-                {/* Dual Buttons: 1. 📸 즉시 카메라 촬영 (우선 순위: capture="environment") / 2. 📁 앨범·파일 선택 */}
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Option 1: 📸 즉시 카메라 촬영 (모바일에서 탭 즉시 카메라 실행) */}
+      {/* 🌟 2. 조치결과 / 회의결과 입력·수정 전용 팝업 모달 */}
+      {/* ========================================================================= */}
+      {actionModalData.isOpen && actionModalData.issue && (() => {
+        const isMeetingAction = actionModalData.issue.category === "회의일정";
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-lg w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
+              <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-xl text-white shadow-xs ${isMeetingAction ? "bg-purple-600" : "bg-emerald-500"}`}>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
                   <div>
-                    <input
-                      type="file"
-                      id="action-issue-camera-input"
-                      accept="image/*"
-                      capture="environment"
-                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 3}
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          handleActionImageFiles(e.target.files);
-                          e.target.value = "";
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="action-issue-camera-input"
-                      className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
-                        (actionModalData.actionImages?.length || 0) >= 3
-                          ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                          : "border-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/30 font-black"
-                      }`}
-                    >
-                      <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="text-xs font-black truncate">
-                        {isProcessingActionImages
-                          ? "압축 처리 중..."
-                          : (actionModalData.actionImages?.length || 0) >= 3
-                          ? "최대 3장 완료"
-                          : "📸 사진 즉시 촬영"}
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Option 2: 📁 앨범 / 파일 선택 (보조) */}
-                  <div>
-                    <input
-                      type="file"
-                      id="action-issue-gallery-input"
-                      accept="image/*"
-                      multiple
-                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 3}
-                      onChange={(e) => {
-                        if (e.target.files) {
-                          handleActionImageFiles(e.target.files);
-                          e.target.value = "";
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="action-issue-gallery-input"
-                      className={`w-full py-2.5 px-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
-                        (actionModalData.actionImages?.length || 0) >= 3
-                          ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                          : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
-                      }`}
-                    >
-                      <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
-                      <span className="text-xs font-bold truncate">
-                        📁 앨범/파일 선택
-                      </span>
-                    </label>
+                    <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                      {isMeetingAction ? "회의결과 등록 및 종결 처리" : "조치결과 입력 및 조치완료 처리"}
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-slate-400">
+                      {isMeetingAction
+                        ? "해당 회의일정에 대한 결정 사항 및 회의록을 기록합니다."
+                        : "해당 품질경보 및 공지사항에 대한 조치 완료 결과를 기록합니다."}
+                    </p>
                   </div>
                 </div>
-
-                {actionModalData.actionImages && actionModalData.actionImages.length > 0 && (
-                  <div className="grid grid-cols-3 gap-2 pt-1">
-                    {actionModalData.actionImages.map((img, idx) => (
-                      <div
-                        key={img.id || idx}
-                        className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs"
-                      >
-                        <img
-                          src={img.dataUrl}
-                          alt={img.name}
-                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name })}
-                          className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveActionImage(idx)}
-                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition-colors cursor-pointer"
-                          title="삭제"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                  onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
                 >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>조치결과 저장 및 완료</span>
+                  ✕
                 </button>
               </div>
-            </form>
+
+              {/* Target Issue Reference Info */}
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                    actionModalData.issue.category === "회의일정"
+                      ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                      : actionModalData.issue.category === "공지사항"
+                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                  }`}>
+                    {actionModalData.issue.plant} • {actionModalData.issue.category || "품질경보"}
+                  </span>
+                  <strong className="text-slate-900 dark:text-white font-black truncate">
+                    {actionModalData.issue.title}
+                  </strong>
+                </div>
+                <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                  📢 {actionModalData.issue.content}
+                </p>
+              </div>
+
+              <form onSubmit={handleSaveActionResult} className="space-y-3 sm:space-y-4 text-xs">
+                {/* 조치자 / 작성자 선택 */}
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    {isMeetingAction ? "작성자 / 보고자" : "조치자"}
+                  </label>
+                  <select
+                    value={actionModalData.actionAuthor}
+                    onChange={(e) => setActionModalData({ ...actionModalData, actionAuthor: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                  >
+                    {allWorkers.map((w) => (
+                      <option key={w.id} value={w.name}>
+                        {w.plantName} • {w.name} {w.title || ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 결과 상세 내용 */}
+                <div>
+                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    {isMeetingAction ? "✓ 회의 결과 및 결정 사항" : "✓ 조치결과 상세 내용"}
+                  </label>
+                  <textarea
+                    rows="4"
+                    required
+                    placeholder={
+                      isMeetingAction
+                        ? "예:\n1. 품질 개선 프로세스 표준화 방안 확정\n2. 2공장 라인 적용 일정 수립 (다음 주 월요일부터 시행)\n3. 담당자별 후속 조치 업무 분장 완료"
+                        : "예: 센서 커넥터 재체결 및 예열 온도 정상치(180℃) 도달 확인 완료 (설비 정상 가동)"
+                    }
+                    value={actionModalData.actionResult}
+                    onChange={(e) => setActionModalData({ ...actionModalData, actionResult: e.target.value })}
+                    className={`w-full p-3.5 rounded-xl border-2 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+                      isMeetingAction
+                        ? "border-purple-500/50 dark:border-purple-500/40 focus:ring-purple-500"
+                        : "border-emerald-500/50 dark:border-emerald-500/40 focus:ring-emerald-500"
+                    }`}
+                  ></textarea>
+                </div>
+
+                {/* 📷 사진 첨부 */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <Camera className={`w-3.5 h-3.5 ${isMeetingAction ? "text-purple-500" : "text-emerald-500"}`} />
+                      <span>{isMeetingAction ? "회의록 / 결과 사진 첨부 (선택, 최대 3장)" : "조치 후 사진 첨부 (선택, 최대 3장)"}</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {actionModalData.actionImages?.length || 0}/3장
+                    </span>
+                  </div>
+
+                  {/* Dual Buttons: 1. 📸 즉시 카메라 촬영 / 2. 📁 앨범·파일 선택 */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Option 1: 📸 즉시 카메라 촬영 */}
+                    <div>
+                      <input
+                        type="file"
+                        id="action-issue-camera-input"
+                        accept="image/*"
+                        capture="environment"
+                        disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 3}
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            handleActionImageFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="action-issue-camera-input"
+                        className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
+                          (actionModalData.actionImages?.length || 0) >= 3
+                            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                            : isMeetingAction
+                            ? "border-purple-500 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/50 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-200 ring-1 ring-purple-500/30 font-black"
+                            : "border-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/30 font-black"
+                        }`}
+                      >
+                        <Camera className={`w-4 h-4 shrink-0 ${isMeetingAction ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`} />
+                        <span className="text-xs font-black truncate">
+                          {isProcessingActionImages
+                            ? "압축 처리 중..."
+                            : (actionModalData.actionImages?.length || 0) >= 3
+                            ? "최대 3장 완료"
+                            : "📸 사진 즉시 촬영"}
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Option 2: 📁 앨범 / 파일 선택 */}
+                    <div>
+                      <input
+                        type="file"
+                        id="action-issue-gallery-input"
+                        accept="image/*"
+                        multiple
+                        disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 3}
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            handleActionImageFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="action-issue-gallery-input"
+                        className={`w-full py-2.5 px-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                          (actionModalData.actionImages?.length || 0) >= 3
+                            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                            : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
+                        }`}
+                      >
+                        <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
+                        <span className="text-xs font-bold truncate">
+                          📁 앨범/파일 선택
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {actionModalData.actionImages && actionModalData.actionImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {actionModalData.actionImages.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs"
+                        >
+                          <img
+                            src={img.dataUrl}
+                            alt={img.name}
+                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name })}
+                            className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveActionImage(idx)}
+                            className="absolute top-1 right-1 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition-colors cursor-pointer"
+                            title="삭제"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    className={`px-6 py-2.5 rounded-xl text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isMeetingAction
+                        ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
+                        : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-emerald-500/25"
+                    }`}
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{isMeetingAction ? "회의결과 저장 및 종결" : "조치결과 저장 및 완료"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 🌟 3. 공장 품질경보 및 공지사항 삭제 전용 권한 확인 모달 (이명재 / 김동욱 권한 검증) */}

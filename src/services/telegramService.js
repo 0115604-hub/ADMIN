@@ -331,16 +331,16 @@ ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2. 품질경보 조치완료 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
+ * 2. 품질경보 조치완료 / 회의결과 보고 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
 export const sendQualityActionTelegram = async (issueItem, actionResult = null) => {
   const plant = issueItem?.plant || "삼랑진공장";
   const title = issueItem?.title || issueItem?.content || "품질경보";
-  const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "조치담당자";
-  const content = actionResult?.actionContent || issueItem?.actionResult || "현장 조치 완료";
+  const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "담당자";
+  const content = actionResult?.actionContent || issueItem?.actionResult || "조치 완료";
   const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
   const actionImages = (actionResult?.images || issueItem?.actionImages || []).slice(0, 3);
-  const photoCount = actionImages.length > 0 ? `\n• <b>조치사진:</b> 조치 완료 사진 ${actionImages.length}장 첨부됨` : "";
+  const photoCount = actionImages.length > 0 ? `\n• <b>첨부사진:</b> 관련 사진 ${actionImages.length}장 첨부됨` : "";
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -350,7 +350,39 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null) 
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
-  const message = `
+  let message = "";
+  if (issueItem?.category === "회의일정") {
+    message = `
+<b>🟪 [사내 회의결과 보고]</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>대상:</b> ${plant}
+• <b>회의제목:</b> <b>${title}</b>
+• <b>기록/작성자:</b> <b>${author}</b>
+
+<b>[회의 결과 및 결정사항]</b>
+${content}
+
+• <b>완료일시:</b> ${nowStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+  } else if (issueItem?.category === "공지사항" || issueItem?.category === "사내공지" || issueItem?.category === "공유사항") {
+    message = `
+<b>🟩 [사내 공지 조치/진행 완료]</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>공장:</b> ${plant}
+• <b>대상:</b> <b>${title}</b>
+• <b>작성자:</b> <b>${author}</b>
+
+<b>[진행 결과]</b>
+${content}
+
+• <b>완료일시:</b> ${nowStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+  } else {
+    message = `
 <b>🟥 [품질경보 조치완료 보고]</b>
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${plant}
@@ -364,6 +396,7 @@ ${content} (조치율 ${rate}%)
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
+  }
 
   if (actionImages.length > 0) {
     return await sendTelegramMediaGroup(actionImages, message);
