@@ -79,23 +79,14 @@ export const subscribeUrgentIssues = (onUpdate) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
-        if (!snapshot.empty) {
-          const list = [];
-          snapshot.forEach((d) => {
-            list.push({ id: d.id, ...d.data() });
-          });
-          // Sort by createdAt descending
-          list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-          saveLocalUrgentIssues(list);
-          onUpdate(list);
-        } else {
-          // Initialize remote database if empty
-          const locals = getLocalUrgentIssues();
-          locals.forEach((item) => {
-            setDoc(doc(db, COLLECTION_NAME, item.id), item).catch(() => {});
-          });
-          onUpdate(locals);
-        }
+        const list = [];
+        snapshot.forEach((d) => {
+          list.push({ id: d.id, ...d.data() });
+        });
+        // Sort by createdAt descending
+        list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        saveLocalUrgentIssues(list);
+        onUpdate(list);
       },
       (error) => {
         console.warn("Firestore urgent_issues sync warning (offline/rule):", error);
@@ -163,27 +154,43 @@ export const saveUrgentIssue = async (issueData) => {
   return fullItem;
 };
 
+// In-flight deletion lock to prevent duplicate Telegram messages and race conditions
+const activeDeletes = new Set();
+
 // Delete an urgent issue
 export const deleteUrgentIssue = async (id, deleterName = "") => {
-  const current = getLocalUrgentIssues();
-  const target = current.find((i) => i.id === id);
-  const updated = current.filter((i) => i.id !== id);
-  saveLocalUrgentIssues(updated);
+  if (activeDeletes.has(id)) {
+    return getLocalUrgentIssues();
+  }
+  activeDeletes.add(id);
 
   try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
-  } catch (e) {
-    console.warn("Firestore delete urgent issue fallback to local:", e);
-  }
+    const current = getLocalUrgentIssues();
+    const target = current.find((i) => i.id === id);
+    const updated = current.filter((i) => i.id !== id);
+    saveLocalUrgentIssues(updated);
 
-  // Trigger Telegram notification on delete
-  if (target) {
-    sendQualityDeleteTelegram(target, deleterName).catch((err) => {
-      console.warn("Telegram delete alert error:", err);
-    });
-  }
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn("Firestore delete urgent issue fallback to local:", e);
+    }
 
-  return updated;
+    // Trigger Telegram notification on delete (exactly once)
+    if (target) {
+      try {
+        await sendQualityDeleteTelegram(target, deleterName);
+      } catch (err) {
+        console.warn("Telegram delete alert error:", err);
+      }
+    }
+
+    return updated;
+  } finally {
+    setTimeout(() => {
+      activeDeletes.delete(id);
+    }, 3000);
+  }
 };
 
 // Update action result (조치결과 입력 및 조치완료 처리)

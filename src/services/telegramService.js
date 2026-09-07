@@ -185,29 +185,45 @@ export const formatKoreanCurrency = (amount) => {
 };
 
 /**
- * 1. 품질경보 등록 즉시 알림 (사진 첨부 지원)
+ * 1. 품질경보 및 공지사항 등록 즉시 알림 (사진 첨부 지원)
  */
 export const sendQualityAlertTelegram = async (issueItem) => {
   const plant = issueItem?.plant || "삼랑진공장";
-  const processInfo = issueItem?.process || issueItem?.line || "생산";
-  const writer = issueItem?.writer || issueItem?.author || "현장작업자";
+  const writer = issueItem?.author || issueItem?.writer || "현장작업자";
   const title = issueItem?.title || issueItem?.content || "품질 이슈 발생";
-  const content = issueItem?.content && issueItem.content !== issueItem.title ? `\n• <b>전달내용:</b> ${issueItem.content}` : "";
-  const photoCount = issueItem?.images?.length ? `\n• <b>첨부사진:</b> 총 ${issueItem.images.length}장 첨부됨` : "";
+  const content = issueItem?.content && issueItem.content !== issueItem.title ? issueItem.content : "";
+  const photoCount = issueItem?.images?.length ? `\n• <b>첨부사진:</b> 현장 사진 ${issueItem.images.length}장 첨부됨` : "";
   const dateStr = issueItem?.date || new Date().toISOString().split("T")[0];
-  const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const isNotice = issueItem?.category === "공지사항" || issueItem?.category === "공유사항";
 
-  const message = `
-<b>🟥 [품질경보] 즉시 확인 요망</b>
-----------------------------------------
-• <b>공장:</b> ${plant}
-• <b>공정/호기:</b> ${processInfo}
-• <b>작성자:</b> <b>${writer}</b>
-• <b>불량제목:</b> <b>${title}</b>${content}${photoCount}
-• <b>일시:</b> ${dateStr} ${timeStr}
-----------------------------------------
+  let message = "";
+  if (isNotice) {
+    message = `
+<b>📢 [사내 공지사항] 업무 협조 안내</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>대상:</b> ${plant}
+• <b>공지자:</b> <b>${writer}</b>
+• <b>공지제목:</b> <b>${title}</b>
+${content ? `\n<b>[공지 내용]</b>\n${content}\n` : ""}
+• <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
+  } else {
+    message = `
+<b>🟥 [품질경보] 긴급 확인 및 점검 요망</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>공장:</b> ${plant}
+• <b>작성자:</b> <b>${writer}</b>
+• <b>불량제목:</b> <b>${title}</b>
+${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
+• <b>발령일시:</b> ${dateStr} ${timeStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
+※ 조치 완료 후 시스템에서 [조치결과]를 등록해 주세요.
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+  }
 
   // If photo attached, send photo directly
   if (issueItem?.images && issueItem.images.length > 0 && issueItem.images[0].dataUrl) {
@@ -227,24 +243,33 @@ export const sendQualityAlertTelegram = async (issueItem) => {
  */
 export const sendQualityActionTelegram = async (issueItem, actionResult = null) => {
   const plant = issueItem?.plant || "삼랑진공장";
-  const processInfo = issueItem?.process || issueItem?.line || "생산";
   const title = issueItem?.title || issueItem?.content || "품질경보";
   const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "조치담당자";
   const content = actionResult?.actionContent || issueItem?.actionResult || "현장 조치 완료";
   const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
   const actionImages = actionResult?.images || issueItem?.actionImages || [];
-  const photoCount = actionImages.length ? `\n• <b>조치사진:</b> 총 ${actionImages.length}장 첨부됨` : "";
+  const photoCount = actionImages.length ? `\n• <b>조치사진:</b> 조치 완료 사진 ${actionImages.length}장 첨부됨` : "";
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
 
   const message = `
-<b>[품질경보 조치완료 보고]</b>
-----------------------------------------
+<b>✅ [품질경보 조치완료 보고]</b>
+━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${plant}
-• <b>공정/호기:</b> ${processInfo}
 • <b>대상:</b> <b>${title}</b>
 • <b>조치자:</b> <b>${author}</b>
-• <b>조치내용:</b> ${content} (조치율 ${rate}%)${photoCount}
-• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
-----------------------------------------
+
+<b>[조치 내용]</b>
+${content} (조치율 ${rate}%)
+
+• <b>완료일시:</b> ${nowStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
@@ -265,18 +290,28 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null) 
  */
 export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) => {
   const deleterName = typeof deleterProfile === "string"
-    ? (deleterProfile || "관리자")
-    : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "관리자");
+    ? (deleterProfile || "총괄관리자")
+    : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "총괄관리자");
+  const isNotice = deletedIssue?.category === "공지사항" || deletedIssue?.category === "공유사항";
+  const header = isNotice ? "<b>🗑️ [공지사항 종결/삭제 알림]</b>" : "<b>🗑️ [품질경보 종결/삭제 알림]</b>";
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
 
   const message = `
-<b>[품질경보 종결/삭제 알림]</b>
-----------------------------------------
+${header}
+━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${deletedIssue?.plant || "삼랑진공장"}
-• <b>대상:</b> ${deletedIssue?.line ? `${deletedIssue.line} - ` : ""}${deletedIssue?.title || deletedIssue?.content || "품질경보"}
+• <b>대상:</b> <b>${deletedIssue?.title || deletedIssue?.content || "품질경보"}</b>
 • <b>삭제권한자:</b> <b>${deleterName}</b>
 • <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 생산 및 조치 확인 후 종결 처리"}
-• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
-----------------------------------------
+• <b>삭제일시:</b> ${nowStr}
+━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
@@ -435,23 +470,26 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
   // 3. 품질경보 미삭제 / 미조치 현황
   const urgentIssues = getLocalUrgentIssues();
   let urgentSummary = "없음 (전건 종결완료)";
-  let urgentLabel = "품질경보 미조치";
   if (urgentIssues.length > 0) {
-    urgentLabel = "🟥 품질경보 미조치";
     const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
     const previewList = issueTitles.slice(0, 2);
     const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
-    urgentSummary = `총 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+    urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
   }
 
   const message = `
-<b>[오륙MES 일일 모닝 브리핑]</b>
-<b>${dateFormatted}</b>
-----------------------------------------
-• <b>금일 연차자:</b> ${leaveSummary}
-• <b>전일 미결재:</b> ${approvalSummary}
-• <b>${urgentLabel}:</b> ${urgentSummary}
-----------------------------------------
+<b>☀️ [오륙 생산관리] 일일 모닝 브리핑</b>
+<b>${dateFormatted} 기준</b>
+━━━━━━━━━━━━━━━━━━━━━
+<b>[1] 근태 / 휴가 현황</b>
+• ${leaveSummary}
+
+<b>[2] 미결재 현황</b>
+• ${approvalSummary}
+
+<b>[3] 품질경보 / 공지 현황</b>
+• ${urgentSummary}
+━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 

@@ -419,6 +419,8 @@ export const AuthModal = () => {
   // Confirm Delete with Authority Verification
   const handleConfirmDelete = async (e) => {
     e.preventDefault();
+    if (deleteModalData.isDeleting) return;
+
     const issue = deleteModalData.issue;
     if (!issue) return;
 
@@ -450,15 +452,27 @@ export const AuthModal = () => {
       return;
     }
 
-    const updated = await deleteUrgentIssue(issue.id, expectedManager);
-    setUrgentIssues(updated);
-    setDetailIssueModal(null);
-    setDeleteModalData({
-      isOpen: false,
-      issue: null,
-      pinInput: "",
-      errorMsg: ""
-    });
+    setDeleteModalData((prev) => ({ ...prev, isDeleting: true, errorMsg: "" }));
+
+    try {
+      const updated = await deleteUrgentIssue(issue.id, expectedManager);
+      setUrgentIssues(updated);
+      setDetailIssueModal(null);
+      setDeleteModalData({
+        isOpen: false,
+        issue: null,
+        pinInput: "",
+        errorMsg: "",
+        isDeleting: false
+      });
+    } catch (err) {
+      console.error("Delete error:", err);
+      setDeleteModalData((prev) => ({
+        ...prev,
+        isDeleting: false,
+        errorMsg: "삭제 중 오류가 발생했습니다. 다시 시도해 주세요."
+      }));
+    }
   };
 
   // All workers list for author dropdown
@@ -1825,10 +1839,11 @@ export const AuthModal = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs shadow-md shadow-rose-500/25 transition-all flex items-center gap-1.5 cursor-pointer"
+                  disabled={deleteModalData.isDeleting}
+                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs shadow-md shadow-rose-500/25 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>권한 인증 후 삭제</span>
+                  <span>{deleteModalData.isDeleting ? "삭제 처리 중..." : "권한 인증 후 삭제"}</span>
                 </button>
               </div>
             </form>
