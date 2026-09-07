@@ -197,3 +197,60 @@ export const getTodayCommonSchedules = (targetDate = null) => {
     return Boolean(effectiveStart && endDate && effectiveStart <= dateStr && dateStr <= endDate);
   });
 };
+
+export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateString()) => {
+  if (!scheds || scheds.length === 0) {
+    return "• 등록된 태형&미영 일정이 없습니다.";
+  }
+  const sorted = [...scheds].sort((a, b) => {
+    const aStart = a.startDate || a.date || "";
+    const bStart = b.startDate || b.date || "";
+    if (aStart !== bStart) return aStart.localeCompare(bStart);
+    return (a.time || "").localeCompare(b.time || "");
+  });
+
+  return sorted.map((s) => {
+    const startDate = s.startDate || s.date;
+    const endDate = s.endDate || startDate;
+    const targetStr = s.target ? `[${s.target}] ` : "";
+    const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+    const sFormatted = startDate.slice(5).replace("-", ".");
+    const eFormatted = endDate.slice(5).replace("-", ".");
+    if (startDate !== endDate) {
+      return `• [${sFormatted}~${eFormatted}] ${targetStr}${timeStr}${s.title}`;
+    } else if (startDate === todayStr) {
+      return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+    } else {
+      return `• [${sFormatted}] ${targetStr}${timeStr}${s.title}`;
+    }
+  }).join("\n");
+};
+
+export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText, dateFormatted = "") => {
+  if (!templateText) return templateText;
+
+  let text = templateText;
+
+  // Update date header if provided
+  if (dateFormatted) {
+    text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
+  }
+
+  // If explicit placeholder exists
+  if (text.includes("{commonSchedules}")) {
+    return text.replace(/\{commonSchedules\}/g, schedulesText);
+  }
+  if (text.includes("${commonSchedules}")) {
+    return text.replace(/\$\{commonSchedules\}/g, schedulesText);
+  }
+
+  // If section [3] exists (e.g. <b>[3] ... </b> or [3] ... up to separator or link)
+  const section3Regex = /(<b>\[3\][^<]*?<\/b>|\[3\][^\n]*\n)([\s\S]*?)(?=(━━━━━━━━━━━━━━━━━━━━━|<a\s+href|$))/i;
+  if (section3Regex.test(text)) {
+    return text.replace(section3Regex, `$1\n${schedulesText}\n`);
+  }
+
+  // Fallback
+  return `${text}\n\n<b>[3] 태형이랑 & 미영이랑</b>\n${schedulesText}`;
+};
+

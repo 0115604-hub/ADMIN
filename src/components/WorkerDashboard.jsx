@@ -98,7 +98,8 @@ import {
   deleteCommonSchedule,
   subscribeCommonSchedules,
   getTodayCommonSchedules,
-  cleanupExpiredCommonSchedules
+  cleanupExpiredCommonSchedules,
+  formatCommonSchedulesForTelegram
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
@@ -860,9 +861,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleSendDailyPnLTelegram = async () => {
     setSendingDailyPnL(true);
     try {
-      const todaySchedsText = todayCommonSchedules.length > 0
-        ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
-        : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
+      const todaySchedsText = formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr);
 
       const channelName = selectedPnLChannel === "-1003939516875" ? "경영방 (대표·전무)" : selectedPnLChannel === "290615483" ? "대표님 1:1" : "오륙 통합방";
 
@@ -4245,21 +4244,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         [3] 태형이랑 & 미영이랑
                       </div>
                       <div className="pl-2 whitespace-pre-wrap text-slate-200 text-[11px] leading-relaxed">
-                        {customPnLBriefing?.commonSchedules || (todayCommonSchedules.length > 0
-                          ? todayCommonSchedules.map((s) => {
-                              const startDate = s.startDate || s.date;
-                              const endDate = s.endDate || startDate;
-                              const targetStr = s.target ? `[${s.target}] ` : "";
-                              const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
-                              if (startDate !== endDate) {
-                                return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
-                              } else if (startDate === todayDateStr) {
-                                return `• [오늘] ${targetStr}${timeStr}${s.title}`;
-                              } else {
-                                return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
-                              }
-                            }).join("\n")
-                          : "• 등록된 태형&미영 일정이 없습니다.")}
+                        {customPnLBriefing?.commonSchedules || formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr)}
                       </div>
                     </div>
                   </div>
@@ -4380,21 +4365,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">태형이랑 & 미영이랑 포함 내용</label>
                     <textarea
                       rows="3"
-                      value={customPnLBriefing?.commonSchedules ?? (todayCommonSchedules.length > 0
-                        ? todayCommonSchedules.map((s) => {
-                            const startDate = s.startDate || s.date;
-                            const endDate = s.endDate || startDate;
-                            const targetStr = s.target ? `[${s.target}] ` : "";
-                            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
-                            if (startDate !== endDate) {
-                              return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
-                            } else if (startDate === todayDateStr) {
-                              return `• [오늘] ${targetStr}${timeStr}${s.title}`;
-                            } else {
-                              return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
-                            }
-                          }).join("\n")
-                        : "• 등록된 태형&미영 일정이 없습니다.")}
+                      value={customPnLBriefing?.commonSchedules ?? formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr)}
                       onChange={(e) => setCustomPnLBriefing({
                         ...(customPnLBriefing || {}),
                         commonSchedules: e.target.value

@@ -352,12 +352,14 @@ export async function runAllBriefings(force = false) {
             const endDate = s.endDate || startDate;
             const targetStr = s.target ? `[${s.target}] ` : "";
             const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+            const sFormatted = startDate.slice(5).replace("-", ".");
+            const eFormatted = endDate.slice(5).replace("-", ".");
             if (startDate !== endDate) {
-              return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+              return `• [${sFormatted}~${eFormatted}] ${targetStr}${timeStr}${s.title}`;
             } else if (startDate === todayStr) {
               return `• [오늘] ${targetStr}${timeStr}${s.title}`;
             } else {
-              return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+              return `• [${sFormatted}] ${targetStr}${timeStr}${s.title}`;
             }
           }).join("\n");
         }
@@ -389,7 +391,25 @@ ${commonSchedules}
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
 
-      const pnlMessage = savedPnLTemplate || defaultPnLMessage;
+      let pnlMessage = defaultPnLMessage;
+      if (savedPnLTemplate) {
+        let text = savedPnLTemplate;
+        if (dateFormatted) {
+          text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
+        }
+        if (text.includes("{commonSchedules}")) {
+          pnlMessage = text.replace(/\{commonSchedules\}/g, commonSchedules);
+        } else if (text.includes("${commonSchedules}")) {
+          pnlMessage = text.replace(/\$\{commonSchedules\}/g, commonSchedules);
+        } else {
+          const section3Regex = /(<b>\[3\][^<]*?<\/b>|\[3\][^\n]*\n)([\s\S]*?)(?=(━━━━━━━━━━━━━━━━━━━━━|<a\s+href|$))/i;
+          if (section3Regex.test(text)) {
+            pnlMessage = text.replace(section3Regex, `$1\n${commonSchedules}\n`);
+          } else {
+            pnlMessage = `${text}\n\n<b>[3] 태형이랑 & 미영이랑</b>\n${commonSchedules}`;
+          }
+        }
+      }
       const res = await sendTelegramMessage(config.botToken, config.pnlChatId || "-1003939516875", pnlMessage);
       console.log("[경영총괄 손익브리핑] Send Result:", res);
 

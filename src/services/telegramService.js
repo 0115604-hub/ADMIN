@@ -5,7 +5,7 @@ import { getLocalAnnualLeaves } from "./annualLeaveService";
 import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
-import { getTodayCommonSchedules, cleanupExpiredCommonSchedules } from "./commonScheduleService";
+import { getTodayCommonSchedules, cleanupExpiredCommonSchedules, formatCommonSchedulesForTelegram, injectCommonSchedulesIntoPnLTemplate } from "./commonScheduleService";
 import {
   getKSTDateString,
   getKSTFormattedString,
@@ -804,27 +804,6 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || customBriefingData?.targetChatId || config.pnlChatId || "-1003939516875";
   const todayStr = getKSTDateString();
-
-  const savedPnLTemplate = getLocalTelegramTemplates()["management_pnl"]?.text;
-  if (!customBriefingData && savedPnLTemplate) {
-    const sendRes = await sendTelegramMessage(savedPnLTemplate, {
-      ...config,
-      chatId: destChatId
-    });
-    if (sendRes.success) {
-      try {
-        localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
-        await setDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]), {
-          lastPnLSentDate: todayStr,
-          pnlSentAt: new Date().toISOString()
-        }, { merge: true });
-      } catch (e) {
-        console.warn("Failed to record pnl briefing timestamp:", e);
-      }
-    }
-    return sendRes;
-  }
-
   const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
 
   let salesAmount = customBriefingData?.salesAmount ?? 1756104735;
@@ -841,35 +820,12 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
     }
 
     const todayScheds = getTodayCommonSchedules(todayStr);
-    if (todayScheds.length > 0) {
-      todayScheds.sort((a, b) => {
-        const aStart = a.startDate || a.date || "";
-        const bStart = b.startDate || b.date || "";
-        if (aStart !== bStart) return aStart.localeCompare(bStart);
-        return (a.time || "").localeCompare(b.time || "");
-      });
-      commonSchedules = todayScheds.map((s) => {
-        const startDate = s.startDate || s.date;
-        const endDate = s.endDate || startDate;
-        const targetStr = s.target ? `[${s.target}] ` : "";
-        const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
-        if (startDate !== endDate) {
-          return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
-        } else if (startDate === todayStr) {
-          return `• [오늘] ${targetStr}${timeStr}${s.title}`;
-        } else {
-          return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
-        }
-      }).join("\n");
-    } else {
-      commonSchedules = "• 등록된 태형&미영 일정이 없습니다.";
-    }
+    commonSchedules = formatCommonSchedulesForTelegram(todayScheds, todayStr);
   }
 
   const costRatio = salesAmount > 0 ? ((purchaseAmount / salesAmount) * 100).toFixed(1) : "71.1";
-  const isMgmtRoom = destChatId === "-1003939516875" || destChatId === "290615483";
 
-  const message = `
+  const defaultPnLMessage = `
 <b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
@@ -887,6 +843,12 @@ ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
+
+  const savedPnLTemplate = getLocalTelegramTemplates()["management_pnl"]?.text;
+  let message = defaultPnLMessage;
+  if (savedPnLTemplate) {
+    message = injectCommonSchedulesIntoPnLTemplate(savedPnLTemplate, commonSchedules, dateFormatted);
+  }
 
   const sendResult = await sendTelegramMessage(message, {
     ...config,
