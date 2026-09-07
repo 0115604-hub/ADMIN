@@ -34,7 +34,11 @@ import {
   Download,
   ZoomIn,
   Eye,
-  FileText
+  FileText,
+  ChevronLeft,
+  ChevronsLeft,
+  ChevronsRight,
+  ListOrdered
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
@@ -110,6 +114,8 @@ export const AuthModal = () => {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
   const [detailIssueModal, setDetailIssueModal] = useState(null); // Selected Issue for Full Details & Photo Popup Modal
+  const [issueModalPage, setIssueModalPage] = useState(1);
+  const ISSUES_PER_PAGE = 5;
 
   // New Issue Form State (사진 첨부 지원)
   const [newIssueForm, setNewIssueForm] = useState({
@@ -522,7 +528,16 @@ export const AuthModal = () => {
           <div className="mb-4 sm:mb-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs overflow-hidden transition-all min-w-0">
             {/* Panel Top Bar */}
             <div className="p-2 sm:p-3 flex flex-wrap items-center justify-between gap-1.5 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <div
+                onClick={() => {
+                  if (urgentIssues.length > 0) {
+                    setDetailIssueModal(urgentIssues[0]);
+                    setIssueModalPage(1);
+                  }
+                }}
+                className="flex items-center gap-1.5 flex-wrap min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                title="탭하여 품질경보/공지사항 전체 관리 및 이력 팝업 열기"
+              >
                 <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs shrink-0">
                   <Megaphone className="w-3 h-3" />
                 </div>
@@ -590,7 +605,13 @@ export const AuthModal = () => {
                     return (
                       <div
                         key={item.id}
-                        onClick={() => setDetailIssueModal(item)}
+                        onClick={() => {
+                          setDetailIssueModal(item);
+                          const itemIdx = urgentIssues.findIndex((it) => it.id === item.id);
+                          if (itemIdx >= 0) {
+                            setIssueModalPage(Math.floor(itemIdx / ISSUES_PER_PAGE) + 1);
+                          }
+                        }}
                         className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                           item.isResolved
                             ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
@@ -1031,22 +1052,29 @@ export const AuthModal = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 0. 품질경보 및 공지사항 상세 내용 & 첨부 사진 확인 팝업 모달 */}
+      {/* 🌟 0. 품질경보 및 공지사항 상세 내용 & 5개 단위 이력 관리 팝업 모달 */}
       {/* ========================================================================= */}
       {detailIssueModal && (() => {
         const item = urgentIssues.find((it) => it.id === detailIssueModal.id) || detailIssueModal;
         const isNotice = item.category === "공지사항" || item.category === "공유사항";
+        const totalIssuePages = Math.max(1, Math.ceil(urgentIssues.length / ISSUES_PER_PAGE));
+        const validIssuePage = Math.min(Math.max(1, issueModalPage), totalIssuePages);
+        const paginatedIssues = urgentIssues.slice(
+          (validIssuePage - 1) * ISSUES_PER_PAGE,
+          validIssuePage * ISSUES_PER_PAGE
+        );
+
         return (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn"
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn"
             onClick={() => setDetailIssueModal(null)}
           >
             <div
-              className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp text-xs"
+              className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp text-xs max-h-[92vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <div className={`p-2 rounded-2xl text-white shadow-xs shrink-0 ${
                     isNotice ? "bg-emerald-600" : "bg-rose-600"
@@ -1076,6 +1104,9 @@ export const AuthModal = () => {
                       }`}>
                         {item.isResolved ? "✓ 조치완료" : "⏳ 조치대기"}
                       </span>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
+                        (전체 {urgentIssues.length}건 중 선택됨)
+                      </span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       작성자: <strong className="text-slate-700 dark:text-slate-200">{item.author} {item.authorTitle || ""}</strong> • {item.createdAt}
@@ -1092,8 +1123,8 @@ export const AuthModal = () => {
                 </button>
               </div>
 
-              {/* Modal Body */}
-              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              {/* Modal Body - Scrollable */}
+              <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[62vh]">
                 {/* 1. 제목 및 전달 내용 */}
                 <div className={`p-4 rounded-2xl border space-y-2 ${
                   isNotice
@@ -1199,40 +1230,256 @@ export const AuthModal = () => {
                     </div>
                   )}
                 </div>
+
+                {/* 선택된 항목 관리 버튼 바 */}
+                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      const issueToDel = item;
+                      handleOpenDeleteModal(issueToDel, e);
+                    }}
+                    className="px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>현재 선택 항목 삭제</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const issueToAct = item;
+                      handleOpenActionModal(issueToAct);
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{item.actionResult ? "현재 항목 조치 수정" : "현재 항목 조치결과 입력"}</span>
+                  </button>
+                </div>
+
+                {/* ========================================================================= */}
+                {/* 🌟 4. [요청사항] 등록된 내용 5개씩 페이지로 관리하는 이전 등록 내역 목록 */}
+                {/* ========================================================================= */}
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <ListOrdered className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                      <h5 className="text-xs font-black text-slate-900 dark:text-white">
+                        등록 내역 목록
+                      </h5>
+                      <span className="text-[10px] font-bold text-slate-400 font-mono">
+                        (총 {urgentIssues.length}건)
+                      </span>
+                    </div>
+                    <span className="text-[10.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-full">
+                      페이지 {validIssuePage} / {totalIssuePages} (5개씩)
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-400">
+                    * 아래 목록에서 항목을 탭하시면 상단에서 상세 내용과 사진을 즉시 조회하고 관리할 수 있습니다.
+                  </p>
+
+                  {/* 5개 목록 테이블/카드 */}
+                  <div className="space-y-1.5">
+                    {paginatedIssues.length === 0 ? (
+                      <div className="py-4 text-center text-xs text-slate-400">
+                        등록된 품질경보 및 공지사항이 없습니다.
+                      </div>
+                    ) : (
+                      paginatedIssues.map((it, idx) => {
+                        const isCurrent = it.id === item.id;
+                        const isItNotice = it.category === "공지사항" || it.category === "공유사항";
+                        const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
+                        const totalImgCount = (it.images?.length || 0) + (it.actionImages?.length || 0);
+
+                        return (
+                          <div
+                            key={it.id || idx}
+                            onClick={() => setDetailIssueModal(it)}
+                            className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                              isCurrent
+                                ? "bg-blue-50/90 dark:bg-blue-950/60 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/30 shadow-xs"
+                                : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:border-slate-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              {/* Item Index / Selected Tag */}
+                              <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                isCurrent
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono"
+                              }`}>
+                                {itemNum}
+                              </span>
+
+                              {/* Category Badge */}
+                              <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black text-white shrink-0 ${
+                                isItNotice ? "bg-emerald-600" : "bg-rose-600"
+                              }`}>
+                                {isItNotice ? "공지" : "경보"}
+                              </span>
+
+                              {/* Plant Badge */}
+                              <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
+                                it.plant === "한림공장"
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                  : it.plant === "삼랑진공장"
+                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                              }`}>
+                                {it.plant?.replace("공장", "") || "공장"}
+                              </span>
+
+                              {/* Content Snippet */}
+                              <span className={`text-xs truncate flex-1 ${
+                                isCurrent
+                                  ? "font-black text-blue-900 dark:text-blue-100"
+                                  : "font-semibold text-slate-800 dark:text-slate-200"
+                              }`}>
+                                {it.title ? `${it.title} - ${it.content}` : it.content}
+                              </span>
+
+                              {/* Photo count indicator */}
+                              {totalImgCount > 0 && (
+                                <span className="text-[9.5px] text-slate-400 flex items-center gap-0.5 shrink-0 font-bold hidden sm:inline-flex">
+                                  <Camera className="w-2.5 h-2.5 text-rose-500" />
+                                  <span>{totalImgCount}</span>
+                                </span>
+                              )}
+
+                              {/* Author & Date */}
+                              <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
+                                {it.author} • {it.createdAt?.slice(5) || ""}
+                              </span>
+                            </div>
+
+                            {/* Status Badge & Actions */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              {it.isResolved ? (
+                                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                  ✓완료
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                                  ⏳대기
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenActionModal(it, e);
+                                }}
+                                className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors cursor-pointer"
+                                title="조치결과 입력/수정"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDeleteModal(it, e);
+                                }}
+                                className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
+                                title="삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* 5-Item Pagination Controls */}
+                  {totalIssuePages > 1 && (
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={validIssuePage <= 1}
+                          onClick={() => setIssueModalPage(1)}
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                          title="첫 페이지"
+                        >
+                          <ChevronsLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={validIssuePage <= 1}
+                          onClick={() => setIssueModalPage((p) => Math.max(1, p - 1))}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                          <span>이전</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalIssuePages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setIssueModalPage(pageNum)}
+                            className={`w-7 h-7 rounded-lg font-black text-xs transition-all cursor-pointer ${
+                              pageNum === validIssuePage
+                                ? "bg-blue-600 text-white shadow-xs scale-105"
+                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          disabled={validIssuePage >= totalIssuePages}
+                          onClick={() => setIssueModalPage((p) => Math.min(totalIssuePages, p + 1))}
+                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>다음</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={validIssuePage >= totalIssuePages}
+                          onClick={() => setIssueModalPage(totalIssuePages)}
+                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                          title="마지막 페이지"
+                        >
+                          <ChevronsRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Modal Bottom Action Buttons */}
-              <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+              {/* Modal Bottom Fixed Action Buttons */}
+              <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
-                  onClick={(e) => {
-                    const issueToDel = item;
-                    setDetailIssueModal(null);
-                    handleOpenDeleteModal(issueToDel, e);
+                  onClick={() => {
+                    setIsIssueModalOpen(true);
                   }}
-                  className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>삭제</span>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ 신규 등록</span>
                 </button>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      const issueToAct = item;
-                      setDetailIssueModal(null);
-                      handleOpenActionModal(issueToAct);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{item.actionResult ? "조치 수정" : "조치결과 입력"}</span>
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => setDetailIssueModal(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black hover:bg-slate-200 dark:hover:bg-slate-700 text-xs cursor-pointer shadow-xs"
                   >
                     닫기
                   </button>
