@@ -103,11 +103,24 @@ export const App = () => {
     // Daily 07:00 AM P&L Briefing & 07:30 AM Morning Briefing Check
     checkAndAutoSendDailyPnLBriefing();
     checkAndAutoSendDailyMorningBriefing();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkAndAutoSendDailyPnLBriefing();
+        checkAndAutoSendDailyMorningBriefing();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     const timer = setInterval(() => {
       checkAndAutoSendDailyPnLBriefing();
       checkAndAutoSendDailyMorningBriefing();
-    }, 60000); // Check every 60 seconds
-    return () => clearInterval(timer);
+    }, 30000); // Check every 30 seconds
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   // Save Transaction

@@ -498,17 +498,24 @@ export const sendDailyPnLBriefingTelegram = async (targetMonth = null, customTar
  * Check and Auto-Send Daily 07:30 AM Morning Briefing (General room)
  */
 export const checkAndAutoSendDailyMorningBriefing = async () => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || !config.sendDailyLeaveBriefing) {
+    return { skipped: true, reason: "DISABLED_IN_CONFIG" };
+  }
+
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
+  const totalMinutes = currentHour * 60 + currentMinute;
   const todayStr = now.toISOString().split("T")[0];
 
-  // Only auto-trigger at 07:30 AM or later (07:30 ~ 08:30)
-  if (currentHour < 7 || (currentHour === 7 && currentMinute < 30)) {
-    return { skipped: true, reason: "BEFORE_07_30_AM" };
+  // Client auto-trigger window: 07:30 AM ~ 07:45 AM only
+  // This prevents stale/delayed briefings from triggering hours later when a user opens the browser at noon
+  if (totalMinutes < 450 || totalMinutes > 465) {
+    return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
   }
 
-  // Check if already sent today
+  // Check if already sent today locally
   const lastLocal = localStorage.getItem("oryuk_last_morning_briefing_sent");
   if (lastLocal === todayStr) {
     return { skipped: true, reason: "ALREADY_SENT_TODAY_LOCAL" };
@@ -534,23 +541,23 @@ export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBr
  * Check and Auto-Send Daily 07:00 AM P&L Executive Briefing (Executive room)
  */
 export const checkAndAutoSendDailyPnLBriefing = async () => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || !config.sendDailyPnLBriefing || !config.pnlChatId) {
+    return { skipped: true, reason: "DISABLED_OR_NO_PNL_CHAT_ID" };
+  }
+
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
+  const totalMinutes = currentHour * 60 + currentMinute;
   const todayStr = now.toISOString().split("T")[0];
 
-  // Check if PnL dedicated room is configured
-  const config = getLocalTelegramConfig();
-  if (!config.pnlChatId) {
-    return { skipped: true, reason: "PNL_CHAT_ID_NOT_CONFIGURED" };
+  // Client auto-trigger window: 07:00 AM ~ 07:15 AM only
+  if (totalMinutes < 420 || totalMinutes > 435) {
+    return { skipped: true, reason: "OUTSIDE_07_00_WINDOW" };
   }
 
-  // Only auto-trigger at 07:00 AM or later
-  if (currentHour < 7) {
-    return { skipped: true, reason: "BEFORE_07_00_AM" };
-  }
-
-  // Check if already sent today
+  // Check if already sent today locally
   const lastLocal = localStorage.getItem("oryuk_last_pnl_briefing_sent");
   if (lastLocal === todayStr) {
     return { skipped: true, reason: "ALREADY_SENT_TODAY_LOCAL" };

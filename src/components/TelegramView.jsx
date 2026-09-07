@@ -185,8 +185,31 @@ export const TelegramView = () => {
               : "bg-slate-800 text-slate-300"
           }`}>
             <span className={`w-2 h-2 rounded-full ${telegramConfig.enabled ? "bg-slate-900 animate-pulse" : "bg-slate-500"}`} />
-            {telegramConfig.enabled ? "알림 연동 가동 중" : "알림 연동 비활성화"}
+            {telegramConfig.enabled ? "정시 자동발송 가동 중 (07:00 / 07:30)" : "알림 연동 비활성화"}
           </span>
+        </div>
+      </div>
+
+      {/* Cloud & Client Dual-Scheduler Notice */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 border border-blue-200/80 dark:border-blue-900/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-blue-600 text-white shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+              <span>클라우드 서버 정시 자동 발송 (정밀 스케줄러)</span>
+              <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-black">
+                GitHub Actions 2중 연동
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              브라우저가 닫혀 있어도 클라우드 서버에서 <strong>매일 07:00(손익 결산)</strong> 및 <strong>07:30(모닝 브리핑)</strong> 정시에 오차 없이 발송됩니다.
+            </p>
+          </div>
+        </div>
+        <div className="text-[11px] font-mono text-slate-400 shrink-0 bg-white/80 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+          KST (UTC+9) 동기화
         </div>
       </div>
 

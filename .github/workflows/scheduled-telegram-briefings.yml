@@ -1,0 +1,66 @@
+name: Scheduled Telegram Briefings
+
+on:
+  schedule:
+    # 07:00 KST (22:00 UTC previous day) - P&L Briefing
+    - cron: '0 22 * * *'
+    # 07:30 KST (22:30 UTC previous day) - Daily Morning Briefing
+    - cron: '30 22 * * *'
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'Briefing type to send'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - morning
+          - pnl
+      force:
+        description: 'Force send even if already sent today'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  send-briefing:
+    name: Run Telegram Scheduled Briefing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine Briefing Type and Execute
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FORCE_FLAG=""
+            if [ "${{ github.event.inputs.force }}" = "true" ]; then
+              FORCE_FLAG="--force"
+            fi
+            echo "Running manual dispatch: ${{ github.event.inputs.type }} $FORCE_FLAG"
+            node scripts/sendTelegramBriefing.mjs "${{ github.event.inputs.type }}" $FORCE_FLAG
+          else
+            # Cron trigger based on UTC minute
+            CURRENT_UTC_MINUTE=$(date -u +"%M")
+            CURRENT_UTC_HOUR=$(date -u +"%H")
+            echo "Current UTC Time: $CURRENT_UTC_HOUR:$CURRENT_UTC_MINUTE"
+            
+            # If around 22:00 UTC (07:00 KST)
+            if [ "$CURRENT_UTC_MINUTE" -le "15" ]; then
+              echo "Executing 07:00 KST P&L Briefing..."
+              node scripts/sendTelegramBriefing.mjs pnl
+            # If around 22:30 UTC (07:30 KST)
+            else
+              echo "Executing 07:30 KST Morning Briefing..."
+              node scripts/sendTelegramBriefing.mjs morning
+            fi
+          fi
