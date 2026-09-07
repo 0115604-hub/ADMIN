@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Clock,
   ChevronRight,
+  ArrowRight,
   UserCheck
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
@@ -228,9 +229,10 @@ export const DashboardOverview = ({
               </div>
               <button
                 onClick={onNavigateToVehicles}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
               >
-                전체 차종 보기 →
+                <span>차종별 매출 상세</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -285,9 +287,10 @@ export const DashboardOverview = ({
               </div>
               <button
                 onClick={onNavigateToMaterials}
-                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
               >
-                9대 품목군 전체 →
+                <span>자재매입 상세</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
@@ -390,10 +393,10 @@ export const DashboardOverview = ({
             {onNavigateToWorkLogs && (
               <button
                 onClick={onNavigateToWorkLogs}
-                className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors"
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
               >
-                <span>일지 상세조회</span>
-                <ChevronRight className="w-4 h-4" />
+                <span>일일업무일지 상세</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
