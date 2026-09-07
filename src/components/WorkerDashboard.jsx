@@ -4030,7 +4030,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   {/* Header */}
                   <div>
                     <div className="font-black text-sm text-white flex items-center gap-1.5">
-                      <span>⬛ [오륙 {selectedPnLChannel === "-1003939516875" || selectedPnLChannel === "290615483" ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</span>
+                      <span>⬛ [오륙] 일일 아침 손익결산 브리핑</span>
                     </div>
                     <div className="text-[11px] font-extrabold text-sky-400 mt-0.5">
                       {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })} 07:30 기준

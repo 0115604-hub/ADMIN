@@ -109,10 +109,10 @@ export const Header = ({
                     ? "bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/20 ring-2 ring-sky-400/30"
                     : "bg-white hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700"
                 }`}
-                title="텔레그램 실시간 알림 연동 관리"
+                title="텔레그램 실시간 알림 및 연동 설정"
               >
                 <TelegramLogo className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="font-extrabold hidden sm:inline">telegram</span>
+                <span className="font-extrabold hidden sm:inline">텔레그램 연동</span>
               </button>
             )}
           </div>

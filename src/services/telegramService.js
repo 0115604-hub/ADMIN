@@ -123,11 +123,36 @@ export const subscribeTelegramConfig = (onUpdate) => {
 /**
  * Custom Message Template Persistence (앞으로도 계속 적용하는 저장 서식)
  */
+export const sanitizeTelegramTemplateText = (text) => {
+  if (!text || typeof text !== "string") return text;
+  return text
+    .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
+    .replace(/경영정보공유/g, "")
+    .replace(/경영정보/g, "");
+};
+
+export const sanitizeTelegramTemplates = (data) => {
+  if (!data || typeof data !== "object") return {};
+  const cleaned = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (v && v.text) {
+      cleaned[k] = {
+        ...v,
+        text: sanitizeTelegramTemplateText(v.text)
+      };
+    } else {
+      cleaned[k] = v;
+    }
+  }
+  return cleaned;
+};
+
 export const getLocalTelegramTemplates = () => {
   try {
     const saved = localStorage.getItem(TELEGRAM_TEMPLATES_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return sanitizeTelegramTemplates(parsed);
     }
   } catch (e) {
     console.error("Failed to read telegram templates from localStorage:", e);
@@ -138,10 +163,11 @@ export const getLocalTelegramTemplates = () => {
 export const saveTelegramCustomTemplate = async (templateKey, templateText) => {
   try {
     const current = getLocalTelegramTemplates();
+    const sanitizedText = sanitizeTelegramTemplateText(templateText);
     const updated = {
       ...current,
       [templateKey]: {
-        text: templateText,
+        text: sanitizedText,
         updatedAt: new Date().toISOString()
       }
     };
@@ -162,8 +188,9 @@ export const subscribeTelegramCustomTemplates = (onUpdate) => {
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
-          localStorage.setItem(TELEGRAM_TEMPLATES_KEY, JSON.stringify(data));
-          if (onUpdate) onUpdate(data);
+          const cleaned = sanitizeTelegramTemplates(data);
+          localStorage.setItem(TELEGRAM_TEMPLATES_KEY, JSON.stringify(cleaned));
+          if (onUpdate) onUpdate(cleaned);
         } else {
           const local = getLocalTelegramTemplates();
           if (onUpdate) onUpdate(local);
@@ -819,7 +846,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   const isMgmtRoom = destChatId === "-1003939516875" || destChatId === "290615483";
 
   const message = `
-<b>⬛ [오륙 ${isMgmtRoom ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</b>
+<b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
 <b>[1] 당월 매입 / 매출 결산 현황</b>

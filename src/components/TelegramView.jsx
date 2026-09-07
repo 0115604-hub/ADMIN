@@ -288,18 +288,21 @@ export const TelegramView = () => {
 
   // Management Default Message Generator
   const generateDefaultManagementText = () => {
-    const isMgmtRoom = selectedPnLChannel === "-1003939516875" || selectedPnLChannel === "290615483";
     const salesAchTxt = `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`;
     const purchAchTxt = `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`;
 
-    return `<b>⬛ [오륙 ${isMgmtRoom ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(totalSales).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(totalPurchases).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 오늘의 태형&미영 일정</b>\n${todaySchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
+    return `<b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(totalSales).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(totalPurchases).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 오늘의 태형&미영 일정</b>\n${todaySchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
   };
 
   // Load custom management template if exists, else load default text
   useEffect(() => {
     const saved = savedTemplates[currentManagementTemplateKey]?.text;
     if (saved) {
-      setEditableManagementText(saved);
+      const sanitized = saved
+        .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
+        .replace(/경영정보공유/g, "")
+        .replace(/경영정보/g, "");
+      setEditableManagementText(sanitized);
     } else {
       setEditableManagementText(generateDefaultManagementText());
     }
@@ -473,37 +476,53 @@ export const TelegramView = () => {
           </div>
         </div>
 
-        {/* 🌟 2대 메인 탭: [📢 오륙통합방] & [👑 경영총괄] */}
-        <div className="grid grid-cols-2 gap-3 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80">
+        {/* 🌟 3대 메인 탭: [📢 오륙통합방] & [👑 경영총괄] & [⚙️ 텔레그램 연동 설정] */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80">
           <button
             type="button"
             onClick={() => setActiveMainTab("unified")}
-            className={`flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl font-black text-xs sm:text-base transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-2.5 py-3 px-3.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
               activeMainTab === "unified"
                 ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-sky-400 shadow-md border border-slate-200/80 dark:border-slate-700"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            <Users className="w-5 h-5 shrink-0 text-blue-500" />
+            <Users className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-blue-500" />
             <div className="text-left">
-              <div className="leading-tight">오륙통합방</div>
-              <div className="text-[10px] opacity-75 font-normal">현장•품질•공지•모닝브리핑 (-4186792536)</div>
+              <div className="leading-tight font-black">오륙통합방</div>
+              <div className="text-[10px] opacity-75 font-normal">현장•품질•공지•모닝브리핑</div>
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveMainTab("management")}
-            className={`flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl font-black text-xs sm:text-base transition-all cursor-pointer ${
+            className={`flex items-center justify-center gap-2.5 py-3 px-3.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
               activeMainTab === "management"
                 ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-md border border-slate-200/80 dark:border-slate-700"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            <Crown className="w-5 h-5 shrink-0 text-purple-500" />
+            <Crown className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-purple-500" />
             <div className="text-left">
-              <div className="leading-tight">경영총괄</div>
-              <div className="text-[10px] opacity-75 font-normal">대표·전무 손익결산 브리핑 (-1003939516875)</div>
+              <div className="leading-tight font-black">경영총괄</div>
+              <div className="text-[10px] opacity-75 font-normal">손익결산 브리핑 (-1003939516875)</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMainTab("config")}
+            className={`flex items-center justify-center gap-2.5 py-3 px-3.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+              activeMainTab === "config"
+                ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-md border border-slate-200/80 dark:border-slate-700 ring-2 ring-emerald-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-emerald-500" />
+            <div className="text-left">
+              <div className="leading-tight font-black">텔레그램 연동 설정</div>
+              <div className="text-[10px] opacity-75 font-normal">Bot Token & Chat ID & 테스트</div>
             </div>
           </button>
         </div>
@@ -987,20 +1006,35 @@ export const TelegramView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* ⚙️ 하단: 텔레그램 Bot API 및 채널 ID 시스템 설정 */}
+      {/* ⚙️ 텔레그램 Bot API 및 채널 ID 시스템 설정 */}
       {/* ========================================================================= */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+      <div className={`p-6 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border transition-all space-y-5 ${
+        activeMainTab === "config"
+          ? "border-2 border-emerald-500 shadow-2xl ring-4 ring-emerald-500/10 animate-fadeIn"
+          : "border-slate-200/80 dark:border-slate-800 shadow-sm"
+      }`}>
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-              <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className={`p-2.5 rounded-xl ${
+              activeMainTab === "config"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+            }`}>
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                텔레그램 Bot API 및 채널 ID 설정
-              </h4>
-              <p className="text-xs text-slate-400">
-                오륙 통합방(현장·품질·공지)과 경영방(대표·전무 손익)의 수신 채널 ID를 구분하여 관리합니다.
+              <div className="flex items-center gap-2">
+                <h4 className="font-black text-slate-900 dark:text-white text-base sm:text-lg">
+                  텔레그램 Bot API 및 채널 ID 연동 설정
+                </h4>
+                {activeMainTab === "config" && (
+                  <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    설정 모드
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                오륙 통합방(현장·품질·공지)과 경영방(대표·전무 손익)의 수신 채널 ID 및 Bot Token을 설정하고 연결을 테스트합니다.
               </p>
             </div>
           </div>
