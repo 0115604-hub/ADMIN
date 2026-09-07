@@ -724,6 +724,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // 태형&미영 일정 State & Subscription
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [commonScheduleForm, setCommonScheduleForm] = useState({
+    startDate: getKSTDateString(),
+    endDate: getKSTDateString(),
     date: getKSTDateString(),
     time: "09:30",
     target: "세미나",
@@ -745,11 +747,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const todayDateStr = getKSTDateString();
   const allActiveCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
-    return [...commonSchedules].sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.time || "").localeCompare(b.time || ""));
+    return [...commonSchedules].sort((a, b) => {
+      const aStart = a.startDate || a.date || "";
+      const bStart = b.startDate || b.date || "";
+      if (aStart !== bStart) return aStart.localeCompare(bStart);
+      const aEnd = a.endDate || aStart;
+      const bEnd = b.endDate || bStart;
+      if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
+      return (a.time || "").localeCompare(b.time || "");
+    });
   }, [commonSchedules]);
   const todayCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
-    return commonSchedules.filter((s) => s.date === todayDateStr);
+    return commonSchedules.filter((s) => {
+      const start = s.startDate || s.date;
+      const end = s.endDate || s.startDate || s.date;
+      return Boolean(start && end && start <= todayDateStr && todayDateStr <= end);
+    });
   }, [commonSchedules, todayDateStr]);
 
   const handleRegisterCommonSchedule = async (e) => {
@@ -760,8 +774,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
     setCommonScheduleSaving(true);
     try {
+      const startDate = commonScheduleForm.startDate || commonScheduleForm.date || getKSTDateString();
+      const endDate = commonScheduleForm.endDate || startDate;
       await saveCommonSchedule({
         ...commonScheduleForm,
+        startDate,
+        endDate,
+        date: startDate,
         author: currentProfile?.name || "관리자"
       });
       setToastMessage("일정이 정상적으로 등록되었습니다.");
@@ -769,6 +788,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setTimeout(() => setLogSavedToast(false), 3000);
       setCommonScheduleForm((prev) => ({
         ...prev,
+        startDate: getKSTDateString(),
+        endDate: getKSTDateString(),
+        date: getKSTDateString(),
         title: ""
       }));
       setCommonScheduleModalOpen(false);
@@ -1251,15 +1273,30 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     key={item.id}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs shrink-0 hover:border-indigo-400 transition-all"
                   >
-                    {item.date && (
-                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                        item.date === todayDateStr
-                          ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
-                          : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
-                      }`}>
-                        {item.date === todayDateStr ? "오늘" : item.date.length >= 10 ? item.date.slice(5) : item.date}
-                      </span>
-                    )}
+                    {(() => {
+                      const start = item.startDate || item.date;
+                      const end = item.endDate || item.startDate || item.date;
+                      const hasRange = start && end && start !== end;
+                      if (hasRange) {
+                        return (
+                          <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300">
+                            {start.slice(5)}~{end.slice(5)}
+                          </span>
+                        );
+                      }
+                      if (start) {
+                        return (
+                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                            start === todayDateStr
+                              ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300"
+                              : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+                          }`}>
+                            {start === todayDateStr ? "오늘" : start.slice(5)}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                     <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
                       item.target === "세미나"
                         ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
@@ -3887,20 +3924,74 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
               </div>
 
-              {/* 일자 & 시간 */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    일자
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={commonScheduleForm.date}
-                    onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, date: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                  />
+              {/* 일자 (시작일/등록일 ~ 종료일/지정일) & 시간 */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      시작일 (등록일)
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        setCommonScheduleForm((prev) => ({
+                          ...prev,
+                          startDate: newStart,
+                          date: newStart,
+                          endDate: prev.endDate && prev.endDate < newStart ? newStart : prev.endDate || newStart
+                        }));
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      종료일 (지정일)
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      min={commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr}
+                      value={commonScheduleForm.endDate || commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr}
+                      onChange={(e) => setCommonScheduleForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
                 </div>
+
+                {/* Quick Period Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-slate-400 font-bold">기간 선택:</span>
+                  {[
+                    { label: "당일", days: 0 },
+                    { label: "1박2일", days: 1 },
+                    { label: "2박3일", days: 2 },
+                    { label: "3박4일", days: 3 },
+                    { label: "1주일", days: 6 }
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        const start = commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr;
+                        const startDateObj = new Date(start);
+                        startDateObj.setDate(startDateObj.getDate() + p.days);
+                        const yyyy = startDateObj.getFullYear();
+                        const mm = String(startDateObj.getMonth() + 1).padStart(2, "0");
+                        const dd = String(startDateObj.getDate()).padStart(2, "0");
+                        setCommonScheduleForm((prev) => ({ ...prev, endDate: `${yyyy}-${mm}-${dd}` }));
+                      }}
+                      className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* 시간 */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     시간
@@ -4062,7 +4153,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </div>
                       <div className="pl-2 whitespace-pre-wrap text-slate-200 text-[11px] leading-relaxed">
                         {customPnLBriefing?.commonSchedules || (todayCommonSchedules.length > 0
-                          ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
+                          ? todayCommonSchedules.map((s) => {
+                              const start = s.startDate || s.date;
+                              const end = s.endDate || s.startDate || s.date;
+                              const hasRange = start && end && start !== end;
+                              const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
+                              const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+                              const targetStr = s.target ? `[${s.target}] ` : "";
+                              return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+                            }).join("\n")
                           : "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)")}
                       </div>
                     </div>
@@ -4185,8 +4284,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <textarea
                       rows="3"
                       value={customPnLBriefing?.commonSchedules ?? (todayCommonSchedules.length > 0
-                        ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
-                        : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)")}
+                        ? todayCommonSchedules.map((s) => {
+                            const start = s.startDate || s.date;
+                            const end = s.endDate || s.startDate || s.date;
+                            const hasRange = start && end && start !== end;
+                            const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
+                            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+                            const targetStr = s.target ? `[${s.target}] ` : "";
+                            return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+                          }).join("\n")
+                        : "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)")}
                       onChange={(e) => setCustomPnLBriefing({
                         ...(customPnLBriefing || {}),
                         commonSchedules: e.target.value

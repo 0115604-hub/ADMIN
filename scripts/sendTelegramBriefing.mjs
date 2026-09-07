@@ -312,31 +312,47 @@ export async function runAllBriefings(force = false) {
     } else {
       console.log(`[경영총괄 손익브리핑] Generating PnL briefing for ${todayStr}...`);
 
-      // 2-1. 공통일정 조회
+      // 2-1. 태형&미영 일정 조회 (등록된 날짜부터 지정된 날짜까지 포함)
       let commonSchedules = "";
       try {
         const snap = await getDocs(collection(db, "company_common_schedules"));
         const todayScheds = [];
         snap.forEach((docSnap) => {
           const s = docSnap.data();
-          if (s.date === todayStr) {
+          const start = s.startDate || s.date;
+          const end = s.endDate || s.startDate || s.date;
+          if (start && end && start <= todayStr && todayStr <= end) {
             todayScheds.push(s);
           }
         });
         if (todayScheds.length > 0) {
-          commonSchedules = todayScheds.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n");
+          todayScheds.sort((a, b) => {
+            const aStart = a.startDate || a.date || "";
+            const bStart = b.startDate || b.date || "";
+            if (aStart !== bStart) return aStart.localeCompare(bStart);
+            return (a.time || "").localeCompare(b.time || "");
+          });
+          commonSchedules = todayScheds.map((s) => {
+            const start = s.startDate || s.date;
+            const end = s.endDate || s.startDate || s.date;
+            const hasRange = start && end && start !== end;
+            const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
+            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+            const targetStr = s.target ? `[${s.target}] ` : "";
+            return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+          }).join("\n");
         }
       } catch (e) {
         console.warn("Error fetching common schedules:", e.message);
       }
 
       if (!commonSchedules) {
-        commonSchedules = "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
+        commonSchedules = "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)";
       }
 
       const savedPnLTemplate = customTemplates["management_pnl"]?.text;
       const defaultPnLMessage = `
-<b>⬛ [오륙 경영진/임원] 일일 아침 손익결산 브리핑</b>
+<b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
 <b>[1] 당월 매입 / 매출 결산 현황</b>
@@ -348,7 +364,7 @@ export async function runAllBriefings(force = false) {
 • <b>전월대비 매출 달성율:</b> <b>102.4%</b>
 • <b>전월대비 매입 달성율:</b> <b>98.7%</b>
 
-<b>[3] 오늘의 전사 공통일정</b>
+<b>[3] 오늘의 태형&미영 일정</b>
 ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>

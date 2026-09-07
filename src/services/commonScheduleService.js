@@ -34,9 +34,13 @@ export const getLocalCommonSchedules = () => {
 
 export const saveCommonSchedule = async (scheduleItem) => {
   const current = getLocalCommonSchedules();
+  const startDate = scheduleItem.startDate || scheduleItem.date || getKSTDateString();
+  const endDate = scheduleItem.endDate || scheduleItem.date || startDate;
   const newItem = {
     id: scheduleItem.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-    date: scheduleItem.date || getKSTDateString(),
+    date: startDate,
+    startDate: startDate,
+    endDate: endDate,
     time: scheduleItem.time || "종일",
     target: scheduleItem.target || "공통",
     title: scheduleItem.title?.trim() || "사내 공통일정",
@@ -53,9 +57,14 @@ export const saveCommonSchedule = async (scheduleItem) => {
     updated = [newItem, ...current];
   }
 
-  // Sort by date then time
+  // Sort by startDate then endDate then time
   updated.sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    const aStart = a.startDate || a.date || "";
+    const bStart = b.startDate || b.date || "";
+    if (aStart !== bStart) return aStart.localeCompare(bStart);
+    const aEnd = a.endDate || aStart;
+    const bEnd = b.endDate || bStart;
+    if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
     return (a.time || "").localeCompare(b.time || "");
   });
 
@@ -109,7 +118,12 @@ export const subscribeCommonSchedules = (callback) => {
             items.push({ id: docSnap.id, ...docSnap.data() });
           });
           items.sort((a, b) => {
-            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            const aStart = a.startDate || a.date || "";
+            const bStart = b.startDate || b.date || "";
+            if (aStart !== bStart) return aStart.localeCompare(bStart);
+            const aEnd = a.endDate || aStart;
+            const bEnd = b.endDate || bStart;
+            if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
             return (a.time || "").localeCompare(b.time || "");
           });
           localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
@@ -138,5 +152,9 @@ export const subscribeCommonSchedules = (callback) => {
 export const getTodayCommonSchedules = (targetDate = null) => {
   const dateStr = targetDate || getKSTDateString();
   const all = getLocalCommonSchedules();
-  return all.filter((s) => s.date === dateStr);
+  return all.filter((s) => {
+    const start = s.startDate || s.date;
+    const end = s.endDate || s.startDate || s.date;
+    return Boolean(start && end && start <= dateStr && dateStr <= end);
+  });
 };

@@ -836,7 +836,15 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   if (!commonSchedules) {
     const todayScheds = getTodayCommonSchedules(todayStr);
     if (todayScheds.length > 0) {
-      commonSchedules = todayScheds.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n");
+      commonSchedules = todayScheds.map((s) => {
+        const start = s.startDate || s.date;
+        const end = s.endDate || s.startDate || s.date;
+        const hasRange = start && end && start !== end;
+        const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
+        const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+        const targetStr = s.target ? `[${s.target}] ` : "";
+        return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+      }).join("\n");
     } else {
       commonSchedules = "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)";
     }
