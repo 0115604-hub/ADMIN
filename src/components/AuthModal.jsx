@@ -1156,38 +1156,73 @@ export const AuthModal = () => {
                   </span>
                 </div>
 
-                <div className="relative">
-                  <input
-                    type="file"
-                    id="new-issue-image-input"
-                    accept="image/*"
-                    multiple
-                    disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 5}
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        handleIssueImageFiles(e.target.files);
-                        e.target.value = "";
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="new-issue-image-input"
-                    className={`w-full p-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                      (newIssueForm.images?.length || 0) >= 5
-                        ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                        : "border-slate-300 dark:border-slate-700 hover:border-rose-400 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    <Camera className="w-4 h-4 text-rose-500" />
-                    <span className="text-xs font-bold">
-                      {isProcessingIssueImages
-                        ? "사진 압축 처리 중..."
-                        : (newIssueForm.images?.length || 0) >= 5
-                        ? "최대 5장 첨부 완료"
-                        : "현장 사진 촬영 또는 파일 선택"}
-                    </span>
-                  </label>
+                {/* Dual Buttons: 1. 📸 즉시 카메라 촬영 (우선 순위: capture="environment") / 2. 📁 앨범·파일 선택 */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Option 1: 📸 즉시 카메라 촬영 (모바일에서 탭 즉시 카메라 실행) */}
+                  <div>
+                    <input
+                      type="file"
+                      id="new-issue-camera-input"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 5}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          handleIssueImageFiles(e.target.files);
+                          e.target.value = "";
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="new-issue-camera-input"
+                      className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
+                        (newIssueForm.images?.length || 0) >= 5
+                          ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                          : "border-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-200 ring-1 ring-rose-500/30 font-black"
+                      }`}
+                    >
+                      <Camera className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                      <span className="text-xs font-black truncate">
+                        {isProcessingIssueImages
+                          ? "압축 처리 중..."
+                          : (newIssueForm.images?.length || 0) >= 5
+                          ? "최대 5장 완료"
+                          : "📸 사진 즉시 촬영"}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Option 2: 📁 앨범 / 파일 선택 (보조) */}
+                  <div>
+                    <input
+                      type="file"
+                      id="new-issue-gallery-input"
+                      accept="image/*"
+                      multiple
+                      disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 5}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          handleIssueImageFiles(e.target.files);
+                          e.target.value = "";
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="new-issue-gallery-input"
+                      className={`w-full py-2.5 px-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                        (newIssueForm.images?.length || 0) >= 5
+                          ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                          : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
+                      }`}
+                    >
+                      <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
+                      <span className="text-xs font-bold truncate">
+                        📁 앨범/파일 선택
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 {newIssueForm.images && newIssueForm.images.length > 0 && (
@@ -1343,38 +1378,73 @@ export const AuthModal = () => {
                   </span>
                 </div>
 
-                <div className="relative">
-                  <input
-                    type="file"
-                    id="action-issue-image-input"
-                    accept="image/*"
-                    multiple
-                    disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 5}
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        handleActionImageFiles(e.target.files);
-                        e.target.value = "";
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <label
-                    htmlFor="action-issue-image-input"
-                    className={`w-full p-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                      (actionModalData.actionImages?.length || 0) >= 5
-                        ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                        : "border-slate-300 dark:border-slate-700 hover:border-emerald-400 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    <Camera className="w-4 h-4 text-emerald-500" />
-                    <span className="text-xs font-bold">
-                      {isProcessingActionImages
-                        ? "사진 압축 처리 중..."
-                        : (actionModalData.actionImages?.length || 0) >= 5
-                        ? "최대 5장 첨부 완료"
-                        : "조치 완료 사진 촬영 또는 파일 선택"}
-                    </span>
-                  </label>
+                {/* Dual Buttons: 1. 📸 즉시 카메라 촬영 (우선 순위: capture="environment") / 2. 📁 앨범·파일 선택 */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Option 1: 📸 즉시 카메라 촬영 (모바일에서 탭 즉시 카메라 실행) */}
+                  <div>
+                    <input
+                      type="file"
+                      id="action-issue-camera-input"
+                      accept="image/*"
+                      capture="environment"
+                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 5}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          handleActionImageFiles(e.target.files);
+                          e.target.value = "";
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="action-issue-camera-input"
+                      className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
+                        (actionModalData.actionImages?.length || 0) >= 5
+                          ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                          : "border-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/30 font-black"
+                      }`}
+                    >
+                      <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-xs font-black truncate">
+                        {isProcessingActionImages
+                          ? "압축 처리 중..."
+                          : (actionModalData.actionImages?.length || 0) >= 5
+                          ? "최대 5장 완료"
+                          : "📸 사진 즉시 촬영"}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Option 2: 📁 앨범 / 파일 선택 (보조) */}
+                  <div>
+                    <input
+                      type="file"
+                      id="action-issue-gallery-input"
+                      accept="image/*"
+                      multiple
+                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 5}
+                      onChange={(e) => {
+                        if (e.target.files) {
+                          handleActionImageFiles(e.target.files);
+                          e.target.value = "";
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="action-issue-gallery-input"
+                      className={`w-full py-2.5 px-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
+                        (actionModalData.actionImages?.length || 0) >= 5
+                          ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                          : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
+                      }`}
+                    >
+                      <ImageIcon className="w-4 h-4 text-slate-500 shrink-0" />
+                      <span className="text-xs font-bold truncate">
+                        📁 앨범/파일 선택
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
                 {actionModalData.actionImages && actionModalData.actionImages.length > 0 && (
