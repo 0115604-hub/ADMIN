@@ -104,6 +104,19 @@ import {
 import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
 
+// 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
+const TIME_OPTIONS_30MIN = [
+  "종일",
+  "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
+  "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+  "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+  "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+  "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
+  "21:00", "21:30", "22:00", "22:30", "23:00", "23:30",
+  "00:00", "00:30", "01:00", "01:30", "02:00", "02:30",
+  "03:00", "03:30", "04:00", "04:30", "05:00", "05:30"
+];
+
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, PVC, TPE) - Real Excel Verified
 const EXTRUSION_SUMMARY = [
   {
@@ -739,9 +752,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // 태형&미영 일정 State & Subscription
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [commonScheduleForm, setCommonScheduleForm] = useState({
-    startDate: getKSTDateString(),
-    endDate: getKSTDateString(),
-    date: getKSTDateString(),
     time: "09:30",
     target: "세미나",
     title: ""
@@ -794,25 +804,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
     setCommonScheduleSaving(true);
     try {
-      const startDate = commonScheduleForm.startDate || commonScheduleForm.date || getKSTDateString();
-      const endDate = commonScheduleForm.endDate || startDate;
+      const todayStr = getKSTDateString();
       await saveCommonSchedule({
         ...commonScheduleForm,
-        startDate,
-        endDate,
-        date: startDate,
+        startDate: todayStr,
+        endDate: todayStr,
+        date: todayStr,
         author: currentProfile?.name || "관리자"
       });
       setToastMessage("일정이 정상적으로 등록되었습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
-      setCommonScheduleForm((prev) => ({
-        ...prev,
-        startDate: getKSTDateString(),
-        endDate: getKSTDateString(),
-        date: getKSTDateString(),
+      setCommonScheduleForm({
+        time: "09:30",
+        target: "세미나",
         title: ""
-      }));
+      });
       setCommonScheduleModalOpen(false);
     } catch (err) {
       alert("일정 등록 중 오류 발생: " + err.message);
@@ -3970,7 +3977,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     태형&미영 일정 등록
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    세미나, 교육, 여행, 맛집, 기타 중 분류를 선택하여 일정을 등록합니다.
+                    분류와 시간을 선택하고 일정을 등록합니다. (등록일자 기준 자동 반영)
                   </p>
                 </div>
               </div>
@@ -3987,7 +3994,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               {/* 구분 선택 버튼 그룹 */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  선택
+                  구분 선택
                 </label>
                 <div className="grid grid-cols-5 gap-1.5">
                   {[
@@ -4016,101 +4023,44 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
               </div>
 
-              {/* 일자 (시작일/등록일 ~ 종료일/지정일) & 시간 */}
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      시작일 (등록일)
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr}
-                      onChange={(e) => {
-                        const newStart = e.target.value;
-                        setCommonScheduleForm((prev) => ({
-                          ...prev,
-                          startDate: newStart,
-                          date: newStart,
-                          endDate: prev.endDate && prev.endDate < newStart ? newStart : prev.endDate || newStart
-                        }));
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      종료일 (지정일)
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      min={commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr}
-                      value={commonScheduleForm.endDate || commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr}
-                      onChange={(e) => setCommonScheduleForm((prev) => ({ ...prev, endDate: e.target.value }))}
-                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                    />
-                  </div>
+              {/* 시간 선택 (30분 단위 선택창) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  시간 선택 (30분 단위)
+                </label>
+                <div className="relative">
+                  <select
+                    value={commonScheduleForm.time || "09:30"}
+                    onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, time: e.target.value })}
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+                  >
+                    {TIME_OPTIONS_30MIN.map((t) => (
+                      <option key={t} value={t}>
+                        {t === "종일" ? "🌅 종일 (시간 지정 없음)" : `⏰ ${t}`}
+                      </option>
+                    ))}
+                  </select>
+                  <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
 
-                {/* Quick Period Presets */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-slate-400 font-bold">기간 선택:</span>
-                  {[
-                    { label: "당일", days: 0 },
-                    { label: "1박2일", days: 1 },
-                    { label: "2박3일", days: 2 },
-                    { label: "3박4일", days: 3 },
-                    { label: "1주일", days: 6 }
-                  ].map((p) => (
+                {/* Quick Time Presets */}
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="text-[10.5px] text-slate-400 font-bold">빠른 선택:</span>
+                  {["종일", "09:30", "13:00", "15:30", "17:00", "19:00"].map((t) => (
                     <button
-                      key={p.label}
+                      key={t}
                       type="button"
-                      onClick={() => {
-                        const start = commonScheduleForm.startDate || commonScheduleForm.date || todayDateStr;
-                        const startDateObj = new Date(start);
-                        startDateObj.setDate(startDateObj.getDate() + p.days);
-                        const yyyy = startDateObj.getFullYear();
-                        const mm = String(startDateObj.getMonth() + 1).padStart(2, "0");
-                        const dd = String(startDateObj.getDate()).padStart(2, "0");
-                        setCommonScheduleForm((prev) => ({ ...prev, endDate: `${yyyy}-${mm}-${dd}` }));
-                      }}
-                      className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
+                      onClick={() => setCommonScheduleForm({ ...commonScheduleForm, time: t })}
+                      className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${
+                        commonScheduleForm.time === t
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                      }`}
                     >
-                      {p.label}
+                      {t}
                     </button>
                   ))}
                 </div>
-
-                {/* 시간 */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    시간
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="예: 09:30, 14:00, 종일"
-                    value={commonScheduleForm.time}
-                    onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, time: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Quick Time Presets */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-slate-400 font-bold">빠른 시간:</span>
-                {["09:30", "14:00", "16:00", "종일"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setCommonScheduleForm({ ...commonScheduleForm, time: t })}
-                    className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
-                  >
-                    {t}
-                  </button>
-                ))}
               </div>
 
               {/* 일정 내용 */}
@@ -4121,7 +4071,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <input
                   type="text"
                   required
-                  placeholder="예: AI 세미나 참석 / 주말 가족 여행 / 맛집 탐방"
+                  placeholder="예: 산재요율 교육 / 상동 캠핑장 / 맛집 탐방"
                   value={commonScheduleForm.title}
                   onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-indigo-400 dark:border-indigo-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
