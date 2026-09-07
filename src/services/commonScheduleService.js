@@ -181,39 +181,9 @@ export const subscribeCommonSchedules = (callback) => {
   }
 };
 
-export const cleanupExpiredCommonSchedules = async (targetDate = null) => {
-  const todayStr = targetDate || getKSTDateString();
-  const current = getLocalCommonSchedules();
-  const valid = [];
-  const expiredIds = [];
-
-  current.forEach((s) => {
-    const end = s.endDate || s.startDate || s.date;
-    if (end && end < todayStr) {
-      expiredIds.push(s.id);
-    } else {
-      valid.push(s);
-    }
-  });
-
-  if (expiredIds.length > 0) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
-    } catch (e) {
-      console.error("Local storage error in cleanupExpiredCommonSchedules:", e);
-    }
-
-    for (const id of expiredIds) {
-      try {
-        const docRef = doc(db, COLLECTION_NAME, id);
-        await deleteDoc(docRef);
-      } catch (e) {
-        console.warn(`Firestore delete error for expired schedule ${id}:`, e.message);
-      }
-    }
-  }
-
-  return valid;
+export const cleanupExpiredCommonSchedules = async () => {
+  // 일정 이력(등록시점부터 일정일, 완료까지)을 팝업 관리 창에서 확인할 수 있도록 영구 보존합니다.
+  return getLocalCommonSchedules();
 };
 
 export const getTodayCommonSchedules = (targetDate = null) => {

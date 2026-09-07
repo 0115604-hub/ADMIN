@@ -834,7 +834,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // 태형&미영 일정 State & Subscription
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [commonScheduleFilterTab, setCommonScheduleFilterTab] = useState("all"); // 'all', 'active', 'completed'
+  const todayDateStr = getKSTDateString();
   const [commonScheduleForm, setCommonScheduleForm] = useState({
+    date: getKSTDateString(),
     time: "09:30",
     target: "세미나",
     title: ""
@@ -853,7 +855,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => unsub();
   }, []);
 
-  const todayDateStr = getKSTDateString();
   const allActiveCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules
@@ -900,10 +901,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       if (commonScheduleFilterTab === "all" && Boolean(a.isCompleted) !== Boolean(b.isCompleted)) {
         return a.isCompleted ? 1 : -1;
       }
-      const aDate = a.startDate || a.date || "";
-      const bDate = b.startDate || b.date || "";
-      if (aDate !== bDate) return bDate.localeCompare(aDate);
-      return (a.time || "").localeCompare(b.time || "");
+      if (!a.isCompleted && !b.isCompleted) {
+        const aDate = a.startDate || a.date || "";
+        const bDate = b.startDate || b.date || "";
+        if (aDate !== bDate) return aDate.localeCompare(bDate);
+        return (a.time || "").localeCompare(b.time || "");
+      }
+      const aDate = a.completedAt || a.startDate || a.date || "";
+      const bDate = b.completedAt || b.startDate || b.date || "";
+      return bDate.localeCompare(aDate);
     });
   }, [commonSchedules, commonScheduleFilterTab]);
 
@@ -924,11 +930,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setCommonScheduleSaving(true);
     try {
       const todayStr = getKSTDateString();
+      const schedDate = commonScheduleForm.date || todayStr;
       const newSchedule = {
         ...commonScheduleForm,
-        startDate: todayStr,
-        endDate: todayStr,
-        date: todayStr,
+        date: schedDate,
+        startDate: schedDate,
+        endDate: schedDate,
+        createdAt: new Date().toISOString(),
         author: currentProfile?.name || "ADMIN"
       };
       await saveCommonSchedule(newSchedule);
@@ -944,11 +952,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setCommonScheduleForm({
+        date: todayStr,
         time: "09:30",
         target: "세미나",
         title: ""
       });
-      setCommonScheduleModalOpen(false);
     } catch (err) {
       alert("일정 등록 중 오류 발생: " + err.message);
     } finally {
@@ -4555,7 +4563,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <Plus className="w-3.5 h-3.5" /> 신규 일정 등록
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    오늘 날짜({todayDateStr}) 기준 등록
+                    등록시점부터 일정일까지 유지 및 관리
                   </span>
                 </div>
 
@@ -4588,6 +4596,52 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+
+                {/* 일정 일자 선택 */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    일정 일자 (약속 / 행사일)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="date"
+                        required
+                        value={commonScheduleForm.date || todayDateStr}
+                        onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, date: e.target.value })}
+                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 cursor-pointer shadow-2xs"
+                      />
+                      <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setCommonScheduleForm({ ...commonScheduleForm, date: todayDateStr })}
+                        className={`px-2.5 py-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          (commonScheduleForm.date || todayDateStr) === todayDateStr
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                        }`}
+                      >
+                        오늘
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const d = new Date();
+                          d.setDate(d.getDate() + 1);
+                          const y = d.getFullYear();
+                          const m = String(d.getMonth() + 1).padStart(2, "0");
+                          const day = String(d.getDate()).padStart(2, "0");
+                          setCommonScheduleForm({ ...commonScheduleForm, date: `${y}-${m}-${day}` });
+                        }}
+                        className="px-2.5 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 transition-all cursor-pointer"
+                      >
+                        내일
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -4663,7 +4717,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                       <FileCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                      등록 일정 및 완료 관리
+                      일정 이력 및 완료 관리
                     </span>
                     <span className="text-[11px] font-bold text-slate-400">
                       (총 {scheduleCounts.all}건)
@@ -4734,6 +4788,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300 dark:border-rose-700"
                           : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-300 dark:border-purple-700";
 
+                      const schedDate = item.startDate || item.date || todayDateStr;
+                      const regDate = item.createdAt ? item.createdAt.slice(0, 10) : schedDate;
+                      const isToday = schedDate === todayDateStr;
+                      const formattedSched = schedDate.slice(5).replace("-", ".");
+                      const formattedReg = regDate.slice(5).replace("-", ".");
+
                       return (
                         <div
                           key={item.id}
@@ -4763,17 +4823,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                 <span className={`px-1.5 py-0.2 rounded text-[10px] font-black border ${targetStyle}`}>
                                   {item.target || "공통"}
                                 </span>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                    isToday
+                                      ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700"
+                                      : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                                  }`}
+                                >
+                                  📅 {isToday ? `오늘 (${formattedSched})` : formattedSched}
+                                </span>
                                 <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                                   {item.time === "종일" ? "🌅 종일" : `⏰ ${item.time}`}
                                 </span>
-                                {item.startDate && (
-                                  <span className="text-[10px] text-slate-400">
-                                    {item.startDate.slice(5).replace("-", ".")}
-                                  </span>
-                                )}
-                                {isDone && (
+                                <span className="text-[10px] text-slate-400">
+                                  (등록: {formattedReg})
+                                </span>
+                                {isDone ? (
                                   <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
                                     ✓ 완료됨
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                    진행중
                                   </span>
                                 )}
                               </div>
