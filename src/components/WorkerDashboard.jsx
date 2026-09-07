@@ -733,36 +733,57 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setChangyongSelectedDate(today);
   };
 
-  // 우창용 선임의 활성 등록 일정 (다가올 날짜 순서대로 정렬, 완료/제거된 일정 제외)
-  const changyongActiveLeaves = useMemo(() => {
-    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
-    return annualLeaves
-      .filter((l) => Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용") && !l.isCompleted && !l.isDismissed))
-      .sort((a, b) => {
-        const aDate = a.startDate || "";
-        const bDate = b.startDate || "";
-        return aDate.localeCompare(bDate);
-      });
-  }, [annualLeaves]);
+  const todayDateStr = getKSTDateString();
 
-  // 🗓️ 도메인 첫 접속화면용 우창용 선임 일정 (할일 제외, 활성 일정)
-  const changyongPublicSchedules = useMemo(() => {
+  // 🗓️ 우창용 선임의 활성 등록 일정 (등록일부터 완료 또는 지정날짜까지 노출)
+  const changyongActiveLeaves = useMemo(() => {
     if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
     return annualLeaves
       .filter((l) => {
         if (!l || (l.userId !== "hal_cy" && l.userName !== "우창용")) return false;
         if (l.isCompleted || l.isDismissed) return false;
-        // 🚨 '할일'은 첫 화면 공개에서 제외
-        const type = l.leaveType || "";
-        if (type === "할일" || type.includes("할일")) return false;
-        return true;
+
+        const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
+        const startDate = l.startDate || l.date || regDate;
+        const targetEndDate = l.endDate || l.startDate || l.date || regDate;
+        const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
+
+        // 노출기간: 등록일부터 지정날짜까지
+        return Boolean(effectiveStart && targetEndDate && effectiveStart <= todayDateStr && todayDateStr <= targetEndDate);
       })
       .sort((a, b) => {
         const aDate = a.startDate || "";
         const bDate = b.startDate || "";
         return aDate.localeCompare(bDate);
       });
-  }, [annualLeaves]);
+  }, [annualLeaves, todayDateStr]);
+
+  // 🗓️ 도메인 첫 접속화면용 우창용 선임 일정 (할일 제외 • 등록일부터 완료 또는 지정날짜까지 노출)
+  const changyongPublicSchedules = useMemo(() => {
+    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
+    return annualLeaves
+      .filter((l) => {
+        if (!l || (l.userId !== "hal_cy" && l.userName !== "우창용")) return false;
+        if (l.isCompleted || l.isDismissed) return false;
+
+        // 🚨 '할일'은 첫 화면 공개에서 제외
+        const type = l.leaveType || "";
+        if (type === "할일" || type.includes("할일")) return false;
+
+        const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
+        const startDate = l.startDate || l.date || regDate;
+        const targetEndDate = l.endDate || l.startDate || l.date || regDate;
+        const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
+
+        // 노출기간: 등록일부터 지정날짜까지
+        return Boolean(effectiveStart && targetEndDate && effectiveStart <= todayDateStr && todayDateStr <= targetEndDate);
+      })
+      .sort((a, b) => {
+        const aDate = a.startDate || "";
+        const bDate = b.startDate || "";
+        return aDate.localeCompare(bDate);
+      });
+  }, [annualLeaves, todayDateStr]);
 
   const handleChangyongDismissLeave = async (leaveId) => {
     try {
@@ -783,7 +804,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const sundayDate = new Date(baseDate);
     sundayDate.setDate(baseDate.getDate() - dayOfWeek);
 
-    const todayStr = getKSTDateString();
     const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
     const weekDays = [];
 
@@ -794,7 +814,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const dd = String(d.getDate()).padStart(2, "0");
       const dateStr = `${yyyy}-${mm}-${dd}`;
-      const isToday = dateStr === todayStr;
+      const isToday = dateStr === todayDateStr;
       const isSelected = dateStr === changyongSelectedDate;
 
       const dayEvents = (annualLeaves || []).filter(
@@ -818,7 +838,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
 
     return weekDays;
-  }, [changyongWeekAnchor, changyongSelectedDate, annualLeaves]);
+  }, [changyongWeekAnchor, changyongSelectedDate, annualLeaves, todayDateStr]);
 
   const handleChangyongRegisterSchedule = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -828,6 +848,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
     setChangyongSaving(true);
     try {
+      const nowIso = new Date().toISOString();
       const newLeave = {
         userId: "hal_cy",
         userName: "우창용",
@@ -836,7 +857,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         startDate: changyongSelectedDate,
         endDate: changyongSelectedDate,
         leaveType: changyongLeaveType,
-        reason: changyongReasonInput.trim() || changyongLeaveType
+        reason: changyongReasonInput.trim() || changyongLeaveType,
+        createdAt: nowIso,
+        createdDate: todayDateStr,
+        isCompleted: false,
+        isDismissed: false
       };
       await saveAnnualLeave(newLeave);
       setToastMessage(`[우창용 선임] ${changyongSelectedDate} ${changyongLeaveType} 일정이 등록되었습니다.`);
@@ -853,7 +878,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // 태형&미영 일정 State & Subscription
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [commonScheduleFilterTab, setCommonScheduleFilterTab] = useState("all"); // 'all', 'active', 'completed'
-  const todayDateStr = getKSTDateString();
   const [commonScheduleForm, setCommonScheduleForm] = useState({
     date: getKSTDateString(),
     time: "09:30",
