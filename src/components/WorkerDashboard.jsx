@@ -1787,7 +1787,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 🌟 작업자 정보 & 간편 일정/연차 설정 패널 (우창용 선임인 경우 전용 스마트 캘린더 센터 파일럿 가동) */}
       {!isAdmin && (
         isChangyong ? (
-          <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
             {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
               {/* Left: Plant, Worker Name, Title, and Process (3 cols) */}
@@ -1898,7 +1898,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                     {/* 전작업자 드롭다운 팝업 */}
                     {isShareDropdownOpen && (
-                      <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
+                      <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-300 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
                         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
                           <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
                             <Users className="w-3.5 h-3.5 text-blue-500" />
