@@ -397,7 +397,7 @@ ${header}
  */
 export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담당 결재자") => {
   const message = `
-<b>🩶 [전자결재 기안 상신]</b>
+<b>🟪 [전자결재 기안 상신]</b>
 ----------------------------------------
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
@@ -415,7 +415,7 @@ export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담
  * 5. 전자결재 승인 즉시 알림
  */
 export const sendApprovalStepTelegram = async (docItem, approverName, isFinal = false, nextApproverName = null) => {
-  const titleHeader = isFinal ? "🩶 [전자결재 최종 승인 완료]" : "🩶 [전자결재 중간 승인 알림]";
+  const titleHeader = isFinal ? "🟪 [전자결재 최종 승인 완료]" : "🟪 [전자결재 중간 승인 알림]";
   const nextLine = nextApproverName ? `• <b>다음 결재자:</b> ${nextApproverName}\n` : "";
 
   const message = `
@@ -438,7 +438,7 @@ ${nextLine}• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
  */
 export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
   const message = `
-<b>🩶 [전자결재 반려 알림]</b>
+<b>🟪 [전자결재 반려 알림]</b>
 ----------------------------------------
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
@@ -458,7 +458,7 @@ export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) 
  */
 export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
   const message = `
-<b>🩶 [전자결재 보류 알림]</b>
+<b>🟪 [전자결재 보류 알림]</b>
 ----------------------------------------
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
@@ -646,7 +646,7 @@ export const testTelegramConnection = async (token, chatId) => {
 
 • <b>품질경보 (적색):</b> 등록 / 조치완료 / 종결삭제
 • <b>사내공지 (녹색):</b> 등록 / 종결삭제
-• <b>전자결재 (회색):</b> 기안 상신 / 승인 / 반려 / 보류
+• <b>전자결재 (보라색):</b> 기안 상신 / 승인 / 반려 / 보류
 • <b>기타업무 (검정):</b> 업무일지 결재 / 07:30 모닝브리핑
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
