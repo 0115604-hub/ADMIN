@@ -117,6 +117,7 @@ export const TelegramView = () => {
 
   const todayDateStr = getKSTDateString();
   const dateFormatted = `${getKSTFormattedString(todayDateStr).split(" ")[0]} 07:30`;
+  const dayName = new Date().toLocaleDateString("ko-KR", { weekday: "short" });
 
   // Current Template Key for Unified Room
   const currentUnifiedTemplateKey = useMemo(() => {
