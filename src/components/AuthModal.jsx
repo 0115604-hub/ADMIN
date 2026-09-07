@@ -32,7 +32,9 @@ import {
   Camera,
   Image as ImageIcon,
   Download,
-  ZoomIn
+  ZoomIn,
+  Eye,
+  FileText
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
@@ -107,6 +109,7 @@ export const AuthModal = () => {
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
+  const [detailIssueModal, setDetailIssueModal] = useState(null); // Selected Issue for Full Details & Photo Popup Modal
 
   // New Issue Form State (사진 첨부 지원)
   const [newIssueForm, setNewIssueForm] = useState({
@@ -449,6 +452,7 @@ export const AuthModal = () => {
 
     const updated = await deleteUrgentIssue(issue.id, expectedManager);
     setUrgentIssues(updated);
+    setDetailIssueModal(null);
     setDeleteModalData({
       isOpen: false,
       issue: null,
@@ -581,15 +585,17 @@ export const AuthModal = () => {
                     return (
                       <div
                         key={item.id}
-                        className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs ${
+                        onClick={() => setDetailIssueModal(item)}
+                        className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                           item.isResolved
                             ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                             : isNotice
                             ? "bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/25"
                             : "bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/80 ring-1 ring-rose-400/20"
                         }`}
+                        title="탭하여 상세 내용 및 현장 사진 확인"
                       >
-                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [조치상태] [삭제] */}
+                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [상세보기] [조치상태] [삭제] */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
                             {isNotice ? (
@@ -610,7 +616,7 @@ export const AuthModal = () => {
                             }`}>
                               {item.plant}
                             </span>
-                            <span className={`truncate text-[11.5px] ${
+                            <span className={`truncate text-[11.5px] group-hover:underline ${
                               !isNotice
                                 ? "font-black text-rose-600 dark:text-rose-400"
                                 : "font-black text-slate-900 dark:text-white"
@@ -622,8 +628,12 @@ export const AuthModal = () => {
                             </span>
                           </div>
 
-                          {/* Right: Status & Delete */}
+                          {/* Right: Detail badge, Status & Delete */}
                           <div className="flex items-center gap-1 shrink-0">
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 group-hover:bg-rose-100 group-hover:text-rose-700 dark:group-hover:bg-rose-950 dark:group-hover:text-rose-300 transition-colors">
+                              <Eye className="w-2.5 h-2.5" />
+                              <span className="hidden sm:inline">상세보기</span>
+                            </span>
                             {item.isResolved ? (
                               <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                                 ✓완료
@@ -635,7 +645,10 @@ export const AuthModal = () => {
                             )}
                             <button
                               type="button"
-                              onClick={(e) => handleOpenDeleteModal(item, e)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDeleteModal(item, e);
+                              }}
                               className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                               title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
                             >
@@ -671,8 +684,11 @@ export const AuthModal = () => {
                           {/* Right: Action Input / Edit Button */}
                           <button
                             type="button"
-                            onClick={(e) => handleOpenActionModal(item, e)}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 ${
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenActionModal(item, e);
+                            }}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
                               item.actionResult
                                 ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/60"
                                 : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
@@ -700,15 +716,15 @@ export const AuthModal = () => {
                                       e.stopPropagation();
                                       setPreviewImageModal({ url: img.dataUrl, name: img.name || `품질경보사진_${idx + 1}` });
                                     }}
-                                    className="group relative rounded-md overflow-hidden border border-rose-300 dark:border-rose-900/60 hover:border-rose-500 transition-all shadow-2xs cursor-pointer"
+                                    className="group/img relative rounded-md overflow-hidden border border-rose-300 dark:border-rose-900/60 hover:border-rose-500 transition-all shadow-2xs cursor-pointer"
                                     title="클릭하여 원본 사진 크게 보기"
                                   >
                                     <img
                                       src={img.dataUrl}
                                       alt={img.name || "품질경보 사진"}
-                                      className="w-6 h-6 sm:w-7 sm:h-7 object-cover group-hover:scale-110 transition-transform"
+                                      className="w-6 h-6 sm:w-7 sm:h-7 object-cover group-hover/img:scale-110 transition-transform"
                                     />
-                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white">
                                       <ZoomIn className="w-2.5 h-2.5" />
                                     </div>
                                   </button>
@@ -731,7 +747,7 @@ export const AuthModal = () => {
                                       e.stopPropagation();
                                       setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` });
                                     }}
-                                    className="group relative rounded-md overflow-hidden border border-emerald-300 dark:border-emerald-900/60 hover:border-emerald-500 transition-all shadow-2xs cursor-pointer"
+                                    className="group/img relative rounded-md overflow-hidden border border-emerald-300 dark:border-emerald-900/60 hover:border-emerald-500 transition-all shadow-2xs cursor-pointer"
                                     title="클릭하여 원본 사진 크게 보기"
                                   >
                                     <img
@@ -1008,6 +1024,219 @@ export const AuthModal = () => {
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 🌟 0. 품질경보 및 공지사항 상세 내용 & 첨부 사진 확인 팝업 모달 */}
+      {/* ========================================================================= */}
+      {detailIssueModal && (() => {
+        const item = urgentIssues.find((it) => it.id === detailIssueModal.id) || detailIssueModal;
+        const isNotice = item.category === "공지사항" || item.category === "공유사항";
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn"
+            onClick={() => setDetailIssueModal(null)}
+          >
+            <div
+              className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp text-xs"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-2xl text-white shadow-xs shrink-0 ${
+                    isNotice ? "bg-emerald-600" : "bg-rose-600"
+                  }`}>
+                    <Megaphone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black text-white shadow-xs ${
+                        isNotice ? "bg-emerald-600" : "bg-rose-600"
+                      }`}>
+                        {isNotice ? "📢 공지사항" : "🚨 품질경보"}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        item.plant === "한림공장"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          : item.plant === "삼랑진공장"
+                          ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                          : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                      }`}>
+                        {item.plant}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        item.isResolved
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                      }`}>
+                        {item.isResolved ? "✓ 조치완료" : "⏳ 조치대기"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      작성자: <strong className="text-slate-700 dark:text-slate-200">{item.author} {item.authorTitle || ""}</strong> • {item.createdAt}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDetailIssueModal(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
+                  title="닫기"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                {/* 1. 제목 및 전달 내용 */}
+                <div className={`p-4 rounded-2xl border space-y-2 ${
+                  isNotice
+                    ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-900/50"
+                    : "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/50"
+                }`}>
+                  {item.title && (
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                      {item.title}
+                    </h4>
+                  )}
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
+                    {item.content}
+                  </div>
+                </div>
+
+                {/* 2. 현장 첨부 사진 갤러리 */}
+                {item.images && item.images.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-black">
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>현장 사진 ({item.images.length}장)</span>
+                      </span>
+                      <span className="text-[10.5px] text-slate-400 font-normal">탭하여 원본 확대</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {item.images.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `현장사진_${idx + 1}` })}
+                          className="group relative rounded-2xl overflow-hidden border border-rose-300 dark:border-rose-900/60 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-rose-500 transition-all"
+                        >
+                          <img
+                            src={img.dataUrl}
+                            alt={img.name || `현장사진 ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                            <ZoomIn className="w-5 h-5" />
+                          </div>
+                          <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
+                            {idx + 1}/{item.images.length}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. 조치 결과 섹션 */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>조치 결과</span>
+                    </div>
+                    {item.actionAuthor && (
+                      <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold">
+                        조치자: {item.actionAuthor} • {item.actionAt}
+                      </span>
+                    )}
+                  </div>
+
+                  {item.actionResult ? (
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap pl-1">
+                      {item.actionResult}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic pl-1">
+                      아직 등록된 조치결과가 없습니다.
+                    </p>
+                  )}
+
+                  {/* 조치 첨부 사진 */}
+                  {item.actionImages && item.actionImages.length > 0 && (
+                    <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/40 space-y-1.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                        <span>조치 완료 사진 ({item.actionImages.length}장)</span>
+                        <span className="text-[10px] text-slate-400 font-normal">탭하여 원본 확대</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {item.actionImages.map((img, idx) => (
+                          <div
+                            key={img.id || idx}
+                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` })}
+                            className="group relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-emerald-500 transition-all"
+                          >
+                            <img
+                              src={img.dataUrl}
+                              alt={img.name || `조치사진 ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                              <ZoomIn className="w-5 h-5" />
+                            </div>
+                            <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
+                              {idx + 1}/{item.actionImages.length}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Bottom Action Buttons */}
+              <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    const issueToDel = item;
+                    setDetailIssueModal(null);
+                    handleOpenDeleteModal(issueToDel, e);
+                  }}
+                  className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>삭제</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const issueToAct = item;
+                      setDetailIssueModal(null);
+                      handleOpenActionModal(issueToAct);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{item.actionResult ? "조치 수정" : "조치결과 입력"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDetailIssueModal(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 text-xs cursor-pointer"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 🌟 1. 품질이슈 및 공유사항 등록 팝업 모달 (작업자 등록 창) */}
