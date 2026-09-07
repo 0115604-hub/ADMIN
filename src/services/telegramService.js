@@ -10,6 +10,8 @@ import { getTodayCommonSchedules } from "./commonScheduleService";
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config_v4";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
 const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
+const TEMPLATES_DOC_PATH = ["system_config", "telegram_templates"];
+const TELEGRAM_TEMPLATES_KEY = "oryuk_telegram_templates_v1";
 
 // Default Configuration (Pre-configured for separated delivery: '오륙 통합방' + '경영방')
 export const DEFAULT_TELEGRAM_CONFIG = {
@@ -105,6 +107,70 @@ export const subscribeTelegramConfig = (onUpdate) => {
     console.error("subscribeTelegramConfig error:", e);
     const localCfg = getLocalTelegramConfig();
     if (onUpdate) onUpdate(localCfg);
+    return () => {};
+  }
+};
+
+/**
+ * Custom Message Template Persistence (앞으로도 계속 적용하는 저장 서식)
+ */
+export const getLocalTelegramTemplates = () => {
+  try {
+    const saved = localStorage.getItem(TELEGRAM_TEMPLATES_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("Failed to read telegram templates from localStorage:", e);
+  }
+  return {};
+};
+
+export const saveTelegramCustomTemplate = async (templateKey, templateText) => {
+  try {
+    const current = getLocalTelegramTemplates();
+    const updated = {
+      ...current,
+      [templateKey]: {
+        text: templateText,
+        updatedAt: new Date().toISOString()
+      }
+    };
+    localStorage.setItem(TELEGRAM_TEMPLATES_KEY, JSON.stringify(updated));
+    await setDoc(doc(db, TEMPLATES_DOC_PATH[0], TEMPLATES_DOC_PATH[1]), updated, { merge: true });
+    return { success: true, templates: updated };
+  } catch (e) {
+    console.warn("Failed to save telegram template to Firestore, saved to local only:", e);
+    return { success: true, localOnly: true };
+  }
+};
+
+export const subscribeTelegramCustomTemplates = (onUpdate) => {
+  try {
+    const docRef = doc(db, TEMPLATES_DOC_PATH[0], TEMPLATES_DOC_PATH[1]);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          localStorage.setItem(TELEGRAM_TEMPLATES_KEY, JSON.stringify(data));
+          if (onUpdate) onUpdate(data);
+        } else {
+          const local = getLocalTelegramTemplates();
+          if (onUpdate) onUpdate(local);
+        }
+      },
+      (err) => {
+        console.warn("Telegram templates Firestore sync error:", err);
+        const local = getLocalTelegramTemplates();
+        if (onUpdate) onUpdate(local);
+      }
+    );
+    return unsubscribe;
+  } catch (e) {
+    console.error("subscribeTelegramCustomTemplates error:", e);
+    const local = getLocalTelegramTemplates();
+    if (onUpdate) onUpdate(local);
     return () => {};
   }
 };
@@ -654,7 +720,9 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
   }
 
-  const message = `
+  const savedBriefingTemplate = getLocalTelegramTemplates()["unified_briefing"]?.text;
+
+  const defaultMessage = `
 <b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
@@ -669,6 +737,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
+
+  const message = savedBriefingTemplate || defaultMessage;
 
   const sendResult = await sendTelegramMessage(message, {
     ...config,
@@ -743,6 +813,14 @@ export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBr
 export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null, targetChatId = null) => {
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || customBriefingData?.targetChatId || config.pnlChatId || "-1003939516875";
+
+  const savedPnLTemplate = getLocalTelegramTemplates()["management_pnl"]?.text;
+  if (!customBriefingData && savedPnLTemplate) {
+    return await sendTelegramMessage(savedPnLTemplate, {
+      ...config,
+      chatId: destChatId
+    });
+  }
 
   const now = new Date();
   const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];

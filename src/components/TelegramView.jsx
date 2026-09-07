@@ -31,7 +31,9 @@ import {
   CheckCircle,
   Edit3,
   Eye,
-  Copy
+  Copy,
+  BookmarkCheck,
+  Save
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -40,7 +42,10 @@ import {
   saveTelegramConfig,
   subscribeTelegramConfig,
   testTelegramConnection,
-  sendTelegramMessage
+  sendTelegramMessage,
+  getLocalTelegramTemplates,
+  saveTelegramCustomTemplate,
+  subscribeTelegramCustomTemplates
 } from "../services/telegramService";
 import {
   getLocalCommonSchedules,
@@ -67,6 +72,10 @@ export const TelegramView = () => {
   // Preview Mode: "edit" (직접 텍스트 편집) vs "preview" (렌더링 미리보기)
   const [unifiedViewMode, setUnifiedViewMode] = useState("edit");
   const [managementViewMode, setManagementViewMode] = useState("edit");
+
+  // Saved Custom Templates State
+  const [savedTemplates, setSavedTemplates] = useState(() => getLocalTelegramTemplates());
+  const [templateSavedToast, setTemplateSavedToast] = useState(false);
 
   // Editable Message Texts (Direct In-Place Editing)
   const [editableUnifiedText, setEditableUnifiedText] = useState("");
@@ -95,6 +104,13 @@ export const TelegramView = () => {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = subscribeTelegramCustomTemplates((templates) => {
+      setSavedTemplates(templates || {});
+    });
+    return () => unsub();
+  }, []);
+
   const todayDateStr = new Date().toISOString().split("T")[0];
   const dateObj = new Date();
   const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
@@ -103,6 +119,20 @@ export const TelegramView = () => {
   const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
   const dd = String(dateObj.getDate()).padStart(2, "0");
   const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName}) 07:30`;
+
+  // Current Template Key for Unified Room
+  const currentUnifiedTemplateKey = useMemo(() => {
+    if (unifiedMsgType === "briefing") return "unified_briefing";
+    if (unifiedMsgType === "quality") return `unified_quality_${qualityStage}`;
+    if (unifiedMsgType === "notice_meeting") return `unified_${noticeMeetingType}`;
+    return `unified_approval_${approvalType}`;
+  }, [unifiedMsgType, qualityStage, noticeMeetingType, approvalType]);
+
+  const currentManagementTemplateKey = "management_pnl";
+
+  // Check if current text has a custom saved template
+  const isUnifiedTemplateCustom = Boolean(savedTemplates[currentUnifiedTemplateKey]?.text);
+  const isManagementTemplateCustom = Boolean(savedTemplates[currentManagementTemplateKey]?.text);
 
   // ----------------------------------------------------
   // 1. 오륙통합방 실시간 데이터 (Unified Room Live Data)
@@ -209,10 +239,15 @@ export const TelegramView = () => {
     return `<b>⬛ [일일업무일지 결재 승인]</b>\n----------------------------------------\n• <b>공장:</b> 삼랑진공장\n• <b>작성자:</b> 김동욱 부장 (생산)\n• <b>결재자:</b> <b>${currentProfile?.name || "이명재 이사"}</b>\n• <b>지시사항:</b> 수고하셨습니다. 익일 야간조 인수인계 철저\n• <b>업무일자:</b> ${todayDateStr}\n----------------------------------------\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
   };
 
-  // Sync default unified text when selection changes
+  // Load custom template if exists, else load default text
   useEffect(() => {
-    setEditableUnifiedText(generateDefaultUnifiedText());
-  }, [unifiedMsgType, qualityStage, noticeMeetingType, approvalType, morningLeaveSummary, morningApprovalSummary, morningUrgentSummary]);
+    const saved = savedTemplates[currentUnifiedTemplateKey]?.text;
+    if (saved) {
+      setEditableUnifiedText(saved);
+    } else {
+      setEditableUnifiedText(generateDefaultUnifiedText());
+    }
+  }, [currentUnifiedTemplateKey, savedTemplates, morningLeaveSummary, morningApprovalSummary, morningUrgentSummary]);
 
   // ----------------------------------------------------
   // 2. 경영총괄 실시간 데이터 (Management Room Live Data)
@@ -262,10 +297,15 @@ export const TelegramView = () => {
     return `<b>⬛ [오륙 ${isMgmtRoom ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(totalSales).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(totalPurchases).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 오늘의 전사 공통일정</b>\n${todaySchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
   };
 
-  // Sync default management text when selection changes
+  // Load custom management template if exists, else load default text
   useEffect(() => {
-    setEditableManagementText(generateDefaultManagementText());
-  }, [totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, todaySchedsText, selectedPnLChannel]);
+    const saved = savedTemplates[currentManagementTemplateKey]?.text;
+    if (saved) {
+      setEditableManagementText(saved);
+    } else {
+      setEditableManagementText(generateDefaultManagementText());
+    }
+  }, [currentManagementTemplateKey, savedTemplates, totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, todaySchedsText, selectedPnLChannel]);
 
   // Access Control: Admin only
   if (!isAdmin) {
@@ -312,6 +352,27 @@ export const TelegramView = () => {
     } finally {
       setTestingTelegram(false);
     }
+  };
+
+  // 🌟 Save current modified text as persistent template ("앞으로도 계속 적용")
+  const handleSaveUnifiedTemplate = async () => {
+    if (!editableUnifiedText.trim()) {
+      alert("저장할 메시지 내용이 비어 있습니다.");
+      return;
+    }
+    await saveTelegramCustomTemplate(currentUnifiedTemplateKey, editableUnifiedText);
+    setTemplateSavedToast(true);
+    setTimeout(() => setTemplateSavedToast(false), 3000);
+  };
+
+  const handleSaveManagementTemplate = async () => {
+    if (!editableManagementText.trim()) {
+      alert("저장할 메시지 내용이 비어 있습니다.");
+      return;
+    }
+    await saveTelegramCustomTemplate(currentManagementTemplateKey, editableManagementText);
+    setTemplateSavedToast(true);
+    setTimeout(() => setTemplateSavedToast(false), 3000);
   };
 
   // 1. 오륙통합방 직접 편집 텍스트 발송
@@ -393,11 +454,11 @@ export const TelegramView = () => {
                   텔레그램 발송 관리
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                  예시창 텍스트 직접 수정 가능
+                  변경내용 영구 적용 지원
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                예시창에서 문구를 <strong>직접 수정</strong>하여 즉시 발송하거나, 시스템 자동 데이터로 초기화할 수 있습니다.
+                예시창에서 문구를 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 변경된 텍스트가 기본 서식으로 영구 저장되어 계속 발송됩니다.
               </p>
             </div>
           </div>
@@ -461,14 +522,19 @@ export const TelegramView = () => {
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span>
                 <h4 className="font-black text-slate-900 dark:text-white text-base">
-                  📢 오륙통합방 발송 메시지 관리 (예시창 직접 수정)
+                  📢 오륙통합방 발송 메시지 관리
                 </h4>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
                   단톡방: -4186792536
                 </span>
+                {isUnifiedTemplateCustom && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                    📌 사용자 지정 서식 적용 중
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                아래 예시창에서 내용을 직접 수정하면 수정한 텍스트 그대로 오륙통합방으로 즉시 발송됩니다.
+                예시창에서 텍스트를 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 계속 발송됩니다.
               </p>
             </div>
 
@@ -504,7 +570,7 @@ export const TelegramView = () => {
           {/* Sub-level selectors based on unifiedMsgType */}
           {unifiedMsgType === "quality" && (
             <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-bold text-rose-800 dark:text-rose-300">품질경보 알림 단계 서식 불러오기:</span>
+              <span className="text-xs font-bold text-rose-800 dark:text-rose-300">품질경보 알림 단계 서식:</span>
               <div className="flex items-center gap-1.5">
                 {[
                   { key: "1", label: "1단계 (신규 발령)" },
@@ -530,7 +596,7 @@ export const TelegramView = () => {
 
           {unifiedMsgType === "notice_meeting" && (
             <div className="p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">공지/회의 서식 불러오기:</span>
+              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">공지/회의 서식:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { key: "notice", label: "🟩 사내 공지사항" },
@@ -557,7 +623,7 @@ export const TelegramView = () => {
 
           {unifiedMsgType === "approval" && (
             <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">전자결재/일지 서식 불러오기:</span>
+              <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">전자결재/일지 서식:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { key: "draft", label: "🟦 기안 상신" },
@@ -589,6 +655,11 @@ export const TelegramView = () => {
               <div className="flex items-center gap-2 font-bold text-sky-400">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>📢 오륙 통합방 (수신처: -4186792536)</span>
+                {isUnifiedTemplateCustom && (
+                  <span className="text-[11px] font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-800/80">
+                    저장된 커스텀 템플릿 활성
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-center">
@@ -626,10 +697,10 @@ export const TelegramView = () => {
                   type="button"
                   onClick={() => setEditableUnifiedText(generateDefaultUnifiedText())}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
-                  title="시스템 실시간 데이터로 텍스트 초기화"
+                  title="시스템 실시간 데이터 기본 서식으로 초기화"
                 >
                   <RotateCw className="w-3.5 h-3.5 text-sky-400" />
-                  <span>초기화</span>
+                  <span>기본서식 리셋</span>
                 </button>
 
                 {/* Copy button */}
@@ -648,7 +719,7 @@ export const TelegramView = () => {
             {unifiedViewMode === "edit" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>💡 <strong>예시창 텍스트 직접 수정 모드:</strong> 원하는 내용을 자유롭게 타이핑하여 수정한 후 아래 발송 버튼을 누르세요.</span>
+                  <span>💡 <strong>예시창 텍스트 수정:</strong> 원하는 내용을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 계속 발송됩니다.</span>
                   <span className="font-mono text-slate-500">{editableUnifiedText.length}자</span>
                 </div>
                 <textarea
@@ -669,16 +740,21 @@ export const TelegramView = () => {
               </div>
             )}
 
-            {/* Bottom Action Footer */}
+            {/* Bottom Action Footer with [위 예시내용을 앞으로도 계속 적용] + [즉시 발송] */}
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-800/80">
               <div className="text-[11px] text-slate-400">
                 수신처: <strong>오륙 통합방</strong> (-4186792536)
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap justify-end">
                 {copyToast && (
                   <span className="text-xs font-bold text-sky-400 flex items-center gap-1 animate-fadeIn">
                     <Check className="w-3.5 h-3.5" /> 복사 완료!
+                  </span>
+                )}
+                {templateSavedToast && (
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1 animate-fadeIn">
+                    <BookmarkCheck className="w-4 h-4 text-amber-400" /> 앞으로도 계속 적용 저장 완료!
                   </span>
                 )}
                 {unifiedToast && (
@@ -686,11 +762,24 @@ export const TelegramView = () => {
                     <CheckCircle2 className="w-4 h-4" /> 오륙통합방 전송 완료!
                   </span>
                 )}
+
+                {/* 🌟 1. [위 예시내용을 앞으로도 계속 적용] 확인/저장 탭 */}
+                <button
+                  type="button"
+                  onClick={handleSaveUnifiedTemplate}
+                  className="flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer"
+                  title="현재 수정된 텍스트를 기본 서식으로 저장하여 앞으로 자동/수동 발송 시 계속 적용합니다."
+                >
+                  <BookmarkCheck className="w-4 h-4 text-amber-400" />
+                  <span>💾 위 예시내용을 앞으로도 계속 적용</span>
+                </button>
+
+                {/* 🌟 2. [내용 즉시 발송] 버튼 */}
                 <button
                   type="button"
                   disabled={sendingUnified}
                   onClick={handleSendUnifiedMessage}
-                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-xl shadow-blue-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-sky-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-xl shadow-blue-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4 text-sky-200" />
                   <span>{sendingUnified ? "발송 중..." : "🚀 [오륙통합방]으로 예시 내용 즉시 발송"}</span>
@@ -712,14 +801,19 @@ export const TelegramView = () => {
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-purple-500 animate-pulse"></span>
                 <h4 className="font-black text-slate-900 dark:text-white text-base">
-                  👑 경영총괄 발송 메시지 관리 (예시창 직접 수정)
+                  👑 경영총괄 발송 메시지 관리
                 </h4>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
                   경영방: -1003939516875
                 </span>
+                {isManagementTemplateCustom && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                    📌 사용자 지정 서식 적용 중
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                권태형 대표이사, 최미영 전무 등 경영진 전용 손익결산 브리핑 문구를 <strong>예시창에서 직접 수정</strong>하여 발송할 수 있습니다.
+                손익결산 브리핑 문구를 예시창에서 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 매일 07:30 발송 시 계속 적용됩니다.
               </p>
             </div>
 
@@ -759,6 +853,11 @@ export const TelegramView = () => {
                     ? "👑 경영방 (대표·전무 전용 채널: -1003939516875)"
                     : "👤 권태형 대표님 1:1 개인톡 (290615483)"}
                 </span>
+                {isManagementTemplateCustom && (
+                  <span className="text-[11px] font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-800/80">
+                    저장된 커스텀 템플릿 활성
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2 self-end sm:self-center">
@@ -796,10 +895,10 @@ export const TelegramView = () => {
                   type="button"
                   onClick={() => setEditableManagementText(generateDefaultManagementText())}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
-                  title="시스템 실시간 손익 데이터로 텍스트 초기화"
+                  title="시스템 실시간 손익 데이터 기본 서식으로 초기화"
                 >
                   <RotateCw className="w-3.5 h-3.5 text-purple-400" />
-                  <span>실시간 수치 리셋</span>
+                  <span>기본서식 리셋</span>
                 </button>
 
                 {/* Copy button */}
@@ -818,7 +917,7 @@ export const TelegramView = () => {
             {managementViewMode === "edit" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>💡 <strong>손익결산 브리핑 텍스트 직접 수정:</strong> 매출액, 매입액, 달성율, 공통일정을 자유롭게 수정한 후 즉시 발송하세요.</span>
+                  <span>💡 <strong>손익결산 브리핑 텍스트 수정:</strong> 매출액, 매입액, 달성율, 공통일정을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장됩니다.</span>
                   <span className="font-mono text-slate-500">{editableManagementText.length}자</span>
                 </div>
                 <textarea
@@ -839,16 +938,21 @@ export const TelegramView = () => {
               </div>
             )}
 
-            {/* Bottom Action Footer */}
+            {/* Bottom Action Footer with [위 예시내용을 앞으로도 계속 적용] + [즉시 발송] */}
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-800/80">
               <div className="text-[11px] text-slate-400">
                 수신처: <strong>{selectedPnLChannel === "-1003939516875" ? "경영방" : "대표님 1:1"}</strong> ({selectedPnLChannel})
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap justify-end">
                 {copyToast && (
                   <span className="text-xs font-bold text-purple-400 flex items-center gap-1 animate-fadeIn">
                     <Check className="w-3.5 h-3.5" /> 복사 완료!
+                  </span>
+                )}
+                {templateSavedToast && (
+                  <span className="text-xs font-bold text-amber-400 flex items-center gap-1 animate-fadeIn">
+                    <BookmarkCheck className="w-4 h-4 text-amber-400" /> 앞으로도 계속 적용 저장 완료!
                   </span>
                 )}
                 {dailyPnLToast && (
@@ -856,11 +960,24 @@ export const TelegramView = () => {
                     <CheckCircle2 className="w-4 h-4" /> 경영방 전송 완료!
                   </span>
                 )}
+
+                {/* 🌟 1. [위 예시내용을 앞으로도 계속 적용] 확인/저장 탭 */}
+                <button
+                  type="button"
+                  onClick={handleSaveManagementTemplate}
+                  className="flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer"
+                  title="현재 수정된 손익결산 텍스트를 기본 서식으로 저장하여 매일 07:30 발송 시 계속 적용합니다."
+                >
+                  <BookmarkCheck className="w-4 h-4 text-amber-400" />
+                  <span>💾 위 예시내용을 앞으로도 계속 적용</span>
+                </button>
+
+                {/* 🌟 2. [내용 즉시 발송] 버튼 */}
                 <button
                   type="button"
                   disabled={sendingDailyPnL}
                   onClick={handleSendManagementMessage}
-                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 hover:from-black hover:to-purple-950 text-white font-black text-xs sm:text-sm shadow-xl shadow-purple-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 hover:from-black hover:to-purple-950 text-white font-black text-xs sm:text-sm shadow-xl shadow-purple-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4 text-purple-300" />
                   <span>{sendingDailyPnL ? "발송 중..." : "🚀 [경영방]으로 손익결산 즉시 발송"}</span>
