@@ -39,6 +39,27 @@ function sanitizeLog(obj) {
   return result;
 }
 
+export const parseLogFields = (log) => {
+  if (!log || typeof log !== "object") return log;
+  const parsed = { ...log };
+  if (typeof parsed.images === "string") {
+    try {
+      parsed.images = JSON.parse(parsed.images);
+    } catch {
+      parsed.images = [];
+    }
+  }
+  if (!Array.isArray(parsed.images)) {
+    parsed.images = parsed.images ? [parsed.images] : [];
+  }
+  if (typeof parsed.lineFileMatches === "string") {
+    try {
+      parsed.lineFileMatches = JSON.parse(parsed.lineFileMatches);
+    } catch {}
+  }
+  return parsed;
+};
+
 // Get local cache
 export const getLocalWorkLogs = () => {
   try {
@@ -47,7 +68,8 @@ export const getLocalWorkLogs = () => {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
       return [];
     }
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.map(parseLogFields) : [];
   } catch (e) {
     return [];
   }
@@ -55,7 +77,8 @@ export const getLocalWorkLogs = () => {
 
 const saveLocalWorkLogs = (logs) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(logs));
+    const parsed = Array.isArray(logs) ? logs.map(parseLogFields) : [];
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
   } catch (e) {
     console.error("Local storage error:", e);
   }
@@ -108,7 +131,7 @@ export const subscribeWorkLogs = (onUpdate) => {
       const remoteLogs = [];
       snap.forEach((docSnap) => {
         if (!OLD_SAMPLE_IDS.includes(docSnap.id) && Number(docSnap.id) > 11) {
-          remoteLogs.push({ id: docSnap.id, ...docSnap.data() });
+          remoteLogs.push(parseLogFields({ id: docSnap.id, ...docSnap.data() }));
         }
       });
       remoteLogs.sort((a, b) => {
@@ -134,7 +157,7 @@ export const subscribeWorkLogs = (onUpdate) => {
         const remoteLogs = [];
         snapshot.forEach((docSnap) => {
           if (!OLD_SAMPLE_IDS.includes(docSnap.id) && Number(docSnap.id) > 11) {
-            remoteLogs.push({ id: docSnap.id, ...docSnap.data() });
+            remoteLogs.push(parseLogFields({ id: docSnap.id, ...docSnap.data() }));
           }
         });
 
