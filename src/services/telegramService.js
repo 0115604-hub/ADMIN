@@ -811,7 +811,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
     if (todayScheds.length > 0) {
       commonSchedules = todayScheds.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n");
     } else {
-      commonSchedules = "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
+      commonSchedules = "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)";
     }
   }
 
@@ -831,7 +831,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
 • <b>전월대비 매출 달성율:</b> <b>${salesAchievementRate}</b>
 • <b>전월대비 매입 달성율:</b> <b>${purchaseAchievementRate}</b>
 
-<b>[3] 오늘의 전사 공통일정</b>
+<b>[3] 오늘의 태형&미영 일정</b>
 ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>

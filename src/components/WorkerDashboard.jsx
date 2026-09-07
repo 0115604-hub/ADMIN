@@ -721,12 +721,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   };
 
-  // Common Schedules (전사 공통일정) State & Subscription
+  // 태형&미영 일정 State & Subscription
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [commonScheduleForm, setCommonScheduleForm] = useState({
     date: getKSTDateString(),
     time: "09:30",
-    target: "공통",
+    target: "세미나",
     title: ""
   });
   const [commonScheduleSaving, setCommonScheduleSaving] = useState(false);
@@ -751,7 +751,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleRegisterCommonSchedule = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (!commonScheduleForm.title?.trim()) {
-      alert("공통일정 내용을 입력해 주세요.");
+      alert("일정 내용을 입력해 주세요.");
       return;
     }
     setCommonScheduleSaving(true);
@@ -760,7 +760,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         ...commonScheduleForm,
         author: currentProfile?.name || "관리자"
       });
-      setToastMessage("공통일정이 정상적으로 등록되었습니다.");
+      setToastMessage("일정이 정상적으로 등록되었습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setCommonScheduleForm((prev) => ({
@@ -769,16 +769,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       }));
       setCommonScheduleModalOpen(false);
     } catch (err) {
-      alert("공통일정 등록 중 오류 발생: " + err.message);
+      alert("일정 등록 중 오류 발생: " + err.message);
     } finally {
       setCommonScheduleSaving(false);
     }
   };
 
   const handleDeleteCommonSchedule = async (id) => {
-    if (!window.confirm("이 공통일정을 삭제하시겠습니까?")) return;
+    if (!window.confirm("이 일정을 삭제하시겠습니까?")) return;
     await deleteCommonSchedule(id);
-    setToastMessage("공통일정이 삭제되었습니다.");
+    setToastMessage("일정이 삭제되었습니다.");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
   };
@@ -1227,7 +1227,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
       {/* ========================================================================= */}
-      {/* 📌 전사 공통일정 (1줄 간결 바 • 결재 패널 상단 • 관리자만 노출) */}
+      {/* 📌 태형&미영 일정 (1줄 간결 바 • 결재 패널 상단 • 관리자만 노출) */}
       {/* ========================================================================= */}
       {isAdmin && (
         <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-indigo-500/40 dark:border-indigo-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
@@ -1236,7 +1236,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <CalendarDays className="w-3.5 h-3.5" />
             </div>
             <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
-              전사 공통일정
+              태형&미영
             </span>
 
             <div className="flex items-center gap-1.5 shrink-0">
@@ -1262,19 +1262,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs shrink-0 hover:border-indigo-400 transition-all"
                   >
                     <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
-                      item.target === "대표"
-                        ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                        : item.target === "전무"
+                      item.target === "세미나"
                         ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                        : item.target === "이사"
-                        ? "bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700"
-                        : item.target === "한림" || item.target === "한림공장"
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                        : item.target === "삼랑진" || item.target === "삼랑진공장"
-                        ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
-                        : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
+                        : item.target === "교육"
+                        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                        : item.target === "여행"
+                        ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                        : item.target === "맛집"
+                        ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
+                        : item.target === "기타"
+                        ? "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-700"
+                        : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600"
                     }`}>
-                      {item.target || "공통"}
+                      {item.target || "기타"}
                     </span>
                     {item.time && item.time !== "종일" && (
                       <span className="font-mono text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400">
@@ -3832,7 +3832,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📌 전사 공통일정 등록 모달 */}
+      {/* 📌 태형&미영 일정 등록 모달 */}
       {/* ========================================================================= */}
       {commonScheduleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-fadeIn">
@@ -3844,10 +3844,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    공통일정 등록
+                    태형&미영 일정 등록
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    대표, 전무, 이사, 공통 등 대상을 선택하여 일정을 등록합니다.
+                    세미나, 교육, 여행, 맛집, 기타 중 분류를 선택하여 일정을 등록합니다.
                   </p>
                 </div>
               </div>
@@ -3861,21 +3861,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
 
             <form onSubmit={handleRegisterCommonSchedule} className="space-y-3.5">
-              {/* 구분/대상 선택 버튼 그룹 */}
+              {/* 구분 선택 버튼 그룹 */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  대상 선택
+                  선택
                 </label>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-5 gap-1.5">
                   {[
-                    { key: "공통", label: "공통", activeBg: "bg-purple-600 text-white border-purple-600 shadow-xs" },
-                    { key: "대표", label: "대표", activeBg: "bg-amber-600 text-white border-amber-600 shadow-xs" },
-                    { key: "전무", label: "전무", activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
-                    { key: "이사", label: "이사", activeBg: "bg-cyan-600 text-white border-cyan-600 shadow-xs" },
-                    { key: "삼랑진", label: "삼랑진", activeBg: "bg-rose-600 text-white border-rose-600 shadow-xs" },
-                    { key: "한림", label: "한림", activeBg: "bg-emerald-600 text-white border-emerald-600 shadow-xs" }
+                    { key: "세미나", label: "세미나", activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
+                    { key: "교육", label: "교육", activeBg: "bg-emerald-600 text-white border-emerald-600 shadow-xs" },
+                    { key: "여행", label: "여행", activeBg: "bg-amber-600 text-white border-amber-600 shadow-xs" },
+                    { key: "맛집", label: "맛집", activeBg: "bg-rose-600 text-white border-rose-600 shadow-xs" },
+                    { key: "기타", label: "기타", activeBg: "bg-purple-600 text-white border-purple-600 shadow-xs" }
                   ].map((item) => {
-                    const isSelected = commonScheduleForm.target === item.key || (item.key === "공통" && commonScheduleForm.target === "전사공통");
+                    const isSelected = commonScheduleForm.target === item.key;
                     return (
                       <button
                         key={item.key}
@@ -3945,7 +3944,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <input
                   type="text"
                   required
-                  placeholder="예: 본사 임원 주간 회의 / 한림공장 안전진단"
+                  placeholder="예: AI 세미나 참석 / 주말 가족 여행 / 맛집 탐방"
                   value={commonScheduleForm.title}
                   onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, title: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-indigo-400 dark:border-indigo-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
@@ -4062,15 +4061,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </div>
                     </div>
 
-                    {/* [3] 오늘의 전사 공통일정 */}
+                    {/* [3] 오늘의 태형&미영 일정 */}
                     <div>
                       <div className="font-extrabold text-purple-400 text-xs mb-1">
-                        [3] 오늘의 전사 공통일정
+                        [3] 오늘의 태형&미영 일정
                       </div>
                       <div className="pl-2 whitespace-pre-wrap text-slate-200 text-[11px] leading-relaxed">
                         {customPnLBriefing?.commonSchedules || (todayCommonSchedules.length > 0
                           ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
-                          : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)")}
+                          : "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)")}
                       </div>
                     </div>
                   </div>
