@@ -597,30 +597,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   };
 
   // -------------------------------------------------------------------------
-  // 🗓️ 우창용 선임 전용 스마트 캘린더 & 일정 관리 Pilot Center States & Handlers
+  // 🗓️ 우창용 선임 전용 심플 스마트 일정 관리 States & Handlers
   // -------------------------------------------------------------------------
-  const [changyongCalYM, setChangyongCalYM] = useState(() => {
-    return getKSTDateString().slice(0, 7);
-  });
-
-  const [changyongSelectedDate, setChangyongSelectedDate] = useState(() => {
-    return getKSTDateString();
-  });
-
-  const [changyongReasonInput, setChangyongReasonInput] = useState("");
+  const [changyongSelectedDate, setChangyongSelectedDate] = useState(() => getKSTDateString());
   const [changyongLeaveType, setChangyongLeaveType] = useState("연차(전일)");
+  const [changyongReasonInput, setChangyongReasonInput] = useState("");
   const [changyongSaving, setChangyongSaving] = useState(false);
+  const [showMiniCalendar, setShowMiniCalendar] = useState(false);
 
-  const getKoreanDayOfWeek = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      const days = ["일", "월", "화", "수", "목", "금", "토"];
-      const d = new Date(dateStr + "T00:00:00");
-      return days[d.getDay()] || "";
-    } catch (e) {
-      return "";
-    }
-  };
+  const [changyongCalYM, setChangyongCalYM] = useState(() => getKSTDateString().slice(0, 7));
 
   const handlePrevCalMonth = () => {
     setChangyongCalYM((prev) => {
@@ -654,6 +639,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setChangyongSelectedDate(today);
   };
 
+  // 우창용 선임이 등록한 전체 일정 목록 (최신순)
+  const changyongMyLeaves = useMemo(() => {
+    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
+    return annualLeaves
+      .filter((l) => Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용")))
+      .sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+  }, [annualLeaves]);
+
+  // Mini Calendar Days
   const changyongCalendarDays = useMemo(() => {
     if (!changyongCalYM) return [];
     const [yearStr, monthStr] = changyongCalYM.split("-");
@@ -696,122 +690,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     return days;
   }, [changyongCalYM, changyongSelectedDate, annualLeaves]);
-
-  const changyongSelectedDayEvents = useMemo(() => {
-    if (!changyongSelectedDate || !annualLeaves) return [];
-    return annualLeaves.filter(
-      (l) =>
-        Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용")) &&
-        l.startDate <= changyongSelectedDate &&
-        (l.endDate || l.startDate) >= changyongSelectedDate
-    );
-  }, [changyongSelectedDate, annualLeaves]);
-
-  const changyongUpcomingEvents = useMemo(() => {
-    if (!annualLeaves) return [];
-    const todayStr = getKSTDateString();
-    const todayDate = new Date(todayStr + "T00:00:00");
-
-    const futureOrToday = annualLeaves.filter(
-      (l) =>
-        Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용")) &&
-        (l.endDate || l.startDate) >= todayStr
-    );
-
-    futureOrToday.sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
-
-    return futureOrToday.map((event) => {
-      const startDate = new Date(event.startDate + "T00:00:00");
-      const diffTime = startDate.getTime() - todayDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      let dDayLabel = "D-Day";
-      let dDayColor = "bg-rose-500 text-white";
-      if (diffDays === 0) {
-        dDayLabel = "D-Day (오늘)";
-        dDayColor = "bg-rose-600 text-white animate-pulse";
-      } else if (diffDays < 0) {
-        dDayLabel = "진행중";
-        dDayColor = "bg-amber-500 text-white";
-      } else if (diffDays === 1) {
-        dDayLabel = "D-1 (내일)";
-        dDayColor = "bg-orange-500 text-white font-black";
-      } else {
-        dDayLabel = `D-${diffDays}`;
-        dDayColor = "bg-blue-600 text-white";
-      }
-
-      return {
-        ...event,
-        diffDays,
-        dDayLabel,
-        dDayColor
-      };
-    });
-  }, [annualLeaves]);
-
-  const changyongThisMonthCount = useMemo(() => {
-    if (!annualLeaves || !changyongCalYM) return 0;
-    return annualLeaves.filter(
-      (l) =>
-        Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용")) &&
-        ((l.startDate && l.startDate.startsWith(changyongCalYM)) ||
-          (l.endDate && l.endDate.startsWith(changyongCalYM)))
-    ).length;
-  }, [annualLeaves, changyongCalYM]);
-
-  const hallimTeammatesStatus = useMemo(() => {
-    const todayStr = getKSTDateString();
-    const TEAMMATES = [
-      { id: "hal_dw", name: "김동욱", title: "책임", role: "공장장 / 총괄관리", isSelf: false },
-      { id: "hal_cy", name: "우창용", title: "선임", role: "가공동 관리 (본인)", isSelf: true },
-      { id: "hal_sm", name: "오상민", title: "선임", role: "성형 및 포장라인", isSelf: false },
-      { id: "hal_bl", name: "부림텍", title: "협력사", role: "외주가공 및 품질", isSelf: false },
-      { id: "hal_hu", name: "한울", title: "협력사", role: "물류 및 포장지원", isSelf: false }
-    ];
-
-    return TEAMMATES.map((mate) => {
-      const activeLeave = (annualLeaves || []).find(
-        (l) =>
-          Boolean(l && (l.userId === mate.id || l.userName === mate.name)) &&
-          l.startDate <= todayStr &&
-          (l.endDate || l.startDate) >= todayStr
-      );
-
-      let status = "정상근무";
-      let statusColor = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200";
-      let emoji = "🟢";
-
-      if (activeLeave) {
-        status = activeLeave.leaveType || "휴무";
-        emoji = "🌴";
-        if (status.includes("반차")) {
-          statusColor = "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200";
-          emoji = "⛅";
-        } else if (status.includes("업체방문") || status.includes("출장")) {
-          statusColor = "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200";
-          emoji = "🏢";
-        } else if (status.includes("외출")) {
-          statusColor = "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200";
-          emoji = "🚶";
-        } else if (status.includes("특근")) {
-          statusColor = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200";
-          emoji = "⚡";
-        } else {
-          statusColor = "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-200";
-          emoji = "🌴";
-        }
-      }
-
-      return {
-        ...mate,
-        status,
-        statusColor,
-        emoji,
-        activeLeave
-      };
-    });
-  }, [annualLeaves]);
 
   const handleChangyongRegisterSchedule = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -1520,476 +1398,267 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 🌟 작업자 정보 & 간편 일정/연차 설정 패널 (우창용 선임인 경우 전용 스마트 캘린더 센터 파일럿 가동) */}
       {!isAdmin && (
         isChangyong ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-lg space-y-3.5 min-w-0 max-w-full overflow-hidden">
-            {/* 1. Pilot Center Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200/80 dark:border-slate-800">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 shrink-0">
-                  <CalendarDays className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 truncate">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight">
-                      우창용 선임 스마트 일정 &amp; 근무 캘린더 센터
-                    </h2>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800 animate-pulse">
-                      🚀 파일럿 시범운영
+          <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
+            {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
+              {/* Left: Plant, Worker Name, Title, and Live Status Badge (4 cols) */}
+              <div className="lg:col-span-4 flex items-center justify-between sm:justify-start gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap sm:flex-nowrap">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 shrink-0">
+                    <Factory className="w-3 h-3" />
+                    <span>한림공장</span>
+                  </span>
+
+                  <div className="flex items-baseline gap-1.5 min-w-0 truncate">
+                    <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                      우창용
+                    </span>
+                    <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400 shrink-0">
+                      선임
                     </span>
                   </div>
-                  <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                    개인 일정(연차/반차/외출/특근) 등록 및 한림공장 동료 실시간 근무 현황 연동
-                  </p>
-                </div>
-              </div>
 
-              {/* Profile & Live Status Indicators */}
-              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-black border border-emerald-200">
-                  <Factory className="w-3.5 h-3.5" />
-                  <span>한림공장</span>
-                </span>
-                <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700">
-                  선임 · 가공동 관리
-                </span>
-                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 text-[11px] font-black border border-emerald-300/60">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0 hidden sm:inline-block">
+                    가공동 관리
                   </span>
-                  <span>클라우드 동기화 ON</span>
-                </span>
-              </div>
-            </div>
 
-            {/* 2. Top Summary KPI Cards (4 Cards Grid) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
-              {/* Card 1: Today's Status */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between min-w-0">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  <span>오늘 나의 상태</span>
-                  <Activity className="w-3.5 h-3.5 text-blue-500" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                    {myLeaveStatus?.status === "ACTIVE" ? (
-                      <span className="text-rose-600 dark:text-rose-400">{myLeaveStatus.emoji} {myLeaveStatus.label}</span>
-                    ) : (
-                      <span className="text-emerald-600 dark:text-emerald-400">🟢 정상 근무중 (한림)</span>
-                    )}
-                  </div>
-                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">
-                    {getKSTDateString()} 기준
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Upcoming D-Day Event */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between min-w-0">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  <span>가장 가까운 D-Day</span>
-                  <Clock className="w-3.5 h-3.5 text-amber-500" />
-                </div>
-                <div>
-                  {changyongUpcomingEvents.length > 0 ? (
-                    <div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className={`px-1.5 py-0.2 rounded text-[10px] font-black shrink-0 ${changyongUpcomingEvents[0].dDayColor}`}>
-                          {changyongUpcomingEvents[0].dDayLabel}
-                        </span>
-                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                          {changyongUpcomingEvents[0].leaveType}
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 truncate">
-                        {changyongUpcomingEvents[0].startDate} ({changyongUpcomingEvents[0].reason || "일정"})
-                      </div>
-                    </div>
+                  {/* Live Status Badge */}
+                  {myLeaveStatus?.status === "ACTIVE" ? (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shadow-2xs animate-pulse flex items-center gap-1 shrink-0 ${myLeaveStatus.badgeColor}`}>
+                      <span>{myLeaveStatus.emoji} {myLeaveStatus.label}</span>
+                    </span>
+                  ) : myLeaveStatus?.status === "SCHEDULED" ? (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 shrink-0 ${myLeaveStatus.badgeColor}`}>
+                      <span>{myLeaveStatus.label}</span>
+                    </span>
                   ) : (
-                    <div>
-                      <span className="text-xs sm:text-sm font-black text-slate-600 dark:text-slate-400">예정된 일정 없음</span>
-                      <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">자유로운 일정 등록 가능</div>
-                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 flex items-center gap-1 shrink-0">
+                      <span>🟢 정상근무</span>
+                    </span>
                   )}
                 </div>
+
+                {myLeaveStatus?.leave && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLeave(myLeaveStatus.leave.id)}
+                    className="ml-auto p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:border-rose-900 text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                    title="등록된 오늘 일정 취소/삭제"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>취소</span>
+                  </button>
+                )}
               </div>
 
-              {/* Card 3: This Month Total Count */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between min-w-0">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  <span>{parseInt(changyongCalYM.split("-")[1], 10)}월 등록 일정</span>
-                  <Palmtree className="w-3.5 h-3.5 text-rose-500" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400">
-                    총 {changyongThisMonthCount}건 등록됨
+              {/* Right: Quick Schedule Register Form (8 cols) */}
+              <div className="lg:col-span-8 min-w-0">
+                <form onSubmit={handleChangyongRegisterSchedule} className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
+                  {/* 1. Leave Type Selector (3 cols) */}
+                  <div className="sm:col-span-3 min-w-0">
+                    <select
+                      value={changyongLeaveType}
+                      onChange={(e) => setChangyongLeaveType(e.target.value)}
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="연차(전일)">🌴 연차(전일)</option>
+                      <option value="오전반차">🌤️ 오전반차</option>
+                      <option value="오후반차">⛅ 오후반차</option>
+                      <option value="업체방문">🏢 업체방문</option>
+                      <option value="RNA 회의">👔 RNA 회의</option>
+                      <option value="외출">🚶 외출</option>
+                      <option value="특근(휴일근무)">⚡ 특근(휴일)</option>
+                      <option value="출장/외부교육">🚄 출장/교육</option>
+                    </select>
                   </div>
-                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5">
-                    월간 캘린더에 표시 중
-                  </div>
-                </div>
-              </div>
 
-              {/* Card 4: Hallim Teammates Coordination */}
-              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between min-w-0">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-                  <span>한림 동료 오늘 현황</span>
-                  <Users className="w-3.5 h-3.5 text-indigo-500" />
-                </div>
-                <div>
-                  <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                    {hallimTeammatesStatus.filter((t) => t.status !== "정상근무").length > 0 ? (
-                      <span className="text-amber-600 dark:text-amber-400">
-                        {hallimTeammatesStatus.filter((t) => t.status !== "정상근무").length}명 부재/휴무
-                      </span>
-                    ) : (
-                      <span className="text-emerald-600 dark:text-emerald-400">팀원 전원 정상근무</span>
-                    )}
+                  {/* 2. Date Picker (3 cols) */}
+                  <div className="sm:col-span-3 min-w-0">
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
+                      <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
+                      <input
+                        type="date"
+                        required
+                        value={changyongSelectedDate}
+                        onChange={(e) => setChangyongSelectedDate(e.target.value)}
+                        className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer py-0.5"
+                      />
+                    </div>
                   </div>
-                  <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 truncate">
-                    김동욱·오상민·부림텍·한울
+
+                  {/* 3. Reason/Memo Input (4 cols) */}
+                  <div className="sm:col-span-4 min-w-0">
+                    <input
+                      type="text"
+                      value={changyongReasonInput}
+                      onChange={(e) => setChangyongReasonInput(e.target.value)}
+                      placeholder="사유/메모 (선택사항)"
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
+                    />
                   </div>
-                </div>
+
+                  {/* 4. Submit Button (2 cols) */}
+                  <div className="sm:col-span-2 min-w-0">
+                    <button
+                      type="submit"
+                      disabled={changyongSaving}
+                      className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-2xs shadow-blue-500/25 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>{changyongSaving ? "등록중" : "등록"}</span>
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
 
-            {/* 3. Interactive Monthly Calendar (월간 인터랙티브 캘린더) */}
-            <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-3 sm:p-4 border border-slate-200/90 dark:border-slate-700/80 space-y-3">
-              {/* Calendar Controller Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-700">
-                {/* Month Navigator */}
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-300 dark:border-slate-700 shadow-2xs">
+            {/* Bottom Row: My Registered Schedules Strip & Optional Mini-Calendar Toggle */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              {/* Left: Registered Schedules Tags */}
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3 text-blue-500" />
+                  <span>나의 등록 일정:</span>
+                </span>
+
+                {changyongMyLeaves.length > 0 ? (
+                  changyongMyLeaves.slice(0, 5).map((ev) => {
+                    let badgeColor = "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900";
+                    let emoji = "🌴";
+                    if (ev.leaveType?.includes("반차")) {
+                      badgeColor = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900";
+                      emoji = "⛅";
+                    } else if (ev.leaveType?.includes("업체방문") || ev.leaveType?.includes("출장")) {
+                      badgeColor = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900";
+                      emoji = "🏢";
+                    } else if (ev.leaveType?.includes("특근")) {
+                      badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900";
+                      emoji = "⚡";
+                    } else if (ev.leaveType?.includes("외출")) {
+                      badgeColor = "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-900";
+                      emoji = "🚶";
+                    }
+
+                    return (
+                      <span
+                        key={ev.id}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border shadow-2xs ${badgeColor}`}
+                      >
+                        <span>{emoji}</span>
+                        <span>{ev.startDate?.slice(5)} {ev.leaveType}</span>
+                        {ev.reason && ev.reason !== ev.leaveType && (
+                          <span className="text-[10px] opacity-75 truncate max-w-[80px]">({ev.reason})</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLeave(ev.id)}
+                          className="hover:text-rose-600 dark:hover:text-rose-400 ml-0.5 font-black cursor-pointer"
+                          title="이 일정 취소/삭제"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    );
+                  })
+                ) : (
+                  <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                    등록된 일정이 없습니다. 우측 폼에서 날짜를 선택하여 간편하게 등록하세요.
+                  </span>
+                )}
+              </div>
+
+              {/* Right: Optional Mini-Calendar Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setShowMiniCalendar((prev) => !prev)}
+                className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-black border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
+              >
+                <Calendar className="w-3 h-3 text-blue-500" />
+                <span>{showMiniCalendar ? "달력 닫기 ▲" : "월간 달력 보기 ▼"}</span>
+              </button>
+            </div>
+
+            {/* Optional Collapsible Clean Mini Calendar Grid (Only visible when toggled) */}
+            {showMiniCalendar && (
+              <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 animate-fadeIn">
+                {/* Month Navigator Header */}
+                <div className="flex items-center justify-between pb-2">
+                  <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                     <button
                       type="button"
                       onClick={handlePrevCalMonth}
-                      className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer active:scale-95"
+                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
                       title="이전 달"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
-                    <span className="px-3 text-sm sm:text-base font-black text-slate-900 dark:text-white min-w-[105px] text-center tracking-tight">
+                    <span className="px-2 text-xs font-black text-slate-900 dark:text-white">
                       {changyongCalYM.split("-")[0]}년 {parseInt(changyongCalYM.split("-")[1], 10)}월
                     </span>
                     <button
                       type="button"
                       onClick={handleNextCalMonth}
-                      className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer active:scale-95"
+                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
                       title="다음 달"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleResetToToday}
-                    className="px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 text-xs font-black border border-blue-300 dark:border-blue-800 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10.5px] font-black border border-blue-200 dark:border-blue-800"
                   >
-                    오늘로 이동
+                    오늘로
                   </button>
                 </div>
 
-                {/* Legend badges */}
-                <div className="flex items-center gap-1.5 flex-wrap text-[10px] font-bold">
-                  <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800">🌴 연차</span>
-                  <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-800">⛅ 반차</span>
-                  <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800">🏢 업체방문</span>
-                  <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800">👔 RNA</span>
-                  <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-300 dark:border-teal-800">🚶 외출</span>
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">⚡ 특근</span>
-                </div>
-              </div>
+                {/* 7-Column Mini Grid */}
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+                    <div
+                      key={d}
+                      className={`text-[10px] font-black py-0.5 rounded ${
+                        i === 0 ? "text-rose-600 bg-rose-50 dark:bg-rose-950/40" : i === 6 ? "text-blue-600 bg-blue-50 dark:bg-blue-950/40" : "text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800"
+                      }`}
+                    >
+                      {d}
+                    </div>
+                  ))}
 
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-                {/* Weekday Headers */}
-                {["일", "월", "화", "수", "목", "금", "토"].map((dayName, idx) => (
-                  <div
-                    key={dayName}
-                    className={`text-center py-1 text-xs font-black rounded-md ${
-                      idx === 0
-                        ? "text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/30"
-                        : idx === 6
-                        ? "text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/30"
-                        : "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80"
-                    }`}
-                  >
-                    {dayName}
-                  </div>
-                ))}
+                  {changyongCalendarDays.map((cell) => {
+                    if (cell.isEmpty) {
+                      return <div key={cell.key} className="h-9 rounded bg-slate-50/50 dark:bg-slate-900/30" />;
+                    }
 
-                {/* Day Cells */}
-                {changyongCalendarDays.map((cell) => {
-                  if (cell.isEmpty) {
+                    const hasEvent = cell.events && cell.events.length > 0;
                     return (
                       <div
                         key={cell.key}
-                        className="min-h-[64px] sm:min-h-[78px] rounded-lg bg-slate-100/40 dark:bg-slate-900/30 border border-dashed border-slate-200/50 dark:border-slate-800/50"
-                      />
-                    );
-                  }
-
-                  const isSun = cell.dayOfWeek === 0;
-                  const isSat = cell.dayOfWeek === 6;
-
-                  return (
-                    <div
-                      key={cell.key}
-                      onClick={() => {
-                        setChangyongSelectedDate(cell.dateStr);
-                      }}
-                      className={`min-h-[64px] sm:min-h-[78px] p-1 sm:p-1.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-between select-none ${
-                        cell.isSelected
-                          ? "bg-blue-50 dark:bg-blue-950/70 border-blue-500 ring-2 ring-blue-500 shadow-md scale-[1.02] z-10"
-                          : cell.isToday
-                          ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 shadow-xs"
-                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700/80 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-xs"
-                      }`}
-                    >
-                      {/* Top Header of Cell: Day Number & Today indicator */}
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`text-xs sm:text-sm font-black ${
-                            isSun
-                              ? "text-rose-600 dark:text-rose-400"
-                              : isSat
-                              ? "text-blue-600 dark:text-blue-400"
-                              : "text-slate-900 dark:text-white"
-                          }`}
-                        >
+                        onClick={() => {
+                          setChangyongSelectedDate(cell.dateStr);
+                        }}
+                        className={`h-9 p-0.5 rounded border transition-all cursor-pointer flex flex-col justify-between items-center select-none ${
+                          cell.isSelected
+                            ? "bg-blue-100 dark:bg-blue-900/70 border-blue-500 font-black ring-1 ring-blue-500"
+                            : cell.isToday
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 font-black"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                        }`}
+                      >
+                        <span className={`text-[10.5px] font-black ${cell.dayOfWeek === 0 ? "text-rose-600" : cell.dayOfWeek === 6 ? "text-blue-600" : "text-slate-800 dark:text-slate-200"}`}>
                           {cell.dayNumber}
                         </span>
-
-                        {cell.isToday && (
-                          <span className="px-1 py-0.2 rounded text-[9px] font-black bg-emerald-600 text-white shadow-2xs">
-                            오늘
-                          </span>
+                        {hasEvent && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" title={cell.events.map(e => e.leaveType).join(", ")} />
                         )}
                       </div>
-
-                      {/* Event badges in cell */}
-                      <div className="space-y-0.5 mt-0.5 overflow-hidden">
-                        {cell.events.slice(0, 2).map((ev) => {
-                          let badgeBg = "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-200";
-                          let emoji = "🌴";
-                          if (ev.leaveType?.includes("반차")) {
-                            badgeBg = "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200";
-                            emoji = "⛅";
-                          } else if (ev.leaveType?.includes("업체방문")) {
-                            badgeBg = "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200";
-                            emoji = "🏢";
-                          } else if (ev.leaveType?.includes("RNA")) {
-                            badgeBg = "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200";
-                            emoji = "👔";
-                          } else if (ev.leaveType?.includes("외출")) {
-                            badgeBg = "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-200";
-                            emoji = "🚶";
-                          } else if (ev.leaveType?.includes("특근")) {
-                            badgeBg = "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200";
-                            emoji = "⚡";
-                          }
-                          return (
-                            <div
-                              key={ev.id}
-                              className={`px-1 py-0.2 rounded text-[9.5px] font-black truncate border shadow-2xs flex items-center gap-0.5 ${badgeBg}`}
-                              title={`${ev.leaveType} (${ev.reason || ""})`}
-                            >
-                              <span>{emoji}</span>
-                              <span className="truncate">{ev.leaveType}</span>
-                            </div>
-                          );
-                        })}
-                        {cell.events.length > 2 && (
-                          <div className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 text-center">
-                            +{cell.events.length - 2}건 더보기
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 4. Split Action Panel: Selected Date Details & Quick Register Form */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-              {/* Left (6 cols): Selected Date Schedule Details */}
-              <div className="lg:col-span-6 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/90 dark:border-slate-700/80 flex flex-col justify-between space-y-2.5">
-                <div>
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span>{changyongSelectedDate} ({getKoreanDayOfWeek(changyongSelectedDate)}) 일정 상세</span>
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-500">
-                      총 {changyongSelectedDayEvents.length}건 등록
-                    </span>
-                  </div>
-
-                  <div className="mt-2.5 space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                    {changyongSelectedDayEvents.length > 0 ? (
-                      changyongSelectedDayEvents.map((ev) => (
-                        <div
-                          key={ev.id}
-                          className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs flex items-center justify-between gap-2"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="px-2 py-0.5 rounded-md text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 shrink-0">
-                              {ev.leaveType}
-                            </span>
-                            <div className="min-w-0 truncate">
-                              <p className="text-xs font-black text-slate-900 dark:text-white truncate">
-                                {ev.reason || ev.leaveType}
-                              </p>
-                              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                                {ev.createdAt ? `등록: ${ev.createdAt}` : "실시간 클라우드 동기화됨"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLeave(ev.id)}
-                            className="px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 text-xs font-black transition-all flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
-                            title="일정 삭제"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>취소/삭제</span>
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs font-bold bg-white/60 dark:bg-slate-800/40 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
-                        <Calendar className="w-6 h-6 mx-auto mb-1 text-slate-300 dark:text-slate-600" />
-                        <span>선택한 일자에 등록된 일정이 없습니다.</span>
-                        <p className="text-[10px] text-slate-400 mt-0.5">우측 폼에서 간편하게 새 일정을 등록할 수 있습니다.</p>
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-
-              {/* Right (6 cols): Quick Register Form */}
-              <div className="lg:col-span-6 bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3 border border-slate-200/90 dark:border-slate-700/80 flex flex-col justify-between space-y-2.5">
-                <form onSubmit={handleChangyongRegisterSchedule} className="space-y-2.5">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                      <Plus className="w-4 h-4 text-blue-600" />
-                      <span>간편 일정 등록 (원클릭 동기화)</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                      우창용 선임 계정 즉시 반영
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {/* Date Picker */}
-                    <div>
-                      <label className="block text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 mb-1">
-                        일정 일자
-                      </label>
-                      <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
-                        <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        <input
-                          type="date"
-                          required
-                          value={changyongSelectedDate}
-                          onChange={(e) => setChangyongSelectedDate(e.target.value)}
-                          className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Leave Type Selector */}
-                    <div>
-                      <label className="block text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 mb-1">
-                        일정 구분
-                      </label>
-                      <select
-                        value={changyongLeaveType}
-                        onChange={(e) => setChangyongLeaveType(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                      >
-                        <option value="연차(전일)">🌴 연차 (전일)</option>
-                        <option value="오전반차">🌤️ 오전반차</option>
-                        <option value="오후반차">⛅ 오후반차</option>
-                        <option value="업체방문">🏢 업체방문</option>
-                        <option value="RNA 회의">👔 RNA 회의</option>
-                        <option value="외출">🚶 외출</option>
-                        <option value="특근(휴일근무)">⚡ 특근 (휴일근무)</option>
-                        <option value="출장/외부교육">🚄 출장 / 외부교육</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Reason / Memo input */}
-                  <div>
-                    <label className="block text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 mb-1">
-                      사유 및 메모 (선택사항)
-                    </label>
-                    <input
-                      type="text"
-                      value={changyongReasonInput}
-                      onChange={(e) => setChangyongReasonInput(e.target.value)}
-                      placeholder="사유 또는 메모 (예: 경주공장 미팅, 개인사유, 주말특근 등)"
-                      className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
-                    />
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={changyongSaving}
-                    className="w-full py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white font-black text-xs shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{changyongSaving ? "클라우드 저장 중..." : `${changyongSelectedDate} ${changyongLeaveType} 일정 등록하기`}</span>
-                  </button>
-                </form>
-              </div>
-            </div>
-
-            {/* 5. Hanlim Teammates Today Live Availability Bar */}
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-slate-200">
-                  <Users className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>한림공장 동료 오늘({getKSTDateString()}) 근무 &amp; 일정 실시간 현황</span>
-                </div>
-                <span className="text-[10px] font-bold text-slate-400">현장 업무 협업 및 조율용</span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                {hallimTeammatesStatus.map((mate) => (
-                  <div
-                    key={mate.id}
-                    className={`p-2 rounded-lg border transition-all ${
-                      mate.isSelf
-                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-blue-400 ring-1 ring-blue-400"
-                        : "bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="text-xs font-black text-slate-900 dark:text-white truncate">
-                        {mate.name} {mate.title}
-                      </span>
-                      {mate.isSelf && (
-                        <span className="px-1 py-0.2 rounded text-[9px] font-black bg-blue-600 text-white shrink-0">
-                          본인
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate mb-1.5">
-                      {mate.role}
-                    </div>
-                    <div className={`px-1.5 py-0.5 rounded text-[10px] font-black text-center border truncate flex items-center justify-center gap-1 ${mate.statusColor}`}>
-                      <span>{mate.emoji}</span>
-                      <span className="truncate">{mate.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
         ) : (
           /* Non-Changyong Workers Standard Compact Schedule Bar */
