@@ -2078,24 +2078,35 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         {day.events.length === 0 ? (
                           <span className="text-[10px] text-slate-300 dark:text-slate-600 block">-</span>
                         ) : (
-                          day.events.slice(0, 2).map((ev) => (
-                            <div
-                              key={ev.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setScheduleSelectedDate(day.dateStr);
-                                setScheduleDetailModal({
-                                  selectedDate: day.dateStr,
-                                  dayName: day.dayName,
-                                  filterTab: "day"
-                                });
-                              }}
-                              className="text-[9.5px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-200 font-bold truncate text-left transition-colors"
-                              title={`${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
-                            >
-                              {ev.leaveType}
-                            </div>
-                          ))
+                          day.events.slice(0, 2).map((ev) => {
+                            const isTodo = ev.leaveType === "할일" || ev.leaveType?.includes("할일");
+                            const displayText = isTodo
+                              ? (ev.reason && ev.reason !== "할일" ? `📝 ${ev.reason}` : "📝 할일")
+                              : (ev.reason && ev.reason !== ev.leaveType ? `${ev.leaveType} (${ev.reason})` : ev.leaveType);
+
+                            return (
+                              <div
+                                key={ev.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setScheduleSelectedDate(day.dateStr);
+                                  setScheduleDetailModal({
+                                    selectedDate: day.dateStr,
+                                    dayName: day.dayName,
+                                    filterTab: "day"
+                                  });
+                                }}
+                                className={`text-[9.5px] px-1 py-0.5 rounded font-bold truncate text-left transition-all ${
+                                  isTodo
+                                    ? "bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 shadow-2xs"
+                                    : "bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-200"
+                                }`}
+                                title={`${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
+                              >
+                                {displayText}
+                              </div>
+                            );
+                          })
                         )}
                         {day.events.length > 2 && (
                           <span
