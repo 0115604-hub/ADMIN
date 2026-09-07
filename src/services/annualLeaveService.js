@@ -240,6 +240,26 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800"
     };
   }
+  if (type.includes("특근")) {
+    return {
+      type: "특근",
+      emoji: "⚡",
+      activeLabel: "특근근무중",
+      scheduledLabelPrefix: "특근예정",
+      activeBadge: "bg-emerald-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+    };
+  }
+  if (type.includes("출장")) {
+    return {
+      type: "출장",
+      emoji: "🚄",
+      activeLabel: "출장중",
+      scheduledLabelPrefix: "출장예정",
+      activeBadge: "bg-cyan-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800"
+    };
+  }
   // Default: 연차(전일) / 연차
   return {
     type: "연차",
