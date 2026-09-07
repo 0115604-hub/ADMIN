@@ -745,6 +745,25 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       });
   }, [annualLeaves]);
 
+  // 🗓️ 도메인 첫 접속화면용 우창용 선임 일정 (할일 제외, 활성 일정)
+  const changyongPublicSchedules = useMemo(() => {
+    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
+    return annualLeaves
+      .filter((l) => {
+        if (!l || (l.userId !== "hal_cy" && l.userName !== "우창용")) return false;
+        if (l.isCompleted || l.isDismissed) return false;
+        // 🚨 '할일'은 첫 화면 공개에서 제외
+        const type = l.leaveType || "";
+        if (type === "할일" || type.includes("할일")) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const aDate = a.startDate || "";
+        const bDate = b.startDate || "";
+        return aDate.localeCompare(bDate);
+      });
+  }, [annualLeaves]);
+
   const handleChangyongDismissLeave = async (leaveId) => {
     try {
       await completeOrDismissAnnualLeave(leaveId);
@@ -1587,6 +1606,99 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             <span>전체 결재함</span>
             <ArrowRight className="w-3 h-3" />
           </button>
+        </div>
+      </div>
+
+      {/* 🗓️ [한림공장] 우창용 선임 일정 (도메인 첫 접속화면 상단 노출 • 할일 제외) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-blue-500/40 dark:border-blue-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
+        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+          <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs shrink-0">
+            <Calendar className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+              우창용 선임 일정
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0">
+              한림 가공동
+            </span>
+          </div>
+
+          {/* Middle: Registered Schedules Chips List (Excluding '할일') */}
+          {changyongPublicSchedules.length > 0 ? (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
+              {changyongPublicSchedules.map((ev) => {
+                const isTodayEvent = (ev.startDate || "") <= todayDateStr && todayDateStr <= (ev.endDate || ev.startDate || "");
+                let badgeColor = "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900";
+                let emoji = "🌴";
+                if (ev.leaveType?.includes("반차")) {
+                  badgeColor = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900";
+                  emoji = "⛅";
+                } else if (ev.leaveType?.includes("업체방문") || ev.leaveType?.includes("출장")) {
+                  badgeColor = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900";
+                  emoji = "🏢";
+                } else if (ev.leaveType?.includes("회의")) {
+                  badgeColor = "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-900";
+                  emoji = "👔";
+                } else if (ev.leaveType?.includes("특근")) {
+                  badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-900";
+                  emoji = "⚡";
+                } else if (ev.leaveType?.includes("외출")) {
+                  badgeColor = "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 border-purple-900";
+                  emoji = "🚶";
+                }
+
+                return (
+                  <div
+                    key={ev.id}
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold border shadow-2xs shrink-0 transition-all ${
+                      isTodayEvent
+                        ? "animate-pulse ring-2 ring-rose-500 bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-400 font-black shadow-sm"
+                        : badgeColor
+                    }`}
+                  >
+                    {isTodayEvent && (
+                      <span className="flex h-2 w-2 relative shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                      </span>
+                    )}
+                    <span>{emoji}</span>
+                    <span>
+                      {ev.startDate === todayDateStr ? (
+                        <span className="text-rose-700 dark:text-rose-300 font-black mr-1">[오늘]</span>
+                      ) : (
+                        <span className="text-slate-600 dark:text-slate-400 font-bold mr-1">{ev.startDate?.slice(5)}</span>
+                      )}
+                      {ev.leaveType}
+                    </span>
+                    {ev.reason && ev.reason !== ev.leaveType && (
+                      <span className="text-[11px] opacity-90 truncate max-w-[120px] sm:max-w-[200px]">
+                        ({ev.reason})
+                      </span>
+                    )}
+                    {(isAdmin || isChangyong) && (
+                      <button
+                        type="button"
+                        onClick={() => handleChangyongDismissLeave(ev.id)}
+                        className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                        title="일정 완료 / 목록에서 제거"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-800">
+              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-slate-500" />
+                <span>예정된 일정 없음 (정상 근무)</span>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
