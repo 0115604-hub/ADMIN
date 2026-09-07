@@ -263,7 +263,7 @@ export const AuthModal = () => {
   }, [urgentIssues]);
 
   const activeIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted);
+    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved);
   }, [urgentIssues]);
 
   const unresolvedActiveIssues = unresolvedIssues;
@@ -632,13 +632,14 @@ export const AuthModal = () => {
               <div
                 onClick={() => {
                   setIssueFilterTab("all");
-                  if (urgentIssues.length > 0) {
-                    setDetailIssueModal(urgentIssues[0]);
-                    setIssueModalPage(1);
+                  const targetItem = urgentIssues.find((i) => !i.isDeleted && !i.isResolved) || urgentIssues.find((i) => !i.isDeleted) || urgentIssues[0];
+                  if (targetItem) {
+                    setDetailIssueModal(targetItem);
                   }
+                  setIssueModalPage(1);
                 }}
                 className="flex items-center gap-1.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
-                title="탭하여 품질경보/공지사항/회의일정 전체 관리 및 이력 팝업 열기"
+                title="탭하여 품질경보·공지 관리대장 전체 팝업 열기"
               >
                 <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs shrink-0">
                   <Megaphone className="w-3 h-3" />
@@ -663,13 +664,14 @@ export const AuthModal = () => {
                     type="button"
                     onClick={() => {
                       setIssueFilterTab("all");
-                      if (urgentIssues.length > 0) {
-                        setDetailIssueModal(urgentIssues[0]);
+                      const targetItem = urgentIssues.find((i) => !i.isDeleted && !i.isResolved) || urgentIssues.find((i) => !i.isDeleted) || urgentIssues[0];
+                      if (targetItem) {
+                        setDetailIssueModal(targetItem);
                       }
                       setIssueModalPage(1);
                     }}
                     className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-2xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
-                    title="품질경보/공지사항/회의일정 전체 리스트 보기"
+                    title="품질경보·공지 관리대장 전체 리스트 보기"
                   >
                     <ListOrdered className="w-3 h-3 text-slate-600 dark:text-slate-300" />
                     <span>리스트</span>
@@ -1544,51 +1546,86 @@ export const AuthModal = () => {
                     <div className="flex items-center gap-1.5">
                       <ListOrdered className="w-4 h-4 text-slate-700 dark:text-slate-300" />
                       <h5 className="text-xs font-black text-slate-900 dark:text-white">
-                        등록 내역 이력
+                        품질경보·공지 관리대장 (전체 이력)
                       </h5>
                       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
                         (선택 탭 {filteredIssues.length}건 / 전체 {urgentIssues.length}건)
                       </span>
                     </div>
 
-                    {/* [종결] [등록] 2단 구분 탭 UI */}
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
-                      {/* 1. [종결] 탭 */}
+                    {/* [전체] [진행중] [종결대장] [신규등록] 탭 UI */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner flex-wrap">
+                      {/* 1. [전체] 탭 */}
                       <button
                         type="button"
                         onClick={() => {
-                          setIssueFilterTab((prev) => (prev === "closed" ? "all" : "closed"));
+                          setIssueFilterTab("all");
                           setIssueModalPage(1);
                         }}
-                        className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                          issueFilterTab === "all"
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <span>전체</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                          {urgentIssues.length}
+                        </span>
+                      </button>
+
+                      {/* 2. [진행중] 탭 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIssueFilterTab("unresolved");
+                          setIssueModalPage(1);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                          issueFilterTab === "unresolved"
+                            ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <span>⏳ 진행중</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200">
+                          {unresolvedIssues.length}
+                        </span>
+                      </button>
+
+                      {/* 3. [종결대장] 탭 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIssueFilterTab("closed");
+                          setIssueModalPage(1);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
                           issueFilterTab === "closed"
                             ? "bg-emerald-600 text-white shadow-xs"
-                            : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200 hover:bg-slate-300"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                         }`}
-                        title={issueFilterTab === "closed" ? "전체 보기로 전환" : "종결/삭제 항목만 보기"}
                       >
-                        <span>✓ 종결</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                          issueFilterTab === "closed" ? "bg-emerald-800 text-white" : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                        }`}>
+                        <span>✓ 종결대장</span>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
                           {closedIssues.length}
                         </span>
                       </button>
 
-                      {/* 2. [등록] 탭 */}
+                      {/* 4. [신규등록] 탭 */}
                       <button
                         type="button"
                         onClick={() => setIsIssueModalOpen(true)}
-                        className="px-3 py-1 rounded-lg text-xs font-black text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                        className="px-2.5 py-1 rounded-lg text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                       >
-                        <Plus className="w-3.5 h-3.5 text-rose-500" />
+                        <Plus className="w-3.5 h-3.5" />
                         <span>신규 등록</span>
                       </button>
                     </div>
                   </div>
 
                   <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
-                    * 리스트 항목을 클릭하면 상단에서 상세 안건, 회신 내용, 조치 및 회의결과 사진을 즉시 조회할 수 있습니다.
+                    * 권한자(이명재 이사 / 김동욱 책임)가 삭제한 항목은 첫화면 표시에서 즉시 제외되며, 아래 관리대장에 종결 이력으로 안전하게 등록·보존됩니다.
                   </p>
 
                   {/* 5개 목록 테이블/카드 */}
