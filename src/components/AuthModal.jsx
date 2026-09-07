@@ -129,6 +129,7 @@ export const AuthModal = () => {
   const [selectedListItem, setSelectedListItem] = useState(null); // Selected Item for Details & Restore
   const [restoreToast, setRestoreToast] = useState("");
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
+  const [isDeletedListExpanded, setIsDeletedListExpanded] = useState(true); // Deleted registry toggle
   const [detailIssueModal, setDetailIssueModal] = useState(null); // Fallback / Action modal ref
   const [issueModalPage, setIssueModalPage] = useState(1);
   const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "unresolved" | "closed"
@@ -270,7 +271,7 @@ export const AuthModal = () => {
   }, [urgentIssues]);
 
   const activeIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved);
+    return urgentIssues.filter((i) => !i.isDeleted);
   }, [urgentIssues]);
 
   const unresolvedActiveIssues = unresolvedIssues;
@@ -1031,6 +1032,170 @@ export const AuthModal = () => {
               </div>
             )}
           </div>
+
+          {/* ========================================================================= */}
+          {/* 🗑️ ⭐ [요청사항 반영] 권한자 삭제 종결 이력 관리대장 (아래쪽 리스트 대장) */}
+          {/* ========================================================================= */}
+          {deletedIssues.length > 0 && (
+            <div className="mb-3.5 sm:mb-5 rounded-2xl border-2 border-slate-300 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/70 shadow-sm overflow-hidden transition-all min-w-0">
+              {/* Deleted Registry Header Bar */}
+              <div
+                onClick={() => setIsDeletedListExpanded((prev) => !prev)}
+                className="p-2.5 sm:p-3 flex items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 bg-slate-200/80 dark:bg-slate-900 cursor-pointer hover:bg-slate-300/70 dark:hover:bg-slate-800 transition-colors select-none"
+                title="탭하여 삭제 종결 대장 펼치기/접기"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 sm:p-2 rounded-xl bg-slate-600 dark:bg-slate-700 text-white shadow-xs shrink-0">
+                    <History className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-black text-xs sm:text-sm md:text-base text-slate-800 dark:text-slate-200">
+                      🗑️ 삭제 종결 관리대장 (권한자 삭제 내역)
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-black bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-400/40">
+                      총 {deletedIssues.length}건
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0 text-slate-500">
+                  <span className="text-[11px] font-bold hidden sm:inline text-slate-500 dark:text-slate-400">
+                    {isDeletedListExpanded ? "대장 접기" : "대장 펼쳐보기"}
+                  </span>
+                  <div className="p-1 rounded-lg bg-slate-300/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                    {isDeletedListExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </div>
+              </div>
+
+              {/* Deleted List Body */}
+              {isDeletedListExpanded && (
+                <div className="p-2 sm:p-3 space-y-2 max-h-72 sm:max-h-80 overflow-y-auto pr-1">
+                  {deletedIssues.map((item) => {
+                    const isMeeting = item.category === "회의일정";
+                    const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
+                    const totalImgCount = (item.images?.length || 0) + (item.actionImages?.length || 0);
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleOpenEditIssue(item)}
+                        className="p-3 rounded-xl border border-slate-300 dark:border-slate-800 bg-white/95 dark:bg-slate-900/80 hover:border-slate-400 dark:hover:border-slate-700 transition-all space-y-2 cursor-pointer group shadow-2xs"
+                        title="탭하여 삭제된 내용 확인 및 수정/복구"
+                      >
+                        {/* Top row: Badges, Deletion info, Action Buttons */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-600 text-white shrink-0">
+                              🗑️ 삭제종결
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 ${
+                              isMeeting ? "bg-purple-600" : isNotice ? "bg-emerald-600" : "bg-rose-600"
+                            }`}>
+                              {isMeeting ? "회의일정" : isNotice ? "사내공지" : "품질경보"}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              {item.plant}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-bold">
+                              작성: {item.author} ({item.createdAt})
+                            </span>
+                            {item.deletedAt && (
+                              <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
+                                삭제: {item.deletedBy || "권한자"} ({item.deletedAt})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Right: [내용 수정] & [복구] buttons */}
+                          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenEditIssue(item, e)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-xs font-black border border-amber-300 dark:border-amber-700 flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                              title="삭제된 항목 내용 수정 및 복구"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>수정</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleRestoreIssue(item.id, e)}
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                              title="이 항목을 첫화면 품질경보로 복구"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>첫화면 복구</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Content row (Strikethrough / muted styling) */}
+                        <div className="text-xs text-slate-600 dark:text-slate-300">
+                          {item.title && (
+                            <h5 className="font-bold text-slate-700 dark:text-slate-200 leading-snug line-through opacity-85">
+                              {item.title}
+                            </h5>
+                          )}
+                          <p className="text-[11.5px] leading-relaxed line-through opacity-75 mt-0.5 break-words">
+                            {item.content}
+                          </p>
+                        </div>
+
+                        {/* Action result if any */}
+                        {item.actionResult && (
+                          <div className="text-[11px] p-1.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center gap-1">
+                            <span className="font-bold">조치결과:</span>
+                            <span>{item.actionResult}</span>
+                            {item.actionAuthor && <span className="text-[10px]">({item.actionAuthor} • {item.actionAt})</span>}
+                          </div>
+                        )}
+
+                        {/* Photo count / thumbnails */}
+                        {totalImgCount > 0 && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+                            <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                              <Camera className="w-3 h-3 text-slate-400" />
+                              <span>첨부 사진 ({totalImgCount}장)</span>
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {item.images?.map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={img.dataUrl}
+                                  alt="사진"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewImageModal({ url: img.dataUrl, name: img.name || `삭제항목사진_${idx + 1}` });
+                                  }}
+                                  className="w-7 h-7 rounded object-cover border border-slate-300 dark:border-slate-700 opacity-75 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+                                  title="클릭하여 원본 보기"
+                                />
+                              ))}
+                              {item.actionImages?.map((img, idx) => (
+                                <img
+                                  key={idx}
+                                  src={img.dataUrl}
+                                  alt="조치사진"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreviewImageModal({ url: img.dataUrl, name: img.name || `삭제조치사진_${idx + 1}` });
+                                  }}
+                                  className="w-7 h-7 rounded object-cover border border-emerald-400/50 opacity-75 hover:opacity-100 hover:scale-110 transition-all cursor-pointer"
+                                  title="클릭하여 원본 보기"
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {errorMsg && (
             <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2 animate-shake">
