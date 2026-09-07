@@ -212,7 +212,11 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
 
   // Trigger real-time Telegram notification for action completed
   if (trimmed) {
-    sendQualityActionTelegram(updatedTarget).catch((err) => {
+    sendQualityActionTelegram(updatedTarget, {
+      actionAuthor: updatedTarget.actionAuthor,
+      actionContent: trimmed,
+      actionRate: 100
+    }).catch((err) => {
       console.warn("Telegram action notification error:", err);
     });
   }

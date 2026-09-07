@@ -147,14 +147,22 @@ export const formatKoreanCurrency = (amount) => {
  * 1. 품질경보 등록 즉시 알림
  */
 export const sendQualityAlertTelegram = async (issueItem) => {
+  const plant = issueItem?.plant || "삼랑진공장";
+  const processInfo = issueItem?.process || issueItem?.line || "생산";
+  const writer = issueItem?.writer || issueItem?.author || "현장작업자";
+  const title = issueItem?.title || issueItem?.content || "품질 이슈 발생";
+  const content = issueItem?.content && issueItem.content !== issueItem.title ? `\n• <b>전달내용:</b> ${issueItem.content}` : "";
+  const dateStr = issueItem?.date || new Date().toISOString().split("T")[0];
+  const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+
   const message = `
 <b>[품질경보 발생] 즉시 확인 요망</b>
 ----------------------------------------
-• <b>공장:</b> ${issueItem.plant || "삼랑진공장"}
-• <b>공정/호기:</b> ${issueItem.process || "생산"} ${issueItem.line ? `(${issueItem.line})` : ""}
-• <b>작성자:</b> ${issueItem.writer || "현장작업자"}
-• <b>불량내용:</b> ${issueItem.title || issueItem.content || "품질 이슈 발생"}
-• <b>일시:</b> ${issueItem.date || new Date().toISOString().split("T")[0]} ${issueItem.time || ""}
+• <b>공장:</b> ${plant}
+• <b>공정/호기:</b> ${processInfo}
+• <b>작성자:</b> <b>${writer}</b>
+• <b>불량제목:</b> <b>${title}</b>${content}
+• <b>일시:</b> ${dateStr} ${timeStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
@@ -165,14 +173,22 @@ export const sendQualityAlertTelegram = async (issueItem) => {
 /**
  * 2. 품질경보 조치완료 즉시 알림
  */
-export const sendQualityActionTelegram = async (issueItem, actionResult) => {
+export const sendQualityActionTelegram = async (issueItem, actionResult = null) => {
+  const plant = issueItem?.plant || "삼랑진공장";
+  const processInfo = issueItem?.process || issueItem?.line || "생산";
+  const title = issueItem?.title || issueItem?.content || "품질경보";
+  const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "조치담당자";
+  const content = actionResult?.actionContent || issueItem?.actionResult || "현장 조치 완료";
+  const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
+
   const message = `
 <b>[품질경보 조치완료 보고]</b>
 ----------------------------------------
-• <b>공장:</b> ${issueItem.plant || "삼랑진공장"}
-• <b>공정/호기:</b> ${issueItem.process || "생산"} ${issueItem.line ? `(${issueItem.line})` : ""}
-• <b>조치자:</b> ${actionResult.actionAuthor || "조치담당자"}
-• <b>조치내용:</b> ${actionResult.actionContent || "현장 조치 완료"} (조치율 ${actionResult.actionRate || 100}%)
+• <b>공장:</b> ${plant}
+• <b>공정/호기:</b> ${processInfo}
+• <b>대상:</b> <b>${title}</b>
+• <b>조치자:</b> <b>${author}</b>
+• <b>조치내용:</b> ${content} (조치율 ${rate}%)
 • <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
@@ -185,13 +201,17 @@ export const sendQualityActionTelegram = async (issueItem, actionResult) => {
  * 3. 품질경보 삭제/종결 즉시 알림
  */
 export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) => {
+  const deleterName = typeof deleterProfile === "string"
+    ? (deleterProfile || "관리자")
+    : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "관리자");
+
   const message = `
 <b>[품질경보 종결/삭제 알림]</b>
 ----------------------------------------
-• <b>공장:</b> ${deletedIssue.plant || "삼랑진공장"}
-• <b>대상:</b> ${deletedIssue.line ? `${deletedIssue.line} - ` : ""}${deletedIssue.title || deletedIssue.content}
-• <b>삭제권한자:</b> <b>${deleterProfile.name || "관리자"} ${deleterProfile.title || "권한자"}</b>
-• <b>종결사유:</b> ${deletedIssue.deleteReason || "정상 생산 및 조치 확인 후 종결 처리"}
+• <b>공장:</b> ${deletedIssue?.plant || "삼랑진공장"}
+• <b>대상:</b> ${deletedIssue?.line ? `${deletedIssue.line} - ` : ""}${deletedIssue?.title || deletedIssue?.content || "품질경보"}
+• <b>삭제권한자:</b> <b>${deleterName}</b>
+• <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 생산 및 조치 확인 후 종결 처리"}
 • <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
