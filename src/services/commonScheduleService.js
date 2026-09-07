@@ -44,7 +44,9 @@ export const saveCommonSchedule = async (scheduleItem) => {
     time: scheduleItem.time || "종일",
     target: scheduleItem.target || "공통",
     title: scheduleItem.title?.trim() || "사내 공통일정",
-    author: scheduleItem.author || "관리자",
+    author: scheduleItem.author || "ADMIN",
+    isCompleted: Boolean(scheduleItem.isCompleted),
+    completedAt: scheduleItem.completedAt || (scheduleItem.isCompleted ? new Date().toISOString() : null),
     createdAt: scheduleItem.createdAt || new Date().toISOString()
   };
 
@@ -79,6 +81,36 @@ export const saveCommonSchedule = async (scheduleItem) => {
     await setDoc(docRef, newItem, { merge: true });
   } catch (e) {
     console.warn("Firestore saveCommonSchedule warning (using local):", e);
+  }
+
+  return updated;
+};
+
+export const toggleCompleteCommonSchedule = async (scheduleId, isCompleted = true) => {
+  const current = getLocalCommonSchedules();
+  const targetIdx = current.findIndex((s) => s.id === scheduleId);
+  if (targetIdx < 0) return current;
+
+  const targetItem = {
+    ...current[targetIdx],
+    isCompleted: isCompleted,
+    completedAt: isCompleted ? new Date().toISOString() : null
+  };
+
+  const updated = [...current];
+  updated[targetIdx] = targetItem;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Local storage error in toggleCompleteCommonSchedule:", e);
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, scheduleId);
+    await setDoc(docRef, targetItem, { merge: true });
+  } catch (e) {
+    console.warn("Firestore toggleCompleteCommonSchedule warning:", e);
   }
 
   return updated;
@@ -188,6 +220,7 @@ export const getTodayCommonSchedules = (targetDate = null) => {
   const dateStr = targetDate || getKSTDateString();
   const all = getLocalCommonSchedules();
   return all.filter((s) => {
+    if (s.isCompleted) return false;
     const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
     const startDate = s.startDate || s.date;
     const endDate = s.endDate || startDate;

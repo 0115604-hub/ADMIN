@@ -319,6 +319,7 @@ export async function runAllBriefings(force = false) {
         const todayScheds = [];
         for (const docSnap of snap.docs) {
           const s = docSnap.data();
+          if (s.isCompleted) continue;
           const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
           const startDate = s.startDate || s.date;
           const endDate = s.endDate || startDate;
