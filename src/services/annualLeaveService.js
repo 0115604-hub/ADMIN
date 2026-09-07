@@ -210,6 +210,16 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-800"
     };
   }
+  if (type.includes("할일")) {
+    return {
+      type: "할일",
+      emoji: "📝",
+      activeLabel: "할일",
+      scheduledLabelPrefix: "할일",
+      activeBadge: "bg-sky-500 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800"
+    };
+  }
   if (type.includes("업체방문")) {
     return {
       type: "업체방문",

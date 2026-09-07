@@ -1454,6 +1454,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       <option value="연차(전일)">🌴 연차(전일)</option>
                       <option value="오전반차">🌤️ 오전반차</option>
                       <option value="오후반차">⛅ 오후반차</option>
+                      <option value="할일">📝 할일</option>
                       <option value="업체방문">🏢 업체방문</option>
                       <option value="RNA 회의">👔 RNA 회의</option>
                       <option value="외출">🚶 외출</option>
@@ -1482,7 +1483,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       type="text"
                       value={changyongReasonInput}
                       onChange={(e) => setChangyongReasonInput(e.target.value)}
-                      placeholder="사유/메모 (선택사항)"
+                      placeholder="텍스트삽입"
                       className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
                     />
                   </div>
@@ -1518,6 +1519,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     if (ev.leaveType?.includes("반차")) {
                       badgeColor = "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900";
                       emoji = "⛅";
+                    } else if (ev.leaveType?.includes("할일")) {
+                      badgeColor = "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-900";
+                      emoji = "📝";
                     } else if (ev.leaveType?.includes("업체방문") || ev.leaveType?.includes("출장")) {
                       badgeColor = "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900";
                       emoji = "🏢";
@@ -1718,9 +1722,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       <option value="연차(전일)">연차(전일)</option>
                       <option value="오전반차">오전반차</option>
                       <option value="오후반차">오후반차</option>
+                      <option value="할일">할일</option>
                       <option value="업체방문">업체방문</option>
                       <option value="RNA 회의">RNA 회의</option>
                       <option value="외출">외출</option>
+                      <option value="특근(휴일근무)">특근(휴일근무)</option>
+                      <option value="출장/외부교육">출장/외부교육</option>
                     </select>
                   </div>
 
