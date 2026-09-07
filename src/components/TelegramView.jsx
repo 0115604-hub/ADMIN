@@ -57,6 +57,7 @@ export const TelegramView = () => {
   const [sendingDailyPnL, setSendingDailyPnL] = useState(false);
   const [dailyPnLToast, setDailyPnLToast] = useState(false);
   const [customPnLData, setCustomPnLData] = useState(null);
+  const [selectedPnLChannel, setSelectedPnLChannel] = useState("-1003939516875"); // Default: 경영방 (대표·전무 전용)
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
 
   useEffect(() => {
@@ -194,13 +195,16 @@ export const TelegramView = () => {
         ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
         : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
 
+      const channelName = selectedPnLChannel === "-1003939516875" ? "경영방 (대표·전무)" : selectedPnLChannel === "290615483" ? "대표님 1:1" : "오륙 통합방";
+
       const res = await sendDailyPnLMorningBriefingTelegram({
         salesAmount: customPnLData?.salesAmount ?? totalSales,
         purchaseAmount: customPnLData?.purchaseAmount ?? totalPurchases,
         salesAchievementRate: customPnLData?.salesAchievementRate || `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
         purchaseAchievementRate: customPnLData?.purchaseAchievementRate || `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`,
-        commonSchedules: customPnLData?.commonSchedules || todaySchedsText
-      });
+        commonSchedules: customPnLData?.commonSchedules || todaySchedsText,
+        targetChatId: selectedPnLChannel
+      }, selectedPnLChannel);
 
       if (res.success) {
         setDailyPnLToast(true);
@@ -375,7 +379,13 @@ export const TelegramView = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 text-xs text-slate-400">
               <div className="flex items-center gap-2 font-bold">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>오륙 통합방 텔레그램 수신 화면</span>
+                <span>
+                  {selectedPnLChannel === "-1003939516875"
+                    ? "👑 경영방 (대표·전무 전용 채널)"
+                    : selectedPnLChannel === "290615483"
+                    ? "👤 권태형 대표님 1:1 대화방"
+                    : "📢 오륙 통합방 채널"}
+                </span>
               </div>
               <span className="text-[11px] font-mono text-slate-400">매일 07:30 정기 브리핑</span>
             </div>
@@ -384,7 +394,7 @@ export const TelegramView = () => {
             <div className="bg-slate-900/90 rounded-2xl p-4 sm:p-5 border border-slate-700/80 space-y-3.5 text-xs leading-relaxed shadow-lg">
               <div>
                 <div className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
-                  <span>⬛ [오륙 경영정보] 일일 아침 손익결산 브리핑</span>
+                  <span>⬛ [오륙 {selectedPnLChannel === "-1003939516875" || selectedPnLChannel === "290615483" ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</span>
                 </div>
                 <div className="text-xs font-extrabold text-sky-400 mt-1">
                   {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })} 07:30 기준
@@ -444,6 +454,34 @@ export const TelegramView = () => {
                 <Sparkles className="w-4 h-4 text-indigo-500" />
                 <span>발송 파라미터 실시간 사용자 지정</span>
               </h5>
+
+              {/* 발송 대상 채널 선택 (경영방 / 통합방 / 대표 1:1) */}
+              <div>
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  발송 대상 채널 (수신처 구분)
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: "-1003939516875", label: "👑 경영방", desc: "대표·전무 전용", activeBg: "bg-purple-600 text-white border-purple-600 shadow-xs" },
+                    { id: "-4186792536", label: "📢 통합방", desc: "오륙 전체방", activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
+                    { id: "290615483", label: "👤 대표님 1:1", desc: "개인 직송", activeBg: "bg-amber-600 text-white border-amber-600 shadow-xs" }
+                  ].map((ch) => (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => setSelectedPnLChannel(ch.id)}
+                      className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
+                        selectedPnLChannel === ch.id
+                          ? ch.activeBg
+                          : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+                      }`}
+                    >
+                      <div className="text-xs font-black">{ch.label}</div>
+                      <div className="text-[10px] opacity-80">{ch.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* 매출액 */}
               <div>
@@ -529,10 +567,18 @@ export const TelegramView = () => {
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-900 to-blue-900 hover:from-black hover:to-indigo-950 text-white font-black text-xs sm:text-sm shadow-xl shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Send className="w-4 h-4 text-sky-400" />
-                <span>{sendingDailyPnL ? "텔레그램 발송 중..." : "🚀 이 내용으로 텔레그램 즉시 발송하기"}</span>
+                <span>
+                  {sendingDailyPnL
+                    ? "텔레그램 발송 중..."
+                    : `🚀 [${selectedPnLChannel === "-1003939516875" ? "경영방 (대표·전무)" : selectedPnLChannel === "290615483" ? "대표님 1:1" : "통합방"}]으로 즉시 발송하기`}
+                </span>
               </button>
               <p className="text-[11px] text-center text-slate-400">
-                위 예시화면의 내용이 그대로 <strong>오륙 통합방</strong> 단톡방으로 즉시 전송됩니다.
+                {selectedPnLChannel === "-1003939516875"
+                  ? "경영진/대표·전무 전용 경영방으로 손익결산 브리핑이 안전하게 구분 발송됩니다."
+                  : selectedPnLChannel === "290615483"
+                  ? "권태형 대표님 1:1 개인톡으로 손익결산 브리핑이 발송됩니다."
+                  : "오륙 전체 통합방으로 손익결산 브리핑이 발송됩니다."}
               </p>
             </div>
           </div>
@@ -548,10 +594,10 @@ export const TelegramView = () => {
             </div>
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                텔레그램 Bot API 및 채널 ID 설정
+                텔레그램 Bot API 및 채널 ID 설정 (채널별 분리 관리)
               </h4>
               <p className="text-xs text-slate-400">
-                설정값 변경 후 [설정 저장하기]를 누르면 즉시 전체 시스템에 동기화됩니다.
+                오륙 통합방(현장·품질·공지)과 경영방(대표·전무 손익)의 수신 채널 ID를 각각 구분하여 관리합니다.
               </p>
             </div>
           </div>
@@ -570,7 +616,7 @@ export const TelegramView = () => {
         </div>
 
         <form onSubmit={handleSaveTelegramConfig} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 텔레그램 Bot Token (API 토큰)
@@ -599,7 +645,23 @@ export const TelegramView = () => {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                품질경보 3단계 / 사내 공지사항 / 전자결재 / 07:30 모닝브리핑 수신방
+                품질경보 3단계 / 사내 공지사항 / 전자결재 / 07:30 일반 모닝브리핑
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                경영방 (대표·전무) Chat ID
+              </label>
+              <input
+                type="text"
+                placeholder="예: -1003939516875 (경영방)"
+                value={telegramConfig.pnlChatId || ""}
+                onChange={(e) => setTelegramConfig({ ...telegramConfig, pnlChatId: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-slate-400">
+                매일 아침 07:30 손익결산(매출/매입/달성율/공통일정) 브리핑
               </p>
             </div>
           </div>

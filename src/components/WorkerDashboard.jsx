@@ -670,6 +670,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "102.4";
   const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "98.7";
 
+  const [selectedPnLChannel, setSelectedPnLChannel] = useState("-1003939516875"); // Default: 경영방 (대표·전무 전용)
+
   const handleSendDailyPnLTelegram = async () => {
     setSendingDailyPnL(true);
     try {
@@ -677,16 +679,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
         : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
 
+      const channelName = selectedPnLChannel === "-1003939516875" ? "경영방 (대표·전무)" : selectedPnLChannel === "290615483" ? "대표님 1:1" : "오륙 통합방";
+
       const res = await sendDailyPnLMorningBriefingTelegram({
         salesAmount: customPnLBriefing?.salesAmount ?? totalSales,
         purchaseAmount: customPnLBriefing?.purchaseAmount ?? totalPurchases,
         salesAchievementRate: customPnLBriefing?.salesAchievementRate || `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}%` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
         purchaseAchievementRate: customPnLBriefing?.purchaseAchievementRate || `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`,
-        commonSchedules: customPnLBriefing?.commonSchedules || todaySchedsText
-      });
+        commonSchedules: customPnLBriefing?.commonSchedules || todaySchedsText,
+        targetChatId: selectedPnLChannel
+      }, selectedPnLChannel);
 
       if (res.success) {
-        setToastMessage("아침 손익결산 브리핑 텔레그램 메시지가 발송되었습니다.");
+        setToastMessage(`[${channelName}]으로 아침 손익결산 브리핑이 발송되었습니다.`);
         setLogSavedToast(true);
         setTimeout(() => setLogSavedToast(false), 3000);
         setDailyPnLModalOpen(false);
@@ -3731,7 +3736,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs text-slate-400">
                   <div className="flex items-center gap-1.5 font-bold">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>오륙 통합 알림방 (수신 화면 미리보기)</span>
+                    <span>
+                      {selectedPnLChannel === "-1003939516875"
+                        ? "👑 경영방 (대표·전무 전용 채널)"
+                        : selectedPnLChannel === "290615483"
+                        ? "👤 권태형 대표님 1:1 대화방"
+                        : "📢 오륙 통합방 채널"}
+                    </span>
                   </div>
                   <span className="text-[10.5px] font-mono">07:30 AM</span>
                 </div>
@@ -3741,7 +3752,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   {/* Header */}
                   <div>
                     <div className="font-black text-sm text-white flex items-center gap-1.5">
-                      <span>⬛ [오륙 경영정보] 일일 아침 손익결산 브리핑</span>
+                      <span>⬛ [오륙 {selectedPnLChannel === "-1003939516875" || selectedPnLChannel === "290615483" ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</span>
                     </div>
                     <div className="text-[11px] font-extrabold text-sky-400 mt-0.5">
                       {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })} 07:30 기준
@@ -3808,6 +3819,34 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     >
                       실시간 값 리셋
                     </button>
+                  </div>
+
+                  {/* 발송 대상 채널 선택 (경영방 / 통합방 / 대표 1:1) */}
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      발송 대상 채널 (수신처 구분)
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {[
+                        { id: "-1003939516875", label: "👑 경영방", desc: "대표·전무 전용", activeBg: "bg-purple-600 text-white border-purple-600 shadow-xs" },
+                        { id: "-4186792536", label: "📢 통합방", desc: "오륙 전체방", activeBg: "bg-blue-600 text-white border-blue-600 shadow-xs" },
+                        { id: "290615483", label: "👤 대표님 1:1", desc: "개인 직송", activeBg: "bg-amber-600 text-white border-amber-600 shadow-xs" }
+                      ].map((ch) => (
+                        <button
+                          key={ch.id}
+                          type="button"
+                          onClick={() => setSelectedPnLChannel(ch.id)}
+                          className={`p-2 rounded-xl text-center border transition-all cursor-pointer ${
+                            selectedPnLChannel === ch.id
+                              ? ch.activeBg
+                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+                          }`}
+                        >
+                          <div className="text-xs font-black">{ch.label}</div>
+                          <div className="text-[10px] opacity-80">{ch.desc}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* 매출액 */}
@@ -3894,10 +3933,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     className="w-full py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 hover:from-black hover:to-blue-950 text-white font-black text-xs shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     <Send className="w-4 h-4 text-sky-400" />
-                    <span>{sendingDailyPnL ? "텔레그램 발송 중..." : "🚀 아침 손익결산 텔레그램 즉시 발송하기"}</span>
+                    <span>
+                      {sendingDailyPnL
+                        ? "텔레그램 발송 중..."
+                        : `🚀 [${selectedPnLChannel === "-1003939516875" ? "경영방 (대표·전무)" : selectedPnLChannel === "290615483" ? "대표님 1:1" : "통합방"}]으로 즉시 발송하기`}
+                    </span>
                   </button>
                   <p className="text-[10px] text-center text-slate-400">
-                    오륙 통합 알림 채널로 실시간 텔레그램 메시지가 즉시 전송됩니다.
+                    {selectedPnLChannel === "-1003939516875"
+                      ? "경영진/대표·전무 전용 경영방으로 손익결산 브리핑이 안전하게 구분 발송됩니다."
+                      : selectedPnLChannel === "290615483"
+                      ? "권태형 대표님 1:1 개인톡으로 손익결산 브리핑이 발송됩니다."
+                      : "오륙 전체 통합방으로 손익결산 브리핑이 발송됩니다."}
                   </p>
                 </div>
               </div>

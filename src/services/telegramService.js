@@ -11,36 +11,34 @@ const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config_v4";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
 const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
 
-// Default Configuration (Pre-configured strictly for '오륙 통합방')
+// Default Configuration (Pre-configured for separated delivery: '오륙 통합방' + '경영방')
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 3단계 / 공지사항 / 07:30 모닝브리핑 / 전자결재)
+  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 3단계 / 사내공지 / 회의일정 / 전자결재 / 07:30 일반 모닝브리핑)
+  pnlChatId: "-1003939516875", // '경영방' 단톡방 (대표·전무/경영진 전용 07:30 손익결산 P&L 브리핑)
+  ceoChatId: "290615483", // 권태형 대표님 1:1 개인톡
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
-  sendDailyLeaveBriefing: true // 07:30 모닝브리핑
+  sendDailyLeaveBriefing: true, // 07:30 모닝브리핑 (오륙 통합방)
+  sendDailyPnLBriefing: true // 07:30 손익결산 브리핑 (경영방)
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
 
 export const getLocalTelegramConfig = () => {
   try {
-    // Clear old deprecated storage keys
-    localStorage.removeItem("oryuk_telegram_config");
-    localStorage.removeItem("oryuk_telegram_config_v2");
-    localStorage.removeItem("oryuk_telegram_config_v3");
-
     const saved = localStorage.getItem(TELEGRAM_CONFIG_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Guard against old 경영방 ID redirection
-      if (parsed.chatId === "-1003939516875" || !parsed.chatId) {
-        parsed.chatId = "-4186792536";
-      }
-      delete parsed.pnlChatId;
-      delete parsed.sendDailyPnLBriefing;
-      cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG, ...parsed, chatId: "-4186792536" };
+      cachedConfig = {
+        ...DEFAULT_TELEGRAM_CONFIG,
+        ...parsed,
+        chatId: parsed.chatId || "-4186792536",
+        pnlChatId: parsed.pnlChatId || "-1003939516875",
+        ceoChatId: parsed.ceoChatId || "290615483"
+      };
       localStorage.setItem(TELEGRAM_CONFIG_KEY, JSON.stringify(cachedConfig));
       return cachedConfig;
     }
@@ -51,9 +49,13 @@ export const getLocalTelegramConfig = () => {
 };
 
 export const saveTelegramConfig = async (config) => {
-  cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG, ...config, chatId: "-4186792536" };
-  delete cachedConfig.pnlChatId;
-  delete cachedConfig.sendDailyPnLBriefing;
+  cachedConfig = {
+    ...DEFAULT_TELEGRAM_CONFIG,
+    ...config,
+    chatId: config.chatId || "-4186792536",
+    pnlChatId: config.pnlChatId || "-1003939516875",
+    ceoChatId: config.ceoChatId || "290615483"
+  };
 
   try {
     localStorage.setItem(TELEGRAM_CONFIG_KEY, JSON.stringify(cachedConfig));
@@ -77,9 +79,13 @@ export const subscribeTelegramConfig = (onUpdate) => {
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
-          const merged = { ...DEFAULT_TELEGRAM_CONFIG, ...data, chatId: "-4186792536" };
-          delete merged.pnlChatId;
-          delete merged.sendDailyPnLBriefing;
+          const merged = {
+            ...DEFAULT_TELEGRAM_CONFIG,
+            ...data,
+            chatId: data.chatId || "-4186792536",
+            pnlChatId: data.pnlChatId || "-1003939516875",
+            ceoChatId: data.ceoChatId || "290615483"
+          };
           cachedConfig = merged;
           localStorage.setItem(TELEGRAM_CONFIG_KEY, JSON.stringify(merged));
           if (onUpdate) onUpdate(merged);
@@ -718,8 +724,12 @@ export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBr
 
 /**
  * 10. 매일 아침 손익결산 브리핑 발송 (매출액 / 매입액 / 전월대비 매출 달성율 / 전월대비 매입 달성율 / 공통일정)
+ * 기본 발송 채널: '경영방' (-1003939516875) (경영진/대표·전무 전용으로 분리 발송)
  */
-export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null) => {
+export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null, targetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || customBriefingData?.targetChatId || config.pnlChatId || "-1003939516875";
+
   const now = new Date();
   const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
   const dayName = daysOfWeek[now.getDay()];
@@ -744,9 +754,10 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   }
 
   const costRatio = salesAmount > 0 ? ((purchaseAmount / salesAmount) * 100).toFixed(1) : "71.1";
+  const isMgmtRoom = destChatId === "-1003939516875" || destChatId === "290615483";
 
   const message = `
-<b>⬛ [오륙 경영정보] 일일 아침 손익결산 브리핑</b>
+<b>⬛ [오륙 ${isMgmtRoom ? "경영진/임원" : "경영정보"}] 일일 아침 손익결산 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
 <b>[1] 당월 매입 / 매출 결산 현황</b>
@@ -764,7 +775,10 @@ ${commonSchedules}
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
 
-  return await sendTelegramMessage(message);
+  return await sendTelegramMessage(message, {
+    ...config,
+    chatId: destChatId
+  });
 };
 
 /**
