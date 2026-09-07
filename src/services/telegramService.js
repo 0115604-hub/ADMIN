@@ -156,7 +156,7 @@ export const sendQualityAlertTelegram = async (issueItem) => {
   const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
   const message = `
-<b>[품질경보 발생] 즉시 확인 요망</b>
+<b>🟥 [품질경보] 즉시 확인 요망</b>
 ----------------------------------------
 • <b>공장:</b> ${plant}
 • <b>공정/호기:</b> ${processInfo}
@@ -372,7 +372,9 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
   // 3. 품질경보 미삭제 / 미조치 현황
   const urgentIssues = getLocalUrgentIssues();
   let urgentSummary = "없음 (전건 종결완료)";
+  let urgentLabel = "품질경보 미조치";
   if (urgentIssues.length > 0) {
+    urgentLabel = "🟥 품질경보 미조치";
     const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
     const previewList = issueTitles.slice(0, 2);
     const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
@@ -385,7 +387,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
 ----------------------------------------
 • <b>금일 연차자:</b> ${leaveSummary}
 • <b>전일 미결재:</b> ${approvalSummary}
-• <b>품질경보 미조치:</b> ${urgentSummary}
+• <b>${urgentLabel}:</b> ${urgentSummary}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();

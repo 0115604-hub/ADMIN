@@ -191,7 +191,9 @@ export async function runMorningBriefing(force = false) {
   }
 
   let urgentSummary = "없음 (전건 종결완료)";
+  let urgentLabel = "품질경보 미조치";
   if (urgentIssues.length > 0) {
+    urgentLabel = "🟥 품질경보 미조치";
     const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
     const previewList = issueTitles.slice(0, 2);
     const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
@@ -204,7 +206,7 @@ export async function runMorningBriefing(force = false) {
 ----------------------------------------
 • <b>금일 연차자:</b> ${leaveSummary}
 • <b>전일 미결재:</b> ${approvalSummary}
-• <b>품질경보 미조치:</b> ${urgentSummary}
+• <b>${urgentLabel}:</b> ${urgentSummary}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
