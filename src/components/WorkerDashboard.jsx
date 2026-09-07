@@ -605,37 +605,33 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [changyongSaving, setChangyongSaving] = useState(false);
   const [showMiniCalendar, setShowMiniCalendar] = useState(false);
 
-  const [changyongCalYM, setChangyongCalYM] = useState(() => getKSTDateString().slice(0, 7));
+  const [changyongWeekAnchor, setChangyongWeekAnchor] = useState(() => getKSTDateString());
 
-  const handlePrevCalMonth = () => {
-    setChangyongCalYM((prev) => {
-      const [yearStr, monthStr] = prev.split("-");
-      let year = parseInt(yearStr, 10);
-      let month = parseInt(monthStr, 10) - 1;
-      if (month < 1) {
-        month = 12;
-        year -= 1;
-      }
-      return `${year}-${String(month).padStart(2, "0")}`;
+  const handlePrevWeek = () => {
+    setChangyongWeekAnchor((prev) => {
+      const d = new Date(prev + "T00:00:00+09:00");
+      d.setDate(d.getDate() - 7);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
     });
   };
 
-  const handleNextCalMonth = () => {
-    setChangyongCalYM((prev) => {
-      const [yearStr, monthStr] = prev.split("-");
-      let year = parseInt(yearStr, 10);
-      let month = parseInt(monthStr, 10) + 1;
-      if (month > 12) {
-        month = 1;
-        year += 1;
-      }
-      return `${year}-${String(month).padStart(2, "0")}`;
+  const handleNextWeek = () => {
+    setChangyongWeekAnchor((prev) => {
+      const d = new Date(prev + "T00:00:00+09:00");
+      d.setDate(d.getDate() + 7);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
     });
   };
 
   const handleResetToToday = () => {
     const today = getKSTDateString();
-    setChangyongCalYM(today.slice(0, 7));
+    setChangyongWeekAnchor(today);
     setChangyongSelectedDate(today);
   };
 
@@ -647,49 +643,50 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       .sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
   }, [annualLeaves]);
 
-  // Mini Calendar Days
-  const changyongCalendarDays = useMemo(() => {
-    if (!changyongCalYM) return [];
-    const [yearStr, monthStr] = changyongCalYM.split("-");
-    const year = parseInt(yearStr, 10);
-    const month = parseInt(monthStr, 10);
+  // Weekly Calendar Days (주차별 7일 계산)
+  const changyongWeeklyCalendarDays = useMemo(() => {
+    if (!changyongWeekAnchor) return [];
+    const baseDate = new Date(changyongWeekAnchor + "T00:00:00+09:00");
+    const dayOfWeek = baseDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const sundayDate = new Date(baseDate);
+    sundayDate.setDate(baseDate.getDate() - dayOfWeek);
 
-    const firstDayIndex = new Date(year, month - 1, 1).getDay();
-    const totalDays = new Date(year, month, 0).getDate();
     const todayStr = getKSTDateString();
+    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+    const weekDays = [];
 
-    const days = [];
-    for (let i = 0; i < firstDayIndex; i++) {
-      days.push({ isEmpty: true, key: `empty-${i}` });
-    }
-
-    for (let d = 1; d <= totalDays; d++) {
-      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      const dayOfWeek = (firstDayIndex + d - 1) % 7;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sundayDate);
+      d.setDate(sundayDate.getDate() + i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
       const isToday = dateStr === todayStr;
       const isSelected = dateStr === changyongSelectedDate;
 
       const dayEvents = (annualLeaves || []).filter(
         (l) =>
           Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용")) &&
-          l.startDate <= dateStr &&
-          (l.endDate || l.startDate) >= dateStr
+          (l.startDate || "") <= dateStr &&
+          (l.endDate || l.startDate || "") >= dateStr
       );
 
-      days.push({
-        isEmpty: false,
-        key: `day-${d}`,
-        dayNumber: d,
+      weekDays.push({
         dateStr,
-        dayOfWeek,
+        year: yyyy,
+        month: parseInt(mm, 10),
+        dayNumber: parseInt(dd, 10),
+        dayName: dayNames[i],
+        dayOfWeek: i,
         isToday,
         isSelected,
         events: dayEvents
       });
     }
 
-    return days;
-  }, [changyongCalYM, changyongSelectedDate, annualLeaves]);
+    return weekDays;
+  }, [changyongWeekAnchor, changyongSelectedDate, annualLeaves]);
 
   const handleChangyongRegisterSchedule = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -1595,39 +1592,44 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 )}
               </div>
 
-              {/* Right: Optional Mini-Calendar Toggle Button */}
+              {/* Right: Optional Weekly Calendar Toggle Button */}
               <button
                 type="button"
                 onClick={() => setShowMiniCalendar((prev) => !prev)}
                 className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-black border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
               >
                 <Calendar className="w-3 h-3 text-blue-500" />
-                <span>{showMiniCalendar ? "달력 닫기 ▲" : "월간 달력 보기 ▼"}</span>
+                <span>{showMiniCalendar ? "주차별 달력 닫기 ▲" : "주차별 달력 보기 ▼"}</span>
               </button>
             </div>
 
-            {/* Optional Collapsible Clean Mini Calendar Grid (Only visible when toggled) */}
+            {/* Collapsible Clean Weekly Calendar Grid (주차별 달력) */}
             {showMiniCalendar && (
               <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 animate-fadeIn">
-                {/* Month Navigator Header */}
+                {/* Week Navigator Header */}
                 <div className="flex items-center justify-between pb-2">
                   <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                     <button
                       type="button"
-                      onClick={handlePrevCalMonth}
+                      onClick={handlePrevWeek}
                       className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
-                      title="이전 달"
+                      title="이전 주"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
-                    <span className="px-2 text-xs font-black text-slate-900 dark:text-white">
-                      {changyongCalYM.split("-")[0]}년 {parseInt(changyongCalYM.split("-")[1], 10)}월
-                    </span>
+                    {changyongWeeklyCalendarDays.length === 7 && (
+                      <span className="px-2 text-xs font-black text-slate-900 dark:text-white">
+                        {changyongWeeklyCalendarDays[3].year}년 {changyongWeeklyCalendarDays[3].month}월 {Math.ceil(changyongWeeklyCalendarDays[3].dayNumber / 7)}주차
+                        <span className="text-[11px] text-slate-400 font-normal ml-1">
+                          ({changyongWeeklyCalendarDays[0].month}/{changyongWeeklyCalendarDays[0].dayNumber} ~ {changyongWeeklyCalendarDays[6].month}/{changyongWeeklyCalendarDays[6].dayNumber})
+                        </span>
+                      </span>
+                    )}
                     <button
                       type="button"
-                      onClick={handleNextCalMonth}
+                      onClick={handleNextWeek}
                       className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer"
-                      title="다음 달"
+                      title="다음 주"
                     >
                       <ChevronRight className="w-3.5 h-3.5" />
                     </button>
@@ -1636,51 +1638,96 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <button
                     type="button"
                     onClick={handleResetToToday}
-                    className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10.5px] font-black border border-blue-200 dark:border-blue-800"
+                    className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10.5px] font-black border border-blue-200 dark:border-blue-800 hover:bg-blue-100 cursor-pointer transition-all active:scale-95"
                   >
-                    오늘로
+                    오늘/이번 주
                   </button>
                 </div>
 
-                {/* 7-Column Mini Grid */}
-                <div className="grid grid-cols-7 gap-1 text-center">
-                  {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
-                    <div
-                      key={d}
-                      className={`text-[10px] font-black py-0.5 rounded ${
-                        i === 0 ? "text-rose-600 bg-rose-50 dark:bg-rose-950/40" : i === 6 ? "text-blue-600 bg-blue-50 dark:bg-blue-950/40" : "text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800"
-                      }`}
-                    >
-                      {d}
-                    </div>
-                  ))}
-
-                  {changyongCalendarDays.map((cell) => {
-                    if (cell.isEmpty) {
-                      return <div key={cell.key} className="h-9 rounded bg-slate-50/50 dark:bg-slate-900/30" />;
-                    }
-
+                {/* 7-Column Weekly Grid */}
+                <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center">
+                  {changyongWeeklyCalendarDays.map((cell) => {
                     const hasEvent = cell.events && cell.events.length > 0;
                     return (
                       <div
-                        key={cell.key}
+                        key={cell.dateStr}
                         onClick={() => {
                           setChangyongSelectedDate(cell.dateStr);
                         }}
-                        className={`h-9 p-0.5 rounded border transition-all cursor-pointer flex flex-col justify-between items-center select-none ${
+                        className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between items-center select-none min-h-[76px] sm:min-h-[84px] ${
                           cell.isSelected
-                            ? "bg-blue-100 dark:bg-blue-900/70 border-blue-500 font-black ring-1 ring-blue-500"
+                            ? "bg-blue-50 dark:bg-blue-950/70 border-blue-500 ring-2 ring-blue-500 shadow-sm"
                             : cell.isToday
-                            ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 font-black"
-                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-blue-400"
+                            ? "bg-emerald-50/60 dark:bg-emerald-950/40 border-emerald-400 shadow-2xs"
+                            : "bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-2xs"
                         }`}
                       >
-                        <span className={`text-[10.5px] font-black ${cell.dayOfWeek === 0 ? "text-rose-600" : cell.dayOfWeek === 6 ? "text-blue-600" : "text-slate-800 dark:text-slate-200"}`}>
-                          {cell.dayNumber}
-                        </span>
-                        {hasEvent && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" title={cell.events.map(e => e.leaveType).join(", ")} />
-                        )}
+                        {/* Day Header (Day Name + Date Number) */}
+                        <div className="w-full flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-700/60">
+                          <span
+                            className={`text-[10.5px] font-black ${
+                              cell.dayOfWeek === 0
+                                ? "text-rose-600"
+                                : cell.dayOfWeek === 6
+                                ? "text-blue-600"
+                                : "text-slate-600 dark:text-slate-400"
+                            }`}
+                          >
+                            {cell.dayName}
+                          </span>
+                          <span
+                            className={`text-xs font-black px-1.5 py-0.2 rounded ${
+                              cell.isToday
+                                ? "bg-emerald-600 text-white"
+                                : cell.isSelected
+                                ? "bg-blue-600 text-white"
+                                : cell.dayOfWeek === 0
+                                ? "text-rose-600 font-black"
+                                : cell.dayOfWeek === 6
+                                ? "text-blue-600 font-black"
+                                : "text-slate-800 dark:text-slate-200 font-extrabold"
+                            }`}
+                          >
+                            {cell.dayNumber}
+                          </span>
+                        </div>
+
+                        {/* Events Display Area: 5글자 내외 표시 */}
+                        <div className="w-full flex-1 flex flex-col justify-center items-center py-1 gap-1">
+                          {hasEvent ? (
+                            cell.events.map((ev) => {
+                              const rawText = (ev.reason && ev.reason !== ev.leaveType ? ev.reason : ev.leaveType) || "일정";
+                              const displayText = rawText.length > 5 ? rawText.slice(0, 5) : rawText;
+
+                              let badgeStyle = "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900";
+                              if (ev.leaveType?.includes("반차")) {
+                                badgeStyle = "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900";
+                              } else if (ev.leaveType?.includes("할일")) {
+                                badgeStyle = "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-900";
+                              } else if (ev.leaveType?.includes("업체방문") || ev.leaveType?.includes("출장")) {
+                                badgeStyle = "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-900";
+                              } else if (ev.leaveType?.includes("특근")) {
+                                badgeStyle = "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900";
+                              } else if (ev.leaveType?.includes("외출")) {
+                                badgeStyle = "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-900";
+                              }
+
+                              return (
+                                <div
+                                  key={ev.id}
+                                  className={`w-full text-center px-1 py-0.5 rounded text-[10px] sm:text-[11px] font-black border truncate shadow-2xs ${badgeStyle}`}
+                                  title={`${ev.leaveType}: ${ev.reason || ""}`}
+                                >
+                                  {displayText}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <span className="text-[10px] text-slate-300 dark:text-slate-600 font-bold">
+                              -
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
