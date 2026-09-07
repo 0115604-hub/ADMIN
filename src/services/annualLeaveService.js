@@ -187,6 +187,35 @@ export const deleteAnnualLeave = async (id) => {
   return filteredLocal;
 };
 
+// Complete or Dismiss an annual leave record (keeps history in calendar)
+export const completeOrDismissAnnualLeave = async (id) => {
+  const leaveId = String(id);
+  const current = getLocalAnnualLeaves();
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === leaveId) {
+      return {
+        ...l,
+        isCompleted: true,
+        isDismissed: true,
+        completedAt: new Date().toISOString()
+      };
+    }
+    return l;
+  });
+  saveLocalAnnualLeaves(updatedLocal);
+
+  try {
+    const target = updatedLocal.find((l) => String(l.id) === leaveId);
+    if (target) {
+      await setDoc(doc(db, COLLECTION_NAME, leaveId), target, { merge: true });
+    }
+  } catch (e) {
+    console.error("Firestore dismiss/complete annual leave error:", e);
+  }
+
+  return updatedLocal;
+};
+
 // Supported Leave Types Meta Helper
 export const getLeaveTypeMeta = (typeStr = "") => {
   const type = typeStr || "연차(전일)";

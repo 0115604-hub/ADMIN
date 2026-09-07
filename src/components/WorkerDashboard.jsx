@@ -80,6 +80,7 @@ import {
   subscribeAnnualLeaves,
   saveAnnualLeave,
   deleteAnnualLeave,
+  completeOrDismissAnnualLeave,
   getUserLeaveStatus
 } from "../services/annualLeaveService";
 import {
@@ -636,13 +637,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setChangyongSelectedDate(today);
   };
 
-  // 우창용 선임이 등록한 전체 일정 목록 (최신순)
-  const changyongMyLeaves = useMemo(() => {
+  // 우창용 선임의 활성 등록 일정 (다가올 날짜 순서대로 정렬, 완료/제거된 일정 제외)
+  const changyongActiveLeaves = useMemo(() => {
     if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
     return annualLeaves
-      .filter((l) => Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용")))
-      .sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+      .filter((l) => Boolean(l && (l.userId === "hal_cy" || l.userName === "우창용") && !l.isCompleted && !l.isDismissed))
+      .sort((a, b) => {
+        const aDate = a.startDate || "";
+        const bDate = b.startDate || "";
+        return aDate.localeCompare(bDate);
+      });
   }, [annualLeaves]);
+
+  const handleChangyongDismissLeave = async (leaveId) => {
+    try {
+      await completeOrDismissAnnualLeave(leaveId);
+      setToastMessage("일정이 완료되었습니다. (주차별 달력에는 기록이 보존됩니다)");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 3000);
+    } catch (err) {
+      alert("일정 완료 처리 중 오류: " + err.message);
+    }
+  };
 
   // Weekly Calendar Days (주차별 7일 계산)
   const changyongWeeklyCalendarDays = useMemo(() => {
@@ -1542,15 +1558,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             {/* Bottom Row: My Registered Schedules Strip & Optional Mini-Calendar Toggle */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              {/* Left: Registered Schedules Tags */}
+              {/* Left: Registered Schedules Tags (Sorted by upcoming date, blinking on today) */}
               <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
                 <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1">
                   <CalendarDays className="w-3 h-3 text-blue-500" />
                   <span>나의 등록 일정:</span>
                 </span>
 
-                {changyongMyLeaves.length > 0 ? (
-                  changyongMyLeaves.slice(0, 5).map((ev) => {
+                {changyongActiveLeaves.length > 0 ? (
+                  changyongActiveLeaves.map((ev) => {
+                    const isTodayEvent = (ev.startDate || "") <= todayDateStr && todayDateStr <= (ev.endDate || ev.startDate || "");
                     let badgeColor = "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-900";
                     let emoji = "🌴";
                     if (ev.leaveType?.includes("반차")) {
@@ -1573,18 +1590,35 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     return (
                       <span
                         key={ev.id}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border shadow-2xs ${badgeColor}`}
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-black border shadow-2xs transition-all ${
+                          isTodayEvent
+                            ? "animate-pulse ring-2 ring-rose-500 bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border-rose-400 font-black shadow-md"
+                            : badgeColor
+                        }`}
                       >
+                        {isTodayEvent && (
+                          <span className="flex h-2 w-2 relative shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600"></span>
+                          </span>
+                        )}
                         <span>{emoji}</span>
-                        <span>{ev.startDate?.slice(5)} {ev.leaveType}</span>
+                        <span>
+                          {ev.startDate === todayDateStr ? (
+                            <span className="text-rose-700 dark:text-rose-300 font-black mr-1">[오늘]</span>
+                          ) : (
+                            <span className="text-slate-600 dark:text-slate-400 font-bold mr-1">{ev.startDate?.slice(5)}</span>
+                          )}
+                          {ev.leaveType}
+                        </span>
                         {ev.reason && ev.reason !== ev.leaveType && (
-                          <span className="text-[10px] opacity-75 truncate max-w-[80px]">({ev.reason})</span>
+                          <span className="text-[10px] opacity-80 truncate max-w-[80px]">({ev.reason})</span>
                         )}
                         <button
                           type="button"
-                          onClick={() => handleDeleteLeave(ev.id)}
-                          className="hover:text-rose-600 dark:hover:text-rose-400 ml-0.5 font-black cursor-pointer"
-                          title="이 일정 취소/삭제"
+                          onClick={() => handleChangyongDismissLeave(ev.id)}
+                          className="hover:text-rose-600 dark:hover:text-rose-400 ml-1 font-black cursor-pointer p-0.5"
+                          title="일정 완료 / 목록에서 제거 (달력에는 기록 보존)"
                         >
                           ✕
                         </button>
@@ -1593,7 +1627,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   })
                 ) : (
                   <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                    등록된 일정이 없습니다. 우측 폼에서 날짜를 선택하여 간편하게 등록하세요.
+                    예정된 일정이 없습니다. 우측 폼에서 날짜를 선택하여 간편하게 등록하세요.
                   </span>
                 )}
               </div>
@@ -1698,15 +1732,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           </span>
                         </div>
 
-                        {/* Events Display Area: 5글자 내외 표시 */}
+                        {/* Events Display Area: 5글자 내외 표시 & 완료 기록 보존 */}
                         <div className="w-full flex-1 flex flex-col justify-center items-center py-1 gap-1">
                           {hasEvent ? (
                             cell.events.map((ev) => {
                               const rawText = (ev.reason && ev.reason !== ev.leaveType ? ev.reason : ev.leaveType) || "일정";
+                              const isCompleted = Boolean(ev.isCompleted || ev.isDismissed);
+                              const isTodayEvent = cell.isToday && !isCompleted;
                               const displayText = rawText.length > 5 ? rawText.slice(0, 5) : rawText;
 
                               let badgeStyle = "bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900";
-                              if (ev.leaveType?.includes("반차")) {
+                              if (isCompleted) {
+                                badgeStyle = "bg-slate-100 text-slate-500 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 opacity-80 line-through";
+                              } else if (ev.leaveType?.includes("반차")) {
                                 badgeStyle = "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900";
                               } else if (ev.leaveType?.includes("할일")) {
                                 badgeStyle = "bg-sky-100 text-sky-800 border-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-900";
@@ -1721,10 +1759,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               return (
                                 <div
                                   key={ev.id}
-                                  className={`w-full text-center px-1 py-0.5 rounded text-[10px] sm:text-[11px] font-black border truncate shadow-2xs ${badgeStyle}`}
-                                  title={`${ev.leaveType}: ${ev.reason || ""}`}
+                                  className={`w-full text-center px-1 py-0.5 rounded text-[10px] sm:text-[11px] font-black border truncate shadow-2xs ${badgeStyle} ${
+                                    isTodayEvent ? "animate-pulse ring-1 ring-rose-500 font-black" : ""
+                                  }`}
+                                  title={`${ev.leaveType}: ${ev.reason || ""}${isCompleted ? " (완료됨)" : ""}`}
                                 >
-                                  {displayText}
+                                  {isCompleted ? `✓ ${displayText}` : displayText}
                                 </div>
                               );
                             })
