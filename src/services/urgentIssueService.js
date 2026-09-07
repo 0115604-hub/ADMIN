@@ -124,6 +124,9 @@ export const saveUrgentIssue = async (issueData) => {
     actionAuthor: issueData.actionAuthor || "",
     actionAt: issueData.actionAt || "",
     isResolved: issueData.isResolved !== undefined ? issueData.isResolved : (Boolean(issueData.actionResult && issueData.actionResult.trim())),
+    isDeleted: issueData.isDeleted === true,
+    deletedAt: issueData.deletedAt || "",
+    deletedBy: issueData.deletedBy || "",
     createdAt: issueData.createdAt || nowStr
   };
 
@@ -145,7 +148,7 @@ export const saveUrgentIssue = async (issueData) => {
   }
 
   // Trigger real-time Telegram notification for new alert / issue
-  if (existingIdx < 0) {
+  if (existingIdx < 0 && !fullItem.isDeleted) {
     sendQualityAlertTelegram(fullItem).catch((err) => {
       console.warn("Telegram alert error:", err);
     });
@@ -157,7 +160,7 @@ export const saveUrgentIssue = async (issueData) => {
 // In-flight deletion lock to prevent duplicate Telegram messages and race conditions
 const activeDeletes = new Set();
 
-// Delete an urgent issue
+// Soft Delete an urgent issue (삭제 이력 보존)
 export const deleteUrgentIssue = async (id, deleterName = "") => {
   if (activeDeletes.has(id)) {
     return getLocalUrgentIssues();
@@ -167,22 +170,38 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
   try {
     const current = getLocalUrgentIssues();
     const target = current.find((i) => i.id === id);
-    const updated = current.filter((i) => i.id !== id);
+    if (!target) return current;
+
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    const deletedItem = {
+      ...target,
+      isDeleted: true,
+      deletedAt: nowStr,
+      deletedBy: deleterName || "관리자"
+    };
+
+    const updated = current.map((i) => (i.id === id ? deletedItem : i));
     saveLocalUrgentIssues(updated);
 
     try {
-      await deleteDoc(doc(db, COLLECTION_NAME, id));
+      await setDoc(doc(db, COLLECTION_NAME, id), deletedItem);
     } catch (e) {
-      console.warn("Firestore delete urgent issue fallback to local:", e);
+      console.warn("Firestore soft delete urgent issue fallback to local:", e);
     }
 
     // Trigger Telegram notification on delete (exactly once)
-    if (target) {
-      try {
-        await sendQualityDeleteTelegram(target, deleterName);
-      } catch (err) {
-        console.warn("Telegram delete alert error:", err);
-      }
+    try {
+      await sendQualityDeleteTelegram(deletedItem, deleterName);
+    } catch (err) {
+      console.warn("Telegram delete alert error:", err);
     }
 
     return updated;
@@ -191,6 +210,46 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       activeDeletes.delete(id);
     }, 3000);
   }
+};
+
+// Restore a soft-deleted urgent issue (삭제 취소 및 정상 복구)
+export const restoreUrgentIssue = async (id) => {
+  const current = getLocalUrgentIssues();
+  const target = current.find((i) => i.id === id);
+  if (!target) return current;
+
+  const restoredItem = {
+    ...target,
+    isDeleted: false,
+    deletedAt: "",
+    deletedBy: ""
+  };
+
+  const updated = current.map((i) => (i.id === id ? restoredItem : i));
+  saveLocalUrgentIssues(updated);
+
+  try {
+    await setDoc(doc(db, COLLECTION_NAME, id), restoredItem);
+  } catch (e) {
+    console.warn("Firestore restore urgent issue fallback to local:", e);
+  }
+
+  return updated;
+};
+
+// Hard Delete (영구 삭제)
+export const hardDeleteUrgentIssue = async (id) => {
+  const current = getLocalUrgentIssues();
+  const updated = current.filter((i) => i.id !== id);
+  saveLocalUrgentIssues(updated);
+
+  try {
+    await deleteDoc(doc(db, COLLECTION_NAME, id));
+  } catch (e) {
+    console.warn("Firestore hard delete fallback to local:", e);
+  }
+
+  return updated;
 };
 
 // Update action result (조치결과 입력 및 조치완료 처리)

@@ -38,7 +38,9 @@ import {
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
-  ListOrdered
+  ListOrdered,
+  RotateCcw,
+  Filter
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
@@ -51,6 +53,7 @@ import {
   subscribeUrgentIssues,
   saveUrgentIssue,
   deleteUrgentIssue,
+  restoreUrgentIssue,
   updateUrgentIssueActionResult
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
@@ -115,6 +118,7 @@ export const AuthModal = () => {
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
   const [detailIssueModal, setDetailIssueModal] = useState(null); // Selected Issue for Full Details & Photo Popup Modal
   const [issueModalPage, setIssueModalPage] = useState(1);
+  const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "active" | "deleted"
   const ISSUES_PER_PAGE = 5;
 
   // New Issue Form State (사진 첨부 지원)
@@ -231,10 +235,26 @@ export const AuthModal = () => {
     return () => unsub();
   }, []);
 
-  // Filter unresolved issues
-  const unresolvedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isResolved);
+  // Filter active, deleted, and unresolved issues
+  const activeIssues = useMemo(() => {
+    return urgentIssues.filter((i) => !i.isDeleted);
   }, [urgentIssues]);
+
+  const deletedIssues = useMemo(() => {
+    return urgentIssues.filter((i) => i.isDeleted);
+  }, [urgentIssues]);
+
+  const unresolvedActiveIssues = useMemo(() => {
+    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved);
+  }, [urgentIssues]);
+
+  const unresolvedIssues = unresolvedActiveIssues;
+
+  const filteredIssues = useMemo(() => {
+    if (issueFilterTab === "active") return urgentIssues.filter((i) => !i.isDeleted);
+    if (issueFilterTab === "deleted") return urgentIssues.filter((i) => i.isDeleted);
+    return urgentIssues;
+  }, [urgentIssues, issueFilterTab]);
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
@@ -454,7 +474,10 @@ export const AuthModal = () => {
     try {
       const updated = await deleteUrgentIssue(issue.id, expectedManager);
       setUrgentIssues(updated);
-      setDetailIssueModal(null);
+      const deletedItem = updated.find((i) => i.id === issue.id);
+      if (deletedItem) {
+        setDetailIssueModal(deletedItem);
+      }
       setDeleteModalData({
         isOpen: false,
         issue: null,
@@ -469,6 +492,22 @@ export const AuthModal = () => {
         isDeleting: false,
         errorMsg: "삭제 중 오류가 발생했습니다. 다시 시도해 주세요."
       }));
+    }
+  };
+
+  // Restore Soft-Deleted Issue
+  const handleRestoreIssue = async (issueId, e) => {
+    if (e) e.stopPropagation();
+    try {
+      const updated = await restoreUrgentIssue(issueId);
+      setUrgentIssues(updated);
+      const restored = updated.find((i) => i.id === issueId);
+      if (restored) {
+        setDetailIssueModal(restored);
+      }
+    } catch (err) {
+      console.error("Restore error:", err);
+      alert("복구 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -548,14 +587,14 @@ export const AuthModal = () => {
                 </h3>
 
                 <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full shrink-0 ${
-                  unresolvedIssues.length > 0
+                  unresolvedActiveIssues.length > 0
                     ? "bg-rose-500 text-white"
                     : "bg-emerald-600 text-white"
                 }`}>
-                  {unresolvedIssues.length > 0 ? `미조치 ${unresolvedIssues.length}건` : "조치완료"}
+                  {unresolvedActiveIssues.length > 0 ? `미조치 ${unresolvedActiveIssues.length}건` : "조치완료"}
                 </span>
                 <span className="text-[9.5px] font-bold text-slate-400 font-mono shrink-0">
-                  (총 {urgentIssues.length}건)
+                  (총 {urgentIssues.length}건 / 삭제·종결 {deletedIssues.length}건)
                 </span>
               </div>
 
@@ -602,18 +641,21 @@ export const AuthModal = () => {
                 ) : (
                   urgentIssues.map((item) => {
                     const isNotice = item.category === "공지사항" || item.category === "공유사항";
+                    const isItemDeleted = Boolean(item.isDeleted);
                     return (
                       <div
                         key={item.id}
                         onClick={() => {
                           setDetailIssueModal(item);
-                          const itemIdx = urgentIssues.findIndex((it) => it.id === item.id);
+                          const itemIdx = filteredIssues.findIndex((it) => it.id === item.id);
                           if (itemIdx >= 0) {
                             setIssueModalPage(Math.floor(itemIdx / ISSUES_PER_PAGE) + 1);
                           }
                         }}
                         className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
-                          item.isResolved
+                          isItemDeleted
+                            ? "bg-slate-50/70 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-80"
+                            : item.isResolved
                             ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                             : isNotice
                             ? "bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/25"
@@ -621,10 +663,14 @@ export const AuthModal = () => {
                         }`}
                         title="탭하여 상세 내용 및 현장 사진 확인"
                       >
-                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [상세보기] [조치상태] [삭제] */}
+                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [상세보기] [조치상태] [삭제/복구] */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            {isNotice ? (
+                            {isItemDeleted ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-slate-600 text-white shrink-0 shadow-xs">
+                                삭제
+                              </span>
+                            ) : isNotice ? (
                               <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-600 text-white shrink-0 shadow-xs">
                                 공지사항
                               </span>
@@ -643,24 +689,30 @@ export const AuthModal = () => {
                               {item.plant}
                             </span>
                             <span className={`truncate text-[11.5px] group-hover:underline ${
-                              !isNotice
+                              isItemDeleted
+                                ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
+                                : !isNotice
                                 ? "font-black text-rose-600 dark:text-rose-400"
                                 : "font-black text-slate-900 dark:text-white"
                             }`}>
                               {item.title ? `${item.title} - ${item.content}` : item.content}
                             </span>
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium hidden sm:inline">
-                              ({item.author} • {item.createdAt})
+                              ({item.author} • {isItemDeleted && item.deletedBy ? `삭제: ${item.deletedBy}` : item.createdAt})
                             </span>
                           </div>
 
-                          {/* Right: Detail badge, Status & Delete */}
+                          {/* Right: Detail badge, Status & Delete/Restore */}
                           <div className="flex items-center gap-1 shrink-0">
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 group-hover:bg-rose-100 group-hover:text-rose-700 dark:group-hover:bg-rose-950 dark:group-hover:text-rose-300 transition-colors">
                               <Eye className="w-2.5 h-2.5" />
                               <span className="hidden sm:inline">상세보기</span>
                             </span>
-                            {item.isResolved ? (
+                            {isItemDeleted ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                                🗑️삭제됨
+                              </span>
+                            ) : item.isResolved ? (
                               <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                                 ✓완료
                               </span>
@@ -669,17 +721,28 @@ export const AuthModal = () => {
                                 ⏳대기
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenDeleteModal(item, e);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
-                              title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {isItemDeleted ? (
+                              <button
+                                type="button"
+                                onClick={(e) => handleRestoreIssue(item.id, e)}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 hover:bg-blue-100 transition-colors cursor-pointer"
+                                title="삭제 취소 (복구)"
+                              >
+                                복구
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDeleteModal(item, e);
+                                }}
+                                className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                                title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -1057,9 +1120,10 @@ export const AuthModal = () => {
       {detailIssueModal && (() => {
         const item = urgentIssues.find((it) => it.id === detailIssueModal.id) || detailIssueModal;
         const isNotice = item.category === "공지사항" || item.category === "공유사항";
-        const totalIssuePages = Math.max(1, Math.ceil(urgentIssues.length / ISSUES_PER_PAGE));
+        const isDeleted = Boolean(item.isDeleted);
+        const totalIssuePages = Math.max(1, Math.ceil(filteredIssues.length / ISSUES_PER_PAGE));
         const validIssuePage = Math.min(Math.max(1, issueModalPage), totalIssuePages);
-        const paginatedIssues = urgentIssues.slice(
+        const paginatedIssues = filteredIssues.slice(
           (validIssuePage - 1) * ISSUES_PER_PAGE,
           validIssuePage * ISSUES_PER_PAGE
         );
@@ -1077,16 +1141,24 @@ export const AuthModal = () => {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <div className={`p-2 rounded-2xl text-white shadow-xs shrink-0 ${
-                    isNotice ? "bg-emerald-600" : "bg-rose-600"
+                    isDeleted
+                      ? "bg-slate-700"
+                      : isNotice
+                      ? "bg-emerald-600"
+                      : "bg-rose-600"
                   }`}>
-                    <Megaphone className="w-4 h-4" />
+                    {isDeleted ? <Trash2 className="w-4 h-4 text-rose-300" /> : <Megaphone className="w-4 h-4" />}
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black text-white shadow-xs ${
-                        isNotice ? "bg-emerald-600" : "bg-rose-600"
+                        isDeleted
+                          ? "bg-slate-700 dark:bg-slate-800 text-slate-200 border border-slate-600"
+                          : isNotice
+                          ? "bg-emerald-600"
+                          : "bg-rose-600"
                       }`}>
-                        {isNotice ? "📢 공지사항" : "🚨 품질경보"}
+                        {isDeleted ? "🗑️ 삭제/종결" : isNotice ? "📢 공지사항" : "🚨 품질경보"}
                       </span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                         item.plant === "한림공장"
@@ -1097,19 +1169,30 @@ export const AuthModal = () => {
                       }`}>
                         {item.plant}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        item.isResolved
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                      }`}>
-                        {item.isResolved ? "✓ 조치완료" : "⏳ 조치대기"}
-                      </span>
+                      {isDeleted ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-900">
+                          삭제(종결)됨
+                        </span>
+                      ) : (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                          item.isResolved
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                        }`}>
+                          {item.isResolved ? "✓ 조치완료" : "⏳ 조치대기"}
+                        </span>
+                      )}
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
                         (전체 {urgentIssues.length}건 중 선택됨)
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 mt-0.5">
                       작성자: <strong className="text-slate-700 dark:text-slate-200">{item.author} {item.authorTitle || ""}</strong> • {item.createdAt}
+                      {isDeleted && item.deletedAt && (
+                        <span className="text-rose-600 dark:text-rose-400 ml-1.5 font-bold">
+                          (삭제일: {item.deletedAt} / {item.deletedBy || "관리자"})
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -1125,18 +1208,55 @@ export const AuthModal = () => {
 
               {/* Modal Body - Scrollable */}
               <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[62vh]">
+                {/* 0. 삭제 상태인 경우 상단 알림 배너 & 복구 버튼 */}
+                {isDeleted && (
+                  <div className="p-3.5 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between gap-3 shadow-xs animate-fadeIn">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 rounded-xl bg-rose-500 text-white shrink-0">
+                        <Trash2 className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h5 className="font-black text-rose-700 dark:text-rose-300 text-xs">
+                          현재 삭제(종결) 처리된 항목입니다.
+                        </h5>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                          삭제일시: <strong className="text-slate-700 dark:text-slate-200">{item.deletedAt || "최근"}</strong> • 삭제 권한자: <strong className="text-slate-700 dark:text-slate-200">{item.deletedBy || "관리자"}</strong>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => handleRestoreIssue(item.id, e)}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>삭제 취소 (정상 복구)</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* 1. 제목 및 전달 내용 */}
                 <div className={`p-4 rounded-2xl border space-y-2 ${
-                  isNotice
+                  isDeleted
+                    ? "bg-slate-100/70 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700"
+                    : isNotice
                     ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-900/50"
                     : "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/50"
                 }`}>
                   {item.title && (
-                    <h4 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
+                    <h4 className={`text-sm font-black leading-snug ${
+                      isDeleted
+                        ? "text-slate-600 dark:text-slate-400 line-through decoration-rose-500/70"
+                        : "text-slate-900 dark:text-white"
+                    }`}>
                       {item.title}
                     </h4>
                   )}
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
+                  <div className={`text-xs font-semibold leading-relaxed whitespace-pre-wrap ${
+                    isDeleted
+                      ? "text-slate-600 dark:text-slate-400"
+                      : "text-slate-700 dark:text-slate-200"
+                  }`}>
                     {item.content}
                   </div>
                 </div>
@@ -1233,17 +1353,28 @@ export const AuthModal = () => {
 
                 {/* 선택된 항목 관리 버튼 바 */}
                 <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      const issueToDel = item;
-                      handleOpenDeleteModal(issueToDel, e);
-                    }}
-                    className="px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>현재 선택 항목 삭제</span>
-                  </button>
+                  {isDeleted ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleRestoreIssue(item.id, e)}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>이 항목 정상 복구</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        const issueToDel = item;
+                        handleOpenDeleteModal(issueToDel, e);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>현재 선택 항목 삭제</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -1259,37 +1390,86 @@ export const AuthModal = () => {
                 </div>
 
                 {/* ========================================================================= */}
-                {/* 🌟 4. [요청사항] 등록된 내용 5개씩 페이지로 관리하는 이전 등록 내역 목록 */}
+                {/* 🌟 4. [요청사항 반영] 삭제된 내용 포함 전체 내역 및 탭 필터 (페이지당 5개) */}
                 {/* ========================================================================= */}
                 <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <ListOrdered className="w-4 h-4 text-slate-700 dark:text-slate-300" />
                       <h5 className="text-xs font-black text-slate-900 dark:text-white">
                         등록 내역 목록
                       </h5>
                       <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        (총 {urgentIssues.length}건)
+                        (총 {filteredIssues.length}건)
                       </span>
                     </div>
-                    <span className="text-[10.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 px-2 py-0.5 rounded-full">
-                      페이지 {validIssuePage} / {totalIssuePages} (5개씩)
-                    </span>
+
+                    {/* Filter Tabs */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIssueFilterTab("all");
+                          setIssueModalPage(1);
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
+                          issueFilterTab === "all"
+                            ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+                            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        전체 ({urgentIssues.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIssueFilterTab("active");
+                          setIssueModalPage(1);
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
+                          issueFilterTab === "active"
+                            ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        활성 ({activeIssues.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIssueFilterTab("deleted");
+                          setIssueModalPage(1);
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black transition-all cursor-pointer ${
+                          issueFilterTab === "deleted"
+                            ? "bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs"
+                            : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        🗑️ 삭제·종결 ({deletedIssues.length})
+                      </button>
+                    </div>
                   </div>
+
                   <p className="text-[10.5px] text-slate-400">
-                    * 아래 목록에서 항목을 탭하시면 상단에서 상세 내용과 사진을 즉시 조회하고 관리할 수 있습니다.
+                    * 삭제(종결)된 항목도 이력에 보존되며, 탭하여 언제든 과거 사진과 조치 내용을 조회하거나 즉시 복구할 수 있습니다.
                   </p>
 
                   {/* 5개 목록 테이블/카드 */}
                   <div className="space-y-1.5">
                     {paginatedIssues.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-slate-400">
-                        등록된 품질경보 및 공지사항이 없습니다.
+                      <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500 font-bold bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                        {issueFilterTab === "deleted"
+                          ? "삭제(종결)된 내역이 없습니다."
+                          : issueFilterTab === "active"
+                          ? "현재 진행 중인 활성 내역이 없습니다."
+                          : "등록된 품질경보 및 공지사항이 없습니다."}
                       </div>
                     ) : (
                       paginatedIssues.map((it, idx) => {
                         const isCurrent = it.id === item.id;
                         const isItNotice = it.category === "공지사항" || it.category === "공유사항";
+                        const isItDeleted = Boolean(it.isDeleted);
                         const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
                         const totalImgCount = (it.images?.length || 0) + (it.actionImages?.length || 0);
 
@@ -1299,15 +1479,21 @@ export const AuthModal = () => {
                             onClick={() => setDetailIssueModal(it)}
                             className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between gap-2 cursor-pointer ${
                               isCurrent
-                                ? "bg-blue-50/90 dark:bg-blue-950/60 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/30 shadow-xs"
+                                ? isItDeleted
+                                  ? "bg-rose-50/90 dark:bg-rose-950/60 border-rose-400 dark:border-rose-600 ring-2 ring-rose-500/30 shadow-xs"
+                                  : "bg-blue-50/90 dark:bg-blue-950/60 border-blue-400 dark:border-blue-600 ring-2 ring-blue-500/30 shadow-xs"
+                                : isItDeleted
+                                ? "bg-slate-100/70 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-800/80 hover:bg-rose-50/40 dark:hover:bg-rose-950/30 opacity-80"
                                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:border-slate-300"
                             }`}
                           >
                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                              {/* Item Index / Selected Tag */}
+                              {/* Item Index */}
                               <span className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
                                 isCurrent
-                                  ? "bg-blue-600 text-white shadow-xs"
+                                  ? isItDeleted
+                                    ? "bg-rose-600 text-white shadow-xs"
+                                    : "bg-blue-600 text-white shadow-xs"
                                   : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-mono"
                               }`}>
                                 {itemNum}
@@ -1315,9 +1501,13 @@ export const AuthModal = () => {
 
                               {/* Category Badge */}
                               <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black text-white shrink-0 ${
-                                isItNotice ? "bg-emerald-600" : "bg-rose-600"
+                                isItDeleted
+                                  ? "bg-slate-600"
+                                  : isItNotice
+                                  ? "bg-emerald-600"
+                                  : "bg-rose-600"
                               }`}>
-                                {isItNotice ? "공지" : "경보"}
+                                {isItDeleted ? "삭제" : isItNotice ? "공지" : "경보"}
                               </span>
 
                               {/* Plant Badge */}
@@ -1334,7 +1524,11 @@ export const AuthModal = () => {
                               {/* Content Snippet */}
                               <span className={`text-xs truncate flex-1 ${
                                 isCurrent
-                                  ? "font-black text-blue-900 dark:text-blue-100"
+                                  ? isItDeleted
+                                    ? "font-black text-rose-900 dark:text-rose-200 line-through"
+                                    : "font-black text-blue-900 dark:text-blue-100"
+                                  : isItDeleted
+                                  ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
                                   : "font-semibold text-slate-800 dark:text-slate-200"
                               }`}>
                                 {it.title ? `${it.title} - ${it.content}` : it.content}
@@ -1350,13 +1544,17 @@ export const AuthModal = () => {
 
                               {/* Author & Date */}
                               <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
-                                {it.author} • {it.createdAt?.slice(5) || ""}
+                                {it.author} • {isItDeleted && it.deletedBy ? `삭제: ${it.deletedBy}` : (it.createdAt?.slice(5) || "")}
                               </span>
                             </div>
 
                             {/* Status Badge & Actions */}
                             <div className="flex items-center gap-1 shrink-0">
-                              {it.isResolved ? (
+                              {isItDeleted ? (
+                                <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                                  🗑️삭제됨
+                                </span>
+                              ) : it.isResolved ? (
                                 <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                                   ✓완료
                                 </span>
@@ -1366,29 +1564,43 @@ export const AuthModal = () => {
                                 </span>
                               )}
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenActionModal(it, e);
-                                }}
-                                className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors cursor-pointer"
-                                title="조치결과 입력/수정"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
+                              {isItDeleted ? (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRestoreIssue(it.id, e)}
+                                  className="px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800 text-[10px] font-black transition-colors cursor-pointer flex items-center gap-0.5"
+                                  title="삭제 취소 및 정상 복구"
+                                >
+                                  <RotateCcw className="w-2.5 h-2.5" />
+                                  <span>복구</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenActionModal(it, e);
+                                    }}
+                                    className="p-1 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950 transition-colors cursor-pointer"
+                                    title="조치결과 입력/수정"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
 
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenDeleteModal(it, e);
-                                }}
-                                className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
-                                title="삭제"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenDeleteModal(it, e);
+                                    }}
+                                    className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 transition-colors cursor-pointer"
+                                    title="삭제"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         );
