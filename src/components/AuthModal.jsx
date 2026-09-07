@@ -584,7 +584,7 @@ export const AuthModal = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-4 sm:py-10 flex justify-center items-start min-h-screen max-w-full">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
       {/* Background Ambient Glow Orbs */}
       <div className="fixed w-96 h-96 -top-20 -left-20 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="fixed w-96 h-96 -bottom-20 -right-20 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
@@ -595,39 +595,40 @@ export const AuthModal = () => {
         {/* Top Glowing Accent Line */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
-        <div className="p-3.5 sm:p-6">
+        <div className="p-3 sm:p-6">
           {/* Header Brand with Bright OryukLogo */}
-          <div className="text-center mb-3.5 sm:mb-4 flex flex-col items-center">
+          <div className="text-center mb-2.5 sm:mb-4 flex flex-col items-center">
             {/* Bright, Elevated Logo Container */}
-            <div className="relative mb-2">
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-3xl blur-md opacity-40 animate-pulse"></div>
-              <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center">
-                <OryukLogo className="w-8 h-8 sm:w-10 sm:h-10 drop-shadow-md" />
+            <div className="relative mb-1.5 sm:mb-2">
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl sm:rounded-3xl blur-md opacity-40 animate-pulse"></div>
+              <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 sm:p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center">
+                <OryukLogo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md" />
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[10.5px] font-black mb-1 shadow-xs">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[10px] sm:text-[10.5px] font-black mb-1 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>ORYUK SMART MES PORTAL</span>
             </div>
 
-            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
+            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
               <span className="text-blue-600 dark:text-blue-400">
                 (주)오륙
               </span>
               <span>생산관리 통합시스템</span>
             </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+            <p className="text-[10.5px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
               작업자 또는 관리자를 선택하여 안전하게 접속해 주세요.
             </p>
           </div>
 
           {/* ========================================================================= */}
-          {/* 📢 ⭐ [요청사항 반영] 로그인 상단 품질경보 및 공지사항 패널 (깔끔한 2줄 요약 형태) */}
+          {/* 📢 ⭐ [요청사항 반영] 품질경보패널: [전체] / [등록] 2가지 탭 UI */}
           {/* ========================================================================= */}
-          <div className="mb-4 sm:mb-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs overflow-hidden transition-all min-w-0">
-            {/* Panel Top Bar */}
-            <div className="p-2 sm:p-3 flex flex-wrap items-center justify-between gap-1.5 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
+          <div className="mb-3 sm:mb-4 rounded-xl sm:rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs overflow-hidden transition-all min-w-0">
+            {/* Panel Top Bar: 2 Tabs [전체] [등록] + Telegram & Fold/Unfold */}
+            <div className="p-1.5 sm:p-2.5 flex items-center justify-between gap-1.5 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
+              {/* Left: Title & Summary */}
               <div
                 onClick={() => {
                   if (urgentIssues.length > 0) {
@@ -635,54 +636,75 @@ export const AuthModal = () => {
                     setIssueModalPage(1);
                   }
                 }}
-                className="flex items-center gap-1.5 flex-wrap min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                className="flex items-center gap-1.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
                 title="탭하여 품질경보/공지사항 전체 관리 및 이력 팝업 열기"
               >
                 <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs shrink-0">
                   <Megaphone className="w-3 h-3" />
                 </div>
-                <h3 className="font-black text-xs flex items-center gap-1">
+                <h3 className="font-black text-[11px] sm:text-xs flex items-center gap-1 shrink-0">
                   <span className="text-rose-600 dark:text-rose-400 font-black">품질경보</span>
-                  <span className="text-slate-400 font-bold">/</span>
+                  <span className="text-slate-300 dark:text-slate-600 font-bold">/</span>
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold">사내공지</span>
-                  <span className="text-slate-400 font-bold">/</span>
+                  <span className="text-slate-300 dark:text-slate-600 font-bold">/</span>
                   <span className="text-purple-600 dark:text-purple-400 font-bold">회의일정</span>
                 </h3>
 
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full shrink-0 shadow-xs flex items-center gap-1 ${
+                <span className={`text-[9.5px] sm:text-[10px] font-black px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full shrink-0 shadow-xs flex items-center gap-0.5 ${
                   unresolvedIssues.length > 0
                     ? "bg-amber-500 text-slate-950 ring-1 ring-amber-400 animate-pulse"
                     : "bg-emerald-600 text-white"
                 }`}>
-                  {unresolvedIssues.length > 0 ? `⏳ 미결 ${unresolvedIssues.length}건` : "✓ 전체 종결"}
-                </span>
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-mono shrink-0 hidden sm:inline">
-                  (전체 {urgentIssues.length}건 • 미결 {unresolvedIssues.length}건 • 종결 {closedIssues.length}건)
+                  {unresolvedIssues.length > 0 ? `⏳ 미결 ${unresolvedIssues.length}` : "✓ 종결"}
                 </span>
               </div>
 
-              {/* Action Buttons in Header */}
-              <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
-                <button
-                  type="button"
-                  onClick={() => setIsIssueModalOpen(true)}
-                  className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[10px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer shrink-0"
-                  title="신규 품질경보, 사내공지, 회의일정 등록"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>+ 등록</span>
-                </button>
+              {/* Right: [전체] [등록] 2대 탭 및 유틸 버튼 */}
+              <div className="flex items-center gap-1 shrink-0">
+                {/* 2 Tabs: [전체] & [등록] */}
+                <div className="flex items-center gap-0.5 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-rose-200 dark:border-rose-900/60 shadow-2xs">
+                  {/* 1. [전체] 탭 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (urgentIssues.length > 0) {
+                        setDetailIssueModal(urgentIssues[0]);
+                        setIssueModalPage(1);
+                      }
+                    }}
+                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                    title="전체 목록 및 이력 팝업 열기"
+                  >
+                    <span>📋 전체</span>
+                    <span className="px-1 py-0.2 rounded-full bg-blue-800 text-white text-[9px] sm:text-[9.5px] font-mono font-bold">
+                      {urgentIssues.length}
+                    </span>
+                  </button>
 
+                  {/* 2. [등록] 탭 */}
+                  <button
+                    type="button"
+                    onClick={() => setIsIssueModalOpen(true)}
+                    className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg text-[10.5px] sm:text-[11px] font-black text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-0.5 active:scale-95 cursor-pointer"
+                    title="신규 품질경보, 사내공지, 회의일정 등록"
+                  >
+                    <Plus className="w-3 h-3 text-rose-500" />
+                    <span>등록</span>
+                  </button>
+                </div>
+
+                {/* Telegram Admin Icon Button */}
                 <button
                   type="button"
                   onClick={handleOpenTelegram}
-                  className="px-2 py-0.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer shrink-0"
+                  className="p-1 sm:px-1.5 sm:py-1 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black transition-all flex items-center gap-0.5 shadow-2xs active:scale-95 cursor-pointer shrink-0"
                   title="텔레그램 실시간 알림 연동 관리 (Admin 전용)"
                 >
                   <TelegramLogo className="w-3 h-3" />
-                  <span>telegram</span>
+                  <span className="hidden sm:inline">텔레그램</span>
                 </button>
 
+                {/* Fold/Unfold Button */}
                 <button
                   type="button"
                   onClick={() => setIsIssueExpanded((prev) => !prev)}
@@ -696,12 +718,12 @@ export const AuthModal = () => {
 
             {/* Panel Body: Exactly 2 Lines per Notice Item (활성 진행 중 항목만 표시) */}
             {isIssueExpanded && (
-              <div className="p-2 sm:p-2.5 space-y-2 max-h-60 overflow-y-auto">
+              <div className="p-1.5 sm:p-2 space-y-1.5 max-h-56 sm:max-h-60 overflow-y-auto">
                 {activeIssues.length === 0 ? (
-                  <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white/60 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
+                  <div className="py-3.5 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white/60 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-0.5">
                     <p>현재 진행 중인 품질경보, 공지사항 및 회의일정이 없습니다.</p>
-                    <p className="text-[10.5px] text-slate-400 font-normal">
-                      (과거 종결/삭제된 내역은 상단 제목 클릭 후 [종결] 탭에서 확인 및 복구 가능)
+                    <p className="text-[10px] text-slate-400 font-normal">
+                      (과거 종결/삭제된 내역은 상단 [전체] 탭에서 확인 및 복구 가능)
                     </p>
                   </div>
                 ) : (
@@ -720,7 +742,7 @@ export const AuthModal = () => {
                             setIssueModalPage(Math.floor(itemIdx / ISSUES_PER_PAGE) + 1);
                           }
                         }}
-                        className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
+                        className={`p-2 sm:p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1 sm:gap-1.5 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                           item.isResolved
                             ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                             : isMeeting
@@ -945,11 +967,11 @@ export const AuthModal = () => {
           )}
 
           {!selectedUser ? (
-            <div className="space-y-4">
+            <div className="space-y-2.5 sm:space-y-3.5">
               {/* ========================================================================= */}
               {/* 1. FACTORY 1: 삼랑진공장 */}
               {/* ========================================================================= */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2.5 shadow-sm">
+              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                     <div className="p-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
@@ -962,7 +984,7 @@ export const AuthModal = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                   {PLANTS[0].workers.map((worker) => {
                     const isChief = worker.name === "이명재" || worker.assignedProcess === "총괄관리";
                     const isPartner = worker.isPartner || worker.title === "협력업체";
@@ -973,7 +995,7 @@ export const AuthModal = () => {
                       <button
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
-                        className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-center min-h-[74px] ${
+                        className={`p-1.5 sm:p-2.5 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-center min-h-[58px] sm:min-h-[72px] ${
                           isOnLeave
                             ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-2 ring-rose-400/40 hover:border-rose-500"
                             : isChief
@@ -983,7 +1005,7 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-amber-400 hover:bg-amber-50/30 dark:hover:bg-amber-950/20"
                         }`}
                       >
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm transition-transform group-hover:scale-105 ${
+                        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center font-black text-[11px] sm:text-xs shadow-2xs transition-transform group-hover:scale-105 ${
                           isOnLeave
                             ? "bg-gradient-to-tr from-rose-500 to-rose-600 text-white"
                             : isChief
@@ -994,26 +1016,26 @@ export const AuthModal = () => {
                         }`}>
                           {isOnLeave ? leaveStatus?.emoji || "🌴" : worker.avatar}
                         </div>
-                        <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate w-full">
+                        <span className="font-black text-[11px] sm:text-xs text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 truncate w-full">
                           {worker.name}
                         </span>
 
                         {/* Leave Status & Role Badges */}
                         {leaveStatus?.status === "ACTIVE" ? (
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 animate-pulse ${leaveStatus.badgeColor}`}>
+                          <span className={`text-[8.5px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded shadow-xs flex items-center gap-0.5 animate-pulse ${leaveStatus.badgeColor}`}>
                             <span>{leaveStatus.emoji} {leaveStatus.label}</span>
                           </span>
                         ) : leaveStatus?.status === "SCHEDULED" ? (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${leaveStatus.badgeColor}`}>
+                          <span className={`text-[8.5px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border flex items-center gap-0.5 ${leaveStatus.badgeColor}`}>
                             <span>{leaveStatus.label}</span>
                           </span>
                         ) : isChief ? (
-                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 shadow-sm flex items-center gap-0.5">
+                          <span className="text-[8.5px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 shadow-xs flex items-center gap-0.5">
                             <Crown className="w-2.5 h-2.5" />
                             <span>총괄관리</span>
                           </span>
                         ) : isPartner ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">
+                          <span className="text-[8.5px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">
                             협력업체
                           </span>
                         ) : null}
@@ -1026,7 +1048,7 @@ export const AuthModal = () => {
               {/* ========================================================================= */}
               {/* 2. FACTORY 2: 한림공장 */}
               {/* ========================================================================= */}
-              <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2.5 shadow-sm">
+              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                     <div className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -1039,7 +1061,7 @@ export const AuthModal = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                   {PLANTS[1].workers.map((worker) => {
                     const isChief = worker.name === "김동욱" || worker.assignedProcess === "총괄관리";
                     const isPartner = worker.isPartner || worker.title === "협력업체";
@@ -1050,7 +1072,7 @@ export const AuthModal = () => {
                       <button
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
-                        className={`p-2.5 sm:p-3 rounded-xl border transition-all flex flex-col items-center justify-center gap-1 group cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-center min-h-[74px] ${
+                        className={`p-1.5 sm:p-2.5 rounded-xl border transition-all flex flex-col items-center justify-center gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-center min-h-[58px] sm:min-h-[72px] ${
                           isOnLeave
                             ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-2 ring-rose-400/40 hover:border-rose-500"
                             : isChief
@@ -1060,7 +1082,7 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20"
                         }`}
                       >
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm transition-transform group-hover:scale-105 ${
+                        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center font-black text-[11px] sm:text-xs shadow-2xs transition-transform group-hover:scale-105 ${
                           isOnLeave
                             ? "bg-gradient-to-tr from-rose-500 to-rose-600 text-white"
                             : isChief
@@ -1071,26 +1093,26 @@ export const AuthModal = () => {
                         }`}>
                           {isOnLeave ? leaveStatus?.emoji || "🌴" : worker.avatar}
                         </div>
-                        <span className="font-black text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate w-full">
+                        <span className="font-black text-[11px] sm:text-xs text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 truncate w-full">
                           {worker.name}
                         </span>
 
                         {/* Leave Status & Role Badges */}
                         {leaveStatus?.status === "ACTIVE" ? (
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 animate-pulse ${leaveStatus.badgeColor}`}>
+                          <span className={`text-[8.5px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded shadow-xs flex items-center gap-0.5 animate-pulse ${leaveStatus.badgeColor}`}>
                             <span>{leaveStatus.emoji} {leaveStatus.label}</span>
                           </span>
                         ) : leaveStatus?.status === "SCHEDULED" ? (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border flex items-center gap-0.5 ${leaveStatus.badgeColor}`}>
+                          <span className={`text-[8.5px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 sm:py-0.5 rounded border flex items-center gap-0.5 ${leaveStatus.badgeColor}`}>
                             <span>{leaveStatus.label}</span>
                           </span>
                         ) : isChief ? (
-                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-600 text-white shadow-sm flex items-center gap-0.5">
+                          <span className="text-[8.5px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.2 rounded bg-emerald-600 text-white shadow-xs flex items-center gap-0.5">
                             <Crown className="w-2.5 h-2.5" />
                             <span>총괄관리</span>
                           </span>
                         ) : isPartner ? (
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">
+                          <span className="text-[8.5px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300">
                             협력업체
                           </span>
                         ) : null}
@@ -1103,12 +1125,12 @@ export const AuthModal = () => {
               {/* ========================================================================= */}
               {/* 3. BOTTOM ACTIONS: ADMIN */}
               {/* ========================================================================= */}
-              <div className="pt-2 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">
+              <div className="pt-1.5 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">
                 {ADMIN_USERS.map((admin) => (
                   <button
                     key={admin.id}
                     onClick={() => handleUserClick(admin)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-black transition-all shadow-sm group active:scale-95"
+                    className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-[11px] sm:text-xs font-black transition-all shadow-2xs group active:scale-95 cursor-pointer"
                   >
                     <Shield className="w-3.5 h-3.5 text-indigo-500" />
                     <span>ADMIN 관리자</span>
@@ -1206,11 +1228,11 @@ export const AuthModal = () => {
 
         return (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn"
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn"
             onClick={() => setDetailIssueModal(null)}
           >
             <div
-              className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp text-xs max-h-[92vh] flex flex-col"
+              className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp text-xs max-h-[94vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -1648,9 +1670,9 @@ export const AuthModal = () => {
                 </div>
 
                 {/* ========================================================================= */}
-                {/* 🌟 4. [요청사항 반영] [전체] [미결] [종결] 구분 탭 & 시인성 개선 목록 (페이지당 5개) */}
+                {/* 🌟 4. [요청사항 반영] [전체] [등록] 2가지 탭 & 시인성 개선 목록 (페이지당 5개) */}
                 {/* ========================================================================= */}
-                <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                       <ListOrdered className="w-4 h-4 text-slate-700 dark:text-slate-300" />
@@ -1658,12 +1680,12 @@ export const AuthModal = () => {
                         등록 내역 이력
                       </h5>
                       <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
-                        (선택 탭 {filteredIssues.length}건 / 전체 {urgentIssues.length}건)
+                        (전체 {urgentIssues.length}건 • 미결 {unresolvedIssues.length}건)
                       </span>
                     </div>
 
-                    {/* [전체] [미결] [종결] 3단 구분 탭 - 고대비 시인성 극대화 UI */}
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner">
+                    {/* [전체] [등록] 2단 구분 탭 UI */}
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
                       {/* 1. [전체] 탭 */}
                       <button
                         type="button"
@@ -1671,74 +1693,28 @@ export const AuthModal = () => {
                           setIssueFilterTab("all");
                           setIssueModalPage(1);
                         }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                          issueFilterTab === "all"
-                            ? "bg-blue-600 text-white shadow-md ring-1 ring-blue-500 scale-[1.02]"
-                            : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/80"
-                        }`}
+                        className="px-3 py-1 rounded-lg text-xs font-black bg-blue-600 text-white shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                       >
                         <span>📋 전체</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                          issueFilterTab === "all"
-                            ? "bg-blue-800 text-white"
-                            : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                        }`}>
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-blue-800 text-white">
                           {urgentIssues.length}
                         </span>
                       </button>
 
-                      {/* 2. [미결] 탭 (조치 대기) */}
+                      {/* 2. [등록] 탭 */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setIssueFilterTab("unresolved");
-                          setIssueModalPage(1);
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                          issueFilterTab === "unresolved"
-                            ? "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md ring-1 ring-amber-400 scale-[1.02]"
-                            : "text-amber-700 dark:text-amber-400 hover:bg-amber-100/70 dark:hover:bg-amber-950/50"
-                        }`}
+                        onClick={() => setIsIssueModalOpen(true)}
+                        className="px-3 py-1 rounded-lg text-xs font-black text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/80 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                       >
-                        <span>⏳ 미결</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
-                          issueFilterTab === "unresolved"
-                            ? "bg-slate-950 text-amber-300"
-                            : unresolvedIssues.length > 0
-                            ? "bg-amber-200 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200"
-                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-                        }`}>
-                          {unresolvedIssues.length}
-                        </span>
-                      </button>
-
-                      {/* 3. [종결] 탭 (조치완료 + 삭제종결) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIssueFilterTab("closed");
-                          setIssueModalPage(1);
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                          issueFilterTab === "closed"
-                            ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md ring-1 ring-emerald-500 scale-[1.02]"
-                            : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100/70 dark:hover:bg-emerald-950/50"
-                        }`}
-                      >
-                        <span>✓ 종결</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
-                          issueFilterTab === "closed"
-                            ? "bg-emerald-800 text-white"
-                            : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                        }`}>
-                          {closedIssues.length}
-                        </span>
+                        <Plus className="w-3.5 h-3.5 text-rose-500" />
+                        <span>신규 등록</span>
                       </button>
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    * <strong>[미결]</strong>은 조치 대기 중인 항목이며, <strong>[종결]</strong>은 조치 완료 및 삭제 처리된 이력 항목입니다. 리스트 항목을 클릭하면 상단에서 상세 내용과 사진을 즉시 조회할 수 있습니다.
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
+                    * 리스트 항목을 클릭하면 상단에서 상세 안건, 회신 내용 및 현장 조치 사진을 즉시 조회할 수 있습니다.
                   </p>
 
                   {/* 5개 목록 테이블/카드 */}
@@ -2016,9 +1992,9 @@ export const AuthModal = () => {
       {/* 🌟 1. 품질이슈 및 공유사항 등록 팝업 모달 (작업자 등록 창) */}
       {/* ========================================================================= */}
       {isIssueModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-lg w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
+            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className={`p-2 rounded-xl text-white shadow-xs ${
                   newIssueForm.category === "회의일정"
@@ -2030,14 +2006,14 @@ export const AuthModal = () => {
                   <Megaphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                     {newIssueForm.category === "회의일정"
                       ? "사내 회의일정 등록"
                       : newIssueForm.category === "공지사항"
                       ? "사내 공지사항 등록"
                       : "품질경보 긴급 등록"}
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-[11px] sm:text-xs text-slate-400">
                     전작업자 작성 가능 • 등록 즉시 텔레그램 및 로그인 화면에 전파됩니다.
                   </p>
                 </div>
@@ -2051,7 +2027,7 @@ export const AuthModal = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewIssue} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveNewIssue} className="space-y-3 sm:space-y-4 text-xs">
               {/* 구분 & 공장 */}
               <div className="space-y-3">
                 {/* 3단 이슈 구분 선택: 품질경보(적색) / 사내공지(녹색) / 회의일정(보라색) */}
@@ -2367,18 +2343,18 @@ export const AuthModal = () => {
       {/* 🌟 2. 조치결과 입력/수정 전용 팝업 모달 */}
       {/* ========================================================================= */}
       {actionModalData.isOpen && actionModalData.issue && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-lg w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
+            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-xs">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
                     조치결과 입력 및 조치완료 처리
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-[11px] sm:text-xs text-slate-400">
                     해당 품질경보 및 공지사항에 대한 조치 완료 결과를 기록합니다.
                   </p>
                 </div>
@@ -2407,7 +2383,7 @@ export const AuthModal = () => {
               </p>
             </div>
 
-            <form onSubmit={handleSaveActionResult} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveActionResult} className="space-y-3 sm:space-y-4 text-xs">
               {/* 조치자 선택 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
@@ -2575,9 +2551,9 @@ export const AuthModal = () => {
       {/* 🌟 3. 공장 품질경보 및 공지사항 삭제 전용 권한 확인 모달 (이명재 / 김동욱 권한 검증) */}
       {/* ========================================================================= */}
       {deleteModalData.isOpen && deleteModalData.issue && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-md w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
+            <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs">
                   <Shield className="w-4 h-4" />
