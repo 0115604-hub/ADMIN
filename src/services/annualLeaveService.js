@@ -7,6 +7,7 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { getKSTDateString } from "../utils/dateUtils";
 
 const COLLECTION_NAME = "annual_leaves";
 const LOCAL_STORAGE_KEY = "oryuk_annual_leaves_v1";
@@ -224,9 +225,9 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "오전반차",
       emoji: "🌤️",
       activeLabel: "오전반차",
-      scheduledLabelPrefix: "오전반차예정",
-      activeBadge: "bg-amber-500 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800"
+      scheduledLabelPrefix: "오전반차",
+      activeBadge: "bg-amber-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-amber-500 text-white font-black shadow-2xs"
     };
   }
   if (type.includes("오후반차") || type === "반차(오후)") {
@@ -234,9 +235,9 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "오후반차",
       emoji: "⛅",
       activeLabel: "오후반차",
-      scheduledLabelPrefix: "오후반차예정",
-      activeBadge: "bg-orange-500 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-800"
+      scheduledLabelPrefix: "오후반차",
+      activeBadge: "bg-orange-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-orange-500 text-white font-black shadow-2xs"
     };
   }
   if (type.includes("할일")) {
@@ -245,8 +246,8 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       emoji: "📝",
       activeLabel: "할일",
       scheduledLabelPrefix: "할일",
-      activeBadge: "bg-sky-500 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800"
+      activeBadge: "bg-sky-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-sky-500 text-white font-black shadow-2xs"
     };
   }
   if (type.includes("업체방문")) {
@@ -254,29 +255,29 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "업체방문",
       emoji: "🏢",
       activeLabel: "업체방문",
-      scheduledLabelPrefix: "업체방문예정",
+      scheduledLabelPrefix: "업체방문",
       activeBadge: "bg-indigo-600 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800"
+      scheduledBadge: "bg-indigo-500 text-white font-black shadow-2xs"
     };
   }
-  if (type.includes("RNA 회의") || type.includes("RNA")) {
+  if (type.includes("RNA 회의") || type.includes("RNA") || type.includes("회의")) {
     return {
       type: "RNA 회의",
       emoji: "👔",
-      activeLabel: "RNA 회의",
-      scheduledLabelPrefix: "RNA 회의예정",
+      activeLabel: "회의중",
+      scheduledLabelPrefix: "회의",
       activeBadge: "bg-purple-600 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
+      scheduledBadge: "bg-purple-500 text-white font-black shadow-2xs"
     };
   }
   if (type.includes("외출")) {
     return {
       type: "외출",
       emoji: "🚶",
-      activeLabel: "외출",
-      scheduledLabelPrefix: "외출예정",
+      activeLabel: "외출중",
+      scheduledLabelPrefix: "외출",
       activeBadge: "bg-teal-600 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800"
+      scheduledBadge: "bg-teal-500 text-white font-black shadow-2xs"
     };
   }
   if (type.includes("특근")) {
@@ -284,19 +285,19 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       type: "특근",
       emoji: "⚡",
       activeLabel: "특근근무중",
-      scheduledLabelPrefix: "특근예정",
+      scheduledLabelPrefix: "특근",
       activeBadge: "bg-emerald-600 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+      scheduledBadge: "bg-emerald-500 text-white font-black shadow-2xs"
     };
   }
-  if (type.includes("출장")) {
+  if (type.includes("출장") || type.includes("교육")) {
     return {
-      type: "출장",
+      type: "출장/교육",
       emoji: "🚄",
       activeLabel: "출장중",
-      scheduledLabelPrefix: "출장예정",
+      scheduledLabelPrefix: "출장",
       activeBadge: "bg-cyan-600 text-white font-black animate-pulse shadow-xs",
-      scheduledBadge: "bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800"
+      scheduledBadge: "bg-cyan-500 text-white font-black shadow-2xs"
     };
   }
   // Default: 연차(전일) / 연차
@@ -304,65 +305,93 @@ export const getLeaveTypeMeta = (typeStr = "") => {
     type: "연차",
     emoji: "🌴",
     activeLabel: "연차사용중",
-    scheduledLabelPrefix: "연차예정",
-    activeBadge: "bg-rose-500 text-white font-black animate-pulse shadow-xs",
-    scheduledBadge: "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-800"
+    scheduledLabelPrefix: "연차",
+    activeBadge: "bg-rose-600 text-white font-black animate-pulse shadow-xs",
+    scheduledBadge: "bg-rose-500 text-white font-black shadow-2xs"
   };
 };
 
 // Helper: Calculate worker's current/upcoming annual leave status
-export const getUserLeaveStatus = (userId, userName, allLeaves = []) => {
+// Exposure period: from registration date (createdAt) to completed or target event date (endDate/startDate)
+export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = { excludeTodo: true }) => {
   if (!allLeaves || !Array.isArray(allLeaves) || allLeaves.length === 0) return null;
 
   try {
-    // Format today's date YYYY-MM-DD
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const todayStr = `${year}-${month}-${day}`;
+    const todayStr = getKSTDateString();
 
     // Match leaves for this worker (by userId or userName)
-    const userLeaves = allLeaves.filter(
-      (l) => Boolean(l && ((userId && l.userId === userId) || (userName && l.userName === userName)))
-    );
+    const userLeaves = allLeaves.filter((l) => {
+      if (!l) return false;
+      const matchUser = (userId && l.userId === userId) || (userName && l.userName === userName);
+      if (!matchUser) return false;
+      if (l.isCompleted || l.isDismissed) return false;
+
+      // Filter out private '할일' if excludeTodo option is true
+      if (options.excludeTodo) {
+        const type = l.leaveType || "";
+        if (type === "할일" || type.includes("할일")) return false;
+      }
+      return true;
+    });
 
     if (userLeaves.length === 0) return null;
 
+    // Filter valid leaves that should be exposed:
+    // Registration date (createdAt or createdDate) <= todayStr <= (endDate or startDate)
+    const validLeaves = userLeaves.filter((l) => {
+      const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
+      const startDate = l.startDate || l.date || regDate;
+      const targetEndDate = l.endDate || l.startDate || l.date || regDate;
+      const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
+
+      return Boolean(effectiveStart && targetEndDate && effectiveStart <= todayStr && todayStr <= targetEndDate);
+    });
+
+    if (validLeaves.length === 0) return null;
+
     // 1. Check for active leave today (startDate <= today <= endDate)
-    const activeLeave = userLeaves.find(
+    const activeTodayLeave = validLeaves.find(
       (l) => Boolean(l && l.startDate && l.startDate <= todayStr && todayStr <= (l.endDate || l.startDate))
     );
 
-    if (activeLeave) {
-      const meta = getLeaveTypeMeta(activeLeave.leaveType);
+    if (activeTodayLeave) {
+      const meta = getLeaveTypeMeta(activeTodayLeave.leaveType);
       return {
         status: "ACTIVE",
+        isToday: true,
         type: meta.type,
         emoji: meta.emoji,
-        label: meta.activeLabel, // "연차사용중"
-        leave: activeLeave,
-        badgeColor: meta.activeBadge
+        displayBadge: activeTodayLeave.startDate === todayStr ? `[오늘] ${meta.type}` : `${meta.type}`,
+        label: `${meta.emoji} [오늘] ${meta.activeLabel || meta.type}`,
+        fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType ? ` (${activeTodayLeave.reason})` : ""}`,
+        badgeColor: meta.activeBadge,
+        leave: activeTodayLeave,
+        allValidLeaves: validLeaves
       };
     }
 
-    // 2. Check for upcoming scheduled leaves (startDate > todayStr)
-    const futureLeaves = userLeaves
+    // 2. Otherwise, upcoming scheduled leave within exposure period (regDate <= todayStr < startDate)
+    const upcomingLeaves = validLeaves
       .filter((l) => Boolean(l && l.startDate && l.startDate > todayStr))
       .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
 
-    if (futureLeaves.length > 0) {
-      const nextLeave = futureLeaves[0];
+    if (upcomingLeaves.length > 0) {
+      const nextLeave = upcomingLeaves[0];
       const meta = getLeaveTypeMeta(nextLeave.leaveType);
       const dateParts = (nextLeave.startDate || "").split("-");
-      const formattedShort = dateParts.length === 3 ? `${dateParts[1]}/${dateParts[2]}` : nextLeave.startDate;
+      const shortDate = dateParts.length === 3 ? `${dateParts[1]}.${dateParts[2]}` : nextLeave.startDate;
       return {
         status: "SCHEDULED",
+        isToday: false,
         type: meta.type,
         emoji: meta.emoji,
-        label: `${meta.scheduledLabelPrefix} (${formattedShort})`, // "연차예정 (09/05)"
+        shortDate,
+        displayBadge: `${shortDate} ${meta.type}`,
+        label: `${meta.emoji} ${shortDate} ${meta.type}`,
+        fullLabel: `${nextLeave.startDate} ${nextLeave.leaveType}${nextLeave.reason && nextLeave.reason !== nextLeave.leaveType ? ` (${nextLeave.reason})` : ""}`,
+        badgeColor: meta.scheduledBadge,
         leave: nextLeave,
-        badgeColor: meta.scheduledBadge
+        allValidLeaves: validLeaves
       };
     }
 

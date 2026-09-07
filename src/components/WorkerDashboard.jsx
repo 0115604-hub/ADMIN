@@ -641,7 +641,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, []);
 
   const myLeaveStatus = useMemo(() => {
-    return getUserLeaveStatus(currentProfile?.id, workerFullName, annualLeaves || []);
+    return getUserLeaveStatus(currentProfile?.id, workerFullName, annualLeaves || [], { excludeTodo: false });
   }, [currentProfile, workerFullName, annualLeaves]);
 
   const myLeaves = useMemo(() => {
