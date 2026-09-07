@@ -144,6 +144,7 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
     if (caption) {
       formData.append("caption", caption);
       formData.append("parse_mode", "HTML");
+      formData.append("show_caption_above_media", "true");
     }
     formData.append("photo", resBlob, "photo.jpg");
 
