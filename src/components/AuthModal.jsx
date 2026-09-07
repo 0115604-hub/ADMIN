@@ -280,46 +280,16 @@ export const AuthModal = () => {
 
   const todayDateStr = useMemo(() => getKSTDateString(), []);
 
-  // Filter public leaves for Hanlim Plant workers (e.g. Woo Chang-yong) & Samrangjin (excluding '할일')
-  const hanlimPublicLeaves = useMemo(() => {
-    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
-    return annualLeaves
-      .filter((l) => {
-        if (!l || l.isCompleted || l.isDismissed) return false;
-        const type = l.leaveType || "";
-        if (type === "할일" || type.includes("할일")) return false;
-        const isHanlim = l.plant?.includes("한림") || l.userId === "hal_cy" || l.userName === "우창용";
-        if (!isHanlim) return false;
+  // Count workers with active schedule registration for each plant (excluding '할일')
+  const samrangjinLeaveCount = useMemo(() => {
+    if (!PLANTS[0]?.workers || !annualLeaves) return 0;
+    return PLANTS[0].workers.filter((w) => Boolean(getUserLeaveStatus(w.id, w.name, annualLeaves, { excludeTodo: true }))).length;
+  }, [annualLeaves]);
 
-        const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
-        const startDate = l.startDate || l.date || regDate;
-        const targetEndDate = l.endDate || l.startDate || l.date || regDate;
-        const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
-
-        return Boolean(effectiveStart && targetEndDate && effectiveStart <= todayDateStr && todayDateStr <= targetEndDate);
-      })
-      .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
-  }, [annualLeaves, todayDateStr]);
-
-  const samrangjinPublicLeaves = useMemo(() => {
-    if (!annualLeaves || !Array.isArray(annualLeaves)) return [];
-    return annualLeaves
-      .filter((l) => {
-        if (!l || l.isCompleted || l.isDismissed) return false;
-        const type = l.leaveType || "";
-        if (type === "할일" || type.includes("할일")) return false;
-        const isSamrangjin = l.plant?.includes("삼랑진") || (l.userId && l.userId.startsWith("sam_"));
-        if (!isSamrangjin) return false;
-
-        const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
-        const startDate = l.startDate || l.date || regDate;
-        const targetEndDate = l.endDate || l.startDate || l.date || regDate;
-        const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
-
-        return Boolean(effectiveStart && targetEndDate && effectiveStart <= todayDateStr && todayDateStr <= targetEndDate);
-      })
-      .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
-  }, [annualLeaves, todayDateStr]);
+  const hanlimLeaveCount = useMemo(() => {
+    if (!PLANTS[1]?.workers || !annualLeaves) return 0;
+    return PLANTS[1].workers.filter((w) => Boolean(getUserLeaveStatus(w.id, w.name, annualLeaves, { excludeTodo: true }))).length;
+  }, [annualLeaves]);
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
@@ -1033,49 +1003,28 @@ export const AuthModal = () => {
           {!selectedUser ? (
             <div className="space-y-2.5 sm:space-y-3">
               {/* ========================================================================= */}
-              {/* 1. FACTORY 1: 삼랑진공장 (이명재 그라데이션 강조 • 심플 칩) */}
+              {/* 1. FACTORY 1: 삼랑진공장 (이명재 그라데이션 강조) */}
               {/* ========================================================================= */}
               <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <div className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5 flex-wrap">
                     <div className="p-1 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
                       <Factory className="w-3.5 h-3.5" />
                     </div>
                     <span className="tracking-wide">삼랑진공장</span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+                      samrangjinLeaveCount > 0
+                        ? "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs"
+                        : "bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                    }`}>
+                      <Calendar className="w-2.5 h-2.5" />
+                      <span>일정등록 {samrangjinLeaveCount}명</span>
+                    </span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
                     {PLANTS[0].workers.length}명
                   </span>
                 </div>
-
-                {/* 삼랑진공장 등록 일정 요약 칩 (할일 제외) */}
-                {samrangjinPublicLeaves.length > 0 && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-2 rounded-lg bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80 text-[10.5px]">
-                    <span className="font-black text-amber-800 dark:text-amber-300 flex items-center gap-1 shrink-0">
-                      <Calendar className="w-3 h-3 text-amber-600" />
-                      <span>일정 현황:</span>
-                    </span>
-                    {samrangjinPublicLeaves.map((ev) => (
-                      <span
-                        key={ev.id}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-black shrink-0 shadow-2xs text-[10.5px] ${
-                          ev.startDate === todayDateStr
-                            ? "bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-400 animate-pulse"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
-                        }`}
-                      >
-                        <span className="text-amber-700 dark:text-amber-400">{ev.userName}</span>
-                        <span>{ev.leaveType}</span>
-                        <span className={ev.startDate === todayDateStr ? "text-rose-600 font-black" : "text-slate-500"}>
-                          ({ev.startDate === todayDateStr ? "오늘" : ev.startDate?.slice(5)})
-                        </span>
-                        {ev.reason && ev.reason !== ev.leaveType && (
-                          <span className="text-slate-400 text-[9.5px]">[{ev.reason}]</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                )}
 
                 <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 sm:gap-1.5">
                   {PLANTS[0].workers.map((worker) => {
@@ -1088,7 +1037,7 @@ export const AuthModal = () => {
                       <button
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
-                        title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.emoji} ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
+                        title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
                         className={`px-1 sm:px-2 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isMyeongjae
                             ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black border border-amber-400 shadow-xs"
@@ -1101,13 +1050,7 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-amber-400 text-slate-800 dark:text-slate-100"
                         }`}
                       >
-                        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1 overflow-hidden">
-                          {/* 모바일에서는 이름 옆 이모티콘 숨김, PC에서만 표시 */}
-                          {hasLeave && (
-                            <span className={`hidden sm:inline-block text-[10px] sm:text-xs shrink-0 ${leaveStatus.isToday ? "animate-bounce" : ""}`}>
-                              {leaveStatus.emoji}
-                            </span>
-                          )}
+                        <div className="flex items-center min-w-0 flex-1 overflow-hidden">
                           <span className={`text-[10.5px] sm:text-xs font-black truncate min-w-0 flex-1 ${
                             isMyeongjae ? "text-slate-950 font-black" : "text-slate-900 dark:text-white"
                           }`}>
@@ -1144,49 +1087,28 @@ export const AuthModal = () => {
               </div>
 
               {/* ========================================================================= */}
-              {/* 2. FACTORY 2: 한림공장 (김동욱 그라데이션 강조 • 심플 칩 • 우창용 선임 일정 상시 노출) */}
+              {/* 2. FACTORY 2: 한림공장 (김동욱 그라데이션 강조) */}
               {/* ========================================================================= */}
               <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 flex-wrap">
                     <div className="p-1 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                       <Factory className="w-3.5 h-3.5" />
                     </div>
                     <span className="tracking-wide">한림공장</span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+                      hanlimLeaveCount > 0
+                        ? "bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 shadow-2xs"
+                        : "bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+                    }`}>
+                      <Calendar className="w-2.5 h-2.5" />
+                      <span>일정등록 {hanlimLeaveCount}명</span>
+                    </span>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
                     {PLANTS[1].workers.length}명
                   </span>
                 </div>
-
-                {/* 한림공장 등록 일정 요약 칩 (우창용 선임 등 • 할일 제외) */}
-                {hanlimPublicLeaves.length > 0 && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 px-2 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/80 text-[10.5px]">
-                    <span className="font-black text-blue-700 dark:text-blue-300 flex items-center gap-1 shrink-0">
-                      <Calendar className="w-3 h-3 text-blue-600" />
-                      <span>일정 현황:</span>
-                    </span>
-                    {hanlimPublicLeaves.map((ev) => (
-                      <span
-                        key={ev.id}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-black shrink-0 shadow-2xs text-[10.5px] ${
-                          ev.startDate === todayDateStr
-                            ? "bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 border border-rose-400 animate-pulse"
-                            : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
-                        }`}
-                      >
-                        <span className="text-blue-600 dark:text-blue-400">{ev.userName}</span>
-                        <span>{ev.leaveType}</span>
-                        <span className={ev.startDate === todayDateStr ? "text-rose-600 font-black" : "text-slate-500"}>
-                          ({ev.startDate === todayDateStr ? "오늘" : ev.startDate?.slice(5)})
-                        </span>
-                        {ev.reason && ev.reason !== ev.leaveType && (
-                          <span className="text-slate-400 text-[9.5px]">[{ev.reason}]</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                )}
 
                 <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 sm:gap-1.5">
                   {PLANTS[1].workers.map((worker) => {
@@ -1199,7 +1121,7 @@ export const AuthModal = () => {
                       <button
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
-                        title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.emoji} ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
+                        title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
                         className={`px-1 sm:px-2 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isDongwook
                             ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border border-emerald-400 shadow-xs"
@@ -1212,13 +1134,7 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 text-slate-800 dark:text-slate-100"
                         }`}
                       >
-                        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1 overflow-hidden">
-                          {/* 모바일에서는 이름 옆 이모티콘 숨김, PC에서만 표시 */}
-                          {hasLeave && (
-                            <span className={`hidden sm:inline-block text-[10px] sm:text-xs shrink-0 ${leaveStatus.isToday ? "animate-bounce" : ""}`}>
-                              {leaveStatus.emoji}
-                            </span>
-                          )}
+                        <div className="flex items-center min-w-0 flex-1 overflow-hidden">
                           <span className={`text-[10.5px] sm:text-xs font-black truncate min-w-0 flex-1 ${
                             isDongwook ? "text-white font-black" : "text-slate-900 dark:text-white"
                           }`}>
