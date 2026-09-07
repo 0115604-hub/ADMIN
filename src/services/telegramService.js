@@ -277,7 +277,9 @@ export const formatKoreanCurrency = (amount) => {
 /**
  * 1. 품질경보 / 사내공지 / 회의일정 등록 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
-export const sendQualityAlertTelegram = async (issueItem) => {
+export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
   const plant = issueItem?.plant || "삼랑진공장";
   const writer = issueItem?.author || issueItem?.writer || "현장작업자";
   const title = issueItem?.title || issueItem?.content || "안내 사항";
@@ -329,18 +331,20 @@ ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 `.trim();
   }
 
-  // If photos attached (up to 3), send as MediaGroup with caption on top (Style B)
+  const customCfg = { ...config, chatId: destChatId };
   if (images.length > 0) {
-    return await sendTelegramMediaGroup(images, message);
+    return await sendTelegramMediaGroup(images, message, customCfg);
   }
 
-  return await sendTelegramMessage(message);
+  return await sendTelegramMessage(message, customCfg);
 };
 
 /**
  * 2. 품질경보 조치완료 / 회의결과 보고 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
-export const sendQualityActionTelegram = async (issueItem, actionResult = null) => {
+export const sendQualityActionTelegram = async (issueItem, actionResult = null, targetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
   const plant = issueItem?.plant || "삼랑진공장";
   const title = issueItem?.title || issueItem?.content || "품질경보";
   const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "담당자";
@@ -405,17 +409,20 @@ ${content} (조치율 ${rate}%)
 `.trim();
   }
 
+  const customCfg = { ...config, chatId: destChatId };
   if (actionImages.length > 0) {
-    return await sendTelegramMediaGroup(actionImages, message);
+    return await sendTelegramMediaGroup(actionImages, message, customCfg);
   }
 
-  return await sendTelegramMessage(message);
+  return await sendTelegramMessage(message, customCfg);
 };
 
 /**
  * 3. 회의일정 회신 등록 알림
  */
-export const sendMeetingReplyTelegram = async (issueItem, replyItem) => {
+export const sendMeetingReplyTelegram = async (issueItem, replyItem, targetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
   const plant = issueItem?.plant || "삼랑진공장";
   const title = issueItem?.title || issueItem?.content || "회의일정";
   const author = replyItem?.author || "작업자";
@@ -442,13 +449,15 @@ export const sendMeetingReplyTelegram = async (issueItem, replyItem) => {
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-  return await sendTelegramMessage(message);
+  return await sendTelegramMessage(message, { ...config, chatId: destChatId });
 };
 
 /**
  * 4. 품질경보 / 사내공지 / 회의일정 삭제/종결 즉시 알림
  */
-export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) => {
+export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile, targetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
   const deleterName = typeof deleterProfile === "string"
     ? (deleterProfile || "총괄관리자")
     : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "총괄관리자");
@@ -481,7 +490,7 @@ ${header}
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-  return await sendTelegramMessage(message);
+  return await sendTelegramMessage(message, { ...config, chatId: destChatId });
 };
 
 /**
@@ -587,7 +596,9 @@ export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
 /**
  * 9. 매일 아침 07:30 통합 모닝 브리핑 (연차 + 미결재 + 품질경보 미삭제) ➜ 오륙 통합방
  */
-export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => {
+export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, targetChatId = null) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
   const todayStr = targetDateStr || new Date().toISOString().split("T")[0];
   const dateObj = new Date(todayStr + "T00:00:00");
   const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
@@ -659,7 +670,10 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-  const sendResult = await sendTelegramMessage(message);
+  const sendResult = await sendTelegramMessage(message, {
+    ...config,
+    chatId: destChatId
+  });
 
   if (sendResult.success) {
     try {
