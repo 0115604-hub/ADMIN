@@ -478,9 +478,8 @@ export const AuthModal = () => {
     try {
       const updated = await deleteUrgentIssue(issue.id, expectedManager);
       setUrgentIssues(updated);
-      const deletedItem = updated.find((i) => i.id === issue.id);
-      if (deletedItem) {
-        setDetailIssueModal(deletedItem);
+      if (detailIssueModal && detailIssueModal.id === issue.id) {
+        setDetailIssueModal(null);
       }
       setDeleteModalData({
         isOpen: false,
@@ -635,17 +634,19 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Panel Body: Exactly 2 Lines per Notice Item */}
+            {/* Panel Body: Exactly 2 Lines per Notice Item (활성 진행 중 항목만 표시) */}
             {isIssueExpanded && (
               <div className="p-2 sm:p-2.5 space-y-2 max-h-60 overflow-y-auto">
-                {urgentIssues.length === 0 ? (
-                  <div className="py-3 text-center text-xs text-slate-400 dark:text-slate-500 font-bold">
-                    현재 등록된 품질경보 및 공지사항이 없습니다.
+                {activeIssues.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white/60 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
+                    <p>현재 진행 중인 품질경보 및 공지사항이 없습니다.</p>
+                    <p className="text-[10.5px] text-slate-400 font-normal">
+                      (과거 종결/삭제된 내역은 상단 제목 클릭 후 [종결] 탭에서 확인 및 복구 가능)
+                    </p>
                   </div>
                 ) : (
-                  urgentIssues.map((item) => {
+                  activeIssues.map((item) => {
                     const isNotice = item.category === "공지사항" || item.category === "공유사항";
-                    const isItemDeleted = Boolean(item.isDeleted);
                     return (
                       <div
                         key={item.id}
@@ -657,9 +658,7 @@ export const AuthModal = () => {
                           }
                         }}
                         className={`p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-center gap-1.5 shadow-xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
-                          isItemDeleted
-                            ? "bg-slate-50/70 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 opacity-80"
-                            : item.isResolved
+                          item.isResolved
                             ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                             : isNotice
                             ? "bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/25"
@@ -667,14 +666,10 @@ export const AuthModal = () => {
                         }`}
                         title="탭하여 상세 내용 및 현장 사진 확인"
                       >
-                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [상세보기] [조치상태] [삭제/복구] */}
+                        {/* 1번째 줄: [품질경보/공지사항] [공장] 전달내용 (작성자 시간) + [상세보기] [조치상태] [삭제] */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            {isItemDeleted ? (
-                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-slate-600 text-white shrink-0 shadow-xs">
-                                삭제
-                              </span>
-                            ) : isNotice ? (
+                            {isNotice ? (
                               <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-emerald-600 text-white shrink-0 shadow-xs">
                                 공지사항
                               </span>
@@ -693,61 +688,43 @@ export const AuthModal = () => {
                               {item.plant}
                             </span>
                             <span className={`truncate text-[11.5px] group-hover:underline ${
-                              isItemDeleted
-                                ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
-                                : !isNotice
+                              !isNotice
                                 ? "font-black text-rose-600 dark:text-rose-400"
                                 : "font-black text-slate-900 dark:text-white"
                             }`}>
                               {item.title ? `${item.title} - ${item.content}` : item.content}
                             </span>
                             <span className="text-[10px] text-slate-400 shrink-0 font-medium hidden sm:inline">
-                              ({item.author} • {isItemDeleted && item.deletedBy ? `삭제: ${item.deletedBy}` : item.createdAt})
+                              ({item.author} • {item.createdAt})
                             </span>
                           </div>
 
-                          {/* Right: Detail badge, Status & Delete/Restore */}
+                          {/* Right: Detail badge, Status & Delete */}
                           <div className="flex items-center gap-1 shrink-0">
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 group-hover:bg-rose-100 group-hover:text-rose-700 dark:group-hover:bg-rose-950 dark:group-hover:text-rose-300 transition-colors">
                               <Eye className="w-2.5 h-2.5" />
                               <span className="hidden sm:inline">상세보기</span>
                             </span>
-                            {isItemDeleted ? (
-                              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                                🗑️ 종결(삭제)
-                              </span>
-                            ) : item.isResolved ? (
+                            {item.isResolved ? (
                               <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                                ✓ 종결(완료)
+                                ✓ 완료
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
-                                ⏳ 미결(대기)
+                                ⏳ 대기
                               </span>
                             )}
-                            {isItemDeleted ? (
-                              <button
-                                type="button"
-                                onClick={(e) => handleRestoreIssue(item.id, e)}
-                                className="px-2 py-0.5 rounded-lg text-[10.5px] font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors cursor-pointer flex items-center gap-0.5"
-                                title="삭제 취소 (복구)"
-                              >
-                                <RotateCcw className="w-2.5 h-2.5" />
-                                <span>복구</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleOpenDeleteModal(item, e);
-                                }}
-                                className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
-                                title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenDeleteModal(item, e);
+                              }}
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                              title={`${item.plant} 품질경보/공지사항 삭제 (권한자: ${item.plant === "한림공장" ? "김동욱 책임" : item.plant === "삼랑진공장" ? "이명재 이사" : "총괄관리자"})`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
 
