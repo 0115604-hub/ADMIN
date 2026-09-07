@@ -2,16 +2,10 @@ name: Scheduled Telegram Briefings
 
 on:
   schedule:
-    # 07:25 KST (22:25 UTC previous day) - Pre-warm trigger 1
-    - cron: '25 22 * * *'
-    # 07:28 KST (22:28 UTC previous day) - Pre-warm trigger 2
+    # 07:28 KST (22:28 UTC previous day) - Pre-warm trigger (runner starts and waits until exactly 07:30:00 KST)
     - cron: '28 22 * * *'
-    # 07:30 KST (22:30 UTC previous day) - Exact target trigger
-    - cron: '30 22 * * *'
-    # 07:32 KST (22:32 UTC previous day) - Fallback trigger 1
-    - cron: '32 22 * * *'
-    # 07:35 KST (22:35 UTC previous day) - Fallback trigger 2
-    - cron: '35 22 * * *'
+    # 07:31 KST (22:31 UTC previous day) - Fallback trigger in case of GitHub Actions scheduler delay
+    - cron: '31 22 * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -19,6 +13,10 @@ on:
         required: false
         default: false
         type: boolean
+
+concurrency:
+  group: scheduled-telegram-briefings
+  cancel-in-progress: false
 
 jobs:
   send-briefing:

@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import { db } from "../firebase";
 import { PLANTS } from "../context/AuthContext";
 import { getLocalAnnualLeaves } from "./annualLeaveService";
@@ -700,63 +700,189 @@ export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
 };
 
 /**
+ * Unique Client Instance Identifier to track lock ownership
+ */
+const getClientInstanceId = () => {
+  try {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      let id = sessionStorage.getItem("oryuk_client_instance_id");
+      if (!id) {
+        id = "client_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+        sessionStorage.setItem("oryuk_client_instance_id", id);
+      }
+      return id;
+    }
+  } catch (e) {
+    // fallback
+  }
+  return "runner_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+};
+
+/**
+ * Acquire Distributed Atomic Lock for Daily Briefing via Firestore Transaction
+ * Ensures exactly ONE sender across all clients and GitHub Actions runners per day.
+ */
+export const acquireBriefingLock = async (briefingType, todayStr, clientId = null, force = false) => {
+  if (force) {
+    return { acquired: true, isForced: true };
+  }
+
+  const id = clientId || getClientInstanceId();
+  const lockDocRef = doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]);
+
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(lockDocRef);
+      const data = snap.exists() ? snap.data() : {};
+
+      const dateField = briefingType === "general" ? "lastSentDate" : "lastPnLSentDate";
+      const lockField = briefingType === "general" ? "generalLock" : "pnlLock";
+
+      // 1. If already successfully completed today, do not acquire
+      if (data[dateField] === todayStr) {
+        return { acquired: false, reason: "ALREADY_SENT_TODAY", lastSentDate: data[dateField] };
+      }
+
+      // 2. Check if locked by another active process (with 90-second lease timeout)
+      const currentLock = data[lockField];
+      if (currentLock && currentLock.date === todayStr && currentLock.status === "SENDING") {
+        const lockedAtMs = currentLock.lockedAt ? new Date(currentLock.lockedAt).getTime() : 0;
+        const nowMs = Date.now();
+        // If locked within the last 90 seconds, another process is actively sending
+        if (nowMs - lockedAtMs < 90000) {
+          return { acquired: false, reason: "LOCKED_BY_ANOTHER_INSTANCE", lockedBy: currentLock.lockedBy };
+        }
+      }
+
+      // 3. Lock is available! Atomically claim lock for this client
+      transaction.set(lockDocRef, {
+        [lockField]: {
+          status: "SENDING",
+          date: todayStr,
+          lockedAt: new Date().toISOString(),
+          lockedBy: id
+        }
+      }, { merge: true });
+
+      return { acquired: true, clientId: id };
+    });
+
+    return result;
+  } catch (err) {
+    console.warn(`[Briefing Lock] Transaction error for ${briefingType}:`, err);
+    return { acquired: false, reason: "TRANSACTION_ERROR", error: err.message };
+  }
+};
+
+/**
+ * Release or Complete Distributed Atomic Lock
+ */
+export const completeBriefingLock = async (briefingType, todayStr, isSuccess, errorMsg = null, clientId = null) => {
+  const id = clientId || getClientInstanceId();
+  const lockDocRef = doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]);
+  const dateField = briefingType === "general" ? "lastSentDate" : "lastPnLSentDate";
+  const lockField = briefingType === "general" ? "generalLock" : "pnlLock";
+  const sentAtField = briefingType === "general" ? "sentAt" : "pnlSentAt";
+
+  try {
+    if (isSuccess) {
+      await setDoc(lockDocRef, {
+        [dateField]: todayStr,
+        [sentAtField]: new Date().toISOString(),
+        [lockField]: {
+          status: "COMPLETED",
+          date: todayStr,
+          completedAt: new Date().toISOString(),
+          sentBy: id
+        }
+      }, { merge: true });
+    } else {
+      await setDoc(lockDocRef, {
+        [lockField]: {
+          status: "FAILED",
+          date: todayStr,
+          failedAt: new Date().toISOString(),
+          error: errorMsg || "UNKNOWN_ERROR",
+          sentBy: id
+        }
+      }, { merge: true });
+    }
+  } catch (e) {
+    console.warn(`[Briefing Lock] Failed to complete lock for ${briefingType}:`, e);
+  }
+};
+
+/**
  * 9. 매일 아침 07:30 통합 모닝 브리핑 (연차 + 미결재 + 품질경보 미삭제) ➜ 오륙 통합방
  */
-export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, targetChatId = null) => {
+export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, targetChatId = null, force = false) => {
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || config.chatId || "-4186792536";
   const todayStr = targetDateStr || getKSTDateString();
-  const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
+  const clientId = getClientInstanceId();
 
-  // 1. 연차 현황
-  const leaves = getLocalAnnualLeaves();
-  const activeLeaves = leaves.filter((l) => {
-    if (!l.startDate) return false;
-    const start = l.startDate;
-    const end = l.endDate || l.startDate;
-    return start <= todayStr && todayStr <= end;
-  });
+  // 1. Acquire Distributed Atomic Lock (Prevents duplicate sends across multiple clients / crons)
+  if (!force) {
+    const lockResult = await acquireBriefingLock("general", todayStr, clientId, false);
+    if (!lockResult.acquired) {
+      console.log(`[오륙통합방 모닝브리핑] Skipping send: ${lockResult.reason}`);
+      localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
+      return { success: false, skipped: true, reason: lockResult.reason };
+    }
+  }
 
-  let leaveSummary = "없음 (전원 정상 출근)";
-  if (activeLeaves.length > 0) {
-    const list = activeLeaves.map((l) => {
-      const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-      const typeShort = l.leaveType || "연차";
-      return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
+  try {
+    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
+
+    // 1. 연차 현황
+    const leaves = getLocalAnnualLeaves();
+    const activeLeaves = leaves.filter((l) => {
+      if (!l.startDate) return false;
+      const start = l.startDate;
+      const end = l.endDate || l.startDate;
+      return start <= todayStr && todayStr <= end;
     });
-    leaveSummary = list.join(", ");
-  }
 
-  // 2. 미결재 현황 (전자결재 + 업무일지)
-  const approvalDocs = getLocalApprovalDocs();
-  const pendingDocs = approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
+    let leaveSummary = "없음 (전원 정상 출근)";
+    if (activeLeaves.length > 0) {
+      const list = activeLeaves.map((l) => {
+        const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
+        const typeShort = l.leaveType || "연차";
+        return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
+      });
+      leaveSummary = list.join(", ");
+    }
 
-  const workLogs = getLocalWorkLogs();
-  const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
+    // 2. 미결재 현황 (전자결재 + 업무일지)
+    const approvalDocs = getLocalApprovalDocs();
+    const pendingDocs = approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
 
-  let approvalSummary = "없음 (전건 결재완료)";
-  const totalPending = pendingDocs.length + pendingLogs.length;
-  if (totalPending > 0) {
-    const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
-    const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
-    const previewList = [...docTitles, ...logTitles].slice(0, 3);
-    const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
-    approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
-  }
+    const workLogs = getLocalWorkLogs();
+    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
 
-  // 3. 품질경보 미삭제 / 미조치 현황 (삭제 및 조치완료 항목 제외)
-  const activeUrgentIssues = getLocalUrgentIssues().filter((i) => !i.isDeleted && !i.isResolved);
-  let urgentSummary = "없음 (전건 종결완료)";
-  if (activeUrgentIssues.length > 0) {
-    const issueTitles = activeUrgentIssues.map((i) => i.title || i.content).filter(Boolean);
-    const previewList = issueTitles.slice(0, 2);
-    const moreText = activeUrgentIssues.length > 2 ? ` 외 ${activeUrgentIssues.length - 2}건` : "";
-    urgentSummary = `미조치 ${activeUrgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
-  }
+    let approvalSummary = "없음 (전건 결재완료)";
+    const totalPending = pendingDocs.length + pendingLogs.length;
+    if (totalPending > 0) {
+      const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
+      const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
+      const previewList = [...docTitles, ...logTitles].slice(0, 3);
+      const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
+      approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
+    }
 
-  const savedBriefingTemplate = getLocalTelegramTemplates()["unified_briefing"]?.text;
+    // 3. 품질경보 미삭제 / 미조치 현황 (삭제 및 조치완료 항목 제외)
+    const activeUrgentIssues = getLocalUrgentIssues().filter((i) => !i.isDeleted && !i.isResolved);
+    let urgentSummary = "없음 (전건 종결완료)";
+    if (activeUrgentIssues.length > 0) {
+      const issueTitles = activeUrgentIssues.map((i) => i.title || i.content).filter(Boolean);
+      const previewList = issueTitles.slice(0, 2);
+      const moreText = activeUrgentIssues.length > 2 ? ` 외 ${activeUrgentIssues.length - 2}건` : "";
+      urgentSummary = `미조치 ${activeUrgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+    }
 
-  const defaultMessage = `
+    const savedBriefingTemplate = getLocalTelegramTemplates()["unified_briefing"]?.text;
+
+    const defaultMessage = `
 <b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
@@ -772,26 +898,26 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-  const message = savedBriefingTemplate || defaultMessage;
+    const message = savedBriefingTemplate || defaultMessage;
 
-  const sendResult = await sendTelegramMessage(message, {
-    ...config,
-    chatId: destChatId
-  });
+    const sendResult = await sendTelegramMessage(message, {
+      ...config,
+      chatId: destChatId
+    });
 
-  if (sendResult.success) {
-    try {
+    if (sendResult.success) {
       localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
-      await setDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]), {
-        lastSentDate: todayStr,
-        sentAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Failed to record morning briefing date:", e);
+      await completeBriefingLock("general", todayStr, true, null, clientId);
+    } else {
+      await completeBriefingLock("general", todayStr, false, sendResult.error || "SEND_FAILED", clientId);
     }
-  }
 
-  return sendResult;
+    return sendResult;
+  } catch (err) {
+    console.error("[오륙통합방 모닝브리핑] Send error:", err);
+    await completeBriefingLock("general", todayStr, false, err.message, clientId);
+    return { success: false, error: err.message };
+  }
 };
 
 export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
@@ -800,32 +926,45 @@ export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
  * 10. 매일 아침 손익결산 브리핑 발송 (매출액 / 매입액 / 달성율 / 공통일정)
  * 기본 발송 채널: '경영총괄' (-1003939516875)
  */
-export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null, targetChatId = null) => {
+export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null, targetChatId = null, force = false) => {
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || customBriefingData?.targetChatId || config.pnlChatId || "-1003939516875";
   const todayStr = getKSTDateString();
-  const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
+  const clientId = getClientInstanceId();
 
-  let salesAmount = customBriefingData?.salesAmount ?? 1756104735;
-  let purchaseAmount = customBriefingData?.purchaseAmount ?? 1248400885;
-  let salesAchievementRate = customBriefingData?.salesAchievementRate || "102.4%";
-  let purchaseAchievementRate = customBriefingData?.purchaseAchievementRate || "98.7%";
-  let commonSchedules = customBriefingData?.commonSchedules;
-
-  if (!commonSchedules) {
-    try {
-      await cleanupExpiredCommonSchedules(todayStr);
-    } catch (e) {
-      console.warn("Cleanup expired schedules error:", e);
+  // 1. Acquire Distributed Atomic Lock
+  if (!force) {
+    const lockResult = await acquireBriefingLock("pnl", todayStr, clientId, false);
+    if (!lockResult.acquired) {
+      console.log(`[경영총괄 손익브리핑] Skipping send: ${lockResult.reason}`);
+      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+      return { success: false, skipped: true, reason: lockResult.reason };
     }
-
-    const todayScheds = getTodayCommonSchedules(todayStr);
-    commonSchedules = formatCommonSchedulesForTelegram(todayScheds, todayStr);
   }
 
-  const costRatio = salesAmount > 0 ? ((purchaseAmount / salesAmount) * 100).toFixed(1) : "71.1";
+  try {
+    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
 
-  const defaultPnLMessage = `
+    let salesAmount = customBriefingData?.salesAmount ?? 1756104735;
+    let purchaseAmount = customBriefingData?.purchaseAmount ?? 1248400885;
+    let salesAchievementRate = customBriefingData?.salesAchievementRate || "102.4%";
+    let purchaseAchievementRate = customBriefingData?.purchaseAchievementRate || "98.7%";
+    let commonSchedules = customBriefingData?.commonSchedules;
+
+    if (!commonSchedules) {
+      try {
+        await cleanupExpiredCommonSchedules(todayStr);
+      } catch (e) {
+        console.warn("Cleanup expired schedules error:", e);
+      }
+
+      const todayScheds = getTodayCommonSchedules(todayStr);
+      commonSchedules = formatCommonSchedulesForTelegram(todayScheds, todayStr);
+    }
+
+    const costRatio = salesAmount > 0 ? ((purchaseAmount / salesAmount) * 100).toFixed(1) : "71.1";
+
+    const defaultPnLMessage = `
 <b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
@@ -844,31 +983,33 @@ ${commonSchedules}
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
 
-  const savedPnLTemplate = getLocalTelegramTemplates()["management_pnl"]?.text;
-  let message = defaultPnLMessage;
-  if (savedPnLTemplate) {
-    message = injectCommonSchedulesIntoPnLTemplate(savedPnLTemplate, commonSchedules, dateFormatted);
-  }
-
-  const sendResult = await sendTelegramMessage(message, {
-    ...config,
-    chatId: destChatId
-  });
-
-  if (sendResult.success) {
-    try {
-      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
-      await setDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]), {
-        lastPnLSentDate: todayStr,
-        pnlSentAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Failed to record pnl briefing timestamp:", e);
+    const savedPnLTemplate = getLocalTelegramTemplates()["management_pnl"]?.text;
+    let message = defaultPnLMessage;
+    if (savedPnLTemplate) {
+      message = injectCommonSchedulesIntoPnLTemplate(savedPnLTemplate, commonSchedules, dateFormatted);
     }
-  }
 
-  return sendResult;
+    const sendResult = await sendTelegramMessage(message, {
+      ...config,
+      chatId: destChatId
+    });
+
+    if (sendResult.success) {
+      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+      await completeBriefingLock("pnl", todayStr, true, null, clientId);
+    } else {
+      await completeBriefingLock("pnl", todayStr, false, sendResult.error || "SEND_FAILED", clientId);
+    }
+
+    return sendResult;
+  } catch (err) {
+    console.error("[경영총괄 손익브리핑] Send error:", err);
+    await completeBriefingLock("pnl", todayStr, false, err.message, clientId);
+    return { success: false, error: err.message };
+  }
 };
+
+let isCheckingBriefing = false;
 
 /**
  * Check and Auto-Send Daily 07:30 AM Morning Briefings (Both Rooms)
@@ -886,48 +1027,37 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
     return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
   }
 
-  let cloudBriefingData = null;
-  try {
-    const snap = await getDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]));
-    if (snap.exists()) {
-      cloudBriefingData = snap.data();
-    }
-  } catch (e) {
-    console.warn("Morning briefing check cloud read error:", e);
+  if (isCheckingBriefing) {
+    return { skipped: true, reason: "CHECK_ALREADY_IN_PROGRESS" };
   }
 
+  const lastLocalGeneral = localStorage.getItem("oryuk_last_morning_briefing_sent");
+  const lastLocalPnL = localStorage.getItem("oryuk_last_pnl_briefing_sent");
+
+  const needGeneral = config.sendDailyLeaveBriefing && lastLocalGeneral !== todayStr;
+  const needPnL = config.sendDailyPnLBriefing && lastLocalPnL !== todayStr;
+
+  if (!needGeneral && !needPnL) {
+    return { skipped: true, reason: "ALREADY_PROCESSED_LOCALLY_TODAY" };
+  }
+
+  isCheckingBriefing = true;
   const results = {};
 
-  // 1. Check & send General Morning Briefing (오륙 통합방)
-  if (config.sendDailyLeaveBriefing) {
-    const lastLocal = localStorage.getItem("oryuk_last_morning_briefing_sent");
-    const cloudSent = cloudBriefingData?.lastSentDate === todayStr;
-
-    if (lastLocal === todayStr || cloudSent) {
-      if (cloudSent && lastLocal !== todayStr) {
-        localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
-      }
-      results.general = { skipped: true, reason: "ALREADY_SENT_TODAY" };
-    } else {
+  try {
+    // 1. Check & send General Morning Briefing (오륙 통합방)
+    if (needGeneral) {
       console.log(`[07:30 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
       results.general = await sendDailyMorningBriefingTelegram(todayStr);
     }
-  }
 
-  // 2. Check & send PnL Morning Briefing (경영총괄)
-  if (config.sendDailyPnLBriefing) {
-    const lastPnLLocal = localStorage.getItem("oryuk_last_pnl_briefing_sent");
-    const cloudPnLSent = cloudBriefingData?.lastPnLSentDate === todayStr;
-
-    if (lastPnLLocal === todayStr || cloudPnLSent) {
-      if (cloudPnLSent && lastPnLLocal !== todayStr) {
-        localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
-      }
-      results.pnl = { skipped: true, reason: "ALREADY_SENT_TODAY" };
-    } else {
+    // 2. Check & send PnL Morning Briefing (경영총괄)
+    if (needPnL) {
       console.log(`[07:30 Daily PnL Briefing] Auto-sending PnL briefing for ${todayStr}...`);
       results.pnl = await sendDailyPnLMorningBriefingTelegram();
     }
+  } finally {
+    isCheckingBriefing = false;
   }
 
   return results;
