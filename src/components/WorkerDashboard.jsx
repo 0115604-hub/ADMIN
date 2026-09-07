@@ -86,6 +86,7 @@ import {
   saveQualityRecordsBatch,
   getQualityMonthlyAggregation,
   getQualityDailyAggregation,
+  getPreviousYearMonth,
   parseQualityExcelFiles,
   QUALITY_CORE_ITEMS
 } from "../services/qualityService";
@@ -370,9 +371,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => unsub();
   }, []);
 
-  const liveQualityMonthly = useMemo(() => {
-    return getQualityMonthlyAggregation(qualityRecords, selectedMonth || "2026-08");
-  }, [qualityRecords, selectedMonth]);
+  const prevYearMonth = useMemo(() => {
+    return getPreviousYearMonth(selectedMonth || currentYearMonth || "2026-09");
+  }, [selectedMonth, currentYearMonth]);
+
+  const prevMonthLabel = useMemo(() => {
+    const m = prevYearMonth.slice(5, 7);
+    return `${m}월`;
+  }, [prevYearMonth]);
+
+  const liveQualityPrevMonthly = useMemo(() => {
+    return getQualityMonthlyAggregation(qualityRecords, prevYearMonth);
+  }, [qualityRecords, prevYearMonth]);
 
   const liveQualityDaily = useMemo(() => {
     return getQualityDailyAggregation(qualityRecords, selectedMonth || "2026-08");
@@ -1315,24 +1325,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         {/* 2-Halves Split: Left (당월 불량률) vs Right (일일 불량률) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
           {/* ========================================== */}
-          {/* 1. [왼쪽] 당월 불량률 (월간 누적 실적) */}
+          {/* 1. [왼쪽] 전월누적불량율 (**월) (전월 누적 실적) */}
           {/* ========================================== */}
           <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 space-y-1.5 min-w-0">
             <div className="flex items-center justify-between px-0.5 gap-1">
               <div className="flex items-center gap-1.5 min-w-0 truncate">
                 <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
                 <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 truncate">
-                  당월 불량률 (월간 누적)
+                  전월누적불량율 ({prevMonthLabel})
                 </span>
               </div>
               <span className="text-[9.5px] sm:text-[10px] font-bold text-indigo-600/80 dark:text-indigo-400 font-mono shrink-0">
-                월간 총 {liveQualityMonthly.totalInspectQty.toLocaleString()} EA ({liveQualityMonthly.totalDefectQty.toLocaleString()}건 • {liveQualityMonthly.overallDefectRate}%)
+                전월 총 {liveQualityPrevMonthly.totalInspectQty.toLocaleString()} EA ({liveQualityPrevMonthly.totalDefectQty.toLocaleString()}건 • {liveQualityPrevMonthly.overallDefectRate}%)
               </span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {liveQualityMonthly.items.map((item) => {
-                const isMax = item.id === liveQualityMonthly.maxDefectItem?.id;
+              {liveQualityPrevMonthly.items.map((item) => {
+                const isMax = item.id === liveQualityPrevMonthly.maxDefectItem?.id;
                 return (
                   <div
                     key={item.id}

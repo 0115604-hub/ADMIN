@@ -128,6 +128,21 @@ export const getDayOfWeek = (dateStr) => {
 };
 
 /**
+ * Get Previous Year-Month (e.g. "2026-09" -> "2026-08")
+ */
+export const getPreviousYearMonth = (yearMonth = "2026-09") => {
+  try {
+    const [y, m] = (yearMonth || "2026-09").split("-").map(Number);
+    if (m === 1) {
+      return `${y - 1}-12`;
+    }
+    return `${y}-${String(m - 1).padStart(2, "0")}`;
+  } catch {
+    return "2026-08";
+  }
+};
+
+/**
  * Read local storage records
  */
 export const getLocalQualityRecords = () => {
