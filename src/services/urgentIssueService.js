@@ -317,6 +317,7 @@ export const restoreUrgentIssue = async (id) => {
   const restoredItem = {
     ...target,
     isDeleted: false,
+    isResolved: false,
     deletedAt: "",
     deletedBy: ""
   };

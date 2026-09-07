@@ -121,8 +121,11 @@ export const AuthModal = () => {
   // Urgent Issues State
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [isListModalOpen, setIsListModalOpen] = useState(false); // List Modal Open State
+  const [selectedListItem, setSelectedListItem] = useState(null); // Selected Item for Details & Restore
+  const [restoreToast, setRestoreToast] = useState("");
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
-  const [detailIssueModal, setDetailIssueModal] = useState(null); // Selected Issue for Full Details & Photo Popup Modal
+  const [detailIssueModal, setDetailIssueModal] = useState(null); // Fallback / Action modal ref
   const [issueModalPage, setIssueModalPage] = useState(1);
   const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "unresolved" | "closed"
   const ISSUES_PER_PAGE = 5;
@@ -536,6 +539,10 @@ export const AuthModal = () => {
     try {
       const updated = await deleteUrgentIssue(issue.id, expectedManager);
       setUrgentIssues(updated);
+      if (selectedListItem && selectedListItem.id === issue.id) {
+        const delItem = updated.find((i) => i.id === issue.id);
+        setSelectedListItem(delItem || null);
+      }
       if (detailIssueModal && detailIssueModal.id === issue.id) {
         setDetailIssueModal(null);
       }
@@ -556,7 +563,7 @@ export const AuthModal = () => {
     }
   };
 
-  // Restore Soft-Deleted Issue
+  // Restore Soft-Deleted Issue (삭제 취소 및 첫화면 품질경보 복구)
   const handleRestoreIssue = async (issueId, e) => {
     if (e) e.stopPropagation();
     try {
@@ -564,8 +571,11 @@ export const AuthModal = () => {
       setUrgentIssues(updated);
       const restored = updated.find((i) => i.id === issueId);
       if (restored) {
+        setSelectedListItem(restored);
         setDetailIssueModal(restored);
       }
+      setRestoreToast("✅ 해당 항목이 첫화면 품질경보로 정상 복구되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Restore error:", err);
       alert("복구 처리 중 오류가 발생했습니다.");
@@ -631,11 +641,9 @@ export const AuthModal = () => {
               {/* Left: Compact Title & Summary */}
               <div
                 onClick={() => {
+                  setIsListModalOpen(true);
+                  setSelectedListItem(null);
                   setIssueFilterTab("all");
-                  const targetItem = urgentIssues.find((i) => !i.isDeleted && !i.isResolved) || urgentIssues.find((i) => !i.isDeleted) || urgentIssues[0];
-                  if (targetItem) {
-                    setDetailIssueModal(targetItem);
-                  }
                   setIssueModalPage(1);
                 }}
                 className="flex items-center gap-1.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
@@ -663,11 +671,9 @@ export const AuthModal = () => {
                   <button
                     type="button"
                     onClick={() => {
+                      setIsListModalOpen(true);
+                      setSelectedListItem(null);
                       setIssueFilterTab("all");
-                      const targetItem = urgentIssues.find((i) => !i.isDeleted && !i.isResolved) || urgentIssues.find((i) => !i.isDeleted) || urgentIssues[0];
-                      if (targetItem) {
-                        setDetailIssueModal(targetItem);
-                      }
                       setIssueModalPage(1);
                     }}
                     className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg text-[10px] sm:text-[10.5px] font-black bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-2xs flex items-center gap-0.5 sm:gap-1 active:scale-95 transition-all cursor-pointer"
@@ -718,7 +724,9 @@ export const AuthModal = () => {
                     <div
                       key={item.id}
                       onClick={() => {
-                        setDetailIssueModal(item);
+                        setIsListModalOpen(true);
+                        setSelectedListItem(item);
+                        setIssueFilterTab("all");
                         const itemIdx = filteredIssues.findIndex((it) => it.id === item.id);
                         if (itemIdx >= 0) {
                           setIssueModalPage(Math.floor(itemIdx / ISSUES_PER_PAGE) + 1);
@@ -1174,12 +1182,9 @@ export const AuthModal = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 0. 품질경보 및 공지사항 상세 내용 & 5개 단위 이력 관리 팝업 모달 */}
+      {/* 🌟 0. 품질경보 • 공지사항 • 회의일정 관리대장 (리스트 목록 조회 & 복구 모달) */}
       {/* ========================================================================= */}
-      {detailIssueModal && (() => {
-        const item = urgentIssues.find((it) => it.id === detailIssueModal.id) || detailIssueModal;
-        const isNotice = item.category === "공지사항" || item.category === "공유사항";
-        const isDeleted = Boolean(item.isDeleted);
+      {isListModalOpen && (() => {
         const totalIssuePages = Math.max(1, Math.ceil(filteredIssues.length / ISSUES_PER_PAGE));
         const validIssuePage = Math.min(Math.max(1, issueModalPage), totalIssuePages);
         const paginatedIssues = filteredIssues.slice(
@@ -1190,80 +1195,42 @@ export const AuthModal = () => {
         return (
           <div
             className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn"
-            onClick={() => setDetailIssueModal(null)}
+            onClick={() => {
+              setIsListModalOpen(false);
+              setSelectedListItem(null);
+            }}
           >
             <div
               className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp text-xs max-h-[94vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              {/* 1. Modal Header */}
+              <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
                 <div className="flex items-center gap-2.5">
-                  <div className={`p-2.5 rounded-2xl text-white shadow-md shrink-0 ${
-                    isDeleted
-                      ? "bg-slate-700 ring-2 ring-slate-600/50"
-                      : item.category === "회의일정"
-                      ? "bg-purple-600 ring-2 ring-purple-500/40"
-                      : item.isResolved
-                      ? "bg-emerald-600 ring-2 ring-emerald-500/40"
-                      : isNotice
-                      ? "bg-emerald-600 ring-2 ring-emerald-500/40"
-                      : "bg-rose-600 ring-2 ring-rose-500/40"
-                  }`}>
-                    {isDeleted ? <Trash2 className="w-5 h-5 text-rose-300" /> : <Megaphone className="w-5 h-5" />}
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-rose-500 to-indigo-600 text-white shadow-md shrink-0">
+                    <ListOrdered className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black text-white shadow-xs ${
-                        isDeleted
-                          ? "bg-slate-700 text-slate-200 border border-slate-600"
-                          : item.category === "회의일정"
-                          ? "bg-purple-600"
-                          : isNotice
-                          ? "bg-emerald-600"
-                          : "bg-rose-600"
-                      }`}>
-                        {isDeleted ? "🗑️ 삭제/종결" : item.category === "회의일정" ? "📅 회의일정" : isNotice ? "📢 사내공지" : "🚨 품질경보"}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                        item.plant === "한림공장"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                          : item.plant === "삼랑진공장"
-                          ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
-                          : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                      }`}>
-                        {item.plant}
-                      </span>
-                      {isDeleted ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-900 shadow-2xs">
-                          종결 (삭제됨)
-                        </span>
-                      ) : item.isResolved ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
-                          ✓ 종결 (완료)
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-2xs animate-pulse">
-                          ⏳ 진행/미결
-                        </span>
-                      )}
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        (전체 {urgentIssues.length}건 중 선택됨)
+                      <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                        품질경보 • 공지사항 • 회의일정 관리대장
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        총 {urgentIssues.length}건
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      작성자: <strong className="text-slate-700 dark:text-slate-200">{item.author} {item.authorTitle || ""}</strong> • {item.createdAt}
-                      {isDeleted && item.deletedAt && (
-                        <span className="text-rose-600 dark:text-rose-400 ml-1.5 font-bold">
-                          (삭제일: {item.deletedAt} / {item.deletedBy || "관리자"})
-                        </span>
-                      )}
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      등록된 이력 목록을 조회하고, 항목 선택 또는 우측 <strong>[복구]</strong> 버튼으로 첫화면에 다시 활성화할 수 있습니다.
                     </p>
                   </div>
                 </div>
+
                 <button
                   type="button"
-                  onClick={() => setDetailIssueModal(null)}
+                  onClick={() => {
+                    setIsListModalOpen(false);
+                    setSelectedListItem(null);
+                  }}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
                   title="닫기"
                 >
@@ -1271,628 +1238,435 @@ export const AuthModal = () => {
                 </button>
               </div>
 
-              {/* Modal Body - Scrollable */}
-              <div className="space-y-4 overflow-y-auto pr-1 flex-1 max-h-[62vh]">
-                {/* 0. 삭제 상태인 경우 상단 알림 배너 & 복구 버튼 */}
-                {isDeleted && (
-                  <div className="p-3.5 rounded-2xl bg-rose-50/90 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 flex items-center justify-between gap-3 shadow-xs animate-fadeIn">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-2 rounded-xl bg-rose-500 text-white shrink-0">
-                        <Trash2 className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h5 className="font-black text-rose-700 dark:text-rose-300 text-xs">
-                          현재 삭제(종결) 처리된 항목입니다.
-                        </h5>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          삭제일시: <strong className="text-slate-700 dark:text-slate-200">{item.deletedAt || "최근"}</strong> • 삭제 권한자: <strong className="text-slate-700 dark:text-slate-200">{item.deletedBy || "관리자"}</strong>
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => handleRestoreIssue(item.id, e)}
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>삭제 취소 (정상 복구)</span>
-                    </button>
+              {/* Restore Toast Notification */}
+              {restoreToast && (
+                <div className="p-2.5 rounded-xl bg-emerald-500 text-white text-xs font-black flex items-center justify-between shadow-md animate-bounce">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{restoreToast}</span>
                   </div>
-                )}
-
-                {/* 1. 제목 및 전달 내용 */}
-                <div className={`p-4 rounded-2xl border space-y-2 ${
-                  isDeleted
-                    ? "bg-slate-100/70 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700"
-                    : item.category === "회의일정"
-                    ? "bg-purple-50/40 dark:bg-purple-950/20 border-purple-200/70 dark:border-purple-900/50"
-                    : isNotice
-                    ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-900/50"
-                    : "bg-rose-50/40 dark:bg-rose-950/20 border-rose-200/70 dark:border-rose-900/50"
-                }`}>
-                  {item.title && (
-                    <h4 className={`text-sm font-black leading-snug ${
-                      isDeleted
-                        ? "text-slate-600 dark:text-slate-400 line-through decoration-rose-500/70"
-                        : item.category === "회의일정"
-                        ? "text-purple-950 dark:text-purple-200"
-                        : "text-slate-900 dark:text-white"
-                    }`}>
-                      {item.title}
-                    </h4>
-                  )}
-                  <div className={`text-xs font-semibold leading-relaxed whitespace-pre-wrap ${
-                    isDeleted
-                      ? "text-slate-600 dark:text-slate-400"
-                      : "text-slate-700 dark:text-slate-200"
-                  }`}>
-                    {item.content}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRestoreToast("")}
+                    className="text-white/80 hover:text-white text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
                 </div>
+              )}
 
-                {/* 2. 현장 첨부 사진 갤러리 */}
-                {item.images && item.images.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
-                      <span className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-black">
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>첨부 사진 ({item.images.length}장)</span>
-                      </span>
-                      <span className="text-[10.5px] text-slate-400 font-normal">탭하여 원본 확대</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {item.images.map((img, idx) => (
-                        <div
-                          key={img.id || idx}
-                          onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진_${idx + 1}` })}
-                          className="group relative rounded-2xl overflow-hidden border border-rose-300 dark:border-rose-900/60 bg-slate-100 dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-rose-500 transition-all"
-                        >
-                          <img
-                            src={img.dataUrl}
-                            alt={img.name || `첨부사진 ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                            <ZoomIn className="w-5 h-5" />
-                          </div>
-                          <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
-                            {idx + 1}/{item.images.length}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. 회의결과 (회의일정) 또는 조치결과 (품질경보/공지사항) 섹션 */}
-                {item.category === "회의일정" ? (
-                  <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-purple-50/90 via-indigo-50/50 to-purple-50/50 dark:from-purple-950/60 dark:via-indigo-950/40 dark:to-purple-950/30 border border-purple-200 dark:border-purple-800/80 space-y-2.5 shadow-2xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-black text-purple-700 dark:text-purple-300">
-                        <CheckCircle2 className="w-4 h-4 text-purple-600" />
-                        <span>회의 결과 및 결정 사항</span>
-                      </div>
-                      {item.actionAuthor && (
-                        <span className="text-[10.5px] text-purple-600 dark:text-purple-400 font-bold">
-                          기록/작성자: {item.actionAuthor} • {item.actionAt}
-                        </span>
-                      )}
-                    </div>
-
-                    {item.actionResult ? (
-                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap pl-1">
-                        {item.actionResult}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between pl-1">
-                        <p className="text-xs text-slate-400 italic">
-                          아직 등록된 회의결과가 없습니다.
-                        </p>
-                        {!isDeleted && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenActionModal(item)}
-                            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-black text-[11px] shadow-xs cursor-pointer active:scale-95 transition-all"
-                          >
-                            ✍️ 회의결과 입력
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* 회의 결과 첨부 사진 */}
-                    {item.actionImages && item.actionImages.length > 0 && (
-                      <div className="pt-2 border-t border-purple-200/60 dark:border-purple-900/40 space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-purple-700 dark:text-purple-300">
-                          <span>회의록 / 결과 사진 ({item.actionImages.length}장)</span>
-                          <span className="text-[10px] text-slate-400 font-normal">탭하여 원본 확대</span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {item.actionImages.map((img, idx) => (
-                            <div
-                              key={img.id || idx}
-                              onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `회의결과사진_${idx + 1}` })}
-                              className="group relative rounded-2xl overflow-hidden border border-purple-300 dark:border-purple-800 bg-white dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-purple-500 transition-all"
-                            >
-                              <img
-                                src={img.dataUrl}
-                                alt={img.name || `회의결과사진 ${idx + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                              />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                                <ZoomIn className="w-5 h-5" />
-                              </div>
-                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
-                                {idx + 1}/{item.actionImages.length}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 to-teal-50/40 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>조치 결과</span>
-                      </div>
-                      {item.actionAuthor && (
-                        <span className="text-[10.5px] text-emerald-600 dark:text-emerald-400 font-bold">
-                          조치자: {item.actionAuthor} • {item.actionAt}
-                        </span>
-                      )}
-                    </div>
-
-                    {item.actionResult ? (
-                      <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-relaxed whitespace-pre-wrap pl-1">
-                        {item.actionResult}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-400 italic pl-1">
-                        아직 등록된 조치결과가 없습니다.
-                      </p>
-                    )}
-
-                    {/* 조치 첨부 사진 */}
-                    {item.actionImages && item.actionImages.length > 0 && (
-                      <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/40 space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                          <span>조치 완료 사진 ({item.actionImages.length}장)</span>
-                          <span className="text-[10px] text-slate-400 font-normal">탭하여 원본 확대</span>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {item.actionImages.map((img, idx) => (
-                            <div
-                              key={img.id || idx}
-                              onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` })}
-                              className="group relative rounded-2xl overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-800 aspect-square shadow-xs cursor-pointer hover:border-emerald-500 transition-all"
-                            >
-                              <img
-                                src={img.dataUrl}
-                                alt={img.name || `조치사진 ${idx + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                              />
-                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                                <ZoomIn className="w-5 h-5" />
-                              </div>
-                              <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-mono">
-                                {idx + 1}/{item.actionImages.length}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 선택된 항목 관리 버튼 바 */}
-                <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
-                  {isDeleted ? (
-                    <button
-                      type="button"
-                      onClick={(e) => handleRestoreIssue(item.id, e)}
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>이 항목 정상 복구</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        const issueToDel = item;
-                        handleOpenDeleteModal(issueToDel, e);
-                      }}
-                      className="px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-100 dark:hover:bg-rose-950/70 border border-rose-200 dark:border-rose-900/60 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>현재 선택 항목 삭제 (이명재/김동욱)</span>
-                    </button>
-                  )}
-
+              {/* 2. Filter Tabs: [전체] [⏳ 진행중] [✓ 종결대장] [신규등록] */}
+              <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner flex-wrap">
+                  {/* 1. [전체] */}
                   <button
                     type="button"
                     onClick={() => {
-                      const issueToAct = item;
-                      handleOpenActionModal(issueToAct);
+                      setIssueFilterTab("all");
+                      setIssueModalPage(1);
                     }}
-                    className={`px-3.5 py-1.5 rounded-xl text-white text-xs font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer ${
-                      item.category === "회의일정"
-                        ? "bg-purple-600 hover:bg-purple-700 shadow-purple-600/20"
-                        : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20"
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                      issueFilterTab === "all"
+                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>
-                      {item.category === "회의일정"
-                        ? item.actionResult
-                          ? "회의결과 수정"
-                          : "회의결과 입력"
-                        : item.actionResult
-                        ? "현재 항목 조치 수정"
-                        : "현재 항목 조치결과 입력"}
+                    <span>전체</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                      {urgentIssues.length}
+                    </span>
+                  </button>
+
+                  {/* 2. [진행중] */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIssueFilterTab("unresolved");
+                      setIssueModalPage(1);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                      issueFilterTab === "unresolved"
+                        ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>⏳ 진행중</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200">
+                      {unresolvedIssues.length}
+                    </span>
+                  </button>
+
+                  {/* 3. [종결대장] */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIssueFilterTab("closed");
+                      setIssueModalPage(1);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                      issueFilterTab === "closed"
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>✓ 종결대장</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
+                      {closedIssues.length}
                     </span>
                   </button>
                 </div>
 
-                {/* ========================================================================= */}
-                {/* 🌟 4. [요청사항 반영] [종결] [등록] 2가지 탭 & 시인성 개선 목록 (페이지당 5개) */}
-                {/* ========================================================================= */}
-                <div className="pt-3.5 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <ListOrdered className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-                      <h5 className="text-xs font-black text-slate-900 dark:text-white">
-                        품질경보·공지 관리대장 (전체 이력)
-                      </h5>
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 font-mono">
-                        (선택 탭 {filteredIssues.length}건 / 전체 {urgentIssues.length}건)
-                      </span>
-                    </div>
+                <button
+                  type="button"
+                  onClick={() => setIsIssueModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 border border-rose-200 dark:border-rose-900/60 transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ 신규 등록</span>
+                </button>
+              </div>
 
-                    {/* [전체] [진행중] [종결대장] [신규등록] 탭 UI */}
-                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner flex-wrap">
-                      {/* 1. [전체] 탭 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIssueFilterTab("all");
-                          setIssueModalPage(1);
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                          issueFilterTab === "all"
-                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <span>전체</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                          {urgentIssues.length}
-                        </span>
-                      </button>
+              {/* Modal Body - Scrollable */}
+              <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[64vh]">
+                {/* 🌟 3. Selected Item Preview & Restore Box (선택 시에만 나타나는 상단 복구 카드) */}
+                {selectedListItem && (() => {
+                  const item = urgentIssues.find((it) => it.id === selectedListItem.id) || selectedListItem;
+                  const isItemDeleted = Boolean(item.isDeleted);
+                  const isItemResolved = Boolean(item.isResolved);
+                  const isItemMeeting = item.category === "회의일정";
+                  const isItemNotice = item.category === "공지사항" || item.category === "공유사항";
 
-                      {/* 2. [진행중] 탭 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIssueFilterTab("unresolved");
-                          setIssueModalPage(1);
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                          issueFilterTab === "unresolved"
-                            ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <span>⏳ 진행중</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200">
-                          {unresolvedIssues.length}
-                        </span>
-                      </button>
+                  return (
+                    <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50/80 dark:from-blue-950/60 dark:via-indigo-950/40 dark:to-slate-900/70 border-2 border-blue-400/80 dark:border-blue-600 shadow-md space-y-2.5 animate-fadeIn">
+                      {/* Selected Item Header */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${
+                            isItemDeleted
+                              ? "bg-slate-700"
+                              : isItemMeeting
+                              ? "bg-purple-600"
+                              : isItemNotice
+                              ? "bg-emerald-600"
+                              : "bg-rose-600"
+                          }`}>
+                            {isItemDeleted ? "🗑️ 삭제됨" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "🚨 품질경보"}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                            {item.plant}
+                          </span>
+                          <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
+                            작성자: <strong>{item.author} {item.authorTitle || ""}</strong> ({item.createdAt})
+                          </span>
+                          {isItemDeleted && item.deletedAt && (
+                            <span className="text-[10.5px] font-bold text-rose-600 dark:text-rose-400">
+                              • 삭제: {item.deletedBy || "관리자"} ({item.deletedAt})
+                            </span>
+                          )}
+                        </div>
 
-                      {/* 3. [종결대장] 탭 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIssueFilterTab("closed");
-                          setIssueModalPage(1);
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                          issueFilterTab === "closed"
-                            ? "bg-emerald-600 text-white shadow-xs"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                        }`}
-                      >
-                        <span>✓ 종결대장</span>
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
-                          {closedIssues.length}
-                        </span>
-                      </button>
-
-                      {/* 4. [신규등록] 탭 */}
-                      <button
-                        type="button"
-                        onClick={() => setIsIssueModalOpen(true)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>신규 등록</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
-                    * 권한자(이명재 이사 / 김동욱 책임)가 삭제한 항목은 첫화면 표시에서 즉시 제외되며, 아래 관리대장에 종결 이력으로 안전하게 등록·보존됩니다.
-                  </p>
-
-                  {/* 5개 목록 테이블/카드 */}
-                  <div className="space-y-2">
-                    {paginatedIssues.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
-                        <div className="text-base">📭</div>
-                        <p>
-                          {issueFilterTab === "unresolved"
-                            ? "현재 미결(조치대기) 상태인 경보 및 공지사항이 없습니다. (모두 조치 완료됨)"
-                            : issueFilterTab === "closed"
-                            ? "종결(조치완료 또는 삭제)된 내역이 없습니다."
-                            : "등록된 품질경보 및 공지사항이 없습니다."}
-                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedListItem(null)}
+                          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs font-bold px-1.5 py-0.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title="선택 해제"
+                        >
+                          선택 닫기 ✕
+                        </button>
                       </div>
-                    ) : (
-                      paginatedIssues.map((it, idx) => {
-                        const isCurrent = it.id === item.id;
-                        const isItMeeting = it.category === "회의일정";
-                        const isItNotice = it.category === "공지사항" || it.category === "공유사항";
-                        const isItDeleted = Boolean(it.isDeleted);
-                        const isItResolved = Boolean(it.isResolved);
-                        const isItUnresolved = !isItDeleted && !isItResolved;
-                        const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
-                        const totalImgCount = (it.images?.length || 0) + (it.actionImages?.length || 0);
 
-                        return (
-                          <div
-                            key={it.id || idx}
-                            onClick={() => setDetailIssueModal(it)}
-                            className={`p-3 rounded-2xl border-2 transition-all flex items-center justify-between gap-2.5 cursor-pointer ${
-                              isCurrent
-                                ? "bg-blue-50/95 dark:bg-blue-950/80 border-blue-500 dark:border-blue-500 ring-4 ring-blue-500/20 shadow-md scale-[1.005]"
-                                : isItDeleted
-                                ? "bg-slate-100/80 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:bg-slate-200/70 opacity-80"
-                                : isItUnresolved
-                                ? "bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/80 hover:bg-amber-100/60 hover:border-amber-400"
-                                : "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300/80 dark:border-emerald-800/60 hover:bg-emerald-100/50 hover:border-emerald-400"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              {/* Item Index */}
-                              <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10.5px] font-black shrink-0 ${
-                                isCurrent
-                                  ? "bg-blue-600 text-white shadow-xs"
-                                  : isItDeleted
-                                  ? "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono"
-                                  : isItUnresolved
-                                  ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                                  : "bg-emerald-600 text-white shadow-xs"
-                              }`}>
-                                {itemNum}
-                              </span>
-
-                              {/* Category Badge */}
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 shadow-2xs ${
-                                isItDeleted
-                                  ? "bg-slate-600"
-                                  : isItMeeting
-                                  ? "bg-purple-600"
-                                  : isItNotice
-                                  ? "bg-emerald-600"
-                                  : "bg-rose-600"
-                              }`}>
-                                {isItDeleted ? "삭제" : isItMeeting ? "회의" : isItNotice ? "공지" : "경보"}
-                              </span>
-
-                              {/* Plant Badge */}
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-black shrink-0 ${
-                                it.plant === "한림공장"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                  : it.plant === "삼랑진공장"
-                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                              }`}>
-                                {it.plant?.replace("공장", "") || "공장"}
-                              </span>
-
-                              {/* Content Snippet */}
-                              <span className={`text-xs truncate flex-1 ${
-                                isCurrent
-                                  ? "font-black text-blue-950 dark:text-blue-100"
-                                  : isItDeleted
-                                  ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
-                                  : isItUnresolved
-                                  ? "font-black text-amber-950 dark:text-amber-200"
-                                  : "font-bold text-slate-800 dark:text-slate-200"
-                              }`}>
-                                {it.title ? `${it.title} - ${it.content}` : it.content}
-                              </span>
-
-                              {/* Reply count indicator */}
-                              {it.replies && it.replies.length > 0 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 shrink-0 font-bold shadow-2xs">
-                                  💬 {it.replies.length}
-                                </span>
-                              )}
-
-                              {/* Photo count indicator */}
-                              {totalImgCount > 0 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-1 shrink-0 font-bold hidden sm:inline-flex shadow-2xs">
-                                  <Camera className="w-3 h-3 text-rose-500" />
-                                  <span>{totalImgCount}장</span>
-                                </span>
-                              )}
-
-                              {/* Author & Date */}
-                              <span className="text-[10.5px] text-slate-400 shrink-0 font-mono hidden md:inline">
-                                {it.author} • {isItDeleted && it.deletedBy ? `삭제: ${it.deletedBy}` : (it.createdAt?.slice(5) || "")}
-                              </span>
-                            </div>
-
-                            {/* Status Badge & Actions */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {/* Status Badge */}
-                              {isItDeleted ? (
-                                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                                  🗑️ 삭제종결
-                                </span>
-                              ) : isItResolved ? (
-                                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
-                                  ✓ 조치완료
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
-                                  ⏳ 조치대기
-                                </span>
-                              )}
-
-                              {/* Action Buttons */}
-                              {isItDeleted ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleRestoreIssue(it.id, e)}
-                                  className="px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-1"
-                                  title="삭제 취소 및 정상 복구"
-                                >
-                                  <RotateCcw className="w-3 h-3" />
-                                  <span>복구</span>
-                                </button>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenActionModal(it, e);
-                                    }}
-                                    className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all active:scale-95 cursor-pointer flex items-center gap-1 shadow-xs ${
-                                      it.actionResult
-                                        ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
-                                        : "bg-amber-500 hover:bg-amber-600 text-slate-950 font-black shadow-amber-500/30"
-                                    }`}
-                                    title="조치결과 입력/수정"
-                                  >
-                                    <Check className="w-3 h-3" />
-                                    <span>{it.actionResult ? "수정" : "조치입력"}</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenDeleteModal(it, e);
-                                    }}
-                                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 border border-transparent hover:border-rose-200 dark:hover:border-rose-900 transition-all cursor-pointer"
-                                    title="삭제"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                      {/* Selected Item Content */}
+                      <div className="space-y-1 bg-white dark:bg-slate-900/90 p-3 rounded-xl border border-blue-200/80 dark:border-blue-900/60">
+                        {item.title && (
+                          <h4 className="text-xs font-black text-slate-900 dark:text-white leading-snug">
+                            {item.title}
+                          </h4>
+                        )}
+                        <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                          {item.content}
+                        </div>
+                        {item.actionResult && (
+                          <div className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800 text-[11.5px]">
+                            <span className="font-extrabold text-emerald-600 dark:text-emerald-400">조치/결과: </span>
+                            <span className="text-slate-700 dark:text-slate-300 font-medium">{item.actionResult}</span>
+                            {item.actionAuthor && (
+                              <span className="text-[10px] text-slate-400 ml-1">({item.actionAuthor} • {item.actionAt})</span>
+                            )}
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* 5-Item Pagination Controls */}
-                  {totalIssuePages > 1 && (
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          disabled={validIssuePage <= 1}
-                          onClick={() => setIssueModalPage(1)}
-                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                          title="첫 페이지"
-                        >
-                          <ChevronsLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={validIssuePage <= 1}
-                          onClick={() => setIssueModalPage((p) => Math.max(1, p - 1))}
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          <span>이전</span>
-                        </button>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalIssuePages }, (_, i) => i + 1).map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => setIssueModalPage(pageNum)}
-                            className={`w-7 h-7 rounded-lg font-black text-xs transition-all cursor-pointer ${
-                              pageNum === validIssuePage
-                                ? "bg-blue-600 text-white shadow-xs scale-105"
-                                : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        ))}
-                      </div>
+                      {/* Photos Thumbnails if any */}
+                      {((item.images && item.images.length > 0) || (item.actionImages && item.actionImages.length > 0)) && (
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                          {item.images?.map((img, idx) => (
+                            <img
+                              key={idx}
+                              src={img.dataUrl}
+                              alt="첨부사진"
+                              onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `사진_${idx + 1}` })}
+                              className="w-8 h-8 rounded-lg object-cover border border-rose-300 dark:border-rose-900 cursor-pointer hover:scale-105 transition-transform"
+                              title="클릭하여 원본 보기"
+                            />
+                          ))}
+                          {item.actionImages?.map((img, idx) => (
+                            <img
+                              key={idx}
+                              src={img.dataUrl}
+                              alt="조치사진"
+                              onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` })}
+                              className="w-8 h-8 rounded-lg object-cover border border-emerald-300 dark:border-emerald-900 cursor-pointer hover:scale-105 transition-transform"
+                              title="클릭하여 원본 보기"
+                            />
+                          ))}
+                        </div>
+                      )}
 
-                      <div className="flex items-center gap-1">
+                      {/* 🌟 복구 기능 버튼 (Restore Action Button) */}
+                      <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                        <span className="text-[10.5px] text-blue-700 dark:text-blue-300 font-semibold flex items-center gap-1">
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>복구 시 메인 첫화면의 품질경보 패널에 다시 표시됩니다.</span>
+                        </span>
+
                         <button
                           type="button"
-                          disabled={validIssuePage >= totalIssuePages}
-                          onClick={() => setIssueModalPage((p) => Math.min(totalIssuePages, p + 1))}
-                          className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-1 cursor-pointer"
+                          onClick={(e) => handleRestoreIssue(item.id, e)}
+                          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/30 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                          title="이 항목을 첫화면 품질경보로 복구"
                         >
-                          <span>다음</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={validIssuePage >= totalIssuePages}
-                          onClick={() => setIssueModalPage(totalIssuePages)}
-                          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-                          title="마지막 페이지"
-                        >
-                          <ChevronsRight className="w-3.5 h-3.5" />
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>이 항목 첫화면으로 복구</span>
                         </button>
                       </div>
                     </div>
+                  );
+                })()}
+
+                {/* 🌟 4. Clean List Table / Cards (리스트 목록 조회) */}
+                <div className="space-y-1.5">
+                  {paginatedIssues.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
+                      <div className="text-lg">📭</div>
+                      <p>
+                        {issueFilterTab === "unresolved"
+                          ? "현재 미결(조치대기) 상태인 항목이 없습니다. (모두 조치/종결됨)"
+                          : issueFilterTab === "closed"
+                          ? "종결(조치완료 또는 삭제)된 내역이 없습니다."
+                          : "등록된 품질경보 및 공지사항이 없습니다."}
+                      </p>
+                    </div>
+                  ) : (
+                    paginatedIssues.map((it, idx) => {
+                      const isCurrent = selectedListItem?.id === it.id;
+                      const isItMeeting = it.category === "회의일정";
+                      const isItNotice = it.category === "공지사항" || it.category === "공유사항";
+                      const isItDeleted = Boolean(it.isDeleted);
+                      const isItResolved = Boolean(it.isResolved);
+                      const isItUnresolved = !isItDeleted && !isItResolved;
+                      const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
+                      const totalImgCount = (it.images?.length || 0) + (it.actionImages?.length || 0);
+
+                      return (
+                        <div
+                          key={it.id || idx}
+                          onClick={() => setSelectedListItem(it)}
+                          className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                            isCurrent
+                              ? "bg-blue-50/95 dark:bg-blue-950/80 border-blue-500 ring-2 ring-blue-500/30 shadow-md scale-[1.005]"
+                              : isItDeleted
+                              ? "bg-slate-100/70 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:bg-slate-200/60 opacity-80"
+                              : isItUnresolved
+                              ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100/50"
+                              : "bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/50 hover:bg-emerald-100/40"
+                          }`}
+                          title="클릭하여 상세 조회 및 복구"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {/* Item Number */}
+                            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
+                              isCurrent
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : isItDeleted
+                                ? "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono"
+                                : isItUnresolved
+                                ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                                : "bg-emerald-600 text-white shadow-xs"
+                            }`}>
+                              {itemNum}
+                            </span>
+
+                            {/* Category Badge */}
+                            <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black text-white shrink-0 shadow-2xs ${
+                              isItDeleted
+                                ? "bg-slate-600"
+                                : isItMeeting
+                                ? "bg-purple-600"
+                                : isItNotice
+                                ? "bg-emerald-600"
+                                : "bg-rose-600"
+                            }`}>
+                              {isItDeleted ? "삭제" : isItMeeting ? "회의" : isItNotice ? "공지" : "경보"}
+                            </span>
+
+                            {/* Factory Badge */}
+                            <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black shrink-0 ${
+                              it.plant === "한림공장"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                : it.plant === "삼랑진공장"
+                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                            }`}>
+                              {it.plant?.replace("공장", "") || "공장"}
+                            </span>
+
+                            {/* Content Snippet */}
+                            <span className={`text-xs truncate flex-1 ${
+                              isCurrent
+                                ? "font-black text-blue-950 dark:text-blue-100"
+                                : isItDeleted
+                                ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
+                                : isItUnresolved
+                                ? "font-black text-amber-950 dark:text-amber-200"
+                                : "font-bold text-slate-800 dark:text-slate-200"
+                            }`}>
+                              {it.title ? `${it.title} - ${it.content}` : it.content}
+                            </span>
+
+                            {/* Photo count indicator */}
+                            {totalImgCount > 0 && (
+                              <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 shrink-0 font-bold hidden sm:inline-flex">
+                                <Camera className="w-2.5 h-2.5 text-rose-500" />
+                                <span>{totalImgCount}</span>
+                              </span>
+                            )}
+
+                            {/* Author / Deleter info */}
+                            <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
+                              {isItDeleted && it.deletedBy ? `삭제: ${it.deletedBy}` : `${it.author} • ${it.createdAt?.slice(5) || ""}`}
+                            </span>
+                          </div>
+
+                          {/* Status & Action Button */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* Status Badge */}
+                            {isItDeleted ? (
+                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                🗑️ 삭제종결
+                              </span>
+                            ) : isItResolved ? (
+                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                                ✓ 조치완료
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
+                                ⏳ 조치대기
+                              </span>
+                            )}
+
+                            {/* 🌟 Restore Button right on list row */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleRestoreIssue(it.id, e)}
+                              className="px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10.5px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5"
+                              title="첫화면 품질경보로 복구"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              <span>복구</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
+
+                {/* 5-Item Pagination */}
+                {totalIssuePages > 1 && (
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={validIssuePage <= 1}
+                        onClick={() => setIssueModalPage(1)}
+                        className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                        title="첫 페이지"
+                      >
+                        <ChevronsLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={validIssuePage <= 1}
+                        onClick={() => setIssueModalPage((p) => Math.max(1, p - 1))}
+                        className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>이전</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalIssuePages }, (_, i) => i + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setIssueModalPage(pageNum)}
+                          className={`w-6 h-6 rounded-lg font-black text-xs transition-all cursor-pointer ${
+                            pageNum === validIssuePage
+                              ? "bg-blue-600 text-white shadow-xs scale-105"
+                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={validIssuePage >= totalIssuePages}
+                        onClick={() => setIssueModalPage((p) => Math.min(totalIssuePages, p + 1))}
+                        className="px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <span>다음</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={validIssuePage >= totalIssuePages}
+                        onClick={() => setIssueModalPage(totalIssuePages)}
+                        className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+                        title="마지막 페이지"
+                      >
+                        <ChevronsRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Modal Bottom Fixed Action Buttons */}
-              <div className="pt-3 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="pt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsIssueModalOpen(true);
-                  }}
-                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => setIsIssueModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ 신규 등록</span>
                 </button>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDetailIssueModal(null)}
-                    className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black hover:bg-slate-200 dark:hover:bg-slate-700 text-xs cursor-pointer shadow-xs"
-                  >
-                    닫기
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsListModalOpen(false);
+                    setSelectedListItem(null);
+                  }}
+                  className="px-4 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-black hover:bg-slate-200 dark:hover:bg-slate-700 text-xs cursor-pointer shadow-xs"
+                >
+                  닫기
+                </button>
               </div>
             </div>
           </div>
