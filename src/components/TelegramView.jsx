@@ -180,9 +180,9 @@ export const TelegramView = () => {
     return `총 ${total}건 (${previewList.join(", ")}${moreText})`;
   }, [morningApprovalDocs, morningWorkLogs]);
 
-  // Live urgent issues
+  // Live active urgent issues (삭제 및 조치완료 항목 제외)
   const morningUrgentIssues = useMemo(() => {
-    return getLocalUrgentIssues();
+    return getLocalUrgentIssues().filter((i) => !i.isDeleted && !i.isResolved);
   }, []);
 
   const morningUrgentSummary = useMemo(() => {

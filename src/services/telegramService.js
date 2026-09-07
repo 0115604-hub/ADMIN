@@ -717,14 +717,14 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
   }
 
-  // 3. 품질경보 미삭제 / 미조치 현황
-  const urgentIssues = getLocalUrgentIssues();
+  // 3. 품질경보 미삭제 / 미조치 현황 (삭제 및 조치완료 항목 제외)
+  const activeUrgentIssues = getLocalUrgentIssues().filter((i) => !i.isDeleted && !i.isResolved);
   let urgentSummary = "없음 (전건 종결완료)";
-  if (urgentIssues.length > 0) {
-    const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
+  if (activeUrgentIssues.length > 0) {
+    const issueTitles = activeUrgentIssues.map((i) => i.title || i.content).filter(Boolean);
     const previewList = issueTitles.slice(0, 2);
-    const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
-    urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+    const moreText = activeUrgentIssues.length > 2 ? ` 외 ${activeUrgentIssues.length - 2}건` : "";
+    urgentSummary = `미조치 ${activeUrgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
   }
 
   const savedBriefingTemplate = getLocalTelegramTemplates()["unified_briefing"]?.text;

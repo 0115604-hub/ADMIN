@@ -252,13 +252,13 @@ export const AuthModal = () => {
     return () => unsub();
   }, []);
 
-  // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved/Deleted), 전체(All)
+  // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved), 전체(All)
   const unresolvedIssues = useMemo(() => {
     return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved);
   }, [urgentIssues]);
 
   const closedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => i.isResolved || i.isDeleted);
+    return urgentIssues.filter((i) => !i.isDeleted && i.isResolved);
   }, [urgentIssues]);
 
   const deletedIssues = useMemo(() => {
@@ -274,7 +274,7 @@ export const AuthModal = () => {
   const filteredIssues = useMemo(() => {
     if (issueFilterTab === "unresolved") return unresolvedIssues;
     if (issueFilterTab === "closed") return closedIssues;
-    return urgentIssues;
+    return urgentIssues.filter((i) => !i.isDeleted);
   }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues]);
 
   const handleUserClick = (user) => {
@@ -682,7 +682,7 @@ export const AuthModal = () => {
                     <ListOrdered className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-slate-600 dark:text-slate-300" />
                     <span>리스트</span>
                     <span className="px-1 py-0.2 rounded-full bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-200 text-[8.5px] sm:text-[9px] font-mono font-bold">
-                      {urgentIssues.length}
+                      {activeIssues.length}
                     </span>
                   </button>
 
