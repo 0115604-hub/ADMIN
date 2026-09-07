@@ -1633,23 +1633,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       </div>
 
-      {/* 🗓️ [한림공장] 우창용 선임 일정 (도메인 첫 접속화면 상단 노출 • 할일 제외) */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-blue-500/40 dark:border-blue-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
-        <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
-          <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs shrink-0">
-            <Calendar className="w-3.5 h-3.5" />
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-              우창용 선임 일정
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0">
-              한림 가공동
-            </span>
-          </div>
+      {/* 🗓️ [한림공장] 우창용 선임 일정 (다른 작업자/관리자 접속 시에만 노출 • 우창용 본인은 하단 전용 센터가 있으므로 제외) */}
+      {!isChangyong && changyongPublicSchedules.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-blue-500/40 dark:border-blue-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
+          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+            <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs shrink-0">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                우창용 선임 일정
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0">
+                한림 가공동
+              </span>
+            </div>
 
-          {/* Middle: Registered Schedules Chips List (Excluding '할일') */}
-          {changyongPublicSchedules.length > 0 ? (
+            {/* Middle: Registered Schedules Chips List (Excluding '할일') */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
               {changyongPublicSchedules.map((ev) => {
                 const isTodayEvent = (ev.startDate || "") <= todayDateStr && todayDateStr <= (ev.endDate || ev.startDate || "");
@@ -1701,7 +1701,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         ({ev.reason})
                       </span>
                     )}
-                    {(isAdmin || isChangyong) && (
+                    {isAdmin && (
                       <button
                         type="button"
                         onClick={() => handleChangyongDismissLeave(ev.id)}
@@ -1715,16 +1715,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 );
               })}
             </div>
-          ) : (
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-800">
-              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-300 dark:border-slate-700 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-slate-500" />
-                <span>예정된 일정 없음 (정상 근무)</span>
-              </span>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 🌟 작업자 정보 & 간편 일정/연차 설정 패널 (우창용 선임인 경우 전용 스마트 캘린더 센터 파일럿 가동) */}
       {!isAdmin && (
