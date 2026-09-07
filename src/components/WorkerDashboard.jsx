@@ -700,8 +700,37 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [changyongSelectedDate, setChangyongSelectedDate] = useState(() => getKSTDateString());
   const [changyongLeaveType, setChangyongLeaveType] = useState("연차(전일)");
   const [changyongReasonInput, setChangyongReasonInput] = useState("");
+  const [changyongSharedWorkers, setChangyongSharedWorkers] = useState([]); // 작업공유자 선택 목록
+  const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
+  const shareDropdownRef = useRef(null);
   const [changyongSaving, setChangyongSaving] = useState(false);
   const [showMiniCalendar, setShowMiniCalendar] = useState(false);
+
+  // Click outside to close share dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (shareDropdownRef.current && !shareDropdownRef.current.contains(e.target)) {
+        setIsShareDropdownOpen(false);
+      }
+    };
+    if (isShareDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isShareDropdownOpen]);
+
+  const toggleSharedWorker = (worker) => {
+    setChangyongSharedWorkers((prev) => {
+      const exists = prev.some((w) => w.id === worker.id);
+      if (exists) {
+        return prev.filter((w) => w.id !== worker.id);
+      } else {
+        return [...prev, worker];
+      }
+    });
+  };
 
   const [changyongWeekAnchor, setChangyongWeekAnchor] = useState(() => getKSTDateString());
 
@@ -849,6 +878,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setChangyongSaving(true);
     try {
       const nowIso = new Date().toISOString();
+      const baseReason = changyongReasonInput.trim() || changyongLeaveType;
+
+      // 1. 우창용 선임 일정 등록
       const newLeave = {
         userId: "hal_cy",
         userName: "우창용",
@@ -857,17 +889,50 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         startDate: changyongSelectedDate,
         endDate: changyongSelectedDate,
         leaveType: changyongLeaveType,
-        reason: changyongReasonInput.trim() || changyongLeaveType,
+        reason: baseReason,
+        sharedWith: changyongSharedWorkers.map((w) => w.name),
         createdAt: nowIso,
         createdDate: todayDateStr,
         isCompleted: false,
         isDismissed: false
       };
       await saveAnnualLeave(newLeave);
-      setToastMessage(`[우창용 선임] ${changyongSelectedDate} ${changyongLeaveType} 일정이 등록되었습니다.`);
+
+      // 2. 선택된 작업공유자(단수/복수) 일정 자동 등록
+      if (changyongSharedWorkers.length > 0) {
+        for (let i = 0; i < changyongSharedWorkers.length; i++) {
+          const sw = changyongSharedWorkers[i];
+          const sharedLeave = {
+            id: `leave_${Date.now()}_${sw.id}_${i}`,
+            userId: sw.id,
+            userName: sw.name,
+            plant: sw.plant || "한림공장",
+            title: sw.title || "선임",
+            startDate: changyongSelectedDate,
+            endDate: changyongSelectedDate,
+            leaveType: changyongLeaveType,
+            reason: `${baseReason} (우창용 공유)`,
+            sharedBy: "우창용",
+            createdAt: nowIso,
+            createdDate: todayDateStr,
+            isCompleted: false,
+            isDismissed: false
+          };
+          await saveAnnualLeave(sharedLeave);
+        }
+      }
+
+      const shareNames = changyongSharedWorkers.map((w) => w.name).join(", ");
+      setToastMessage(
+        `[우창용 선임] ${changyongSelectedDate} ${changyongLeaveType} 일정이 등록되었습니다.${
+          shareNames ? ` (작업공유자: ${shareNames} 자동 등록)` : ""
+        }`
+      );
       setLogSavedToast(true);
-      setTimeout(() => setLogSavedToast(false), 3000);
+      setTimeout(() => setLogSavedToast(false), 3500);
       setChangyongReasonInput("");
+      setChangyongSharedWorkers([]);
+      setIsShareDropdownOpen(false);
     } catch (err) {
       alert("일정 등록 중 오류가 발생했습니다: " + err.message);
     } finally {
@@ -1725,8 +1790,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
             {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-              {/* Left: Plant, Worker Name, Title, and Process (4 cols) */}
-              <div className="lg:col-span-4 flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 min-w-0">
+              {/* Left: Plant, Worker Name, Title, and Process (3 cols) */}
+              <div className="lg:col-span-3 flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 min-w-0">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 shrink-0">
                   <Factory className="w-3 h-3" />
                   <span>한림공장</span>
@@ -1741,16 +1806,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </span>
                 </div>
 
-                <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0">
+                <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0 hidden sm:inline-block">
                   가공동 관리
                 </span>
               </div>
 
-              {/* Right: Quick Schedule Register Form (8 cols) */}
-              <div className="lg:col-span-8 min-w-0">
+              {/* Right: Quick Schedule Register Form (9 cols) */}
+              <div className="lg:col-span-9 min-w-0">
                 <form onSubmit={handleChangyongRegisterSchedule} className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
-                  {/* 1. Leave Type Selector (3 cols) */}
-                  <div className="sm:col-span-3 min-w-0">
+                  {/* 1. Leave Type Selector (2 cols) */}
+                  <div className="sm:col-span-2 min-w-0">
                     <select
                       value={changyongLeaveType}
                       onChange={(e) => setChangyongLeaveType(e.target.value)}
@@ -1782,8 +1847,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </div>
                   </div>
 
-                  {/* 3. Reason/Memo Input (4 cols) */}
-                  <div className="sm:col-span-4 min-w-0">
+                  {/* 3. Reason/Memo Input (3 cols) */}
+                  <div className="sm:col-span-3 min-w-0">
                     <input
                       type="text"
                       value={changyongReasonInput}
@@ -1793,15 +1858,152 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     />
                   </div>
 
-                  {/* 4. Submit Button (2 cols) */}
-                  <div className="sm:col-span-2 min-w-0">
+                  {/* 4. 작업공유자 선택창 (단수/복수 선택) (3 cols) */}
+                  <div className="sm:col-span-3 relative min-w-0" ref={shareDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsShareDropdownOpen((prev) => !prev)}
+                      className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between gap-1 shadow-2xs cursor-pointer ${
+                        changyongSharedWorkers.length > 0
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
+                          : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
+                      }`}
+                      title="작업공유자: 선택 시 해당 작업자의 일정에도 자동 등록됩니다"
+                    >
+                      <div className="flex items-center gap-1 truncate min-w-0">
+                        <Users className={`w-3.5 h-3.5 shrink-0 ${changyongSharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
+                        <span className="truncate text-[11px]">
+                          {changyongSharedWorkers.length === 0
+                            ? "작업공유자"
+                            : changyongSharedWorkers.length === 1
+                            ? changyongSharedWorkers[0].name
+                            : `${changyongSharedWorkers[0].name} 외 ${changyongSharedWorkers.length - 1}명`}
+                        </span>
+                      </div>
+                      {changyongSharedWorkers.length > 0 ? (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setChangyongSharedWorkers([]);
+                          }}
+                          className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-900 rounded text-slate-400 hover:text-slate-700"
+                          title="선택 초기화"
+                        >
+                          <X className="w-3 h-3" />
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">▼</span>
+                      )}
+                    </button>
+
+                    {/* 작업공유자 드롭다운 팝업 */}
+                    {isShareDropdownOpen && (
+                      <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
+                          <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-blue-500" />
+                            <span>작업공유자 선택</span>
+                          </span>
+                          {changyongSharedWorkers.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setChangyongSharedWorkers([])}
+                              className="text-[10.5px] font-bold text-rose-500 hover:underline cursor-pointer"
+                            >
+                              전체해제
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
+                          {/* 한림공장 작업자 */}
+                          <div>
+                            <div className="text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1">
+                              <Factory className="w-3 h-3" />
+                              <span>한림공장</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                              {PLANTS[1]?.workers
+                                ?.filter((w) => w.id !== "hal_cy" && w.name !== "우창용")
+                                .map((w) => {
+                                  const isSelected = changyongSharedWorkers.some((sw) => sw.id === w.id);
+                                  return (
+                                    <button
+                                      key={w.id}
+                                      type="button"
+                                      onClick={() => toggleSharedWorker(w)}
+                                      className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                        isSelected
+                                          ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs"
+                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                      }`}
+                                    >
+                                      <span>{w.name}</span>
+                                      <span className="text-[9.5px] opacity-70">
+                                        {isSelected ? "✓" : w.title || "선임"}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+
+                          {/* 삼랑진공장 작업자 */}
+                          <div>
+                            <div className="text-[10.5px] font-black text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                              <Factory className="w-3 h-3" />
+                              <span>삼랑진공장</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                              {PLANTS[0]?.workers?.map((w) => {
+                                const isSelected = changyongSharedWorkers.some((sw) => sw.id === w.id);
+                                return (
+                                  <button
+                                    key={w.id}
+                                    type="button"
+                                    onClick={() => toggleSharedWorker(w)}
+                                    className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                      isSelected
+                                        ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs"
+                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                    }`}
+                                  >
+                                    <span>{w.name}</span>
+                                    <span className="text-[9.5px] opacity-70">
+                                      {isSelected ? "✓" : w.title || "선임"}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                          <span className="text-[10.5px] font-bold text-slate-500">
+                            {changyongSharedWorkers.length > 0 ? `${changyongSharedWorkers.length}명 선택됨` : "작업자 선택 안함"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsShareDropdownOpen(false)}
+                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] cursor-pointer"
+                          >
+                            선택 완료
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. Submit Button (1 col) */}
+                  <div className="sm:col-span-1 min-w-0">
                     <button
                       type="submit"
                       disabled={changyongSaving}
                       className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-2xs shadow-blue-500/25 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
                     >
                       <Plus className="w-3 h-3" />
-                      <span>{changyongSaving ? "등록중" : "등록"}</span>
+                      <span>{changyongSaving ? "..." : "등록"}</span>
                     </button>
                   </div>
                 </form>
