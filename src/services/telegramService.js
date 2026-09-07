@@ -6,11 +6,11 @@ import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
 
-const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config";
+const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config_v4";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
 const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
 
-// Default Configuration (Pre-configured with real bot & group chat)
+// Default Configuration (Pre-configured strictly for '오륙 통합방')
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
@@ -25,9 +25,22 @@ let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
 
 export const getLocalTelegramConfig = () => {
   try {
+    // Clear old deprecated storage keys
+    localStorage.removeItem("oryuk_telegram_config");
+    localStorage.removeItem("oryuk_telegram_config_v2");
+    localStorage.removeItem("oryuk_telegram_config_v3");
+
     const saved = localStorage.getItem(TELEGRAM_CONFIG_KEY);
     if (saved) {
-      cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      // Guard against old 경영방 ID redirection
+      if (parsed.chatId === "-1003939516875" || !parsed.chatId) {
+        parsed.chatId = "-4186792536";
+      }
+      delete parsed.pnlChatId;
+      delete parsed.sendDailyPnLBriefing;
+      cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG, ...parsed, chatId: "-4186792536" };
+      localStorage.setItem(TELEGRAM_CONFIG_KEY, JSON.stringify(cachedConfig));
       return cachedConfig;
     }
   } catch (e) {
@@ -37,7 +50,10 @@ export const getLocalTelegramConfig = () => {
 };
 
 export const saveTelegramConfig = async (config) => {
-  cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG, ...config };
+  cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG, ...config, chatId: "-4186792536" };
+  delete cachedConfig.pnlChatId;
+  delete cachedConfig.sendDailyPnLBriefing;
+
   try {
     localStorage.setItem(TELEGRAM_CONFIG_KEY, JSON.stringify(cachedConfig));
   } catch (e) {
@@ -60,23 +76,28 @@ export const subscribeTelegramConfig = (onUpdate) => {
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
-          const merged = { ...DEFAULT_TELEGRAM_CONFIG, ...data };
+          const merged = { ...DEFAULT_TELEGRAM_CONFIG, ...data, chatId: "-4186792536" };
+          delete merged.pnlChatId;
+          delete merged.sendDailyPnLBriefing;
           cachedConfig = merged;
           localStorage.setItem(TELEGRAM_CONFIG_KEY, JSON.stringify(merged));
-          onUpdate(merged);
+          if (onUpdate) onUpdate(merged);
         } else {
-          onUpdate(getLocalTelegramConfig());
+          const localCfg = getLocalTelegramConfig();
+          if (onUpdate) onUpdate(localCfg);
         }
       },
       (err) => {
         console.warn("Telegram config Firestore sync warning:", err);
-        onUpdate(getLocalTelegramConfig());
+        const localCfg = getLocalTelegramConfig();
+        if (onUpdate) onUpdate(localCfg);
       }
     );
     return unsubscribe;
   } catch (e) {
     console.error("subscribeTelegramConfig error:", e);
-    onUpdate(getLocalTelegramConfig());
+    const localCfg = getLocalTelegramConfig();
+    if (onUpdate) onUpdate(localCfg);
     return () => {};
   }
 };

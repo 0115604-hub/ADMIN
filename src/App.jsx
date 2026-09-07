@@ -30,7 +30,8 @@ import {
   clearAllTransactions
 } from "./services/dbService";
 import {
-  checkAndAutoSendDailyMorningBriefing
+  checkAndAutoSendDailyMorningBriefing,
+  subscribeTelegramConfig
 } from "./services/telegramService";
 
 export const App = () => {
@@ -102,6 +103,9 @@ export const App = () => {
     // Daily 07:30 AM Morning Briefing Check
     checkAndAutoSendDailyMorningBriefing();
 
+    // Ensure real-time sync of Telegram notification configuration
+    const unsubTelegram = subscribeTelegramConfig();
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         checkAndAutoSendDailyMorningBriefing();
@@ -114,6 +118,7 @@ export const App = () => {
     }, 30000); // Check every 30 seconds
 
     return () => {
+      unsubTelegram();
       clearInterval(timer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
