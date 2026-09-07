@@ -647,13 +647,11 @@ export const AuthModal = () => {
                   품질·공지·회의
                 </h3>
 
-                <span className={`text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full shrink-0 shadow-xs flex items-center gap-0.5 ${
-                  unresolvedIssues.length > 0
-                    ? "bg-amber-500 text-slate-950 ring-1 ring-amber-400 animate-pulse"
-                    : "bg-emerald-600 text-white"
-                }`}>
-                  {unresolvedIssues.length > 0 ? `미결 ${unresolvedIssues.length}` : "완료"}
-                </span>
+                {unresolvedIssues.length > 0 && (
+                  <span className="text-[9px] sm:text-[10px] font-black px-1.5 py-0.2 rounded-full shrink-0 shadow-xs flex items-center gap-0.5 bg-amber-500 text-slate-950 ring-1 ring-amber-400 animate-pulse">
+                    미결 {unresolvedIssues.length}
+                  </span>
+                )}
               </div>
 
               {/* Right: [리스트] [등록] 2대 탭 및 펼치기 버튼 */}
@@ -826,15 +824,6 @@ export const AuthModal = () => {
                                   ({item.actionAuthor || "작업자"} • {item.actionAt})
                                 </span>
                               </div>
-                            ) : item.replies && item.replies.length > 0 ? (
-                              <div className="flex items-center gap-1 min-w-0 truncate text-[11px]">
-                                <span className="font-extrabold text-purple-600 dark:text-purple-400 shrink-0">
-                                  💬 최근 회신:
-                                </span>
-                                <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">
-                                  {item.replies[item.replies.length - 1].author} [{item.replies[item.replies.length - 1].attendanceStatus}]: {item.replies[item.replies.length - 1].content}
-                                </span>
-                              </div>
                             ) : (
                               <div className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 font-medium">
                                 <span className="font-bold">회의결과:</span>
@@ -861,7 +850,7 @@ export const AuthModal = () => {
                           )}
                         </div>
 
-                        {/* Right: Action Input / Edit / Reply Button */}
+                        {/* Right: Action Input / Edit Button */}
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
@@ -881,19 +870,6 @@ export const AuthModal = () => {
                           >
                             {isMeeting ? (item.actionResult ? "✏️ 결과수정" : "✍️ 결과입력") : (item.actionResult ? "✏️ 수정" : "✍️ 조치입력")}
                           </button>
-                          {isMeeting && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDetailIssueModal(item);
-                              }}
-                              className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800 transition-colors cursor-pointer"
-                              title="참석/불참 회신 작성"
-                            >
-                              💬 회신
-                            </button>
-                          )}
                         </div>
                       </div>
 
@@ -980,7 +956,7 @@ export const AuthModal = () => {
           {!selectedUser ? (
             <div className="space-y-2.5 sm:space-y-3">
               {/* ========================================================================= */}
-              {/* 1. FACTORY 1: 삼랑진공장 (이니셜 삭제 • 이름 중심 심플 칩 • 이명재 강조) */}
+              {/* 1. FACTORY 1: 삼랑진공장 (이명재 그라데이션 강조 • 심플 칩) */}
               {/* ========================================================================= */}
               <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
@@ -1008,7 +984,7 @@ export const AuthModal = () => {
                         onClick={() => handleUserClick(worker)}
                         className={`px-2.5 py-2 sm:py-2.5 rounded-xl border transition-all flex items-center justify-between gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left ${
                           isMyeongjae
-                            ? "bg-gradient-to-r from-amber-500 via-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black border-2 border-amber-400 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/40"
+                            ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black border border-amber-400 shadow-xs"
                             : isOnLeave
                             ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-1 ring-rose-400/40 hover:border-rose-500 text-rose-900 dark:text-rose-200"
                             : isPartner
@@ -1017,7 +993,6 @@ export const AuthModal = () => {
                         }`}
                       >
                         <div className="flex items-center gap-1.5 min-w-0">
-                          {isMyeongjae && <Crown className="w-3.5 h-3.5 text-slate-950 shrink-0" />}
                           {isOnLeave && <span className="text-xs shrink-0">{leaveStatus?.emoji || "🌴"}</span>}
                           <span className={`text-xs sm:text-sm font-black truncate ${
                             isMyeongjae ? "text-slate-950" : "text-slate-900 dark:text-white"
@@ -1028,7 +1003,7 @@ export const AuthModal = () => {
 
                         <span className={`text-[10px] sm:text-[10.5px] font-bold shrink-0 ${
                           isMyeongjae
-                            ? "text-slate-900 bg-amber-400/90 px-1.5 py-0.2 rounded font-black"
+                            ? "text-slate-950 bg-amber-400/80 px-1.5 py-0.2 rounded font-black"
                             : isOnLeave
                             ? "text-rose-600 dark:text-rose-300 font-black"
                             : isPartner
@@ -1044,7 +1019,7 @@ export const AuthModal = () => {
               </div>
 
               {/* ========================================================================= */}
-              {/* 2. FACTORY 2: 한림공장 (이니셜 삭제 • 이름 중심 심플 칩 • 김동욱 강조) */}
+              {/* 2. FACTORY 2: 한림공장 (김동욱 그라데이션 강조 • 심플 칩) */}
               {/* ========================================================================= */}
               <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
@@ -1072,7 +1047,7 @@ export const AuthModal = () => {
                         onClick={() => handleUserClick(worker)}
                         className={`px-2.5 py-2 sm:py-2.5 rounded-xl border transition-all flex items-center justify-between gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left ${
                           isDongwook
-                            ? "bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border-2 border-emerald-400 shadow-md shadow-emerald-600/25 ring-2 ring-emerald-400/40"
+                            ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border border-emerald-400 shadow-xs"
                             : isOnLeave
                             ? "bg-rose-50/90 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-1 ring-rose-400/40 hover:border-rose-500 text-rose-900 dark:text-rose-200"
                             : isPartner
@@ -1080,8 +1055,7 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-slate-800 dark:text-slate-100"
                         }`}
                       >
-                        <div className="flex items-center gap-1 min-w-0">
-                          {isDongwook && <Crown className="w-3.5 h-3.5 text-amber-300 shrink-0" />}
+                        <div className="flex items-center gap-1.5 min-w-0">
                           {isOnLeave && <span className="text-xs shrink-0">{leaveStatus?.emoji || "🌴"}</span>}
                           <span className={`text-xs sm:text-sm font-black truncate ${
                             isDongwook ? "text-white font-black" : "text-slate-900 dark:text-white"
@@ -1092,7 +1066,7 @@ export const AuthModal = () => {
 
                         <span className={`text-[10px] sm:text-[10.5px] font-bold shrink-0 ${
                           isDongwook
-                            ? "text-emerald-100 bg-emerald-700/90 px-1.5 py-0.2 rounded font-black"
+                            ? "text-white bg-emerald-700/80 px-1.5 py-0.2 rounded font-black"
                             : isOnLeave
                             ? "text-rose-600 dark:text-rose-300 font-black"
                             : isPartner
@@ -1387,174 +1361,6 @@ export const AuthModal = () => {
                     </div>
                   </div>
                 )}
-
-                {/* 2.5 💬 [요청사항 반영] 참석 및 확인 회신란 (회신 댓글 & 실시간 텔레그램 연동) */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50/80 via-indigo-50/50 to-purple-50/40 dark:from-purple-950/50 dark:via-indigo-950/30 dark:to-purple-950/20 border border-purple-200 dark:border-purple-800/60 space-y-3 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-black text-purple-700 dark:text-purple-300">
-                      <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                      <span>참석 및 확인 회신란</span>
-                      <span className="px-2 py-0.2 rounded-full text-[10.5px] bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-200 font-bold">
-                        {item.replies?.length || 0}건
-                      </span>
-                    </div>
-                    <span className="text-[10.5px] text-purple-600 dark:text-purple-400 font-medium hidden sm:inline">
-                      * 전작업자 회신 가능 (회신 시 텔레그램 자동 전파)
-                    </span>
-                  </div>
-
-                  {/* 회신 목록 리스트 */}
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                    {!item.replies || item.replies.length === 0 ? (
-                      <div className="p-3.5 rounded-xl bg-white/80 dark:bg-slate-800/60 border border-dashed border-purple-200 dark:border-purple-800 text-center text-slate-400 text-xs">
-                        등록된 회신이 없습니다. 아래 폼에서 참석 여부 및 확인 의견을 회신해 주세요.
-                      </div>
-                    ) : (
-                      item.replies.map((rep) => (
-                        <div
-                          key={rep.id}
-                          className="p-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-purple-100 dark:border-purple-800/60 shadow-2xs flex items-start justify-between gap-2 text-xs"
-                        >
-                          <div className="space-y-1 min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-black text-slate-900 dark:text-white">
-                                {rep.author} {rep.authorTitle || ""}
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                ({rep.plant})
-                              </span>
-                              <span className={`px-2 py-0.2 rounded-full text-[9.5px] font-black shrink-0 ${
-                                rep.attendanceStatus === "참석"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                  : rep.attendanceStatus === "미참석" || rep.attendanceStatus === "불참"
-                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                                  : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                              }`}>
-                                {rep.attendanceStatus === "참석" ? "✓ 참석" : rep.attendanceStatus === "미참석" || rep.attendanceStatus === "불참" ? "✕ 불참" : "💬 확인"}
-                              </span>
-                              <span className="text-[9.5px] text-slate-400 ml-auto font-mono">
-                                {rep.createdAt}
-                              </span>
-                            </div>
-                            <p className="text-slate-700 dark:text-slate-200 font-medium leading-relaxed pl-0.5">
-                              {rep.content}
-                            </p>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteReply(item.id, rep.id, e)}
-                            className="p-1 rounded text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors shrink-0"
-                            title="회신 삭제"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* 회신 입력 폼 */}
-                  {!isDeleted && (
-                    <form onSubmit={(e) => handleAddReply(item.id, e)} className="pt-2 border-t border-purple-200/60 dark:border-purple-800/60 space-y-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        {/* 작성자 선택 */}
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <label className="font-bold text-slate-600 dark:text-slate-400 text-[11px] shrink-0">
-                            회신자:
-                          </label>
-                          <select
-                            value={replyForm.author}
-                            onChange={(e) => setReplyForm({ ...replyForm, author: e.target.value })}
-                            className="px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs"
-                          >
-                            {allWorkers.map((w) => (
-                              <option key={w.id} value={w.name}>
-                                {w.plantName} • {w.name} {w.title || ""}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* 참석 상태 탭 */}
-                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-lg border border-purple-200 dark:border-purple-700">
-                          <button
-                            type="button"
-                            onClick={() => setReplyForm({ ...replyForm, attendanceStatus: "참석" })}
-                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition-all ${
-                              replyForm.attendanceStatus === "참석"
-                                ? "bg-emerald-600 text-white shadow-xs"
-                                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                            }`}
-                          >
-                            ✓ 참석
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setReplyForm({ ...replyForm, attendanceStatus: "미참석" })}
-                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition-all ${
-                              replyForm.attendanceStatus === "미참석"
-                                ? "bg-rose-600 text-white shadow-xs"
-                                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                            }`}
-                          >
-                            ✕ 불참
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setReplyForm({ ...replyForm, attendanceStatus: "확인" })}
-                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition-all ${
-                              replyForm.attendanceStatus === "확인"
-                                ? "bg-purple-600 text-white shadow-xs"
-                                : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                            }`}
-                          >
-                            💬 의견
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* 빠른 입력 칩 */}
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <span className="text-[10px] text-slate-400 font-bold">빠른입력:</span>
-                        {[
-                          "확인했습니다. 참석하겠습니다.",
-                          "일정 확인 완료했습니다.",
-                          "현장 긴급 작업으로 불참합니다."
-                        ].map((txt) => (
-                          <button
-                            key={txt}
-                            type="button"
-                            onClick={() => setReplyForm({ ...replyForm, content: txt })}
-                            className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700 hover:border-purple-400 text-[10px] text-slate-600 dark:text-slate-300 font-medium transition-colors cursor-pointer"
-                          >
-                            {txt}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* 입력창 + 등록 버튼 */}
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="text"
-                          required
-                          placeholder="회신 의견 및 전달 사항을 입력해 주세요."
-                          value={replyForm.content}
-                          onChange={(e) => setReplyForm({ ...replyForm, content: e.target.value })}
-                          className="flex-1 px-3 py-2 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        />
-                        <button
-                          type="submit"
-                          disabled={isSubmittingReply}
-                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-black text-xs shadow-md shadow-purple-500/20 active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          <span>{isSubmittingReply ? "등록중..." : "회신 등록"}</span>
-                        </button>
-                      </div>
-                    </form>
-                  )}
-                </div>
 
                 {/* 3. 회의결과 (회의일정) 또는 조치결과 (품질경보/공지사항) 섹션 */}
                 {item.category === "회의일정" ? (
@@ -2228,7 +2034,7 @@ export const AuthModal = () => {
                 ></textarea>
                 {newIssueForm.category === "회의일정" && (
                   <p className="text-[10.5px] text-purple-600 dark:text-purple-400 font-medium mt-1">
-                    * 회의일정은 전작업자가 등록할 수 있으며, 등록 후 모든 작업자가 회신란을 통해 참석 여부를 기록할 수 있습니다.
+                    * 회의일정은 전작업자가 등록할 수 있으며, 회의 결과 및 결정 사항을 간편하게 기록할 수 있습니다.
                   </p>
                 )}
               </div>
