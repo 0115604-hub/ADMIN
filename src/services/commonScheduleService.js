@@ -231,9 +231,55 @@ export const getTodayCommonSchedules = (targetDate = null) => {
   });
 };
 
+export const getScheduleCategoryMeta = (target) => {
+  switch (target) {
+    case "맛집":
+      return {
+        emoji: "🍷",
+        badge: "맛집 탐방",
+        icon: "🍽️",
+        phrase: "맛있는 음식과 함께하는 행복한 시간",
+        accent: "text-rose-600 dark:text-rose-400"
+      };
+    case "여행":
+      return {
+        emoji: "✈️",
+        badge: "여행 / 힐링",
+        icon: "🏖️",
+        phrase: "도심을 벗어나 둘만의 힐링 여행",
+        accent: "text-amber-600 dark:text-amber-400"
+      };
+    case "세미나":
+      return {
+        emoji: "🎓",
+        badge: "세미나",
+        icon: "🏛️",
+        phrase: "새로운 비전과 도약을 위한 자리",
+        accent: "text-blue-600 dark:text-blue-400"
+      };
+    case "교육":
+      return {
+        emoji: "📚",
+        badge: "교육 / 역량",
+        icon: "💡",
+        phrase: "함께 배우고 성장하는 시간",
+        accent: "text-emerald-600 dark:text-emerald-400"
+      };
+    case "기타":
+    default:
+      return {
+        emoji: "💍",
+        badge: target || "특별한 일정",
+        icon: "✨",
+        phrase: "태형 & 미영 두 분만의 소중한 순간",
+        accent: "text-purple-600 dark:text-purple-400"
+      };
+  }
+};
+
 export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateString()) => {
   if (!scheds || scheds.length === 0) {
-    return "• 등록된 태형&미영 일정이 없습니다.";
+    return "• 등록된 태형&미영 일정이 없습니다. ✨";
   }
   const sorted = [...scheds].sort((a, b) => {
     const aStart = a.startDate || a.date || "";
@@ -245,16 +291,16 @@ export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateSt
   return sorted.map((s) => {
     const startDate = s.startDate || s.date;
     const endDate = s.endDate || startDate;
-    const targetStr = s.target ? `[${s.target}] ` : "";
-    const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+    const cat = getScheduleCategoryMeta(s.target);
+    const timeStr = s.time && s.time !== "종일" ? ` [⏰ ${s.time}]` : "";
     const sFormatted = startDate.slice(5).replace("-", ".");
     const eFormatted = endDate.slice(5).replace("-", ".");
     if (startDate !== endDate) {
-      return `• [${sFormatted}~${eFormatted}] ${targetStr}${timeStr}${s.title}`;
+      return `• ${cat.emoji} [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
     } else if (startDate === todayStr) {
-      return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+      return `• ${cat.emoji} [오늘]${timeStr} <b>${s.title}</b> (${cat.badge})`;
     } else {
-      return `• [${sFormatted}] ${targetStr}${timeStr}${s.title}`;
+      return `• ${cat.emoji} [${sFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
     }
   }).join("\n");
 };

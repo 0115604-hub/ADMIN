@@ -5,7 +5,7 @@ import { getLocalAnnualLeaves } from "./annualLeaveService";
 import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
-import { getTodayCommonSchedules, cleanupExpiredCommonSchedules, formatCommonSchedulesForTelegram, injectCommonSchedulesIntoPnLTemplate } from "./commonScheduleService";
+import { getTodayCommonSchedules, cleanupExpiredCommonSchedules, formatCommonSchedulesForTelegram, injectCommonSchedulesIntoPnLTemplate, getScheduleCategoryMeta } from "./commonScheduleService";
 import {
   getKSTDateString,
   getKSTFormattedString,
@@ -936,7 +936,7 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
- * 11. 태형&미영 신규 일정 등록 즉시 경영방 알림 발송
+ * 11. 태형&미영 신규 일정 등록 즉시 경영방 알림 발송 (둘만의 특별하고 소중한 일정 안내)
  * 발송 채널: '경영총괄' (-1003939516875)
  */
 export const sendCommonScheduleRegisteredTelegram = async (scheduleItem) => {
@@ -945,20 +945,25 @@ export const sendCommonScheduleRegisteredTelegram = async (scheduleItem) => {
 
   const targetChatId = config.pnlChatId || "-1003939516875";
   const nowFormatted = getKSTFormattedString();
-  const targetTag = scheduleItem.target ? `[${scheduleItem.target}]` : "[공통]";
-  const timeStr = scheduleItem.time && scheduleItem.time !== "종일" ? scheduleItem.time : "종일";
+  const cat = getScheduleCategoryMeta(scheduleItem.target);
+  const timeDisplay = scheduleItem.time && scheduleItem.time !== "종일" ? `⏰ ${scheduleItem.time}` : "🌅 종일 (시간 무관)";
   const authorStr = scheduleItem.author || "ADMIN";
 
   const message = `
-<b>🟪 [태형&미영] 신규 일정 등록 알림</b>
+✨ <b>𝕋𝕒𝕖𝕙𝕪𝕦𝕟𝕘 & 𝕄𝕚𝕪𝕠𝕦𝕟𝕘</b> ✨
 ━━━━━━━━━━━━━━━━━━━━━
-• <b>구분:</b> <b>${targetTag}</b>
-• <b>시간:</b> <b>${timeStr}</b>
-• <b>일정내용:</b> <b>${scheduleItem.title || "사내 공통일정"}</b>
-• <b>등록일시:</b> ${nowFormatted}
-• <b>등록자:</b> <b>${authorStr}</b>
+💍 <b>[태형 ❤️ 미영] 둘만의 소중한 일정 안내</b> 🥂
 ━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
+${cat.emoji} <b>일정 구분:</b> <b>${cat.badge}</b>
+${timeDisplay.includes("⏰") ? "⏰" : "🌅"} <b>예정 시간:</b> <b>${timeDisplay}</b>
+📝 <b>일정 내용:</b> <b>${scheduleItem.title || "특별한 일정"}</b>
+
+💌 <i>"${cat.phrase} 되시길 바랍니다 ✨"</i>
+━━━━━━━━━━━━━━━━━━━━━
+👑 <b>등록자:</b> <b>${authorStr}</b>
+📅 <b>등록일시:</b> ${nowFormatted}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">💍 태형&미영 일정 관리 바로가기</a>
 `.trim();
 
   return await sendTelegramMessage(message, {

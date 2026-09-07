@@ -49,7 +49,10 @@ import {
   Send,
   Camera,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Share2,
+  Heart,
+  Copy
 } from "lucide-react";
 
 // Client-side image compression for fast sync & light Firestore storage
@@ -142,7 +145,8 @@ import {
   subscribeCommonSchedules,
   getTodayCommonSchedules,
   cleanupExpiredCommonSchedules,
-  formatCommonSchedulesForTelegram
+  formatCommonSchedulesForTelegram,
+  getScheduleCategoryMeta
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
@@ -960,6 +964,89 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setToastMessage("일정이 삭제되었습니다.");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
+  };
+
+  // 💌 개별 태형&미영 일정 멋지게 카톡/메시지 공유
+  const handleShareCommonSchedule = async (item) => {
+    const cat = getScheduleCategoryMeta(item.target);
+    const timeDisplay = item.time && item.time !== "종일" ? item.time : "종일";
+    const startDate = item.startDate || item.date || todayDateStr;
+    const endDate = item.endDate || startDate;
+    const dateRange = startDate === endDate ? startDate : `${startDate} ~ ${endDate}`;
+
+    const text = `✨ 𝕋𝕒𝕖𝕙𝕪𝕦𝕟𝕘 & 𝕄𝕚𝕪𝕠𝕦𝕟𝕘 ✨
+━━━━━━━━━━━━━━━━━━━━━
+💍 [태형 ❤️ 미영] 소중한 일정 안내 🥂
+━━━━━━━━━━━━━━━━━━━━━
+${cat.emoji} 구분: ${cat.badge}
+⏰ 시간: ${timeDisplay}
+📝 내용: ${item.title}
+📅 일자: ${dateRange}
+
+💕 "${cat.phrase}" ✨
+━━━━━━━━━━━━━━━━━━━━━
+🔗 https://profit-and-loss-7d09b.web.app`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `[태형❤️미영] ${item.title}`, text });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setToastMessage("카카오톡/메시지 공유용 내용이 복사되었습니다! 💕");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 2500);
+    } catch {
+      alert("일정 내용이 복사되었습니다.\n\n" + text);
+    }
+  };
+
+  // 📋 전체 태형&미영 일정 멋지게 묶어서 공유/복사
+  const handleCopyAllCommonSchedules = async () => {
+    if (!modalFilteredSchedules || modalFilteredSchedules.length === 0) {
+      alert("공유할 일정이 없습니다.");
+      return;
+    }
+    const schedsList = modalFilteredSchedules
+      .map((s, idx) => {
+        const cat = getScheduleCategoryMeta(s.target);
+        const timeStr = s.time && s.time !== "종일" ? ` [⏰ ${s.time}]` : "";
+        const dateStr = s.startDate || s.date || todayDateStr;
+        const statusStr = s.isCompleted ? " (✓완료)" : "";
+        return `${idx + 1}. ${cat.emoji} [${dateStr}]${timeStr} ${s.title} (${cat.badge})${statusStr}`;
+      })
+      .join("\n");
+
+    const text = `✨ 𝕋𝕒𝕖𝕙𝕪𝕦𝕟𝕘 & 𝕄𝕚𝕪𝕠𝕦𝕟𝕘 ✨
+━━━━━━━━━━━━━━━━━━━━━
+💍 [태형 ❤️ 미영] 일정 목록 (${modalFilteredSchedules.length}건) 🥂
+━━━━━━━━━━━━━━━━━━━━━
+${schedsList}
+
+💕 항상 건강하고 행복한 시간 되세요! ✨
+━━━━━━━━━━━━━━━━━━━━━
+🔗 https://profit-and-loss-7d09b.web.app`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "[태형❤️미영] 전체 일정", text });
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setToastMessage("전체 일정이 멋지게 복사되었습니다! 카톡 등에 붙여넣기 하세요 💕");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 2500);
+    } catch {
+      alert("전체 일정이 복사되었습니다.\n\n" + text);
+    }
   };
 
   const monthParts = selectedMonth.split("-");
@@ -4523,25 +4610,39 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md shadow-indigo-500/20">
-                  <CalendarDays className="w-5 h-5" />
+                <div className="p-2 rounded-xl bg-gradient-to-br from-rose-500 via-pink-500 to-indigo-600 text-white shadow-md shadow-pink-500/20">
+                  <Heart className="w-5 h-5 fill-white/80" />
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    태형&미영 일정 관리 및 등록
+                    태형 ❤️ 미영 일정 관리
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                      Couple & Executive
+                    </span>
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    일정을 등록하고 완료된 일정을 편리하게 관리할 수 있습니다.
+                    두 분만의 특별한 일정을 등록하고 멋지게 공유할 수 있습니다.
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setCommonScheduleModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleCopyAllCommonSchedules}
+                  className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-black text-xs shadow-xs hover:shadow transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                  title="카카오톡/메시지용으로 전체 일정 공유"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">전체 공유</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCommonScheduleModalOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
 
             {/* Scrollable Content */}
@@ -4788,7 +4889,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           </div>
 
                           {/* Right: Actions */}
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleShareCommonSchedule(item)}
+                              title="카카오톡 / 메시지로 멋지게 공유하기"
+                              className="px-2 py-1 rounded-lg text-[10.5px] font-bold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                            >
+                              <Share2 className="w-3 h-3 text-rose-500" />
+                              <span className="hidden sm:inline">공유</span>
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleToggleCompleteCommonSchedule(item.id, isDone)}

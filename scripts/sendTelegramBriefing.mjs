@@ -348,19 +348,30 @@ export async function runAllBriefings(force = false) {
             if (aStart !== bStart) return aStart.localeCompare(bStart);
             return (a.time || "").localeCompare(b.time || "");
           });
+          const getCategoryMeta = (target) => {
+            switch (target) {
+              case "맛집": return { emoji: "🍷", badge: "맛집 탐방" };
+              case "여행": return { emoji: "✈️", badge: "여행 / 힐링" };
+              case "세미나": return { emoji: "🎓", badge: "세미나" };
+              case "교육": return { emoji: "📚", badge: "교육 / 역량" };
+              case "기타":
+              default: return { emoji: "💍", badge: target || "특별한 일정" };
+            }
+          };
+
           commonSchedules = todayScheds.map((s) => {
             const startDate = s.startDate || s.date;
             const endDate = s.endDate || startDate;
-            const targetStr = s.target ? `[${s.target}] ` : "";
-            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+            const cat = getCategoryMeta(s.target);
+            const timeStr = s.time && s.time !== "종일" ? ` [⏰ ${s.time}]` : "";
             const sFormatted = startDate.slice(5).replace("-", ".");
             const eFormatted = endDate.slice(5).replace("-", ".");
             if (startDate !== endDate) {
-              return `• [${sFormatted}~${eFormatted}] ${targetStr}${timeStr}${s.title}`;
+              return `• ${cat.emoji} [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
             } else if (startDate === todayStr) {
-              return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+              return `• ${cat.emoji} [오늘]${timeStr} <b>${s.title}</b> (${cat.badge})`;
             } else {
-              return `• [${sFormatted}] ${targetStr}${timeStr}${s.title}`;
+              return `• ${cat.emoji} [${sFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
             }
           }).join("\n");
         }
@@ -369,7 +380,7 @@ export async function runAllBriefings(force = false) {
       }
 
       if (!commonSchedules) {
-        commonSchedules = "• 등록된 태형&미영 일정이 없습니다.";
+        commonSchedules = "• 등록된 태형&미영 일정이 없습니다. ✨";
       }
 
       const savedPnLTemplate = customTemplates["management_pnl"]?.text;
