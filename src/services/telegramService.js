@@ -5,24 +5,20 @@ import { getLocalAnnualLeaves } from "./annualLeaveService";
 import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
-import initialMultiMonthData from "../data/multiMonthMasterData.json";
 
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
 const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
-const PNL_BRIEFING_DOC_PATH = ["system_config", "daily_pnl_briefing"];
 
 // Default Configuration (Pre-configured with real bot & group chat)
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' (일반 현장 단톡방)
-  pnlChatId: "-1003939516875", // '경영방' 단톡방
+  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 3단계 / 공지사항 / 07:30 모닝브리핑 / 전자결재)
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
-  sendDailyLeaveBriefing: true, // 07:30 일반 모닝브리핑
-  sendDailyPnLBriefing: false // 경영정보공유/손익 브리핑 비활성화
+  sendDailyLeaveBriefing: true // 07:30 모닝브리핑
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -125,7 +121,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
 };
 
 /**
- * Send a photo with optional caption via Telegram Bot API
+ * Send a single photo with caption via Telegram Bot API (Style B: show_caption_above_media)
  */
 export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig = null) => {
   const config = customConfig || getLocalTelegramConfig();
@@ -167,6 +163,71 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
 };
 
 /**
+ * Send up to 3 photos as MediaGroup or Single Photo via Telegram Bot API (Style B)
+ */
+export const sendTelegramMediaGroup = async (images = [], caption = "", customConfig = null) => {
+  const config = customConfig || getLocalTelegramConfig();
+  if (!config.enabled || !config.botToken || !config.chatId) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
+
+  const validImages = (images || []).filter((img) => img && img.dataUrl).slice(0, 3);
+  if (validImages.length === 0) {
+    return await sendTelegramMessage(caption, customConfig);
+  }
+
+  if (validImages.length === 1) {
+    return await sendTelegramPhoto(validImages[0].dataUrl, caption, customConfig);
+  }
+
+  const token = config.botToken.trim();
+  const chatId = String(config.chatId).trim();
+  const endpoint = `https://api.telegram.org/bot${token}/sendMediaGroup`;
+
+  try {
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+
+    const mediaMetadata = [];
+    for (let i = 0; i < validImages.length; i++) {
+      const fieldName = `photo${i}`;
+      const blob = await (await fetch(validImages[i].dataUrl)).blob();
+      formData.append(fieldName, blob, `photo${i}.jpg`);
+
+      const itemMeta = {
+        type: "photo",
+        media: `attach://${fieldName}`
+      };
+
+      if (i === 0 && caption) {
+        itemMeta.caption = caption;
+        itemMeta.parse_mode = "HTML";
+        itemMeta.show_caption_above_media = true;
+      }
+      mediaMetadata.push(itemMeta);
+    }
+
+    formData.append("media", JSON.stringify(mediaMetadata));
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      console.warn("sendMediaGroup failed, fallback to single photo send:", data);
+      return await sendTelegramPhoto(validImages[0].dataUrl, caption, customConfig);
+    }
+
+    return { success: true, results: data.result };
+  } catch (error) {
+    console.warn("Telegram sendMediaGroup Error, fallback:", error);
+    return await sendTelegramPhoto(validImages[0].dataUrl, caption, customConfig);
+  }
+};
+
+/**
  * Format currency amount into Korean denomination (억, 만원)
  */
 export const formatKoreanCurrency = (amount) => {
@@ -186,14 +247,15 @@ export const formatKoreanCurrency = (amount) => {
 };
 
 /**
- * 1. 품질경보 및 공지사항 등록 즉시 알림 (사진 첨부 지원)
+ * 1. 품질경보 및 공지사항 등록 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
 export const sendQualityAlertTelegram = async (issueItem) => {
   const plant = issueItem?.plant || "삼랑진공장";
   const writer = issueItem?.author || issueItem?.writer || "현장작업자";
   const title = issueItem?.title || issueItem?.content || "품질 이슈 발생";
   const content = issueItem?.content && issueItem.content !== issueItem.title ? issueItem.content : "";
-  const photoCount = issueItem?.images?.length ? `\n• <b>첨부사진:</b> 현장 사진 ${issueItem.images.length}장 첨부됨` : "";
+  const images = (issueItem?.images || []).slice(0, 3);
+  const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 현장 사진 ${images.length}장 첨부됨` : "";
   const dateStr = issueItem?.date || new Date().toISOString().split("T")[0];
   const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
   const isNotice = issueItem?.category === "공지사항" || issueItem?.category === "공유사항";
@@ -226,21 +288,16 @@ ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 `.trim();
   }
 
-  // If photo attached, send photo directly
-  if (issueItem?.images && issueItem.images.length > 0 && issueItem.images[0].dataUrl) {
-    try {
-      const photoRes = await sendTelegramPhoto(issueItem.images[0].dataUrl, message);
-      if (photoRes.success) return photoRes;
-    } catch (e) {
-      console.warn("sendPhoto fallback to sendMessage:", e);
-    }
+  // If photos attached (up to 3), send as MediaGroup with caption on top (Style B)
+  if (images.length > 0) {
+    return await sendTelegramMediaGroup(images, message);
   }
 
   return await sendTelegramMessage(message);
 };
 
 /**
- * 2. 품질경보 조치완료 즉시 알림 (사진 첨부 지원)
+ * 2. 품질경보 조치완료 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
 export const sendQualityActionTelegram = async (issueItem, actionResult = null) => {
   const plant = issueItem?.plant || "삼랑진공장";
@@ -248,8 +305,8 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null) 
   const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "조치담당자";
   const content = actionResult?.actionContent || issueItem?.actionResult || "현장 조치 완료";
   const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
-  const actionImages = actionResult?.images || issueItem?.actionImages || [];
-  const photoCount = actionImages.length ? `\n• <b>조치사진:</b> 조치 완료 사진 ${actionImages.length}장 첨부됨` : "";
+  const actionImages = (actionResult?.images || issueItem?.actionImages || []).slice(0, 3);
+  const photoCount = actionImages.length > 0 ? `\n• <b>조치사진:</b> 조치 완료 사진 ${actionImages.length}장 첨부됨` : "";
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -274,13 +331,8 @@ ${content} (조치율 ${rate}%)
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-  if (actionImages.length > 0 && actionImages[0].dataUrl) {
-    try {
-      const photoRes = await sendTelegramPhoto(actionImages[0].dataUrl, message);
-      if (photoRes.success) return photoRes;
-    } catch (e) {
-      console.warn("sendPhoto action fallback to sendMessage:", e);
-    }
+  if (actionImages.length > 0) {
+    return await sendTelegramMediaGroup(actionImages, message);
   }
 
   return await sendTelegramMessage(message);
@@ -515,16 +567,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
 export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
 
 /**
- * 10. [경영정보공유/손익 브리핑 비활성화 처리 - 사용자 요청 반영]
- */
-export const sendDailyPnLBriefingTelegram = async () => {
-  console.log("PnL/경영정보공유 briefing is disabled by user settings.");
-  return { success: false, reason: "DISABLED_BY_USER" };
-};
-
-/**
- * Check and Auto-Send Daily 07:30 AM Morning Briefing (General room)
- */
+  * Check and Auto-Send Daily 07:30 AM Morning Briefing (General room)
+  */
 export const checkAndAutoSendDailyMorningBriefing = async () => {
   const config = getLocalTelegramConfig();
   if (!config.enabled || !config.sendDailyLeaveBriefing) {
@@ -566,13 +610,6 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
- * Check and Auto-Send Daily 07:00 AM P&L Executive Briefing (Disabled)
- */
-export const checkAndAutoSendDailyPnLBriefing = async () => {
-  return { skipped: true, reason: "DISABLED_BY_USER" };
-};
-
-/**
  * Test Connection Function
  */
 export const testTelegramConnection = async (token, chatId) => {
@@ -581,16 +618,15 @@ export const testTelegramConnection = async (token, chatId) => {
   }
 
   const testMessage = `
-<b>[텔레그램 연동 정상 연결]</b>
-----------------------------------------
+<b>[오륙 생산관리 텔레그램 정상 연결]</b>
+━━━━━━━━━━━━━━━━━━━━━
 텔레그램 봇과 정상적으로 연결되었습니다.
-발송 대상 알림:
+발송 대상 알림 (총 3개 카테고리):
 
-• <b>품질경보:</b> 등록 / 조치 / 종결 실시간 알림
-• <b>전자결재:</b> 기안 상신 / 승인 / 반려 / 보류
-• <b>모닝브리핑:</b> 매일 07:30 (연차 + 미결재 + 품질경보)
-• <b>손익브리핑:</b> 매일 07:00 (월간 손익 결산 리포트)
-----------------------------------------
+• <b>품질경보:</b> 등록 / 조치완료 / 종결삭제 (딱 3회 발송)
+• <b>공지사항 & 전자결재:</b> 기안 상신 / 승인 / 반려 / 보류
+• <b>일일 모닝브리핑:</b> 매일 07:30 (근태 + 미결재 + 미조치 품질경보)
+━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 

@@ -7,15 +7,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Read multiMonthMasterData
-const masterDataPath = path.resolve(__dirname, "../src/data/multiMonthMasterData.json");
-let initialMultiMonthData = {};
-try {
-  initialMultiMonthData = JSON.parse(fs.readFileSync(masterDataPath, "utf-8"));
-} catch (e) {
-  console.warn("Failed to load multiMonthMasterData:", e.message);
-}
-
 const firebaseConfig = {
   apiKey: "AIzaSyCiHEInVCW1x2xnyw3eOW5oEubaCiwzZOg",
   authDomain: "profit-and-loss-7d09b.firebaseapp.com",
@@ -33,9 +24,7 @@ const DEFAULT_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
   chatId: "-4186792536", // '오륙 통합방'
-  pnlChatId: "-1003939516875", // '경영방' 단톡방
-  sendDailyLeaveBriefing: true,
-  sendDailyPnLBriefing: true
+  sendDailyLeaveBriefing: true
 };
 
 async function getConfig() {
@@ -230,24 +219,12 @@ export async function runMorningBriefing(force = false) {
   }
 }
 
-export async function runPnLBriefing() {
-  console.log("P&L / 경영정보공유 briefing is disabled by user settings. Skipping send.");
-  return;
-}
-
 // CLI Runner
 const action = process.argv[2];
-if (action === "morning") {
-  await runMorningBriefing(process.argv.includes("--force"));
-  process.exit(0);
-} else if (action === "pnl") {
-  await runPnLBriefing(process.argv.includes("--force"));
-  process.exit(0);
-} else if (action === "all") {
-  await runPnLBriefing(process.argv.includes("--force"));
+if (action === "morning" || !action) {
   await runMorningBriefing(process.argv.includes("--force"));
   process.exit(0);
 } else {
-  console.log("Usage: node scripts/sendTelegramBriefing.mjs [morning|pnl|all] [--force]");
+  console.log("Usage: node scripts/sendTelegramBriefing.mjs [morning] [--force]");
   process.exit(1);
 }

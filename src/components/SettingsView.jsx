@@ -22,8 +22,7 @@ import {
   saveTelegramConfig,
   subscribeTelegramConfig,
   testTelegramConnection,
-  sendDailyLeaveBriefingTelegram,
-  sendDailyPnLBriefingTelegram
+  sendDailyLeaveBriefingTelegram
 } from "../services/telegramService";
 
 export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
@@ -72,26 +71,6 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
   const [sendingBriefing, setSendingBriefing] = useState(false);
   const [briefingToast, setBriefingToast] = useState(false);
-
-  const [sendingPnL, setSendingPnL] = useState(false);
-  const [pnlToast, setPnlToast] = useState(false);
-
-  const handleSendDailyPnL = async () => {
-    setSendingPnL(true);
-    try {
-      const res = await sendDailyPnLBriefingTelegram();
-      if (res.success) {
-        setPnlToast(true);
-        setTimeout(() => setPnlToast(false), 3000);
-      } else {
-        alert("전송 실패: " + (res.error || "설정을 확인해주세요."));
-      }
-    } catch (err) {
-      alert("오류 발생: " + err.message);
-    } finally {
-      setSendingPnL(false);
-    }
-  };
 
   const handleSendDailyLeaveBriefing = async () => {
     setSendingBriefing(true);
@@ -181,7 +160,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
         {/* Inputs */}
         <form onSubmit={handleSaveTelegramConfig} className="space-y-3.5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             <div className="space-y-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 텔레그램 Bot Token (API 토큰)
@@ -200,7 +179,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
             <div className="space-y-1">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                ① 일반 알림 단톡방 Chat ID (필수)
+                오륙 통합방 Chat ID (필수)
               </label>
               <input
                 type="text"
@@ -210,24 +189,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                품질경보/전자결재/07:30 모닝브리핑 수신방
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                <span>② 경영/손익(P&L) 전용 Chat ID</span>
-                <span className="text-[10px] text-blue-600 font-normal">선택사항</span>
-              </label>
-              <input
-                type="text"
-                placeholder="미입력 시 ①번 방으로 통합 발송"
-                value={telegramConfig.pnlChatId || ""}
-                onChange={(e) => setTelegramConfig({ ...telegramConfig, pnlChatId: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-950/20 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-              <p className="text-[10px] text-slate-400">
-                07:00 월간 손익 결산 전용방 (경영진방/1:1)
+                품질경보 3단계 / 공지사항 / 전자결재 / 07:30 모닝브리핑 수신방
               </p>
             </div>
           </div>
@@ -235,13 +197,13 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
           {/* Guide Box */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 text-xs space-y-1 text-slate-700 dark:text-slate-300">
             <p className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1">
-              <span>💡 텔레그램 봇 및 그룹방 연동 가이드:</span>
+              <span>💡 텔레그램 봇 알림 가이드:</span>
             </p>
             <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
               <li>현재 <strong>@oryuk_alert_bot (오륙MES알림)</strong>이 설정되어 있습니다.</li>
-              <li><strong>매일 아침 07:00</strong>: 📊 <strong>월간 손익(P&L) 결산 브리핑(스타일 A)</strong> 자동 발송 (경영/손익 전용방 또는 기본방)</li>
+              <li><strong>품질경보 (스타일 B)</strong>: 🟥 품질경보 발생 / 조치완료 / 종결삭제 시 딱 3회 알림 발송 (사진 최대 3장 첨부)</li>
               <li><strong>매일 아침 07:30</strong>: 🌅 <strong>일일 근태/미결재/품질경보 모닝브리핑</strong> 자동 발송 (오륙 통합방)</li>
-              <li><strong>실시간 알림</strong>: 🚨 품질경보 발생/조치/삭제, 📑 전자결재 상신/승인/반려/보류 즉시 전송</li>
+              <li><strong>실시간 알림</strong>: 사내 공지사항 및 전자결재 기안/승인/반려/보류 즉시 전송</li>
             </ol>
           </div>
 
@@ -289,28 +251,12 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 <span>🌅</span>
                 <span>{sendingBriefing ? "전송 중..." : "07:30 모닝브리핑 발송"}</span>
               </button>
-
-              <button
-                type="button"
-                disabled={sendingPnL}
-                onClick={handleSendDailyPnL}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                title="매일 아침 7시에 자동 전송되는 월간 손익 결산 요약(스타일 A)을 지금 즉시 전송합니다"
-              >
-                <span>📊</span>
-                <span>{sendingPnL ? "전송 중..." : "07:00 손익결산 발송"}</span>
-              </button>
             </div>
 
             <div className="flex items-center gap-2">
-              {pnlToast && (
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> 손익 결산 전송됨!
-                </span>
-              )}
               {briefingToast && (
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> 모닝브리핑 전송됨!
+                  <Check className="w-3.5 h-3.5" /> 모닝 브리핑 전송됨!
                 </span>
               )}
               {savedConfigToast && (
@@ -320,9 +266,10 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
               )}
               <button
                 type="submit"
-                className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 active:scale-95 transition-all cursor-pointer"
               >
-                <span>설정 저장하기</span>
+                <Check className="w-3.5 h-3.5" />
+                <span>설정 저장</span>
               </button>
             </div>
           </div>

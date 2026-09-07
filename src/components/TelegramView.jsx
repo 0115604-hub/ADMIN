@@ -22,7 +22,6 @@ import {
   subscribeTelegramConfig,
   testTelegramConnection,
   sendDailyMorningBriefingTelegram,
-  sendDailyPnLBriefingTelegram,
   sendQualityAlertTelegram
 } from "../services/telegramService";
 
@@ -38,9 +37,6 @@ export const TelegramView = () => {
   // Manual Trigger Action States
   const [sendingBriefing, setSendingBriefing] = useState(false);
   const [briefingToast, setBriefingToast] = useState(false);
-
-  const [sendingPnL, setSendingPnL] = useState(false);
-  const [pnlToast, setPnlToast] = useState(false);
 
   const [sendingQuality, setSendingQuality] = useState(false);
   const [qualityToast, setQualityToast] = useState(false);
@@ -111,23 +107,6 @@ export const TelegramView = () => {
       alert("오류 발생: " + err.message);
     } finally {
       setSendingBriefing(false);
-    }
-  };
-
-  const handleSendDailyPnL = async () => {
-    setSendingPnL(true);
-    try {
-      const res = await sendDailyPnLBriefingTelegram();
-      if (res.success) {
-        setPnlToast(true);
-        setTimeout(() => setPnlToast(false), 3000);
-      } else {
-        alert("전송 실패: " + (res.error || "설정을 확인해주세요."));
-      }
-    } catch (err) {
-      alert("오류 발생: " + err.message);
-    } finally {
-      setSendingPnL(false);
     }
   };
 
@@ -360,11 +339,6 @@ export const TelegramView = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              {pnlToast && (
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                  <Check className="w-3.5 h-3.5" /> 경영방 손익 전송 완료!
-                </span>
-              )}
               {briefingToast && (
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> 모닝브리핑 전송 완료!

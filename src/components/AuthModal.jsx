@@ -189,20 +189,15 @@ export const AuthModal = () => {
     setTimeout(() => setTelegramSavedToast(false), 2500);
   };
 
-  const handleTestTelegram = async (type = "general") => {
-    const targetChatId = type === "pnl" ? telegramConfig.pnlChatId : telegramConfig.chatId;
-    if (!telegramConfig.botToken || !targetChatId) {
-      alert(`Bot Token과 ${type === "pnl" ? "경영/손익 채널 Chat ID" : "일반 알림 채널 Chat ID"}를 모두 입력해주세요.`);
+  const handleTestTelegram = async () => {
+    if (!telegramConfig.botToken || !telegramConfig.chatId) {
+      alert("Bot Token과 Chat ID를 모두 입력해주세요.");
       return;
     }
-    if (type === "pnl") {
-      setTestingTelegramPnL(true);
-    } else {
-      setTestingTelegram(true);
-    }
+    setTestingTelegram(true);
     setTelegramTestResult(null);
     try {
-      const res = await testTelegramConnection(telegramConfig.botToken, targetChatId);
+      const res = await testTelegramConnection(telegramConfig.botToken, telegramConfig.chatId);
       setTelegramTestResult(res);
       if (res.success) {
         await saveTelegramConfig(telegramConfig);
@@ -210,11 +205,7 @@ export const AuthModal = () => {
     } catch (err) {
       setTelegramTestResult({ success: false, error: err.message });
     } finally {
-      if (type === "pnl") {
-        setTestingTelegramPnL(false);
-      } else {
-        setTestingTelegram(false);
-      }
+      setTestingTelegram(false);
     }
   };
 
@@ -266,7 +257,7 @@ export const AuthModal = () => {
     }
   };
 
-  // Handle Image Upload for New Quality Alert Form
+  // Handle Image Upload for New Quality Alert Form (최대 3장)
   const handleIssueImageFiles = async (files) => {
     const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (validFiles.length === 0) return;
@@ -275,7 +266,7 @@ export const AuthModal = () => {
       const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
       setNewIssueForm((prev) => ({
         ...prev,
-        images: [...(prev.images || []), ...processed].slice(0, 5)
+        images: [...(prev.images || []), ...processed].slice(0, 3)
       }));
     } catch (err) {
       console.error("Issue image upload error:", err);
@@ -291,7 +282,7 @@ export const AuthModal = () => {
     }));
   };
 
-  // Handle Image Upload for Action Result Modal
+  // Handle Image Upload for Action Result Modal (최대 3장)
   const handleActionImageFiles = async (files) => {
     const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
     if (validFiles.length === 0) return;
@@ -300,7 +291,7 @@ export const AuthModal = () => {
       const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
       setActionModalData((prev) => ({
         ...prev,
-        actionImages: [...(prev.actionImages || []), ...processed].slice(0, 5)
+        actionImages: [...(prev.actionImages || []), ...processed].slice(0, 3)
       }));
     } catch (err) {
       console.error("Action image upload error:", err);
@@ -1392,10 +1383,10 @@ export const AuthModal = () => {
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                     <Camera className="w-3.5 h-3.5 text-rose-500" />
-                    <span>현장 사진 첨부 (선택, 최대 5장)</span>
+                    <span>현장 사진 첨부 (선택, 최대 3장)</span>
                   </label>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    {newIssueForm.images?.length || 0}/5장
+                    {newIssueForm.images?.length || 0}/3장
                   </span>
                 </div>
 
@@ -1408,7 +1399,7 @@ export const AuthModal = () => {
                       id="new-issue-camera-input"
                       accept="image/*"
                       capture="environment"
-                      disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 5}
+                      disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 3}
                       onChange={(e) => {
                         if (e.target.files) {
                           handleIssueImageFiles(e.target.files);
@@ -1420,7 +1411,7 @@ export const AuthModal = () => {
                     <label
                       htmlFor="new-issue-camera-input"
                       className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
-                        (newIssueForm.images?.length || 0) >= 5
+                        (newIssueForm.images?.length || 0) >= 3
                           ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
                           : "border-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-200 ring-1 ring-rose-500/30 font-black"
                       }`}
@@ -1429,8 +1420,8 @@ export const AuthModal = () => {
                       <span className="text-xs font-black truncate">
                         {isProcessingIssueImages
                           ? "압축 처리 중..."
-                          : (newIssueForm.images?.length || 0) >= 5
-                          ? "최대 5장 완료"
+                          : (newIssueForm.images?.length || 0) >= 3
+                          ? "최대 3장 완료"
                           : "📸 사진 즉시 촬영"}
                       </span>
                     </label>
@@ -1443,7 +1434,7 @@ export const AuthModal = () => {
                       id="new-issue-gallery-input"
                       accept="image/*"
                       multiple
-                      disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 5}
+                      disabled={isProcessingIssueImages || (newIssueForm.images?.length || 0) >= 3}
                       onChange={(e) => {
                         if (e.target.files) {
                           handleIssueImageFiles(e.target.files);
@@ -1455,7 +1446,7 @@ export const AuthModal = () => {
                     <label
                       htmlFor="new-issue-gallery-input"
                       className={`w-full py-2.5 px-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
-                        (newIssueForm.images?.length || 0) >= 5
+                        (newIssueForm.images?.length || 0) >= 3
                           ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
                           : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
                       }`}
@@ -1469,7 +1460,7 @@ export const AuthModal = () => {
                 </div>
 
                 {newIssueForm.images && newIssueForm.images.length > 0 && (
-                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                  <div className="grid grid-cols-3 gap-2 pt-1">
                     {newIssueForm.images.map((img, idx) => (
                       <div
                         key={img.id || idx}
@@ -1614,10 +1605,10 @@ export const AuthModal = () => {
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                     <Camera className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>조치 후 사진 첨부 (선택, 최대 5장)</span>
+                    <span>조치 후 사진 첨부 (선택, 최대 3장)</span>
                   </label>
                   <span className="text-[10px] text-slate-400 font-mono">
-                    {actionModalData.actionImages?.length || 0}/5장
+                    {actionModalData.actionImages?.length || 0}/3장
                   </span>
                 </div>
 
@@ -1630,7 +1621,7 @@ export const AuthModal = () => {
                       id="action-issue-camera-input"
                       accept="image/*"
                       capture="environment"
-                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 5}
+                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 3}
                       onChange={(e) => {
                         if (e.target.files) {
                           handleActionImageFiles(e.target.files);
@@ -1642,7 +1633,7 @@ export const AuthModal = () => {
                     <label
                       htmlFor="action-issue-camera-input"
                       className={`w-full py-2.5 px-2.5 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 ${
-                        (actionModalData.actionImages?.length || 0) >= 5
+                        (actionModalData.actionImages?.length || 0) >= 3
                           ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
                           : "border-emerald-500 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-500/30 font-black"
                       }`}
@@ -1651,8 +1642,8 @@ export const AuthModal = () => {
                       <span className="text-xs font-black truncate">
                         {isProcessingActionImages
                           ? "압축 처리 중..."
-                          : (actionModalData.actionImages?.length || 0) >= 5
-                          ? "최대 5장 완료"
+                          : (actionModalData.actionImages?.length || 0) >= 3
+                          ? "최대 3장 완료"
                           : "📸 사진 즉시 촬영"}
                       </span>
                     </label>
@@ -1665,7 +1656,7 @@ export const AuthModal = () => {
                       id="action-issue-gallery-input"
                       accept="image/*"
                       multiple
-                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 5}
+                      disabled={isProcessingActionImages || (actionModalData.actionImages?.length || 0) >= 3}
                       onChange={(e) => {
                         if (e.target.files) {
                           handleActionImageFiles(e.target.files);
@@ -1677,7 +1668,7 @@ export const AuthModal = () => {
                     <label
                       htmlFor="action-issue-gallery-input"
                       className={`w-full py-2.5 px-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 ${
-                        (actionModalData.actionImages?.length || 0) >= 5
+                        (actionModalData.actionImages?.length || 0) >= 3
                           ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
                           : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
                       }`}
@@ -1691,7 +1682,7 @@ export const AuthModal = () => {
                 </div>
 
                 {actionModalData.actionImages && actionModalData.actionImages.length > 0 && (
-                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                  <div className="grid grid-cols-3 gap-2 pt-1">
                     {actionModalData.actionImages.map((img, idx) => (
                       <div
                         key={img.id || idx}
@@ -2025,20 +2016,6 @@ export const AuthModal = () => {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                  <span>💼 경영/손익 전용 채널 ID (경영방)</span>
-                  <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">월간 손익결산</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="예: -1003939516875"
-                  value={telegramConfig.pnlChatId || ""}
-                  onChange={(e) => setTelegramConfig({ ...telegramConfig, pnlChatId: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
-                />
-              </div>
-
               {/* Test Status Feedback */}
               {telegramTestResult && (
                 <div className="p-3 rounded-xl border text-xs flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200">
@@ -2062,23 +2039,12 @@ export const AuthModal = () => {
                   <button
                     type="button"
                     disabled={testingTelegram}
-                    onClick={() => handleTestTelegram("general")}
+                    onClick={handleTestTelegram}
                     className="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                    title="일반 알림방으로 테스트 발송"
+                    title="오륙 통합방으로 테스트 발송"
                   >
                     <TelegramLogo className="w-3.5 h-3.5" />
-                    <span>{testingTelegram ? "발송 중..." : "일반방 테스트"}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={testingTelegramPnL}
-                    onClick={() => handleTestTelegram("pnl")}
-                    className="flex items-center gap-1 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 border border-amber-200 dark:border-amber-800/60"
-                    title="경영방으로 테스트 발송"
-                  >
-                    <TelegramLogo className="w-3.5 h-3.5" />
-                    <span>{testingTelegramPnL ? "발송 중..." : "경영방 테스트"}</span>
+                    <span>{testingTelegram ? "발송 중..." : "연결 테스트 발송"}</span>
                   </button>
                 </div>
 
