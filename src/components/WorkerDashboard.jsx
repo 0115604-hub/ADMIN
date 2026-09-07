@@ -405,6 +405,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, [liveQualityDaily]);
 
+  const latestDateLabel = useMemo(() => {
+    if (!latestDayInfo?.date) return "당일 실적";
+    const parts = latestDayInfo.date.split("-");
+    if (parts.length === 3) {
+      const daySuffix = latestDayInfo.dayOfWeek ? ` (${latestDayInfo.dayOfWeek})` : "";
+      return `${parts[1]}월 ${parts[2]}일${daySuffix}`;
+    }
+    return latestDayInfo.date;
+  }, [latestDayInfo]);
+
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split("T")[0],
     plant: workerPlant,
@@ -1377,18 +1387,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
 
           {/* ========================================== */}
-          {/* 2. [오른쪽] 일일 불량률 (최근 일자 실적) */}
+          {/* 2. [오른쪽] 일일 불량률 (업로드 일자 실적) */}
           {/* ========================================== */}
           <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 space-y-1.5 min-w-0">
             <div className="flex items-center justify-between px-0.5 gap-1">
               <div className="flex items-center gap-1.5 min-w-0 truncate">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
                 <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 truncate">
-                  일일 불량률 ({latestDayInfo.date ? `${latestDayInfo.date.slice(5)} 실적` : "당일 실적"})
+                  일일 불량률 ({latestDateLabel})
                 </span>
               </div>
               <span className="text-[9.5px] sm:text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400 font-mono shrink-0">
-                당일 총 {latestDayInfo.totalInspectQty.toLocaleString()} EA ({latestDayInfo.totalDefectQty.toLocaleString()}건 • {latestDayInfo.defectRate}%)
+                {latestDateLabel} 총 {latestDayInfo.totalInspectQty.toLocaleString()} EA ({latestDayInfo.totalDefectQty.toLocaleString()}건 • {latestDayInfo.defectRate}%)
               </span>
             </div>
 
