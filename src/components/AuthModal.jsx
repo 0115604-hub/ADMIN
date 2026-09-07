@@ -1089,7 +1089,7 @@ export const AuthModal = () => {
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.emoji} ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
-                        className={`px-1.5 sm:px-2 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left ${
+                        className={`px-1 sm:px-2 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isMyeongjae
                             ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black border border-amber-400 shadow-xs"
                             : leaveStatus?.isToday
@@ -1097,24 +1097,25 @@ export const AuthModal = () => {
                             : hasLeave
                             ? "bg-blue-50/95 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 ring-1 ring-blue-400/50 hover:border-blue-500 text-blue-950 dark:text-blue-100 shadow-xs"
                             : isPartner
-                            ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 hover:bg-purple-50/30 dark:hover:bg-purple-950/20 text-purple-900 dark:text-purple-200"
-                            : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-amber-400 hover:bg-amber-50/30 dark:hover:bg-amber-950/20 text-slate-800 dark:text-slate-100"
+                            ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 text-purple-900 dark:text-purple-200"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-amber-400 text-slate-800 dark:text-slate-100"
                         }`}
                       >
-                        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0">
+                        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1 overflow-hidden">
+                          {/* 모바일에서는 이름 옆 이모티콘 숨김, PC에서만 표시 */}
                           {hasLeave && (
-                            <span className={`text-[10px] sm:text-xs shrink-0 ${leaveStatus.isToday ? "animate-bounce" : ""}`}>
+                            <span className={`hidden sm:inline-block text-[10px] sm:text-xs shrink-0 ${leaveStatus.isToday ? "animate-bounce" : ""}`}>
                               {leaveStatus.emoji}
                             </span>
                           )}
-                          <span className={`text-[11px] sm:text-xs font-black truncate ${
-                            isMyeongjae ? "text-slate-950" : "text-slate-900 dark:text-white"
+                          <span className={`text-[10.5px] sm:text-xs font-black truncate min-w-0 flex-1 ${
+                            isMyeongjae ? "text-slate-950 font-black" : "text-slate-900 dark:text-white"
                           }`}>
                             {worker.name}
                           </span>
                         </div>
 
-                        <span className={`text-[8px] sm:text-[9.5px] font-bold shrink-0 px-1 py-0.2 rounded ${
+                        <span className={`text-[7px] sm:text-[9.5px] font-bold shrink-0 px-1 py-0.2 rounded whitespace-nowrap tracking-tighter sm:tracking-normal ${
                           isMyeongjae
                             ? "text-slate-950 bg-amber-400/80 font-black"
                             : leaveStatus?.isToday
@@ -1125,7 +1126,16 @@ export const AuthModal = () => {
                             ? "text-purple-600 dark:text-purple-400"
                             : "text-slate-400 dark:text-slate-400"
                         }`}>
-                          {hasLeave ? leaveStatus.displayBadge : isPartner ? "협력" : worker.title || "선임"}
+                          {hasLeave ? (
+                            <>
+                              <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
+                              <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
+                            </>
+                          ) : isPartner ? (
+                            "협력"
+                          ) : (
+                            worker.title || "선임"
+                          )}
                         </span>
                       </button>
                     );
@@ -1190,7 +1200,7 @@ export const AuthModal = () => {
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.emoji} ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
-                        className={`px-1.5 sm:px-2 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left ${
+                        className={`px-1 sm:px-2 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isDongwook
                             ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border border-emerald-400 shadow-xs"
                             : leaveStatus?.isToday
@@ -1198,24 +1208,25 @@ export const AuthModal = () => {
                             : hasLeave
                             ? "bg-blue-50/95 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 ring-1 ring-blue-400/50 hover:border-blue-500 text-blue-950 dark:text-blue-100 shadow-xs"
                             : isPartner
-                            ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 hover:bg-purple-50/30 dark:hover:bg-purple-950/20 text-purple-900 dark:text-purple-200"
-                            : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-slate-800 dark:text-slate-100"
+                            ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 text-purple-900 dark:text-purple-200"
+                            : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 text-slate-800 dark:text-slate-100"
                         }`}
                       >
-                        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0">
+                        <div className="flex items-center gap-0.5 sm:gap-1 min-w-0 flex-1 overflow-hidden">
+                          {/* 모바일에서는 이름 옆 이모티콘 숨김, PC에서만 표시 */}
                           {hasLeave && (
-                            <span className={`text-[10px] sm:text-xs shrink-0 ${leaveStatus.isToday ? "animate-bounce" : ""}`}>
+                            <span className={`hidden sm:inline-block text-[10px] sm:text-xs shrink-0 ${leaveStatus.isToday ? "animate-bounce" : ""}`}>
                               {leaveStatus.emoji}
                             </span>
                           )}
-                          <span className={`text-[11px] sm:text-xs font-black truncate ${
+                          <span className={`text-[10.5px] sm:text-xs font-black truncate min-w-0 flex-1 ${
                             isDongwook ? "text-white font-black" : "text-slate-900 dark:text-white"
                           }`}>
                             {worker.name}
                           </span>
                         </div>
 
-                        <span className={`text-[8px] sm:text-[9.5px] font-bold shrink-0 px-1 py-0.2 rounded ${
+                        <span className={`text-[7px] sm:text-[9.5px] font-bold shrink-0 px-1 py-0.2 rounded whitespace-nowrap tracking-tighter sm:tracking-normal ${
                           isDongwook
                             ? "text-white bg-emerald-700/80 font-black"
                             : leaveStatus?.isToday
@@ -1226,7 +1237,16 @@ export const AuthModal = () => {
                             ? "text-purple-600 dark:text-purple-400"
                             : "text-slate-400 dark:text-slate-400"
                         }`}>
-                          {hasLeave ? leaveStatus.displayBadge : isPartner ? "협력" : worker.title || "선임"}
+                          {hasLeave ? (
+                            <>
+                              <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
+                              <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
+                            </>
+                          ) : isPartner ? (
+                            "협력"
+                          ) : (
+                            worker.title || "선임"
+                          )}
                         </span>
                       </button>
                     );

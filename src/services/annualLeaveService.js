@@ -362,6 +362,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         type: meta.type,
         emoji: meta.emoji,
         displayBadge: activeTodayLeave.startDate === todayStr ? `[오늘] ${meta.type}` : `${meta.type}`,
+        mobileBadge: activeTodayLeave.startDate === todayStr ? `오늘·${meta.type}` : `${meta.type}`,
         label: `${meta.emoji} [오늘] ${meta.activeLabel || meta.type}`,
         fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType ? ` (${activeTodayLeave.reason})` : ""}`,
         badgeColor: meta.activeBadge,
@@ -380,6 +381,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
       const meta = getLeaveTypeMeta(nextLeave.leaveType);
       const dateParts = (nextLeave.startDate || "").split("-");
       const shortDate = dateParts.length === 3 ? `${dateParts[1]}.${dateParts[2]}` : nextLeave.startDate;
+      const shortMonthDay = dateParts.length === 3 ? `${parseInt(dateParts[1], 10)}.${parseInt(dateParts[2], 10)}` : nextLeave.startDate;
       return {
         status: "SCHEDULED",
         isToday: false,
@@ -387,6 +389,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         emoji: meta.emoji,
         shortDate,
         displayBadge: `${shortDate} ${meta.type}`,
+        mobileBadge: `${shortMonthDay}·${meta.type}`,
         label: `${meta.emoji} ${shortDate} ${meta.type}`,
         fullLabel: `${nextLeave.startDate} ${nextLeave.leaveType}${nextLeave.reason && nextLeave.reason !== nextLeave.leaveType ? ` (${nextLeave.reason})` : ""}`,
         badgeColor: meta.scheduledBadge,
