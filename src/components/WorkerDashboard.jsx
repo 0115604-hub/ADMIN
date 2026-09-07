@@ -90,6 +90,14 @@ import {
   parseQualityExcelFiles,
   QUALITY_CORE_ITEMS
 } from "../services/qualityService";
+import {
+  getLocalCommonSchedules,
+  saveCommonSchedule,
+  deleteCommonSchedule,
+  subscribeCommonSchedules,
+  getTodayCommonSchedules
+} from "../services/commonScheduleService";
+import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
 import { parseExcelFile } from "../utils/excelHelper";
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, PVC, TPE) - Real Excel Verified
@@ -240,7 +248,7 @@ const HANLIM_OVERTIME = {
 
 export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const { currentProfile, isOperator, isAdmin } = useAuth();
-  const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
+  const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, isCurrentMonth, allMonthlyData } = useMonth();
   const { formatAmount } = useCurrency();
 
   const workerPlant = currentProfile?.plant || "삼랑진공장";
@@ -573,12 +581,122 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setTimeout(() => setLogSavedToast(false), 3000);
   };
 
+  // Common Schedules (전사 공통일정) State & Subscription
+  const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
+  const [commonScheduleForm, setCommonScheduleForm] = useState({
+    date: new Date().toISOString().split("T")[0],
+    time: "09:30",
+    target: "전사공통",
+    title: ""
+  });
+  const [commonScheduleSaving, setCommonScheduleSaving] = useState(false);
+  const [dailyPnLModalOpen, setDailyPnLModalOpen] = useState(false);
+  const [sendingDailyPnL, setSendingDailyPnL] = useState(false);
+  const [customPnLBriefing, setCustomPnLBriefing] = useState(null);
+
+  useEffect(() => {
+    const unsub = subscribeCommonSchedules((scheds) => {
+      setCommonSchedules(scheds);
+    });
+    return () => unsub();
+  }, []);
+
+  const todayDateStr = new Date().toISOString().split("T")[0];
+  const todayCommonSchedules = useMemo(() => {
+    if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
+    return commonSchedules.filter((s) => s.date === todayDateStr);
+  }, [commonSchedules, todayDateStr]);
+
+  const handleRegisterCommonSchedule = async (e) => {
+    e.preventDefault();
+    if (!commonScheduleForm.title?.trim()) {
+      alert("공통일정 내용을 입력해 주세요.");
+      return;
+    }
+    setCommonScheduleSaving(true);
+    try {
+      await saveCommonSchedule({
+        ...commonScheduleForm,
+        author: currentProfile?.name || "관리자"
+      });
+      setToastMessage("전사 공통일정이 정상적으로 등록되었습니다.");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 3000);
+      setCommonScheduleForm((prev) => ({
+        ...prev,
+        title: ""
+      }));
+    } catch (err) {
+      alert("공통일정 등록 중 오류 발생: " + err.message);
+    } finally {
+      setCommonScheduleSaving(false);
+    }
+  };
+
+  const handleDeleteCommonSchedule = async (id) => {
+    if (!window.confirm("이 공통일정을 삭제하시겠습니까?")) return;
+    await deleteCommonSchedule(id);
+    setToastMessage("공통일정이 삭제되었습니다.");
+    setLogSavedToast(true);
+    setTimeout(() => setLogSavedToast(false), 3000);
+  };
+
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
   const totalSales = currentMonthData?.salesSummary?.totalSales || 1756104735;
   const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1248400884.5;
   const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "71.1";
+
+  // PnL Achievement calculations for Morning Briefing
+  const prevMonthKey = useMemo(() => {
+    if (!selectedMonth) return "2026-08";
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const prevD = new Date(y, m - 2, 1);
+    const prevY = prevD.getFullYear();
+    const prevM = String(prevD.getMonth() + 1).padStart(2, "0");
+    return `${prevY}-${prevM}`;
+  }, [selectedMonth]);
+
+  const prevMonthData = useMemo(() => {
+    return allMonthlyData?.[prevMonthKey] || null;
+  }, [allMonthlyData, prevMonthKey]);
+
+  const prevSales = prevMonthData?.salesSummary?.totalSales || 1714856000;
+  const prevPurchases = prevMonthData?.purchaseSummary?.ledgerBenchmark || prevMonthData?.jajaeSummary?.totalAmount || 1264841000;
+
+  const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "102.4";
+  const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "98.7";
+
+  const handleSendDailyPnLTelegram = async () => {
+    setSendingDailyPnL(true);
+    try {
+      const todaySchedsText = todayCommonSchedules.length > 0
+        ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
+        : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
+
+      const res = await sendDailyPnLMorningBriefingTelegram({
+        salesAmount: customPnLBriefing?.salesAmount ?? totalSales,
+        purchaseAmount: customPnLBriefing?.purchaseAmount ?? totalPurchases,
+        salesAchievementRate: customPnLBriefing?.salesAchievementRate || `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}%` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
+        purchaseAchievementRate: customPnLBriefing?.purchaseAchievementRate || `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`,
+        commonSchedules: customPnLBriefing?.commonSchedules || todaySchedsText
+      });
+
+      if (res.success) {
+        setToastMessage("아침 손익결산 브리핑 텔레그램 메시지가 발송되었습니다.");
+        setLogSavedToast(true);
+        setTimeout(() => setLogSavedToast(false), 3000);
+        setDailyPnLModalOpen(false);
+      } else {
+        alert("전송 실패: " + (res.error || "설정을 확인해주세요."));
+      }
+    } catch (err) {
+      alert("발송 중 오류 발생: " + err.message);
+    } finally {
+      setSendingDailyPnL(false);
+    }
+  };
 
 
   const generateLineMatchShareText = (matches, dateStr, writerName) => {
@@ -961,6 +1079,142 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
+      {/* ========================================================================= */}
+      {/* 📌 전사 공통일정 (결재 패널 바로 상단 위치 • 공통일정 등록 & 실시간 공유) */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 border border-indigo-500/40 dark:border-indigo-600/40 shadow-2xs space-y-2 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <div className="p-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs shrink-0">
+              <CalendarDays className="w-3.5 h-3.5" />
+            </div>
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
+              📌 전사 공통일정 (오늘의 주요 일정)
+            </h3>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+              📅 {todayDateStr} 기준 ({todayCommonSchedules.length}건)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+            {/* 아침 손익결산 브리핑 예시 및 발송 모달 오픈 버튼 */}
+            <button
+              type="button"
+              onClick={() => setDailyPnLModalOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+              title="매일아침 손익결산 메시지 예시화면 및 텔레그램 발송"
+            >
+              <Send className="w-3 h-3 text-white" />
+              <span>📱 아침 손익결산 브리핑 예시</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 1. Admin/Manager Quick Input Form (공통일정 등록 바) */}
+        {(isAdmin || isGeneralManager) && (
+          <form onSubmit={handleRegisterCommonSchedule} className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center p-2 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50">
+            <div className="sm:col-span-2 min-w-0">
+              <select
+                value={commonScheduleForm.target}
+                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, target: e.target.value })}
+                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+              >
+                <option value="전사공통">전사공통</option>
+                <option value="삼랑진공장">삼랑진</option>
+                <option value="한림공장">한림</option>
+              </select>
+            </div>
+
+            <div className="sm:col-span-2 min-w-0">
+              <input
+                type="date"
+                required
+                value={commonScheduleForm.date}
+                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, date: e.target.value })}
+                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+              />
+            </div>
+
+            <div className="sm:col-span-2 min-w-0">
+              <input
+                type="text"
+                placeholder="시간 (예: 09:30)"
+                value={commonScheduleForm.time}
+                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, time: e.target.value })}
+                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+              />
+            </div>
+
+            <div className="sm:col-span-4 min-w-0">
+              <input
+                type="text"
+                required
+                placeholder="공통일정 내용 (예: 주간 경영전략 회의)"
+                value={commonScheduleForm.title}
+                onChange={(e) => setCommonScheduleForm({ ...commonScheduleForm, title: e.target.value })}
+                className="w-full px-2.5 py-1 rounded-lg border border-indigo-400 dark:border-indigo-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="sm:col-span-2 min-w-0">
+              <button
+                type="submit"
+                disabled={commonScheduleSaving}
+                className="w-full py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-black text-xs shadow-2xs transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                <Plus className="w-3 h-3" />
+                <span>{commonScheduleSaving ? "등록중..." : "+ 일정 등록"}</span>
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* 2. Today's Common Schedule List Chips */}
+        <div className="flex flex-wrap gap-1.5 pt-0.5 items-center">
+          {todayCommonSchedules.length > 0 ? (
+            todayCommonSchedules.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs shadow-2xs hover:border-indigo-400 transition-all"
+              >
+                <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                  item.target === "전사공통"
+                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                    : item.target === "한림공장"
+                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+                }`}>
+                  {item.target || "공통"}
+                </span>
+                {item.time && item.time !== "종일" && (
+                  <span className="font-mono text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                    [{item.time}]
+                  </span>
+                )}
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {item.title}
+                </span>
+                {(isAdmin || isGeneralManager) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCommonSchedule(item.id)}
+                    className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                    title="일정 삭제"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="text-xs text-slate-500 dark:text-slate-400 py-1 px-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <span>오늘 등록된 전사 공통일정이 없습니다. (정상 생산 가동 진행)</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 📑 전자결재 대기 현황 (1줄 간결 바) */}
       <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-emerald-500/40 dark:border-emerald-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
         <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
@@ -3330,6 +3584,221 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </form>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📱 매일 아침 손익결산 브리핑 예시화면 및 텔레그램 발송 모달 */}
+      {/* ========================================================================= */}
+      {dailyPnLModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-4 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 my-auto animate-scaleUp">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-md">
+                  <Send className="w-5 h-5 text-sky-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📱 매일 아침 손익결산 텔레그램 메시지 예시화면</span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                      07:30 정기 브리핑
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    매출액, 매입액, 전월대비 매출/매입 달성율, 공통일정을 포함한 실시간 발송 템플릿입니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDailyPnLModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 2-Column Layout: Left (Smartphone Mockup) vs Right (Live Form Controls) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+              {/* Left Side: Smartphone / Telegram Bubble Mockup (7 cols) */}
+              <div className="md:col-span-7 bg-slate-900 text-slate-100 rounded-2xl p-4 border border-slate-800 shadow-inner space-y-3 font-sans">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>오륙 통합 알림방 (수신 화면 미리보기)</span>
+                  </div>
+                  <span className="text-[10.5px] font-mono">07:30 AM</span>
+                </div>
+
+                {/* Telegram Message Bubble */}
+                <div className="bg-slate-800/90 rounded-2xl p-4 border border-slate-700/80 space-y-3 text-xs leading-relaxed shadow-md">
+                  {/* Header */}
+                  <div>
+                    <div className="font-black text-sm text-white flex items-center gap-1.5">
+                      <span>⬛ [오륙 경영정보] 일일 아침 손익결산 브리핑</span>
+                    </div>
+                    <div className="text-[11px] font-extrabold text-sky-400 mt-0.5">
+                      {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })} 07:30 기준
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-700/60 pt-2 space-y-2">
+                    {/* [1] 매입 / 매출 현황 */}
+                    <div>
+                      <div className="font-extrabold text-amber-400 text-xs mb-1">
+                        [1] 당월 매입 / 매출 결산 현황
+                      </div>
+                      <div className="pl-2 space-y-0.5 text-slate-200">
+                        <div>• <strong>매출액:</strong> <span className="font-bold text-white">₩{Number(customPnLBriefing?.salesAmount ?? totalSales).toLocaleString()}원</span></div>
+                        <div>• <strong>매입액:</strong> <span className="font-bold text-rose-300">₩{Number(customPnLBriefing?.purchaseAmount ?? totalPurchases).toLocaleString()}원</span></div>
+                        <div>• <strong>매출대비 원가율:</strong> <span className="font-bold text-indigo-300">{(((customPnLBriefing?.purchaseAmount ?? totalPurchases) / ((customPnLBriefing?.salesAmount ?? totalSales) || 1)) * 100).toFixed(1)}%</span></div>
+                      </div>
+                    </div>
+
+                    {/* [2] 전월 실적 대비 달성율 */}
+                    <div>
+                      <div className="font-extrabold text-emerald-400 text-xs mb-1">
+                        [2] 전월 실적 대비 달성율 ({prevMonthKey?.split("-")[1] || "8"}월 실적 대비)
+                      </div>
+                      <div className="pl-2 space-y-0.5 text-slate-200">
+                        <div>• <strong>전월대비 매출 달성율:</strong> <strong className="text-emerald-300 font-bold">{customPnLBriefing?.salesAchievementRate || `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`}</strong></div>
+                        <div>• <strong>전월대비 매입 달성율:</strong> <strong className="text-sky-300 font-bold">{customPnLBriefing?.purchaseAchievementRate || `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}%`})`}</strong></div>
+                      </div>
+                    </div>
+
+                    {/* [3] 오늘의 전사 공통일정 */}
+                    <div>
+                      <div className="font-extrabold text-purple-400 text-xs mb-1">
+                        [3] 오늘의 전사 공통일정
+                      </div>
+                      <div className="pl-2 whitespace-pre-wrap text-slate-200 text-[11px] leading-relaxed">
+                        {customPnLBriefing?.commonSchedules || (todayCommonSchedules.length > 0
+                          ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
+                          : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="text-blue-400 underline cursor-pointer hover:text-blue-300">
+                      손익관리시스템 바로가기
+                    </span>
+                    <span className="text-[10px] text-slate-500">오륙 텔레그램 알림봇</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Side: Interactive Controls (5 cols) */}
+              <div className="md:col-span-5 space-y-3 text-xs">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-slate-900 dark:text-white text-xs">
+                      📊 발송 수치 실시간 조정
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCustomPnLBriefing(null)}
+                      className="text-[10.5px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      실시간 값 리셋
+                    </button>
+                  </div>
+
+                  {/* 매출액 */}
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">매출액 (원)</label>
+                    <input
+                      type="number"
+                      value={customPnLBriefing?.salesAmount ?? totalSales}
+                      onChange={(e) => setCustomPnLBriefing({
+                        ...(customPnLBriefing || {}),
+                        salesAmount: Number(e.target.value)
+                      })}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  {/* 매입액 */}
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">매입액 (원)</label>
+                    <input
+                      type="number"
+                      value={customPnLBriefing?.purchaseAmount ?? totalPurchases}
+                      onChange={(e) => setCustomPnLBriefing({
+                        ...(customPnLBriefing || {}),
+                        purchaseAmount: Number(e.target.value)
+                      })}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  {/* 매출 달성율 */}
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">전월대비 매출 달성율 문구</label>
+                    <input
+                      type="text"
+                      placeholder="예: 102.4% (▲ 2.4% 초과)"
+                      value={customPnLBriefing?.salesAchievementRate ?? `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`}
+                      onChange={(e) => setCustomPnLBriefing({
+                        ...(customPnLBriefing || {}),
+                        salesAchievementRate: e.target.value
+                      })}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  {/* 매입 달성율 */}
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">전월대비 매입 달성율 문구</label>
+                    <input
+                      type="text"
+                      placeholder="예: 98.7% (▼ 1.3% 절감)"
+                      value={customPnLBriefing?.purchaseAchievementRate ?? `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}%`})`}
+                      onChange={(e) => setCustomPnLBriefing({
+                        ...(customPnLBriefing || {}),
+                        purchaseAchievementRate: e.target.value
+                      })}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  {/* 공통일정 문구 */}
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">공통일정 포함 내용</label>
+                    <textarea
+                      rows="3"
+                      value={customPnLBriefing?.commonSchedules ?? (todayCommonSchedules.length > 0
+                        ? todayCommonSchedules.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n")
+                        : "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)")}
+                      onChange={(e) => setCustomPnLBriefing({
+                        ...(customPnLBriefing || {}),
+                        commonSchedules: e.target.value
+                      })}
+                      className="w-full p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white text-[11px]"
+                    ></textarea>
+                  </div>
+                </div>
+
+                {/* Trigger Button */}
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="button"
+                    disabled={sendingDailyPnL}
+                    onClick={handleSendDailyPnLTelegram}
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 hover:from-black hover:to-blue-950 text-white font-black text-xs shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4 text-sky-400" />
+                    <span>{sendingDailyPnL ? "텔레그램 발송 중..." : "🚀 아침 손익결산 텔레그램 즉시 발송하기"}</span>
+                  </button>
+                  <p className="text-[10px] text-center text-slate-400">
+                    오륙 통합 알림 채널로 실시간 텔레그램 메시지가 즉시 전송됩니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
