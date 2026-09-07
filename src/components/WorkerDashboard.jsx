@@ -1633,7 +1633,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   })
                 ) : (
                   <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
-                    예정된 일정이 없습니다. 우측 폼에서 날짜를 선택하여 간편하게 등록하세요.
+                    예정된 일정이 없습니다. 일정 또는 할일 설정시 등록을 눌러주세요.
                   </span>
                 )}
               </div>
