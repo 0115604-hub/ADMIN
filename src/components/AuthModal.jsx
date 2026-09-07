@@ -361,40 +361,40 @@ export const AuthModal = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start min-h-screen">
+    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-4 sm:py-10 flex justify-center items-start min-h-screen max-w-full">
       {/* Background Ambient Glow Orbs */}
       <div className="fixed w-96 h-96 -top-20 -left-20 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="fixed w-96 h-96 -bottom-20 -right-20 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
       <div className="fixed w-80 h-80 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Main Container Card with Glassmorphism */}
-      <div className="bg-white/95 dark:bg-slate-900/90 w-full max-w-xl rounded-3xl shadow-[0_25px_70px_-15px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-slate-800 backdrop-blur-2xl overflow-hidden my-auto relative animate-scaleUp">
+      <div className="bg-white/95 dark:bg-slate-900/90 w-full max-w-xl rounded-2xl sm:rounded-3xl shadow-[0_25px_70px_-15px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-slate-800 backdrop-blur-2xl overflow-hidden my-auto relative animate-scaleUp min-w-0">
         {/* Top Glowing Accent Line */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
-        <div className="p-4 sm:p-6">
+        <div className="p-3.5 sm:p-6">
           {/* Header Brand with Bright OryukLogo */}
-          <div className="text-center mb-4 flex flex-col items-center">
+          <div className="text-center mb-3.5 sm:mb-4 flex flex-col items-center">
             {/* Bright, Elevated Logo Container */}
-            <div className="relative mb-2.5">
+            <div className="relative mb-2">
               <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-3xl blur-md opacity-40 animate-pulse"></div>
-              <div className="relative w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center">
-                <OryukLogo className="w-10 h-10 drop-shadow-md" />
+              <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white dark:bg-slate-800 p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center">
+                <OryukLogo className="w-8 h-8 sm:w-10 sm:h-10 drop-shadow-md" />
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[11px] font-black mb-1.5 shadow-sm">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[10.5px] font-black mb-1 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>ORYUK SMART MES PORTAL</span>
             </div>
 
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-2">
+            <h2 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
               <span className="text-blue-600 dark:text-blue-400">
                 (주)오륙
               </span>
               <span>생산관리 통합시스템</span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
               작업자 또는 관리자를 선택하여 안전하게 접속해 주세요.
             </p>
           </div>
@@ -402,37 +402,37 @@ export const AuthModal = () => {
           {/* ========================================================================= */}
           {/* 📢 ⭐ [요청사항 반영] 로그인 상단 품질경보 및 공지사항 패널 (깔끔한 2줄 요약 형태) */}
           {/* ========================================================================= */}
-          <div className="mb-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-sm overflow-hidden transition-all">
+          <div className="mb-4 sm:mb-5 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs overflow-hidden transition-all min-w-0">
             {/* Panel Top Bar */}
-            <div className="p-2.5 sm:p-3 flex items-center justify-between gap-2 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs">
+            <div className="p-2 sm:p-3 flex flex-wrap items-center justify-between gap-1.5 border-b border-rose-200/60 dark:border-rose-900/50 bg-rose-100/40 dark:bg-rose-950/40">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <div className="p-1 rounded-lg bg-rose-500 text-white shadow-xs shrink-0">
                   <Megaphone className="w-3 h-3" />
                 </div>
-                <h3 className="font-black text-xs flex items-center gap-1.5">
+                <h3 className="font-black text-xs flex items-center gap-1">
                   <span className="text-rose-600 dark:text-rose-400 font-black">품질경보</span>
                   <span className="text-slate-400 font-bold">/</span>
                   <span className="text-slate-800 dark:text-slate-200 font-bold">공지사항</span>
                 </h3>
 
-                <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${
+                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full shrink-0 ${
                   unresolvedIssues.length > 0
                     ? "bg-rose-500 text-white"
                     : "bg-emerald-600 text-white"
                 }`}>
                   {unresolvedIssues.length > 0 ? `미조치 ${unresolvedIssues.length}건` : "조치완료"}
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 font-mono">
+                <span className="text-[9.5px] font-bold text-slate-400 font-mono shrink-0">
                   (총 {urgentIssues.length}건)
                 </span>
               </div>
 
               {/* Action Buttons in Header */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 shrink-0 ml-auto sm:ml-0">
                 <button
                   type="button"
                   onClick={() => setIsIssueModalOpen(true)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[10.5px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer"
+                  className="px-2 py-0.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[10px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer shrink-0"
                   title="신규 품질경보 및 공지사항 등록"
                 >
                   <Plus className="w-3 h-3" />
@@ -442,17 +442,17 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={handleOpenTelegram}
-                  className="px-2.5 py-1 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10.5px] font-black transition-all flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer"
+                  className="px-2 py-0.5 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black transition-all flex items-center gap-1 shadow-xs active:scale-95 cursor-pointer shrink-0"
                   title="텔레그램 실시간 알림 연동 관리 (Admin 전용)"
                 >
-                  <TelegramLogo className="w-3.5 h-3.5" />
+                  <TelegramLogo className="w-3 h-3" />
                   <span>telegram</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setIsIssueExpanded((prev) => !prev)}
-                  className="p-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  className="p-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer shrink-0"
                   title={isIssueExpanded ? "패널 접기" : "패널 펼치기"}
                 >
                   {isIssueExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}

@@ -863,9 +863,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [workLogs, searchTerm, filterPlant]);
 
   return (
-    <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] mx-auto px-1 sm:px-0">
+    <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
       {/* 📑 전자결재 대기 현황 (1줄 간결 바) */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl px-3.5 py-2 border border-emerald-500/40 dark:border-emerald-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-emerald-500/40 dark:border-emerald-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
         <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
           <div className="p-1 rounded-lg bg-emerald-600 text-white shadow-xs shrink-0">
             <FileSignature className="w-3.5 h-3.5" />
@@ -916,7 +916,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           <button
             type="button"
             onClick={() => onNavigateTab && onNavigateTab("settings")}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
             title="텔레그램 품질경보 실시간 알림 봇 연동 설정"
           >
             <Send className="w-3 h-3 text-sky-500" />
@@ -926,7 +926,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           <button
             type="button"
             onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
           >
             <span>전체 결재함</span>
             <ArrowRight className="w-3 h-3" />
@@ -936,10 +936,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
       {/* 🌟 작업자 정보 & 간편 일정/연차 설정 패널 */}
       {!isAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 border border-slate-200/90 dark:border-slate-800 shadow-xs">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3 border border-slate-200/90 dark:border-slate-800 shadow-xs min-w-0 max-w-full overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
             {/* Left: Plant Badge, Worker Name, Title, and Process + Live Status Badge (5 cols) */}
-            <div className="lg:col-span-5 flex items-center justify-between sm:justify-start gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70">
+            <div className="lg:col-span-5 flex items-center justify-between sm:justify-start gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 min-w-0">
               <div className="flex items-center gap-2 min-w-0 flex-wrap sm:flex-nowrap">
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black shadow-2xs shrink-0 ${
                   workerPlant === "한림공장"
@@ -950,7 +950,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <span>{workerPlant}</span>
                 </span>
 
-                <div className="flex items-baseline gap-1.5 min-w-0">
+                <div className="flex items-baseline gap-1.5 min-w-0 truncate">
                   <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
                     {workerFullName}
                   </span>
@@ -990,10 +990,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
 
             {/* Right: Full-width Schedule & Annual Leave Setting Form (7 cols) */}
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-7 min-w-0">
               <form onSubmit={handleRegisterLeave} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                 {/* 1. Leave / Schedule Type Selector (5 cols) - 6 options */}
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-5 min-w-0">
                   <select
                     value={leaveForm.leaveType}
                     onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
@@ -1009,7 +1009,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
 
                 {/* 2. Date Picker (5 cols) */}
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-5 min-w-0">
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-blue-400 dark:border-blue-500/80 bg-white dark:bg-slate-800 shadow-2xs">
                     <div className="p-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-600 dark:text-blue-300 shrink-0">
                       <Calendar className="w-3 h-3" />
@@ -1032,7 +1032,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
 
                 {/* 3. Submit Button (2 cols) */}
-                <div className="sm:col-span-2">
+                <div className="sm:col-span-2 min-w-0">
                   <button
                     type="submit"
                     disabled={leaveSaving}
@@ -1051,13 +1051,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
+        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800 gap-1.5">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 shrink-0">
               <DollarSign className="w-3.5 h-3.5" />
             </div>
-            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
               1. {monthTitle} 매입매출현황 요약
             </h2>
           </div>
@@ -1065,7 +1065,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("vehicle_sales")}
-              className="flex items-center gap-1 text-[11px] font-black text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              className="flex items-center gap-1 text-[11px] font-black text-blue-600 hover:text-blue-700 dark:text-blue-400 shrink-0"
             >
               <span>매출 상세</span>
               <ArrowRight className="w-3 h-3" />
@@ -1075,21 +1075,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
         {/* 3 Core KPI Cards (Clean numbers without annotations) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매출액</span>
             <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
               {formatAmount(totalSales)}
             </span>
           </div>
 
-          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">총매입액 (원가)</span>
             <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
               {formatAmount(totalPurchases)}
             </span>
           </div>
 
-          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-2 sm:p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between min-w-0">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">매출대비 매입원가율</span>
             <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">
               {purchaseRatio}%
@@ -1101,22 +1101,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 (월별 그래프 + 당월 누적시간 단독 합산) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2.5">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 border border-amber-200/60 dark:border-amber-800/60">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 border border-amber-200/60 dark:border-amber-800/60 shrink-0">
               <Wrench className="w-3.5 h-3.5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
                   2. 압출동 주간 비가동내역 요약
                 </h2>
-                <span className="text-[10.5px] font-black px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
                   9월 당월 누적 합산 기준
                 </span>
               </div>
-              <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.2">
+              <p className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.2 truncate">
                 4개 라인의 9월 당월 누적 비가동시간과 7월~9월 월별 비교 추이 그래프입니다.
               </p>
             </div>
@@ -1125,7 +1125,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("extrusion_downtime")}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-2xs transition active:scale-95 cursor-pointer self-start sm:self-auto"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black shadow-2xs transition active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
             >
               <span>비가동 상세페이지</span>
               <ArrowRight className="w-3 h-3" />
@@ -1141,15 +1141,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             return (
               <div
                 key={ex.line}
-                className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-xs transition-all space-y-2"
+                className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500 hover:shadow-xs transition-all space-y-2 min-w-0"
               >
                 {/* Tile Top Header: Line Name & LOSS Rate Badge */}
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70 dark:border-slate-700/70">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">{ex.line}</span>
+                <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/70 dark:border-slate-700/70 gap-1">
+                  <div className="flex items-center gap-1.5 min-w-0 truncate">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">{ex.line}</span>
                   </div>
-                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                  <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/90 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
                     LOSS {ex.lossRate}
                   </span>
                 </div>
@@ -1157,10 +1157,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 {/* Left (당월 누적시간) & Right (월별 비교 그래프) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center">
                   {/* Left Side: 당월 누적 합산 */}
-                  <div className="flex flex-col justify-center pr-1 sm:border-r border-slate-200/70 dark:border-slate-700/70">
-                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      <Clock className="w-3 h-3 text-rose-500" />
-                      <span>[{ex.currentMonth}] 당월 누적시간</span>
+                  <div className="flex flex-col justify-center pr-1 sm:border-r border-slate-200/70 dark:border-slate-700/70 min-w-0">
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 truncate">
+                      <Clock className="w-3 h-3 text-rose-500 shrink-0" />
+                      <span className="truncate">[{ex.currentMonth}] 당월 누적시간</span>
                     </div>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight leading-none">
@@ -1168,13 +1168,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </span>
                       <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">분</span>
                     </div>
-                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-bold mt-0.5">
+                    <span className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 font-bold mt-0.5 truncate">
                       ({ex.currentMonthHours}) • 가동률 {ex.opRatio}%
                     </span>
                   </div>
 
                   {/* Right Side: 월별 비가동 비교 미니 바 그래프 */}
-                  <div className="flex flex-col justify-center space-y-1">
+                  <div className="flex flex-col justify-center space-y-1 min-w-0">
                     <div className="flex items-center justify-between text-[9.5px] font-extrabold text-slate-500 dark:text-slate-400">
                       <span>월별 추이 (7~9월)</span>
                       <span>시간(h)</span>
@@ -1187,7 +1187,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         return (
                           <div key={mItem.month} className="flex items-center gap-1 text-[9.5px]">
                             <span
-                              className={`w-5 text-center font-bold ${
+                              className={`w-5 text-center font-bold shrink-0 ${
                                 mItem.isCurrent
                                   ? "text-amber-600 dark:text-amber-400 font-black"
                                   : "text-slate-400"
@@ -1195,7 +1195,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             >
                               {mItem.month}
                             </span>
-                            <div className="flex-1 bg-slate-200 dark:bg-slate-900 rounded-full h-2.5 p-0.2 overflow-hidden">
+                            <div className="flex-1 bg-slate-200 dark:bg-slate-900 rounded-full h-2.5 p-0.2 overflow-hidden min-w-0">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 flex items-center justify-end pr-1 ${
                                   mItem.isCurrent
@@ -1211,7 +1211,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                 )}
                               </div>
                             </div>
-                            <span className="w-8 text-right font-black text-slate-700 dark:text-slate-300">
+                            <span className="w-8 text-right font-black text-slate-700 dark:text-slate-300 shrink-0">
                               {mItem.hours}
                             </span>
                           </div>
@@ -1229,13 +1229,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 3. ⭐ [3위치] 일일품질현황 요약 (좌측: 당월불량률 / 우측: 일일불량률) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
+        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800 gap-1.5">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 shrink-0">
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
-            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
               3. 일일품질현황 요약
             </h2>
           </div>
@@ -1243,7 +1243,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("daily_quality")}
-              className="flex items-center gap-1 text-[11px] font-black text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              className="flex items-center gap-1 text-[11px] font-black text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 shrink-0"
             >
               <span>품질 상세</span>
               <ArrowRight className="w-3 h-3" />
@@ -1256,15 +1256,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {/* ========================================== */}
           {/* 1. [왼쪽] 당월 불량률 (월간 누적 실적) */}
           {/* ========================================== */}
-          <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 space-y-1.5">
-            <div className="flex items-center justify-between px-0.5">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                <span className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 space-y-1.5 min-w-0">
+            <div className="flex items-center justify-between px-0.5 gap-1">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0"></span>
+                <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 truncate">
                   당월 불량률 (월간 누적)
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-indigo-600/80 dark:text-indigo-400 font-mono">
+              <span className="text-[9.5px] sm:text-[10px] font-bold text-indigo-600/80 dark:text-indigo-400 font-mono shrink-0">
                 월간 총 154,734 EA (1,338건 • 0.86%)
               </span>
             </div>
@@ -1273,27 +1273,27 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               {QUALITY_MONTHLY_SUMMARY.map((item) => (
                 <div
                   key={item.id}
-                  className={`p-2 rounded-lg border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-2xs ${
+                  className={`p-2 rounded-lg border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-2xs min-w-0 ${
                     item.isMax
                       ? "border-rose-300 dark:border-rose-900/60 ring-1 ring-rose-500/20"
                       : "border-slate-200/70 dark:border-slate-800"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-1">
                     <span className="font-black text-[10.5px] text-slate-800 dark:text-slate-200 truncate">{item.name}</span>
                     {item.isMax && (
-                      <span className="text-[8px] font-black px-1 py-0.2 rounded bg-rose-500 text-white">
+                      <span className="text-[8px] font-black px-1 py-0.2 rounded bg-rose-500 text-white shrink-0">
                         최고
                       </span>
                     )}
                   </div>
-                  <div className="flex items-baseline justify-between mt-1">
+                  <div className="flex items-baseline justify-between mt-1 min-w-0">
                     <span className={`text-sm sm:text-base font-black font-mono leading-none ${
                       item.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400"
                     }`}>
                       {item.defectRate}%
                     </span>
-                    <span className="text-[9px] text-slate-400 font-bold font-mono">
+                    <span className="text-[9px] text-slate-400 font-bold font-mono truncate">
                       {item.inspectQty.toLocaleString()}EA
                     </span>
                   </div>
@@ -1305,15 +1305,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {/* ========================================== */}
           {/* 2. [오른쪽] 일일 불량률 (당일 실적) */}
           {/* ========================================== */}
-          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 space-y-1.5">
-            <div className="flex items-center justify-between px-0.5">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                <span className="text-xs font-black text-emerald-950 dark:text-emerald-200">
+          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 space-y-1.5 min-w-0">
+            <div className="flex items-center justify-between px-0.5 gap-1">
+              <div className="flex items-center gap-1.5 min-w-0 truncate">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
+                <span className="text-xs font-black text-emerald-950 dark:text-emerald-200 truncate">
                   일일 불량률 (당일 실적)
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400 font-mono">
+              <span className="text-[9.5px] sm:text-[10px] font-bold text-emerald-600/80 dark:text-emerald-400 font-mono shrink-0">
                 당일 총 4,810 EA (21건 • 0.44%)
               </span>
             </div>
@@ -1322,27 +1322,27 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               {QUALITY_DAILY_SUMMARY.map((item) => (
                 <div
                   key={item.id}
-                  className={`p-2 rounded-lg border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-2xs ${
+                  className={`p-2 rounded-lg border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-2xs min-w-0 ${
                     item.isMax
                       ? "border-rose-300 dark:border-rose-900/60 ring-1 ring-rose-500/20"
                       : "border-slate-200/70 dark:border-slate-800"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-1">
                     <span className="font-black text-[10.5px] text-slate-800 dark:text-slate-200 truncate">{item.name}</span>
                     {item.isMax && (
-                      <span className="text-[8px] font-black px-1 py-0.2 rounded bg-rose-500 text-white">
+                      <span className="text-[8px] font-black px-1 py-0.2 rounded bg-rose-500 text-white shrink-0">
                         최고
                       </span>
                     )}
                   </div>
-                  <div className="flex items-baseline justify-between mt-1">
+                  <div className="flex items-baseline justify-between mt-1 min-w-0">
                     <span className={`text-sm sm:text-base font-black font-mono leading-none ${
                       item.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
                     }`}>
                       {item.defectRate}%
                     </span>
-                    <span className="text-[9px] text-slate-400 font-bold font-mono">
+                    <span className="text-[9px] text-slate-400 font-bold font-mono truncate">
                       {item.inspectQty.toLocaleString()}EA
                     </span>
                   </div>
@@ -1356,25 +1356,25 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (마지막 수정본 실시간 자동 연동) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
-        <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800 gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <div className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 shrink-0">
               <Calendar className="w-3.5 h-3.5" />
             </div>
-            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
               4. 공장별 특근현황 요약
             </h2>
-            <span className="text-[10px] font-extrabold px-2 py-0.2 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
-              <DollarSign className="w-3 h-3 text-rose-500" />
-              <span>당월 누적: <strong className="font-mono text-[11px] font-black text-rose-600 dark:text-rose-400">₩{overtimeSummary.totalMonthCumulativeCost.toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
+            <span className="text-[9.5px] sm:text-[10px] font-extrabold px-2 py-0.2 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
+              <DollarSign className="w-3 h-3 text-rose-500 shrink-0" />
+              <span>당월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">₩{overtimeSummary.totalMonthCumulativeCost.toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
             </span>
           </div>
 
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("overtime_status")}
-              className="flex items-center gap-1 text-[11px] font-black text-purple-600 hover:text-purple-700 dark:text-purple-400"
+              className="flex items-center gap-1 text-[11px] font-black text-purple-600 hover:text-purple-700 dark:text-purple-400 self-end sm:self-auto shrink-0"
             >
               <span>특근 상세</span>
               <ArrowRight className="w-3 h-3" />
@@ -1385,18 +1385,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         {/* 2 Factory Split Panels */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {/* 삼랑진공장 */}
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1">
+          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
             <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9.5px] font-black">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9.5px] font-black shrink-0">
                   삼랑진공장
                 </span>
-                <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800">
+                <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 shrink-0">
                   📅 {overtimeSummary.samrangjin.date}
                 </span>
-                <span className="text-[9.5px] text-slate-500 font-bold">{overtimeSummary.samrangjin.author} {overtimeSummary.samrangjin.authorTitle || "선임"}</span>
+                <span className="text-[9.5px] text-slate-500 font-bold truncate">{overtimeSummary.samrangjin.author} {overtimeSummary.samrangjin.authorTitle || "선임"}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400">
                   ₩{overtimeSummary.samrangjin.cost.toLocaleString()}
                 </span>
@@ -1408,7 +1408,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             <div className="flex flex-wrap gap-1">
               {overtimeSummary.samrangjin.lines.map((ln) => (
-                <span key={ln.name} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300">
+                <span key={ln.name} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
                   {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
                 </span>
               ))}
@@ -1416,18 +1416,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
 
           {/* 한림공장 */}
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1">
+          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
             <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[9.5px] font-black">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[9.5px] font-black shrink-0">
                   한림공장
                 </span>
-                <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800">
+                <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800 shrink-0">
                   📅 {overtimeSummary.hallim.date}
                 </span>
-                <span className="text-[9.5px] text-slate-500 font-bold">{overtimeSummary.hallim.author} {overtimeSummary.hallim.authorTitle || "선임"}</span>
+                <span className="text-[9.5px] text-slate-500 font-bold truncate">{overtimeSummary.hallim.author} {overtimeSummary.hallim.authorTitle || "선임"}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 <span className="text-xs font-black text-rose-600 dark:text-rose-400">
                   ₩{overtimeSummary.hallim.cost.toLocaleString()}
                 </span>
@@ -1439,7 +1439,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             <div className="flex flex-wrap gap-1">
               {overtimeSummary.hallim.lines.map((ln) => (
-                <span key={ln.name} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300">
+                <span key={ln.name} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
                   {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
                 </span>
               ))}
@@ -1451,15 +1451,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 5. ⭐ [5위치] 일일업무일지 현황 (상세내용 확인 후 개별 전자결재) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
         {/* Manager Dedicated Information Banners (No batch approval - Requires reading details) */}
         {isMyeongjae && pendingSamrangjinCount > 0 && (
-          <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex items-center justify-between gap-2 animate-fadeIn">
-            <div className="flex items-center gap-2">
+          <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
                 결재
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-extrabold text-xs text-amber-900 dark:text-amber-200">
                   👑 [이명재 총괄이사] 삼랑진공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingSamrangjinCount}건</strong> 있습니다.
                 </p>
@@ -1468,19 +1468,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-black shrink-0">
+            <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 text-[11px] font-black shrink-0 ml-auto sm:ml-0">
               결재 대기 {pendingSamrangjinCount}건
             </span>
           </div>
         )}
 
         {isDongwook && pendingHallimCount > 0 && (
-          <div className="p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex items-center justify-between gap-2 animate-fadeIn">
-            <div className="flex items-center gap-2">
+          <div className="p-2.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
                 결재
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-extrabold text-xs text-emerald-900 dark:text-emerald-200">
                   👑 [김동욱 총괄책임] 한림공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingHallimCount}건</strong> 있습니다.
                 </p>
@@ -1489,23 +1489,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </p>
               </div>
             </div>
-            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[11px] font-black shrink-0">
+            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 text-[11px] font-black shrink-0 ml-auto sm:ml-0">
               결재 대기 {pendingHallimCount}건
             </span>
           </div>
         )}
 
         {isAdmin && (pendingSamrangjinCount > 0 || pendingHallimCount > 0) && (
-          <div className="p-2.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-2 animate-fadeIn">
-            <div className="flex items-center gap-2">
+          <div className="p-2.5 rounded-xl bg-blue-50/90 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 flex items-center justify-between gap-2 animate-fadeIn min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
                 ADMIN
               </div>
-              <div>
-                <p className="font-extrabold text-xs text-blue-900 dark:text-blue-200">
+              <div className="min-w-0">
+                <p className="font-extrabold text-xs text-blue-900 dark:text-blue-200 truncate">
                   [관리자 결재 현황] 삼랑진 <strong className="text-blue-600 dark:text-blue-400">{pendingSamrangjinCount}건</strong> • 한림 <strong className="text-emerald-600 dark:text-emerald-400">{pendingHallimCount}건</strong> 결재 대기중
                 </p>
-                <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-0.2">
+                <p className="text-[10px] text-blue-700 dark:text-blue-400 mt-0.2 truncate">
                   각 업무일지를 탭하여 세부 내용을 검토하신 후 전자결재를 진행할 수 있습니다.
                 </p>
               </div>
@@ -1513,17 +1513,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 shrink-0">
               <FileText className="w-3.5 h-3.5" />
             </div>
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
               5. 일일업무일지 현황
             </h3>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
             <select
               value={filterPlant}
               onChange={(e) => setFilterPlant(e.target.value)}
@@ -1537,7 +1537,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
 
         {/* 한줄 리스트 테이블 */}
-        <div className="overflow-x-auto">
+        <div className="w-full max-w-full overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse table-fixed min-w-[720px]">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-7 text-[10.5px]">
@@ -1673,22 +1673,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 6. ⭐ [ADMIN 전용] 작업자 접속 및 활동 기록 관리 현황 */}
       {/* ========================================================================= */}
       {isAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+        <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 shrink-0">
                 <Users className="w-3.5 h-3.5" />
               </div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+              <div className="flex items-center gap-2 min-w-0">
+                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                   6. 작업자별 실시간 접속 기록 현황
                 </h3>
-                <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                <span className="px-2 py-0.2 rounded-full text-[9.5px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
                   ADMIN 전용
                 </span>
               </div>
             </div>
-            <span className="text-[10.5px] text-slate-400 font-medium">
+            <span className="text-[10.5px] text-slate-400 font-medium truncate">
               💡 작업자 이름을 탭(클릭)하면 상세 접속 일시 및 기기별 접속 이력을 확인할 수 있습니다.
             </span>
           </div>
@@ -1696,7 +1696,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {/* Plant Groups Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
             {PLANTS.map((plant) => (
-              <div key={plant.id} className="p-2.5 sm:p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-2">
+              <div key={plant.id} className="p-2.5 sm:p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-2 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white">
                     <Factory className={`w-3.5 h-3.5 ${plant.name === "한림공장" ? "text-emerald-600" : "text-amber-500"}`} />
@@ -1718,20 +1718,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         key={worker.id}
                         type="button"
                         onClick={() => handleOpenWorkerLogs(worker)}
-                        className="group flex flex-col items-start p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500 hover:shadow-xs transition-all text-left relative overflow-hidden active:scale-98 cursor-pointer"
+                        className="group flex flex-col items-start p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500 hover:shadow-xs transition-all text-left relative overflow-hidden active:scale-98 cursor-pointer min-w-0 w-full"
                       >
-                        <div className="flex items-center gap-1.5 w-full mb-1">
+                        <div className="flex items-center gap-1.5 w-full mb-1 min-w-0">
                           <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black text-white shrink-0 ${
                             plant.name === "한림공장" ? "bg-emerald-600" : "bg-amber-500"
                           }`}>
                             {worker.avatar || worker.name[0]}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-1">
+                          <div className="min-w-0 flex-1 truncate">
+                            <div className="flex items-baseline gap-1 min-w-0 truncate">
                               <span className="font-black text-xs text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                                 {worker.name}
                               </span>
-                              <span className="text-[9.5px] font-bold text-slate-400">
+                              <span className="text-[9.5px] font-bold text-slate-400 shrink-0">
                                 {worker.title}
                               </span>
                             </div>
@@ -1742,15 +1742,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         </div>
 
                         {/* Recent Access Badge */}
-                        <div className="w-full pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9.5px]">
+                        <div className="w-full pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9.5px] min-w-0">
                           {lastLog ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-slate-700 dark:text-slate-200">
+                            <span className="inline-flex items-center gap-1 font-bold text-slate-700 dark:text-slate-200 min-w-0 truncate">
                               {isMobile ? (
                                 <Smartphone className="w-3 h-3 text-emerald-500 shrink-0" />
                               ) : (
                                 <Laptop className="w-3 h-3 text-blue-500 shrink-0" />
                               )}
-                              <span>{lastLog.timestamp ? lastLog.timestamp.slice(5, 16) : ""}</span>
+                              <span className="truncate">{lastLog.timestamp ? lastLog.timestamp.slice(5, 16) : ""}</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 font-medium text-slate-400">
@@ -1758,7 +1758,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               <span>미접속</span>
                             </span>
                           )}
-                          <span className="text-[8.5px] font-black text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform">
+                          <span className="text-[8.5px] font-black text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1">
                             기록 →
                           </span>
                         </div>

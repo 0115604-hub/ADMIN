@@ -190,7 +190,7 @@ export const App = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div className="flex min-h-screen max-w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       {/* Sidebar (Admin Only - Desktop & Mobile Drawer) */}
       {!isOperator && (
         <Sidebar
@@ -202,7 +202,7 @@ export const App = () => {
       )}
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden">
         <Header
           title={getTabTitle()}
           activeTab={activeTab}
@@ -218,7 +218,7 @@ export const App = () => {
           isRefreshing={isRefreshing}
         />
 
-        <main className="p-2.5 sm:p-4 lg:p-5 flex-1">
+        <main className="p-2 sm:p-4 lg:p-5 flex-1 min-w-0 max-w-full overflow-x-hidden">
           {loading ? (
             <div className="h-96 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">

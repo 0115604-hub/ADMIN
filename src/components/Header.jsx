@@ -35,17 +35,17 @@ export const Header = ({
   const showBackButton = isOperator && activeTab && activeTab !== "worker_dashboard";
 
   return (
-    <header className="h-14 sm:h-15 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-2xs">
+    <header className="h-14 sm:h-15 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-2xs max-w-full min-w-0">
       {/* Left: View Title / Mobile Menu Button / Operator Back Button */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 mr-1">
         {/* Admin Mobile Hamburger Menu Button */}
         {isAdmin && onOpenMobileMenu && (
           <button
             onClick={onOpenMobileMenu}
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 md:hidden transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 md:hidden transition-colors shrink-0"
             title="메뉴 열기"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         )}
 
@@ -53,81 +53,83 @@ export const Header = ({
         {showBackButton && onBackToSummary ? (
           <button
             onClick={onBackToSummary}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 text-xs font-black transition-all shadow-sm ring-1 ring-blue-500/20 active:scale-95"
+            className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 text-xs font-black transition-all shadow-sm ring-1 ring-blue-500/20 active:scale-95 shrink-0"
           >
-            <ArrowLeft className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>← 요약본 전체보기</span>
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 dark:text-blue-400" />
+            <span className="hidden sm:inline">← 요약본 전체보기</span>
+            <span className="sm:hidden">← 뒤로</span>
           </button>
         ) : isOperator ? (
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm p-1">
-              <OryukLogo className="w-6 h-6" />
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 truncate">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs p-1 shrink-0">
+              <OryukLogo className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              (주)오륙 생산관리현황
+            <h2 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
+              <span className="sm:hidden">(주)오륙</span>
+              <span className="hidden sm:inline">(주)오륙 생산관리현황</span>
             </h2>
           </div>
         ) : (
           /* Admin Title Header */
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
               {title === "월간경영현황" || title === "총괄 손익 대시보드" ? "현황" : title}
             </h2>
           </div>
         )}
 
         {showBackButton && (
-          <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight hidden md:inline ml-2">
+          <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight hidden md:inline ml-2 truncate">
             | {title}
           </h2>
         )}
       </div>
 
       {/* Center / Right: Action Buttons, Month Switcher & Logout */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {/* ⭐ [요청반영] Admin Top: 등록 탭 및 오른쪽 텔레그램 연동 탭 */}
         {isAdmin && (
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {onOpenNewModal && (
               <button
                 onClick={onOpenNewModal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
                 title="신규 손익 내역 등록"
               >
-                <Plus className="w-3.5 h-3.5 text-blue-400" />
-                <span className="font-extrabold">등록</span>
+                <Plus className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="font-extrabold hidden sm:inline">등록</span>
               </button>
             )}
 
             {setActiveTab && (
               <button
                 onClick={() => setActiveTab("telegram")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-2xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer border ${
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer border shrink-0 ${
                   activeTab === "telegram"
                     ? "bg-sky-500 text-white border-sky-400 shadow-md shadow-sky-500/20 ring-2 ring-sky-400/30"
                     : "bg-white hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700"
                 }`}
                 title="텔레그램 실시간 알림 연동 관리"
               >
-                <TelegramLogo className="w-4 h-4" />
-                <span className="font-extrabold">telegram</span>
+                <TelegramLogo className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="font-extrabold hidden sm:inline">telegram</span>
               </button>
             )}
           </div>
         )}
 
         {/* Month Selector */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white dark:bg-slate-800 border-2 border-blue-500/40 dark:border-blue-500/50 shadow-sm hover:border-blue-600 transition-all">
-          <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
+        <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 border-2 border-blue-500/40 dark:border-blue-500/50 shadow-2xs hover:border-blue-600 transition-all shrink-0">
+          <div className="p-0.5 sm:p-1 rounded-md sm:rounded-lg bg-blue-600 text-white shadow-xs shrink-0">
+            <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
           </div>
           <select
             value={selectedMonth}
             onChange={(e) => changeMonth(e.target.value)}
-            className="bg-transparent text-xs sm:text-sm font-black text-slate-900 dark:text-white cursor-pointer focus:outline-none pr-1"
+            className="bg-transparent text-[11px] sm:text-sm font-black text-slate-900 dark:text-white cursor-pointer focus:outline-none pr-0.5 sm:pr-1 max-w-[80px] sm:max-w-none"
           >
             {availableMonths.map((ym) => (
-              <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
+              <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold text-xs sm:text-sm">
                 {formatMonthShort(ym)} {isCurrentMonth(ym) ? "(당월)" : ""}
               </option>
             ))}
@@ -143,10 +145,10 @@ export const Header = ({
         <button
           onClick={logout}
           title="사용자 전환 / 로그아웃"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+          className="flex items-center gap-1 p-1.5 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 text-xs font-bold transition-colors shrink-0"
         >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">로그아웃</span>
+          <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+          <span className="hidden sm:inline text-xs">로그아웃</span>
         </button>
       </div>
     </header>
