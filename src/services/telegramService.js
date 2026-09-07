@@ -338,7 +338,7 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null) 
   }).replace(/\. /g, "-").replace(/\./g, "");
 
   const message = `
-<b>✅ [품질경보 조치완료 보고]</b>
+<b>🟥 [품질경보 조치완료 보고]</b>
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${plant}
 • <b>대상:</b> <b>${title}</b>
@@ -367,7 +367,7 @@ export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile) =>
     ? (deleterProfile || "총괄관리자")
     : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "총괄관리자");
   const isNotice = deletedIssue?.category === "공지사항" || deletedIssue?.category === "공유사항";
-  const header = isNotice ? "<b>🗑️ [공지사항 종결/삭제 알림]</b>" : "<b>🗑️ [품질경보 종결/삭제 알림]</b>";
+  const header = isNotice ? "<b>📢 [공지사항 종결/삭제 알림]</b>" : "<b>🟥 [품질경보 종결/삭제 알림]</b>";
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
