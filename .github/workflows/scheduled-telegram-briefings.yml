@@ -2,8 +2,16 @@ name: Scheduled Telegram Briefings
 
 on:
   schedule:
-    # 07:30 KST (22:30 UTC previous day) - Daily Morning Briefing
+    # 07:25 KST (22:25 UTC previous day) - Pre-warm trigger 1
+    - cron: '25 22 * * *'
+    # 07:28 KST (22:28 UTC previous day) - Pre-warm trigger 2
+    - cron: '28 22 * * *'
+    # 07:30 KST (22:30 UTC previous day) - Exact target trigger
     - cron: '30 22 * * *'
+    # 07:32 KST (22:32 UTC previous day) - Fallback trigger 1
+    - cron: '32 22 * * *'
+    # 07:35 KST (22:35 UTC previous day) - Fallback trigger 2
+    - cron: '35 22 * * *'
   workflow_dispatch:
     inputs:
       force:
@@ -14,7 +22,7 @@ on:
 
 jobs:
   send-briefing:
-    name: Run Telegram Morning Briefing (07:30)
+    name: Run Telegram Daily Briefings (07:30)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,11 +36,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Execute Daily 07:30 Morning Briefing
+      - name: Execute Daily 07:30 Briefings
         run: |
           FORCE_FLAG=""
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             FORCE_FLAG="--force"
           fi
-          echo "Executing 07:30 KST Daily Morning Briefing $FORCE_FLAG..."
-          node scripts/sendTelegramBriefing.mjs morning $FORCE_FLAG
+          echo "Executing 07:30 KST Daily Morning & PnL Briefings $FORCE_FLAG..."
+          node scripts/sendTelegramBriefing.mjs $FORCE_FLAG

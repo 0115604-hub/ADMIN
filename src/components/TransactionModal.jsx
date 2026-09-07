@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Plus, Edit3, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
+import { getKSTDateString } from "../utils/dateUtils";
 
 const DEFAULT_EXPENSE_CATEGORIES = [
   "인건비",
@@ -30,7 +31,7 @@ export const TransactionModal = ({ isOpen, onClose, onSave, editingItem }) => {
     title: "",
     category: "제품 판매",
     amount: "",
-    date: new Date().toISOString().split("T")[0],
+    date: getKSTDateString(),
     client: "",
     paymentMethod: "계좌이체",
     status: "완료",
@@ -44,7 +45,7 @@ export const TransactionModal = ({ isOpen, onClose, onSave, editingItem }) => {
         title: editingItem.title || "",
         category: editingItem.category || "제품 판매",
         amount: editingItem.amount ? String(editingItem.amount) : "",
-        date: editingItem.date || new Date().toISOString().split("T")[0],
+        date: editingItem.date || getKSTDateString(),
         client: editingItem.client || "",
         paymentMethod: editingItem.paymentMethod || "계좌이체",
         status: editingItem.status || "완료",
@@ -56,7 +57,7 @@ export const TransactionModal = ({ isOpen, onClose, onSave, editingItem }) => {
         title: "",
         category: "제품 판매",
         amount: "",
-        date: new Date().toISOString().split("T")[0],
+        date: getKSTDateString(),
         client: "",
         paymentMethod: "계좌이체",
         status: "완료",

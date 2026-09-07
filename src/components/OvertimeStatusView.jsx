@@ -35,6 +35,7 @@ import {
   formatShortWorkDate,
   calculateReportMetrics
 } from "../services/overtimeService";
+import { getKSTDateString } from "../utils/dateUtils";
 
 export const OvertimeStatusView = () => {
   const { currentProfile, isAdmin } = useAuth();
@@ -100,7 +101,7 @@ export const OvertimeStatusView = () => {
   // Open New Report Modal with Date Picker
   const handleOpenNewReport = (defaultPlant = "삼랑진공장") => {
     const targetPlant = filterPlant !== "전체" ? filterPlant : defaultPlant;
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayStr = getKSTDateString();
     setEditFormData({
       id: `report_${targetPlant === "한림공장" ? "hanlim" : "samrangjin"}_${todayStr.replace(/-/g, "")}_${Date.now()}`,
       isNew: true,

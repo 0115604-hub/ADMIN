@@ -39,6 +39,7 @@ import { parseManualClosingExcel } from "../services/manualLedgerParser";
 import detailedClosingMaster from "../data/detailedClosingLedgerData.json";
 import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
+import { getKSTDateString } from "../utils/dateUtils";
 import * as XLSX from "xlsx";
 
 const STORAGE_KEY = "monthly_4_entity_closing_ledger_v5_integrated";
@@ -797,7 +798,7 @@ export const ClosingLedgerView = () => {
       id: `manual_${Date.now()}`,
       entityKey: "manual",
       sourceEntity: "수기입력",
-      writeDate: new Date().toISOString().split("T")[0],
+      writeDate: getKSTDateString(),
       vendor: "신규 거래처",
       item: "품목명 입력",
       supplyAmt: 0,

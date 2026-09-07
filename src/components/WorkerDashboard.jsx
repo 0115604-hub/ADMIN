@@ -99,6 +99,7 @@ import {
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
 import { parseExcelFile } from "../utils/excelHelper";
+import { getKSTDateString } from "../utils/dateUtils";
 
 // Extrusion 4-Lines Summary (PCM 1호, PCM 3호, PVC, TPE) - Real Excel Verified
 const EXTRUSION_SUMMARY = [
@@ -426,7 +427,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [latestDayInfo]);
 
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: getKSTDateString(),
     plant: workerPlant,
     writer: workerFullName,
     process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess,
@@ -513,8 +514,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // Annual Leaves State & Real-time Cloud Subscription
   const [annualLeaves, setAnnualLeaves] = useState(() => getAnnualLeaves());
   const [leaveForm, setLeaveForm] = useState({
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date().toISOString().split("T")[0],
+    startDate: getKSTDateString(),
+    endDate: getKSTDateString(),
     leaveType: "연차(전일)",
     reason: ""
   });
@@ -561,8 +562,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setLeaveForm({
-        startDate: new Date().toISOString().split("T")[0],
-        endDate: new Date().toISOString().split("T")[0],
+        startDate: getKSTDateString(),
+        endDate: getKSTDateString(),
         leaveType: "연차(전일)",
         reason: ""
       });
@@ -584,7 +585,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // Common Schedules (전사 공통일정) State & Subscription
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [commonScheduleForm, setCommonScheduleForm] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: getKSTDateString(),
     time: "09:30",
     target: "공통",
     title: ""
@@ -602,7 +603,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => unsub();
   }, []);
 
-  const todayDateStr = new Date().toISOString().split("T")[0];
+  const todayDateStr = getKSTDateString();
   const todayCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules.filter((s) => s.date === todayDateStr);
@@ -711,7 +712,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const totalMin = matches.reduce((acc, cur) => acc + (cur.totalMinutes || 0), 0);
     let text = `[오륙산업 삼랑진공장 - 압출동 라인별 비가동 엑셀 업로드 및 매칭 내역 공유]
 `;
-    text += `• 작성자: ${writerName || "설유철 책임"} (${dateStr || new Date().toISOString().slice(0, 10)})
+    text += `• 작성자: ${writerName || "설유철 책임"} (${dateStr || getKSTDateString()})
 `;
     text += `• 업로드 라인: 총 ${matches.length}개 라인 (합계 비가동 ${totalMin}분)
 

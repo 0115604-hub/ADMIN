@@ -113,9 +113,10 @@ export const App = () => {
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
+    // High-precision adaptive interval (10 seconds) for zero-latency 07:30 dispatch
     const timer = setInterval(() => {
       checkAndAutoSendDailyMorningBriefing();
-    }, 30000); // Check every 30 seconds
+    }, 10000);
 
     return () => {
       unsubTelegram();

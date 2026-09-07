@@ -1,11 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const firebaseConfig = {
   apiKey: "AIzaSyCiHEInVCW1x2xnyw3eOW5oEubaCiwzZOg",
@@ -24,8 +18,73 @@ const DEFAULT_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
   chatId: "-4186792536", // '오륙 통합방'
-  sendDailyLeaveBriefing: true
+  pnlChatId: "-1003939516875", // '경영총괄'
+  sendDailyLeaveBriefing: true,
+  sendDailyPnLBriefing: true
 };
+
+// KST Time & Date Utilities for Node.js
+function getKSTDateString(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
+function getKSTFormattedString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((p) => p.type === type)?.value || "00";
+  const yyyy = getPart("year");
+  const mm = getPart("month");
+  const dd = getPart("day");
+  const hh = getPart("hour");
+  const min = getPart("minute");
+
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  const dateObj = new Date(`${yyyy}-${mm}-${dd}T${hh}:${min}:00+09:00`);
+  const dayName = days[dateObj.getDay()];
+
+  return `${yyyy}.${mm}.${dd}(${dayName}) ${hh}:${min}`;
+}
+
+function getKSTTimeInfo(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Seoul",
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).formatToParts(date);
+
+  const getPart = (type) => parts.find((p) => p.type === type)?.value || "00";
+  const year = getPart("year");
+  const month = getPart("month");
+  const day = getPart("day");
+  const hour = parseInt(getPart("hour"), 10);
+  const minute = parseInt(getPart("minute"), 10);
+  const second = parseInt(getPart("second"), 10);
+  const dateStr = `${year}-${month}-${day}`;
+  const totalSeconds = hour * 3600 + minute * 60 + second;
+
+  return { year, month, day, hour, minute, second, dateStr, totalSeconds };
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getConfig() {
   try {
@@ -39,156 +98,180 @@ async function getConfig() {
   return DEFAULT_CONFIG;
 }
 
+async function getCustomTemplates() {
+  try {
+    const snap = await getDoc(doc(db, "system_config", "telegram_templates"));
+    if (snap.exists()) {
+      return snap.data();
+    }
+  } catch (e) {
+    console.warn("Could not load custom templates:", e.message);
+  }
+  return {};
+}
+
 async function sendTelegramMessage(token, chatId, text) {
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true
-    })
-  });
-  const data = await response.json();
-  return { ok: response.ok && data.ok, data };
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true
+      })
+    });
+    const data = await response.json();
+    return { ok: response.ok && data.ok, data };
+  } catch (err) {
+    console.error("Telegram API send error:", err.message);
+    return { ok: false, error: err.message };
+  }
 }
 
-function formatKoreanCurrency(amount) {
-  if (amount === 0 || !amount) return "0원";
-  const abs = Math.abs(amount);
-  const eok = Math.floor(abs / 100000000);
-  const man = Math.round((abs % 100000000) / 10000);
+/**
+ * Align exact execution to 07:30:00 KST
+ * If the runner starts before 07:30 (e.g. 07:25 ~ 07:29:59), wait until 07:30:00 KST.
+ */
+async function alignToExact0730() {
+  const info = getKSTTimeInfo();
+  const targetSeconds = 7 * 3600 + 30 * 60; // 07:30:00 KST (27000 seconds)
 
-  let result = "";
-  if (eok > 0) result += `${eok}억 `;
-  if (man > 0 || eok === 0) result += `${man.toLocaleString("ko-KR")}만원`;
-  return amount < 0 ? `-${result.trim()}` : result.trim();
+  if (info.totalSeconds < targetSeconds) {
+    const diffMs = (targetSeconds - info.totalSeconds) * 1000;
+    if (diffMs <= 360000) { // If within 6 minutes, wait
+      console.log(`[Runner Pre-Warm] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:30:00 KST...`);
+      await sleep(diffMs);
+      console.log("[Runner Trigger] 07:30:00 KST reached! Dispatching immediately...");
+    }
+  }
 }
 
-export async function runMorningBriefing(force = false) {
-  console.log("--- Starting Morning Briefing (07:30) Check ---");
+export async function runAllBriefings(force = false) {
+  console.log("=== Starting Scheduled Briefings Dispatcher ===");
+  await alignToExact0730();
+
   const config = await getConfig();
-  if (!config.enabled || !config.sendDailyLeaveBriefing) {
-    console.log("Morning briefing disabled in config.");
+  if (!config.enabled) {
+    console.log("Telegram integration is disabled in config.");
     return;
   }
 
-  // Get current date in KST (UTC+9)
-  const now = new Date();
-  const kstOffset = 9 * 60; // in minutes
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const kstDate = new Date(utc + (kstOffset * 60000));
+  const todayStr = getKSTDateString();
+  const dateFormatted = `${getKSTFormattedString().split(" ")[0]} 07:30`;
+  const customTemplates = await getCustomTemplates();
 
-  const yyyy = kstDate.getFullYear();
-  const mm = String(kstDate.getMonth() + 1).padStart(2, "0");
-  const dd = String(kstDate.getDate()).padStart(2, "0");
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-
-  const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
-  const dayName = daysOfWeek[kstDate.getDay()];
-  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName}) 07:30`;
-
-  // Check if already sent today in Firestore
-  if (!force) {
-    try {
-      const snap = await getDoc(doc(db, "system_config", "daily_briefing"));
-      if (snap.exists() && snap.data().lastSentDate === todayStr) {
-        console.log(`Morning briefing already sent today (${todayStr}). Skipping.`);
-        return;
-      }
-    } catch (e) {
-      console.warn("Could not check lastSentDate:", e.message);
+  // Read Firestore tracking state
+  let briefingDoc = null;
+  try {
+    const snap = await getDoc(doc(db, "system_config", "daily_briefing"));
+    if (snap.exists()) {
+      briefingDoc = snap.data();
     }
+  } catch (e) {
+    console.warn("Could not check daily_briefing state:", e.message);
   }
 
-  // 1. 연차 현황
-  let activeLeaves = [];
-  try {
-    const snap = await getDocs(collection(db, "annual_leaves"));
-    snap.forEach((docSnap) => {
-      const l = docSnap.data();
-      if (!l.startDate) return;
-      const start = l.startDate;
-      const end = l.endDate || l.startDate;
-      if (start <= todayStr && todayStr <= end) {
-        activeLeaves.push(l);
+  // -------------------------------------------------------------
+  // 1. 07:30 통합 모닝 브리핑 (오륙 통합방: -4186792536)
+  // -------------------------------------------------------------
+  if (config.sendDailyLeaveBriefing) {
+    if (!force && briefingDoc?.lastSentDate === todayStr) {
+      console.log(`[오륙통합방 모닝브리핑] Already sent today (${todayStr}). Skipping.`);
+    } else {
+      console.log(`[오륙통합방 모닝브리핑] Generating briefing for ${todayStr}...`);
+
+      // 1-1. 연차 현황
+      let activeLeaves = [];
+      try {
+        const snap = await getDocs(collection(db, "annual_leaves"));
+        snap.forEach((docSnap) => {
+          const l = docSnap.data();
+          if (!l.startDate) return;
+          const start = l.startDate;
+          const end = l.endDate || l.startDate;
+          if (start <= todayStr && todayStr <= end) {
+            activeLeaves.push(l);
+          }
+        });
+      } catch (e) {
+        console.warn("Error fetching annual leaves:", e.message);
       }
-    });
-  } catch (e) {
-    console.warn("Error fetching annual leaves:", e.message);
-  }
 
-  let leaveSummary = "없음 (전원 정상 출근)";
-  if (activeLeaves.length > 0) {
-    const list = activeLeaves.map((l) => {
-      const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-      const typeShort = l.leaveType || "연차";
-      return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
-    });
-    leaveSummary = list.join(", ");
-  }
-
-  // 2. 미결재 현황
-  let pendingDocs = [];
-  try {
-    const snap = await getDocs(collection(db, "approval_docs"));
-    snap.forEach((docSnap) => {
-      const d = docSnap.data();
-      if (d.status === "IN_PROGRESS" || d.status === "HOLD") {
-        pendingDocs.push(d);
+      let leaveSummary = "없음 (전원 정상 출근)";
+      if (activeLeaves.length > 0) {
+        const list = activeLeaves.map((l) => {
+          const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
+          const typeShort = l.leaveType || "연차";
+          return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
+        });
+        leaveSummary = list.join(", ");
       }
-    });
-  } catch (e) {
-    console.warn("Error fetching approvals:", e.message);
-  }
 
-  let pendingLogs = [];
-  try {
-    const snap = await getDocs(collection(db, "work_logs"));
-    snap.forEach((docSnap) => {
-      const l = docSnap.data();
-      if (l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려") {
-        pendingLogs.push(l);
+      // 1-2. 미결재 현황
+      let pendingDocs = [];
+      try {
+        const snap = await getDocs(collection(db, "approval_documents"));
+        snap.forEach((docSnap) => {
+          const d = docSnap.data();
+          if (d.status === "IN_PROGRESS" || d.status === "HOLD") {
+            pendingDocs.push(d);
+          }
+        });
+      } catch (e) {
+        console.warn("Error fetching approvals:", e.message);
       }
-    });
-  } catch (e) {
-    console.warn("Error fetching work logs:", e.message);
-  }
 
-  let approvalSummary = "없음 (전건 결재완료)";
-  const totalPending = pendingDocs.length + pendingLogs.length;
-  if (totalPending > 0) {
-    const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
-    const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
-    const previewList = [...docTitles, ...logTitles].slice(0, 3);
-    const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
-    approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
-  }
+      let pendingLogs = [];
+      try {
+        const snap = await getDocs(collection(db, "work_logs"));
+        snap.forEach((docSnap) => {
+          const l = docSnap.data();
+          if (l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려") {
+            pendingLogs.push(l);
+          }
+        });
+      } catch (e) {
+        console.warn("Error fetching work logs:", e.message);
+      }
 
-  // 3. 품질경보 미조치 현황
-  let urgentIssues = [];
-  try {
-    const snap = await getDocs(collection(db, "urgent_issues"));
-    snap.forEach((docSnap) => {
-      const i = docSnap.data();
-      urgentIssues.push(i);
-    });
-  } catch (e) {
-    console.warn("Error fetching urgent issues:", e.message);
-  }
+      let approvalSummary = "없음 (전건 결재완료)";
+      const totalPending = pendingDocs.length + pendingLogs.length;
+      if (totalPending > 0) {
+        const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
+        const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
+        const previewList = [...docTitles, ...logTitles].slice(0, 3);
+        const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
+        approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
+      }
 
-  let urgentSummary = "없음 (전건 종결완료)";
-  if (urgentIssues.length > 0) {
-    const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
-    const previewList = issueTitles.slice(0, 2);
-    const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
-    urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
-  }
+      // 1-3. 품질경보 미조치 현황
+      let urgentIssues = [];
+      try {
+        const snap = await getDocs(collection(db, "urgent_issues"));
+        snap.forEach((docSnap) => {
+          const i = docSnap.data();
+          if (!i.isDeleted && !i.isResolved) {
+            urgentIssues.push(i);
+          }
+        });
+      } catch (e) {
+        console.warn("Error fetching urgent issues:", e.message);
+      }
 
-  const message = `
-<b>☀️ [오륙 생산관리] 일일 모닝 브리핑</b>
+      let urgentSummary = "없음 (전건 종결완료)";
+      if (urgentIssues.length > 0) {
+        const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
+        const previewList = issueTitles.slice(0, 2);
+        const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
+        urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+      }
+
+      const savedUnifiedTemplate = customTemplates["unified_briefing"]?.text;
+      const defaultGeneralMessage = `
+<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
 <b>[1] 근태 / 휴가 현황</b>
@@ -203,28 +286,95 @@ export async function runMorningBriefing(force = false) {
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-  const res = await sendTelegramMessage(config.botToken, config.chatId, message);
-  console.log("Morning briefing send result:", res);
+      const generalMessage = savedUnifiedTemplate || defaultGeneralMessage;
+      const res = await sendTelegramMessage(config.botToken, config.chatId || "-4186792536", generalMessage);
+      console.log("[오륙통합방 모닝브리핑] Send Result:", res);
 
-  if (res.ok) {
-    try {
-      await setDoc(doc(db, "system_config", "daily_briefing"), {
-        lastSentDate: todayStr,
-        sentAt: new Date().toISOString()
-      }, { merge: true });
-      console.log(`Saved lastSentDate=${todayStr} in Firestore.`);
-    } catch (e) {
-      console.warn("Failed to update daily_briefing timestamp:", e.message);
+      if (res.ok) {
+        try {
+          await setDoc(doc(db, "system_config", "daily_briefing"), {
+            lastSentDate: todayStr,
+            sentAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (e) {
+          console.warn("Failed to update daily_briefing lastSentDate:", e.message);
+        }
+      }
     }
   }
+
+  // -------------------------------------------------------------
+  // 2. 07:30 손익결산 브리핑 (경영총괄: -1003939516875)
+  // -------------------------------------------------------------
+  if (config.sendDailyPnLBriefing) {
+    if (!force && briefingDoc?.lastPnLSentDate === todayStr) {
+      console.log(`[경영총괄 손익브리핑] Already sent today (${todayStr}). Skipping.`);
+    } else {
+      console.log(`[경영총괄 손익브리핑] Generating PnL briefing for ${todayStr}...`);
+
+      // 2-1. 공통일정 조회
+      let commonSchedules = "";
+      try {
+        const snap = await getDocs(collection(db, "company_common_schedules"));
+        const todayScheds = [];
+        snap.forEach((docSnap) => {
+          const s = docSnap.data();
+          if (s.date === todayStr) {
+            todayScheds.push(s);
+          }
+        });
+        if (todayScheds.length > 0) {
+          commonSchedules = todayScheds.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n");
+        }
+      } catch (e) {
+        console.warn("Error fetching common schedules:", e.message);
+      }
+
+      if (!commonSchedules) {
+        commonSchedules = "• 등록된 전사 공통일정이 없습니다. (정상 생산 가동)";
+      }
+
+      const savedPnLTemplate = customTemplates["management_pnl"]?.text;
+      const defaultPnLMessage = `
+<b>⬛ [오륙 경영진/임원] 일일 아침 손익결산 브리핑</b>
+<b>${dateFormatted} 기준</b>
+━━━━━━━━━━━━━━━━━━━━━
+<b>[1] 당월 매입 / 매출 결산 현황</b>
+• <b>매출액:</b> ₩1,756,104,735원
+• <b>매입액:</b> ₩1,248,400,885원
+• <b>매출대비 원가율:</b> 71.1%
+
+<b>[2] 전월 실적 대비 달성율</b>
+• <b>전월대비 매출 달성율:</b> <b>102.4%</b>
+• <b>전월대비 매입 달성율:</b> <b>98.7%</b>
+
+<b>[3] 오늘의 전사 공통일정</b>
+${commonSchedules}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
+`.trim();
+
+      const pnlMessage = savedPnLTemplate || defaultPnLMessage;
+      const res = await sendTelegramMessage(config.botToken, config.pnlChatId || "-1003939516875", pnlMessage);
+      console.log("[경영총괄 손익브리핑] Send Result:", res);
+
+      if (res.ok) {
+        try {
+          await setDoc(doc(db, "system_config", "daily_briefing"), {
+            lastPnLSentDate: todayStr,
+            pnlSentAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (e) {
+          console.warn("Failed to update lastPnLSentDate:", e.message);
+        }
+      }
+    }
+  }
+
+  console.log("=== Scheduled Briefings Dispatch Finished ===");
 }
 
 // CLI Runner
-const action = process.argv[2];
-if (action === "morning" || !action) {
-  await runMorningBriefing(process.argv.includes("--force"));
-  process.exit(0);
-} else {
-  console.log("Usage: node scripts/sendTelegramBriefing.mjs [morning] [--force]");
-  process.exit(1);
-}
+const isForce = process.argv.includes("--force");
+await runAllBriefings(isForce);
+process.exit(0);

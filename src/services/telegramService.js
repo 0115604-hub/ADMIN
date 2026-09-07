@@ -6,6 +6,15 @@ import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
 import { getTodayCommonSchedules } from "./commonScheduleService";
+import {
+  getKSTDateString,
+  getKSTFormattedString,
+  getKSTTimeString,
+  getKSTTimeInfo,
+  getKoreanTodayDateStr
+} from "../utils/dateUtils";
+
+export { getKSTDateString, getKSTFormattedString, getKSTTimeString, getKSTTimeInfo, getKoreanTodayDateStr };
 
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config_v4";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
@@ -13,18 +22,18 @@ const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
 const TEMPLATES_DOC_PATH = ["system_config", "telegram_templates"];
 const TELEGRAM_TEMPLATES_KEY = "oryuk_telegram_templates_v1";
 
-// Default Configuration (Pre-configured for separated delivery: '오륙 통합방' + '경영방')
+// Default Configuration (Separated delivery: '오륙 통합방' + '경영총괄')
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 3단계 / 사내공지 / 회의일정 / 전자결재 / 07:30 일반 모닝브리핑)
-  pnlChatId: "-1003939516875", // '경영방' 단톡방 (대표·전무/경영진 전용 07:30 손익결산 P&L 브리핑)
+  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 / 사내공지 / 회의일정 / 전자결재 / 07:30 일반 모닝브리핑)
+  pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (대표·임원 전용 07:30 손익결산 P&L 브리핑)
   ceoChatId: "290615483", // 권태형 대표님 1:1 개인톡
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
   sendDailyLeaveBriefing: true, // 07:30 모닝브리핑 (오륙 통합방)
-  sendDailyPnLBriefing: true // 07:30 손익결산 브리핑 (경영방)
+  sendDailyPnLBriefing: true // 07:30 손익결산 브리핑 (경영총괄)
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -176,7 +185,7 @@ export const subscribeTelegramCustomTemplates = (onUpdate) => {
 };
 
 /**
- * Send a custom text message via Telegram Bot API
+ * Send a custom text message via Telegram Bot API with low latency & 8s timeout
  */
 export const sendTelegramMessage = async (text, customConfig = null) => {
   const config = customConfig || getLocalTelegramConfig();
@@ -189,10 +198,14 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
   const chatId = String(config.chatId).trim();
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
 
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 8000) : null;
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: controller?.signal,
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
@@ -200,6 +213,8 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
         disable_web_page_preview: true
       })
     });
+
+    if (timeoutId) clearTimeout(timeoutId);
 
     const data = await response.json();
     if (!response.ok || !data.ok) {
@@ -209,6 +224,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
 
     return { success: true, messageId: data.result?.message_id };
   } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
     console.error("Telegram Network Error:", error);
     return { success: false, error: error.message };
   }
@@ -227,6 +243,9 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
   const chatId = String(config.chatId).trim();
   const endpoint = `https://api.telegram.org/bot${token}/sendPhoto`;
 
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 12000) : null;
+
   try {
     const resBlob = await (await fetch(photoDataUrl)).blob();
     const formData = new FormData();
@@ -240,8 +259,11 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
 
     const response = await fetch(endpoint, {
       method: "POST",
+      signal: controller?.signal,
       body: formData
     });
+
+    if (timeoutId) clearTimeout(timeoutId);
 
     const data = await response.json();
     if (!response.ok || !data.ok) {
@@ -251,6 +273,7 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
 
     return { success: true, messageId: data.result?.message_id };
   } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
     console.warn("Telegram sendPhoto Network Error:", error);
     return { success: false, error: error.message };
   }
@@ -277,6 +300,9 @@ export const sendTelegramMediaGroup = async (images = [], caption = "", customCo
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
   const endpoint = `https://api.telegram.org/bot${token}/sendMediaGroup`;
+
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => controller.abort(), 15000) : null;
 
   try {
     const formData = new FormData();
@@ -305,8 +331,11 @@ export const sendTelegramMediaGroup = async (images = [], caption = "", customCo
 
     const response = await fetch(endpoint, {
       method: "POST",
+      signal: controller?.signal,
       body: formData
     });
+
+    if (timeoutId) clearTimeout(timeoutId);
 
     const data = await response.json();
     if (!response.ok || !data.ok) {
@@ -316,6 +345,7 @@ export const sendTelegramMediaGroup = async (images = [], caption = "", customCo
 
     return { success: true, results: data.result };
   } catch (error) {
+    if (timeoutId) clearTimeout(timeoutId);
     console.warn("Telegram sendMediaGroup Error, fallback:", error);
     return await sendTelegramPhoto(validImages[0].dataUrl, caption, customConfig);
   }
@@ -352,8 +382,8 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
   const content = issueItem?.content && issueItem.content !== issueItem.title ? issueItem.content : "";
   const images = (issueItem?.images || []).slice(0, 3);
   const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 현장 사진 ${images.length}장 첨부됨` : "";
-  const dateStr = issueItem?.date || new Date().toISOString().split("T")[0];
-  const timeStr = issueItem?.time || new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const dateStr = issueItem?.date || getKSTDateString();
+  const timeStr = issueItem?.time || getKSTTimeString();
   const category = issueItem?.category || "품질경보";
 
   let message = "";
@@ -418,14 +448,7 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null, 
   const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
   const actionImages = (actionResult?.images || issueItem?.actionImages || []).slice(0, 3);
   const photoCount = actionImages.length > 0 ? `\n• <b>첨부사진:</b> 관련 사진 ${actionImages.length}장 첨부됨` : "";
-  const nowStr = new Date().toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).replace(/\. /g, "-").replace(/\./g, "");
+  const nowStr = getKSTFormattedString();
 
   let message = "";
   if (issueItem?.category === "회의일정") {
@@ -495,14 +518,7 @@ export const sendMeetingReplyTelegram = async (issueItem, replyItem, targetChatI
   const titleStr = replyItem?.authorTitle ? ` ${replyItem.authorTitle}` : "";
   const status = replyItem?.attendanceStatus || "참석";
   const content = replyItem?.content || "확인 및 회신";
-  const nowStr = replyItem?.createdAt || new Date().toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).replace(/\. /g, "-").replace(/\./g, "");
+  const nowStr = replyItem?.createdAt || getKSTFormattedString();
 
   const message = `
 <b>🟪 [회의일정 회신 등록]</b>
@@ -535,14 +551,7 @@ export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile, ta
     header = "<b>🟩 [공지사항 종결/삭제 알림]</b>";
   }
 
-  const nowStr = new Date().toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).replace(/\. /g, "-").replace(/\./g, "");
+  const nowStr = getKSTFormattedString();
 
   const message = `
 ${header}
@@ -563,6 +572,7 @@ ${header}
  * 5. 전자결재 기안 상신 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담당 결재자") => {
+  const nowStr = getKSTFormattedString();
   const message = `
 <b>🟦 [전자결재 기안 상신]</b>
 ----------------------------------------
@@ -570,7 +580,7 @@ export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
 • <b>결재제목:</b> <b>${docItem.title}</b>
 • <b>다음 결재자:</b> <b>${nextApproverName}</b>
-• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+• <b>일시:</b> ${nowStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -581,9 +591,10 @@ export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담
 /**
  * 6. 전자결재 승인 즉시 알림 (파랑색 🟦)
  */
-export const sendApprovalStepTelegram = async (docItem, approverName, isFinal = false, nextApproverName = null) => {
+export const sendApprovalStepTelegram = async (docItem, approverName, comment = "", isFinal = false, nextApproverName = null) => {
   const titleHeader = isFinal ? "🟦 [전자결재 최종 승인 완료]" : "🟦 [전자결재 중간 승인 알림]";
   const nextLine = nextApproverName ? `• <b>다음 결재자:</b> ${nextApproverName}\n` : "";
+  const nowStr = getKSTFormattedString();
 
   const message = `
 <b>${titleHeader}</b>
@@ -592,7 +603,7 @@ export const sendApprovalStepTelegram = async (docItem, approverName, isFinal = 
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
 • <b>결재제목:</b> <b>${docItem.title}</b>
 • <b>승인자:</b> <b>${approverName}</b>
-${nextLine}• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+${nextLine}• <b>일시:</b> ${nowStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -604,6 +615,7 @@ ${nextLine}• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
  * 7. 전자결재 반려 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
+  const nowStr = getKSTFormattedString();
   const message = `
 <b>🟦 [전자결재 반려 알림]</b>
 ----------------------------------------
@@ -612,7 +624,7 @@ export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) 
 • <b>결재제목:</b> <b>${docItem.title}</b>
 • <b>반려자:</b> <b>${rejectorName}</b>
 • <b>반려사유:</b> ${reason || "내용 보완 후 재상신 요망"}
-• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+• <b>일시:</b> ${nowStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -624,6 +636,7 @@ export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) 
  * 8. 전자결재 보류 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
+  const nowStr = getKSTFormattedString();
   const message = `
 <b>🟦 [전자결재 보류 알림]</b>
 ----------------------------------------
@@ -632,7 +645,7 @@ export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
 • <b>결재제목:</b> <b>${docItem.title}</b>
 • <b>보류자:</b> <b>${holderName}</b>
 • <b>보류사유:</b> ${reason || "검토 필요"}
-• <b>일시:</b> ${new Date().toLocaleString("ko-KR")}
+• <b>일시:</b> ${nowStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -665,14 +678,8 @@ export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
 export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, targetChatId = null) => {
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || config.chatId || "-4186792536";
-  const todayStr = targetDateStr || new Date().toISOString().split("T")[0];
-  const dateObj = new Date(todayStr + "T00:00:00");
-  const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
-  const dayName = daysOfWeek[dateObj.getDay()];
-  const yyyy = dateObj.getFullYear();
-  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const dd = String(dateObj.getDate()).padStart(2, "0");
-  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName}) 07:30`;
+  const todayStr = targetDateStr || getKSTDateString();
+  const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
 
   // 1. 연차 현황
   const leaves = getLocalAnnualLeaves();
@@ -760,75 +767,38 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
   return sendResult;
 };
 
-// Backward-compatible alias
 export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
 
 /**
-  * Check and Auto-Send Daily 07:30 AM Morning Briefing (General room)
-  */
-export const checkAndAutoSendDailyMorningBriefing = async () => {
-  const config = getLocalTelegramConfig();
-  if (!config.enabled || !config.sendDailyLeaveBriefing) {
-    return { skipped: true, reason: "DISABLED_IN_CONFIG" };
-  }
-
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const totalMinutes = currentHour * 60 + currentMinute;
-  const todayStr = now.toISOString().split("T")[0];
-
-  // Client auto-trigger window: 07:30 AM ~ 07:45 AM only
-  // This prevents stale/delayed briefings from triggering hours later when a user opens the browser at noon
-  if (totalMinutes < 450 || totalMinutes > 465) {
-    return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
-  }
-
-  // Check if already sent today locally
-  const lastLocal = localStorage.getItem("oryuk_last_morning_briefing_sent");
-  if (lastLocal === todayStr) {
-    return { skipped: true, reason: "ALREADY_SENT_TODAY_LOCAL" };
-  }
-
-  try {
-    const snap = await getDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]));
-    if (snap.exists() && snap.data().lastSentDate === todayStr) {
-      localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
-      return { skipped: true, reason: "ALREADY_SENT_TODAY_CLOUD" };
-    }
-  } catch (e) {
-    console.warn("Morning briefing check cloud read error:", e);
-  }
-
-  console.log(`[07:30 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
-  return await sendDailyMorningBriefingTelegram(todayStr);
-};
-
-export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
-
-/**
- * 10. 매일 아침 손익결산 브리핑 발송 (매출액 / 매입액 / 전월대비 매출 달성율 / 전월대비 매입 달성율 / 공통일정)
- * 기본 발송 채널: '경영방' (-1003939516875) (경영진/대표·전무 전용으로 분리 발송)
+ * 10. 매일 아침 손익결산 브리핑 발송 (매출액 / 매입액 / 달성율 / 공통일정)
+ * 기본 발송 채널: '경영총괄' (-1003939516875)
  */
 export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null, targetChatId = null) => {
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || customBriefingData?.targetChatId || config.pnlChatId || "-1003939516875";
+  const todayStr = getKSTDateString();
 
   const savedPnLTemplate = getLocalTelegramTemplates()["management_pnl"]?.text;
   if (!customBriefingData && savedPnLTemplate) {
-    return await sendTelegramMessage(savedPnLTemplate, {
+    const sendRes = await sendTelegramMessage(savedPnLTemplate, {
       ...config,
       chatId: destChatId
     });
+    if (sendRes.success) {
+      try {
+        localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+        await setDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]), {
+          lastPnLSentDate: todayStr,
+          pnlSentAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (e) {
+        console.warn("Failed to record pnl briefing timestamp:", e);
+      }
+    }
+    return sendRes;
   }
 
-  const now = new Date();
-  const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
-  const dayName = daysOfWeek[now.getDay()];
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName}) 07:30`;
+  const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
 
   let salesAmount = customBriefingData?.salesAmount ?? 1756104735;
   let purchaseAmount = customBriefingData?.purchaseAmount ?? 1248400885;
@@ -837,7 +807,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   let commonSchedules = customBriefingData?.commonSchedules;
 
   if (!commonSchedules) {
-    const todayScheds = getTodayCommonSchedules();
+    const todayScheds = getTodayCommonSchedules(todayStr);
     if (todayScheds.length > 0) {
       commonSchedules = todayScheds.map((s) => `• ${s.time && s.time !== "종일" ? `[${s.time}] ` : ""}${s.target ? `[${s.target}] ` : ""}${s.title}`).join("\n");
     } else {
@@ -867,11 +837,90 @@ ${commonSchedules}
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
 
-  return await sendTelegramMessage(message, {
+  const sendResult = await sendTelegramMessage(message, {
     ...config,
     chatId: destChatId
   });
+
+  if (sendResult.success) {
+    try {
+      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+      await setDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]), {
+        lastPnLSentDate: todayStr,
+        pnlSentAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn("Failed to record pnl briefing timestamp:", e);
+    }
+  }
+
+  return sendResult;
 };
+
+/**
+ * Check and Auto-Send Daily 07:30 AM Morning Briefings (Both Rooms)
+ */
+export const checkAndAutoSendDailyMorningBriefing = async () => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled) {
+    return { skipped: true, reason: "DISABLED_IN_CONFIG" };
+  }
+
+  const { dateStr: todayStr, totalMinutes } = getKSTTimeInfo();
+
+  // Client auto-trigger window: 07:30 AM ~ 07:45 AM KST (450 ~ 465 minutes)
+  if (totalMinutes < 450 || totalMinutes > 465) {
+    return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
+  }
+
+  let cloudBriefingData = null;
+  try {
+    const snap = await getDoc(doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]));
+    if (snap.exists()) {
+      cloudBriefingData = snap.data();
+    }
+  } catch (e) {
+    console.warn("Morning briefing check cloud read error:", e);
+  }
+
+  const results = {};
+
+  // 1. Check & send General Morning Briefing (오륙 통합방)
+  if (config.sendDailyLeaveBriefing) {
+    const lastLocal = localStorage.getItem("oryuk_last_morning_briefing_sent");
+    const cloudSent = cloudBriefingData?.lastSentDate === todayStr;
+
+    if (lastLocal === todayStr || cloudSent) {
+      if (cloudSent && lastLocal !== todayStr) {
+        localStorage.setItem("oryuk_last_morning_briefing_sent", todayStr);
+      }
+      results.general = { skipped: true, reason: "ALREADY_SENT_TODAY" };
+    } else {
+      console.log(`[07:30 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
+      results.general = await sendDailyMorningBriefingTelegram(todayStr);
+    }
+  }
+
+  // 2. Check & send PnL Morning Briefing (경영총괄)
+  if (config.sendDailyPnLBriefing) {
+    const lastPnLLocal = localStorage.getItem("oryuk_last_pnl_briefing_sent");
+    const cloudPnLSent = cloudBriefingData?.lastPnLSentDate === todayStr;
+
+    if (lastPnLLocal === todayStr || cloudPnLSent) {
+      if (cloudPnLSent && lastPnLLocal !== todayStr) {
+        localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
+      }
+      results.pnl = { skipped: true, reason: "ALREADY_SENT_TODAY" };
+    } else {
+      console.log(`[07:30 Daily PnL Briefing] Auto-sending PnL briefing for ${todayStr}...`);
+      results.pnl = await sendDailyPnLMorningBriefingTelegram();
+    }
+  }
+
+  return results;
+};
+
+export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
  * Test Connection Function

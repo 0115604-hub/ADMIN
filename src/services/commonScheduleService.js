@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query } from "firebase/firestore";
 import { db } from "../firebase";
+import { getKSTDateString } from "../utils/dateUtils";
 
 const STORAGE_KEY = "oryuk_common_schedules_v1";
 const COLLECTION_NAME = "company_common_schedules";
@@ -35,7 +36,7 @@ export const saveCommonSchedule = async (scheduleItem) => {
   const current = getLocalCommonSchedules();
   const newItem = {
     id: scheduleItem.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-    date: scheduleItem.date || new Date().toISOString().split("T")[0],
+    date: scheduleItem.date || getKSTDateString(),
     time: scheduleItem.time || "종일",
     target: scheduleItem.target || "공통",
     title: scheduleItem.title?.trim() || "사내 공통일정",
@@ -135,7 +136,7 @@ export const subscribeCommonSchedules = (callback) => {
 };
 
 export const getTodayCommonSchedules = (targetDate = null) => {
-  const dateStr = targetDate || new Date().toISOString().split("T")[0];
+  const dateStr = targetDate || getKSTDateString();
   const all = getLocalCommonSchedules();
   return all.filter((s) => s.date === dateStr);
 };

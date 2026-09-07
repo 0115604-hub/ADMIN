@@ -48,6 +48,10 @@ import {
   subscribeTelegramCustomTemplates
 } from "../services/telegramService";
 import {
+  getKSTDateString,
+  getKSTFormattedString
+} from "../utils/dateUtils";
+import {
   getLocalCommonSchedules,
   subscribeCommonSchedules
 } from "../services/commonScheduleService";
@@ -111,14 +115,8 @@ export const TelegramView = () => {
     return () => unsub();
   }, []);
 
-  const todayDateStr = new Date().toISOString().split("T")[0];
-  const dateObj = new Date();
-  const daysOfWeek = ["일", "월", "화", "수", "목", "금", "토"];
-  const dayName = daysOfWeek[dateObj.getDay()];
-  const yyyy = dateObj.getFullYear();
-  const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const dd = String(dateObj.getDate()).padStart(2, "0");
-  const dateFormatted = `${yyyy}.${mm}.${dd}(${dayName}) 07:30`;
+  const todayDateStr = getKSTDateString();
+  const dateFormatted = `${getKSTFormattedString(todayDateStr).split(" ")[0]} 07:30`;
 
   // Current Template Key for Unified Room
   const currentUnifiedTemplateKey = useMemo(() => {
