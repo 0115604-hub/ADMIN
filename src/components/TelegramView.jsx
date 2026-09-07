@@ -173,7 +173,7 @@ export const TelegramView = () => {
               </span>
             </div>
             <p className="text-xs text-white/80 mt-1 leading-relaxed">
-              품질경보 즉시발송, 전자결재 승인알림, 07:00 경영손익 브리핑, 07:30 현장 모닝브리핑을 자동 관리합니다.
+              품질경보 3단계(발령/조치/종결), 사내 공지사항, 전자결재 실시간 알림 및 07:30 모닝브리핑을 자동 관리합니다.
             </p>
           </div>
         </div>
@@ -185,7 +185,7 @@ export const TelegramView = () => {
               : "bg-slate-800 text-slate-300"
           }`}>
             <span className={`w-2 h-2 rounded-full ${telegramConfig.enabled ? "bg-slate-900 animate-pulse" : "bg-slate-500"}`} />
-            {telegramConfig.enabled ? "정시 자동발송 가동 중 (07:00 / 07:30)" : "알림 연동 비활성화"}
+            {telegramConfig.enabled ? "실시간 알림 및 07:30 모닝브리핑 가동 중" : "알림 연동 비활성화"}
           </span>
         </div>
       </div>
@@ -200,11 +200,11 @@ export const TelegramView = () => {
             <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
               <span>클라우드 서버 정시 자동 발송 (정밀 스케줄러)</span>
               <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] font-black">
-                GitHub Actions 2중 연동
+                GitHub Actions 연동
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              브라우저가 닫혀 있어도 클라우드 서버에서 <strong>매일 07:00(손익 결산)</strong> 및 <strong>07:30(모닝 브리핑)</strong> 정시에 오차 없이 발송됩니다.
+              브라우저가 닫혀 있어도 클라우드 서버에서 <strong>매일 07:30(모닝 브리핑)</strong> 정시에 오차 없이 발송됩니다. (경영정보공유/손익 브리핑은 사용자 요청으로 제외됨)
             </p>
           </div>
         </div>
@@ -450,25 +450,25 @@ export const TelegramView = () => {
       <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 space-y-3">
         <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
           <Clock className="w-4 h-4 text-blue-500" />
-          <span>오륙MES 텔레그램 자동 발송 스케줄 가이드</span>
+          <span>오륙MES 텔레그램 발송 가이드</span>
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
-            <span className="text-indigo-600 dark:text-indigo-400 font-bold">① 매일 07:00 (경영방)</span>
+            <span className="text-amber-600 dark:text-amber-400 font-bold">① 매일 07:30 모닝브리핑</span>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              당월 매출, 비용, 영업이익 및 마진율(%) 요약 손익 결산 리포트 발송
+              금일 연차/근태 현황, 미결재 문서 현황, 품질경보 미조치 현황 종합 브리핑
             </p>
           </div>
           <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
-            <span className="text-amber-600 dark:text-amber-400 font-bold">② 매일 07:30 (오륙 통합방)</span>
+            <span className="text-rose-600 dark:text-rose-400 font-bold">② 품질경보 3회 발송</span>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              금일 연차자 명단, 전일 미결재 문서, 미삭제 품질경보 종합 모닝브리핑
+              품질경보 [신규 등록시], [조치결과 등록시], [삭제/종결시] 딱 3회만 알림 발송
             </p>
           </div>
           <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
-            <span className="text-rose-600 dark:text-rose-400 font-bold">③ 실시간 (오륙 통합방)</span>
+            <span className="text-blue-600 dark:text-blue-400 font-bold">③ 공지사항 & 전자결재</span>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              품질경보 발생/조치/삭제, 전자결재 기안상신/승인/반려/보류 즉시 발송
+              사내 공지사항 등록 알림 및 전자결재 기안상신/승인/반려/보류 즉시 알림
             </p>
           </div>
         </div>

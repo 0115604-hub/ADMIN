@@ -17,12 +17,12 @@ export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
   chatId: "-4186792536", // '오륙 통합방' (일반 현장 단톡방)
-  pnlChatId: "-1003939516875", // '경영방' 단톡방 (경영/손익 P&L 전용 수신)
+  pnlChatId: "-1003939516875", // '경영방' 단톡방
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
   sendDailyLeaveBriefing: true, // 07:30 일반 모닝브리핑
-  sendDailyPnLBriefing: true // 07:00 경영/손익 결산 브리핑
+  sendDailyPnLBriefing: false // 경영정보공유/손익 브리핑 비활성화
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -514,107 +514,11 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null) => 
 export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
 
 /**
- * 10. 매일 아침 07:00 월간 손익 결산 브리핑 ➜ 경영/손익 전용 수신방 (또는 기본방)
+ * 10. [경영정보공유/손익 브리핑 비활성화 처리 - 사용자 요청 반영]
  */
-export const sendDailyPnLBriefingTelegram = async (targetMonth = null, customTargetChatId = null) => {
-  const config = getLocalTelegramConfig();
-  const targetChatId = customTargetChatId || config.pnlChatId;
-
-  if (!targetChatId) {
-    console.log("PnL briefing skipped: 경영/손익 전용 Chat ID(pnlChatId)가 설정되지 않아 일반 단톡방 발송을 차단했습니다.");
-    return {
-      success: false,
-      reason: "PNL_CHAT_ID_NOT_CONFIGURED",
-      error: "경영/손익(P&L) 전용 Chat ID를 먼저 설정해주세요. (일반 단톡방 발송 방지)"
-    };
-  }
-
-  // Determine active month (e.g. "2026-08" or current month)
-  let store = {};
-  try {
-    const saved = localStorage.getItem("admin_multi_month_store_v4_firestore");
-    if (saved) {
-      store = JSON.parse(saved);
-    }
-  } catch (e) {
-    console.warn("Read local monthly store error:", e);
-  }
-  const mergedStore = { ...initialMultiMonthData, ...store };
-
-  const availableMonths = Object.keys(mergedStore).sort().reverse();
-  const monthKey = targetMonth || availableMonths[0] || "2026-08";
-  const monthData = mergedStore[monthKey] || {};
-
-  const totalSales = monthData.salesSummary?.totalSales || 0;
-  const totalExpenses = monthData.purchaseSummary?.ledgerBenchmark || monthData.jajaeSummary?.totalAmount || monthData.purchaseSummary?.totalExpenses || Math.round(totalSales * 0.75);
-
-  const rawMaterial = Math.round(totalExpenses * 0.678);
-  const generalExpense = Math.round(totalExpenses * 0.242);
-  const sgaExpense = totalExpenses - rawMaterial - generalExpense;
-
-  const operatingProfit = totalSales - totalExpenses;
-  const marginRate = totalSales > 0 ? ((operatingProfit / totalSales) * 100).toFixed(1) : "0.0";
-
-  const rawPercent = totalExpenses > 0 ? ((rawMaterial / totalSales) * 100).toFixed(1) : "0.0";
-  const genPercent = totalExpenses > 0 ? ((generalExpense / totalSales) * 100).toFixed(1) : "0.0";
-  const sgaPercent = totalExpenses > 0 ? ((sgaExpense / totalSales) * 100).toFixed(1) : "0.0";
-
-  // Compare with previous month
-  const prevMonthIndex = availableMonths.indexOf(monthKey) + 1;
-  const prevMonthKey = availableMonths[prevMonthIndex];
-  let diffText = "전월 데이터 산출 중";
-  if (prevMonthKey && mergedStore[prevMonthKey]) {
-    const prevData = mergedStore[prevMonthKey];
-    const prevSales = prevData.salesSummary?.totalSales || 0;
-    const prevExpenses = prevData.purchaseSummary?.ledgerBenchmark || prevData.jajaeSummary?.totalAmount || Math.round(prevSales * 0.75);
-    const prevProfit = prevSales - prevExpenses;
-    const diff = operatingProfit - prevProfit;
-    const diffRate = prevProfit > 0 ? (((operatingProfit - prevProfit) / prevProfit) * 100).toFixed(1) : "0.0";
-    if (diff >= 0) {
-      diffText = `+${formatKoreanCurrency(diff)} (+${diffRate}% 증가)`;
-    } else {
-      diffText = `${formatKoreanCurrency(diff)} (${diffRate}% 감소)`;
-    }
-  }
-
-  const [y, m] = monthKey.split("-");
-  const monthFormatted = `${y}년 ${m}월`;
-  const todayStr = new Date().toISOString().split("T")[0];
-
-  const message = `
-<b>[오륙MES ${monthFormatted} 월간 손익 결산]</b>
-<b>기준: ${monthFormatted} 마감 확정 (07:00)</b>
-----------------------------------------
-• <b>총매출액:</b> ${formatKoreanCurrency(totalSales)}
-• <b>총지출비용:</b> ${formatKoreanCurrency(totalExpenses)}
-  - 원자재/매입: ${formatKoreanCurrency(rawMaterial)} (${rawPercent}%)
-  - 일반제조경비: ${formatKoreanCurrency(generalExpense)} (${genPercent}%)
-  - 판관비 및 기타: ${formatKoreanCurrency(sgaExpense)} (${sgaPercent}%)
-----------------------------------------
-• <b>당월 영업이익:</b> <b>${formatKoreanCurrency(operatingProfit)}</b> (영업이익률: <b>${marginRate}%</b>)
-• <b>전월 대비:</b> ${diffText}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">손익계산서 상세조회</a>
-`.trim();
-
-  const sendResult = await sendTelegramMessage(message, {
-    ...config,
-    chatId: targetChatId
-  });
-
-  if (sendResult.success) {
-    try {
-      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
-      await setDoc(doc(db, PNL_BRIEFING_DOC_PATH[0], PNL_BRIEFING_DOC_PATH[1]), {
-        lastSentDate: todayStr,
-        sentAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Failed to record pnl briefing date:", e);
-    }
-  }
-
-  return sendResult;
+export const sendDailyPnLBriefingTelegram = async () => {
+  console.log("PnL/경영정보공유 briefing is disabled by user settings.");
+  return { success: false, reason: "DISABLED_BY_USER" };
 };
 
 /**
@@ -661,43 +565,10 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
- * Check and Auto-Send Daily 07:00 AM P&L Executive Briefing (Executive room)
+ * Check and Auto-Send Daily 07:00 AM P&L Executive Briefing (Disabled)
  */
 export const checkAndAutoSendDailyPnLBriefing = async () => {
-  const config = getLocalTelegramConfig();
-  if (!config.enabled || !config.sendDailyPnLBriefing || !config.pnlChatId) {
-    return { skipped: true, reason: "DISABLED_OR_NO_PNL_CHAT_ID" };
-  }
-
-  const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
-  const totalMinutes = currentHour * 60 + currentMinute;
-  const todayStr = now.toISOString().split("T")[0];
-
-  // Client auto-trigger window: 07:00 AM ~ 07:15 AM only
-  if (totalMinutes < 420 || totalMinutes > 435) {
-    return { skipped: true, reason: "OUTSIDE_07_00_WINDOW" };
-  }
-
-  // Check if already sent today locally
-  const lastLocal = localStorage.getItem("oryuk_last_pnl_briefing_sent");
-  if (lastLocal === todayStr) {
-    return { skipped: true, reason: "ALREADY_SENT_TODAY_LOCAL" };
-  }
-
-  try {
-    const snap = await getDoc(doc(db, PNL_BRIEFING_DOC_PATH[0], PNL_BRIEFING_DOC_PATH[1]));
-    if (snap.exists() && snap.data().lastSentDate === todayStr) {
-      localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
-      return { skipped: true, reason: "ALREADY_SENT_TODAY_CLOUD" };
-    }
-  } catch (e) {
-    console.warn("PnL briefing check cloud read error:", e);
-  }
-
-  console.log(`[07:00 Daily P&L Briefing] Auto-sending P&L summary for ${todayStr}...`);
-  return await sendDailyPnLBriefingTelegram();
+  return { skipped: true, reason: "DISABLED_BY_USER" };
 };
 
 /**

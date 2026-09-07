@@ -191,23 +191,26 @@ export async function runMorningBriefing(force = false) {
   }
 
   let urgentSummary = "없음 (전건 종결완료)";
-  let urgentLabel = "품질경보 미조치";
   if (urgentIssues.length > 0) {
-    urgentLabel = "🟥 품질경보 미조치";
     const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
     const previewList = issueTitles.slice(0, 2);
     const moreText = urgentIssues.length > 2 ? ` 외 ${urgentIssues.length - 2}건` : "";
-    urgentSummary = `총 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+    urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
   }
 
   const message = `
-<b>[오륙MES 일일 모닝 브리핑]</b>
-<b>${dateFormatted}</b>
-----------------------------------------
-• <b>금일 연차자:</b> ${leaveSummary}
-• <b>전일 미결재:</b> ${approvalSummary}
-• <b>${urgentLabel}:</b> ${urgentSummary}
-----------------------------------------
+<b>☀️ [오륙 생산관리] 일일 모닝 브리핑</b>
+<b>${dateFormatted} 기준</b>
+━━━━━━━━━━━━━━━━━━━━━
+<b>[1] 근태 / 휴가 현황</b>
+• ${leaveSummary}
+
+<b>[2] 미결재 현황</b>
+• ${approvalSummary}
+
+<b>[3] 품질경보 / 공지 현황</b>
+• ${urgentSummary}
+━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
@@ -227,106 +230,9 @@ export async function runMorningBriefing(force = false) {
   }
 }
 
-export async function runPnLBriefing(force = false) {
-  console.log("--- Starting P&L Briefing (07:00) Check ---");
-  const config = await getConfig();
-  if (!config.enabled || !config.sendDailyPnLBriefing || !config.pnlChatId) {
-    console.log("P&L briefing disabled or pnlChatId missing in config.");
-    return;
-  }
-
-  // Get current date in KST (UTC+9)
-  const now = new Date();
-  const kstOffset = 9 * 60; // in minutes
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const kstDate = new Date(utc + (kstOffset * 60000));
-
-  const yyyy = kstDate.getFullYear();
-  const mm = String(kstDate.getMonth() + 1).padStart(2, "0");
-  const dd = String(kstDate.getDate()).padStart(2, "0");
-  const todayStr = `${yyyy}-${mm}-${dd}`;
-
-  if (!force) {
-    try {
-      const snap = await getDoc(doc(db, "system_config", "daily_pnl_briefing"));
-      if (snap.exists() && snap.data().lastSentDate === todayStr) {
-        console.log(`P&L briefing already sent today (${todayStr}). Skipping.`);
-        return;
-      }
-    } catch (e) {
-      console.warn("Could not check lastSentDate:", e.message);
-    }
-  }
-
-  const mergedStore = { ...initialMultiMonthData };
-  const availableMonths = Object.keys(mergedStore).sort().reverse();
-  const monthKey = availableMonths[0] || "2026-08";
-  const monthData = mergedStore[monthKey] || {};
-
-  const totalSales = monthData.salesSummary?.totalSales || 0;
-  const totalExpenses = monthData.purchaseSummary?.ledgerBenchmark || monthData.jajaeSummary?.totalAmount || monthData.purchaseSummary?.totalExpenses || Math.round(totalSales * 0.75);
-
-  const rawMaterial = Math.round(totalExpenses * 0.678);
-  const generalExpense = Math.round(totalExpenses * 0.242);
-  const sgaExpense = totalExpenses - rawMaterial - generalExpense;
-
-  const operatingProfit = totalSales - totalExpenses;
-  const marginRate = totalSales > 0 ? ((operatingProfit / totalSales) * 100).toFixed(1) : "0.0";
-
-  const rawPercent = totalExpenses > 0 ? ((rawMaterial / totalSales) * 100).toFixed(1) : "0.0";
-  const genPercent = totalExpenses > 0 ? ((generalExpense / totalSales) * 100).toFixed(1) : "0.0";
-  const sgaPercent = totalExpenses > 0 ? ((sgaExpense / totalSales) * 100).toFixed(1) : "0.0";
-
-  const prevMonthIndex = availableMonths.indexOf(monthKey) + 1;
-  const prevMonthKey = availableMonths[prevMonthIndex];
-  let diffText = "전월 데이터 산출 중";
-  if (prevMonthKey && mergedStore[prevMonthKey]) {
-    const prevData = mergedStore[prevMonthKey];
-    const prevSales = prevData.salesSummary?.totalSales || 0;
-    const prevExpenses = prevData.purchaseSummary?.ledgerBenchmark || prevData.jajaeSummary?.totalAmount || Math.round(prevSales * 0.75);
-    const prevProfit = prevSales - prevExpenses;
-    const diff = operatingProfit - prevProfit;
-    const diffRate = prevProfit > 0 ? (((operatingProfit - prevProfit) / prevProfit) * 100).toFixed(1) : "0.0";
-    if (diff >= 0) {
-      diffText = `+${formatKoreanCurrency(diff)} (+${diffRate}% 증가)`;
-    } else {
-      diffText = `${formatKoreanCurrency(diff)} (${diffRate}% 감소)`;
-    }
-  }
-
-  const [y, m] = monthKey.split("-");
-  const monthFormatted = `${y}년 ${m}월`;
-
-  const message = `
-<b>[오륙MES ${monthFormatted} 월간 손익 결산]</b>
-<b>기준: ${monthFormatted} 마감 확정 (07:00)</b>
-----------------------------------------
-• <b>총매출액:</b> ${formatKoreanCurrency(totalSales)}
-• <b>총지출비용:</b> ${formatKoreanCurrency(totalExpenses)}
-  - 원자재/매입: ${formatKoreanCurrency(rawMaterial)} (${rawPercent}%)
-  - 일반제조경비: ${formatKoreanCurrency(generalExpense)} (${genPercent}%)
-  - 판관비 및 기타: ${formatKoreanCurrency(sgaExpense)} (${sgaPercent}%)
-----------------------------------------
-• <b>당월 영업이익:</b> <b>${formatKoreanCurrency(operatingProfit)}</b> (영업이익률: <b>${marginRate}%</b>)
-• <b>전월 대비:</b> ${diffText}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">손익계산서 상세조회</a>
-`.trim();
-
-  const res = await sendTelegramMessage(config.botToken, config.pnlChatId, message);
-  console.log("P&L briefing send result:", res);
-
-  if (res.ok) {
-    try {
-      await setDoc(doc(db, "system_config", "daily_pnl_briefing"), {
-        lastSentDate: todayStr,
-        sentAt: new Date().toISOString()
-      }, { merge: true });
-      console.log(`Saved lastSentDate=${todayStr} for PnL in Firestore.`);
-    } catch (e) {
-      console.warn("Failed to update daily_pnl_briefing timestamp:", e.message);
-    }
-  }
+export async function runPnLBriefing() {
+  console.log("P&L / 경영정보공유 briefing is disabled by user settings. Skipping send.");
+  return;
 }
 
 // CLI Runner

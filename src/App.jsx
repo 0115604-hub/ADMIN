@@ -30,8 +30,7 @@ import {
   clearAllTransactions
 } from "./services/dbService";
 import {
-  checkAndAutoSendDailyMorningBriefing,
-  checkAndAutoSendDailyPnLBriefing
+  checkAndAutoSendDailyMorningBriefing
 } from "./services/telegramService";
 
 export const App = () => {
@@ -100,20 +99,17 @@ export const App = () => {
 
   useEffect(() => {
     loadData();
-    // Daily 07:00 AM P&L Briefing & 07:30 AM Morning Briefing Check
-    checkAndAutoSendDailyPnLBriefing();
+    // Daily 07:30 AM Morning Briefing Check
     checkAndAutoSendDailyMorningBriefing();
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        checkAndAutoSendDailyPnLBriefing();
         checkAndAutoSendDailyMorningBriefing();
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     const timer = setInterval(() => {
-      checkAndAutoSendDailyPnLBriefing();
       checkAndAutoSendDailyMorningBriefing();
     }, 30000); // Check every 30 seconds
 
