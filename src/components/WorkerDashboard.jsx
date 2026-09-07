@@ -628,7 +628,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [leaveForm, setLeaveForm] = useState({
     startDate: getKSTDateString(),
     endDate: getKSTDateString(),
-    leaveType: "연차(전일)",
+    leaveType: "연차(하루)",
     reason: ""
   });
   const [leaveSaving, setLeaveSaving] = useState(false);
@@ -676,7 +676,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setLeaveForm({
         startDate: getKSTDateString(),
         endDate: getKSTDateString(),
-        leaveType: "연차(전일)",
+        leaveType: "연차(하루)",
         reason: ""
       });
     } catch (err) {
@@ -698,9 +698,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // 🗓️ 우창용 선임 전용 심플 스마트 일정 관리 States & Handlers
   // -------------------------------------------------------------------------
   const [changyongSelectedDate, setChangyongSelectedDate] = useState(() => getKSTDateString());
-  const [changyongLeaveType, setChangyongLeaveType] = useState("연차(전일)");
+  const [changyongLeaveType, setChangyongLeaveType] = useState("연차(하루)");
   const [changyongReasonInput, setChangyongReasonInput] = useState("");
-  const [changyongSharedWorkers, setChangyongSharedWorkers] = useState([]); // 작업공유자 선택 목록
+  const [changyongSharedWorkers, setChangyongSharedWorkers] = useState([]); // 전작업자 선택 목록
   const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
   const shareDropdownRef = useRef(null);
   const [changyongSaving, setChangyongSaving] = useState(false);
@@ -898,7 +898,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       };
       await saveAnnualLeave(newLeave);
 
-      // 2. 선택된 작업공유자(단수/복수) 일정 자동 등록
+      // 2. 선택된 전작업자(단수/복수) 일정 자동 등록
       if (changyongSharedWorkers.length > 0) {
         for (let i = 0; i < changyongSharedWorkers.length; i++) {
           const sw = changyongSharedWorkers[i];
@@ -925,7 +925,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const shareNames = changyongSharedWorkers.map((w) => w.name).join(", ");
       setToastMessage(
         `[우창용 선임] ${changyongSelectedDate} ${changyongLeaveType} 일정이 등록되었습니다.${
-          shareNames ? ` (작업공유자: ${shareNames} 자동 등록)` : ""
+          shareNames ? ` (전작업자: ${shareNames} 자동 등록)` : ""
         }`
       );
       setLogSavedToast(true);
@@ -1821,7 +1821,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       onChange={(e) => setChangyongLeaveType(e.target.value)}
                       className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
                     >
-                      <option value="연차(전일)">🌴 연차(전일)</option>
+                      <option value="연차(하루)">🌴 연차(하루)</option>
                       <option value="오전반차">🌤️ 오전반차</option>
                       <option value="오후반차">⛅ 오후반차</option>
                       <option value="할일">📝 할일</option>
@@ -1858,7 +1858,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     />
                   </div>
 
-                  {/* 4. 작업공유자 선택창 (단수/복수 선택) (3 cols) */}
+                  {/* 4. 전작업자 선택창 (단수/복수 선택) (3 cols) */}
                   <div className="sm:col-span-3 relative min-w-0" ref={shareDropdownRef}>
                     <button
                       type="button"
@@ -1868,13 +1868,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
                           : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
                       }`}
-                      title="작업공유자: 선택 시 해당 작업자의 일정에도 자동 등록됩니다"
+                      title="전작업자: 선택 시 해당 작업자의 일정에도 자동 등록됩니다"
                     >
                       <div className="flex items-center gap-1 truncate min-w-0">
                         <Users className={`w-3.5 h-3.5 shrink-0 ${changyongSharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
                         <span className="truncate text-[11px]">
                           {changyongSharedWorkers.length === 0
-                            ? "작업공유자"
+                            ? "전작업자"
                             : changyongSharedWorkers.length === 1
                             ? changyongSharedWorkers[0].name
                             : `${changyongSharedWorkers[0].name} 외 ${changyongSharedWorkers.length - 1}명`}
@@ -1896,13 +1896,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       )}
                     </button>
 
-                    {/* 작업공유자 드롭다운 팝업 */}
+                    {/* 전작업자 드롭다운 팝업 */}
                     {isShareDropdownOpen && (
                       <div className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
                         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
                           <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
                             <Users className="w-3.5 h-3.5 text-blue-500" />
-                            <span>작업공유자 선택</span>
+                            <span>전작업자 선택</span>
                           </span>
                           {changyongSharedWorkers.length > 0 && (
                             <button
@@ -2300,7 +2300,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
                       className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer"
                     >
-                      <option value="연차(전일)">연차(전일)</option>
+                      <option value="연차(하루)">연차(하루)</option>
                       <option value="오전반차">오전반차</option>
                       <option value="오후반차">오후반차</option>
                       <option value="할일">할일</option>

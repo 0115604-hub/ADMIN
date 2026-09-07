@@ -219,7 +219,7 @@ export const completeOrDismissAnnualLeave = async (id) => {
 
 // Supported Leave Types Meta Helper
 export const getLeaveTypeMeta = (typeStr = "") => {
-  const type = typeStr || "연차(전일)";
+  const type = typeStr || "연차(하루)";
   if (type.includes("오전반차") || type === "반차(오전)") {
     return {
       type: "오전반차",
@@ -300,7 +300,7 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-cyan-500 text-white font-black shadow-2xs"
     };
   }
-  // Default: 연차(전일) / 연차
+  // Default: 연차(하루) / 연차(전일) / 연차
   return {
     type: "연차",
     emoji: "🌴",
