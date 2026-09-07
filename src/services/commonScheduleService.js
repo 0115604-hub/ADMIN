@@ -4,51 +4,26 @@ import { db } from "../firebase";
 const STORAGE_KEY = "oryuk_common_schedules_v1";
 const COLLECTION_NAME = "company_common_schedules";
 
-// Initial sample common schedules
-const DEFAULT_COMMON_SCHEDULES = [
-  {
-    id: "sched_default_1",
-    date: new Date().toISOString().split("T")[0],
-    time: "09:30",
-    target: "대표",
-    title: "주간 경영전략 및 원자재 수급 점검 회의 (본관 2층 대회의실)",
-    author: "권태형",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "sched_default_2",
-    date: new Date().toISOString().split("T")[0],
-    time: "14:00",
-    target: "전무",
-    title: "본사-공장 합동 결산 및 9월 예산 집행 점검",
-    author: "최미영",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "sched_default_3",
-    date: new Date().toISOString().split("T")[0],
-    time: "16:00",
-    target: "이사",
-    title: "삼랑진공장 압출라인 2호기 정기 설비점검 및 안전진단",
-    author: "이명재",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "sched_default_4",
-    date: new Date().toISOString().split("T")[0],
-    time: "17:30",
-    target: "공통",
-    title: "전사 품질안전보건 정기 교육 및 9월 납품계획 공유",
-    author: "관리자",
-    createdAt: new Date().toISOString()
-  }
-];
+// Initial sample common schedules (Empty by default)
+const DEFAULT_COMMON_SCHEDULES = [];
 
 export const getLocalCommonSchedules = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      const filtered = Array.isArray(parsed)
+        ? parsed.filter(
+            (s) =>
+              !s.id?.startsWith("sched_default_") &&
+              !s.title?.includes("경영전략") &&
+              !s.title?.includes("납품계획")
+          )
+        : [];
+      if (filtered.length !== parsed.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      }
+      return filtered;
     }
   } catch (e) {
     console.error("Failed to parse local common schedules:", e);
