@@ -179,10 +179,10 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       </div>
 
       {/* User Info & Footer */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
-        <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
+      <div className="p-3 sm:p-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
               isOperator
                 ? currentProfile?.plant === "한림공장"
                   ? "bg-emerald-600"
@@ -191,7 +191,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
             }`}>
               {currentProfile?.avatar || "A"}
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-black text-slate-900 dark:text-white truncate">
                 {displayName}
               </p>
@@ -204,9 +204,10 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
           <button
             onClick={logout}
             title="사용자 전환 / 로그아웃"
-            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 transition-colors shrink-0"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 dark:bg-rose-950/70 dark:hover:bg-rose-900/90 text-rose-700 dark:text-rose-300 border border-rose-300/80 dark:border-rose-800 text-[11px] font-black transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer shrink-0"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span>로그아웃</span>
           </button>
         </div>
       </div>

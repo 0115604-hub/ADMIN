@@ -141,14 +141,14 @@ export const Header = ({
           )}
         </div>
 
-        {/* Logout Button */}
+        {/* Logout Button (High-Visibility Rose Badge on Mobile & PC) */}
         <button
           onClick={logout}
           title="사용자 전환 / 로그아웃"
-          className="flex items-center gap-1 p-1.5 sm:px-3 sm:py-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 text-xs font-bold transition-colors shrink-0"
+          className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 dark:bg-rose-950/70 dark:hover:bg-rose-900/90 text-rose-700 dark:text-rose-300 border border-rose-300/80 dark:border-rose-800 text-[11px] sm:text-xs font-black transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer shrink-0"
         >
-          <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-          <span className="hidden sm:inline text-xs">로그아웃</span>
+          <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          <span className="font-black">로그아웃</span>
         </button>
       </div>
     </header>
