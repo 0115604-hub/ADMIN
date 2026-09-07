@@ -1586,54 +1586,25 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
             {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-              {/* Left: Plant, Worker Name, Title, and Live Status Badge (4 cols) */}
-              <div className="lg:col-span-4 flex items-center justify-between sm:justify-start gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 min-w-0">
-                <div className="flex items-center gap-2 min-w-0 flex-wrap sm:flex-nowrap">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 shrink-0">
-                    <Factory className="w-3 h-3" />
-                    <span>한림공장</span>
+              {/* Left: Plant, Worker Name, Title, and Process (4 cols) */}
+              <div className="lg:col-span-4 flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 min-w-0">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 shrink-0">
+                  <Factory className="w-3 h-3" />
+                  <span>한림공장</span>
+                </span>
+
+                <div className="flex items-baseline gap-1.5 min-w-0 truncate">
+                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                    우창용
                   </span>
-
-                  <div className="flex items-baseline gap-1.5 min-w-0 truncate">
-                    <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                      우창용
-                    </span>
-                    <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400 shrink-0">
-                      선임
-                    </span>
-                  </div>
-
-                  <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0 hidden sm:inline-block">
-                    가공동 관리
+                  <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400 shrink-0">
+                    선임
                   </span>
-
-                  {/* Live Status Badge */}
-                  {myLeaveStatus?.status === "ACTIVE" ? (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shadow-2xs animate-pulse flex items-center gap-1 shrink-0 ${myLeaveStatus.badgeColor}`}>
-                      <span>{myLeaveStatus.emoji} {myLeaveStatus.label}</span>
-                    </span>
-                  ) : myLeaveStatus?.status === "SCHEDULED" ? (
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 shrink-0 ${myLeaveStatus.badgeColor}`}>
-                      <span>{myLeaveStatus.label}</span>
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 flex items-center gap-1 shrink-0">
-                      <span>🟢 정상근무</span>
-                    </span>
-                  )}
                 </div>
 
-                {myLeaveStatus?.leave && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteLeave(myLeaveStatus.leave.id)}
-                    className="ml-auto p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-600 border border-rose-200 dark:border-rose-900 text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer"
-                    title="등록된 오늘 일정 취소/삭제"
-                  >
-                    <X className="w-3 h-3" />
-                    <span>취소</span>
-                  </button>
-                )}
+                <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0">
+                  가공동 관리
+                </span>
               </div>
 
               {/* Right: Quick Schedule Register Form (8 cols) */}
