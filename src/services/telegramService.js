@@ -5,7 +5,7 @@ import { getLocalAnnualLeaves } from "./annualLeaveService";
 import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
-import { getTodayCommonSchedules } from "./commonScheduleService";
+import { getTodayCommonSchedules, cleanupExpiredCommonSchedules } from "./commonScheduleService";
 import {
   getKSTDateString,
   getKSTFormattedString,
@@ -834,19 +834,35 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   let commonSchedules = customBriefingData?.commonSchedules;
 
   if (!commonSchedules) {
+    try {
+      await cleanupExpiredCommonSchedules(todayStr);
+    } catch (e) {
+      console.warn("Cleanup expired schedules error:", e);
+    }
+
     const todayScheds = getTodayCommonSchedules(todayStr);
     if (todayScheds.length > 0) {
+      todayScheds.sort((a, b) => {
+        const aStart = a.startDate || a.date || "";
+        const bStart = b.startDate || b.date || "";
+        if (aStart !== bStart) return aStart.localeCompare(bStart);
+        return (a.time || "").localeCompare(b.time || "");
+      });
       commonSchedules = todayScheds.map((s) => {
-        const start = s.startDate || s.date;
-        const end = s.endDate || s.startDate || s.date;
-        const hasRange = start && end && start !== end;
-        const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
-        const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+        const startDate = s.startDate || s.date;
+        const endDate = s.endDate || startDate;
         const targetStr = s.target ? `[${s.target}] ` : "";
-        return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+        const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+        if (startDate !== endDate) {
+          return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+        } else if (startDate === todayStr) {
+          return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+        } else {
+          return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+        }
       }).join("\n");
     } else {
-      commonSchedules = "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)";
+      commonSchedules = "• 등록된 태형&미영 일정이 없습니다.";
     }
   }
 
@@ -866,7 +882,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
 • <b>전월대비 매출 달성율:</b> <b>${salesAchievementRate}</b>
 • <b>전월대비 매입 달성율:</b> <b>${purchaseAchievementRate}</b>
 
-<b>[3] 오늘의 태형&미영 일정</b>
+<b>[3] 태형이랑 & 미영이랑</b>
 ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>

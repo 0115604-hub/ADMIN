@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCiHEInVCW1x2xnyw3eOW5oEubaCiwzZOg",
@@ -312,19 +312,34 @@ export async function runAllBriefings(force = false) {
     } else {
       console.log(`[경영총괄 손익브리핑] Generating PnL briefing for ${todayStr}...`);
 
-      // 2-1. 태형&미영 일정 조회 (등록된 날짜부터 지정된 날짜까지 포함)
+      // 2-1. 태형&미영 일정 조회 (등록일부터 종료일까지 노출, 지난 일정 자동 삭제)
       let commonSchedules = "";
       try {
         const snap = await getDocs(collection(db, "company_common_schedules"));
         const todayScheds = [];
-        snap.forEach((docSnap) => {
+        for (const docSnap of snap.docs) {
           const s = docSnap.data();
-          const start = s.startDate || s.date;
-          const end = s.endDate || s.startDate || s.date;
-          if (start && end && start <= todayStr && todayStr <= end) {
+          const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
+          const startDate = s.startDate || s.date;
+          const endDate = s.endDate || startDate;
+          const effectiveStart = regDate <= startDate ? regDate : startDate;
+
+          // 일정이 지났으면 DB에서 자동 삭제
+          if (endDate && endDate < todayStr) {
+            try {
+              await deleteDoc(doc(db, "company_common_schedules", docSnap.id));
+            } catch (delErr) {
+              console.warn(`Failed to auto-delete expired schedule ${docSnap.id}:`, delErr.message);
+            }
+            continue;
+          }
+
+          // 등록일(또는 시작일)부터 종료일까지 노출
+          if (effectiveStart && endDate && effectiveStart <= todayStr && todayStr <= endDate) {
             todayScheds.push(s);
           }
-        });
+        }
+
         if (todayScheds.length > 0) {
           todayScheds.sort((a, b) => {
             const aStart = a.startDate || a.date || "";
@@ -333,13 +348,17 @@ export async function runAllBriefings(force = false) {
             return (a.time || "").localeCompare(b.time || "");
           });
           commonSchedules = todayScheds.map((s) => {
-            const start = s.startDate || s.date;
-            const end = s.endDate || s.startDate || s.date;
-            const hasRange = start && end && start !== end;
-            const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
-            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+            const startDate = s.startDate || s.date;
+            const endDate = s.endDate || startDate;
             const targetStr = s.target ? `[${s.target}] ` : "";
-            return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+            if (startDate !== endDate) {
+              return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+            } else if (startDate === todayStr) {
+              return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+            } else {
+              return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+            }
           }).join("\n");
         }
       } catch (e) {
@@ -347,7 +366,7 @@ export async function runAllBriefings(force = false) {
       }
 
       if (!commonSchedules) {
-        commonSchedules = "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)";
+        commonSchedules = "• 등록된 태형&미영 일정이 없습니다.";
       }
 
       const savedPnLTemplate = customTemplates["management_pnl"]?.text;
@@ -364,7 +383,7 @@ export async function runAllBriefings(force = false) {
 • <b>전월대비 매출 달성율:</b> <b>102.4%</b>
 • <b>전월대비 매입 달성율:</b> <b>98.7%</b>
 
-<b>[3] 오늘의 태형&미영 일정</b>
+<b>[3] 태형이랑 & 미영이랑</b>
 ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>

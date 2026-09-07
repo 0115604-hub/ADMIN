@@ -96,7 +96,8 @@ import {
   saveCommonSchedule,
   deleteCommonSchedule,
   subscribeCommonSchedules,
-  getTodayCommonSchedules
+  getTodayCommonSchedules,
+  cleanupExpiredCommonSchedules
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
@@ -735,6 +736,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [customPnLBriefing, setCustomPnLBriefing] = useState(null);
 
   useEffect(() => {
+    cleanupExpiredCommonSchedules();
     const unsub = subscribeCommonSchedules((scheds) => {
       setCommonSchedules(scheds);
     });
@@ -744,22 +746,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const todayDateStr = getKSTDateString();
   const allActiveCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
-    return [...commonSchedules].sort((a, b) => {
-      const aStart = a.startDate || a.date || "";
-      const bStart = b.startDate || b.date || "";
-      if (aStart !== bStart) return aStart.localeCompare(bStart);
-      const aEnd = a.endDate || aStart;
-      const bEnd = b.endDate || bStart;
-      if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
-      return (a.time || "").localeCompare(b.time || "");
-    });
-  }, [commonSchedules]);
+    return commonSchedules
+      .filter((s) => (s.endDate || s.startDate || s.date) >= todayDateStr)
+      .sort((a, b) => {
+        const aStart = a.startDate || a.date || "";
+        const bStart = b.startDate || b.date || "";
+        if (aStart !== bStart) return aStart.localeCompare(bStart);
+        const aEnd = a.endDate || aStart;
+        const bEnd = b.endDate || bStart;
+        if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
+        return (a.time || "").localeCompare(b.time || "");
+      });
+  }, [commonSchedules, todayDateStr]);
   const todayCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules.filter((s) => {
-      const start = s.startDate || s.date;
-      const end = s.endDate || s.startDate || s.date;
-      return Boolean(start && end && start <= todayDateStr && todayDateStr <= end);
+      const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
+      const startDate = s.startDate || s.date;
+      const endDate = s.endDate || startDate;
+      const effectiveStart = regDate <= startDate ? regDate : startDate;
+      return Boolean(effectiveStart && endDate && effectiveStart <= todayDateStr && todayDateStr <= endDate);
     });
   }, [commonSchedules, todayDateStr]);
 
@@ -4193,23 +4199,27 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </div>
                     </div>
 
-                    {/* [3] 오늘의 태형&미영 일정 */}
+                    {/* [3] 태형이랑 & 미영이랑 */}
                     <div>
                       <div className="font-extrabold text-purple-400 text-xs mb-1">
-                        [3] 오늘의 태형&미영 일정
+                        [3] 태형이랑 & 미영이랑
                       </div>
                       <div className="pl-2 whitespace-pre-wrap text-slate-200 text-[11px] leading-relaxed">
                         {customPnLBriefing?.commonSchedules || (todayCommonSchedules.length > 0
                           ? todayCommonSchedules.map((s) => {
-                              const start = s.startDate || s.date;
-                              const end = s.endDate || s.startDate || s.date;
-                              const hasRange = start && end && start !== end;
-                              const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
-                              const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+                              const startDate = s.startDate || s.date;
+                              const endDate = s.endDate || startDate;
                               const targetStr = s.target ? `[${s.target}] ` : "";
-                              return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+                              const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+                              if (startDate !== endDate) {
+                                return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+                              } else if (startDate === todayDateStr) {
+                                return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+                              } else {
+                                return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+                              }
                             }).join("\n")
-                          : "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)")}
+                          : "• 등록된 태형&미영 일정이 없습니다.")}
                       </div>
                     </div>
                   </div>
@@ -4327,20 +4337,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                   {/* 공통일정 문구 */}
                   <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">공통일정 포함 내용</label>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">태형이랑 & 미영이랑 포함 내용</label>
                     <textarea
                       rows="3"
                       value={customPnLBriefing?.commonSchedules ?? (todayCommonSchedules.length > 0
                         ? todayCommonSchedules.map((s) => {
-                            const start = s.startDate || s.date;
-                            const end = s.endDate || s.startDate || s.date;
-                            const hasRange = start && end && start !== end;
-                            const dateRangeStr = hasRange ? `[${start.slice(5)}~${end.slice(5)}] ` : "";
-                            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+                            const startDate = s.startDate || s.date;
+                            const endDate = s.endDate || startDate;
                             const targetStr = s.target ? `[${s.target}] ` : "";
-                            return `• ${dateRangeStr}${targetStr}${timeStr}${s.title}`;
+                            const timeStr = s.time && s.time !== "종일" ? `[${s.time}] ` : "";
+                            if (startDate !== endDate) {
+                              return `• [${startDate.slice(5)}~${endDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+                            } else if (startDate === todayDateStr) {
+                              return `• [오늘] ${targetStr}${timeStr}${s.title}`;
+                            } else {
+                              return `• [${startDate.slice(5)}] ${targetStr}${timeStr}${s.title}`;
+                            }
                           }).join("\n")
-                        : "• 등록된 태형&미영 일정이 없습니다. (정상 생산 가동)")}
+                        : "• 등록된 태형&미영 일정이 없습니다.")}
                       onChange={(e) => setCustomPnLBriefing({
                         ...(customPnLBriefing || {}),
                         commonSchedules: e.target.value

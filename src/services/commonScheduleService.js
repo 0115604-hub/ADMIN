@@ -149,12 +149,51 @@ export const subscribeCommonSchedules = (callback) => {
   }
 };
 
+export const cleanupExpiredCommonSchedules = async (targetDate = null) => {
+  const todayStr = targetDate || getKSTDateString();
+  const current = getLocalCommonSchedules();
+  const valid = [];
+  const expiredIds = [];
+
+  current.forEach((s) => {
+    const end = s.endDate || s.startDate || s.date;
+    if (end && end < todayStr) {
+      expiredIds.push(s.id);
+    } else {
+      valid.push(s);
+    }
+  });
+
+  if (expiredIds.length > 0) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+    } catch (e) {
+      console.error("Local storage error in cleanupExpiredCommonSchedules:", e);
+    }
+
+    for (const id of expiredIds) {
+      try {
+        const docRef = doc(db, COLLECTION_NAME, id);
+        await deleteDoc(docRef);
+      } catch (e) {
+        console.warn(`Firestore delete error for expired schedule ${id}:`, e.message);
+      }
+    }
+  }
+
+  return valid;
+};
+
 export const getTodayCommonSchedules = (targetDate = null) => {
   const dateStr = targetDate || getKSTDateString();
   const all = getLocalCommonSchedules();
   return all.filter((s) => {
-    const start = s.startDate || s.date;
-    const end = s.endDate || s.startDate || s.date;
-    return Boolean(start && end && start <= dateStr && dateStr <= end);
+    const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
+    const startDate = s.startDate || s.date;
+    const endDate = s.endDate || startDate;
+    const effectiveStart = regDate <= startDate ? regDate : startDate;
+
+    // 등록일(또는 시작일)부터 종료일까지 노출, 종료일이 지난 일정은 제외
+    return Boolean(effectiveStart && endDate && effectiveStart <= dateStr && dateStr <= endDate);
   });
 };
