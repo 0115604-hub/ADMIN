@@ -425,6 +425,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return latestDayInfo.date;
   }, [latestDayInfo]);
 
+  // Sort daily quality items by defect rate descending (불량률 높은 아이템 순서로 정렬)
+  const sortedDailyQualityItems = useMemo(() => {
+    return QUALITY_CORE_ITEMS.map((core) => {
+      const dayItem = latestDayInfo.items?.[core.id] || { inspectQty: 0, defectQty: 0, defectRate: 0 };
+      return {
+        ...core,
+        inspectQty: dayItem.inspectQty || 0,
+        defectQty: dayItem.defectQty || 0,
+        defectRate: Number(dayItem.defectRate) || 0
+      };
+    }).sort((a, b) => (Number(b.defectRate) || 0) - (Number(a.defectRate) || 0));
+  }, [latestDayInfo]);
+
   const [formData, setFormData] = useState({
     date: getKSTDateString(),
     plant: workerPlant,
@@ -1641,12 +1654,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {QUALITY_CORE_ITEMS.map((core) => {
-                const dayItem = latestDayInfo.items?.[core.id] || { inspectQty: 0, defectQty: 0, defectRate: 0 };
-                const isMax = dayItem.defectRate > 1.0;
+              {sortedDailyQualityItems.map((item, idx) => {
+                const isMax = idx === 0 && item.defectRate > 0;
                 return (
                   <div
-                    key={core.id}
+                    key={item.id}
                     className={`p-2 rounded-lg border flex flex-col justify-between bg-white dark:bg-slate-900 shadow-2xs min-w-0 ${
                       isMax
                         ? "border-rose-300 dark:border-rose-900/60 ring-1 ring-rose-500/20"
@@ -1654,7 +1666,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="font-black text-[10.5px] text-slate-800 dark:text-slate-200 truncate">{core.name}</span>
+                      <span className="font-black text-[10.5px] text-slate-800 dark:text-slate-200 truncate">{item.name}</span>
                       {isMax && (
                         <span className="text-[8px] font-black px-1 py-0.2 rounded bg-rose-500 text-white shrink-0">
                           최고
@@ -1663,12 +1675,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </div>
                     <div className="flex items-baseline justify-between mt-1 min-w-0">
                       <span className={`text-sm sm:text-base font-black font-mono leading-none ${
-                        dayItem.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                        item.defectRate > 1.0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
                       }`}>
-                        {dayItem.defectRate}%
+                        {item.defectRate}%
                       </span>
                       <span className="text-[9px] text-slate-400 font-bold font-mono truncate">
-                        {dayItem.inspectQty.toLocaleString()}EA
+                        {item.inspectQty.toLocaleString()}EA
                       </span>
                     </div>
                   </div>

@@ -340,8 +340,8 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
     return it;
   });
 
-  // Sort by inspectQty descending
-  items.sort((a, b) => b.inspectQty - a.inspectQty);
+  // Sort by defectRate descending (불량률 높은 아이템 순서로 정렬)
+  items.sort((a, b) => (Number(b.defectRate) || 0) - (Number(a.defectRate) || 0));
 
   const overallDefectRate = totalInspectQty > 0 ? Number(((totalDefectQty / totalInspectQty) * 100).toFixed(2)) : 0;
   const maxDefectItem = items.reduce((max, cur) => (cur.defectRate > max.defectRate ? cur : max), items[0]);

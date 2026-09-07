@@ -634,7 +634,13 @@ export const DailyQualityView = () => {
                           </td>
                           <td className="p-3 text-[11px] text-slate-600 dark:text-slate-300">
                             <div className="flex flex-wrap gap-1.5">
-                              {Object.values(d.items || {}).map((it) => (
+                              {Object.values(d.items || {})
+                                .sort((a, b) => {
+                                  const rateA = a.inspectQty > 0 ? (a.defectQty / a.inspectQty) * 100 : (a.defectRate || 0);
+                                  const rateB = b.inspectQty > 0 ? (b.defectQty / b.inspectQty) * 100 : (b.defectRate || 0);
+                                  return rateB - rateA;
+                                })
+                                .map((it) => (
                                 <span
                                   key={it.itemId}
                                   className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold"
