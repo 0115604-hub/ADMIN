@@ -1376,16 +1376,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
           <button
             type="button"
-            onClick={() => onNavigateTab && onNavigateTab("settings")}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
-            title="텔레그램 품질경보 실시간 알림 봇 연동 설정"
-          >
-            <Send className="w-3 h-3 text-sky-500" />
-            <span>텔레그램 설정</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
           >
