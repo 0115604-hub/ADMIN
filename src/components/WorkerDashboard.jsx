@@ -2099,20 +2099,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
 
           {/* Plant Groups Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {PLANTS.map((plant) => (
-              <div key={plant.id} className="p-2.5 sm:p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-2 min-w-0">
+              <div key={plant.id} className="p-3 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/70 space-y-2.5 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 font-black text-xs text-slate-900 dark:text-white">
-                    <Factory className={`w-3.5 h-3.5 ${plant.name === "한림공장" ? "text-emerald-600" : "text-amber-500"}`} />
+                    <Factory className={`w-4 h-4 ${plant.name === "한림공장" ? "text-emerald-600" : "text-amber-500"}`} />
                     <span>{plant.name}</span>
                   </div>
-                  <span className="text-[9.5px] font-bold px-2 py-0.2 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                    {plant.workers.length}명 등록
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                    {plant.workers.length}명
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {plant.workers.map((worker) => {
                     const workerLogs = accessLogs[worker.id] || [];
                     const lastLog = workerLogs[0] || null;
@@ -2123,49 +2123,43 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         key={worker.id}
                         type="button"
                         onClick={() => handleOpenWorkerLogs(worker)}
-                        className="group flex flex-col items-start p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500 hover:shadow-xs transition-all text-left relative overflow-hidden active:scale-98 cursor-pointer min-w-0 w-full"
+                        className="flex flex-col justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 hover:shadow-md transition-all text-left group cursor-pointer w-full min-h-[78px] active:scale-[0.98]"
                       >
-                        <div className="flex items-center gap-1.5 w-full mb-1 min-w-0">
-                          <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-black text-white shrink-0 ${
-                            plant.name === "한림공장" ? "bg-emerald-600" : "bg-amber-500"
-                          }`}>
-                            {worker.avatar || worker.name[0]}
+                        {/* 1줄: 이름 + 직책 */}
+                        <div className="flex items-center justify-between gap-1 w-full min-w-0">
+                          <div className="flex items-baseline gap-1 min-w-0 truncate">
+                            <span className="font-black text-xs sm:text-[13px] text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">
+                              {worker.name}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                              {worker.title}
+                            </span>
                           </div>
-                          <div className="min-w-0 flex-1 truncate">
-                            <div className="flex items-baseline gap-1 min-w-0 truncate">
-                              <span className="font-black text-xs text-slate-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
-                                {worker.name}
-                              </span>
-                              <span className="text-[9.5px] font-bold text-slate-400 shrink-0">
-                                {worker.title}
-                              </span>
-                            </div>
-                            <p className="text-[9.5px] text-slate-500 dark:text-slate-400 truncate">
-                              {worker.assignedProcess}
-                            </p>
-                          </div>
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${lastLog ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-700"}`} />
                         </div>
 
-                        {/* Recent Access Badge */}
-                        <div className="w-full pt-1 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9.5px] min-w-0">
+                        {/* 2줄: 담당공정 */}
+                        <div className="text-[10.5px] font-medium text-slate-500 dark:text-slate-400 truncate w-full">
+                          {worker.assignedProcess}
+                        </div>
+
+                        {/* 3줄: 접속시간 */}
+                        <div className="text-[10px] font-bold w-full truncate pt-1 border-t border-slate-100 dark:border-slate-800/80">
                           {lastLog ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-slate-700 dark:text-slate-200 min-w-0 truncate">
+                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 truncate">
                               {isMobile ? (
                                 <Smartphone className="w-3 h-3 text-emerald-500 shrink-0" />
                               ) : (
                                 <Laptop className="w-3 h-3 text-blue-500 shrink-0" />
                               )}
-                              <span className="truncate">{lastLog.timestamp ? lastLog.timestamp.slice(5, 16) : ""}</span>
+                              <span className="truncate">{lastLog.timestamp ? lastLog.timestamp.replace(/^\d{4}\.\s?/, "") : "접속"}</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 font-medium text-slate-400">
+                            <span className="text-slate-400 font-medium inline-flex items-center gap-1">
                               <Clock className="w-2.5 h-2.5 text-slate-300 dark:text-slate-600 shrink-0" />
                               <span>미접속</span>
                             </span>
                           )}
-                          <span className="text-[8.5px] font-black text-indigo-600 dark:text-indigo-400 group-hover:translate-x-0.5 transition-transform shrink-0 ml-1">
-                            기록 →
-                          </span>
                         </div>
                       </button>
                     );
