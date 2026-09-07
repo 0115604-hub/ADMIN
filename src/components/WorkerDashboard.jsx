@@ -706,6 +706,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const shareDropdownRef = useRef(null);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [showMiniCalendar, setShowMiniCalendar] = useState(false);
+  const [scheduleDetailModal, setScheduleDetailModal] = useState(null); // { selectedDate, dayName, filterTab: 'day'|'week'|'all' }
 
   // Click outside to close share dropdown
   useEffect(() => {
@@ -1930,12 +1931,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   return (
                     <span
                       key={l.id}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all ${
+                      onClick={() =>
+                        setScheduleDetailModal({
+                          selectedDate: l.startDate || todayDateStr,
+                          dayName: "",
+                          filterTab: "day"
+                        })
+                      }
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all cursor-pointer hover:shadow-xs active:scale-95 ${
                         isToday
                           ? "bg-blue-600 text-white border-blue-600 shadow-2xs ring-2 ring-blue-400/40 animate-pulse"
-                          : "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800"
+                          : "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800 hover:border-blue-400"
                       }`}
-                      title={`등록일: ${l.createdAt?.slice(0, 10) || l.createdDate || "미상"} ~ 만료일: ${l.endDate || l.startDate}`}
+                      title={`[클릭 시 상세/전체목록 확인] 등록일: ${l.createdAt?.slice(0, 10) || l.createdDate || "미상"} ~ 만료일: ${l.endDate || l.startDate}`}
                     >
                       <span className="font-extrabold">{l.startDate?.slice(5)}</span>
                       <span className="opacity-90">{l.leaveType}</span>
@@ -1947,7 +1955,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       )}
                       <button
                         type="button"
-                        onClick={() => handleDismissMyLeave(l.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDismissMyLeave(l.id);
+                        }}
                         className={`p-0.5 rounded transition-all cursor-pointer ${
                           isToday ? "hover:bg-blue-700 text-white/80 hover:text-white" : "hover:bg-blue-200 dark:hover:bg-blue-900 text-slate-400 hover:text-slate-700"
                         }`}
@@ -1961,26 +1972,49 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               )}
             </div>
 
-            {/* Toggle Weekly Calendar View Button */}
-            <button
-              type="button"
-              onClick={() => setShowMiniCalendar((prev) => !prev)}
-              className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
-            >
-              <Calendar className="w-3 h-3 text-blue-600" />
-              <span>{showMiniCalendar ? "달력 접기" : "주차별 달력보기"}</span>
-              <span className="text-[10px] text-slate-400">{showMiniCalendar ? "▲" : "▼"}</span>
-            </button>
+            {/* Toggle Weekly Calendar View Button & All List Quick Button */}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <button
+                type="button"
+                onClick={() =>
+                  setScheduleDetailModal({
+                    selectedDate: scheduleSelectedDate || todayDateStr,
+                    dayName: "",
+                    filterTab: "all"
+                  })
+                }
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all cursor-pointer border border-indigo-200 dark:border-indigo-800 shadow-2xs"
+                title="전체 등록 일정 목록 팝업 열기"
+              >
+                <FileText className="w-3 h-3 text-indigo-600" />
+                <span>전체 리스트</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowMiniCalendar((prev) => !prev)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
+              >
+                <Calendar className="w-3 h-3 text-blue-600" />
+                <span>{showMiniCalendar ? "달력 접기" : "주차별 달력보기"}</span>
+                <span className="text-[10px] text-slate-400">{showMiniCalendar ? "▲" : "▼"}</span>
+              </button>
+            </div>
           </div>
 
           {/* Collapsible Weekly Calendar Grid */}
           {showMiniCalendar && (
             <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800 space-y-1.5 animate-fadeIn">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                  <span>{scheduleWeekAnchor.slice(0, 7)} 주간 일정 현황</span>
-                </span>
+              <div className="flex items-center justify-between px-1 flex-wrap gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{scheduleWeekAnchor.slice(0, 7)} 주간 일정 현황</span>
+                  </span>
+                  <span className="text-[10.5px] text-slate-400 font-bold hidden sm:inline">
+                    (날짜나 일정을 탭하면 전체 리스트가 팝업됩니다)
+                  </span>
+                </div>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -2014,14 +2048,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   return (
                     <div
                       key={day.dateStr}
-                      onClick={() => setScheduleSelectedDate(day.dateStr)}
-                      className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer min-h-[68px] flex flex-col justify-between ${
+                      onClick={() => {
+                        setScheduleSelectedDate(day.dateStr);
+                        setScheduleDetailModal({
+                          selectedDate: day.dateStr,
+                          dayName: day.dayName,
+                          filterTab: day.events.length > 0 ? "day" : "all"
+                        });
+                      }}
+                      className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer min-h-[68px] flex flex-col justify-between hover:shadow-xs group ${
                         day.isSelected
                           ? "ring-2 ring-blue-500 border-blue-500 bg-blue-50/70 dark:bg-blue-950/50"
                           : day.isToday
                           ? "bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800"
-                          : "bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                          : "bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700"
                       }`}
+                      title={`[탭 시 전체리스트 팝업] ${day.dateStr} (${day.dayName}) 등록 일정: ${day.events.length}건`}
                     >
                       <div className="flex items-center justify-between text-[11px]">
                         <span className={`font-black ${isSun ? "text-rose-600" : isSat ? "text-blue-600" : "text-slate-700 dark:text-slate-300"}`}>
@@ -2039,15 +2081,37 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           day.events.slice(0, 2).map((ev) => (
                             <div
                               key={ev.id}
-                              className="text-[9.5px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 font-bold truncate text-left"
-                              title={`${ev.leaveType}: ${ev.reason || ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setScheduleSelectedDate(day.dateStr);
+                                setScheduleDetailModal({
+                                  selectedDate: day.dateStr,
+                                  dayName: day.dayName,
+                                  filterTab: "day"
+                                });
+                              }}
+                              className="text-[9.5px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-200 font-bold truncate text-left transition-colors"
+                              title={`${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
                             >
                               {ev.leaveType}
                             </div>
                           ))
                         )}
                         {day.events.length > 2 && (
-                          <span className="text-[9px] text-slate-400 font-bold block">+{day.events.length - 2}건</span>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setScheduleSelectedDate(day.dateStr);
+                              setScheduleDetailModal({
+                                selectedDate: day.dateStr,
+                                dayName: day.dayName,
+                                filterTab: "day"
+                              });
+                            }}
+                            className="text-[9px] text-blue-600 dark:text-blue-400 font-bold block hover:underline"
+                          >
+                            +{day.events.length - 2}건 상세▶
+                          </span>
                         )}
                       </div>
                     </div>
@@ -5193,6 +5257,302 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
+      {/* ========================================================================= */}
+      {/* 🗓️ 등록 일정 상세 & 전체 리스트 팝업 모달 */}
+      {/* ========================================================================= */}
+      {scheduleDetailModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          onClick={() => setScheduleDetailModal(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 border-blue-500/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-3.5 sm:p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-white/20 text-white shrink-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
+                    <span>등록 일정 상세 & 전체 목록</span>
+                  </h3>
+                  <p className="text-[11px] opacity-90 truncate">
+                    [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setScheduleDetailModal(null)}
+                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer shrink-0"
+                title="닫기"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1.5 p-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-xs font-bold overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "day" }))}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                  scheduleDetailModal.filterTab === "day"
+                    ? "bg-blue-600 text-white font-black shadow-xs"
+                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>
+                  선택 일자 ({scheduleDetailModal.selectedDate?.slice(5)}) (
+                  {
+                    (annualLeaves || []).filter((l) => {
+                      const myId = currentProfile?.id;
+                      const myName = workerFullName;
+                      const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
+                      if (!matchUser) return false;
+                      return (l.startDate || "") <= scheduleDetailModal.selectedDate && (l.endDate || l.startDate || "") >= scheduleDetailModal.selectedDate;
+                    }).length
+                  }
+                  건)
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "week" }))}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                  scheduleDetailModal.filterTab === "week"
+                    ? "bg-blue-600 text-white font-black shadow-xs"
+                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>
+                  이번 주간 (
+                  {
+                    myWeeklyCalendarDays.reduce((acc, d) => acc + (d.events?.length || 0), 0)
+                  }
+                  건)
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "all" }))}
+                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                  scheduleDetailModal.filterTab === "all"
+                    ? "bg-blue-600 text-white font-black shadow-xs"
+                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>
+                  전체 등록 이력 (
+                  {
+                    (annualLeaves || []).filter((l) => {
+                      const myId = currentProfile?.id;
+                      const myName = workerFullName;
+                      return (myId && l.userId === myId) || (myName && l.userName === myName);
+                    }).length
+                  }
+                  건)
+                </span>
+              </button>
+            </div>
+
+            {/* Modal Body - Schedules List */}
+            <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 max-h-[58vh]">
+              {(() => {
+                const myId = currentProfile?.id;
+                const myName = workerFullName;
+                let list = (annualLeaves || []).filter((l) => {
+                  if (!l) return false;
+                  return (myId && l.userId === myId) || (myName && l.userName === myName);
+                });
+
+                if (scheduleDetailModal.filterTab === "day") {
+                  const targetDate = scheduleDetailModal.selectedDate;
+                  list = list.filter((l) => (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate);
+                } else if (scheduleDetailModal.filterTab === "week") {
+                  const weekDates = myWeeklyCalendarDays.map((d) => d.dateStr);
+                  const minDate = weekDates[0] || "";
+                  const maxDate = weekDates[weekDates.length - 1] || "";
+                  list = list.filter((l) => {
+                    const s = l.startDate || "";
+                    const e = l.endDate || l.startDate || "";
+                    return s <= maxDate && e >= minDate;
+                  });
+                }
+
+                list.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+
+                if (list.length === 0) {
+                  return (
+                    <div className="py-10 text-center space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <p className="text-xs font-bold text-slate-500">
+                        {scheduleDetailModal.filterTab === "day"
+                          ? `${scheduleDetailModal.selectedDate}에 등록된 일정이 없습니다.`
+                          : scheduleDetailModal.filterTab === "week"
+                          ? "이번 주간에 등록된 일정이 없습니다."
+                          : "등록된 일정 내역이 없습니다."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScheduleSelectedDate(scheduleDetailModal.selectedDate);
+                          setScheduleDetailModal(null);
+                        }}
+                        className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all cursor-pointer shadow-xs inline-flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>이 날짜로 새 일정 등록하기</span>
+                      </button>
+                    </div>
+                  );
+                }
+
+                return list.map((item) => {
+                  const isToday = (item.startDate || "") === todayDateStr;
+                  const isShared = Boolean(item.sharedBy);
+                  const isDone = item.isCompleted || item.isDismissed;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-3 rounded-xl border transition-all space-y-2 ${
+                        isToday
+                          ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-400/80 shadow-xs ring-1 ring-blue-400/30"
+                          : isDone
+                          ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-70"
+                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs"
+                      }`}
+                    >
+                      {/* Top row: Badges & Actions */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-xs font-black shadow-2xs flex items-center gap-1">
+                            <span>{item.leaveType}</span>
+                          </span>
+
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-blue-500" />
+                            <span>
+                              {item.startDate}
+                              {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
+                            </span>
+                          </span>
+
+                          {isToday && (
+                            <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                              오늘
+                            </span>
+                          )}
+
+                          {isShared && (
+                            <span className="px-1.5 py-0.2 rounded bg-purple-500 text-white text-[10px] font-black">
+                              공유받음 ({item.sharedBy})
+                            </span>
+                          )}
+
+                          {item.sharedWith && item.sharedWith.length > 0 && (
+                            <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-200 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
+                              공유대상: {item.sharedWith.join(", ")}
+                            </span>
+                          )}
+
+                          {isDone && (
+                            <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
+                              완료됨
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Delete / Dismiss Action */}
+                        <div className="flex items-center gap-1">
+                          {!isDone && (
+                            <button
+                              type="button"
+                              onClick={() => handleDismissMyLeave(item.id)}
+                              className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
+                              title="일정 완료 처리"
+                            >
+                              <CheckCheck className="w-3 h-3" />
+                              <span>완료</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLeave(item.id)}
+                            className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-800 transition-all cursor-pointer flex items-center gap-0.5"
+                            title="일정 완전 삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>삭제</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Content / Reason */}
+                      <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100">
+                        <span className="text-slate-400 font-normal mr-1.5">내용:</span>
+                        <span>{item.reason || item.leaveType}</span>
+                      </div>
+
+                      {/* Footer Info */}
+                      <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          <span>
+                            작성: {item.userName || workerFullName} ({item.plant || workerPlant})
+                          </span>
+                        </span>
+                        <span>
+                          등록: {item.createdAt ? item.createdAt.slice(0, 16).replace("T", " ") : item.createdDate || "-"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-slate-500 truncate">
+                선택 일자: {scheduleDetailModal.selectedDate}
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScheduleSelectedDate(scheduleDetailModal.selectedDate);
+                    setScheduleDetailModal(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>이 날짜로 일정 등록</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleDetailModal(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 🔍 첨부 사진 확대 및 원본 보기 모달 */}
       {/* ========================================================================= */}
