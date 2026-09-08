@@ -55,8 +55,6 @@ export const App = () => {
       if (resetToCurrentMonth) {
         resetToCurrentMonth();
       }
-      // Seamlessly sync deployment version if admin/operator
-      syncAppVersionToFirestore(currentProfile);
     }
   }, [currentProfile?.id]);
 
