@@ -3,11 +3,9 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 
-// Generate automated build version timestamp
-const now = new Date();
-const buildTimestamp = Date.now();
-const pad = (n) => String(n).padStart(2, '0');
-const formattedVersion = `${now.getFullYear()}.${pad(now.getMonth() + 1)}.${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+// Build configuration
+const formattedVersion = "1.0.0";
+const buildTimestamp = 0;
 
 try {
   const publicDir = path.resolve(__dirname, 'public');
@@ -18,8 +16,8 @@ try {
     path.resolve(publicDir, 'version.json'),
     JSON.stringify({
       version: formattedVersion,
-      timestamp: buildTimestamp,
-      buildTime: now.toISOString()
+      timestamp: 0,
+      buildTime: new Date().toISOString()
     }, null, 2)
   );
 } catch (e) {
@@ -31,7 +29,7 @@ export default defineConfig({
   base: './',
   define: {
     __APP_VERSION__: JSON.stringify(formattedVersion),
-    __BUILD_TIMESTAMP__: JSON.stringify(buildTimestamp),
+    __BUILD_TIMESTAMP__: JSON.stringify(0),
   },
   plugins: [react()],
   server: {
