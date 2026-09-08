@@ -87,12 +87,17 @@ export const OvertimeStatusView = () => {
   // Daily views state
   const [selectedDay, setSelectedDay] = useState(8); // Default 9월 8일
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("전체");
-  const [searchWorkerQuery, setSearchWorkerQuery] = useState("");
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState("전체"); // '전체', '관리부', '가공동', '압출동'
-  const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체"); // '전체' | '(주)오륙' | '(주)조영산업' | '한울' | '부림텍' | '유성'
+  const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
+
+  // ⭐ Registration Report Modal State (등록 클릭 시 뜨는 보고서 작성/확인 팝업)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportModalTitle, setReportModalTitle] = useState("");
+  const [reportModalAuthor, setReportModalAuthor] = useState("양인나 선임");
+  const [reportModalAuthorTitle, setReportModalAuthorTitle] = useState("선임");
+  const [reportModalNotes, setReportModalNotes] = useState("");
 
   // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 초간결 팝업)
   const [selectedCompanyPopup, setSelectedCompanyPopup] = useState(null); // e.g. "(주)오륙"
@@ -109,7 +114,6 @@ export const OvertimeStatusView = () => {
   const [selectedLegacyReport, setSelectedLegacyReport] = useState(null);
   const [isLegacyModalOpen, setIsLegacyModalOpen] = useState(false);
   const [selectedWeekendDay, setSelectedWeekendDay] = useState(12); // Default to upcoming weekend: 9월 12일 (토)
-  const [selectedReportPlantFilter, setSelectedReportPlantFilter] = useState("전체"); // '전체' | '삼랑진공장' | '한림공장'
 
   // Show Toast notification
   const triggerToast = (msg) => {
@@ -337,17 +341,58 @@ export const OvertimeStatusView = () => {
     setHasUnsavedChanges(true);
   };
 
-  // ⭐ USER ACTION: [ 💾 등록 ] (근태/잔업/특근 등록 및 특근보고서 자동 연동)
-  const handleRegisterAttendanceAndGenerateReport = async () => {
+  // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (내용 작성 및 검토용)
+  const handleOpenRegistrationReportModal = () => {
+    const d = selectedDay;
+    const isSaturday = (d === 5 || d === 12 || d === 19 || d === 26);
+    const isSunday = (d === 6 || d === 13 || d === 20 || d === 27);
+    const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
+
+    const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
+    const defaultAuthor = (selectedCompanyFilter === "(주)오륙" || selectedCompanyFilter === "유성") 
+      ? "양인나 선임" 
+      : (selectedCompanyFilter === "(주)조영산업" || selectedCompanyFilter === "한울" || selectedCompanyFilter === "부림텍")
+      ? "우창용 선임"
+      : "양인나 / 우창용 선임";
+
+    const attendedCount = filteredAttendanceWorkers.filter(w => {
+      const val = w.daily ? w.daily[d] : "";
+      const { isAttended, workHours } = calculateWorkerDailyHours(val);
+      return isAttended && workHours > 0;
+    }).length;
+
+    const totalHours = filteredAttendanceWorkers.reduce((sum, w) => {
+      const val = w.daily ? w.daily[d] : "";
+      const { workHours } = calculateWorkerDailyHours(val);
+      return sum + (workHours || 0);
+    }, 0);
+
+    setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compLabel} 근태 및 특근실시 보고서`);
+    setReportModalAuthor(defaultAuthor);
+    setReportModalAuthorTitle("선임");
+    setReportModalNotes(
+      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 긴급 납품 대응\n2. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
+    );
+
+    setIsReportModalOpen(true);
+  };
+
+  // ⭐ USER ACTION: [ 💾 팝업 내 최종 저장 및 보고서 등록 ]
+  const handleConfirmAndSaveReportModal = async () => {
     setIsSaving(true);
     try {
+      // 1. Save smart overtime ledger to Firestore & LocalStorage
       await saveSmartOvertimeData(smartData);
+      
+      // 2. Generate/sync overtime reports for the selected day
       await syncPlantWeekendOvertimeReports(smartData.attendanceMatrix, selectedDay);
+      
       setHasUnsavedChanges(false);
-      triggerToast(`🎉 9월 ${selectedDay}일 근태/잔업/특근 등록이 완료되었습니다!`);
+      setIsReportModalOpen(false);
+      triggerToast(`🎉 9월 ${selectedDay}일 근태 및 특근보고서가 정상 등록되었습니다!`);
     } catch (err) {
       console.error(err);
-      alert("근태 등록 중 오류가 발생했습니다: " + err.message);
+      alert("등록 중 오류가 발생했습니다: " + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -484,21 +529,8 @@ export const OvertimeStatusView = () => {
     if (selectedCompanyFilter !== "전체") {
       list = list.filter((w) => w.company === selectedCompanyFilter);
     }
-    if (selectedDeptFilter !== "전체") {
-      list = list.filter((w) => w.dept === selectedDeptFilter);
-    }
-    if (searchWorkerQuery.trim()) {
-      const q = searchWorkerQuery.trim().toLowerCase();
-      list = list.filter(
-        (w) =>
-          w.name.toLowerCase().includes(q) ||
-          w.company.toLowerCase().includes(q) ||
-          w.dept.toLowerCase().includes(q) ||
-          (w.line && w.line.toLowerCase().includes(q))
-      );
-    }
     return list;
-  }, [smartData.attendanceMatrix, selectedCompanyFilter, selectedDeptFilter, searchWorkerQuery]);
+  }, [smartData.attendanceMatrix, selectedCompanyFilter]);
 
   // Data for Company Popup Modal (간결화)
   const popupCompanyData = useMemo(() => {
@@ -816,17 +848,17 @@ export const OvertimeStatusView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 📝 TAB 1: 근태/잔업/특근 등록 (PRIMARY WORKSPACE) */}
+      {/* 📝 TAB 1: 근태/잔업/특근 등록 (PRIMARY WORKSPACE - 한 줄 상단 제어바) */}
       {/* ========================================================================= */}
       {activeTab === "daily_input" && (
         <div className="space-y-4">
-          {/* Top Control Filter & Date Selector Bar with Integrated Register Button on the Far Right */}
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-3 sm:p-4 border-2 border-slate-700 shadow-xl text-white">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-              {/* Left: Date Selector & Company Filter Pills */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+          {/* ⭐ Top Control Filter & Date Selector Bar (STRICT SINGLE ROW 한 줄 구성) */}
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-3 sm:p-3.5 border-2 border-slate-700 shadow-xl text-white">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              {/* Left Group: Date Selector & Company Filter Pills */}
+              <div className="flex items-center gap-3 flex-wrap">
                 {/* Date Selector */}
-                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <Calendar className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span className="font-black text-xs sm:text-sm text-white shrink-0">작성 대상 일자:</span>
                   <select
@@ -844,12 +876,12 @@ export const OvertimeStatusView = () => {
 
                 {/* Company Filter Pills */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-slate-400 mr-0.5">업체 필터:</span>
+                  <span className="text-xs font-bold text-slate-400 mr-0.5 shrink-0">업체 필터:</span>
                   {["전체", ...COMPANIES].map((comp) => (
                     <button
                       key={comp}
                       onClick={() => setSelectedCompanyFilter(comp)}
-                      className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
                         selectedCompanyFilter === comp
                           ? "bg-cyan-500 text-slate-950 shadow-md font-black ring-2 ring-cyan-300"
                           : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
@@ -861,20 +893,20 @@ export const OvertimeStatusView = () => {
                 </div>
               </div>
 
-              {/* Right: Registration Button */}
+              {/* Right Group: Registration Button (클릭 시 보고서 팝업창 오픈) */}
               <div className="flex items-center gap-2 shrink-0">
                 {hasUnsavedChanges && (
-                  <span className="px-2 py-1 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 animate-pulse">
-                    ● 미등록 변경사항 있음
+                  <span className="px-2 py-0.5 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 animate-pulse">
+                    ● 미등록
                   </span>
                 )}
                 <button
-                  onClick={handleRegisterAttendanceAndGenerateReport}
+                  onClick={handleOpenRegistrationReportModal}
                   disabled={isSaving}
-                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
                 >
-                  <Save className="w-4 h-4" />
-                  <span>{isSaving ? "등록 중..." : `💾 9월 ${selectedDay}일 근태/잔업/특근 등록`}</span>
+                  <FileText className="w-4 h-4" />
+                  <span>💾 9월 {selectedDay}일 근태/특근 등록</span>
                 </button>
               </div>
             </div>
@@ -893,7 +925,7 @@ export const OvertimeStatusView = () => {
                 </span>
               </div>
               <span className="text-[11px] font-bold text-slate-400">
-                선택 완료 후 [등록] 버튼을 누르면 전산 저장 및 특근보고서에 자동 집계됩니다.
+                근태 선택 후 상단의 [등록] 버튼을 누르면 보고서 확인 팝업창이 열립니다.
               </span>
             </div>
 
@@ -1579,6 +1611,214 @@ export const OvertimeStatusView = () => {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📑 MODAL: 등록 클릭 시 뜨는 특근/근태 보고서 팝업창 (내용 작성 및 검토) */}
+      {/* ========================================================================= */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  <FileText className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
+                    <span>특근/근태 보고서 등록 및 결재</span>
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">
+                      2026-09-{String(selectedDay).padStart(2, "0")}
+                    </span>
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsReportModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: Report Document Format */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* Top Approval Box & Meta Grid */}
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <div className="space-y-2.5 flex-1">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block pb-1">보고서 제목</label>
+                    <input
+                      type="text"
+                      value={reportModalTitle}
+                      onChange={(e) => setReportModalTitle(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-white font-black text-xs sm:text-sm focus:border-cyan-400"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 font-bold block pb-0.5">작성자:</span>
+                      <input
+                        type="text"
+                        value={reportModalAuthor}
+                        onChange={(e) => setReportModalAuthor(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-white font-bold"
+                      />
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block pb-0.5">대상 업체/공장:</span>
+                      <span className="inline-block w-full py-1.5 px-2.5 rounded-lg bg-slate-900 border border-slate-800 text-cyan-300 font-bold">
+                        {selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4 Approval Blocks (담당, 책임, 이사, 대표) */}
+                <div className="shrink-0 border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-xs">
+                  <div className="grid grid-cols-4 divide-x divide-slate-700 text-center font-bold text-[11px]">
+                    <div className="bg-slate-800 py-1 px-3 text-slate-300">담당</div>
+                    <div className="bg-slate-800 py-1 px-3 text-slate-300">책임</div>
+                    <div className="bg-slate-800 py-1 px-3 text-slate-300">이사</div>
+                    <div className="bg-slate-800 py-1 px-3 text-slate-300">대표</div>
+                  </div>
+                  <div className="grid grid-cols-4 divide-x divide-slate-700 text-center text-xs h-14 items-center">
+                    <div className="p-1 font-black text-cyan-300">{reportModalAuthor.split(" ")[0]}</div>
+                    <div className="p-1 font-black text-white">윤경수/김동욱</div>
+                    <div className="p-1 font-black text-white">이명재</div>
+                    <div className="p-1 font-black text-white">권태형</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary KPIs */}
+              {(() => {
+                const attendedWorkers = filteredAttendanceWorkers.filter(w => {
+                  const val = w.daily ? w.daily[selectedDay] : "";
+                  const { isAttended, workHours } = calculateWorkerDailyHours(val);
+                  return isAttended && workHours > 0;
+                });
+                const totalHours = filteredAttendanceWorkers.reduce((sum, w) => {
+                  const val = w.daily ? w.daily[selectedDay] : "";
+                  const { workHours } = calculateWorkerDailyHours(val);
+                  return sum + (workHours || 0);
+                }, 0);
+                const otHours = filteredAttendanceWorkers.reduce((sum, w) => {
+                  const val = w.daily ? w.daily[selectedDay] : "";
+                  const { weekdayOt, weekendOt } = calculateWorkerDailyHours(val);
+                  return sum + (weekdayOt + weekendOt || 0);
+                }, 0);
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">출근/투입 인원</span>
+                      <span className="font-mono font-black text-sm text-emerald-400">{attendedWorkers.length}명</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">잔업/특근 인원</span>
+                      <span className="font-mono font-black text-sm text-amber-400">+{otHours}H</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">총 투입 공수</span>
+                      <span className="font-mono font-black text-sm text-cyan-300">{totalHours} M/H</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">예상 총 노무비</span>
+                      <span className="font-mono font-black text-sm text-rose-400">₩{(totalHours * 15000).toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Editable Reason / Content Notes Area */}
+              <div className="space-y-1">
+                <label className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
+                  <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>특근 사유 및 작업 내용 (수정 및 작성 가능)</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={reportModalNotes}
+                  onChange={(e) => setReportModalNotes(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-medium text-xs focus:border-cyan-400"
+                  placeholder="특근 사유 및 주요 작업 내용을 입력해주세요."
+                />
+              </div>
+
+              {/* Workers Summary Table */}
+              <div className="space-y-1.5">
+                <span className="font-bold text-slate-300 text-xs flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                  <span>9월 {selectedDay}일 투입 작업자 명단 ({filteredAttendanceWorkers.length}명)</span>
+                </span>
+                <div className="border border-slate-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800 sticky top-0">
+                      <tr>
+                        <th className="py-1.5 px-2 text-center w-8">No</th>
+                        <th className="py-1.5 px-2 w-16">업체</th>
+                        <th className="py-1.5 px-2 w-14">부서</th>
+                        <th className="py-1.5 px-2 w-16">성명</th>
+                        <th className="py-1.5 px-2 text-center w-16">당일근태</th>
+                        <th className="py-1.5 px-2 text-center w-14">공수</th>
+                        <th className="py-1.5 px-2">비고/내용</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
+                      {filteredAttendanceWorkers.map((w, idx) => {
+                        const val = w.daily ? w.daily[selectedDay] : "";
+                        const meta = getOptionMeta(val);
+                        const { workHours } = calculateWorkerDailyHours(val);
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-800/60">
+                            <td className="py-1 px-2 text-center font-mono text-slate-500">{idx + 1}</td>
+                            <td className="py-1 px-2 font-bold text-slate-300">{w.company}</td>
+                            <td className="py-1 px-2 text-slate-400">{w.dept}</td>
+                            <td className="py-1 px-2 font-black text-white">{w.name}</td>
+                            <td className="py-1 px-2 text-center">
+                              <span className="font-bold text-[10.5px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">
+                                {meta.label}
+                              </span>
+                            </td>
+                            <td className="py-1 px-2 text-center font-mono font-bold text-emerald-400">
+                              {workHours || 0}H
+                            </td>
+                            <td className="py-1 px-2 text-slate-400 text-[11px]">
+                              {w.line || w.dept} 가동
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
+              <button
+                onClick={() => setIsReportModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
+              >
+                취소
+              </button>
+
+              <button
+                onClick={handleConfirmAndSaveReportModal}
+                disabled={isSaving}
+                className="px-6 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <Save className="w-4 h-4" />
+                <span>{isSaving ? "등록 중..." : "💾 최종 저장 및 보고서 등록"}</span>
+              </button>
             </div>
           </div>
         </div>
