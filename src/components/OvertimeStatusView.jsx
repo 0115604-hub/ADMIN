@@ -820,77 +820,64 @@ export const OvertimeStatusView = () => {
       {/* ========================================================================= */}
       {activeTab === "daily_input" && (
         <div className="space-y-4">
-          {/* Top Control Filter & Date Selector Bar (Only Date Selector & Company Filter) */}
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4 border-2 border-slate-700 shadow-xl text-white">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              {/* Date Selector */}
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <Calendar className="w-5 h-5 text-cyan-400 shrink-0" />
-                <span className="font-black text-xs sm:text-sm text-white shrink-0">작성 대상 일자:</span>
-                <select
-                  value={selectedDay}
-                  onChange={(e) => setSelectedDay(Number(e.target.value))}
-                  className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-cyan-400 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40 rounded-xl px-3 py-1.5 cursor-pointer shadow-inner"
-                >
-                  {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
-                    <option key={d} value={d} className="bg-slate-900 text-white font-bold py-1">
-                      2026년 9월 {d}일 ({(d === 6 || d === 13 || d === 20 || d === 27) ? "일요일" : (d === 5 || d === 12 || d === 19 || d === 26) ? "토요일" : "평일"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Company Filter Pills */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-400 mr-1">업체 필터:</span>
-                {["전체", ...COMPANIES].map((comp) => (
-                  <button
-                    key={comp}
-                    onClick={() => setSelectedCompanyFilter(comp)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                      selectedCompanyFilter === comp
-                        ? "bg-cyan-500 text-slate-950 shadow-md font-black ring-2 ring-cyan-300"
-                        : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
-                    }`}
+          {/* Top Control Filter & Date Selector Bar with Integrated Register Button on the Far Right */}
+          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-3 sm:p-4 border-2 border-slate-700 shadow-xl text-white">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+              {/* Left: Date Selector & Company Filter Pills */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+                {/* Date Selector */}
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  <Calendar className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span className="font-black text-xs sm:text-sm text-white shrink-0">작성 대상 일자:</span>
+                  <select
+                    value={selectedDay}
+                    onChange={(e) => setSelectedDay(Number(e.target.value))}
+                    className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-cyan-400 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40 rounded-xl px-3 py-1.5 cursor-pointer shadow-inner"
                   >
-                    {comp}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Clean Registration Bar */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border-2 border-cyan-500/40 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300">
-                <CheckCircle2 className="w-5 h-5 text-cyan-400" />
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-black text-sm text-white">
-                    9월 {selectedDay}일 근태/잔업/특근 선택 후 [등록]을 눌러주세요
-                  </span>
-                  {hasUnsavedChanges && (
-                    <span className="px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 animate-pulse">
-                      ● 미등록 변경사항 있음
-                    </span>
-                  )}
+                    {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={d} className="bg-slate-900 text-white font-bold py-1">
+                        2026년 9월 {d}일 ({(d === 6 || d === 13 || d === 20 || d === 27) ? "일요일" : (d === 5 || d === 12 || d === 19 || d === 26) ? "토요일" : "평일"})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <span className="text-xs text-slate-400 font-medium">
-                  등록 버튼을 누르면 선택된 작업자들의 근태가 저장되고 특근보고서에 자동 반영됩니다.
-                </span>
+
+                {/* Company Filter Pills */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-400 mr-0.5">업체 필터:</span>
+                  {["전체", ...COMPANIES].map((comp) => (
+                    <button
+                      key={comp}
+                      onClick={() => setSelectedCompanyFilter(comp)}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        selectedCompanyFilter === comp
+                          ? "bg-cyan-500 text-slate-950 shadow-md font-black ring-2 ring-cyan-300"
+                          : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
+                      }`}
+                    >
+                      {comp}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right: Registration Button */}
+              <div className="flex items-center gap-2 shrink-0">
+                {hasUnsavedChanges && (
+                  <span className="px-2 py-1 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 animate-pulse">
+                    ● 미등록 변경사항 있음
+                  </span>
+                )}
+                <button
+                  onClick={handleRegisterAttendanceAndGenerateReport}
+                  disabled={isSaving}
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSaving ? "등록 중..." : `💾 9월 ${selectedDay}일 근태/잔업/특근 등록`}</span>
+                </button>
               </div>
             </div>
-
-            <button
-              onClick={handleRegisterAttendanceAndGenerateReport}
-              disabled={isSaving}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              <span>{isSaving ? "등록 중..." : `💾 9월 ${selectedDay}일 근태/잔업/특근 등록`}</span>
-            </button>
           </div>
 
           {/* Interactive Worker Attendance Table (2-Column Side-by-Side Grid) */}
