@@ -973,7 +973,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const shareNames = sharedWorkers.map((w) => w.name).join(", ");
       setToastMessage(
         `[${myName} ${myTitle}] ${scheduleSelectedDate} ${scheduleLeaveType} 일정이 등록되었습니다.${
-          shareNames ? ` (전작업자: ${shareNames} 자동 등록)` : ""
+          shareNames ? ` (공유 작업자: ${shareNames} 자동 등록)` : ""
         }`
       );
       setLogSavedToast(true);
@@ -1925,7 +1925,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     type="text"
                     value={scheduleReasonInput}
                     onChange={(e) => setScheduleReasonInput(e.target.value)}
-                    placeholder="텍스트삽입"
+                    placeholder="내용"
                     className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
                   />
                 </div>
@@ -1940,13 +1940,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
                         : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
                     }`}
-                    title="전작업자: 선택 시 해당 작업자의 일정에도 자동 등록됩니다"
+                    title="원하는 공유 작업자: 선택 시 해당 작업자의 일정에도 함께 등록됩니다"
                   >
                     <div className="flex items-center gap-1 truncate min-w-0">
                       <Users className={`w-3.5 h-3.5 shrink-0 ${sharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
                       <span className="truncate text-[11px]">
                         {sharedWorkers.length === 0
-                          ? "전작업자"
+                          ? "원하는 공유 작업자"
                           : sharedWorkers.length === 1
                           ? sharedWorkers[0].name
                           : `${sharedWorkers[0].name} 외 ${sharedWorkers.length - 1}명`}
@@ -1974,7 +1974,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
                         <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
                           <Users className="w-3.5 h-3.5 text-blue-500" />
-                          <span>전작업자 선택</span>
+                          <span>원하는 공유 작업자 선택</span>
                         </span>
                         {sharedWorkers.length > 0 && (
                           <button
