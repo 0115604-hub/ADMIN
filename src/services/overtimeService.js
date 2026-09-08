@@ -1,4 +1,4 @@
-﻿// Shared Overtime Report Service with Cloud Firestore Multi-Device Sync
+// Shared Overtime Report Service with Cloud Firestore Multi-Device Sync
 import {
   collection,
   doc,
@@ -11,16 +11,32 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 
+// ⭐ 공장별 소속 협력업체 취합 체계 (Plant-to-Company Mapping)
+// 삼랑진공장: (주)오륙, 유성
+// 한림공장: (주)조영산업, 한울, 부림텍
+export const PLANT_COMPANIES = {
+  "삼랑진공장": ["(주)오륙", "유성"],
+  "한림공장": ["(주)조영산업", "한울", "부림텍"]
+};
+
+export const getPlantForCompany = (companyName) => {
+  if (companyName === "(주)오륙" || companyName === "유성" || companyName === "오륙" || companyName === "유성산업") {
+    return "삼랑진공장";
+  }
+  return "한림공장";
+};
+
 export const INITIAL_OVERTIME_REPORTS = [
   {
-    id: "report_samrangjin_20260829",
+    id: "report_samrangjin_2026_09_05",
     plant: "삼랑진공장",
-    title: "삼랑진공장 특근보고서",
-    workDate: "2026-08-29",
-    workDateFormatted: "2026년 8월 29일 토요일",
-    author: "양인나",
+    title: "2026년 9월 5일(토) 삼랑진공장 특근실시 보고서",
+    workDate: "2026-09-05",
+    workDateFormatted: "2026-09-05 (토)",
+    author: "양인나 선임",
     authorTitle: "선임",
-    updatedAt: "2026-08-29T18:00:00.000Z",
+    updatedAt: "2026-09-05T18:00:00.000Z",
+    companies: ["(주)오륙", "유성"],
     approval: [
       { role: "담당", name: "양인나", status: "완료" },
       { role: "책임", name: "윤경수", status: "완료" },
@@ -28,39 +44,34 @@ export const INITIAL_OVERTIME_REPORTS = [
       { role: "대표", name: "권태형", status: "완료" }
     ],
     items: [
-      { id: 1, category: "관리자", workContent: "출하 및 공정관리", names: "유동길", hours: 8, count: 1 },
-      { id: 2, category: "JA", workContent: "조인트", names: "로빈, 찬턴, 크리스토퍼", hours: 8, count: 3 },
-      { id: 3, category: "JA", workContent: "후가공", names: "채수연, 피아, 데이시, 짱", hours: 8, count: 4 },
-      { id: 4, category: "JA", workContent: "검사", names: "김선옥", hours: 8, count: 1 },
-      { id: 5, category: "JA, HR", workContent: "소재준비", names: "이스라엘", hours: 8, count: 1 },
-      { id: 6, category: "NX4", workContent: "소재준비", names: "손선희, 이영숙, 수베트, 치찬, 콩지", hours: 8, count: 5 },
-      { id: 7, category: "NX4", workContent: "조인트", names: "버나드, 돈돈, 알라딘", hours: 8, count: 3 },
-      { id: 8, category: "NX4a", workContent: "조인트", names: "롤란도", hours: 8, count: 1 },
-      { id: 9, category: "NX4a", workContent: "후가공, 검사", names: "김순미, 양인순", hours: 8, count: 2 },
-      { id: 10, category: "압출", workContent: "압출", names: "이상은", hours: 12, count: 1 },
-      { id: 11, category: "압출", workContent: "TPE 압출", names: "지미", hours: 12, count: 1 },
-      { id: 12, category: "압출", workContent: "PCM#3 압출", names: "이수루", hours: 12, count: 1 },
-      { id: 13, category: "압출", workContent: "PCM#1 압출", names: "샤면", hours: 12, count: 1 },
-      { id: 14, category: "코팅", workContent: "코팅", names: "코팅준", hours: 8, count: 1 },
-      { id: 15, category: "공통", workContent: "코팅", names: "이성기, 조마루", hours: 8, count: 2 },
-      { id: 16, category: "CE1, DT HOOD", workContent: "소재준비", names: "쏘달", hours: 8, count: 1 },
-      { id: 17, category: "DT HOOD", workContent: "조인트", names: "롬나차이, 마리오, 제랄드, 포티퐁", hours: 8, count: 4 }
+      { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수", hours: 8, count: 3 },
+      { id: 2, category: "NX4", workContent: "NX4 조인트 및 후가공 생산", names: "손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미", hours: 10, count: 11 },
+      { id: 3, category: "NX4a", workContent: "NX4a 후가공 및 검사", names: "양인순, 박순복, 김상아, 김윤자, 김현희", hours: 10, count: 5 },
+      { id: 4, category: "PU 찬넬", workContent: "PU 찬넬 조립 1라인", names: "이창엽", hours: 8, count: 1 },
+      { id: 5, category: "PU 찬넬", workContent: "PU 찬넬 가공 2라인", names: "전재율, 양인나", hours: 8, count: 2 },
+      { id: 6, category: "압출", workContent: "PCM#1/3 및 TPE 압출 가동", names: "이상은, 지미, 이수루", hours: 12, count: 3 },
+      { id: 7, category: "8톤 코팅", workContent: "8톤 코팅 라인 긴급 가동", names: "코팅준", hours: 8, count: 1 },
+      { id: 8, category: "DT HOOD", workContent: "DT HOOD 조인트 및 코팅 납품 대응", names: "쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스", hours: 10, count: 7 },
+      { id: 9, category: "JK1", workContent: "JK1 조인트 후가공", names: "포티퐁, 린, 넷플림", hours: 8, count: 3 },
+      { id: 10, category: "CE1", workContent: "CE1 후가공 검사", names: "제인, 그레이스", hours: 8, count: 2 },
+      { id: 11, category: "수직 건조", workContent: "수직 건조로 제품 건조", names: "유동길, 조인주", hours: 8, count: 2 }
     ],
     reasons: [
-      "1. PCM 1호 : DT SILL SEAL\n   →PCM 3호 : DT 호리젠탈\n   →TPE : JA 압출 가동",
-      "2. DT HOOD 코팅 긴급 납품 수량 대응",
-      "3. NX4a 단산까지 수출 창고 입고 요청"
+      "1. 삼랑진공장 ((주)오륙 + 유성) 토요 특근 긴급 납품 수량 대응",
+      "2. PCM 1호/3호 TPE 압출 및 DT HOOD 코팅 긴급 대응",
+      "3. 총 40명 투입 (공수: 382 M/H, 총 노무비: ₩5,730,000)"
     ]
   },
   {
-    id: "report_hanlim_20260829",
+    id: "report_hanlim_2026_09_06",
     plant: "한림공장",
-    title: "한림공장 특근보고서",
-    workDate: "2026-08-29",
-    workDateFormatted: "2026년 8월 29일 토요일",
-    author: "우창용",
+    title: "2026년 9월 6일(일) 한림공장 특근실시 보고서",
+    workDate: "2026-09-06",
+    workDateFormatted: "2026-09-06 (일)",
+    author: "한울 협력업체",
     authorTitle: "선임",
-    updatedAt: "2026-08-29T18:00:00.000Z",
+    updatedAt: "2026-09-06T18:00:00.000Z",
+    companies: ["(주)조영산업", "한울", "부림텍"],
     approval: [
       { role: "담당", name: "우창용", status: "완료" },
       { role: "책임", name: "김동욱", status: "완료" },
@@ -68,25 +79,76 @@ export const INITIAL_OVERTIME_REPORTS = [
       { role: "대표", name: "권태형", status: "완료" }
     ],
     items: [
-      { id: 1, category: "관리자", workContent: "한림 공장 총괄 지원", names: "이명재, 김동욱", hours: 8, count: 2 },
-      { id: 2, category: "CHANNEL", workContent: "밴딩", names: "정상근", hours: 8, count: 1 },
-      { id: 3, category: "CHANNEL", workContent: "가공", names: "링링, 유미", hours: 8, count: 2 },
-      { id: 4, category: "CE1", workContent: "후가공", names: "팔라, 린", hours: 8, count: 2 },
-      { id: 5, category: "DT HOOD", workContent: "후가공", names: "누리", hours: 8, count: 1 },
-      { id: 6, category: "JK1", workContent: "조인트", names: "테란스", hours: 8, count: 1 },
-      { id: 7, category: "JK1", workContent: "후가공", names: "넷플림, 그레이스, 제인", hours: 8, count: 3 }
+      { id: 1, category: "9BQC", workContent: "9BQC G/RUN 긴급 조립 및 납품 가공", names: "정상근, 링링", hours: 8, count: 2 }
     ],
     reasons: [
-      "1. 한림 가공동 CHANNEL 밴딩 및 사출 가공 지원",
-      "2. CE1 / DT HOOD 후가공 품질 검사 및 납품 대응",
-      "3. JK1 조인트 및 후가공 생산 긴급 납품",
-      "4. PU KD 재고 사전 확보"
+      "1. 한림공장 ((주)조영산업 + 한울 + 부림텍) 일요 특근 9BQC 생산 납품 대응",
+      "2. 총 2명 투입 (공수: 16 M/H, 총 노무비: ₩240,000)"
+    ]
+  },
+  {
+    id: "report_samrangjin_2026_09_12",
+    plant: "삼랑진공장",
+    title: "2026년 9월 12일(토) 삼랑진공장 특근실시 보고서 [예정]",
+    workDate: "2026-09-12",
+    workDateFormatted: "2026-09-12 (토)",
+    author: "양인나 선임",
+    authorTitle: "선임",
+    updatedAt: "2026-09-08T12:00:00.000Z",
+    companies: ["(주)오륙", "유성"],
+    approval: [
+      { role: "담당", name: "양인나", status: "완료" },
+      { role: "책임", name: "윤경수", status: "완료" },
+      { role: "이사", name: "이명재", status: "완료" },
+      { role: "대표", name: "권태형", status: "완료" }
+    ],
+    items: [
+      { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수", hours: 8, count: 3 },
+      { id: 2, category: "NX4", workContent: "NX4 조인트 및 후가공 생산", names: "손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미", hours: 10, count: 11 },
+      { id: 3, category: "NX4a", workContent: "NX4a 후가공 및 검사", names: "양인순, 박순복, 김상아, 김윤자, 김현희", hours: 10, count: 5 },
+      { id: 4, category: "PU 찬넬", workContent: "PU 찬넬 조립 1라인", names: "이창엽", hours: 8, count: 1 },
+      { id: 5, category: "PU 찬넬", workContent: "PU 찬넬 가공 2라인", names: "전재율, 양인나", hours: 8, count: 2 },
+      { id: 6, category: "압출", workContent: "PCM#1/3 및 TPE 압출 가동", names: "이상은, 지미, 이수루", hours: 12, count: 3 },
+      { id: 7, category: "8톤 코팅", workContent: "8톤 코팅 라인 긴급 가동", names: "코팅준", hours: 8, count: 1 },
+      { id: 8, category: "DT HOOD", workContent: "DT HOOD 조인트 및 코팅 납품 대응", names: "쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스", hours: 10, count: 7 },
+      { id: 9, category: "JK1", workContent: "JK1 조인트 후가공", names: "포티퐁, 린, 넷플림", hours: 8, count: 3 },
+      { id: 10, category: "CE1", workContent: "CE1 후가공 검사", names: "제인, 그레이스", hours: 8, count: 2 },
+      { id: 11, category: "수직 건조", workContent: "수직 건조로 제품 건조", names: "유동길, 조인주", hours: 8, count: 2 }
+    ],
+    reasons: [
+      "1. 2026년 9월 12일(토) 다가올 주말 삼랑진공장 ((주)오륙 + 유성) 특근 생산 계획",
+      "2. 총 40명 투입 예정 (공수: 382 M/H, 예상 노무비: ₩5,730,000)"
+    ]
+  },
+  {
+    id: "report_hanlim_2026_09_12",
+    plant: "한림공장",
+    title: "2026년 9월 12일(토) 한림공장 특근실시 보고서 [예정]",
+    workDate: "2026-09-12",
+    workDateFormatted: "2026-09-12 (토)",
+    author: "우창용 선임",
+    authorTitle: "선임",
+    updatedAt: "2026-09-08T12:00:00.000Z",
+    companies: ["(주)조영산업", "한울", "부림텍"],
+    approval: [
+      { role: "담당", name: "우창용", status: "완료" },
+      { role: "책임", name: "김동욱", status: "완료" },
+      { role: "이사", name: "이명재", status: "완료" },
+      { role: "대표", name: "권태형", status: "완료" }
+    ],
+    items: [
+      { id: 1, category: "9BQC", workContent: "9BQC G/RUN 가공 및 포장", names: "정상근, 링링", hours: 8, count: 2 },
+      { id: 2, category: "CHANNEL", workContent: "CHANNEL 밴딩 가공", names: "유미, 이상기", hours: 8, count: 2 }
+    ],
+    reasons: [
+      "1. 2026년 9월 12일(토) 다가올 주말 한림공장 ((주)조영산업 + 한울 + 부림텍) 특근 생산 계획",
+      "2. 총 4명 투입 예정 (공수: 32 M/H, 예상 노무비: ₩480,000)"
     ]
   }
 ];
 
 const COLLECTION_NAME = "overtime_reports";
-const LOCAL_STORAGE_KEY = "official_overtime_reports_store_v5_live";
+const LOCAL_STORAGE_KEY = "official_overtime_reports_store_v6_plants";
 
 export const formatKoreanWorkDate = (dateStr) => {
   if (!dateStr) return "";
