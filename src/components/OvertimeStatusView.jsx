@@ -127,32 +127,74 @@ export const getDayOfWeekFullKorean = (dateStrOrDay) => {
 };
 
 // ⭐ 보고서 제목 내 날짜/요일 및 보고서 유형(평일=근태보고서, 주말=특근실시보고서) 100% 자동 동기화 함수
+export const formatShortMonthDay = (dateStrOrDay) => {
+  let month = 9;
+  let day = 8;
+  let dayOfWeek = "화";
+  if (typeof dateStrOrDay === "number") {
+    day = dateStrOrDay;
+    dayOfWeek = getDayOfWeekKorean(day);
+  } else if (dateStrOrDay) {
+    const match = String(dateStrOrDay).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+    if (match) {
+      month = parseInt(match[2], 10);
+      day = parseInt(match[3], 10);
+      dayOfWeek = getDayOfWeekKorean(day);
+    } else {
+      const match2 = String(dateStrOrDay).match(/(\d{1,2})월\s*(\d{1,2})일/);
+      if (match2) {
+        month = parseInt(match2[1], 10);
+        day = parseInt(match2[2], 10);
+        dayOfWeek = getDayOfWeekKorean(day);
+      }
+    }
+  }
+  return `${month}월 ${day}일 (${dayOfWeek})`;
+};
+
+export const getFullCompanyPlantLabel = (report) => {
+  if (!report) return "삼랑진공장 (주)오륙";
+  let comp = report.company || "";
+  if (!comp || comp === "전체") {
+    if (Array.isArray(report.companies) && report.companies.length === 1) {
+      comp = report.companies[0];
+    } else if (report.plant === "한림공장") {
+      comp = "(주)조영산업";
+    } else {
+      comp = "(주)오륙";
+    }
+  }
+  const plant = report.plant || getPlantForCompany(comp);
+  return `${plant} ${comp}`;
+};
+
 export const getCleanReportTitle = (report) => {
   if (!report) return "";
   const rawTitle = typeof report === "string" ? report : String(report?.title || "");
   const workDate = typeof report === "object" ? String(report?.workDate || "") : "";
   const isWeekend = isWeekendByDate(workDate || rawTitle);
   const correctDayOfWeek = getDayOfWeekKorean(workDate || rawTitle);
-  const reportCategory = isWeekend ? "특근실시보고서" : "근태보고서";
+  const reportCategory = isWeekend ? "특근보고서" : "근태보고서";
 
-  const plant = typeof report === "object" ? (report?.plant || getPlantForCompany(report?.company || "")) : "";
-  const comp = typeof report === "object" ? (report?.company && report?.company !== "전체" ? report?.company : "") : "";
+  let dayStr = "";
+  if (workDate) {
+    const match = String(workDate).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+    if (match) {
+      dayStr = `${parseInt(match[2], 10)}월 ${parseInt(match[3], 10)}일(${correctDayOfWeek})`;
+    }
+  }
+  if (!dayStr) {
+    const match2 = String(rawTitle).match(/(\d{1,2})월\s*(\d{1,2})일/);
+    if (match2) {
+      dayStr = `${parseInt(match2[1], 10)}월 ${parseInt(match2[2], 10)}일(${correctDayOfWeek})`;
+    } else {
+      dayStr = `9월 8일(${correctDayOfWeek})`;
+    }
+  }
 
-  let title = rawTitle || (plant ? `${plant} ${comp} ${reportCategory}` : reportCategory);
-  if (/\([일월화수목금토]\)|\(평일\)/.test(title)) {
-    title = title.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${correctDayOfWeek})`);
-  }
-  title = title
-    .replace(/근태 및 특근실시 보고서|특근실시 보고서|근태 및 특근보고서/g, reportCategory)
-    .replace(/근태보고서|특근실시보고서/g, reportCategory);
+  const compPlant = typeof report === "object" ? getFullCompanyPlantLabel(report) : "삼랑진공장 (주)오륙";
 
-  if (comp && !title.includes(comp)) {
-    title = title.replace(new RegExp(`${plant}\\s*${reportCategory}|${reportCategory}`), `${plant} ${comp} ${reportCategory}`);
-  }
-  if (!title.includes(reportCategory)) {
-    title += ` ${reportCategory}`;
-  }
-  return title;
+  return `${dayStr} ${compPlant} ${reportCategory}`;
 };
 
 // ⭐ 보고서 사유/내용 내 요일 자동 동기화
@@ -458,7 +500,7 @@ export const OvertimeStatusView = () => {
     const d = selectedDay;
     const isWk = isWeekendByDate(d);
     const dayLabel = getDayOfWeekKorean(d);
-    const reportType = isWk ? "특근실시보고서" : "근태보고서";
+    const reportType = isWk ? "특근보고서" : "근태보고서";
 
     const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
     const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
@@ -475,7 +517,7 @@ export const OvertimeStatusView = () => {
       return sum + (workHours || 0);
     }, 0);
 
-    setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`);
+    setReportModalTitle(`${d}월 ? ${d}일 : 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`.replace(/undefined월 \? undefined일 : /, ""));
     setReportModalAuthor(compMeta.author || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
@@ -505,7 +547,7 @@ export const OvertimeStatusView = () => {
       const d = selectedDay;
       const isWk = isWeekendByDate(d);
       const dayLabel = getDayOfWeekKorean(d);
-      const reportType = isWk ? "특근실시보고서" : "근태보고서";
+      const reportType = isWk ? "특근보고서" : "근태보고서";
       const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
       const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`;
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
@@ -1977,27 +2019,10 @@ export const OvertimeStatusView = () => {
                     ? "bg-amber-950/80 text-amber-300 border-amber-700/70"
                     : "bg-emerald-950/80 text-emerald-300 border-emerald-700/70";
 
-                  // ⭐ 평일은 '근태보고서', 토/일은 '특근실시보고서' 정확한 캘린더 요일 판별
+                  // ⭐ 평일: 근태보고서 / 주말: 특근보고서
                   const isWeekend = isWeekendByDate(report.workDate || report.title);
-                  const rawTitle = report.title || "";
-                  const reportCategory = isWeekend ? "특근실시보고서" : "근태보고서";
-                  
-                  // 정제된 보고서 제목
-                  let cleanDisplayTitle = rawTitle;
-                  if (isWeekend) {
-                    cleanDisplayTitle = cleanDisplayTitle
-                      .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
-                      .replace(/특근실시 보고서/g, "특근실시보고서");
-                    if (!cleanDisplayTitle.includes("특근실시보고서")) {
-                      cleanDisplayTitle += " 특근실시보고서";
-                    }
-                  } else {
-                    cleanDisplayTitle = cleanDisplayTitle
-                      .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
-                    if (!cleanDisplayTitle.includes("근태보고서")) {
-                      cleanDisplayTitle += " 근태보고서";
-                    }
-                  }
+                  const reportCategory = isWeekend ? "특근보고서" : "근태보고서";
+                  const cleanDisplayTitle = getCleanReportTitle(report);
 
                   const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
                   const totalManHours = report.totalHours || (workersCount * 8);
@@ -2031,13 +2056,13 @@ export const OvertimeStatusView = () => {
                           : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
                       }`}
                     >
-                      {/* Left: No, Category Badge, Company Badge, Date, Title */}
+                      {/* Left: No, Category Badge, Company Badge, Date (월/일), Title */}
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
                         <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
                           #{idx + 1}
                         </span>
 
-                        {/* Category Badge (근태보고서 / 특근실시보고서) */}
+                        {/* Category Badge (평일: 근태보고서 / 주말: 특근보고서) */}
                         <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
                           isWeekend
                             ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
@@ -2047,19 +2072,18 @@ export const OvertimeStatusView = () => {
                           <span>{reportCategory}</span>
                         </span>
 
-                        {/* Company / Plant Badge */}
+                        {/* Company / Plant Badge (삼랑진공장 (주)오륙, 삼랑진공장 유성, 한림공장 (주)조영산업 등) */}
                         <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${badgeColor}`}>
-                          <span>{isSam ? "삼랑진" : "한림"}</span>
-                          <span>•</span>
-                          <span>{(report.company && report.company !== "전체") ? report.company : (report.plant || plantName)}</span>
+                          <Factory className="w-3 h-3 shrink-0" />
+                          <span>{getFullCompanyPlantLabel(report)}</span>
                         </span>
 
-                        {/* Work Date Badge */}
+                        {/* Work Date Badge (월과 일만 간단히 표기: 📅 9월 8일 (화)) */}
                         <span className="px-2 py-0.5 rounded-md bg-slate-900 text-cyan-300 border border-slate-800 font-mono text-[11px] font-bold shrink-0">
-                          📅 {report.workDateFormatted || report.workDate}
+                          📅 {formatShortMonthDay(report.workDate || report.workDateFormatted || report.title)}
                         </span>
 
-                        {/* Title */}
+                        {/* Title (보고서 헤드: 9월 8일(화) 삼랑진공장 (주)오륙 근태보고서) */}
                         <span className={`font-black text-xs sm:text-sm truncate transition-colors ${
                           isWeekend ? "text-rose-100 group-hover:text-rose-300" : "text-slate-100 group-hover:text-cyan-300"
                         }`}>

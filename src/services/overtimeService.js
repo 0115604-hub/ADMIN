@@ -32,7 +32,7 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "삼랑진공장",
     company: "(주)오륙",
     companies: ["(주)오륙"],
-    title: "2026년 9월 8일(화) 삼랑진공장 (주)오륙 근태보고서",
+    title: "9월 8일(화) 삼랑진공장 (주)오륙 근태보고서",
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
@@ -54,7 +54,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 3, category: "압출동", workContent: "압출 1/2/3호기 생산 및 코팅 라인", names: "이상은, 지미, 이수루, 코팅준 외 22명", hours: 8, count: 26 }
     ],
     reasons: [
-      "1. 2026년 9월 8일(화) 삼랑진공장 (주)오륙 정규 생산 라인 가동",
+      "1. 9월 8일(화) 삼랑진공장 (주)오륙 정규 생산 라인 가동",
       "2. 총 67명 출근/투입 (총 투입공수: 536 M/H, 노무비: ₩8,040,000)"
     ]
   },
@@ -63,7 +63,7 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "삼랑진공장",
     company: "유성",
     companies: ["유성"],
-    title: "2026년 9월 8일(화) 삼랑진공장 유성 근태보고서",
+    title: "9월 8일(화) 삼랑진공장 유성 근태보고서",
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
@@ -83,7 +83,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 1, category: "압출동", workContent: "유성 압출 1라인 및 후가공", names: "김유성, 정재한, 알렉스, 크리스, 라몬", hours: 8, count: 5 }
     ],
     reasons: [
-      "1. 2026년 9월 8일(화) 삼랑진공장 유성 압출 라인 정상 가동",
+      "1. 9월 8일(화) 삼랑진공장 유성 압출 라인 정상 가동",
       "2. 총 5명 투입 (총 공수: 40 M/H, 노무비: ₩600,000)"
     ]
   },
@@ -92,7 +92,7 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "한림공장",
     company: "(주)조영산업",
     companies: ["(주)조영산업"],
-    title: "2026년 9월 8일(화) 한림공장 (주)조영산업 근태보고서",
+    title: "9월 8일(화) 한림공장 (주)조영산업 근태보고서",
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
@@ -113,7 +113,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 2, category: "압출동", workContent: "한림 압출 가동", names: "남기범", hours: 8, count: 1 }
     ],
     reasons: [
-      "1. 2026년 9월 8일(화) 한림공장 (주)조영산업 정상 근무",
+      "1. 9월 8일(화) 한림공장 (주)조영산업 정상 근무",
       "2. 총 3명 투입 (공수: 24 M/H, 노무비: ₩360,000)"
     ]
   },
@@ -122,7 +122,7 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "한림공장",
     company: "한울",
     companies: ["한울"],
-    title: "2026년 9월 8일(화) 한림공장 한울 근태보고서",
+    title: "9월 8일(화) 한림공장 한울 근태보고서",
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
@@ -142,7 +142,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 1, category: "가공동", workContent: "NX4/NX4a/HR G-RUN 가공", names: "정대현, 최민성, 강태양, 이승준, 신현수", hours: 8, count: 5 }
     ],
     reasons: [
-      "1. 2026년 9월 8일(화) 한림공장 한울 가공동 가동",
+      "1. 9월 8일(화) 한림공장 한울 가공동 가동",
       "2. 총 5명 투입 (공수: 40 M/H, 노무비: ₩600,000)"
     ]
   },
@@ -151,7 +151,7 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "한림공장",
     company: "부림텍",
     companies: ["부림텍"],
-    title: "2026년 9월 8일(화) 한림공장 부림텍 근태보고서",
+    title: "9월 8일(화) 한림공장 부림텍 근태보고서",
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
@@ -172,7 +172,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 2, category: "관리부", workContent: "4대 공용 관리 및 출하", names: "표성준, 하원식", hours: 8, count: 2 }
     ],
     reasons: [
-      "1. 2026년 9월 8일(화) 한림공장 부림텍 정상 가동",
+      "1. 9월 8일(화) 한림공장 부림텍 정상 가동",
       "2. 총 7명 투입 (공수: 56 M/H, 노무비: ₩840,000)"
     ]
   },
@@ -181,8 +181,8 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "삼랑진공장",
     company: "(주)오륙",
     companies: ["(주)오륙"],
-    title: "2026년 9월 5일(토) 삼랑진공장 (주)오륙 특근실시보고서",
-    reportType: "특근실시보고서",
+    title: "9월 5일(토) 삼랑진공장 (주)오륙 특근보고서",
+    reportType: "특근보고서",
     workDate: "2026-09-05",
     workDateFormatted: "2026-09-05 (토)",
     author: "양인나 선임",
@@ -210,7 +210,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 10, category: "CE1", workContent: "CE1 후가공 검사", names: "제인, 그레이스", hours: 8, count: 2 }
     ],
     reasons: [
-      "1. 2026년 9월 5일(토) 삼랑진공장 (주)오륙 토요 특근 긴급 납품 수량 대응",
+      "1. 9월 5일(토) 삼랑진공장 (주)오륙 토요 특근 긴급 납품 수량 대응",
       "2. 총 38명 투입 (공수: 362 M/H, 총 노무비: ₩5,430,000)"
     ]
   },
@@ -219,8 +219,8 @@ export const INITIAL_OVERTIME_REPORTS = [
     plant: "삼랑진공장",
     company: "유성",
     companies: ["유성"],
-    title: "2026년 9월 5일(토) 삼랑진공장 유성 특근실시보고서",
-    reportType: "특근실시보고서",
+    title: "9월 5일(토) 삼랑진공장 유성 특근보고서",
+    reportType: "특근보고서",
     workDate: "2026-09-05",
     workDateFormatted: "2026-09-05 (토)",
     author: "김유성 반장",
@@ -239,7 +239,7 @@ export const INITIAL_OVERTIME_REPORTS = [
       { id: 1, category: "수직 건조", workContent: "수직 건조로 제품 건조 및 압출 대응", names: "유동길, 조인주", hours: 10, count: 2 }
     ],
     reasons: [
-      "1. 2026년 9월 5일(토) 삼랑진공장 유성 토요 특근 가동",
+      "1. 9월 5일(토) 삼랑진공장 유성 토요 특근 가동",
       "2. 총 2명 투입 (공수: 20 M/H, 총 노무비: ₩300,000)"
     ]
   }
