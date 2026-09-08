@@ -62,7 +62,8 @@ import {
   subscribeSmartOvertimeData,
   exportSmartOvertimeToExcel,
   normalizeDept,
-  ensureAllCompaniesPresent
+  ensureAllCompaniesPresent,
+  buildMatrixFromReports
 } from "../services/overtimeSmartService.js";
 import {
   getLocalOvertimeReports,
@@ -499,7 +500,17 @@ export const OvertimeStatusView = () => {
     if (!window.confirm("정말로 이 특근보고서를 삭제하시겠습니까?")) return;
     try {
       await deleteOvertimeReport(reportId);
-      setLegacyReports((prev) => prev.filter((r) => r.id !== reportId));
+      const nextReports = legacyReports.filter((r) => r.id !== reportId);
+      setLegacyReports(nextReports);
+      
+      // ⭐ 삭제 즉시 근태/특근관리 기준 4개 탭 전사 동기화 (해당 일자/업체 자동 초기화)
+      const synchedMatrix = buildMatrixFromReports(smartData.masterWorkers, nextReports);
+      const updatedLedger = {
+        ...smartData,
+        attendanceMatrix: synchedMatrix
+      };
+      setSmartData(updatedLedger);
+      await saveSmartOvertimeData(updatedLedger);
       if (selectedLegacyReport && selectedLegacyReport.id === reportId) {
         setIsLegacyModalOpen(false);
         setSelectedLegacyReport(null);
