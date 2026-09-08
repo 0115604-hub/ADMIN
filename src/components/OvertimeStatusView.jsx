@@ -78,6 +78,43 @@ import {
 } from "../services/overtimeService";
 import { getKSTDateString } from "../utils/dateUtils";
 
+// ⭐ Precise Date & Weekend Helpers
+export const isWeekendByDate = (dateStrOrDay) => {
+  if (typeof dateStrOrDay === "number") {
+    const dt = new Date(2026, 8, dateStrOrDay); // Month 8 is September (0-indexed)
+    const dayOfWeek = dt.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  }
+  if (!dateStrOrDay) return false;
+  const p = String(dateStrOrDay).split("-");
+  if (p.length === 3) {
+    const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    if (!isNaN(dt.getTime())) {
+      const dayOfWeek = dt.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    }
+  }
+  if (/\(토\)|\(일\)|토요일|일요일/.test(String(dateStrOrDay))) return true;
+  return false;
+};
+
+export const getDayOfWeekKorean = (dateStrOrDay) => {
+  const names = ["일", "월", "화", "수", "목", "금", "토"];
+  if (typeof dateStrOrDay === "number") {
+    const dt = new Date(2026, 8, dateStrOrDay);
+    return names[dt.getDay()] || "평일";
+  }
+  if (!dateStrOrDay) return "평일";
+  const p = String(dateStrOrDay).split("-");
+  if (p.length === 3) {
+    const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    if (!isNaN(dt.getTime())) {
+      return names[dt.getDay()] || "평일";
+    }
+  }
+  return "평일";
+};
+
 export const OvertimeStatusView = () => {
   const { currentProfile, isAdmin } = useAuth();
 
@@ -1686,17 +1723,9 @@ export const OvertimeStatusView = () => {
                     ? "bg-amber-950 text-amber-300 border-amber-700/70"
                     : "bg-emerald-950 text-emerald-300 border-emerald-700/70";
 
-                  // ⭐ 평일은 '근태보고서', 토/일은 '특근실시보고서' 구분
-                  let isWeekend = false;
-                  if (report.workDate) {
-                    const p = String(report.workDate).split("-");
-                    if (p.length === 3) {
-                      const d = parseInt(p[2], 10);
-                      if ([5, 6, 12, 13, 19, 20, 26, 27].includes(d)) isWeekend = true;
-                    }
-                  }
+                  // ⭐ 평일은 '근태보고서', 토/일은 '특근실시보고서' 정확한 캘린더 요일 판별
+                  const isWeekend = isWeekendByDate(report.workDate || report.title);
                   const rawTitle = report.title || "";
-                  if (rawTitle.includes("토") || rawTitle.includes("일") || rawTitle.includes("특근")) isWeekend = true;
 
                   const reportCategory = isWeekend ? "특근실시보고서" : "근태보고서";
                   
@@ -1881,7 +1910,7 @@ export const OvertimeStatusView = () => {
       {isReportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
           <div className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
-            [5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay)
+            isWeekendByDate(selectedDay)
               ? "border-2 border-rose-500 shadow-rose-950/40"
               : "border-2 border-cyan-400"
           }`}>
@@ -1889,7 +1918,7 @@ export const OvertimeStatusView = () => {
             <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
               <div className="flex items-center gap-2.5">
                 <span className={`p-1.5 rounded-lg border ${
-                  [5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay)
+                  isWeekendByDate(selectedDay)
                     ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
                     : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
                 }`}>
@@ -1897,9 +1926,9 @@ export const OvertimeStatusView = () => {
                 </span>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
-                    <span>{[5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay) ? "특근실시보고서" : "근태보고서"} 등록 및 결재</span>
+                    <span>{isWeekendByDate(selectedDay) ? "특근실시보고서" : "근태보고서"} 등록 및 결재</span>
                     <span className={`text-xs px-2 py-0.5 rounded-md border font-mono ${
-                      [5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay)
+                      isWeekendByDate(selectedDay)
                         ? "bg-rose-950 text-rose-300 border-rose-800"
                         : "bg-cyan-950 text-cyan-300 border-cyan-800"
                     }`}>
@@ -2482,16 +2511,8 @@ export const OvertimeStatusView = () => {
       {isLegacyModalOpen && selectedLegacyReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
           {(() => {
-            let isWk = false;
-            if (selectedLegacyReport.workDate) {
-              const p = String(selectedLegacyReport.workDate).split("-");
-              if (p.length === 3) {
-                const d = parseInt(p[2], 10);
-                if ([5, 6, 12, 13, 19, 20, 26, 27].includes(d)) isWk = true;
-              }
-            }
+            const isWk = isWeekendByDate(selectedLegacyReport.workDate || selectedLegacyReport.title);
             const rawTitle = selectedLegacyReport.title || "";
-            if (rawTitle.includes("토") || rawTitle.includes("일") || rawTitle.includes("특근")) isWk = true;
             const repType = isWk ? "특근실시보고서" : "근태보고서";
 
             let cleanTitle = rawTitle;
