@@ -754,68 +754,6 @@ export const OvertimeStatusView = () => {
                 )}
               </div>
             </div>
-
-            {/* ⚡ Fast Batch Update Toolbar (초고속 일괄 근태 적용 바) */}
-            <div className="bg-slate-950 p-3 rounded-2xl border border-slate-700/80 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
-                  <span>현재 조회된 작업자 ({filteredAttendanceWorkers.length}명) 9월 {selectedDay}일 일괄 근태 적용:</span>
-                </span>
-                <span className="text-[11px] font-bold text-slate-400">클릭 시 즉시 전원 적용됩니다</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={() => handleBatchUpdateFiltered("🟢")}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🟢 전체 정시 (8H)</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("19")}
-                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🟡 전체 19시 (+2H)</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("21")}
-                  className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🟠 전체 21시 (+4H)</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("22")}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🔴 전체 22시 (+5H)</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("특근")}
-                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🌙 전체 특근 (8H)</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("야간")}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🌌 전체 야간</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("연차")}
-                  className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>🌴 전체 연차</span>
-                </button>
-                <button
-                  onClick={() => handleBatchUpdateFiltered("-")}
-                  className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-black shadow-md cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-                >
-                  <span>- 전체 휴무</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Real-time KPI Bar for the Selected Day */}
