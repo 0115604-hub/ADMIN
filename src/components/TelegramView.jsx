@@ -55,7 +55,8 @@ import {
   getLocalCommonSchedules,
   subscribeCommonSchedules,
   formatCommonSchedulesForTelegram,
-  injectCommonSchedulesIntoPnLTemplate
+  injectCommonSchedulesIntoPnLTemplate,
+  getUncompletedCommonSchedules
 } from "../services/commonScheduleService";
 import { getLocalAnnualLeaves } from "../services/annualLeaveService";
 import { getLocalApprovalDocs } from "../services/approvalService";
@@ -291,16 +292,21 @@ export const TelegramView = () => {
   const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "98.7";
   const costRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "71.1";
 
-  const todaySchedsText = useMemo(() => {
-    return formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr);
-  }, [todayCommonSchedules, todayDateStr]);
+  const uncompletedCommonSchedules = useMemo(() => {
+    if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
+    return commonSchedules.filter((s) => !s.isCompleted);
+  }, [commonSchedules]);
+
+  const commonSchedsText = useMemo(() => {
+    return formatCommonSchedulesForTelegram(uncompletedCommonSchedules, todayDateStr);
+  }, [uncompletedCommonSchedules, todayDateStr]);
 
   // Management Default Message Generator
   const generateDefaultManagementText = () => {
     const salesAchTxt = `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`;
     const purchAchTxt = `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`;
 
-    return `<b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(totalSales).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(totalPurchases).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 태형이랑 & 미영이랑</b>\n${todaySchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
+    return `<b>⬛ [오륙] 매출 & 일정공유</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(totalSales).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(totalPurchases).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 사내 공통일정</b>\n${commonSchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
   };
 
   // Load custom management template if exists, else load default text
@@ -309,14 +315,19 @@ export const TelegramView = () => {
     if (saved) {
       let sanitized = saved
         .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
+        .replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유")
+        .replace(/일일아침손익결산/g, "매출 & 일정공유")
+        .replace(/손익결산\s*브리핑/g, "매출 & 일정공유")
+        .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
+        .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
         .replace(/경영정보공유/g, "")
         .replace(/경영정보/g, "");
-      sanitized = injectCommonSchedulesIntoPnLTemplate(sanitized, todaySchedsText, dateFormatted);
+      sanitized = injectCommonSchedulesIntoPnLTemplate(sanitized, commonSchedsText, dateFormatted);
       setEditableManagementText(sanitized);
     } else {
       setEditableManagementText(generateDefaultManagementText());
     }
-  }, [currentManagementTemplateKey, savedTemplates, totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, todaySchedsText, selectedPnLChannel, dateFormatted]);
+  }, [currentManagementTemplateKey, savedTemplates, totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, commonSchedsText, selectedPnLChannel, dateFormatted]);
 
   // Access Control: Admin only
   if (!isAdmin) {
@@ -516,7 +527,7 @@ export const TelegramView = () => {
             <Crown className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 text-purple-500" />
             <div className="text-left">
               <div className="leading-tight font-black">경영총괄</div>
-              <div className="text-[10px] opacity-75 font-normal">손익결산 브리핑 (-1003939516875)</div>
+              <div className="text-[10px] opacity-75 font-normal">매출 & 일정공유 (-1003939516875)</div>
             </div>
           </button>
 
@@ -818,7 +829,7 @@ export const TelegramView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 👑 TAB 2: 경영총괄 (대표·전무 경영방 아침 손익결산 브리핑) */}
+      {/* 👑 TAB 2: 경영총괄 (대표·전무 경영방 아침 매출 & 일정공유 브리핑) */}
       {/* ========================================================================= */}
       {activeMainTab === "management" && (
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-purple-500/40 dark:border-purple-600/40 shadow-xl space-y-5 animate-fadeIn">
@@ -840,7 +851,7 @@ export const TelegramView = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                손익결산 브리핑 문구를 예시창에서 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 매일 07:30 발송 시 계속 적용됩니다.
+                매출 & 일정공유 브리핑 문구를 예시창에서 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 매일 07:30 발송 시 계속 적용됩니다.
               </p>
             </div>
 
@@ -922,7 +933,7 @@ export const TelegramView = () => {
                   type="button"
                   onClick={() => setEditableManagementText(generateDefaultManagementText())}
                   className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-xs font-bold transition-all cursor-pointer"
-                  title="시스템 실시간 손익 데이터 기본 서식으로 초기화"
+                  title="시스템 실시간 데이터 기본 서식으로 초기화"
                 >
                   <RotateCw className="w-3.5 h-3.5 text-purple-400" />
                   <span>기본서식 리셋</span>
@@ -944,7 +955,7 @@ export const TelegramView = () => {
             {managementViewMode === "edit" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>💡 <strong>손익결산 브리핑 텍스트 수정:</strong> 매출액, 매입액, 달성율, 공통일정을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장됩니다.</span>
+                  <span>💡 <strong>매출 & 일정공유 브리핑 텍스트 수정:</strong> 매출액, 매입액, 달성율, 공통일정을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장됩니다.</span>
                   <span className="font-mono text-slate-500">{editableManagementText.length}자</span>
                 </div>
                 <textarea
@@ -952,7 +963,7 @@ export const TelegramView = () => {
                   value={editableManagementText}
                   onChange={(e) => setEditableManagementText(e.target.value)}
                   className="w-full p-4 rounded-2xl bg-slate-900/95 border border-purple-500/50 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-inner"
-                  placeholder="발송할 손익결산 브리핑 메시지 내용을 입력하세요..."
+                  placeholder="발송할 매출 & 일정공유 브리핑 메시지 내용을 입력하세요..."
                 ></textarea>
               </div>
             ) : (
@@ -993,7 +1004,7 @@ export const TelegramView = () => {
                   type="button"
                   onClick={handleSaveManagementTemplate}
                   className="flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer"
-                  title="현재 수정된 손익결산 텍스트를 기본 서식으로 저장하여 매일 07:30 발송 시 계속 적용합니다."
+                  title="현재 수정된 텍스트를 기본 서식으로 저장하여 매일 07:30 발송 시 계속 적용합니다."
                 >
                   <BookmarkCheck className="w-4 h-4 text-amber-400" />
                   <span>💾 위 예시내용을 앞으로도 계속 적용</span>
@@ -1007,7 +1018,7 @@ export const TelegramView = () => {
                   className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 hover:from-black hover:to-purple-950 text-white font-black text-xs sm:text-sm shadow-xl shadow-purple-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4 text-purple-300" />
-                  <span>{sendingDailyPnL ? "발송 중..." : "🚀 [경영방]으로 손익결산 즉시 발송"}</span>
+                  <span>{sendingDailyPnL ? "발송 중..." : "🚀 [경영방]으로 매출 & 일정공유 즉시 발송"}</span>
                 </button>
               </div>
             </div>

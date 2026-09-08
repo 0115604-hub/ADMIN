@@ -287,6 +287,11 @@ export const cleanupExpiredCommonSchedules = async () => {
   return getLocalCommonSchedules();
 };
 
+export const getUncompletedCommonSchedules = () => {
+  const all = getLocalCommonSchedules();
+  return all.filter((s) => !s.isCompleted);
+};
+
 export const getTodayCommonSchedules = (targetDate = null) => {
   const dateStr = targetDate || getKSTDateString();
   const all = getLocalCommonSchedules();
@@ -345,16 +350,19 @@ export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateSt
     const aStart = a.startDate || a.date || "";
     const bStart = b.startDate || b.date || "";
     if (aStart !== bStart) return aStart.localeCompare(bStart);
+    const aEnd = a.endDate || aStart;
+    const bEnd = b.endDate || bStart;
+    if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
     return (a.time || "").localeCompare(b.time || "");
   });
 
   return sorted.map((s) => {
-    const startDate = s.startDate || s.date;
+    const startDate = s.startDate || s.date || todayStr;
     const endDate = s.endDate || startDate;
     const cat = getScheduleCategoryMeta(s.target);
     const timeStr = s.time && s.time !== "종일" ? ` [${s.time}]` : "";
-    const sFormatted = startDate.slice(5).replace("-", ".");
-    const eFormatted = endDate.slice(5).replace("-", ".");
+    const sFormatted = startDate.length >= 10 ? startDate.slice(5).replace("-", ".") : startDate;
+    const eFormatted = endDate.length >= 10 ? endDate.slice(5).replace("-", ".") : endDate;
     const commentsCount = Array.isArray(s.comments) && s.comments.length > 0 ? ` (의견 ${s.comments.length}건)` : "";
     if (startDate !== endDate) {
       return `• [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
@@ -371,6 +379,12 @@ export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText
 
   let text = templateText;
 
+  // Header Title replacements
+  text = text.replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유");
+  text = text.replace(/일일아침손익결산/g, "매출 & 일정공유");
+  text = text.replace(/손익결산\s*브리핑/g, "매출 & 일정공유");
+  text = text.replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정");
+
   if (dateFormatted) {
     text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
   }
@@ -384,7 +398,7 @@ export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText
 
   const section3Regex = /(<b>\[3\][^<]*?<\/b>|\[3\][^\n]*\n)([\s\S]*?)(?=(━━━━━━━━━━━━━━━━━━━━━|<a\s+href|$))/i;
   if (section3Regex.test(text)) {
-    return text.replace(section3Regex, `$1\n${schedulesText}\n`);
+    return text.replace(section3Regex, `<b>[3] 사내 공통일정</b>\n${schedulesText}\n`);
   }
 
   return `${text}\n\n<b>[3] 사내 공통일정</b>\n${schedulesText}`;

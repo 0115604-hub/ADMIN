@@ -5,7 +5,7 @@ import { getLocalAnnualLeaves } from "./annualLeaveService";
 import { getLocalApprovalDocs } from "./approvalService";
 import { getLocalWorkLogs } from "./workLogService";
 import { getLocalUrgentIssues } from "./urgentIssueService";
-import { getTodayCommonSchedules, cleanupExpiredCommonSchedules, formatCommonSchedulesForTelegram, injectCommonSchedulesIntoPnLTemplate, getScheduleCategoryMeta } from "./commonScheduleService";
+import { getTodayCommonSchedules, cleanupExpiredCommonSchedules, formatCommonSchedulesForTelegram, injectCommonSchedulesIntoPnLTemplate, getScheduleCategoryMeta, getUncompletedCommonSchedules } from "./commonScheduleService";
 import {
   getKSTDateString,
   getKSTFormattedString,
@@ -127,6 +127,11 @@ export const sanitizeTelegramTemplateText = (text) => {
   if (!text || typeof text !== "string") return text;
   return text
     .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
+    .replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유")
+    .replace(/일일아침손익결산/g, "매출 & 일정공유")
+    .replace(/손익결산\s*브리핑/g, "매출 & 일정공유")
+    .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
+    .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
     .replace(/경영정보공유/g, "")
     .replace(/경영정보/g, "");
 };
@@ -923,7 +928,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 export const sendDailyLeaveBriefingTelegram = sendDailyMorningBriefingTelegram;
 
 /**
- * 10. 매일 아침 손익결산 브리핑 발송 (매출액 / 매입액 / 달성율 / 공통일정)
+ * 10. 매일 아침 매출 & 일정공유 브리핑 발송 (매출액 / 매입액 / 달성율 / 공통일정)
  * 기본 발송 채널: '경영총괄' (-1003939516875)
  */
 export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = null, targetChatId = null, force = false) => {
@@ -936,7 +941,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   if (!force) {
     const lockResult = await acquireBriefingLock("pnl", todayStr, clientId, false);
     if (!lockResult.acquired) {
-      console.log(`[경영총괄 손익브리핑] Skipping send: ${lockResult.reason}`);
+      console.log(`[경영총괄 매출&일정공유 브리핑] Skipping send: ${lockResult.reason}`);
       localStorage.setItem("oryuk_last_pnl_briefing_sent", todayStr);
       return { success: false, skipped: true, reason: lockResult.reason };
     }
@@ -958,14 +963,14 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
         console.warn("Cleanup expired schedules error:", e);
       }
 
-      const todayScheds = getTodayCommonSchedules(todayStr);
-      commonSchedules = formatCommonSchedulesForTelegram(todayScheds, todayStr);
+      const uncompletedScheds = getUncompletedCommonSchedules();
+      commonSchedules = formatCommonSchedulesForTelegram(uncompletedScheds, todayStr);
     }
 
     const costRatio = salesAmount > 0 ? ((purchaseAmount / salesAmount) * 100).toFixed(1) : "71.1";
 
     const defaultPnLMessage = `
-<b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>
+<b>⬛ [오륙] 매출 & 일정공유</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
 <b>[1] 당월 매입 / 매출 결산 현황</b>
@@ -977,7 +982,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
 • <b>전월대비 매출 달성율:</b> <b>${salesAchievementRate}</b>
 • <b>전월대비 매입 달성율:</b> <b>${purchaseAchievementRate}</b>
 
-<b>[3] 태형이랑 & 미영이랑</b>
+<b>[3] 사내 공통일정</b>
 ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
@@ -1003,10 +1008,48 @@ ${commonSchedules}
 
     return sendResult;
   } catch (err) {
-    console.error("[경영총괄 손익브리핑] Send error:", err);
+    console.error("[경영총괄 매출&일정공유 브리핑] Send error:", err);
     await completeBriefingLock("pnl", todayStr, false, err.message, clientId);
     return { success: false, error: err.message };
   }
+};
+
+/**
+ * 12. 사내 공통일정 의견(댓글) 등록 즉시 경영방 텔레그램 발송
+ */
+export const sendCommonScheduleCommentTelegram = async (scheduleItem, comment) => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled) return { skipped: true, reason: "DISABLED" };
+
+  const destChatId = config.pnlChatId || config.chatId || "-1003939516875";
+  const startDate = scheduleItem.startDate || scheduleItem.date || getKSTDateString();
+  const endDate = scheduleItem.endDate || startDate;
+  const timeStr = scheduleItem.time && scheduleItem.time !== "종일" ? ` [${scheduleItem.time}]` : "";
+  const dateFormatted = startDate === endDate ? startDate.slice(5).replace("-", ".") : `${startDate.slice(5).replace("-", ".")} ~ ${endDate.slice(5).replace("-", ".")}`;
+  const cat = getScheduleCategoryMeta(scheduleItem.target);
+
+  const authorText = `${comment.author || "관리자"}${comment.role ? ` (${comment.role})` : ""}${comment.plant ? ` [${comment.plant}]` : ""}`;
+  const now = new Date();
+  const timeFormatted = now.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+  const dateStr = getKSTDateString().slice(5).replace("-", ".");
+
+  const message = `
+<b>💬 [공통일정 의견 등록 알림]</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>일정명:</b> <b>${scheduleItem.title}</b>
+• <b>구분/일시:</b> ${cat.badge} • [${dateFormatted}]${timeStr}
+• <b>작성자:</b> <b>${authorText}</b>
+• <b>의견 내용:</b>
+${comment.text || comment.content || ""}
+• <b>등록시간:</b> ${dateStr} ${timeFormatted}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">📌 공통일정 의견 확인 바로가기</a>
+`.trim();
+
+  return await sendTelegramMessage(message, {
+    ...config,
+    chatId: destChatId
+  });
 };
 
 let isCheckingBriefing = false;

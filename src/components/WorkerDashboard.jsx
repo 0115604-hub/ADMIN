@@ -150,9 +150,10 @@ import {
   getTodayCommonSchedules,
   cleanupExpiredCommonSchedules,
   formatCommonSchedulesForTelegram,
+  getUncompletedCommonSchedules,
   getScheduleCategoryMeta
 } from "../services/commonScheduleService";
-import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram } from "../services/telegramService";
+import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
@@ -1028,6 +1029,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       });
   }, [commonSchedules, todayDateStr]);
 
+  const uncompletedCommonSchedules = useMemo(() => {
+    if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
+    return commonSchedules.filter((s) => !s.isCompleted).sort((a, b) => {
+      const aStart = a.startDate || a.date || "";
+      const bStart = b.startDate || b.date || "";
+      if (aStart !== bStart) return aStart.localeCompare(bStart);
+      const aEnd = a.endDate || aStart;
+      const bEnd = b.endDate || bStart;
+      if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
+      return (a.time || "").localeCompare(b.time || "");
+    });
+  }, [commonSchedules]);
+
   const todayCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules.filter((s) => {
@@ -1165,9 +1179,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       }
       if (res.updatedItem) {
         setSelectedCommonScheduleForComments(res.updatedItem);
+        // 즉시 텔레그램 발송 (경영방으로 새 의견 알림)
+        try {
+          await sendCommonScheduleCommentTelegram(res.updatedItem, res.newComment);
+        } catch (tgErr) {
+          console.warn("Telegram comment alert error:", tgErr);
+        }
       }
       setCommonScheduleCommentInput("");
-      setToastMessage("의견이 등록되었습니다.");
+      setToastMessage("의견이 등록되었으며 경영방으로 전송되었습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 2000);
     } catch (err) {
@@ -1229,7 +1249,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleSendDailyPnLTelegram = async () => {
     setSendingDailyPnL(true);
     try {
-      const todaySchedsText = formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr);
+      const uncompletedSchedsText = formatCommonSchedulesForTelegram(uncompletedCommonSchedules, todayDateStr);
 
       const channelName = selectedPnLChannel === "-1003939516875" ? "경영방 (대표·전무)" : selectedPnLChannel === "290615483" ? "대표님 1:1" : "오륙 통합방";
 
@@ -1238,12 +1258,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         purchaseAmount: customPnLBriefing?.purchaseAmount ?? totalPurchases,
         salesAchievementRate: customPnLBriefing?.salesAchievementRate || `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}%` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
         purchaseAchievementRate: customPnLBriefing?.purchaseAchievementRate || `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`,
-        commonSchedules: customPnLBriefing?.commonSchedules || todaySchedsText,
+        commonSchedules: customPnLBriefing?.commonSchedules || uncompletedSchedsText,
         targetChatId: selectedPnLChannel
       }, selectedPnLChannel);
 
       if (res.success) {
-        setToastMessage(`[${channelName}]으로 아침 손익결산 브리핑이 발송되었습니다.`);
+        setToastMessage(`[${channelName}]으로 매출 & 일정공유 브리핑이 발송되었습니다.`);
         setLogSavedToast(true);
         setTimeout(() => setLogSavedToast(false), 3000);
         setDailyPnLModalOpen(false);
@@ -5160,7 +5180,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>📱 매일 아침 손익결산 텔레그램 메시지 예시화면</span>
+                    <span>📱 매일 아침 매출 & 일정공유 텔레그램 메시지 예시화면</span>
                     <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
                       07:30 정기 브리핑
                     </span>
@@ -5202,7 +5222,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   {/* Header */}
                   <div>
                     <div className="font-black text-sm text-white flex items-center gap-1.5">
-                      <span>⬛ [오륙] 일일 아침 손익결산 브리핑</span>
+                      <span>⬛ [오륙] 매출 & 일정공유</span>
                     </div>
                     <div className="text-[11px] font-extrabold text-sky-400 mt-0.5">
                       {new Date().toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit", weekday: "short" })} 07:30 기준
@@ -5236,10 +5256,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     {/* [3] 태형이랑 & 미영이랑 */}
                     <div>
                       <div className="font-extrabold text-purple-400 text-xs mb-1">
-                        [3] 태형이랑 & 미영이랑
+                        [3] 사내 공통일정
                       </div>
                       <div className="pl-2 whitespace-pre-wrap text-slate-200 text-[11px] leading-relaxed">
-                        {customPnLBriefing?.commonSchedules || formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr)}
+                        {customPnLBriefing?.commonSchedules || formatCommonSchedulesForTelegram(uncompletedCommonSchedules, todayDateStr)}
                       </div>
                     </div>
                   </div>
@@ -5357,10 +5377,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                   {/* 공통일정 문구 */}
                   <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">태형이랑 & 미영이랑 포함 내용</label>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-0.5">사내 공통일정 (미완료 전체)</label>
                     <textarea
                       rows="3"
-                      value={customPnLBriefing?.commonSchedules ?? formatCommonSchedulesForTelegram(todayCommonSchedules, todayDateStr)}
+                      value={customPnLBriefing?.commonSchedules ?? formatCommonSchedulesForTelegram(uncompletedCommonSchedules, todayDateStr)}
                       onChange={(e) => setCustomPnLBriefing({
                         ...(customPnLBriefing || {}),
                         commonSchedules: e.target.value
@@ -5387,10 +5407,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </button>
                   <p className="text-[10px] text-center text-slate-400">
                     {selectedPnLChannel === "-1003939516875"
-                      ? "경영진/대표·전무 전용 경영방으로 손익결산 브리핑이 안전하게 구분 발송됩니다."
+                      ? "경영진/대표·전무 전용 경영방으로 매출 & 일정공유 브리핑이 안전하게 구분 발송됩니다."
                       : selectedPnLChannel === "290615483"
-                      ? "권태형 대표님 1:1 개인톡으로 손익결산 브리핑이 발송됩니다."
-                      : "오륙 전체 통합방으로 손익결산 브리핑이 발송됩니다."}
+                      ? "권태형 대표님 1:1 개인톡으로 매출 & 일정공유 브리핑이 발송됩니다."
+                      : "오륙 전체 통합방으로 매출 & 일정공유 브리핑이 발송됩니다."}
                   </p>
                 </div>
               </div>
