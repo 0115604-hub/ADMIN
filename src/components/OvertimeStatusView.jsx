@@ -49,6 +49,7 @@ import {
   COMPANIES,
   DEPARTMENTS,
   COMPANY_THEMES,
+  COMPANY_APPROVAL_MANAGERS,
   ATTENDANCE_OPTIONS,
   getOptionMeta,
   calculateWorkerDailyHours,
@@ -98,6 +99,12 @@ export const OvertimeStatusView = () => {
   const [reportModalAuthor, setReportModalAuthor] = useState("양인나 선임");
   const [reportModalAuthorTitle, setReportModalAuthorTitle] = useState("선임");
   const [reportModalNotes, setReportModalNotes] = useState("");
+  const [reportApprovalSteps, setReportApprovalSteps] = useState([
+    { role: "담당", name: "양인나", title: "선임", status: "완료" },
+    { role: "책임", name: "윤경수", title: "책임", status: "완료" },
+    { role: "이사", name: "이명재", title: "이사", status: "완료" },
+    { role: "대표", name: "권태형", title: "대표", status: "완료" }
+  ]);
 
   // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 초간결 팝업)
   const [selectedCompanyPopup, setSelectedCompanyPopup] = useState(null); // e.g. "(주)오륙"
@@ -341,7 +348,7 @@ export const OvertimeStatusView = () => {
     setHasUnsavedChanges(true);
   };
 
-  // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (내용 작성 및 검토용)
+  // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
   const handleOpenRegistrationReportModal = () => {
     const d = selectedDay;
     const isSaturday = (d === 5 || d === 12 || d === 19 || d === 26);
@@ -349,11 +356,7 @@ export const OvertimeStatusView = () => {
     const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
 
     const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-    const defaultAuthor = (selectedCompanyFilter === "(주)오륙" || selectedCompanyFilter === "유성") 
-      ? "양인나 선임" 
-      : (selectedCompanyFilter === "(주)조영산업" || selectedCompanyFilter === "한울" || selectedCompanyFilter === "부림텍")
-      ? "우창용 선임"
-      : "양인나 / 우창용 선임";
+    const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
 
     const attendedCount = filteredAttendanceWorkers.filter(w => {
       const val = w.daily ? w.daily[d] : "";
@@ -368,10 +371,19 @@ export const OvertimeStatusView = () => {
     }, 0);
 
     setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compLabel} 근태 및 특근실시 보고서`);
-    setReportModalAuthor(defaultAuthor);
-    setReportModalAuthorTitle("선임");
+    setReportModalAuthor(compMeta.author);
+    setReportModalAuthorTitle(compMeta.drafterRole || "선임");
+    
+    // ⭐ 해당 회사 관리자들로 결재란 자동 구성
+    setReportApprovalSteps([
+      { role: "담당", name: compMeta.drafter, title: compMeta.drafterRole || "선임", status: "완료" },
+      { role: "책임", name: compMeta.lead, title: compMeta.leadRole || "책임", status: "완료" },
+      { role: "이사", name: compMeta.director, title: compMeta.directorRole || "이사", status: "완료" },
+      { role: "대표", name: compMeta.ceo, title: compMeta.ceoRole || "대표", status: "완료" }
+    ]);
+
     setReportModalNotes(
-      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 긴급 납품 대응\n2. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
+      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 근태/특근 현황\n2. ${compMeta.plant} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
     );
 
     setIsReportModalOpen(true);
@@ -384,12 +396,71 @@ export const OvertimeStatusView = () => {
       // 1. Save smart overtime ledger to Firestore & LocalStorage
       await saveSmartOvertimeData(smartData);
       
-      // 2. Generate/sync overtime reports for the selected day
+      // 2. Generate and save company-specific report record
+      const d = selectedDay;
+      const isSaturday = (d === 5 || d === 12 || d === 19 || d === 26);
+      const isSunday = (d === 6 || d === 13 || d === 20 || d === 27);
+      const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
+      const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
+
+      const items = filteredAttendanceWorkers.filter(w => {
+        const val = w.daily ? w.daily[d] : "";
+        const { isAttended, workHours } = calculateWorkerDailyHours(val);
+        return isAttended && workHours > 0;
+      }).map((w, idx) => {
+        const val = w.daily ? w.daily[d] : "";
+        const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
+        return {
+          id: `rep_item_${d}_${w.no || idx}_${w.name}`,
+          no: idx + 1,
+          company: w.company,
+          factory: getPlantForCompany(w.company),
+          dept: normalizeDept(w.dept),
+          line: w.line || normalizeDept(w.dept),
+          category: w.line || normalizeDept(w.dept),
+          workerName: w.name,
+          position: w.position || "작업원",
+          attendanceCode: val,
+          startTime: "08:00",
+          endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : "17:00",
+          hours: workHours || 8,
+          otHours: (weekdayOt + weekendOt) || 0,
+          count: 1,
+          workContent: `${w.company} ${normalizeDept(w.dept)} 작업 수행`,
+          workDetails: `${w.company} ${normalizeDept(w.dept)} ${w.line || ""} 생산 및 납품 대응`
+        };
+      });
+
+      const totalHours = items.reduce((sum, it) => sum + (Number(it.hours) || 0), 0);
+      const cost = totalHours * 15000;
+
+      const compCleanSlug = selectedCompanyFilter === "전체" ? "all" : selectedCompanyFilter.replace(/[()]/g, "");
+      const companyReport = {
+        id: `report_${compCleanSlug}_2026_09_${String(d).padStart(2, "0")}`,
+        plant: compMeta.plant,
+        company: selectedCompanyFilter,
+        companies: selectedCompanyFilter === "전체" ? COMPANIES : [selectedCompanyFilter],
+        title: reportModalTitle,
+        workDate: `2026-09-${String(d).padStart(2, "0")}`,
+        workDateFormatted: `2026-09-${String(d).padStart(2, "0")} (${dayLabel})`,
+        author: reportModalAuthor,
+        authorTitle: "선임",
+        updatedAt: new Date().toISOString(),
+        approval: reportApprovalSteps,
+        totalWorkers: items.length,
+        totalHours: totalHours,
+        cost: cost,
+        items: items,
+        reasons: reportModalNotes.split("\n").filter(Boolean)
+      };
+
+      await saveOvertimeReport(companyReport);
+      setLegacyReports((prev) => [companyReport, ...prev.filter((r) => r.id !== companyReport.id)]);
       await syncPlantWeekendOvertimeReports(smartData.attendanceMatrix, selectedDay);
       
       setHasUnsavedChanges(false);
       setIsReportModalOpen(false);
-      triggerToast(`🎉 9월 ${selectedDay}일 근태 및 특근보고서가 정상 등록되었습니다!`);
+      triggerToast(`🎉 [${selectedCompanyFilter}] 관리자 결재선 적용 보고서가 등록되었습니다!`);
     } catch (err) {
       console.error(err);
       alert("등록 중 오류가 발생했습니다: " + err.message);
@@ -1679,19 +1750,43 @@ export const OvertimeStatusView = () => {
                   </div>
                 </div>
 
-                {/* 4 Approval Blocks (담당, 책임, 이사, 대표) */}
-                <div className="shrink-0 border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-xs">
-                  <div className="grid grid-cols-4 divide-x divide-slate-700 text-center font-bold text-[11px]">
-                    <div className="bg-slate-800 py-1 px-3 text-slate-300">담당</div>
-                    <div className="bg-slate-800 py-1 px-3 text-slate-300">책임</div>
-                    <div className="bg-slate-800 py-1 px-3 text-slate-300">이사</div>
-                    <div className="bg-slate-800 py-1 px-3 text-slate-300">대표</div>
+                {/* 4 Approval Blocks (선택된 업체 관리자 결재선) */}
+                <div className="shrink-0 space-y-1">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10.5px] font-black text-cyan-300 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>{selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter} 결재선</span>
+                    </span>
+                    <span className="text-[9.5px] text-slate-400 font-bold">클릭하여 이름 수정 가능</span>
                   </div>
-                  <div className="grid grid-cols-4 divide-x divide-slate-700 text-center text-xs h-14 items-center">
-                    <div className="p-1 font-black text-cyan-300">{reportModalAuthor.split(" ")[0]}</div>
-                    <div className="p-1 font-black text-white">윤경수/김동욱</div>
-                    <div className="p-1 font-black text-white">이명재</div>
-                    <div className="p-1 font-black text-white">권태형</div>
+                  <div className="border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-md">
+                    <div className="grid grid-cols-4 divide-x divide-slate-700 text-center font-bold text-[11px]">
+                      {reportApprovalSteps.map((st, idx) => (
+                        <div key={idx} className="bg-slate-800 py-1 px-2.5 text-slate-300 font-black">
+                          {st.role}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-4 divide-x divide-slate-700 text-center text-xs h-14 items-center bg-slate-900/90">
+                      {reportApprovalSteps.map((st, idx) => (
+                        <div key={idx} className="p-1 flex flex-col items-center justify-center space-y-0.5">
+                          <input
+                            type="text"
+                            value={st.name}
+                            onChange={(e) => {
+                              const next = [...reportApprovalSteps];
+                              next[idx] = { ...next[idx], name: e.target.value };
+                              setReportApprovalSteps(next);
+                            }}
+                            className="w-full text-center bg-transparent border-b border-transparent hover:border-slate-600 focus:border-cyan-400 font-black text-white text-xs px-0.5 py-0.5 outline-hidden"
+                            title={`${st.role} 성명 수정`}
+                          />
+                          <span className="text-[9.5px] text-slate-400 font-bold">
+                            {st.title || st.role}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>

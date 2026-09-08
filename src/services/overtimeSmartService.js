@@ -26,6 +26,87 @@ export const normalizeDept = (dept) => {
   return "압출동";
 };
 
+export const COMPANY_APPROVAL_MANAGERS = {
+  "(주)오륙": {
+    company: "(주)오륙",
+    plant: "삼랑진공장",
+    author: "양인나 선임",
+    drafter: "양인나",
+    drafterRole: "선임",
+    lead: "윤경수",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "권태형",
+    ceoRole: "대표"
+  },
+  "유성": {
+    company: "유성",
+    plant: "삼랑진공장",
+    author: "김유성 반장",
+    drafter: "김유성",
+    drafterRole: "반장",
+    lead: "설유철",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "유성대표",
+    ceoRole: "대표"
+  },
+  "(주)조영산업": {
+    company: "(주)조영산업",
+    plant: "한림공장",
+    author: "송원호 담당",
+    drafter: "송원호",
+    drafterRole: "담당",
+    lead: "김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "조영대표",
+    ceoRole: "대표"
+  },
+  "한울": {
+    company: "한울",
+    plant: "한림공장",
+    author: "안태식 담당",
+    drafter: "안태식",
+    drafterRole: "담당",
+    lead: "김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "한울대표",
+    ceoRole: "대표"
+  },
+  "부림텍": {
+    company: "부림텍",
+    plant: "한림공장",
+    author: "표성준 담당",
+    drafter: "표성준",
+    drafterRole: "담당",
+    lead: "김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "부림대표",
+    ceoRole: "대표"
+  },
+  "전체": {
+    company: "5개사 통합",
+    plant: "삼랑진/한림공장",
+    author: "양인나 / 우창용 선임",
+    drafter: "양인나",
+    drafterRole: "선임",
+    lead: "윤경수 / 김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "권태형",
+    ceoRole: "대표"
+  }
+};
+
 export const COMPANY_THEMES = {
   "(주)오륙": {
     name: "(주)오륙",
