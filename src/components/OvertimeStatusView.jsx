@@ -1070,16 +1070,17 @@ export const OvertimeStatusView = () => {
                                     )}
                                   </td>
 
-                                  {/* 근태 선택 버튼군 */}
-                                  <td className="py-1 px-1 text-center">
-                                    <div className="flex items-center justify-center gap-1 flex-wrap">
+                                  {/* 근태 선택 버튼 6개 (정시, 19시, 21시, 22시, 연차, 결근) */}
+                                  <td className="py-1 px-1 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-1">
                                       {/* 정시 */}
                                       <button
+                                        type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
                                         title="정시 출근 (8시간)"
                                         className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "🟢" || currentVal === "정시" || currentVal === "17"
-                                            ? "bg-emerald-600 text-white font-black shadow-xs"
+                                            ? "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -1088,11 +1089,12 @@ export const OvertimeStatusView = () => {
 
                                       {/* 19시 */}
                                       <button
+                                        type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
                                         title="19시 잔업 (+2시간)"
                                         className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "19" || currentVal === "19시"
-                                            ? "bg-amber-600 text-white font-black shadow-xs"
+                                            ? "bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -1101,11 +1103,12 @@ export const OvertimeStatusView = () => {
 
                                       {/* 21시 */}
                                       <button
+                                        type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
                                         title="21시 잔업 (+4시간)"
                                         className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "21" || currentVal === "21시"
-                                            ? "bg-orange-600 text-white font-black shadow-xs"
+                                            ? "bg-orange-600 text-white font-black shadow-xs ring-1 ring-orange-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -1114,72 +1117,45 @@ export const OvertimeStatusView = () => {
 
                                       {/* 22시 */}
                                       <button
+                                        type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
                                         title="22시 잔업 (+5시간)"
                                         className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "22" || currentVal === "22시"
-                                            ? "bg-rose-600 text-white font-black shadow-xs"
+                                            ? "bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
                                         22시
                                       </button>
 
-                                      {/* 특근 */}
+                                      {/* 연차 */}
                                       <button
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "특근")}
-                                        title="주말/휴일 특근 (8시간)"
+                                        type="button"
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "연차")}
+                                        title="연차 휴가"
                                         className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "특근" || currentVal === "주말특근"
-                                            ? "bg-purple-600 text-white font-black shadow-xs"
+                                          currentVal === "연차"
+                                            ? "bg-sky-600 text-white font-black shadow-xs ring-1 ring-sky-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
-                                        특근
+                                        연차
                                       </button>
 
-                                      {/* 휴무 */}
+                                      {/* 결근 */}
                                       <button
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "-")}
-                                        title="휴무 / 미출근"
+                                        type="button"
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "결근")}
+                                        title="결근"
                                         className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "-" || currentVal === "휴무"
-                                            ? "bg-slate-600 text-white font-black shadow-xs"
-                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700"
+                                          currentVal === "결근"
+                                            ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400"
+                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
-                                        휴무
+                                        결근
                                       </button>
-
-                                      {/* 기타 옵션 */}
-                                      <select
-                                        value={
-                                          ["🟢", "정시", "17", "19", "19시", "21", "21시", "22", "22시", "특근", "주말특근", "-", "휴무"].includes(currentVal)
-                                            ? ""
-                                            : (currentVal || "")
-                                        }
-                                        onChange={(e) => {
-                                          if (e.target.value) {
-                                            handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, e.target.value);
-                                          }
-                                        }}
-                                        className={`bg-slate-950 text-[11px] font-bold rounded px-1 py-0.5 border cursor-pointer ${
-                                          !["🟢", "정시", "17", "19", "19시", "21", "21시", "22", "22시", "특근", "주말특근", "-", "휴무", ""].includes(currentVal)
-                                            ? "border-cyan-400 text-cyan-300 bg-cyan-950"
-                                            : "border-slate-700 text-slate-400"
-                                        }`}
-                                      >
-                                        <option value="" className="bg-slate-900 text-slate-400 font-normal">
-                                          {!["🟢", "정시", "17", "19", "19시", "21", "21시", "22", "22시", "특근", "주말특근", "-", "휴무", ""].includes(currentVal)
-                                            ? meta.label
-                                            : "기타▾"}
-                                        </option>
-                                        {ATTENDANCE_OPTIONS.filter(opt => !["🟢", "19", "21", "22", "특근", "-"].includes(opt.code)).map((opt) => (
-                                          <option key={opt.code} value={opt.code} className="bg-slate-900 text-white font-bold">
-                                            {opt.label}
-                                          </option>
-                                        ))}
-                                      </select>
                                     </div>
                                   </td>
 
