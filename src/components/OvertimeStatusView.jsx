@@ -1750,13 +1750,12 @@ export const OvertimeStatusView = () => {
                   const plantName = report.plant || getPlantForCompany(report.company || "");
                   const isSam = plantName === "삼랑진공장" || report.company === "(주)오륙" || report.company === "유성";
                   const badgeColor = isSam
-                    ? "bg-amber-950 text-amber-300 border-amber-700/70"
-                    : "bg-emerald-950 text-emerald-300 border-emerald-700/70";
+                    ? "bg-amber-950/80 text-amber-300 border-amber-700/70"
+                    : "bg-emerald-950/80 text-emerald-300 border-emerald-700/70";
 
                   // ⭐ 평일은 '근태보고서', 토/일은 '특근실시보고서' 정확한 캘린더 요일 판별
                   const isWeekend = isWeekendByDate(report.workDate || report.title);
                   const rawTitle = report.title || "";
-
                   const reportCategory = isWeekend ? "특근실시보고서" : "근태보고서";
                   
                   // 정제된 보고서 제목
@@ -1802,126 +1801,97 @@ export const OvertimeStatusView = () => {
                         setSelectedLegacyReport(report);
                         setIsLegacyModalOpen(true);
                       }}
-                      className={`p-4 rounded-2xl bg-slate-950 transition-all duration-200 space-y-3 group cursor-pointer ${
+                      className={`px-3 py-2 sm:py-2.5 rounded-xl transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-2.5 group cursor-pointer ${
                         isWeekend
-                          ? "border-2 border-rose-500 hover:border-rose-400 shadow-lg shadow-rose-950/30 ring-1 ring-rose-500/40"
-                          : "border border-slate-700 hover:border-cyan-400/80 shadow-md"
+                          ? "border-2 border-rose-500 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-400 shadow-sm ring-1 ring-rose-500/30"
+                          : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
                       }`}
                     >
-                      {/* Card Top: Metadata, Badges & Cost */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
-                        <div className="flex items-center gap-2 flex-wrap min-w-0">
-                          <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0">
-                            #{idx + 1}
-                          </span>
-                          <span className={`px-2.5 py-0.5 rounded-lg font-black text-xs border flex items-center gap-1 ${
-                            isWeekend
-                              ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
-                              : "bg-cyan-950 text-cyan-300 border-cyan-700 shadow-xs"
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"}`}></span>
-                            <span>{reportCategory}</span>
-                          </span>
-                          <span className={`px-2.5 py-0.5 rounded-lg font-black text-xs border ${badgeColor}`}>
-                            {(report.company && report.company !== "전체") ? report.company : (report.plant || plantName)}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-cyan-300 border border-slate-700 font-mono text-xs font-bold">
-                            📅 {report.workDateFormatted || report.workDate}
-                          </span>
-                          <span className="text-xs font-bold text-slate-400">
-                            작성자: <strong className="text-white">{report.author || "양인나 선임"}</strong>
-                          </span>
-                        </div>
+                      {/* Left: No, Category Badge, Company Badge, Date, Title */}
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
+                        <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
+                          #{idx + 1}
+                        </span>
 
-                        <div className="flex items-center gap-2 self-end sm:self-auto">
-                          <span className="text-sm sm:text-base font-black text-rose-400 font-mono">
-                            ₩{cost.toLocaleString()}
-                          </span>
-                          <span className="text-xs text-slate-400 font-bold">
-                            ({workersCount}명 • {totalManHours} M/H)
-                          </span>
-                        </div>
+                        {/* Category Badge (근태보고서 / 특근실시보고서) */}
+                        <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
+                          isWeekend
+                            ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
+                            : "bg-cyan-950 text-cyan-300 border-cyan-800 shadow-xs"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"}`}></span>
+                          <span>{reportCategory}</span>
+                        </span>
+
+                        {/* Company / Plant Badge */}
+                        <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 ${badgeColor}`}>
+                          {(report.company && report.company !== "전체") ? report.company : (report.plant || plantName)}
+                        </span>
+
+                        {/* Work Date Badge */}
+                        <span className="px-2 py-0.5 rounded-md bg-slate-900 text-cyan-300 border border-slate-800 font-mono text-[11px] font-bold shrink-0">
+                          📅 {report.workDateFormatted || report.workDate}
+                        </span>
+
+                        {/* Title */}
+                        <span className={`font-black text-xs sm:text-sm truncate transition-colors ${
+                          isWeekend ? "text-rose-100 group-hover:text-rose-300" : "text-slate-100 group-hover:text-cyan-300"
+                        }`}>
+                          {cleanDisplayTitle}
+                        </span>
                       </div>
 
-                      {/* Card Middle: Title & Approval Chain */}
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <div className="space-y-1 min-w-0">
-                          <h4 className={`font-black text-sm sm:text-base transition-colors truncate ${
-                            isWeekend ? "text-rose-100 group-hover:text-rose-300" : "text-white group-hover:text-cyan-300"
-                          }`}>
-                            {cleanDisplayTitle}
-                          </h4>
-                          {report.reasons && report.reasons.length > 0 && (
-                            <p className="text-xs text-slate-400 line-clamp-1 font-medium">
-                              {getCleanReportReason(report.reasons[0], report)}
-                            </p>
-                          )}
+                      {/* Right: Quick Attendance Breakdown + Cost/Headcount + Compact Actions */}
+                      <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap justify-between md:justify-end">
+                        {/* Compact Attendance Breakdown Pills */}
+                        <div className="flex items-center gap-1 font-mono text-[10px] font-bold">
+                          {otCounts["정시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">🟢 {otCounts["정시"]}</span>}
+                          {otCounts["19시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">🟡 {otCounts["19시"]}</span>}
+                          {otCounts["21시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/60">🟠 {otCounts["21시"]}</span>}
+                          {otCounts["22시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">🔴 {otCounts["22시"]}</span>}
+                          {otCounts["특근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">🌙 {otCounts["특근"]}</span>}
+                          {otCounts["연차"] > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60">🌴 {otCounts["연차"]}</span>}
+                          {otCounts["결근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60">❌ {otCounts["결근"]}</span>}
                         </div>
 
-                        {/* Approval Chain Summary */}
-                        <div className="flex items-center gap-1 shrink-0 text-[11px] font-bold">
-                          {(report.approval || [
-                            { role: "담당", name: "양인나" },
-                            { role: "책임", name: "윤경수" },
-                            { role: "이사", name: "이명재" },
-                            { role: "대표", name: "권태형" }
-                          ]).map((ap, apIdx) => (
-                            <div key={apIdx} className="flex items-center">
-                              <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1">
-                                <span className="text-slate-500 text-[10px]">{ap.role}</span>
-                                <span className="font-black text-white">{ap.name}</span>
-                              </span>
-                              {apIdx < 3 && <span className="text-slate-600 px-0.5 font-bold">➔</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Card Bottom: Attendance Pills & Management Action Buttons */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
-                        {/* Attendance Breakdown Pills */}
-                        <div className="flex items-center gap-1.5 flex-wrap text-[10.5px] font-mono font-bold">
-                          {otCounts["정시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80">🟢 정시 {otCounts["정시"]}명</span>}
-                          {otCounts["19시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/80">🟡 19시 {otCounts["19시"]}명</span>}
-                          {otCounts["21시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/80">🟠 21시 {otCounts["21시"]}명</span>}
-                          {otCounts["22시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/80">🔴 22시 {otCounts["22시"]}명</span>}
-                          {otCounts["특근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80">🌙 특근 {otCounts["특근"]}명</span>}
-                          {otCounts["연차"] > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/80">🌴 연차 {otCounts["연차"]}명</span>}
-                          {otCounts["결근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/80">❌ 결근 {otCounts["결근"]}명</span>}
+                        {/* Headcount & Cost */}
+                        <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
+                          <span className="font-black text-rose-400">₩{cost.toLocaleString()}</span>
+                          <span className="text-[11px] text-slate-400 font-bold">({workersCount}명 • {totalManHours}H)</span>
                         </div>
 
-                        {/* Management Action Buttons */}
-                        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => {
                               setSelectedLegacyReport(report);
                               setIsLegacyModalOpen(true);
                             }}
-                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-sm flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                            title="보고서 상세 및 결재 확인"
                           >
                             <FileText className="w-3.5 h-3.5" />
-                            <span>상세확인</span>
+                            <span className="hidden sm:inline">상세</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => handleEditReport(report)}
-                            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
                             title="해당 일자 및 소속업체로 이동하여 수정/재입력"
                           >
                             <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
-                            <span>수정/재입력</span>
+                            <span className="hidden sm:inline">수정</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={(e) => handleDeleteReport(report.id, e)}
-                            className="px-2.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                            className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
                             title="보고서 삭제"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
-                            <span>삭제</span>
                           </button>
                         </div>
                       </div>
