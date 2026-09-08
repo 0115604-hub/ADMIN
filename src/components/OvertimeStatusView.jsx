@@ -186,7 +186,7 @@ export const OvertimeStatusView = () => {
   
   // Daily views state
   const [selectedDay, setSelectedDay] = useState(8); // Default 9월 8일
-  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("전체");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("(주)오륙");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
   const [reportListSearch, setReportListSearch] = useState("");
@@ -1131,7 +1131,7 @@ export const OvertimeStatusView = () => {
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>💾 9월 {selectedDay}일 근태/특근 등록</span>
+                  <span>💾 [{selectedCompanyFilter}] 9월 {selectedDay}일({getDayOfWeekKorean(selectedDay)}) 등록</span>
                 </button>
               </div>
             </div>
@@ -1823,7 +1823,7 @@ export const OvertimeStatusView = () => {
                             <span>{reportCategory}</span>
                           </span>
                           <span className={`px-2.5 py-0.5 rounded-lg font-black text-xs border ${badgeColor}`}>
-                            {report.company || report.plant || plantName}
+                            {(report.company && report.company !== "전체") ? report.company : (report.plant || plantName)}
                           </span>
                           <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-cyan-300 border border-slate-700 font-mono text-xs font-bold">
                             📅 {report.workDateFormatted || report.workDate}
