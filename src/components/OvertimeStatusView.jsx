@@ -1822,53 +1822,78 @@ export const OvertimeStatusView = () => {
                 />
               </div>
 
-              {/* Workers Summary Table */}
-              <div className="space-y-1.5">
-                <span className="font-bold text-slate-300 text-xs flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-purple-400" />
-                  <span>9월 {selectedDay}일 투입 작업자 명단 ({filteredAttendanceWorkers.length}명)</span>
-                </span>
-                <div className="border border-slate-800 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800 sticky top-0">
-                      <tr>
-                        <th className="py-1.5 px-2 text-center w-8">No</th>
-                        <th className="py-1.5 px-2 w-16">업체</th>
-                        <th className="py-1.5 px-2 w-14">부서</th>
-                        <th className="py-1.5 px-2 w-16">성명</th>
-                        <th className="py-1.5 px-2 text-center w-16">당일근태</th>
-                        <th className="py-1.5 px-2 text-center w-14">공수</th>
-                        <th className="py-1.5 px-2">비고/내용</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
-                      {filteredAttendanceWorkers.map((w, idx) => {
-                        const val = w.daily ? w.daily[selectedDay] : "";
-                        const meta = getOptionMeta(val);
-                        const { workHours } = calculateWorkerDailyHours(val);
+              {/* Workers Summary: 선택된 인원 + 근태현황만 축약 표시 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-purple-400" />
+                    <span>9월 {selectedDay}일 투입 인원 및 근태 현황 ({filteredAttendanceWorkers.length}명)</span>
+                  </span>
 
-                        return (
-                          <tr key={idx} className="hover:bg-slate-800/60">
-                            <td className="py-1 px-2 text-center font-mono text-slate-500">{idx + 1}</td>
-                            <td className="py-1 px-2 font-bold text-slate-300">{w.company}</td>
-                            <td className="py-1 px-2 text-slate-400">{w.dept}</td>
-                            <td className="py-1 px-2 font-black text-white">{w.name}</td>
-                            <td className="py-1 px-2 text-center">
-                              <span className="font-bold text-[10.5px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">
-                                {meta.label}
-                              </span>
-                            </td>
-                            <td className="py-1 px-2 text-center font-mono font-bold text-emerald-400">
-                              {workHours || 0}H
-                            </td>
-                            <td className="py-1 px-2 text-slate-400 text-[11px]">
-                              {w.line || w.dept} 가동
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  {/* 근태별 인원 요약 뱃지 */}
+                  <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono font-bold">
+                    {(() => {
+                      const counts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "연차": 0, "결근": 0 };
+                      filteredAttendanceWorkers.forEach((w) => {
+                        const val = w.daily ? w.daily[selectedDay] : "";
+                        if (val === "🟢" || val === "정시" || val === "17") counts["정시"]++;
+                        else if (val === "19" || val === "19시") counts["19시"]++;
+                        else if (val === "21" || val === "21시") counts["21시"]++;
+                        else if (val === "22" || val === "22시") counts["22시"]++;
+                        else if (val === "연차") counts["연차"]++;
+                        else if (val === "결근") counts["결근"]++;
+                      });
+                      return (
+                        <>
+                          {counts["정시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800">🟢 정시 {counts["정시"]}명</span>}
+                          {counts["19시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">🟡 19시 {counts["19시"]}명</span>}
+                          {counts["21시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-800">🟠 21시 {counts["21시"]}명</span>}
+                          {counts["22시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-800">🔴 22시 {counts["22시"]}명</span>}
+                          {counts["연차"] > 0 && <span className="px-2 py-0.5 rounded-md bg-sky-950 text-sky-300 border border-sky-800">🌴 연차 {counts["연차"]}명</span>}
+                          {counts["결근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-800">❌ 결근 {counts["결근"]}명</span>}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* 작업자별 축약 카드 그리드 (3열 병렬) */}
+                <div className="border border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto bg-slate-950/60 p-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                    {filteredAttendanceWorkers.map((w, idx) => {
+                      const val = w.daily ? w.daily[selectedDay] : "";
+                      const getBadge = (code) => {
+                        const str = String(code || "").trim();
+                        if (str === "🟢" || str === "정시" || str === "17") return { label: "🟢 정시", bg: "bg-emerald-950 text-emerald-300 border-emerald-700/80" };
+                        if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
+                        if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
+                        if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
+                        if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
+                        if (str === "결근") return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
+                        if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
+                        if (str === "-" || str === "휴무") return { label: "- 휴무", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                        return { label: str || "미입력", bg: "bg-slate-800 text-slate-300 border-slate-700" };
+                      };
+                      const badge = getBadge(val);
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800/90 hover:border-slate-700 transition-colors text-xs"
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-mono text-[10.5px] text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
+                            <span className="text-[11px] font-bold text-slate-400 shrink-0">{w.company}</span>
+                            <span className="text-[11px] text-slate-500 shrink-0">{w.dept}</span>
+                            <span className="font-black text-white text-xs truncate">{w.name}</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold border shrink-0 whitespace-nowrap ${badge.bg}`}>
+                            {badge.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
