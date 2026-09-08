@@ -254,17 +254,38 @@ export const saveOvertimeReport = async (report) => {
   const now = new Date().toISOString();
   const reportId = report.id || `report_${report.plant === "한림공장" ? "hanlim" : "samrangjin"}_${(report.workDate || "").replace(/-/g, "")}_${Date.now()}`;
 
+  const workDate = report.workDate || "";
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  let dayOfWeek = "";
+  if (workDate) {
+    const p = workDate.split("-");
+    if (p.length === 3) {
+      const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+      if (!isNaN(dt.getTime())) dayOfWeek = days[dt.getDay()];
+    }
+  }
+
+  let finalTitle = report.title || `${report.plant || "전사"} 보고서`;
+  if (dayOfWeek && /\([일월화수목금토]\)|\(평일\)/.test(finalTitle)) {
+    finalTitle = finalTitle.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${dayOfWeek})`);
+  }
+
   const cleanReport = {
     ...report,
     id: reportId,
-    title: report.title || `${report.plant} 특근보고서`,
+    title: finalTitle,
     workDate: report.workDate,
     workDateFormatted: formatKoreanWorkDate(report.workDate),
     updatedAt: now,
     author: report.author || "작성자",
     authorTitle: report.authorTitle || "선임",
     items: report.items || [],
-    reasons: report.reasons || [],
+    reasons: (report.reasons || []).map(r => {
+      if (dayOfWeek && /\([일월화수목금토]\)|\(평일\)/.test(r)) {
+        return r.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${dayOfWeek})`);
+      }
+      return r;
+    }),
     approval: report.approval || [
       { role: "담당", name: report.author || "담당", status: "완료" },
       { role: "책임", name: report.plant === "한림공장" ? "김동욱" : "윤경수", status: "완료" },
