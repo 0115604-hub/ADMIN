@@ -92,6 +92,8 @@ export const OvertimeStatusView = () => {
 
   // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 초간결 팝업)
   const [selectedCompanyPopup, setSelectedCompanyPopup] = useState(null); // e.g. "(주)오륙"
+  const [selectedCompanyManageWorkers, setSelectedCompanyManageWorkers] = useState(null); // e.g. "(주)오륙" (근로자 추가/삭제 전용 모달)
+  const [manageWorkerSearch, setManageWorkerSearch] = useState("");
   const [popupShowAddWorker, setPopupShowAddWorker] = useState(false);
   const [quickNewWorkerName, setQuickNewWorkerName] = useState("");
   const [quickNewWorkerDept, setQuickNewWorkerDept] = useState("가공동");
@@ -203,7 +205,7 @@ export const OvertimeStatusView = () => {
       alert("근로자 성명을 입력해주세요.");
       return;
     }
-    const company = selectedCompanyPopup || "(주)오륙";
+    const company = selectedCompanyManageWorkers || selectedCompanyPopup || "(주)오륙";
     const dept = normalizeDept(quickNewWorkerDept || "가공동");
     const line = quickNewWorkerLine.trim() || dept;
     const name = quickNewWorkerName.trim();
@@ -282,6 +284,26 @@ export const OvertimeStatusView = () => {
       alert("엑셀 내보내기 중 오류가 발생했습니다: " + err.message);
     }
   };
+
+  // Filtered workers for selectedCompanyManageWorkers modal
+  const manageCompanyWorkers = useMemo(() => {
+    if (!selectedCompanyManageWorkers) return [];
+    let list = (smartData.attendanceMatrix || []).map((w, originalIdx) => ({
+      ...w,
+      dept: normalizeDept(w.dept),
+      originalMatrixIndex: originalIdx
+    })).filter((w) => w.company === selectedCompanyManageWorkers);
+
+    if (manageWorkerSearch.trim()) {
+      const q = manageWorkerSearch.trim().toLowerCase();
+      list = list.filter((w) =>
+        w.name.toLowerCase().includes(q) ||
+        w.dept.toLowerCase().includes(q) ||
+        (w.line && w.line.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch]);
 
   // Calculations & Summaries for 5 Companies
   const dailySummary = useMemo(() => {
@@ -468,10 +490,36 @@ export const OvertimeStatusView = () => {
                     </div>
                   </div>
 
-                  {/* Trigger Hint Button */}
-                  <div className="w-full flex items-center justify-center gap-1 py-1 px-2 rounded-xl bg-slate-800/80 group-hover:bg-cyan-950 text-slate-300 group-hover:text-cyan-300 border border-slate-700/80 group-hover:border-cyan-500 font-bold text-[11px] transition-all">
-                    <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>오늘자 현황 팝업</span>
+                  {/* 2 Bottom Action Badges: [인원 관리] & [상세] */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCompanyManageWorkers(compName);
+                        setQuickNewWorkerName("");
+                        setQuickNewWorkerLine("");
+                        setManageWorkerSearch("");
+                      }}
+                      className="w-full flex items-center justify-center gap-1 py-1 px-1.5 rounded-xl bg-slate-800/90 hover:bg-purple-950 text-slate-300 hover:text-purple-300 border border-slate-700/80 hover:border-purple-500 font-bold text-[11px] transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="근로자 추가 및 삭제 관리"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 text-purple-400" />
+                      <span>인원 관리</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedCompanyPopup(compName);
+                      }}
+                      className="w-full flex items-center justify-center gap-1 py-1 px-1.5 rounded-xl bg-slate-800/90 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700/80 hover:border-cyan-500 font-bold text-[11px] transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="오늘자 근태 현황 상세 보기"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>상세</span>
+                    </button>
                   </div>
                 </div>
               );
@@ -1331,6 +1379,173 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* ⭐ MODAL: 업체별 근로자 추가/삭제 관리 모달 */}
+      {selectedCompanyManageWorkers && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-3xl w-full border-2 border-purple-500 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  <Users className="w-4 h-4" />
+                </span>
+                <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
+                  <span>{selectedCompanyManageWorkers} 근로자 추가/삭제 관리</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800 font-mono font-bold">
+                    총원 {manageCompanyWorkers.length}명
+                  </span>
+                </h3>
+              </div>
+
+              <button
+                onClick={() => setSelectedCompanyManageWorkers(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Add Form Section */}
+            <div className="p-3 sm:p-4 bg-slate-950/80 border-b border-slate-800 space-y-2 shrink-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>신규 근로자 간편 등록</span>
+                </span>
+                <span className="text-[10.5px] text-slate-400">등록 즉시 전체 대장 및 근태표에 실시간 반영됩니다</span>
+              </div>
+
+              <form onSubmit={handleQuickAddCompanyWorker} className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div className="sm:col-span-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="성명 *"
+                    value={quickNewWorkerName}
+                    onChange={(e) => setQuickNewWorkerName(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <select
+                    value={quickNewWorkerDept}
+                    onChange={(e) => setQuickNewWorkerDept(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-3">
+                  <input
+                    type="text"
+                    placeholder="라인/공정 (선택)"
+                    value={quickNewWorkerLine}
+                    onChange={(e) => setQuickNewWorkerLine(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <button
+                    type="submit"
+                    className="w-full py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md shadow-purple-900/40 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>근로자 추가</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Current Workers List Table */}
+            <div className="p-3 sm:p-4 overflow-y-auto flex-1 text-xs space-y-2 max-h-[55vh]">
+              <div className="flex items-center justify-between pb-1 border-b border-slate-800 flex-wrap gap-2">
+                <span className="font-black text-slate-300 text-xs flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-purple-400" />
+                  <span>현재 등록 근로자 목록 ({manageCompanyWorkers.length}명)</span>
+                </span>
+                <div className="relative w-44">
+                  <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="이름/부서 검색..."
+                    value={manageWorkerSearch}
+                    onChange={(e) => setManageWorkerSearch(e.target.value)}
+                    className="w-full pl-7 pr-2 py-1 rounded-lg bg-slate-950 border border-slate-700 text-white text-[11px] placeholder:text-slate-500"
+                  />
+                </div>
+              </div>
+
+              {manageCompanyWorkers.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 font-bold">
+                  등록된 근로자가 없습니다.
+                </div>
+              ) : (
+                <div className="border border-slate-800 rounded-xl overflow-hidden shadow-xs">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800">
+                      <tr>
+                        <th className="py-1.5 px-2.5 text-center w-10 text-slate-500 font-mono">No</th>
+                        <th className="py-1.5 px-2.5 w-20">부서</th>
+                        <th className="py-1.5 px-2.5 w-24">성명</th>
+                        <th className="py-1.5 px-2.5">라인/공정</th>
+                        <th className="py-1.5 px-2.5 text-center w-16">직위</th>
+                        <th className="py-1.5 px-2.5 text-center w-16">삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
+                      {manageCompanyWorkers.map((worker, idx) => (
+                        <tr key={worker.originalMatrixIndex} className="hover:bg-slate-800/60 transition-colors">
+                          <td className="py-1.5 px-2.5 text-center font-mono text-slate-500 text-[11px]">
+                            {idx + 1}
+                          </td>
+                          <td className="py-1.5 px-2.5">
+                            <span className="font-bold text-purple-300 text-[11px]">{worker.dept}</span>
+                          </td>
+                          <td className="py-1.5 px-2.5 font-black text-white text-xs">
+                            {worker.name}
+                          </td>
+                          <td className="py-1.5 px-2.5 text-slate-400 font-medium text-[11px]">
+                            {worker.line || worker.dept}
+                          </td>
+                          <td className="py-1.5 px-2.5 text-center">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300">
+                              {worker.position || "작업원"}
+                            </span>
+                          </td>
+                          <td className="py-1.5 px-2.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
+                              className="px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-[10.5px] transition-all cursor-pointer flex items-center gap-1 mx-auto active:scale-95"
+                              title="근로자 삭제"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>삭제</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
+              <button
+                onClick={() => setSelectedCompanyManageWorkers(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 📑 MODAL: 이전 특근보고서 상세 모달 */}
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
