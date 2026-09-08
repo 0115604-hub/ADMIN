@@ -2570,36 +2570,60 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (마지막 수정본 실시간 자동 연동) */}
+      {/* 4. ⭐ [4위치] 공장별 일일근태현황 및 특근현황 요약 (잔업 스마트 통합관리대장 연동) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 min-w-0 max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-              4. 공장별 특근현황 요약
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-2">
+              <span>4. 공장별 일일근태현황 및 특근현황 요약</span>
+              <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
+                4개사 잔업스마트대장
+              </span>
             </h2>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shrink-0">
-              당월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">₩{overtimeSummary.totalMonthCumulativeCost.toLocaleString()}원</strong> (총 176명 • 1,472 M/H)
+              9월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">평일잔업 847H • 주말특근 424H</strong> (총 6,407 M/H)
             </span>
           </div>
 
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("overtime_status")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/80 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-black border border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/40 shadow-xs shadow-blue-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
             >
               <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
               </span>
-              <span>특근 상세</span>
-              <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>📊 잔업 대장 상세관리</span>
+              <ArrowRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
             </button>
           )}
         </div>
 
-        {/* 2 Factory Split Panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {/* 4 Company Today Overview Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { name: "(주)오륙", workers: 67, attended: 67, otHours: 97, totalHours: 633, bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800", text: "text-blue-900 dark:text-blue-200" },
+            { name: "(주)조영산업", workers: 18, attended: 18, otHours: 36, totalHours: 180, bg: "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800", text: "text-purple-900 dark:text-purple-200" },
+            { name: "한울", workers: 12, attended: 12, otHours: 21, totalHours: 117, bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800", text: "text-emerald-900 dark:text-emerald-200" },
+            { name: "부림텍", workers: 10, attended: 10, otHours: 14, totalHours: 94, bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800", text: "text-amber-900 dark:text-amber-200" }
+          ].map((comp) => (
+            <div key={comp.name} className={`p-2.5 rounded-xl border space-y-1 ${comp.bg}`}>
+              <div className="flex items-center justify-between">
+                <span className={`font-black text-xs ${comp.text}`}>{comp.name}</span>
+                <span className="text-[10px] font-bold text-slate-500">{comp.attended}/{comp.workers}명</span>
+              </div>
+              <div className="flex items-center justify-between text-[10.5px]">
+                <span className="text-slate-500 font-bold">당일 잔업: <strong className="text-amber-600 dark:text-amber-400 font-mono">+{comp.otHours}H</strong></span>
+                <span className="text-slate-500 font-bold">공수: <strong className="text-indigo-600 dark:text-indigo-400 font-mono">{comp.totalHours}H</strong></span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 2 Factory Overtime Legacy Cards Bottom Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
           {/* 삼랑진공장 */}
           <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
             <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">

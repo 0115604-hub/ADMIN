@@ -76,7 +76,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
     },
     {
       id: "overtime_status",
-      label: "특근현황",
+      label: "일일근태 및 특근현황",
       icon: Clock,
       color: "purple",
       activeClass: "bg-purple-50 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300 ring-1 ring-purple-500/30",

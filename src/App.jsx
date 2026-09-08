@@ -182,7 +182,7 @@ export const App = () => {
     if (activeTab === "worker_dashboard") return isAdmin ? "현황" : "일일생산정보현황";
     if (activeTab === "extrusion_downtime") return "압출동 주간 비가동내역";
     if (activeTab === "daily_quality") return "일일 품질현황";
-    if (activeTab === "overtime_status") return "특근현황";
+    if (activeTab === "overtime_status") return "공장별 일일근태현황 및 특근현황 요약";
     if (activeTab === "operator_workspace") return "엑셀 파일 업로드";
     const meta = ADMIN_TABS.find((t) => t.id === activeTab);
     return meta ? meta.label : "현황";
