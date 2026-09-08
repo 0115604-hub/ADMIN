@@ -2570,13 +2570,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. ⭐ [4위치] 공장별 일일근태현황 및 특근현황 요약 (잔업 스마트 통합관리대장 연동) */}
+      {/* 4. ⭐ [4위치] 근태현황 및 관리 (잔업 스마트 통합관리대장 연동) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 min-w-0 max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-2">
-              <span>4. 공장별 일일근태현황 및 특근현황 요약</span>
+              <span>4. 근태현황 및 관리</span>
               <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300">
                 5개사 잔업스마트대장
               </span>

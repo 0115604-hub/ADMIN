@@ -334,11 +334,12 @@ export const calculateDeptSummary = (attendanceList, dayNum = 8) => {
   const map = {};
 
   attendanceList.forEach((worker) => {
-    const key = `${worker.company}__${worker.dept}`;
+    const normDept = normalizeDept(worker.dept);
+    const key = `${worker.company}__${normDept}`;
     if (!map[key]) {
       map[key] = {
         company: worker.company,
-        dept: worker.dept,
+        dept: normDept,
         workerCount: 0,
         attendedCount: 0,
         regularCount: 0,
@@ -363,15 +364,52 @@ export const calculateDeptSummary = (attendanceList, dayNum = 8) => {
   return Object.values(map);
 };
 
+// Ensure all 5 companies are present even if loading from older cached storage
+export const ensureAllCompaniesPresent = (data) => {
+  if (!data || !Array.isArray(data.attendanceMatrix) || data.attendanceMatrix.length === 0) {
+    return INITIAL_SMART_OVERTIME_DATA;
+  }
+
+  let matrix = data.attendanceMatrix.map((w, idx) => ({
+    ...w,
+    no: idx + 1,
+    dept: normalizeDept(w.dept)
+  }));
+  let master = (data.masterWorkers || []).map((w, idx) => ({
+    ...w,
+    no: idx + 1,
+    dept: normalizeDept(w.dept)
+  }));
+
+  const existingCompanies = new Set(matrix.map((w) => w.company));
+
+  // Check if any company from INITIAL_SMART_OVERTIME_DATA (like '유성') is missing
+  COMPANIES.forEach((comp) => {
+    if (!existingCompanies.has(comp)) {
+      const initialWorkersForComp = INITIAL_SMART_OVERTIME_DATA.masterWorkers.filter((w) => w.company === comp);
+      const initialMatrixForComp = INITIAL_SMART_OVERTIME_DATA.attendanceMatrix.filter((w) => w.company === comp);
+      master.push(...initialWorkersForComp);
+      matrix.push(...initialMatrixForComp);
+    }
+  });
+
+  const reindexedMatrix = matrix.map((w, idx) => ({ ...w, no: idx + 1 }));
+  const reindexedMaster = master.map((w, idx) => ({ ...w, no: idx + 1 }));
+
+  return {
+    ...data,
+    attendanceMatrix: reindexedMatrix,
+    masterWorkers: reindexedMaster
+  };
+};
+
 export const getLocalSmartOvertimeData = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-        const normalizedMatrix = (parsed.attendanceMatrix || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
-        const normalizedMaster = (parsed.masterWorkers || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
-        return { ...parsed, attendanceMatrix: normalizedMatrix, masterWorkers: normalizedMaster };
+        return ensureAllCompaniesPresent(parsed);
       }
     }
   } catch (err) {
@@ -382,17 +420,18 @@ export const getLocalSmartOvertimeData = () => {
 
 export const saveSmartOvertimeData = async (data) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const normalizedData = ensureAllCompaniesPresent(data);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
 
     if (db) {
       const ref = doc(db, "smart_overtime_ledger", FIRESTORE_DOC_ID);
       await setDoc(
         ref,
         {
-          year: data.year || 2026,
-          month: data.month || 9,
-          masterWorkers: data.masterWorkers || [],
-          attendanceMatrix: data.attendanceMatrix || [],
+          year: normalizedData.year || 2026,
+          month: normalizedData.month || 9,
+          masterWorkers: normalizedData.masterWorkers || [],
+          attendanceMatrix: normalizedData.attendanceMatrix || [],
           updatedAt: new Date().toISOString()
         },
         { merge: true }
@@ -419,11 +458,9 @@ export const subscribeSmartOvertimeData = (callback) => {
         if (docSnap.exists()) {
           const cloudData = docSnap.data();
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
-            const normalizedMatrix = (cloudData.attendanceMatrix || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
-            const normalizedMaster = (cloudData.masterWorkers || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
-            const normData = { ...cloudData, attendanceMatrix: normalizedMatrix, masterWorkers: normalizedMaster };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(normData));
-            callback(normData);
+            const normalized = ensureAllCompaniesPresent(cloudData);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+            callback(normalized);
             return;
           }
         }
@@ -444,7 +481,7 @@ export const subscribeSmartOvertimeData = (callback) => {
 
 // Excel Export (6 Sheets)
 export const exportSmartOvertimeToExcel = (data) => {
-  const currentData = data || getLocalSmartOvertimeData();
+  const currentData = ensureAllCompaniesPresent(data || getLocalSmartOvertimeData());
   const wb = XLSX.utils.book_new();
 
   // Sheet 0: 일자별_근태정리본
@@ -462,7 +499,7 @@ export const exportSmartOvertimeToExcel = (data) => {
   currentData.attendanceMatrix.forEach((w, idx) => {
     const val = w.daily ? w.daily[8] : "";
     const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
-    s0Rows.push([idx + 1, w.company, w.dept, w.line, w.name, w.position || "작업원", val || "-", weekdayOt + weekendOt, workHours, ""]);
+    s0Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "작업원", val || "-", weekdayOt + weekendOt, workHours, ""]);
   });
   const ws0 = XLSX.utils.aoa_to_sheet(s0Rows);
   XLSX.utils.book_append_sheet(wb, ws0, "📋 일자별_근태정리본");
@@ -479,7 +516,7 @@ export const exportSmartOvertimeToExcel = (data) => {
   currentData.attendanceMatrix.forEach((w, idx) => {
     const val = w.daily ? w.daily[8] : "";
     const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
-    s1Rows.push([idx + 1, w.company, w.dept, w.line, w.name, val || "-", weekdayOt + weekendOt, workHours, ""]);
+    s1Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, val || "-", weekdayOt + weekendOt, workHours, ""]);
   });
   const ws1 = XLSX.utils.aoa_to_sheet(s1Rows);
   XLSX.utils.book_append_sheet(wb, ws1, "📝 일일근태_간편입력");
@@ -499,7 +536,7 @@ export const exportSmartOvertimeToExcel = (data) => {
     const row = [
       idx + 1,
       w.company,
-      w.dept,
+      normalizeDept(w.dept),
       w.line,
       w.name
     ];
@@ -545,7 +582,7 @@ export const exportSmartOvertimeToExcel = (data) => {
     ["No.", "소속 업체", "소속 부서", "차종 / 라인", "성명", "직급", "고용 형태", "재직 상태", "비고"]
   ];
   currentData.masterWorkers.forEach((w, idx) => {
-    s5Rows.push([idx + 1, w.company, w.dept, w.line, w.name, w.position || "작업원", w.employmentType || "정규직", w.status || "재직", w.note || ""]);
+    s5Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "작업원", w.employmentType || "정규직", w.status || "재직", w.note || ""]);
   });
   const ws5 = XLSX.utils.aoa_to_sheet(s5Rows);
   XLSX.utils.book_append_sheet(wb, ws5, "👥 마스터_인원관리대장");
@@ -580,7 +617,7 @@ export const importSmartOvertimeFromExcel = async (file) => {
           if (!r || r.length < 5) continue;
           const no = Number(r[0]) || i;
           const company = String(r[1] || "").trim();
-          const dept = String(r[2] || "").trim();
+          const dept = normalizeDept(r[2] || "압출동");
           const line = String(r[3] || "").trim();
           const name = String(r[4] || "").trim();
           if (!name) continue;
@@ -594,7 +631,7 @@ export const importSmartOvertimeFromExcel = async (file) => {
           importedMatrix.push({
             no,
             company: company || "(주)오륙",
-            dept: dept || "생산부",
+            dept,
             line: line || "1라인",
             name,
             daily
@@ -603,7 +640,7 @@ export const importSmartOvertimeFromExcel = async (file) => {
           importedWorkers.push({
             no,
             company: company || "(주)오륙",
-            dept: dept || "생산부",
+            dept,
             line: line || "1라인",
             name,
             position: "작업원",
