@@ -818,15 +818,15 @@ export const AuthModal = () => {
                             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                               {isMeeting ? (
                                 <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
-                                  🗓️ 회의
+                                  회의
                                 </span>
                               ) : isNotice ? (
                                 <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
-                                  📢 공지
+                                  공지
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
-                                  🚨 경보
+                                  경보
                                 </span>
                               )}
                               <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
@@ -870,7 +870,7 @@ export const AuthModal = () => {
                                   </span>
                                 ) : (
                                   <span className="font-bold text-amber-600 dark:text-amber-400 shrink-0">
-                                    • ⚠️ {isMeeting ? "결과 대기중" : "조치 대기중"}
+                                    • {isMeeting ? "결과 대기중" : "조치 대기중"}
                                   </span>
                                 )}
                               </div>
@@ -919,7 +919,7 @@ export const AuthModal = () => {
                               }`}
                               title={isMeeting ? "회의결과 입력/수정" : "조치결과 입력/수정"}
                             >
-                              {isMeeting ? (item.actionResult ? "✏️ 결과" : "✍️ 결과") : (item.actionResult ? "✏️ 조치" : "✍️ 조치")}
+                              {isMeeting ? "결과입력" : "조치입력"}
                             </button>
 
                             {/* Edit Button: 기존 내용 전체 수정 */}
@@ -980,15 +980,15 @@ export const AuthModal = () => {
                             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
                               {isMeeting ? (
                                 <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-purple-600 text-white shrink-0 shadow-xs tracking-wide">
-                                  🗓️ 회의일정
+                                  회의일정
                                 </span>
                               ) : isNotice ? (
                                 <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-emerald-600 text-white shrink-0 shadow-xs tracking-wide">
-                                  📢 사내공지
+                                  사내공지
                                 </span>
                               ) : (
                                 <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-rose-600 text-white shrink-0 shadow-xs tracking-wide">
-                                  🚨 품질경보
+                                  품질경보
                                 </span>
                               )}
                               <span className={`px-2 py-0.8 rounded-lg text-xs sm:text-sm font-black shrink-0 ${
@@ -1136,7 +1136,7 @@ export const AuthModal = () => {
                                     : "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-xs"
                                 }`}
                               >
-                                {isMeeting ? (item.actionResult ? "✏️ 결과수정" : "✍️ 결과입력") : (item.actionResult ? "✏️ 수정" : "✍️ 조치입력")}
+                                {isMeeting ? (item.actionResult ? "결과수정" : "결과입력") : (item.actionResult ? "조치수정" : "조치입력")}
                               </button>
                             </div>
                           </div>
@@ -1233,7 +1233,7 @@ export const AuthModal = () => {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-black text-xs sm:text-sm md:text-base text-slate-800 dark:text-slate-200">
-                      🗑️ 삭제 종결 관리대장 (권한자 삭제 내역)
+                      삭제 종결 관리대장 (권한자 삭제 내역)
                     </h4>
                     <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-mono font-black bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-400/40">
                       총 {deletedIssues.length}건
@@ -1270,7 +1270,7 @@ export const AuthModal = () => {
                         <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
                           <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                             <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-600 text-white shrink-0">
-                              🗑️ 삭제종결
+                              삭제종결
                             </span>
                             <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 ${
                               isMeeting ? "bg-purple-600" : isNotice ? "bg-emerald-600" : "bg-rose-600"
@@ -1756,7 +1756,7 @@ export const AuthModal = () => {
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <span>⏳ 진행중</span>
+                    <span>진행중</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200">
                       {unresolvedIssues.length}
                     </span>
@@ -1775,7 +1775,7 @@ export const AuthModal = () => {
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
-                    <span>✓ 종결대장</span>
+                    <span>종결대장</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
                       {closedIssues.length}
                     </span>
@@ -1816,7 +1816,7 @@ export const AuthModal = () => {
                               ? "bg-emerald-600"
                               : "bg-rose-600"
                           }`}>
-                            {isItemDeleted ? "🗑️ 삭제됨" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "🚨 품질경보"}
+                            {isItemDeleted ? "🗑️ 삭제됨" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "사내공지" : "품질경보"}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                             {item.plant}
@@ -2028,15 +2028,15 @@ export const AuthModal = () => {
                             {/* Status Badge */}
                             {isItDeleted ? (
                               <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                                🗑️ 삭제종결
+                                삭제종결
                               </span>
                             ) : isItResolved ? (
                               <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
-                                ✓ 조치완료
+                                조치완료
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
-                                ⏳ 조치대기
+                                조치대기
                               </span>
                             )}
 
@@ -2186,8 +2186,8 @@ export const AuthModal = () => {
                       ? (newIssueForm.category === "회의일정"
                           ? "📅 회의일정 내용 수정"
                           : newIssueForm.category === "공지사항"
-                          ? "📢 사내공지 내용 수정"
-                          : "🚨 품질경보 내용 수정")
+                          ? "사내공지 내용 수정"
+                          : "품질경보 내용 수정")
                       : (newIssueForm.category === "회의일정"
                           ? "사내 회의일정 등록"
                           : newIssueForm.category === "공지사항"
@@ -2232,7 +2232,7 @@ export const AuthModal = () => {
                           : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <span>🚨 품질경보</span>
+                      <span>품질경보</span>
                     </button>
 
                     {/* 2. 사내공지 (녹색) */}
@@ -2245,7 +2245,7 @@ export const AuthModal = () => {
                           : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <span>📢 사내공지</span>
+                      <span>사내공지</span>
                     </button>
 
                     {/* 3. 회의일정 (보라색) */}
@@ -2258,7 +2258,7 @@ export const AuthModal = () => {
                           : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                       }`}
                     >
-                      <span>📅 회의일정</span>
+                      <span>회의일정</span>
                     </button>
                   </div>
                 </div>
@@ -2330,7 +2330,7 @@ export const AuthModal = () => {
               {/* 전달 내용 / 회의 일정 */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  {newIssueForm.category === "회의일정" ? "📅 회의 일정 및 안건 내용" : "📢 전달 내용"}
+                  {newIssueForm.category === "회의일정" ? "회의 일정 및 안건 내용" : "전달 내용"}
                 </label>
                 <textarea
                   rows="3"
@@ -2479,7 +2479,7 @@ export const AuthModal = () => {
               {newIssueForm.category !== "회의일정" && (
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    ✓ 조치 결과 (선택 입력)
+                    조치 결과 (선택 입력)
                   </label>
                   <textarea
                     rows="2"
@@ -2581,7 +2581,7 @@ export const AuthModal = () => {
                   </strong>
                 </div>
                 <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
-                  📢 {actionModalData.issue.content}
+                  {actionModalData.issue.content}
                 </p>
               </div>
 
@@ -2607,7 +2607,7 @@ export const AuthModal = () => {
                 {/* 결과 상세 내용 */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    {isMeetingAction ? "✓ 회의 결과 및 결정 사항" : "✓ 조치결과 상세 내용"}
+                    {isMeetingAction ? "회의 결과 및 결정 사항" : "조치결과 상세 내용"}
                   </label>
                   <textarea
                     rows="4"

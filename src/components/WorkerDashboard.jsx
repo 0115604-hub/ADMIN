@@ -2195,7 +2195,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
         <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5">
           <div className="flex items-center gap-2 min-w-0 truncate">
             <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 shrink-0">
@@ -2406,10 +2406,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("daily_quality")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs shadow-emerald-500/20 transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
             >
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
               <span>품질 상세</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             </button>
           )}
         </div>
@@ -2446,7 +2450,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           : "bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 animate-pulse"
                       }`}
                     >
-                      {isGood ? "목표달성 ✓" : "관리주의 🚨"}
+                      {isGood ? "목표달성" : "관리주의"}
                     </span>
                   </div>
 
@@ -2520,7 +2524,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   삼랑진공장
                 </span>
                 <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 shrink-0">
-                  📅 {overtimeSummary.samrangjin.date}
+                  {overtimeSummary.samrangjin.date}
                 </span>
                 <span className="text-[9.5px] text-slate-500 font-bold truncate">{overtimeSummary.samrangjin.author} {overtimeSummary.samrangjin.authorTitle || "선임"}</span>
               </div>
@@ -2551,7 +2555,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   한림공장
                 </span>
                 <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800 shrink-0">
-                  📅 {overtimeSummary.hallim.date}
+                  {overtimeSummary.hallim.date}
                 </span>
                 <span className="text-[9.5px] text-slate-500 font-bold truncate">{overtimeSummary.hallim.author} {overtimeSummary.hallim.authorTitle || "선임"}</span>
               </div>
@@ -2589,7 +2593,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
               <div className="min-w-0">
                 <p className="font-extrabold text-xs text-amber-900 dark:text-amber-200">
-                  👑 [이명재 총괄이사] 삼랑진공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingSamrangjinCount}건</strong> 있습니다.
+                  [이명재 총괄이사] 삼랑진공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingSamrangjinCount}건</strong> 있습니다.
                 </p>
                 <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.2">
                   목록에서 업무일지를 클릭하여 세부 작업 내용을 꼼꼼히 확인하신 후 결재를 진행해 주세요.
@@ -2610,7 +2614,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
               <div className="min-w-0">
                 <p className="font-extrabold text-xs text-emerald-900 dark:text-emerald-200">
-                  👑 [김동욱 총괄책임] 한림공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingHallimCount}건</strong> 있습니다.
+                  [김동욱 총괄책임] 한림공장 결재 대기 업무일지가 <strong className="text-rose-600 dark:text-rose-400 underline font-black">{pendingHallimCount}건</strong> 있습니다.
                 </p>
                 <p className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-0.2">
                   목록에서 업무일지를 클릭하여 세부 작업 내용을 꼼꼼히 확인하신 후 결재를 진행해 주세요.
@@ -2736,7 +2740,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         <span className="truncate">{log.workContent}</span>
                         {Array.isArray(log.lineFileMatches) && log.lineFileMatches.length > 0 && (
                           <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
-                            📊 {log.lineFileMatches.length}개라인 매칭
+                            {log.lineFileMatches.length}개 라인 매칭
                           </span>
                         )}
                         {Array.isArray(log.images) && log.images.length > 0 && (
@@ -5651,7 +5655,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         : "bg-rose-500 text-white"
                     }`}
                   >
-                    {qualityPopupItem.defectRate <= 0.70 ? "목표달성 ✓" : "관리주의 🚨"}
+                    {qualityPopupItem.defectRate <= 0.70 ? "목표달성" : "관리주의"}
                   </span>
                 </div>
                 <p className="text-xs text-slate-300 mt-1 truncate">
@@ -5813,7 +5817,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   {/* Summary Footer */}
                   <tfoot>
                     <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-emerald-500">
-                      <td className="p-3 text-center">📊 9월 총 누계</td>
+                      <td className="p-3 text-center">9월 총 누계</td>
                       <td className="p-3 text-right font-mono text-emerald-400">
                         {qualityPopupItem.inspectQty.toLocaleString()} EA
                       </td>
