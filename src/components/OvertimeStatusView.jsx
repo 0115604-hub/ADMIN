@@ -89,6 +89,8 @@ export const OvertimeStatusView = () => {
   const [selectedDay, setSelectedDay] = useState(8); // Default 9월 8일
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("전체");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
+  const [reportListFilter, setReportListFilter] = useState("전체");
+  const [reportListSearch, setReportListSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
@@ -469,6 +471,27 @@ export const OvertimeStatusView = () => {
     }
   };
 
+
+
+  // ⭐ USER ACTION: 보고서 수정 및 근태 등록 화면으로 이동
+  const handleEditReport = (report) => {
+    if (report.workDate) {
+      const parts = report.workDate.split("-");
+      if (parts.length === 3) {
+        const d = parseInt(parts[2], 10);
+        if (!isNaN(d)) setSelectedDay(d);
+      }
+    }
+    if (report.company) {
+      setSelectedCompanyFilter(report.company);
+    } else if (report.plant === "삼랑진공장") {
+      setSelectedCompanyFilter("(주)오륙");
+    } else if (report.plant === "한림공장") {
+      setSelectedCompanyFilter("(주)조영산업");
+    }
+    setActiveTab("daily_input");
+    triggerToast(`✏️ 9월 ${report.workDate ? report.workDate.split("-")[2] : ""}일 [${report.company || report.plant || "전체"}] 근태 등록 화면으로 이동했습니다.`);
+  };
 
   // ⭐ USER ACTION: 특근보고서 삭제 핸들러
   const handleDeleteReport = async (reportId, e) => {
@@ -903,7 +926,7 @@ export const OvertimeStatusView = () => {
           { id: "daily_input", label: "📝 근태/잔업/특근 등록", icon: Zap, badge: hasUnsavedChanges ? "미저장 있음" : "등록", highlight: true },
           { id: "daily_summary", label: "📋 일자별 종합 집계", icon: FileSpreadsheet },
           { id: "monthly_matrix", label: "📊 9월 전사 종합현황판", icon: CalendarDays },
-          { id: "legacy_reports", label: "📑 특근보고서 관리", icon: FileText, badge: "토요특근 연동" }
+          { id: "legacy_reports", label: "📑 근태/특근 관리", icon: FileText, badge: `${legacyReports.length}건 등록` }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
