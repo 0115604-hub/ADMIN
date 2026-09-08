@@ -47,7 +47,8 @@ import {
   Users,
   Save,
   Edit3,
-  LayoutList
+  LayoutList,
+  History
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
