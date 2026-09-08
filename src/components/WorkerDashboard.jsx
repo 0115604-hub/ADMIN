@@ -2196,12 +2196,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
-        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5">
-          <div className="flex items-center gap-2 min-w-0 truncate">
-            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 shrink-0">
-              <DollarSign className="w-3.5 h-3.5" />
-            </div>
-            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
               1. {monthTitle} 매입매출현황 요약
             </h2>
           </div>
@@ -2249,25 +2246,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 (월별 그래프 + 당월 누적시간 단독 합산) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-2.5 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 border border-amber-200/60 dark:border-amber-800/60 shrink-0">
-              <Wrench className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
-                  2. 압출동 주간 비가동내역 요약
-                </h2>
-                <span className="text-[10px] font-black px-2 py-0.2 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0">
-                  9월 당월 누적 합산 기준
-                </span>
-              </div>
-              <p className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.2 truncate">
-                4개 라인의 9월 당월 누적 비가동시간과 7월~9월 월별 비교 추이 그래프입니다.
-              </p>
-            </div>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+              2. 압출동 주간 비가동내역 요약
+            </h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+              9월 당월 누적
+            </span>
           </div>
 
           {onNavigateTab && (
@@ -2383,24 +2370,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 min-w-0 max-w-full overflow-hidden">
         {/* Header with Quality Detail Link */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white truncate">
-                  3. 4대 코어 품목별 품질현황
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                  {selectedMonth?.slice(5, 7) || "9"}월 실적
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                품질 관리 목표치: <strong>0.70% 이하</strong> (품목 카드 클릭 시 일자별 세부 실적 팝업)
-              </p>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+              3. 중요ITEM 품질현황
+            </h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+              {selectedMonth?.slice(5, 7) || "9"}월 실적
+            </span>
           </div>
 
           {onNavigateTab && (
@@ -2484,18 +2461,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 4. ⭐ [4위치] 공장별 특근현황 요약 (마지막 수정본 실시간 자동 연동) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800 gap-1.5">
-          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-            <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 shrink-0">
-              <Calendar className="w-3.5 h-3.5" />
-            </div>
-            <h2 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
               4. 공장별 특근현황 요약
             </h2>
-            <span className="text-[9.5px] sm:text-[10px] font-extrabold px-2 py-0.2 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 flex items-center gap-1">
-              <DollarSign className="w-3 h-3 text-rose-500 shrink-0" />
-              <span>당월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">₩{overtimeSummary.totalMonthCumulativeCost.toLocaleString()}원</strong> (총 176명 • 1,472 M/H)</span>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shrink-0">
+              당월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">₩{overtimeSummary.totalMonthCumulativeCost.toLocaleString()}원</strong> (총 176명 • 1,472 M/H)
             </span>
           </div>
 
@@ -2583,7 +2556,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 5. ⭐ [5위치] 일일업무일지 현황 (상세내용 확인 후 개별 전자결재) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2 min-w-0 max-w-full overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
         {/* Manager Dedicated Information Banners (No batch approval - Requires reading details) */}
         {isMyeongjae && pendingSamrangjinCount > 0 && (
           <div className="p-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-wrap items-center justify-between gap-2 animate-fadeIn min-w-0">
@@ -2645,14 +2618,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 pb-1.5 border-b border-slate-100 dark:border-slate-800 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 shrink-0">
-              <FileText className="w-3.5 h-3.5" />
-            </div>
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
               5. 일일업무일지 현황
-            </h3>
+            </h2>
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
