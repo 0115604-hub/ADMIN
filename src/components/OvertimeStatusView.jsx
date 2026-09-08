@@ -391,9 +391,9 @@ export const OvertimeStatusView = () => {
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
   const handleOpenRegistrationReportModal = () => {
     const d = selectedDay;
-    const isSaturday = (d === 5 || d === 12 || d === 19 || d === 26);
-    const isSunday = (d === 6 || d === 13 || d === 20 || d === 27);
-    const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
+    const isWk = isWeekendByDate(d);
+    const dayLabel = getDayOfWeekKorean(d);
+    const reportType = isWk ? "특근실시보고서" : "근태보고서";
 
     const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
     const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
@@ -410,8 +410,8 @@ export const OvertimeStatusView = () => {
       return sum + (workHours || 0);
     }, 0);
 
-    setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compLabel} 근태 및 특근실시 보고서`);
-    setReportModalAuthor(compMeta.author);
+    setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compLabel} ${reportType}`);
+    setReportModalAuthor(compMeta.author || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
     // ⭐ 해당 회사 관리자들로 결재란 자동 구성
@@ -423,7 +423,7 @@ export const OvertimeStatusView = () => {
     ]);
 
     setReportModalNotes(
-      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 근태/특근 현황\n2. ${compMeta.plant} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
+      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
     );
 
     setIsReportModalOpen(true);
@@ -438,9 +438,11 @@ export const OvertimeStatusView = () => {
       
       // 2. Generate and save company-specific report record
       const d = selectedDay;
-      const isSaturday = (d === 5 || d === 12 || d === 19 || d === 26);
-      const isSunday = (d === 6 || d === 13 || d === 20 || d === 27);
-      const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
+      const isWk = isWeekendByDate(d);
+      const dayLabel = getDayOfWeekKorean(d);
+      const reportType = isWk ? "특근실시보고서" : "근태보고서";
+      const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
+      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compLabel} ${reportType}`;
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
 
       const items = filteredAttendanceWorkers.filter(w => {
@@ -484,8 +486,8 @@ export const OvertimeStatusView = () => {
         reportType: reportType,
         workDate: `2026-09-${String(d).padStart(2, "0")}`,
         workDateFormatted: `2026-09-${String(d).padStart(2, "0")} (${dayLabel})`,
-        author: reportModalAuthor,
-        authorTitle: "선임",
+        author: reportModalAuthor || "작성자",
+        authorTitle: reportModalAuthorTitle || "선임",
         updatedAt: new Date().toISOString(),
         approval: reportApprovalSteps,
         totalWorkers: items.length,
@@ -501,7 +503,7 @@ export const OvertimeStatusView = () => {
       
       setHasUnsavedChanges(false);
       setIsReportModalOpen(false);
-      triggerToast(`🎉 [${selectedCompanyFilter}] 관리자 결재선 적용 보고서가 등록되었습니다!`);
+      triggerToast(`🎉 [${selectedCompanyFilter}] 관리자 결재선 적용 ${reportType}가 등록되었습니다!`);
     } catch (err) {
       console.error(err);
       alert("등록 중 오류가 발생했습니다: " + err.message);
