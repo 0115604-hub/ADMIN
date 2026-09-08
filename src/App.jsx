@@ -19,7 +19,6 @@ import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
-import { OryukLogo } from "./components/OryukLogo";
 import { useAuth } from "./context/AuthContext";
 import { useMonth } from "./context/MonthContext";
 import {

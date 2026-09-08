@@ -2,11 +2,7 @@ import React, { useState } from "react";
 import {
   LogOut,
   Calendar,
-  Building2,
-  UserCheck,
   ArrowLeft,
-  QrCode,
-  X,
   Menu,
   Plus
 } from "lucide-react";

@@ -5,18 +5,21 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { MonthProvider } from "./context/MonthContext";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <AuthProvider>
-      <ThemeProvider>
-        <CurrencyProvider>
-          <MonthProvider>
-            <App />
-          </MonthProvider>
-        </CurrencyProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <CurrencyProvider>
+            <MonthProvider>
+              <App />
+            </MonthProvider>
+          </CurrencyProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
