@@ -443,7 +443,8 @@ export const OvertimeStatusView = () => {
         plant: compMeta.plant,
         company: selectedCompanyFilter,
         companies: selectedCompanyFilter === "전체" ? COMPANIES : [selectedCompanyFilter],
-        title: reportModalTitle,
+        title: finalReportTitle,
+        reportType: reportType,
         workDate: `2026-09-${String(d).padStart(2, "0")}`,
         workDateFormatted: `2026-09-${String(d).padStart(2, "0")} (${dayLabel})`,
         author: reportModalAuthor,
@@ -1685,6 +1686,37 @@ export const OvertimeStatusView = () => {
                     ? "bg-amber-950 text-amber-300 border-amber-700/70"
                     : "bg-emerald-950 text-emerald-300 border-emerald-700/70";
 
+                  // ⭐ 평일은 '근태보고서', 토/일은 '특근실시보고서' 구분
+                  let isWeekend = false;
+                  if (report.workDate) {
+                    const p = String(report.workDate).split("-");
+                    if (p.length === 3) {
+                      const d = parseInt(p[2], 10);
+                      if ([5, 6, 12, 13, 19, 20, 26, 27].includes(d)) isWeekend = true;
+                    }
+                  }
+                  const rawTitle = report.title || "";
+                  if (rawTitle.includes("토") || rawTitle.includes("일") || rawTitle.includes("특근")) isWeekend = true;
+
+                  const reportCategory = isWeekend ? "특근실시보고서" : "근태보고서";
+                  
+                  // 정제된 보고서 제목
+                  let cleanDisplayTitle = rawTitle;
+                  if (isWeekend) {
+                    cleanDisplayTitle = cleanDisplayTitle
+                      .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
+                      .replace(/특근실시 보고서/g, "특근실시보고서");
+                    if (!cleanDisplayTitle.includes("특근실시보고서")) {
+                      cleanDisplayTitle += " 특근실시보고서";
+                    }
+                  } else {
+                    cleanDisplayTitle = cleanDisplayTitle
+                      .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
+                    if (!cleanDisplayTitle.includes("근태보고서")) {
+                      cleanDisplayTitle += " 근태보고서";
+                    }
+                  }
+
                   const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
                   const totalManHours = report.totalHours || (workersCount * 8);
                   const cost = report.cost || (totalManHours * 15000);
@@ -1711,13 +1743,25 @@ export const OvertimeStatusView = () => {
                         setSelectedLegacyReport(report);
                         setIsLegacyModalOpen(true);
                       }}
-                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-purple-500/80 transition-all duration-200 space-y-3 shadow-md group cursor-pointer"
+                      className={`p-4 rounded-2xl bg-slate-950 transition-all duration-200 space-y-3 group cursor-pointer ${
+                        isWeekend
+                          ? "border-2 border-rose-500 hover:border-rose-400 shadow-lg shadow-rose-950/30 ring-1 ring-rose-500/40"
+                          : "border border-slate-700 hover:border-cyan-400/80 shadow-md"
+                      }`}
                     >
                       {/* Card Top: Metadata, Badges & Cost */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
                         <div className="flex items-center gap-2 flex-wrap min-w-0">
                           <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0">
                             #{idx + 1}
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-lg font-black text-xs border flex items-center gap-1 ${
+                            isWeekend
+                              ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
+                              : "bg-cyan-950 text-cyan-300 border-cyan-700 shadow-xs"
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"}`}></span>
+                            <span>{reportCategory}</span>
                           </span>
                           <span className={`px-2.5 py-0.5 rounded-lg font-black text-xs border ${badgeColor}`}>
                             {report.company || report.plant || plantName}
@@ -1743,8 +1787,10 @@ export const OvertimeStatusView = () => {
                       {/* Card Middle: Title & Approval Chain */}
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                         <div className="space-y-1 min-w-0">
-                          <h4 className="font-black text-sm sm:text-base text-white group-hover:text-cyan-300 transition-colors truncate">
-                            {report.title || `${report.workDate} ${report.company || report.plant} 특근실시 보고서`}
+                          <h4 className={`font-black text-sm sm:text-base transition-colors truncate ${
+                            isWeekend ? "text-rose-100 group-hover:text-rose-300" : "text-white group-hover:text-cyan-300"
+                          }`}>
+                            {cleanDisplayTitle}
                           </h4>
                           {report.reasons && report.reasons.length > 0 && (
                             <p className="text-xs text-slate-400 line-clamp-1 font-medium">
@@ -1829,20 +1875,34 @@ export const OvertimeStatusView = () => {
         </div>
       )}
 
+      {/* ========================================================================= */}      {/* ========================================================================= */}
+      {/* 📑 MODAL: 등록 클릭 시 뜨는 특근/근태 보고서 팝업창 (내용 작성 및 검토) */}
       {/* ========================================================================= */}
       {isReportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+          <div className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+            [5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay)
+              ? "border-2 border-rose-500 shadow-rose-950/40"
+              : "border-2 border-cyan-400"
+          }`}>
             {/* Modal Header */}
             <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
               <div className="flex items-center gap-2.5">
-                <span className="p-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                <span className={`p-1.5 rounded-lg border ${
+                  [5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay)
+                    ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                    : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                }`}>
                   <FileText className="w-5 h-5" />
                 </span>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
-                    <span>특근/근태 보고서 등록 및 결재</span>
-                    <span className="text-xs px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono">
+                    <span>{[5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay) ? "특근실시보고서" : "근태보고서"} 등록 및 결재</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-md border font-mono ${
+                      [5, 6, 12, 13, 19, 20, 26, 27].includes(selectedDay)
+                        ? "bg-rose-950 text-rose-300 border-rose-800"
+                        : "bg-cyan-950 text-cyan-300 border-cyan-800"
+                    }`}>
                       2026-09-{String(selectedDay).padStart(2, "0")}
                     </span>
                   </h3>
@@ -2421,7 +2481,35 @@ export const OvertimeStatusView = () => {
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full border-2 border-purple-400 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+          {(() => {
+            let isWk = false;
+            if (selectedLegacyReport.workDate) {
+              const p = String(selectedLegacyReport.workDate).split("-");
+              if (p.length === 3) {
+                const d = parseInt(p[2], 10);
+                if ([5, 6, 12, 13, 19, 20, 26, 27].includes(d)) isWk = true;
+              }
+            }
+            const rawTitle = selectedLegacyReport.title || "";
+            if (rawTitle.includes("토") || rawTitle.includes("일") || rawTitle.includes("특근")) isWk = true;
+            const repType = isWk ? "특근실시보고서" : "근태보고서";
+
+            let cleanTitle = rawTitle;
+            if (isWk) {
+              cleanTitle = cleanTitle
+                .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
+                .replace(/특근실시 보고서/g, "특근실시보고서");
+              if (!cleanTitle.includes("특근실시보고서")) cleanTitle += " 특근실시보고서";
+            } else {
+              cleanTitle = cleanTitle
+                .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
+              if (!cleanTitle.includes("근태보고서")) cleanTitle += " 근태보고서";
+            }
+
+            return (
+          <div className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+            isWk ? "border-2 border-rose-500 shadow-rose-950/40" : "border-2 border-cyan-400"
+          }`}>
             {/* Modal Header */}
             <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -2454,7 +2542,7 @@ export const OvertimeStatusView = () => {
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 block pb-0.5">보고서 제목</span>
                     <div className="font-black text-white text-sm sm:text-base">
-                      {selectedLegacyReport.title || `${selectedLegacyReport.workDate} 특근실시 보고서`}
+                      {cleanTitle}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs pt-1">
@@ -2652,6 +2740,8 @@ export const OvertimeStatusView = () => {
               </div>
             </div>
           </div>
+        );
+      })()}
         </div>
       )}
     </div>
