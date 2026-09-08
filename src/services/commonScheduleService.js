@@ -5,26 +5,48 @@ import { getKSTDateString } from "../utils/dateUtils";
 const STORAGE_KEY = "oryuk_common_schedules_v1";
 const COLLECTION_NAME = "company_common_schedules";
 
-// Initial sample common schedules (Empty by default)
-const DEFAULT_COMMON_SCHEDULES = [];
+// Initial sample common schedules (Live interactive sample)
+const DEFAULT_COMMON_SCHEDULES = [
+  {
+    id: "sched_20260908_seminar",
+    title: "2026 스마트 공장 고도화 및 품질 혁신 세미나",
+    target: "세미나",
+    startDate: "2026-09-08",
+    endDate: "2026-09-09",
+    date: "2026-09-08",
+    time: "14:00",
+    author: "ADMIN",
+    createdAt: "2026-09-08T09:00:00.000Z",
+    isCompleted: false,
+    comments: [
+      {
+        id: "cmt_1",
+        author: "이명재",
+        role: "이사",
+        plant: "삼랑진공장",
+        text: "삼랑진공장 품질관리팀 전원 참석 예정입니다.",
+        createdAt: "2026-09-08T10:30:00.000Z"
+      },
+      {
+        id: "cmt_2",
+        author: "김동욱",
+        role: "책임",
+        plant: "한림공장",
+        text: "한림공장 라인 가동 일정 확인 후 2명 참석하겠습니다.",
+        createdAt: "2026-09-08T11:15:00.000Z"
+      }
+    ]
+  }
+];
 
 export const getLocalCommonSchedules = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      const filtered = Array.isArray(parsed)
-        ? parsed.filter(
-            (s) =>
-              !s.id?.startsWith("sched_default_") &&
-              !s.title?.includes("경영전략") &&
-              !s.title?.includes("납품계획")
-          )
-        : [];
-      if (filtered.length !== parsed.length) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
       }
-      return filtered;
     }
   } catch (e) {
     console.error("Failed to parse local common schedules:", e);
