@@ -90,7 +90,7 @@ export const OvertimeStatusView = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
 
-  // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 팝업)
+  // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 초간결 팝업)
   const [selectedCompanyPopup, setSelectedCompanyPopup] = useState(null); // e.g. "(주)오륙"
   const [popupShowAddWorker, setPopupShowAddWorker] = useState(false);
   const [quickNewWorkerName, setQuickNewWorkerName] = useState("");
@@ -323,7 +323,7 @@ export const OvertimeStatusView = () => {
     return list;
   }, [smartData.attendanceMatrix, selectedCompanyFilter, selectedDeptFilter, searchWorkerQuery]);
 
-  // Data for Company Popup Modal
+  // Data for Company Popup Modal (간결화)
   const popupCompanyData = useMemo(() => {
     if (!selectedCompanyPopup) return null;
     const company = selectedCompanyPopup;
@@ -347,27 +347,10 @@ export const OvertimeStatusView = () => {
       }))
       .filter((w) => w.company === company);
 
-    const deptsBreakdown = {};
-    DEPARTMENTS.forEach((d) => {
-      deptsBreakdown[d] = { total: 0, attended: 0, otHours: 0, totalHours: 0 };
-    });
-
-    workers.forEach((w) => {
-      const d = w.dept;
-      if (!deptsBreakdown[d]) deptsBreakdown[d] = { total: 0, attended: 0, otHours: 0, totalHours: 0 };
-      deptsBreakdown[d].total++;
-      const val = w.daily ? w.daily[selectedDay] : "";
-      const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
-      if (isAttended) deptsBreakdown[d].attended++;
-      deptsBreakdown[d].otHours += (weekdayOt + weekendOt);
-      deptsBreakdown[d].totalHours += workHours;
-    });
-
     return {
       company,
       breakdown,
-      workers,
-      deptsBreakdown
+      workers
     };
   }, [selectedCompanyPopup, dailySummary, smartData.attendanceMatrix, selectedDay]);
 
@@ -1199,28 +1182,21 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (COMPANY TODAY OVERVIEW & WORKERS POPUP) */}
+      {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (초간결 & NO SCROLLING 컴팩트 디자인) */}
       {/* ========================================================================= */}
       {popupCompanyData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-slate-900 text-white rounded-3xl max-w-4xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
-              <div className="flex items-center gap-3">
-                <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40">
-                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
-                </span>
-                <div>
-                  <h3 className="font-black text-base sm:text-xl text-white flex items-center gap-2">
-                    <span>{popupCompanyData.company} 9월 {selectedDay}일 오늘자 근태 및 잔업 현황</span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40">
-                      총원 {popupCompanyData.breakdown.total}명
-                    </span>
-                  </h3>
-                  <p className="text-xs text-slate-400 font-medium">
-                    당일 실시간 집계 요약 및 작업자별 근태 관리
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-3xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            {/* 1. Modal Header (Compact) */}
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
+                  <span>{popupCompanyData.company} 9월 {selectedDay}일 오늘자 현황</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-cyan-300 border border-slate-700 font-mono">
+                    총원 {popupCompanyData.breakdown.total}명
+                  </span>
+                </h3>
               </div>
 
               <button
@@ -1228,290 +1204,217 @@ export const OvertimeStatusView = () => {
                   setSelectedCompanyPopup(null);
                   setPopupShowAddWorker(false);
                 }}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 text-xs">
-              {/* 1. Today Overview KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-0.5">
-                  <span className="text-[11px] font-bold text-slate-400">당일 출근</span>
-                  <div className="text-base sm:text-xl font-black text-emerald-400 font-mono">
-                    {popupCompanyData.breakdown.attended} / {popupCompanyData.breakdown.total} <span className="text-xs text-slate-400 font-normal">명</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    (휴무/결근: {popupCompanyData.breakdown.total - popupCompanyData.breakdown.attended}명)
+            {/* 2. Top Ultra-Compact KPI Pills Bar */}
+            <div className="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 shrink-0">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-bold">당일 출근</span>
+                  <span className="font-black text-emerald-400 font-mono text-sm">
+                    {popupCompanyData.breakdown.attended} / {popupCompanyData.breakdown.total}명
                   </span>
                 </div>
-
-                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-0.5">
-                  <span className="text-[11px] font-bold text-slate-400">정시 근무</span>
-                  <div className="text-base sm:text-xl font-black text-emerald-400 font-mono">
-                    {popupCompanyData.breakdown.regular} <span className="text-xs text-slate-400 font-normal">명</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    (8H 기본 근무)
+                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-bold">정시 근무(8H)</span>
+                  <span className="font-black text-emerald-300 font-mono text-sm">
+                    {popupCompanyData.breakdown.regular}명
                   </span>
                 </div>
-
-                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-0.5">
-                  <span className="text-[11px] font-bold text-slate-400">잔업 인원</span>
-                  <div className="text-base sm:text-xl font-black text-amber-400 font-mono">
-                    {popupCompanyData.breakdown.ot19 + popupCompanyData.breakdown.ot21 + popupCompanyData.breakdown.ot22 + popupCompanyData.breakdown.specialNight} <span className="text-xs text-slate-400 font-normal">명</span>
-                  </div>
-                  <span className="text-[10px] text-amber-300 font-bold">
-                    당일 잔업 +{popupCompanyData.breakdown.otHours}H
+                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-bold">잔업자 수</span>
+                  <span className="font-black text-amber-400 font-mono text-sm">
+                    {popupCompanyData.breakdown.ot19 + popupCompanyData.breakdown.ot21 + popupCompanyData.breakdown.ot22 + popupCompanyData.breakdown.specialNight}명
                   </span>
                 </div>
-
-                <div className="bg-slate-950 p-3 rounded-2xl border border-slate-800 space-y-0.5">
-                  <span className="text-[11px] font-bold text-slate-400">당일 총 투입공수</span>
-                  <div className="text-base sm:text-xl font-black text-cyan-400 font-mono">
-                    {popupCompanyData.breakdown.totalHours} <span className="text-xs text-slate-400 font-normal">M/H</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    (기본 + 잔업 합산)
+                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-bold">당일 잔업 / 공수</span>
+                  <span className="font-black text-cyan-300 font-mono text-sm">
+                    +{popupCompanyData.breakdown.otHours}H / {popupCompanyData.breakdown.totalHours}H
                   </span>
-                </div>
-              </div>
-
-              {/* 2. 3 Departments Breakdown Cards (관리부, 가공동, 압출동) */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Filter className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>3개 부서별 배속 및 투입 현황</span>
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {DEPARTMENTS.map((deptName) => {
-                    const dInfo = popupCompanyData.deptsBreakdown[deptName] || { total: 0, attended: 0, otHours: 0, totalHours: 0 };
-                    return (
-                      <div key={deptName} className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex items-center justify-between">
-                        <div>
-                          <span className="font-black text-xs text-white block">{deptName}</span>
-                          <span className="text-[11px] font-bold text-slate-400">
-                            출근 <strong className="text-emerald-400">{dInfo.attended}</strong> / {dInfo.total}명
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[11px] font-black text-amber-400 block font-mono">+{dInfo.otHours}H 잔업</span>
-                          <span className="text-[10px] font-bold text-cyan-300 font-mono">{dInfo.totalHours} M/H</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. Quick Add Worker Toggle & Form */}
-              <div className="bg-slate-950/90 rounded-2xl border border-slate-800 p-3.5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <UserPlus className="w-4 h-4 text-cyan-400" />
-                    <span className="font-black text-xs text-white">[{popupCompanyData.company}] 신규 근로자 등록</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPopupShowAddWorker(!popupShowAddWorker)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-bold cursor-pointer transition-all"
-                  >
-                    {popupShowAddWorker ? "입력창 접기 ▲" : "+ 신규 근로자 추가 펼치기 ▼"}
-                  </button>
-                </div>
-
-                {popupShowAddWorker && (
-                  <form onSubmit={handleQuickAddCompanyWorker} className="pt-2 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1">근로자 성명 *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="성명"
-                        value={quickNewWorkerName}
-                        onChange={(e) => setQuickNewWorkerName(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border-2 border-slate-600 focus:border-cyan-400 text-white text-xs font-bold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1">소속 부서 *</label>
-                      <select
-                        value={quickNewWorkerDept}
-                        onChange={(e) => setQuickNewWorkerDept(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border-2 border-slate-600 focus:border-cyan-400 text-white text-xs font-bold cursor-pointer"
-                      >
-                        {DEPARTMENTS.map((d) => (
-                          <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-1">차종 / 라인</label>
-                      <input
-                        type="text"
-                        placeholder="예: 1라인"
-                        value={quickNewWorkerLine}
-                        onChange={(e) => setQuickNewWorkerLine(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border-2 border-slate-600 focus:border-cyan-400 text-white text-xs font-bold"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        type="submit"
-                        className="w-full py-1.5 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md shadow-cyan-900/40 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>추가 완료</span>
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-
-              {/* 4. Worker List Table with 1-Click Buttons */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>[{popupCompanyData.company}] 전 작업자 오늘자 근태 상세 리스트 ({popupCompanyData.workers.length}명)</span>
-                  </h4>
-                  <span className="text-[10px] text-slate-400 font-bold">
-                    버튼을 클릭하면 즉시 반영됩니다
-                  </span>
-                </div>
-
-                <div className="border border-slate-800 rounded-2xl overflow-hidden">
-                  <div className="overflow-x-auto max-h-[380px]">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="sticky top-0 bg-slate-950 text-slate-300 z-10 font-bold border-b border-slate-800">
-                        <tr>
-                          <th className="p-2.5 text-center w-10">No.</th>
-                          <th className="p-2.5 w-20">부서</th>
-                          <th className="p-2.5 w-20">라인</th>
-                          <th className="p-2.5 w-24">성명</th>
-                          <th className="p-2.5 min-w-[280px]">오늘자 근태 선택</th>
-                          <th className="p-2.5 text-center w-20">잔업</th>
-                          <th className="p-2.5 text-center w-20">공수</th>
-                          <th className="p-2.5 text-center w-14">삭제</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/70 bg-slate-900/60">
-                        {popupCompanyData.workers.length === 0 ? (
-                          <tr>
-                            <td colSpan={8} className="p-6 text-center text-slate-500 font-bold">
-                              등록된 근로자가 없습니다. 위의 신규 근로자 등록으로 추가해보세요.
-                            </td>
-                          </tr>
-                        ) : (
-                          popupCompanyData.workers.map((worker) => {
-                            const currentVal = worker.daily ? worker.daily[selectedDay] : "";
-                            const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
-                            const ot = weekdayOt + weekendOt;
-
-                            return (
-                              <tr key={worker.originalMatrixIndex} className="hover:bg-slate-800/60 transition-colors">
-                                <td className="p-2.5 text-center font-mono text-slate-500">{worker.no}</td>
-                                <td className="p-2.5">
-                                  <span className="px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-bold text-[11px]">
-                                    {worker.dept}
-                                  </span>
-                                </td>
-                                <td className="p-2.5 text-slate-400 font-medium text-[11px]">{worker.line || "-"}</td>
-                                <td className="p-2.5 font-black text-sm text-white">{worker.name}</td>
-                                <td className="p-2.5">
-                                  <div className="flex items-center gap-1 flex-wrap">
-                                    <button
-                                      onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
-                                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer ${
-                                        currentVal === "🟢" || currentVal === "정시"
-                                          ? "bg-emerald-600 text-white ring-2 ring-emerald-400"
-                                          : "bg-slate-800 text-emerald-400 hover:bg-slate-700"
-                                      }`}
-                                    >
-                                      🟢정시
-                                    </button>
-                                    <button
-                                      onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
-                                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer ${
-                                        currentVal === "19" || currentVal === "19시"
-                                          ? "bg-amber-600 text-white ring-2 ring-amber-400"
-                                          : "bg-slate-800 text-amber-400 hover:bg-slate-700"
-                                      }`}
-                                    >
-                                      🟡19시
-                                    </button>
-                                    <button
-                                      onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
-                                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer ${
-                                        currentVal === "21" || currentVal === "21시"
-                                          ? "bg-orange-600 text-white ring-2 ring-orange-400"
-                                          : "bg-slate-800 text-orange-400 hover:bg-slate-700"
-                                      }`}
-                                    >
-                                      🟠21시
-                                    </button>
-                                    <button
-                                      onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
-                                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer ${
-                                        currentVal === "22" || currentVal === "22시"
-                                          ? "bg-rose-600 text-white ring-2 ring-rose-400"
-                                          : "bg-slate-800 text-rose-400 hover:bg-slate-700"
-                                      }`}
-                                    >
-                                      🔴22시
-                                    </button>
-                                    <button
-                                      onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "특근")}
-                                      className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black cursor-pointer ${
-                                        currentVal === "특근"
-                                          ? "bg-purple-600 text-white ring-2 ring-purple-400"
-                                          : "bg-slate-800 text-purple-400 hover:bg-slate-700"
-                                      }`}
-                                    >
-                                      🌙특근
-                                    </button>
-                                  </div>
-                                </td>
-                                <td className="p-2.5 text-center font-mono font-bold text-amber-400">
-                                  {ot > 0 ? `+${ot}H` : "0H"}
-                                </td>
-                                <td className="p-2.5 text-center font-mono font-black text-cyan-400">
-                                  {workHours}H
-                                </td>
-                                <td className="p-2.5 text-center">
-                                  <button
-                                    onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
-                                    className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-rose-950/60 cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="p-4 bg-slate-950 border-t border-slate-800 flex justify-end">
+            {/* 3. Compact Worker List Table (Scrollable within modal body without expanding modal) */}
+            <div className="p-3 sm:p-4 overflow-y-auto flex-1 text-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-slate-300 text-xs flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>작업자 근태 원클릭 선택 ({popupCompanyData.workers.length}명)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPopupShowAddWorker(!popupShowAddWorker)}
+                  className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-[11px] font-bold cursor-pointer"
+                >
+                  {popupShowAddWorker ? "접기 ▲" : "+ 근로자 등록"}
+                </button>
+              </div>
+
+              {/* Inline Add Worker Form (if opened) */}
+              {popupShowAddWorker && (
+                <form onSubmit={handleQuickAddCompanyWorker} className="p-2.5 bg-slate-950 rounded-xl border border-cyan-500/40 grid grid-cols-1 sm:grid-cols-4 gap-1.5">
+                  <input
+                    type="text"
+                    required
+                    placeholder="성명 *"
+                    value={quickNewWorkerName}
+                    onChange={(e) => setQuickNewWorkerName(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs font-bold"
+                  />
+                  <select
+                    value={quickNewWorkerDept}
+                    onChange={(e) => setQuickNewWorkerDept(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs font-bold"
+                  >
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="라인 (선택)"
+                    value={quickNewWorkerLine}
+                    onChange={(e) => setQuickNewWorkerLine(e.target.value)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs font-bold"
+                  />
+                  <button
+                    type="submit"
+                    className="py-1 px-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs cursor-pointer"
+                  >
+                    등록 완료
+                  </button>
+                </form>
+              )}
+
+              {/* Table */}
+              <div className="border border-slate-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-[300px]">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 bg-slate-950 text-slate-400 text-[11px] font-bold border-b border-slate-800">
+                      <tr>
+                        <th className="py-1.5 px-2 text-center w-8">No</th>
+                        <th className="py-1.5 px-2 w-16">부서</th>
+                        <th className="py-1.5 px-2 w-18">성명</th>
+                        <th className="py-1.5 px-2 min-w-[240px]">오늘자 근태 선택</th>
+                        <th className="py-1.5 px-2 text-center w-14">잔업</th>
+                        <th className="py-1.5 px-2 text-center w-14">공수</th>
+                        <th className="py-1.5 px-2 text-center w-10">삭제</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/60 text-xs">
+                      {popupCompanyData.workers.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="p-4 text-center text-slate-500 font-bold">
+                            등록된 작업자가 없습니다.
+                          </td>
+                        </tr>
+                      ) : (
+                        popupCompanyData.workers.map((worker) => {
+                          const currentVal = worker.daily ? worker.daily[selectedDay] : "";
+                          const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
+                          const ot = weekdayOt + weekendOt;
+
+                          return (
+                            <tr key={worker.originalMatrixIndex} className="hover:bg-slate-800/60 transition-colors">
+                              <td className="py-1.5 px-2 text-center font-mono text-slate-500 text-[11px]">{worker.no}</td>
+                              <td className="py-1.5 px-2">
+                                <span className="font-bold text-slate-300 text-[11px]">{worker.dept}</span>
+                              </td>
+                              <td className="py-1.5 px-2 font-black text-white text-xs">{worker.name}</td>
+                              <td className="py-1.5 px-2">
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <button
+                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      currentVal === "🟢" || currentVal === "정시"
+                                        ? "bg-emerald-600 text-white ring-1 ring-emerald-300"
+                                        : "bg-slate-800 text-emerald-400 hover:bg-slate-700"
+                                    }`}
+                                  >
+                                    🟢정시
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      currentVal === "19" || currentVal === "19시"
+                                        ? "bg-amber-600 text-white ring-1 ring-amber-300"
+                                        : "bg-slate-800 text-amber-400 hover:bg-slate-700"
+                                    }`}
+                                  >
+                                    🟡19시
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      currentVal === "21" || currentVal === "21시"
+                                        ? "bg-orange-600 text-white ring-1 ring-orange-300"
+                                        : "bg-slate-800 text-orange-400 hover:bg-slate-700"
+                                    }`}
+                                  >
+                                    🟠21시
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      currentVal === "22" || currentVal === "22시"
+                                        ? "bg-rose-600 text-white ring-1 ring-rose-300"
+                                        : "bg-slate-800 text-rose-400 hover:bg-slate-700"
+                                    }`}
+                                  >
+                                    🔴22시
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "특근")}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                                      currentVal === "특근"
+                                        ? "bg-purple-600 text-white ring-1 ring-purple-300"
+                                        : "bg-slate-800 text-purple-400 hover:bg-slate-700"
+                                    }`}
+                                  >
+                                    🌙특근
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="py-1.5 px-2 text-center font-mono font-bold text-amber-400 text-[11px]">
+                                {ot > 0 ? `+${ot}H` : "0H"}
+                              </td>
+                              <td className="py-1.5 px-2 text-center font-mono font-black text-cyan-300 text-[11px]">
+                                {workHours}H
+                              </td>
+                              <td className="py-1.5 px-2 text-center">
+                                <button
+                                  onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
+                                  className="p-0.5 rounded text-slate-500 hover:text-rose-400 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Modal Footer (Compact) */}
+            <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
               <button
                 onClick={() => {
                   setSelectedCompanyPopup(null);
                   setPopupShowAddWorker(false);
                 }}
-                className="px-6 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs sm:text-sm cursor-pointer shadow-md"
+                className="px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs cursor-pointer shadow-md"
               >
-                확인 및 닫기
+                닫기
               </button>
             </div>
           </div>
