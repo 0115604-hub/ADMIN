@@ -469,6 +469,25 @@ export const OvertimeStatusView = () => {
     }
   };
 
+
+  // ⭐ USER ACTION: 특근보고서 삭제 핸들러
+  const handleDeleteReport = async (reportId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("정말로 이 특근보고서를 삭제하시겠습니까?")) return;
+    try {
+      await deleteOvertimeReport(reportId);
+      setLegacyReports((prev) => prev.filter((r) => r.id !== reportId));
+      if (selectedLegacyReport && selectedLegacyReport.id === reportId) {
+        setIsLegacyModalOpen(false);
+        setSelectedLegacyReport(null);
+      }
+      triggerToast("🗑️ 특근보고서가 정상적으로 삭제되었습니다.");
+    } catch (err) {
+      console.error(err);
+      alert("삭제 중 오류가 발생했습니다: " + err.message);
+    }
+  };
+
   // Quick Add Worker for a specific Company (from Company Popup)
   const handleQuickAddCompanyWorker = async (e) => {
     e.preventDefault();
