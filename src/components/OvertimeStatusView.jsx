@@ -614,15 +614,14 @@ export const OvertimeStatusView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🧭 MAIN TAB NAVIGATION (Clean 5 Tabs) */}
+      {/* 🧭 MAIN TAB NAVIGATION (Clean 4 Tabs - 특근보고서 관리 & 전사 종합현황판) */}
       {/* ========================================================================= */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b-2 border-slate-200 dark:border-slate-800">
         {[
           { id: "daily_input", label: "📝 오늘자 근태/잔업 즉시 작성", icon: Zap, badge: "원클릭 등록", highlight: true },
           { id: "daily_summary", label: "📋 일자별 종합 집계", icon: FileSpreadsheet },
           { id: "monthly_matrix", label: "📊 9월 전사 종합현황판", icon: CalendarDays },
-          { id: "company_settle", label: "🏢 업체별 결산 요약", icon: Building2 },
-          { id: "legacy_reports", label: "📑 이전 특근보고서 보관함", icon: FileText }
+          { id: "legacy_reports", label: "📑 특근보고서 관리", icon: FileText, badge: "토요특근 연동" }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1140,144 +1139,185 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📊 TAB 3: 9월 전사 종합현황판 (MONTHLY MATRIX 1~30) */}
+      {/* 📊 TAB 3: 9월 전사 종합현황판 (업체별 드롭다운 & 30일 전체 매트릭스) */}
       {/* ========================================================================= */}
       {activeTab === "monthly_matrix" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-3 p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                2026년 9월 5개사 전 작업자 30일 근태 및 잔업 전체 매트릭스
-              </h3>
-            </div>
-            <div className="text-xs text-slate-500 font-bold">
-              총 {smartData.attendanceMatrix?.length || 0}명 인원 배속 중
-            </div>
-          </div>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
+          {/* Top Controls: Company Dropdown & Pills + Dynamic Summary */}
+          {(() => {
+            const filteredMatrixList = (smartData.attendanceMatrix || []).filter((w) => {
+              if (matrixCompanyFilter !== "전체" && w.company !== matrixCompanyFilter) return false;
+              return true;
+            });
 
-          <div className="overflow-x-auto max-h-[650px]">
-            <table className="w-full text-left text-[11px] border-collapse">
-              <thead className="sticky top-0 bg-slate-900 text-white z-20">
-                <tr>
-                  <th className="p-2 text-center w-10 sticky left-0 bg-slate-900 z-30">No.</th>
-                  <th className="p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
-                  <th className="p-2 w-20">부서</th>
-                  <th className="p-2 w-20 sticky left-28 bg-slate-900 z-30">성명</th>
-                  {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
-                    <th key={d} className={`p-1 text-center w-7 ${(d === 6 || d === 13 || d === 20 || d === 27) ? "bg-rose-950/80 text-rose-300" : (d === 5 || d === 12 || d === 19 || d === 26) ? "bg-blue-950/80 text-blue-300" : ""}`}>
-                      {d}
-                    </th>
-                  ))}
-                  <th className="p-2 text-center w-14 bg-slate-800">출근일</th>
-                  <th className="p-2 text-center w-14 bg-slate-800 text-amber-300">평일잔업</th>
-                  <th className="p-2 text-center w-14 bg-slate-800 text-purple-300">특근(H)</th>
-                  <th className="p-2 text-center w-14 bg-slate-800 text-cyan-300">총공수</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {(smartData.attendanceMatrix || []).map((w, idx) => {
-                  const totals = calculateWorkerMonthlyTotals(w);
-                  return (
-                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="p-1.5 text-center font-mono text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10">{idx + 1}</td>
-                      <td className="p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
-                      <td className="p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
-                      <td className="p-1.5 font-black sticky left-28 bg-white dark:bg-slate-900 z-10">{w.name}</td>
-                      {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => {
-                        const val = w.daily ? w.daily[d] : "";
+            // Calculate aggregated metrics for filtered workers
+            let sumWorkDays = 0;
+            let sumWeekdayOt = 0;
+            let sumWeekendOt = 0;
+            let sumTotalHours = 0;
+
+            filteredMatrixList.forEach((w) => {
+              const t = calculateWorkerMonthlyTotals(w);
+              sumWorkDays += t.workDays;
+              sumWeekdayOt += t.weekdayOtHours;
+              sumWeekendOt += t.weekendOtHours;
+              sumTotalHours += t.totalHours;
+            });
+
+            return (
+              <>
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-5 h-5 text-indigo-500" />
+                      <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                        9월 30일 근태 및 잔업 전체 매트릭스
+                      </h3>
+                    </div>
+
+                    {/* Company Dropdown Select */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">업체 선택:</span>
+                      <select
+                        value={matrixCompanyFilter}
+                        onChange={(e) => setMatrixCompanyFilter(e.target.value)}
+                        className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-indigo-400 focus:border-indigo-300 rounded-xl px-3 py-1.5 cursor-pointer shadow-sm"
+                      >
+                        <option value="전체" className="bg-slate-900 text-white font-bold">전체 (5개 협력사 통합)</option>
+                        {COMPANIES.map((comp) => (
+                          <option key={comp} value={comp} className="bg-slate-900 text-white font-bold">
+                            {comp}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Company Quick Filter Pills */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["전체", ...COMPANIES].map((comp) => {
+                      const isSel = matrixCompanyFilter === comp;
+                      return (
+                        <button
+                          key={comp}
+                          onClick={() => setMatrixCompanyFilter(comp)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            isSel
+                              ? "bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {comp}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Filtered Company Summary KPI Bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                  <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">조회 대상 인원</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-indigo-600 dark:text-indigo-400">{filteredMatrixList.length}명</span>
+                  </div>
+                  <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">9월 총 출근일수</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">{sumWorkDays}일</span>
+                  </div>
+                  <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">평일 잔업 누계</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-amber-600 dark:text-amber-400">+{sumWeekdayOt} H</span>
+                  </div>
+                  <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">주말 특근 누계</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-purple-600 dark:text-purple-400">{sumWeekendOt} H</span>
+                  </div>
+                  <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">총 투입공수 (M/H)</span>
+                    <span className="font-mono font-black text-sm sm:text-base text-cyan-600 dark:text-cyan-300">{sumTotalHours.toLocaleString()} H</span>
+                  </div>
+                </div>
+
+                {/* Matrix Table */}
+                <div className="overflow-x-auto max-h-[650px] border border-slate-200 dark:border-slate-800 rounded-xl">
+                  <table className="w-full text-left text-[11px] border-collapse">
+                    <thead className="sticky top-0 bg-slate-900 text-white z-20">
+                      <tr>
+                        <th className="p-2 text-center w-10 sticky left-0 bg-slate-900 z-30 font-mono">No.</th>
+                        <th className="p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
+                        <th className="p-2 w-20">부서</th>
+                        <th className="p-2 w-20 sticky left-28 bg-slate-900 z-30">성명</th>
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
+                          <th key={d} className={`p-1 text-center w-7 ${(d === 6 || d === 13 || d === 20 || d === 27) ? "bg-rose-950/80 text-rose-300" : (d === 5 || d === 12 || d === 19 || d === 26) ? "bg-blue-950/80 text-blue-300" : ""}`}>
+                            {d}
+                          </th>
+                        ))}
+                        <th className="p-2 text-center w-14 bg-slate-800">출근일</th>
+                        <th className="p-2 text-center w-14 bg-slate-800 text-amber-300">평일잔업</th>
+                        <th className="p-2 text-center w-14 bg-slate-800 text-purple-300">특근(H)</th>
+                        <th className="p-2 text-center w-14 bg-slate-800 text-cyan-300">총공수</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {filteredMatrixList.map((w, idx) => {
+                        const totals = calculateWorkerMonthlyTotals(w);
                         return (
-                          <td key={d} className="p-0.5 text-center font-mono text-[10px]">
-                            <span className={`inline-block w-6 py-0.5 rounded font-bold ${
-                              val === "🟢" || val === "정시" ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" :
-                              val === "19" ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300" :
-                              val === "21" ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300" :
-                              val === "22" ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300" :
-                              val === "특근" ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300" :
-                              val === "야간" ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300" :
-                              val === "-" ? "text-slate-300 dark:text-slate-600" : ""
-                            }`}>
-                              {val || "-"}
-                            </span>
-                          </td>
+                          <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                            <td className="p-1.5 text-center font-mono text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10">{idx + 1}</td>
+                            <td className="p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
+                            <td className="p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
+                            <td className="p-1.5 font-black sticky left-28 bg-white dark:bg-slate-900 z-10">{w.name}</td>
+                            {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => {
+                              const val = w.daily ? w.daily[d] : "";
+                              return (
+                                <td key={d} className="p-0.5 text-center font-mono text-[10px]">
+                                  <span className={`inline-block w-6 py-0.5 rounded font-bold ${
+                                    val === "🟢" || val === "정시" ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" :
+                                    val === "19" ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300" :
+                                    val === "21" ? "bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300" :
+                                    val === "22" ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300" :
+                                    val === "특근" ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300" :
+                                    val === "야간" ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300" :
+                                    val === "-" ? "text-slate-300 dark:text-slate-600" : ""
+                                  }`}>
+                                    {val || "-"}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                            <td className="p-1.5 text-center font-mono font-bold bg-slate-50 dark:bg-slate-800/40">{totals.workDays}일</td>
+                            <td className="p-1.5 text-center font-mono font-bold text-amber-600 bg-slate-50 dark:bg-slate-800/40">+{totals.weekdayOtHours}H</td>
+                            <td className="p-1.5 text-center font-mono font-bold text-purple-600 bg-slate-50 dark:bg-slate-800/40">{totals.weekendOtHours}H</td>
+                            <td className="p-1.5 text-center font-mono font-black text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-800/80">{totals.totalHours}H</td>
+                          </tr>
                         );
                       })}
-                      <td className="p-1.5 text-center font-mono font-bold bg-slate-50 dark:bg-slate-800/40">{totals.workDays}일</td>
-                      <td className="p-1.5 text-center font-mono font-bold text-amber-600 bg-slate-50 dark:bg-slate-800/40">{totals.weekdayOtHours}H</td>
-                      <td className="p-1.5 text-center font-mono font-bold text-purple-600 bg-slate-50 dark:bg-slate-800/40">{totals.weekendOtHours}H</td>
-                      <td className="p-1.5 text-center font-mono font-black text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-800/80">{totals.totalHours}H</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* 🏢 TAB 4: 업체별 결산 요약 (COMPANY SETTLEMENT) */}
-      {/* ========================================================================= */}
-      {activeTab === "company_settle" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-            <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-cyan-600" />
-              <span>2026년 9월 5개사 업체별 근태 및 잔업 투입공수 통합 결산서</span>
-            </h3>
-            <span className="text-xs text-slate-500 font-bold">
-              누적 실시간 정산
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black">
-                  <th className="p-3">소속 업체명</th>
-                  <th className="p-3 text-center">관리 인원수</th>
-                  <th className="p-3 text-center">누적 출근일수</th>
-                  <th className="p-3 text-center">평일잔업 누계(H)</th>
-                  <th className="p-3 text-center">주말특근 누계(H)</th>
-                  <th className="p-3 text-center">야간근무 누계(일)</th>
-                  <th className="p-3 text-center">총 투입공수(M/H)</th>
-                  <th className="p-3 text-center">공수 점유율(%)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {companySummary.map((item) => (
-                  <tr key={item.company} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="p-3 font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-                      {item.company}
-                    </td>
-                    <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{item.workerCount}명</td>
-                    <td className="p-3 text-center font-mono">{item.totalWorkDays}일</td>
-                    <td className="p-3 text-center font-mono font-bold text-amber-600">{item.weekdayOtHours} H</td>
-                    <td className="p-3 text-center font-mono font-bold text-purple-600">{item.weekendOtHours} H</td>
-                    <td className="p-3 text-center font-mono text-indigo-600">{item.nightDays} 일</td>
-                    <td className="p-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">{item.totalHours.toLocaleString()} H</td>
-                    <td className="p-3 text-center font-mono font-black text-cyan-600 dark:text-cyan-400">{item.ratio}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 📑 TAB 5: 이전 특근보고서 보관함 (LEGACY REPORTS) */}
+      {/* 📑 TAB 4: 특근보고서 관리 (SATURDAY OVERTIME & OFFICIAL REPORTS) */}
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-            <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 gap-2">
+            <div className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-purple-600" />
-              <span>특근실시 보고서 관리 및 보관함</span>
-            </h3>
+              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                <span>특근실시 보고서 관리 및 보관함</span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
+                  실시간 자동 연동
+                </span>
+              </h3>
+            </div>
             <span className="text-xs text-slate-500 font-bold">
-              총 {legacyReports.length}건 보관 중
+              총 <strong className="text-purple-600 dark:text-purple-400 font-mono text-sm">{legacyReports.length}</strong>건 보관 중
             </span>
           </div>
 
@@ -1285,28 +1325,45 @@ export const OvertimeStatusView = () => {
             {legacyReports.map((rep) => (
               <div
                 key={rep.id}
-                className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2"
+                className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2 hover:border-purple-400 transition-all shadow-xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-sm text-slate-900 dark:text-white">
+                  <span className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                    {rep.isAutoGenerated ? (
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    ) : (
+                      <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                    )}
                     {rep.title || formatKoreanWorkDate(rep.workDate)}
                   </span>
-                  <span className="text-xs font-bold text-slate-500">
-                    {rep.workDate}
+                </div>
+
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-500 font-bold">{rep.workDateFormatted || rep.workDate}</span>
+                  {rep.isAutoGenerated && (
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-800">
+                      ⚡ 토요특근 자동연동
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
+                  <span>작성자: <strong className="font-bold">{rep.author || "관리자"} {rep.authorTitle || ""}</strong></span>
+                  <span className="font-bold text-purple-600 dark:text-purple-300 font-mono">
+                    {rep.totalWorkers || rep.items?.length || 0}명 ({rep.totalHours || 0}H)
                   </span>
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-300">
-                  작성자: <strong className="font-bold">{rep.author || "관리자"}</strong> • 총 {rep.items?.length || 0}개 라인
-                </div>
+
                 <div className="pt-2 flex items-center justify-end gap-2">
                   <button
                     onClick={() => {
                       setSelectedLegacyReport(rep);
                       setIsLegacyModalOpen(true);
                     }}
-                    className="px-3 py-1 rounded-xl bg-purple-600 text-white font-bold text-xs hover:bg-purple-500 cursor-pointer"
+                    className="w-full py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs transition-all cursor-pointer shadow-sm active:scale-95 text-center flex items-center justify-center gap-1"
                   >
-                    상세보기
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>특근보고서 상세 보기</span>
                   </button>
                 </div>
               </div>
@@ -1631,7 +1688,7 @@ export const OvertimeStatusView = () => {
         </div>
       )}
 
-      {/* 📑 MODAL: 이전 특근보고서 상세 모달 */}
+      {/* 📑 MODAL: 특근보고서 상세 모달 */}
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
