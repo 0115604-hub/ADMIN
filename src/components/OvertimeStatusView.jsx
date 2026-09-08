@@ -1608,126 +1608,93 @@ export const OvertimeStatusView = () => {
       {/* 📑 TAB 4: 특근보고서 관리 (SATURDAY OVERTIME & OFFICIAL REPORTS) */}
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-          {/* Header & Title Toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 gap-3">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                <FileText className="w-5 h-5" />
-              </span>
-              <div>
-                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>근태 및 특근 보고서 관리 대장</span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
-                    총 {legacyReports.length}건 등록됨
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          {/* 🔍 초간결 1줄 컨트롤 & 요약 툴바 (소속 필터 + 요약 인디케이터 + 검색창) */}
+          {(() => {
+            const filtered = (legacyReports || []).filter((r) => {
+              if (reportListFilter !== "전체") {
+                const matchPlant = r.plant === reportListFilter;
+                const matchComp = r.company === reportListFilter || (r.companies && r.companies.includes(reportListFilter));
+                if (!matchPlant && !matchComp) return false;
+              }
+              if (reportListSearch.trim()) {
+                const q = reportListSearch.toLowerCase().trim();
+                const matchText = [
+                  r.title,
+                  r.workDate,
+                  r.workDateFormatted,
+                  r.author,
+                  r.plant,
+                  r.company,
+                  ...(r.companies || []),
+                  ...(r.reasons || [])
+                ].filter(Boolean).join(" ").toLowerCase();
+                if (!matchText.includes(q)) return false;
+              }
+              return true;
+            });
+
+            const totalHeadcount = filtered.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+            const totalHours = filtered.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+            const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
+
+            return (
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+                {/* Left: 소속 필터 버튼군 */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-400 mr-0.5 flex items-center gap-1 shrink-0">
+                    <Filter className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>소속:</span>
                   </span>
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                  등록된 일자별·업체별 근태 및 특근실시 보고서를 실시간으로 확인, 수정, 출력, 삭제 관리할 수 있습니다.
-                </p>
-              </div>
-            </div>
+                  {["전체", "삼랑진공장", "한림공장", ...COMPANIES].map((comp) => {
+                    const isActive = reportListFilter === comp;
+                    return (
+                      <button
+                        key={comp}
+                        onClick={() => setReportListFilter(comp)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400 scale-102"
+                            : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                        }`}
+                      >
+                        {comp}
+                      </button>
+                    );
+                  })}
+                </div>
 
-            <button
-              onClick={() => setActiveTab("daily_input")}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md shadow-cyan-900/30 active:scale-95 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>새 근태/특근 작성하기</span>
-            </button>
-          </div>
-
-          {/* 🔍 Search & Company Filter Controls Bar */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              {/* Company / Plant Filter Chips */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
-                  <Filter className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>소속 필터:</span>
-                </span>
-                {["전체", "삼랑진공장", "한림공장", ...COMPANIES].map((comp) => {
-                  const isActive = reportListFilter === comp;
-                  return (
-                    <button
-                      key={comp}
-                      onClick={() => setReportListFilter(comp)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400 scale-105"
-                          : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
-                      }`}
-                    >
-                      {comp}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative w-full md:w-64">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="보고서 제목, 일자, 작성자 검색..."
-                  value={reportListSearch}
-                  onChange={(e) => setReportListSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-hidden"
-                />
-              </div>
-            </div>
-
-            {/* Live Filter Summary Metrics */}
-            {(() => {
-              const filtered = (legacyReports || []).filter((r) => {
-                if (reportListFilter !== "전체") {
-                  const matchPlant = r.plant === reportListFilter;
-                  const matchComp = r.company === reportListFilter || (r.companies && r.companies.includes(reportListFilter));
-                  if (!matchPlant && !matchComp) return false;
-                }
-                if (reportListSearch.trim()) {
-                  const q = reportListSearch.toLowerCase().trim();
-                  const matchText = [
-                    r.title,
-                    r.workDate,
-                    r.workDateFormatted,
-                    r.author,
-                    r.plant,
-                    r.company,
-                    ...(r.companies || []),
-                    ...(r.reasons || [])
-                  ].filter(Boolean).join(" ").toLowerCase();
-                  if (!matchText.includes(q)) return false;
-                }
-                return true;
-              });
-
-              const totalHeadcount = filtered.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
-              const totalHours = filtered.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-              const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
-
-              return (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-400 font-bold">조회 보고서</span>
-                    <span className="font-mono font-black text-purple-400">{filtered.length}건</span>
+                {/* Right: 1줄 초간결 실시간 통계 뱃지 & 검색창 */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+                  <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold shrink-0">
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-purple-300">
+                      총 {filtered.length}건
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-emerald-300">
+                      {totalHeadcount}명
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-cyan-300">
+                      {totalHours} M/H
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-rose-300">
+                      ₩{totalCost.toLocaleString()}
+                    </span>
                   </div>
-                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-400 font-bold">총 투입인원</span>
-                    <span className="font-mono font-black text-emerald-400">{totalHeadcount}명</span>
-                  </div>
-                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-400 font-bold">총 투입공수</span>
-                    <span className="font-mono font-black text-cyan-300">{totalHours} M/H</span>
-                  </div>
-                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-400 font-bold">총 예상노무비</span>
-                    <span className="font-mono font-black text-rose-400">₩{totalCost.toLocaleString()}</span>
+
+                  <div className="relative w-full sm:w-48 shrink-0">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="보고서 검색..."
+                      value={reportListSearch}
+                      onChange={(e) => setReportListSearch(e.target.value)}
+                      className="w-full pl-7 pr-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 outline-hidden"
+                    />
                   </div>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
 
           {/* 📋 Registered Reports List Cards */}
           {(() => {
