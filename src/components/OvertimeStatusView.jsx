@@ -756,85 +756,42 @@ export const OvertimeStatusView = () => {
             </div>
           </div>
 
-          {/* Real-time KPI Bar for the Selected Day */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-500">당일 출근 총원</span>
-                <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-                  {dailySummary.totalAttended} <span className="text-xs font-bold text-slate-400">/ {smartData.attendanceMatrix?.length}명</span>
-                </div>
-              </div>
-              <UserCheck className="w-8 h-8 text-emerald-500/30" />
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-500">정시 근무 인원</span>
-                <div className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                  {dailySummary.regularCount} <span className="text-xs font-bold text-slate-400">명</span>
-                </div>
-              </div>
-              <CheckCircle2 className="w-8 h-8 text-emerald-500/30" />
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-500">당일 잔업 총시간</span>
-                <div className="text-lg sm:text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                  +{dailySummary.dayOtHours} <span className="text-xs font-bold text-slate-400">H</span>
-                </div>
-              </div>
-              <TrendingUp className="w-8 h-8 text-amber-500/30" />
-            </div>
-
-            <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-500">당일 총 투입공수</span>
-                <div className="text-lg sm:text-2xl font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                  {dailySummary.dayTotalHours} <span className="text-xs font-bold text-slate-400">M/H</span>
-                </div>
-              </div>
-              <BarChart3 className="w-8 h-8 text-indigo-500/30" />
-            </div>
-          </div>
-
-          {/* Interactive Worker Attendance Table (1-CLICK SPEED EDITOR) */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60 dark:bg-slate-900/60">
+          {/* Interactive Worker Attendance Table (Compact High-Density Editor) */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60 dark:bg-slate-900/60">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-cyan-500" />
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  작업자별 9월 {selectedDay}일 근태 원클릭 작성 테이블
+                  작업자별 9월 {selectedDay}일 근태 선택 테이블
                 </h3>
                 <span className="text-xs font-bold text-slate-500">
                   (조회 {filteredAttendanceWorkers.length}명)
                 </span>
               </div>
-              <span className="text-xs font-bold text-slate-500">
-                버튼 클릭 시 실시간으로 즉시 저장 및 전산에 반영됩니다.
+              <span className="text-[11px] font-bold text-slate-400">
+                버튼 클릭 시 실시간으로 즉시 전산에 저장·반영됩니다.
               </span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider">
-                    <th className="p-3 text-center w-12">No.</th>
-                    <th className="p-3 w-28">소속 업체</th>
-                    <th className="p-3 w-28">소속 부서</th>
-                    <th className="p-3 w-28">차종/라인</th>
-                    <th className="p-3 w-28">작업자 성명</th>
-                    <th className="p-3 min-w-[340px]">⭐ 9월 {selectedDay}일 근태 원클릭 선택 (초고속 입력)</th>
-                    <th className="p-3 text-center w-24">잔업시간(H)</th>
-                    <th className="p-3 text-center w-24">총근무(H)</th>
-                    <th className="p-3 text-center w-20">관리</th>
+                  <tr className="bg-slate-100 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px]">
+                    <th className="py-2 px-2 text-center w-10">No</th>
+                    <th className="py-2 px-2 w-24">소속 업체</th>
+                    <th className="py-2 px-2 w-20">부서</th>
+                    <th className="py-2 px-2 w-20">차종/라인</th>
+                    <th className="py-2 px-2 w-24">작업자 성명</th>
+                    <th className="py-2 px-2 min-w-[340px]">9월 {selectedDay}일 근태 선택</th>
+                    <th className="py-2 px-2 text-center w-16">잔업</th>
+                    <th className="py-2 px-2 text-center w-16">총근무</th>
+                    <th className="py-2 px-2 text-center w-12">관리</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40">
                   {filteredAttendanceWorkers.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-slate-400 font-bold">
+                      <td colSpan={9} className="py-6 text-center text-slate-400 font-bold">
                         검색 조건과 일치하는 작업자가 없습니다.
                       </td>
                     </tr>
@@ -849,25 +806,34 @@ export const OvertimeStatusView = () => {
                       return (
                         <tr
                           key={`${worker.company}__${worker.name}__${worker.originalMatrixIndex}`}
-                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                          className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                         >
-                          <td className="p-3 text-center font-mono text-slate-400 font-bold">
+                          {/* No */}
+                          <td className="py-1 px-2 text-center font-mono text-slate-400 text-xs">
                             {worker.no}
                           </td>
-                          <td className="p-3">
-                            <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-black border ${companyTheme.badge}`}>
+
+                          {/* 소속 업체 */}
+                          <td className="py-1 px-2">
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-black border ${companyTheme.badge}`}>
                               {worker.company}
                             </span>
                           </td>
-                          <td className="p-3">
-                            <span className="font-bold text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+
+                          {/* 부서 */}
+                          <td className="py-1 px-2">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 px-1.5 py-0.5 rounded text-[11px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                               {worker.dept}
                             </span>
                           </td>
-                          <td className="p-3 text-slate-500 font-medium">
+
+                          {/* 차종/라인 */}
+                          <td className="py-1 px-2 text-slate-500 font-medium text-[11px] truncate max-w-[100px]">
                             {worker.line || "-"}
                           </td>
-                          <td className="p-3 font-black text-sm text-slate-900 dark:text-white">
+
+                          {/* 성명 */}
+                          <td className="py-1 px-2 font-black text-xs text-slate-900 dark:text-white whitespace-nowrap">
                             {worker.name}
                             {worker.position && (
                               <span className="ml-1 text-[10px] text-slate-400 font-normal">
@@ -876,77 +842,111 @@ export const OvertimeStatusView = () => {
                             )}
                           </td>
 
-                          {/* 1-Click Fast Attendance Button Group */}
-                          <td className="p-3">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {/* 🟢 정시 (8H) */}
+                          {/* 근태 원클릭 선택 버튼군 (단순 & 초밀착형) */}
+                          <td className="py-1 px-2">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {/* 정시 */}
                               <button
                                 onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                title="정시 출근 (8시간)"
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
                                   currentVal === "🟢" || currentVal === "정시" || currentVal === "17"
-                                    ? "bg-emerald-600 text-white ring-2 ring-emerald-400 shadow-md scale-105"
-                                    : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800"
+                                    ? "bg-emerald-600 text-white font-black shadow-sm"
+                                    : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                 }`}
                               >
-                                🟢 정시(8H)
+                                정시
                               </button>
 
-                              {/* 🟡 19시 (+2H) */}
+                              {/* 19시 */}
                               <button
                                 onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                title="19시 잔업 (+2시간)"
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
                                   currentVal === "19" || currentVal === "19시"
-                                    ? "bg-amber-600 text-white ring-2 ring-amber-400 shadow-md scale-105"
-                                    : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 border border-amber-200 dark:border-amber-800"
+                                    ? "bg-amber-600 text-white font-black shadow-sm"
+                                    : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                 }`}
                               >
-                                🟡 19시(+2H)
+                                19시
                               </button>
 
-                              {/* 🟠 21시 (+4H) */}
+                              {/* 21시 */}
                               <button
                                 onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                title="21시 잔업 (+4시간)"
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
                                   currentVal === "21" || currentVal === "21시"
-                                    ? "bg-orange-600 text-white ring-2 ring-orange-400 shadow-md scale-105"
-                                    : "bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 hover:bg-orange-100 border border-orange-200 dark:border-orange-800"
+                                    ? "bg-orange-600 text-white font-black shadow-sm"
+                                    : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                 }`}
                               >
-                                🟠 21시(+4H)
+                                21시
                               </button>
 
-                              {/* 🔴 22시 (+5H) */}
+                              {/* 22시 */}
                               <button
                                 onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                title="22시 잔업 (+5시간)"
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
                                   currentVal === "22" || currentVal === "22시"
-                                    ? "bg-rose-600 text-white ring-2 ring-rose-400 shadow-md scale-105"
-                                    : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-100 border border-rose-200 dark:border-rose-800"
+                                    ? "bg-rose-600 text-white font-black shadow-sm"
+                                    : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                 }`}
                               >
-                                🔴 22시(+5H)
+                                22시
                               </button>
 
-                              {/* 🌙 특근 */}
+                              {/* 특근 */}
                               <button
                                 onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "특근")}
-                                className={`px-2 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                                title="주말/휴일 특근 (8시간)"
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
                                   currentVal === "특근" || currentVal === "주말특근"
-                                    ? "bg-purple-600 text-white ring-2 ring-purple-400 shadow-md scale-105"
-                                    : "bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border border-purple-200 dark:border-purple-800"
+                                    ? "bg-purple-600 text-white font-black shadow-sm"
+                                    : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                 }`}
                               >
-                                🌙 특근
+                                특근
                               </button>
 
-                              {/* Other Options Dropdown (HIGH CONTRAST DARK SELECT) */}
-                              <select
-                                value={currentVal || ""}
-                                onChange={(e) => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, e.target.value)}
-                                className="bg-slate-950 text-white font-black text-xs border-2 border-slate-600 focus:border-cyan-400 rounded-lg px-2 py-1 cursor-pointer"
+                              {/* 휴무 */}
+                              <button
+                                onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "-")}
+                                title="휴무 / 미출근"
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
+                                  currentVal === "-" || currentVal === "휴무"
+                                    ? "bg-slate-600 text-white font-black shadow-sm"
+                                    : "bg-slate-800/80 hover:bg-slate-700 text-slate-400 border border-slate-700"
+                                }`}
                               >
-                                <option value="" className="bg-slate-900 text-white font-bold">선택 (전체옵션)</option>
-                                {ATTENDANCE_OPTIONS.map((opt) => (
+                                휴무
+                              </button>
+
+                              {/* 기타 옵션 (연차, 야간, 조퇴, 반차 등) */}
+                              <select
+                                value={
+                                  ["🟢", "정시", "17", "19", "19시", "21", "21시", "22", "22시", "특근", "주말특근", "-", "휴무"].includes(currentVal)
+                                    ? ""
+                                    : (currentVal || "")
+                                }
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, e.target.value);
+                                  }
+                                }}
+                                className={`bg-slate-950 text-xs font-bold rounded px-1.5 py-0.5 border cursor-pointer ${
+                                  !["🟢", "정시", "17", "19", "19시", "21", "21시", "22", "22시", "특근", "주말특근", "-", "휴무", ""].includes(currentVal)
+                                    ? "border-cyan-400 text-cyan-300 bg-cyan-950"
+                                    : "border-slate-700 text-slate-400"
+                                }`}
+                              >
+                                <option value="" className="bg-slate-900 text-slate-400 font-normal">
+                                  {!["🟢", "정시", "17", "19", "19시", "21", "21시", "22", "22시", "특근", "주말특근", "-", "휴무", ""].includes(currentVal)
+                                    ? meta.label
+                                    : "기타▾"}
+                                </option>
+                                {ATTENDANCE_OPTIONS.filter(opt => !["🟢", "19", "21", "22", "특근", "-"].includes(opt.code)).map((opt) => (
                                   <option key={opt.code} value={opt.code} className="bg-slate-900 text-white font-bold">
                                     {opt.label}
                                   </option>
@@ -956,10 +956,10 @@ export const OvertimeStatusView = () => {
                           </td>
 
                           {/* 잔업시간(H) */}
-                          <td className="p-3 text-center">
-                            <span className={`font-mono font-black text-xs px-2 py-0.5 rounded-md ${
+                          <td className="py-1 px-2 text-center">
+                            <span className={`font-mono font-bold text-xs px-1.5 py-0.5 rounded ${
                               ot > 0
-                                ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold"
+                                ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-black"
                                 : "text-slate-400"
                             }`}>
                               {ot > 0 ? `+${ot}H` : "0H"}
@@ -967,16 +967,16 @@ export const OvertimeStatusView = () => {
                           </td>
 
                           {/* 총근무(H) */}
-                          <td className="p-3 text-center font-mono font-black text-xs text-indigo-600 dark:text-indigo-400">
+                          <td className="py-1 px-2 text-center font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
                             {workHours}H
                           </td>
 
                           {/* 관리 (근로자 삭제) */}
-                          <td className="p-3 text-center">
+                          <td className="py-1 px-2 text-center">
                             <button
                               onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
                               title="근로자 삭제"
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
