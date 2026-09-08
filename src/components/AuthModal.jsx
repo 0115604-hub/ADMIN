@@ -709,9 +709,9 @@ export const AuthModal = () => {
           {/* 📢 ⭐ [요청사항 반영] 품질경보 • 공지사항 • 회의일정 대형 고시인성 패널 */}
           {/* ========================================================================= */}
           <div className="mb-3.5 sm:mb-5 rounded-2xl border-2 border-rose-300/80 dark:border-rose-900/80 bg-rose-50/50 dark:bg-rose-950/30 shadow-md overflow-hidden transition-all min-w-0">
-            {/* Panel Top Bar: Category Breakdown & Actions */}
-            <div className="p-2 sm:p-3 flex items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/70 via-purple-50/50 to-emerald-50/50 dark:from-rose-950/60 dark:via-purple-950/40 dark:to-emerald-950/40 flex-wrap">
-              {/* Left: Prominent Title & Detailed Counts Breakdown (건수 모두 표시) */}
+            {/* Panel Top Bar: Clean Single Line Title & Actions */}
+            <div className="p-2 sm:p-3 flex items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/70 via-purple-50/50 to-emerald-50/50 dark:from-rose-950/60 dark:via-purple-950/40 dark:to-emerald-950/40">
+              {/* Left: Clean Single-Line Title */}
               <div
                 onClick={() => {
                   setIsListModalOpen(true);
@@ -719,117 +719,58 @@ export const AuthModal = () => {
                   setIssueFilterTab("all");
                   setIssueModalPage(1);
                 }}
-                className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-85 transition-opacity flex-wrap"
+                className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
                 title="탭하여 품질경보·공지 관리대장 전체 팝업 열기"
               >
                 <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-rose-500 to-rose-600 text-white shadow-sm shrink-0">
                   <Megaphone className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <h3 className="font-black text-xs sm:text-base md:text-lg text-slate-900 dark:text-white tracking-tight">
-                    품질경보 • 공지사항 • 회의일정
-                  </h3>
-
-                  {/* 건수 상세 배지 전체 표시 */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950 shadow-2xs">
-                      총 {activeIssues.length}건
-                    </span>
-                    {qualityIssuesCount > 0 && (
-                      <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-2xs">
-                        🚨 경보 {qualityIssuesCount}건
-                      </span>
-                    )}
-                    {noticeIssuesCount > 0 && (
-                      <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
-                        📢 공지 {noticeIssuesCount}건
-                      </span>
-                    )}
-                    {meetingIssuesCount > 0 && (
-                      <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full bg-purple-600 text-white shadow-2xs">
-                        🗓️ 회의 {meetingIssuesCount}건
-                      </span>
-                    )}
-                    {unresolvedIssues.length > 0 && (
-                      <span className="text-[10px] sm:text-xs font-black px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 bg-amber-500 text-slate-950 ring-2 ring-amber-400 animate-pulse">
-                        ⚠️ 미조치 {unresolvedIssues.length}건
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <h3 className="font-black text-xs sm:text-base md:text-lg text-slate-900 dark:text-white tracking-tight truncate">
+                  품질경보 • 공지사항 • 회의일정
+                </h3>
               </div>
 
-              {/* Right: View Toggle, [리스트] [등록] & Fold/Unfold */}
-              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
-                {/* 2건 이상일 때 요약보기 / 상세카드 토글 */}
-                {activeIssues.length >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() => setIssueViewMode((prev) => (prev === "detailed" ? "summary" : "detailed"))}
-                    className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-xs font-black bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-rose-300 dark:border-rose-900/60 shadow-2xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
-                    title={isIssueSummaryMode ? "상세 카드 보기로 전환" : "전체 요약 목록으로 보기로 전환"}
-                  >
-                    {isIssueSummaryMode ? (
-                      <>
-                        <LayoutList className="w-3.5 h-3.5 text-rose-500" />
-                        <span className="hidden sm:inline">상세보기</span>
-                      </>
-                    ) : (
-                      <>
-                        <ListOrdered className="w-3.5 h-3.5 text-rose-500" />
-                        <span className="hidden sm:inline">요약보기</span>
-                      </>
-                    )}
-                  </button>
-                )}
+              {/* Right: [대장] [등록] & Fold/Unfold */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsListModalOpen(true);
+                    setSelectedListItem(null);
+                    setIssueFilterTab("all");
+                    setIssueModalPage(1);
+                  }}
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
+                  title="품질경보·공지 관리대장 전체 리스트 보기"
+                >
+                  <ListOrdered className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <span>대장</span>
+                </button>
 
-                {/* 2 Tabs: [리스트] & [등록] */}
-                <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-rose-200 dark:border-rose-900/60 shadow-2xs">
-                  {/* 1. [리스트] 탭 */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsListModalOpen(true);
-                      setSelectedListItem(null);
-                      setIssueFilterTab("all");
-                      setIssueModalPage(1);
-                    }}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-black bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 shadow-2xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
-                    title="품질경보·공지 관리대장 전체 리스트 보기"
-                  >
-                    <ListOrdered className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                    <span>대장</span>
-                    <span className="px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-600 text-slate-800 dark:text-slate-200 text-[10px] sm:text-xs font-mono font-black">
-                      {activeIssues.length}
-                    </span>
-                  </button>
-
-                  {/* 2. [등록] 탭 */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingIssue(null);
-                      setNewIssueForm({
-                        category: "품질경보",
-                        plant: "삼랑진공장",
-                        author: "방상국",
-                        authorTitle: "선임",
-                        title: "",
-                        content: "",
-                        images: [],
-                        actionResult: "",
-                        actionAuthor: "",
-                        actionImages: []
-                      });
-                      setIsIssueModalOpen(true);
-                    }}
-                    className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-black bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
-                    title="신규 품질경보, 사내공지, 회의일정 등록"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-rose-400 dark:text-rose-600" />
-                    <span>등록</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingIssue(null);
+                    setNewIssueForm({
+                      category: "품질경보",
+                      plant: "삼랑진공장",
+                      author: "방상국",
+                      authorTitle: "선임",
+                      title: "",
+                      content: "",
+                      images: [],
+                      actionResult: "",
+                      actionAuthor: "",
+                      actionImages: []
+                    });
+                    setIsIssueModalOpen(true);
+                  }}
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                  title="신규 품질경보, 사내공지, 회의일정 등록"
+                >
+                  <Plus className="w-3.5 h-3.5 text-rose-400 dark:text-rose-600" />
+                  <span>등록</span>
+                </button>
 
                 {/* Fold/Unfold Button */}
                 {activeIssues.length > 0 && (
