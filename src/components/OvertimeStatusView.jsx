@@ -411,7 +411,7 @@ export const OvertimeStatusView = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {COMPANIES.map((compName) => {
               const theme = COMPANY_THEMES[compName] || COMPANY_THEMES["(주)오륙"];
               const breakdown = dailySummary.companyBreakdown?.[compName] || {
@@ -425,7 +425,10 @@ export const OvertimeStatusView = () => {
                 otHours: 0,
                 totalHours: 0
               };
-              const totalOtWorkers = breakdown.ot19 + breakdown.ot21 + breakdown.ot22 + breakdown.specialNight;
+              const dotColor = compName === "(주)오륙" ? "bg-blue-400" :
+                compName === "(주)조영산업" ? "bg-purple-400" :
+                compName === "한울" ? "bg-emerald-400" :
+                compName === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
 
               return (
                 <div
@@ -435,42 +438,40 @@ export const OvertimeStatusView = () => {
                     setPopupShowAddWorker(false);
                     setQuickNewWorkerDept("가공동");
                   }}
-                  className="bg-slate-950/85 hover:bg-slate-900 rounded-2xl p-3.5 border-2 border-slate-700/80 hover:border-cyan-400 transition-all duration-200 space-y-2.5 shadow-lg flex flex-col justify-between cursor-pointer group active:scale-98"
+                  className="bg-slate-950/90 hover:bg-slate-900 rounded-2xl p-3 border-2 border-slate-700/80 hover:border-cyan-400 transition-all duration-200 space-y-2 shadow-lg flex flex-col justify-between cursor-pointer group active:scale-98"
+                  title="클릭 시 오늘자 근태/인원 현황 팝업 보기"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="font-black text-sm text-white flex items-center gap-1.5 group-hover:text-cyan-300 transition-colors">
-                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                  {/* Top: Company Name + Attendance Rate */}
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                    <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5 group-hover:text-cyan-300 transition-colors">
+                      <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`}></span>
                       {compName}
                     </span>
-                    <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-slate-800 text-cyan-300 border border-slate-700 font-mono">
-                      총원 {breakdown.total}명
+                    <span className="text-[11px] font-mono font-black px-2 py-0.5 rounded-md bg-slate-800 text-emerald-400 border border-slate-700 shrink-0">
+                      {breakdown.attended}/{breakdown.total}명
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-800 space-y-0.5">
-                      <span className="text-[10px] font-bold text-slate-400">당일 출근</span>
-                      <div className="font-black text-sm text-emerald-400 font-mono">
-                        {breakdown.attended} <span className="text-[10px] text-slate-400">명</span>
+                  {/* 2 Big Bold KPI Boxes */}
+                  <div className="grid grid-cols-2 gap-1.5 text-center">
+                    <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-800/90">
+                      <div className="text-[10px] font-bold text-slate-400">당일 잔업</div>
+                      <div className="font-mono font-black text-base sm:text-lg text-amber-400 leading-tight mt-0.5">
+                        +{breakdown.otHours}<span className="text-[10px] font-bold text-amber-500/80 ml-0.5">H</span>
                       </div>
                     </div>
-                    <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-800 space-y-0.5">
-                      <span className="text-[10px] font-bold text-slate-400">잔업자 수</span>
-                      <div className="font-black text-sm text-amber-400 font-mono">
-                        {totalOtWorkers} <span className="text-[10px] text-slate-400">명</span>
+                    <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-800/90">
+                      <div className="text-[10px] font-bold text-slate-400">투입 공수</div>
+                      <div className="font-mono font-black text-base sm:text-lg text-cyan-300 leading-tight mt-0.5">
+                        {breakdown.totalHours}<span className="text-[10px] font-bold text-cyan-500/80 ml-0.5">H</span>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] px-1 font-bold">
-                    <span className="text-slate-400">잔업: <strong className="text-amber-300 font-mono">+{breakdown.otHours}H</strong></span>
-                    <span className="text-slate-400">총공수: <strong className="text-cyan-300 font-mono">{breakdown.totalHours}H</strong></span>
                   </div>
 
                   {/* Trigger Hint Button */}
-                  <div className="w-full flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-slate-800/80 group-hover:bg-cyan-950 text-slate-300 group-hover:text-cyan-300 border border-slate-700/80 group-hover:border-cyan-500 font-black text-xs transition-all">
+                  <div className="w-full flex items-center justify-center gap-1 py-1 px-2 rounded-xl bg-slate-800/80 group-hover:bg-cyan-950 text-slate-300 group-hover:text-cyan-300 border border-slate-700/80 group-hover:border-cyan-500 font-bold text-[11px] transition-all">
                     <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>오늘자 현황 팝업 보기</span>
+                    <span>오늘자 현황 팝업</span>
                   </div>
                 </div>
               );

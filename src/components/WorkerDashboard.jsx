@@ -99,6 +99,11 @@ import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { parseExcelFile } from "../utils/excelHelper";
 import {
+  getLocalSmartOvertimeData,
+  calculateDailySummary,
+  subscribeSmartOvertimeData
+} from "../services/overtimeSmartService.js";
+import {
   getLocalApprovalDocs,
   subscribeApprovalDocs,
   checkApprovalPermission,
@@ -335,6 +340,45 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
 
   // Approval Documents Subscription (Real-time for Top Panel)
+  // 5 Company Smart Overtime Ledger Subscription for Panel 4
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+
+  useEffect(() => {
+    const unsub = subscribeSmartOvertimeData((data) => {
+      if (data && data.attendanceMatrix) {
+        setSmartOvertimeData(data);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const companyOverviewStats = useMemo(() => {
+    const matrix = smartOvertimeData?.attendanceMatrix || [];
+    const daily = calculateDailySummary(matrix, 8);
+    const defaultMeta = {
+      "(주)오륙": { workers: 67, attended: 67, otHours: 97, totalHours: 633, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
+      "(주)조영산업": { workers: 18, attended: 18, otHours: 36, totalHours: 180, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
+      "한울": { workers: 12, attended: 12, otHours: 21, totalHours: 117, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
+      "부림텍": { workers: 10, attended: 10, otHours: 14, totalHours: 94, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
+      "유성": { workers: 5, attended: 5, otHours: 6, totalHours: 44, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
+    };
+
+    return ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"].map((name) => {
+      const meta = defaultMeta[name];
+      const b = daily?.companyBreakdown?.[name];
+      return {
+        name,
+        workers: b?.total ?? meta.workers,
+        attended: b?.attended ?? meta.attended,
+        otHours: b?.otHours ?? meta.otHours,
+        totalHours: b?.totalHours ?? meta.totalHours,
+        dot: meta.dot,
+        borderHover: meta.borderHover,
+        badgeColor: meta.badgeColor
+      };
+    });
+  }, [smartOvertimeData]);
+
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
 
   useEffect(() => {
@@ -2601,23 +2645,45 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        {/* 5 Company Today Overview Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-          {[
-            { name: "(주)오륙", workers: 67, attended: 67, otHours: 97, totalHours: 633, bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800", text: "text-blue-900 dark:text-blue-200" },
-            { name: "(주)조영산업", workers: 18, attended: 18, otHours: 36, totalHours: 180, bg: "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800", text: "text-purple-900 dark:text-purple-200" },
-            { name: "한울", workers: 12, attended: 12, otHours: 21, totalHours: 117, bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800", text: "text-emerald-900 dark:text-emerald-200" },
-            { name: "부림텍", workers: 10, attended: 10, otHours: 14, totalHours: 94, bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800", text: "text-amber-900 dark:text-amber-200" },
-            { name: "유성", workers: 5, attended: 5, otHours: 6, totalHours: 44, bg: "bg-cyan-50 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800", text: "text-cyan-900 dark:text-cyan-200" }
-          ].map((comp) => (
-            <div key={comp.name} className={`p-2.5 rounded-xl border space-y-1 ${comp.bg}`}>
-              <div className="flex items-center justify-between">
-                <span className={`font-black text-xs ${comp.text}`}>{comp.name}</span>
-                <span className="text-[10px] font-bold text-slate-500">{comp.attended}/{comp.workers}명</span>
+        {/* 5 Company Today Overview Cards - Simple & Bold Number Design */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+          {companyOverviewStats.map((comp) => (
+            <div
+              key={comp.name}
+              onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
+              className={`p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800 ${comp.borderHover} transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer group flex flex-col justify-between space-y-2`}
+              title="클릭 시 5개사 근태/잔업 대장 상세관리로 이동"
+            >
+              {/* Header: Company Name + Attendance Status */}
+              <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-200/70 dark:border-slate-800/80">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className={`w-2 h-2 rounded-full ${comp.dot} shrink-0`}></span>
+                  <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors truncate">
+                    {comp.name}
+                  </span>
+                </div>
+                <span className={`text-[10px] sm:text-[10.5px] font-mono font-black px-1.5 py-0.5 rounded-md border shrink-0 ${comp.badgeColor}`}>
+                  {comp.attended}/{comp.workers}명
+                </span>
               </div>
-              <div className="flex items-center justify-between text-[10.5px]">
-                <span className="text-slate-500 font-bold">당일 잔업: <strong className="text-amber-600 dark:text-amber-400 font-mono">+{comp.otHours}H</strong></span>
-                <span className="text-slate-500 font-bold">공수: <strong className="text-cyan-600 dark:text-cyan-400 font-mono">{comp.totalHours}H</strong></span>
+
+              {/* Bold Large Metric Numbers Grid */}
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* 당일 잔업 */}
+                <div className="bg-white dark:bg-slate-900/90 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-slate-800/90 text-center">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">당일 잔업</div>
+                  <div className="font-mono font-black text-base sm:text-lg text-amber-600 dark:text-amber-400 leading-tight mt-0.5">
+                    +{comp.otHours}<span className="text-[10px] font-bold ml-0.5">H</span>
+                  </div>
+                </div>
+
+                {/* 투입 공수 */}
+                <div className="bg-white dark:bg-slate-900/90 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-slate-800/90 text-center">
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">투입 공수</div>
+                  <div className="font-mono font-black text-base sm:text-lg text-cyan-600 dark:text-cyan-300 leading-tight mt-0.5">
+                    {comp.totalHours}<span className="text-[10px] font-bold ml-0.5">H</span>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
