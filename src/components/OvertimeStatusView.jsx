@@ -1183,237 +1183,145 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (초간결 & NO SCROLLING 컴팩트 디자인) */}
-      {/* ========================================================================= */}
+      {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (초간결 3열 부서/성명/오늘근태 NO SCROLLING 컴팩트 디자인) */}
       {popupCompanyData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-3xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            {/* 1. Modal Header (Compact) */}
-            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
-                  <span>{popupCompanyData.company} 9월 {selectedDay}일 오늘자 현황</span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-cyan-300 border border-slate-700 font-mono">
+          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-5xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* 1. Modal Header & Summary Pills Bar (Ultra-Compact Integrated Header) */}
+            <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0 gap-2">
+              <div className="flex items-center gap-3 flex-wrap min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+                  <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
+                    <span>{popupCompanyData.company}</span>
+                    <span className="text-cyan-300 font-normal text-xs sm:text-sm">9월 {selectedDay}일 오늘자 근태 현황</span>
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-xs font-mono font-black flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
                     총원 {popupCompanyData.breakdown.total}명
                   </span>
-                </h3>
+                  <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    출근 {popupCompanyData.breakdown.attended}명
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">
+                    잔업 {popupCompanyData.breakdown.ot19 + popupCompanyData.breakdown.ot21 + popupCompanyData.breakdown.ot22 + popupCompanyData.breakdown.specialNight}명 (+{popupCompanyData.breakdown.otHours}H)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800">
+                    공수 {popupCompanyData.breakdown.totalHours}H
+                  </span>
+                </div>
               </div>
 
               <button
-                onClick={() => {
-                  setSelectedCompanyPopup(null);
-                  setPopupShowAddWorker(false);
-                }}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                onClick={() => setSelectedCompanyPopup(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* 2. Top Ultra-Compact KPI Pills Bar */}
-            <div className="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 shrink-0">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
-                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-bold">당일 출근</span>
-                  <span className="font-black text-emerald-400 font-mono text-sm">
-                    {popupCompanyData.breakdown.attended} / {popupCompanyData.breakdown.total}명
-                  </span>
+            {/* 2. Main Multi-Column Table (부서 | 성명 | 오늘근태 - 3열 병렬 배치로 스크롤 최소화/제거) */}
+            <div className="p-3 sm:p-4 overflow-y-auto flex-1 text-xs">
+              {popupCompanyData.workers.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 font-bold">
+                  등록된 근로자가 없습니다.
                 </div>
-                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-bold">정시 근무(8H)</span>
-                  <span className="font-black text-emerald-300 font-mono text-sm">
-                    {popupCompanyData.breakdown.regular}명
-                  </span>
-                </div>
-                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-bold">잔업자 수</span>
-                  <span className="font-black text-amber-400 font-mono text-sm">
-                    {popupCompanyData.breakdown.ot19 + popupCompanyData.breakdown.ot21 + popupCompanyData.breakdown.ot22 + popupCompanyData.breakdown.specialNight}명
-                  </span>
-                </div>
-                <div className="bg-slate-900 py-1.5 px-2 rounded-xl border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block font-bold">당일 잔업 / 공수</span>
-                  <span className="font-black text-cyan-300 font-mono text-sm">
-                    +{popupCompanyData.breakdown.otHours}H / {popupCompanyData.breakdown.totalHours}H
-                  </span>
-                </div>
-              </div>
-            </div>
+              ) : (
+                (() => {
+                  const workers = popupCompanyData.workers;
+                  const count = workers.length;
+                  const numCols = count > 30 ? 3 : count > 10 ? 2 : 1;
+                  const perCol = Math.ceil(count / numCols);
 
-            {/* 3. Compact Worker List Table (Scrollable within modal body without expanding modal) */}
-            <div className="p-3 sm:p-4 overflow-y-auto flex-1 text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-black text-slate-300 text-xs flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>작업자 근태 원클릭 선택 ({popupCompanyData.workers.length}명)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPopupShowAddWorker(!popupShowAddWorker)}
-                  className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-[11px] font-bold cursor-pointer"
-                >
-                  {popupShowAddWorker ? "접기 ▲" : "+ 근로자 등록"}
-                </button>
-              </div>
+                  const columns = [];
+                  for (let i = 0; i < numCols; i++) {
+                    columns.push(workers.slice(i * perCol, (i + 1) * perCol));
+                  }
 
-              {/* Inline Add Worker Form (if opened) */}
-              {popupShowAddWorker && (
-                <form onSubmit={handleQuickAddCompanyWorker} className="p-2.5 bg-slate-950 rounded-xl border border-cyan-500/40 grid grid-cols-1 sm:grid-cols-4 gap-1.5">
-                  <input
-                    type="text"
-                    required
-                    placeholder="성명 *"
-                    value={quickNewWorkerName}
-                    onChange={(e) => setQuickNewWorkerName(e.target.value)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs font-bold"
-                  />
-                  <select
-                    value={quickNewWorkerDept}
-                    onChange={(e) => setQuickNewWorkerDept(e.target.value)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs font-bold"
-                  >
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="라인 (선택)"
-                    value={quickNewWorkerLine}
-                    onChange={(e) => setQuickNewWorkerLine(e.target.value)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-600 text-white text-xs font-bold"
-                  />
-                  <button
-                    type="submit"
-                    className="py-1 px-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs cursor-pointer"
-                  >
-                    등록 완료
-                  </button>
-                </form>
+                  const renderBadge = (code) => {
+                    const str = code ? String(code).trim() : "";
+                    if (!str || str === "-") {
+                      return <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-800 text-slate-400">-</span>;
+                    }
+                    if (str === "🟢" || str === "정시" || str === "17") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-emerald-600 text-white shadow-2xs">🟢정시</span>;
+                    }
+                    if (str === "19" || str === "19시") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-amber-600 text-white shadow-2xs">🟡19시</span>;
+                    }
+                    if (str === "21" || str === "21시") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-orange-600 text-white shadow-2xs">🟠21시</span>;
+                    }
+                    if (str === "22" || str === "22시") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-rose-600 text-white shadow-2xs">🔴22시</span>;
+                    }
+                    if (str === "특근" || str === "주말특근") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-purple-600 text-white shadow-2xs">🌙특근</span>;
+                    }
+                    if (str === "연차") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-sky-600 text-white shadow-2xs">🌴연차</span>;
+                    }
+                    if (str === "반차") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-blue-600 text-white shadow-2xs">⛅반차</span>;
+                    }
+                    if (str === "결근") {
+                      return <span className="px-2 py-0.5 rounded-lg text-[11px] font-black bg-red-600 text-white shadow-2xs">❌결근</span>;
+                    }
+                    return <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">{str}</span>;
+                  };
+
+                  return (
+                    <div className={`grid gap-2.5 ${numCols === 3 ? "grid-cols-1 md:grid-cols-3" : numCols === 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
+                      {columns.map((colWorkers, colIdx) => (
+                        <div key={colIdx} className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/70 shadow-xs">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800">
+                              <tr>
+                                <th className="py-1 px-1.5 text-center w-7 text-slate-500 font-mono">No</th>
+                                <th className="py-1 px-1.5 w-14">부서</th>
+                                <th className="py-1 px-1.5 w-16">성명</th>
+                                <th className="py-1 px-1.5 text-center">오늘근태</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
+                              {colWorkers.map((worker, rowIdx) => {
+                                const globalNo = colIdx * perCol + rowIdx + 1;
+                                const currentVal = worker.daily ? worker.daily[selectedDay] : "";
+
+                                return (
+                                  <tr key={worker.originalMatrixIndex || globalNo} className="hover:bg-slate-800/60 transition-colors">
+                                    <td className="py-1 px-1.5 text-center font-mono text-slate-500 text-[10.5px]">
+                                      {globalNo}
+                                    </td>
+                                    <td className="py-1 px-1.5">
+                                      <span className="font-bold text-slate-300 text-[11px] whitespace-nowrap">{worker.dept}</span>
+                                    </td>
+                                    <td className="py-1 px-1.5 font-black text-white text-xs whitespace-nowrap">
+                                      {worker.name}
+                                    </td>
+                                    <td className="py-1 px-1.5 text-center whitespace-nowrap">
+                                      {renderBadge(currentVal)}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()
               )}
-
-              {/* Table */}
-              <div className="border border-slate-800 rounded-xl overflow-hidden">
-                <div className="overflow-x-auto max-h-[300px]">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead className="sticky top-0 bg-slate-950 text-slate-400 text-[11px] font-bold border-b border-slate-800">
-                      <tr>
-                        <th className="py-1.5 px-2 text-center w-8">No</th>
-                        <th className="py-1.5 px-2 w-16">부서</th>
-                        <th className="py-1.5 px-2 w-18">성명</th>
-                        <th className="py-1.5 px-2 min-w-[240px]">오늘자 근태 선택</th>
-                        <th className="py-1.5 px-2 text-center w-14">잔업</th>
-                        <th className="py-1.5 px-2 text-center w-14">공수</th>
-                        <th className="py-1.5 px-2 text-center w-10">삭제</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 bg-slate-900/60 text-xs">
-                      {popupCompanyData.workers.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="p-4 text-center text-slate-500 font-bold">
-                            등록된 작업자가 없습니다.
-                          </td>
-                        </tr>
-                      ) : (
-                        popupCompanyData.workers.map((worker) => {
-                          const currentVal = worker.daily ? worker.daily[selectedDay] : "";
-                          const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
-                          const ot = weekdayOt + weekendOt;
-
-                          return (
-                            <tr key={worker.originalMatrixIndex} className="hover:bg-slate-800/60 transition-colors">
-                              <td className="py-1.5 px-2 text-center font-mono text-slate-500 text-[11px]">{worker.no}</td>
-                              <td className="py-1.5 px-2">
-                                <span className="font-bold text-slate-300 text-[11px]">{worker.dept}</span>
-                              </td>
-                              <td className="py-1.5 px-2 font-black text-white text-xs">{worker.name}</td>
-                              <td className="py-1.5 px-2">
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  <button
-                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
-                                      currentVal === "🟢" || currentVal === "정시"
-                                        ? "bg-emerald-600 text-white ring-1 ring-emerald-300"
-                                        : "bg-slate-800 text-emerald-400 hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    🟢정시
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
-                                      currentVal === "19" || currentVal === "19시"
-                                        ? "bg-amber-600 text-white ring-1 ring-amber-300"
-                                        : "bg-slate-800 text-amber-400 hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    🟡19시
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
-                                      currentVal === "21" || currentVal === "21시"
-                                        ? "bg-orange-600 text-white ring-1 ring-orange-300"
-                                        : "bg-slate-800 text-orange-400 hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    🟠21시
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
-                                      currentVal === "22" || currentVal === "22시"
-                                        ? "bg-rose-600 text-white ring-1 ring-rose-300"
-                                        : "bg-slate-800 text-rose-400 hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    🔴22시
-                                  </button>
-                                  <button
-                                    onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "특근")}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer ${
-                                      currentVal === "특근"
-                                        ? "bg-purple-600 text-white ring-1 ring-purple-300"
-                                        : "bg-slate-800 text-purple-400 hover:bg-slate-700"
-                                    }`}
-                                  >
-                                    🌙특근
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="py-1.5 px-2 text-center font-mono font-bold text-amber-400 text-[11px]">
-                                {ot > 0 ? `+${ot}H` : "0H"}
-                              </td>
-                              <td className="py-1.5 px-2 text-center font-mono font-black text-cyan-300 text-[11px]">
-                                {workHours}H
-                              </td>
-                              <td className="py-1.5 px-2 text-center">
-                                <button
-                                  onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
-                                  className="p-0.5 rounded text-slate-500 hover:text-rose-400 cursor-pointer"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
 
-            {/* 4. Modal Footer (Compact) */}
-            <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
+            {/* 3. Modal Footer (Compact) */}
+            <div className="px-4 py-2 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
               <button
-                onClick={() => {
-                  setSelectedCompanyPopup(null);
-                  setPopupShowAddWorker(false);
-                }}
-                className="px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs cursor-pointer shadow-md"
+                onClick={() => setSelectedCompanyPopup(null)}
+                className="px-4 py-1 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all"
               >
                 닫기
               </button>
