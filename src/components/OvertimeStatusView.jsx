@@ -1212,12 +1212,20 @@ export const OvertimeStatusView = () => {
                                     </span>
                                   </td>
 
-                                  {/* 삭제 */}
+                                  {/* 근태 선택 취소 */}
                                   <td className="py-1 px-1 text-center">
                                     <button
-                                      onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
-                                      title="근로자 삭제"
-                                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer"
+                                      type="button"
+                                      onClick={() => {
+                                        handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "");
+                                        triggerToast(`↩️ ${worker.name}님의 9월 ${selectedDay}일 근태 선택이 취소되었습니다.`);
+                                      }}
+                                      title={`9월 ${selectedDay}일 근태 선택 취소`}
+                                      className={`p-1 rounded transition-colors cursor-pointer ${
+                                        currentVal
+                                          ? "text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 active:scale-95"
+                                          : "text-slate-600 hover:text-slate-400 opacity-40 hover:opacity-100"
+                                      }`}
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
