@@ -1096,7 +1096,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         createdAt: new Date().toISOString(),
         author: currentProfile?.name || "ADMIN"
       };
-      await saveCommonSchedule(newSchedule);
+      const updated = await saveCommonSchedule(newSchedule);
+      if (updated && Array.isArray(updated)) {
+        setCommonSchedules(updated);
+      }
 
       // 🚀 경영방으로 신규 일정 등록 알림 즉시 발송
       try {
@@ -1105,15 +1108,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         console.warn("Telegram notification send error:", telErr);
       }
 
-      setToastMessage("일정이 등록되었으며, 경영방으로 알림이 발송되었습니다.");
+      setToastMessage("일정이 성공적으로 등록되었습니다!");
       setLogSavedToast(true);
-      setTimeout(() => setLogSavedToast(false), 3000);
+      setTimeout(() => setLogSavedToast(false), 2500);
+
       setCommonScheduleForm({
         date: todayStr,
         time: "09:30",
         target: "세미나",
         title: ""
       });
+
+      // 닫기 후 의견 팝업 열기
+      setCommonScheduleModalOpen(false);
+      setSelectedCommonScheduleForComments(newSchedule);
     } catch (err) {
       alert("일정 등록 중 오류 발생: " + err.message);
     } finally {
@@ -1127,6 +1135,65 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setToastMessage("일정이 삭제되었습니다.");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
+  };
+
+  useEffect(() => {
+    if (selectedCommonScheduleForComments && Array.isArray(commonSchedules)) {
+      const latest = commonSchedules.find((s) => s.id === selectedCommonScheduleForComments.id);
+      if (latest) {
+        setSelectedCommonScheduleForComments(latest);
+      }
+    }
+  }, [commonSchedules]);
+
+  const handleAddCommonScheduleComment = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!selectedCommonScheduleForComments || !commonScheduleCommentInput.trim()) return;
+
+    setCommonScheduleCommentSubmitting(true);
+    try {
+      const commentData = {
+        author: currentProfile?.name || "관리자",
+        role: currentProfile?.role || currentProfile?.title || "선임",
+        plant: currentProfile?.plant || "",
+        text: commonScheduleCommentInput.trim()
+      };
+      const res = await addCommonScheduleComment(selectedCommonScheduleForComments.id, commentData);
+      if (res.updatedList) {
+        setCommonSchedules(res.updatedList);
+      }
+      if (res.updatedItem) {
+        setSelectedCommonScheduleForComments(res.updatedItem);
+      }
+      setCommonScheduleCommentInput("");
+      setToastMessage("의견이 등록되었습니다.");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 2000);
+    } catch (err) {
+      console.error("Failed to add comment:", err);
+      alert("의견 등록 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setCommonScheduleCommentSubmitting(false);
+    }
+  };
+
+  const handleDeleteCommonScheduleComment = async (commentId) => {
+    if (!selectedCommonScheduleForComments) return;
+    if (!window.confirm("이 의견을 삭제하시겠습니까?")) return;
+    try {
+      const res = await deleteCommonScheduleComment(selectedCommonScheduleForComments.id, commentId);
+      if (res.updatedList) {
+        setCommonSchedules(res.updatedList);
+      }
+      if (res.updatedItem) {
+        setSelectedCommonScheduleForComments(res.updatedItem);
+      }
+      setToastMessage("의견이 삭제되었습니다.");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 2000);
+    } catch (err) {
+      console.error("Failed to delete comment:", err);
+    }
   };
 
   const monthParts = selectedMonth.split("-");
