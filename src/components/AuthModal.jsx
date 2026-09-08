@@ -700,9 +700,6 @@ export const AuthModal = () => {
               </span>
               <span>생산관리 통합시스템</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 font-bold">
-              작업자 또는 관리자를 선택하여 안전하게 접속해 주세요.
-            </p>
           </div>
 
           {/* ========================================================================= */}
