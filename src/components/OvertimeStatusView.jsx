@@ -133,20 +133,24 @@ export const getCleanReportTitle = (report) => {
   const workDate = typeof report === "object" ? String(report?.workDate || "") : "";
   const isWeekend = isWeekendByDate(workDate || rawTitle);
   const correctDayOfWeek = getDayOfWeekKorean(workDate || rawTitle);
+  const reportCategory = isWeekend ? "특근실시보고서" : "근태보고서";
 
-  let title = rawTitle || (typeof report === "object" && report?.plant ? `${report.plant} 보고서` : "근태보고서");
+  const plant = typeof report === "object" ? (report?.plant || getPlantForCompany(report?.company || "")) : "";
+  const comp = typeof report === "object" ? (report?.company && report?.company !== "전체" ? report?.company : "") : "";
+
+  let title = rawTitle || (plant ? `${plant} ${comp} ${reportCategory}` : reportCategory);
   if (/\([일월화수목금토]\)|\(평일\)/.test(title)) {
     title = title.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${correctDayOfWeek})`);
   }
-  if (isWeekend) {
-    title = title
-      .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
-      .replace(/특근실시 보고서/g, "특근실시보고서");
-    if (!title.includes("특근실시보고서")) title += " 특근실시보고서";
-  } else {
-    title = title
-      .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
-    if (!title.includes("근태보고서")) title += " 근태보고서";
+  title = title
+    .replace(/근태 및 특근실시 보고서|특근실시 보고서|근태 및 특근보고서/g, reportCategory)
+    .replace(/근태보고서|특근실시보고서/g, reportCategory);
+
+  if (comp && !title.includes(comp)) {
+    title = title.replace(new RegExp(`${plant}\\s*${reportCategory}|${reportCategory}`), `${plant} ${comp} ${reportCategory}`);
+  }
+  if (!title.includes(reportCategory)) {
+    title += ` ${reportCategory}`;
   }
   return title;
 };
@@ -471,7 +475,7 @@ export const OvertimeStatusView = () => {
       return sum + (workHours || 0);
     }, 0);
 
-    setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compLabel} ${reportType}`);
+    setReportModalTitle(`2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`);
     setReportModalAuthor(compMeta.author || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
@@ -503,7 +507,7 @@ export const OvertimeStatusView = () => {
       const dayLabel = getDayOfWeekKorean(d);
       const reportType = isWk ? "특근실시보고서" : "근태보고서";
       const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compLabel} ${reportType}`;
+      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`;
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
 
       const items = filteredAttendanceWorkers.filter(w => {
@@ -1430,61 +1434,119 @@ export const OvertimeStatusView = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {/* 삼랑진공장 Group ((주)오륙, 유성) */}
-                  <tr className="bg-amber-950/40 text-amber-300 font-black border-y border-amber-800/60">
-                    <td colSpan={10} className="py-2 px-3 flex items-center gap-1.5 text-xs">
-                      <Factory className="w-3.5 h-3.5 text-amber-400" />
-                      <span>🏭 삼랑진공장 ((주)오륙, 유성)</span>
-                    </td>
-                  </tr>
-                  {["(주)오륙", "유성"].map((comp) => {
-                    const row = dailySummary.companyBreakdown?.[comp] || {};
-                    return (
-                      <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                          <span>{comp}</span>
-                        </td>
-                        <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{row.total || 0}명</td>
-                        <td className="p-3 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">{row.attended || 0}명</td>
-                        <td className="p-3 text-center font-mono">{row.regular || 0}명</td>
-                        <td className="p-3 text-center font-mono text-amber-600">{row.ot19 || 0}명</td>
-                        <td className="p-3 text-center font-mono text-orange-600">{row.ot21 || 0}명</td>
-                        <td className="p-3 text-center font-mono text-rose-600">{row.ot22 || 0}명</td>
-                        <td className="p-3 text-center font-mono text-purple-600">{row.specialNight || 0}명</td>
-                        <td className="p-3 text-center font-mono font-black text-amber-600 dark:text-amber-400">+{row.otHours || 0} H</td>
-                        <td className="p-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400">{row.totalHours || 0} H</td>
-                      </tr>
-                    );
-                  })}
+                  {(() => {
+                    const samBreakdown = ["(주)오륙", "유성"].map(c => dailySummary.companyBreakdown?.[c] || {});
+                    const samTotal = samBreakdown.reduce((s, r) => s + (r.total || 0), 0);
+                    const samAttended = samBreakdown.reduce((s, r) => s + (r.attended || 0), 0);
+                    const samReg = samBreakdown.reduce((s, r) => s + (r.regular || 0), 0);
+                    const samOt19 = samBreakdown.reduce((s, r) => s + (r.ot19 || 0), 0);
+                    const samOt21 = samBreakdown.reduce((s, r) => s + (r.ot21 || 0), 0);
+                    const samOt22 = samBreakdown.reduce((s, r) => s + (r.ot22 || 0), 0);
+                    const samNight = samBreakdown.reduce((s, r) => s + (r.specialNight || 0), 0);
+                    const samOtHours = samBreakdown.reduce((s, r) => s + (r.otHours || 0), 0);
+                    const samTotalHours = samBreakdown.reduce((s, r) => s + (r.totalHours || 0), 0);
 
-                  {/* 한림공장 Group ((주)조영산업, 한울, 부림텍) */}
-                  <tr className="bg-emerald-950/40 text-emerald-300 font-black border-y border-emerald-800/60">
-                    <td colSpan={10} className="py-2 px-3 flex items-center gap-1.5 text-xs">
-                      <Factory className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>🏭 한림공장 ((주)조영산업, 한울, 부림텍)</span>
-                    </td>
-                  </tr>
-                  {["(주)조영산업", "한울", "부림텍"].map((comp) => {
-                    const row = dailySummary.companyBreakdown?.[comp] || {};
+                    const halBreakdown = ["(주)조영산업", "한울", "부림텍"].map(c => dailySummary.companyBreakdown?.[c] || {});
+                    const halTotal = halBreakdown.reduce((s, r) => s + (r.total || 0), 0);
+                    const halAttended = halBreakdown.reduce((s, r) => s + (r.attended || 0), 0);
+                    const halReg = halBreakdown.reduce((s, r) => s + (r.regular || 0), 0);
+                    const halOt19 = halBreakdown.reduce((s, r) => s + (r.ot19 || 0), 0);
+                    const halOt21 = halBreakdown.reduce((s, r) => s + (r.ot21 || 0), 0);
+                    const halOt22 = halBreakdown.reduce((s, r) => s + (r.ot22 || 0), 0);
+                    const halNight = halBreakdown.reduce((s, r) => s + (r.specialNight || 0), 0);
+                    const halOtHours = halBreakdown.reduce((s, r) => s + (r.otHours || 0), 0);
+                    const halTotalHours = halBreakdown.reduce((s, r) => s + (r.totalHours || 0), 0);
+
                     return (
-                      <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                          <span>{comp}</span>
-                        </td>
-                        <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{row.total || 0}명</td>
-                        <td className="p-3 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">{row.attended || 0}명</td>
-                        <td className="p-3 text-center font-mono">{row.regular || 0}명</td>
-                        <td className="p-3 text-center font-mono text-amber-600">{row.ot19 || 0}명</td>
-                        <td className="p-3 text-center font-mono text-orange-600">{row.ot21 || 0}명</td>
-                        <td className="p-3 text-center font-mono text-rose-600">{row.ot22 || 0}명</td>
-                        <td className="p-3 text-center font-mono text-purple-600">{row.specialNight || 0}명</td>
-                        <td className="p-3 text-center font-mono font-black text-amber-600 dark:text-amber-400">+{row.otHours || 0} H</td>
-                        <td className="p-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400">{row.totalHours || 0} H</td>
-                      </tr>
+                      <>
+                        {/* 삼랑진공장 Group ((주)오륙, 유성) */}
+                        <tr className="bg-amber-950/40 text-amber-300 font-black border-y border-amber-800/60">
+                          <td colSpan={10} className="py-2 px-3 flex items-center gap-1.5 text-xs">
+                            <Factory className="w-3.5 h-3.5 text-amber-400" />
+                            <span>🏭 삼랑진공장 소속 협력업체</span>
+                          </td>
+                        </tr>
+                        {["(주)오륙", "유성"].map((comp) => {
+                          const row = dailySummary.companyBreakdown?.[comp] || {};
+                          return (
+                            <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                <span>{comp}</span>
+                              </td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{row.total || 0}명</td>
+                              <td className="p-3 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">{row.attended || 0}명</td>
+                              <td className="p-3 text-center font-mono">{row.regular || 0}명</td>
+                              <td className="p-3 text-center font-mono text-amber-600">{row.ot19 || 0}명</td>
+                              <td className="p-3 text-center font-mono text-orange-600">{row.ot21 || 0}명</td>
+                              <td className="p-3 text-center font-mono text-rose-600">{row.ot22 || 0}명</td>
+                              <td className="p-3 text-center font-mono text-purple-600">{row.specialNight || 0}명</td>
+                              <td className="p-3 text-center font-mono font-black text-amber-600 dark:text-amber-400">+{row.otHours || 0} H</td>
+                              <td className="p-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400">{row.totalHours || 0} H</td>
+                            </tr>
+                          );
+                        })}
+                        {/* 📊 삼랑진공장 취합 소계 */}
+                        <tr className="bg-amber-950/60 text-amber-200 font-black border-y border-amber-700/60">
+                          <td className="p-2.5 font-black text-amber-300 flex items-center gap-1.5 pl-6">
+                            <span>📊 삼랑진공장 취합 소계</span>
+                          </td>
+                          <td className="p-2.5 text-center font-mono font-bold">{samTotal}명</td>
+                          <td className="p-2.5 text-center font-mono font-black text-emerald-400">{samAttended}명</td>
+                          <td className="p-2.5 text-center font-mono">{samReg}명</td>
+                          <td className="p-2.5 text-center font-mono text-amber-300">{samOt19}명</td>
+                          <td className="p-2.5 text-center font-mono text-orange-300">{samOt21}명</td>
+                          <td className="p-2.5 text-center font-mono text-rose-300">{samOt22}명</td>
+                          <td className="p-2.5 text-center font-mono text-purple-300">{samNight}명</td>
+                          <td className="p-2.5 text-center font-mono font-black text-amber-300">+{samOtHours} H</td>
+                          <td className="p-2.5 text-center font-mono font-black text-cyan-300">{samTotalHours} H</td>
+                        </tr>
+
+                        {/* 한림공장 Group ((주)조영산업, 한울, 부림텍) */}
+                        <tr className="bg-emerald-950/40 text-emerald-300 font-black border-y border-emerald-800/60">
+                          <td colSpan={10} className="py-2 px-3 flex items-center gap-1.5 text-xs">
+                            <Factory className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>🏭 한림공장 소속 협력업체</span>
+                          </td>
+                        </tr>
+                        {["(주)조영산업", "한울", "부림텍"].map((comp) => {
+                          const row = dailySummary.companyBreakdown?.[comp] || {};
+                          return (
+                            <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                <span>{comp}</span>
+                              </td>
+                              <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{row.total || 0}명</td>
+                              <td className="p-3 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">{row.attended || 0}명</td>
+                              <td className="p-3 text-center font-mono">{row.regular || 0}명</td>
+                              <td className="p-3 text-center font-mono text-amber-600">{row.ot19 || 0}명</td>
+                              <td className="p-3 text-center font-mono text-orange-600">{row.ot21 || 0}명</td>
+                              <td className="p-3 text-center font-mono text-rose-600">{row.ot22 || 0}명</td>
+                              <td className="p-3 text-center font-mono text-purple-600">{row.specialNight || 0}명</td>
+                              <td className="p-3 text-center font-mono font-black text-amber-600 dark:text-amber-400">+{row.otHours || 0} H</td>
+                              <td className="p-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400">{row.totalHours || 0} H</td>
+                            </tr>
+                          );
+                        })}
+                        {/* 📊 한림공장 취합 소계 */}
+                        <tr className="bg-emerald-950/60 text-emerald-200 font-black border-y border-emerald-700/60">
+                          <td className="p-2.5 font-black text-emerald-300 flex items-center gap-1.5 pl-6">
+                            <span>📊 한림공장 취합 소계</span>
+                          </td>
+                          <td className="p-2.5 text-center font-mono font-bold">{halTotal}명</td>
+                          <td className="p-2.5 text-center font-mono font-black text-emerald-400">{halAttended}명</td>
+                          <td className="p-2.5 text-center font-mono">{halReg}명</td>
+                          <td className="p-2.5 text-center font-mono text-amber-300">{halOt19}명</td>
+                          <td className="p-2.5 text-center font-mono text-orange-300">{halOt21}명</td>
+                          <td className="p-2.5 text-center font-mono text-rose-300">{halOt22}명</td>
+                          <td className="p-2.5 text-center font-mono text-purple-300">{halNight}명</td>
+                          <td className="p-2.5 text-center font-mono font-black text-amber-300">+{halOtHours} H</td>
+                          <td className="p-2.5 text-center font-mono font-black text-cyan-300">{halTotalHours} H</td>
+                        </tr>
+                      </>
                     );
-                  })}
+                  })()}
                   {/* Total Row */}
                   <tr className="bg-slate-900 text-white font-black">
                     <td className="p-3 text-cyan-400 font-bold">5개사 합계</td>

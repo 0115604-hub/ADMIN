@@ -10,7 +10,7 @@ import { db } from "../firebase.js";
 import * as XLSX from "xlsx";
 import { INITIAL_SMART_OVERTIME_DATA } from "../data/masterOvertimeSmartData.js";
 
-const STORAGE_KEY = "oryuk_smart_overtime_data_v1";
+const STORAGE_KEY = "oryuk_smart_overtime_data_v2_sept";
 const FIRESTORE_DOC_ID = "overtime_2026_09";
 
 export const COMPANIES = ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"];
@@ -457,7 +457,15 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
     const daily = {};
     for (let d = 1; d <= 30; d++) {
       const isWeekend = (d === 5 || d === 6 || d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27);
-      daily[d] = isWeekend ? "-" : "🟢";
+      if (isWeekend) {
+        daily[d] = "-";
+      } else if (d <= 8) {
+        // Only elapsed working days have base attendance if available
+        daily[d] = (w.daily && w.daily[d]) ? w.daily[d] : "🟢";
+      } else {
+        // ⭐ Future days (9-30) are strictly empty/unrecorded
+        daily[d] = "";
+      }
     }
     return {
       no: idx + 1,
@@ -571,11 +579,21 @@ export const ensureAllCompaniesPresent = (data) => {
     return INITIAL_SMART_OVERTIME_DATA;
   }
 
-  let matrix = data.attendanceMatrix.map((w, idx) => ({
-    ...w,
-    no: idx + 1,
-    dept: normalizeDept(w.dept)
-  }));
+  let matrix = data.attendanceMatrix.map((w, idx) => {
+    const cleanedDaily = { ...(w.daily || {}) };
+    for (let d = 9; d <= 30; d++) {
+      const isWk = (d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27);
+      if (!isWk && cleanedDaily[d] === "🟢") {
+        cleanedDaily[d] = "";
+      }
+    }
+    return {
+      ...w,
+      no: idx + 1,
+      dept: normalizeDept(w.dept),
+      daily: cleanedDaily
+    };
+  });
   let master = (data.masterWorkers || []).map((w, idx) => ({
     ...w,
     no: idx + 1,
