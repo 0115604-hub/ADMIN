@@ -78,7 +78,7 @@ import {
 } from "../services/overtimeService";
 import { getKSTDateString } from "../utils/dateUtils";
 
-// ⭐ Precise Date & Weekend Helpers
+// ⭐ Precise Date & Weekend Helpers (2026년 9월 캘린더 기준)
 export const isWeekendByDate = (dateStrOrDay) => {
   if (typeof dateStrOrDay === "number") {
     const dt = new Date(2026, 8, dateStrOrDay); // Month 8 is September (0-indexed)
@@ -94,7 +94,11 @@ export const isWeekendByDate = (dateStrOrDay) => {
       return dayOfWeek === 0 || dayOfWeek === 6;
     }
   }
-  if (/\(토\)|\(일\)|토요일|일요일/.test(String(dateStrOrDay))) return true;
+  const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
+  if (match) {
+    const dayChar = match[1] || match[2];
+    return dayChar === "토" || dayChar === "일";
+  }
   return false;
 };
 
@@ -102,17 +106,74 @@ export const getDayOfWeekKorean = (dateStrOrDay) => {
   const names = ["일", "월", "화", "수", "목", "금", "토"];
   if (typeof dateStrOrDay === "number") {
     const dt = new Date(2026, 8, dateStrOrDay);
-    return names[dt.getDay()] || "평일";
+    return names[dt.getDay()] || "화";
   }
-  if (!dateStrOrDay) return "평일";
+  if (!dateStrOrDay) return "화";
   const p = String(dateStrOrDay).split("-");
   if (p.length === 3) {
     const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
     if (!isNaN(dt.getTime())) {
-      return names[dt.getDay()] || "평일";
+      return names[dt.getDay()] || "화";
     }
   }
-  return "평일";
+  const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
+  if (match) return match[1] || match[2] || "화";
+  return "화";
+};
+
+export const getDayOfWeekFullKorean = (dateStrOrDay) => {
+  const short = getDayOfWeekKorean(dateStrOrDay);
+  return short ? `${short}요일` : "";
+};
+
+// ⭐ 보고서 제목 내 날짜/요일 및 보고서 유형(평일=근태보고서, 주말=특근실시보고서) 100% 자동 동기화 함수
+export const getCleanReportTitle = (report) => {
+  if (!report) return "";
+  const rawTitle = typeof report === "string" ? report : String(report?.title || "");
+  const workDate = typeof report === "object" ? String(report?.workDate || "") : "";
+  const isWeekend = isWeekendByDate(workDate || rawTitle);
+  const correctDayOfWeek = getDayOfWeekKorean(workDate || rawTitle);
+
+  let title = rawTitle || (typeof report === "object" && report?.plant ? `${report.plant} 보고서` : "근태보고서");
+  if (/\([일월화수목금토]\)|\(평일\)/.test(title)) {
+    title = title.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${correctDayOfWeek})`);
+  }
+  if (isWeekend) {
+    title = title
+      .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
+      .replace(/특근실시 보고서/g, "특근실시보고서");
+    if (!title.includes("특근실시보고서")) title += " 특근실시보고서";
+  } else {
+    title = title
+      .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
+    if (!title.includes("근태보고서")) title += " 근태보고서";
+  }
+  return title;
+};
+
+// ⭐ 보고서 사유/내용 내 요일 자동 동기화
+export const getCleanReportReason = (reasonStr, report) => {
+  if (!reasonStr) return "";
+  let rawStr = "";
+  if (typeof reasonStr === "string") {
+    rawStr = reasonStr;
+  } else if (typeof reasonStr === "object") {
+    rawStr = reasonStr.text || reasonStr.reason || reasonStr.content || JSON.stringify(reasonStr);
+  } else {
+    rawStr = String(reasonStr || "");
+  }
+
+  const workDate = typeof report === "object" ? String(report?.workDate || "") : "";
+  const correctDayOfWeek = getDayOfWeekKorean(workDate || rawStr);
+  const isWeekend = isWeekendByDate(workDate || rawStr);
+  let res = String(rawStr || "");
+  if (/\([일월화수목금토]\)|\(평일\)/.test(res)) {
+    res = res.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${correctDayOfWeek})`);
+  }
+  if (!isWeekend && res.includes("토요 특근")) {
+    res = res.replace(/토요 특근/g, "정규/연장 근무");
+  }
+  return res;
 };
 
 export const OvertimeStatusView = () => {
