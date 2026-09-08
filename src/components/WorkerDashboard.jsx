@@ -2577,37 +2577,38 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           <div className="flex items-center gap-2 flex-wrap min-w-0">
             <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-2">
               <span>4. 공장별 일일근태현황 및 특근현황 요약</span>
-              <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
-                4개사 잔업스마트대장
+              <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300">
+                5개사 잔업스마트대장
               </span>
             </h2>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shrink-0">
-              9월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">평일잔업 847H • 주말특근 424H</strong> (총 6,407 M/H)
+              9월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">평일잔업 880H • 주말특근 440H</strong> (총 6,650 M/H)
             </span>
           </div>
 
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("overtime_status")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/80 dark:hover:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-black border border-blue-400 dark:border-blue-600 ring-2 ring-blue-400/40 shadow-xs shadow-blue-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-black border border-cyan-400 dark:border-cyan-600 ring-2 ring-cyan-400/40 shadow-xs shadow-cyan-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
             >
               <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
               </span>
-              <span>📊 잔업 대장 상세관리</span>
-              <ArrowRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>📊 5개사 근태/잔업 대장 상세관리</span>
+              <ArrowRight className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
             </button>
           )}
         </div>
 
-        {/* 4 Company Today Overview Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {/* 5 Company Today Overview Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
           {[
             { name: "(주)오륙", workers: 67, attended: 67, otHours: 97, totalHours: 633, bg: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800", text: "text-blue-900 dark:text-blue-200" },
             { name: "(주)조영산업", workers: 18, attended: 18, otHours: 36, totalHours: 180, bg: "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800", text: "text-purple-900 dark:text-purple-200" },
             { name: "한울", workers: 12, attended: 12, otHours: 21, totalHours: 117, bg: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800", text: "text-emerald-900 dark:text-emerald-200" },
-            { name: "부림텍", workers: 10, attended: 10, otHours: 14, totalHours: 94, bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800", text: "text-amber-900 dark:text-amber-200" }
+            { name: "부림텍", workers: 10, attended: 10, otHours: 14, totalHours: 94, bg: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800", text: "text-amber-900 dark:text-amber-200" },
+            { name: "유성", workers: 5, attended: 5, otHours: 6, totalHours: 44, bg: "bg-cyan-50 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800", text: "text-cyan-900 dark:text-cyan-200" }
           ].map((comp) => (
             <div key={comp.name} className={`p-2.5 rounded-xl border space-y-1 ${comp.bg}`}>
               <div className="flex items-center justify-between">
@@ -2616,7 +2617,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
               <div className="flex items-center justify-between text-[10.5px]">
                 <span className="text-slate-500 font-bold">당일 잔업: <strong className="text-amber-600 dark:text-amber-400 font-mono">+{comp.otHours}H</strong></span>
-                <span className="text-slate-500 font-bold">공수: <strong className="text-indigo-600 dark:text-indigo-400 font-mono">{comp.totalHours}H</strong></span>
+                <span className="text-slate-500 font-bold">공수: <strong className="text-cyan-600 dark:text-cyan-400 font-mono">{comp.totalHours}H</strong></span>
               </div>
             </div>
           ))}
