@@ -104,7 +104,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 10,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "크리스토퍼",
       "position": "작업원",
@@ -115,7 +115,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 11,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "찬턴",
       "position": "작업원",
@@ -126,7 +126,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 12,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "로빈(야간)",
       "position": "작업원",
@@ -137,7 +137,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 13,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "채수연",
       "position": "작업원",
@@ -148,7 +148,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 14,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "피아",
       "position": "작업원",
@@ -159,7 +159,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 15,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "데이시",
       "position": "작업원",
@@ -170,7 +170,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 16,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "짱",
       "position": "작업원",
@@ -181,7 +181,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 17,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "김선옥",
       "position": "작업원",
@@ -192,7 +192,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 18,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "윤희수",
       "position": "작업원",
@@ -203,7 +203,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 19,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "데니스",
       "position": "작업원",
@@ -214,7 +214,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 20,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "주재순",
       "position": "작업원",
@@ -225,7 +225,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 21,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "김수연",
       "position": "작업원",
@@ -236,7 +236,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 22,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA.HR",
       "name": "이스라엘",
       "position": "작업원",
@@ -247,7 +247,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 23,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "버나드",
       "position": "작업원",
@@ -258,7 +258,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 24,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "롤란도",
       "position": "작업원",
@@ -269,7 +269,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 25,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "돈돈",
       "position": "작업원",
@@ -280,7 +280,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 26,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "알라딘",
       "position": "작업원",
@@ -291,7 +291,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 27,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "김순미",
       "position": "작업원",
@@ -302,7 +302,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 28,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "양인순",
       "position": "작업원",
@@ -313,7 +313,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 29,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "박순복",
       "position": "작업원",
@@ -324,7 +324,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 30,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "김상아",
       "position": "작업원",
@@ -335,7 +335,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 31,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "김윤자",
       "position": "작업원",
@@ -346,7 +346,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 32,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "김현희",
       "position": "작업원",
@@ -357,7 +357,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 33,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "손선희",
       "position": "작업원",
@@ -368,7 +368,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 34,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "이영숙",
       "position": "작업원",
@@ -379,7 +379,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 35,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "수베트",
       "position": "작업원",
@@ -390,7 +390,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 36,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "치찬",
       "position": "작업원",
@@ -401,7 +401,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 37,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "콩지",
       "position": "작업원",
@@ -412,7 +412,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 38,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA.HR",
       "name": "케넷",
       "position": "작업원",
@@ -423,7 +423,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 39,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "Channel",
       "name": "정상근",
       "position": "작업원",
@@ -434,7 +434,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 40,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "Channel",
       "name": "링링",
       "position": "작업원",
@@ -445,7 +445,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 41,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "Channel",
       "name": "유미",
       "position": "작업원",
@@ -456,7 +456,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 42,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "공영국",
       "position": "작업원",
@@ -467,7 +467,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 43,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "심임대",
       "position": "작업원",
@@ -478,7 +478,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 44,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "이상은",
       "position": "작업원",
@@ -489,7 +489,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 45,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "닉",
       "position": "작업원",
@@ -500,7 +500,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 46,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "마이클",
       "position": "작업원",
@@ -511,7 +511,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 47,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "존카를로",
       "position": "작업원",
@@ -522,7 +522,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 48,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "지미",
       "position": "작업원",
@@ -533,7 +533,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 49,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "만",
       "position": "작업원",
@@ -544,7 +544,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 50,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "샤먼",
       "position": "작업원",
@@ -555,7 +555,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 51,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "쿠마루",
       "position": "작업원",
@@ -566,7 +566,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 52,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "이수루",
       "position": "작업원",
@@ -577,7 +577,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 53,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "코팅",
       "name": "준",
       "position": "작업원",
@@ -588,7 +588,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 54,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "유성-15",
       "name": "이성기",
       "position": "작업원",
@@ -599,7 +599,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 55,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "유성-15",
       "name": "조마루",
       "position": "작업원",
@@ -610,7 +610,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 56,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "소재준비",
       "name": "쏘탈",
       "position": "작업원",
@@ -621,7 +621,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 57,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "론나차이",
       "position": "작업원",
@@ -632,7 +632,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 58,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "마리오",
       "position": "작업원",
@@ -643,7 +643,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 59,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "제날드",
       "position": "작업원",
@@ -654,7 +654,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 60,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "팔라",
       "position": "작업원",
@@ -665,7 +665,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 61,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "누리",
       "position": "작업원",
@@ -676,7 +676,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 62,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "데란스",
       "position": "작업원",
@@ -687,7 +687,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 63,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "포티퐁",
       "position": "작업원",
@@ -698,7 +698,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 64,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "린",
       "position": "작업원",
@@ -709,7 +709,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 65,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "넷플립",
       "position": "작업원",
@@ -720,7 +720,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 66,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "제인",
       "position": "작업원",
@@ -731,7 +731,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 67,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "그레이스",
       "position": "작업원",
@@ -742,7 +742,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 68,
       "company": "(주)조영산업",
-      "dept": "조립1팀",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "김영수",
       "position": "작업원",
@@ -753,7 +753,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 69,
       "company": "(주)조영산업",
-      "dept": "조립1팀",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "박진우",
       "position": "작업원",
@@ -764,7 +764,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 70,
       "company": "(주)조영산업",
-      "dept": "조립1팀",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "정성훈",
       "position": "작업원",
@@ -775,7 +775,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 71,
       "company": "(주)조영산업",
-      "dept": "조립2팀",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "최도현",
       "position": "작업원",
@@ -786,7 +786,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 72,
       "company": "(주)조영산업",
-      "dept": "조립2팀",
+      "dept": "압출동",
       "line": "NX4 G-RUN",
       "name": "이상호",
       "position": "작업원",
@@ -797,7 +797,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 73,
       "company": "(주)조영산업",
-      "dept": "조립2팀",
+      "dept": "압출동",
       "line": "NX4 G-RUN",
       "name": "한상민",
       "position": "작업원",
@@ -808,7 +808,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 74,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "조태현",
       "position": "작업원",
@@ -819,7 +819,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 75,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "윤서준",
       "position": "작업원",
@@ -830,7 +830,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 76,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "NX4a G-RUN",
       "name": "문지훈",
       "position": "작업원",
@@ -841,7 +841,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 77,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "공용",
       "name": "백승우",
       "position": "작업원",
@@ -852,7 +852,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 78,
       "company": "(주)조영산업",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "HR G-RUN",
       "name": "서준혁",
       "position": "작업원",
@@ -863,7 +863,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 79,
       "company": "(주)조영산업",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "JA G-RUN",
       "name": "임현우",
       "position": "작업원",
@@ -874,7 +874,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 80,
       "company": "(주)조영산업",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "구자민",
       "position": "작업원",
@@ -885,7 +885,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 81,
       "company": "(주)조영산업",
-      "dept": "도장팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "허동욱",
       "position": "작업원",
@@ -896,7 +896,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 82,
       "company": "(주)조영산업",
-      "dept": "도장팀",
+      "dept": "가공동",
       "line": "공용",
       "name": "유재성",
       "position": "작업원",
@@ -907,7 +907,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 83,
       "company": "(주)조영산업",
-      "dept": "품질관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "송원호",
       "position": "작업원",
@@ -918,7 +918,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 84,
       "company": "(주)조영산업",
-      "dept": "품질관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "진태경",
       "position": "작업원",
@@ -929,7 +929,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 85,
       "company": "(주)조영산업",
-      "dept": "생산기술",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "남기범",
       "position": "작업원",
@@ -940,7 +940,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 86,
       "company": "한울",
-      "dept": "프레스팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "정대현",
       "position": "작업원",
@@ -951,7 +951,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 87,
       "company": "한울",
-      "dept": "프레스팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "최민성",
       "position": "작업원",
@@ -962,7 +962,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 88,
       "company": "한울",
-      "dept": "프레스팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "강태양",
       "position": "작업원",
@@ -973,7 +973,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 89,
       "company": "한울",
-      "dept": "용접1팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "이승준",
       "position": "작업원",
@@ -984,7 +984,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 90,
       "company": "한울",
-      "dept": "용접1팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "신현수",
       "position": "작업원",
@@ -995,7 +995,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 91,
       "company": "한울",
-      "dept": "용접2팀",
+      "dept": "가공동",
       "line": "HR G-RUN",
       "name": "오상우",
       "position": "작업원",
@@ -1006,7 +1006,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 92,
       "company": "한울",
-      "dept": "용접2팀",
+      "dept": "가공동",
       "line": "JA G-RUN",
       "name": "황정민",
       "position": "작업원",
@@ -1017,7 +1017,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 93,
       "company": "한울",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "류지훈",
       "position": "작업원",
@@ -1028,7 +1028,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 94,
       "company": "한울",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "조재현",
       "position": "작업원",
@@ -1039,7 +1039,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 95,
       "company": "한울",
-      "dept": "부품성형",
+      "dept": "가공동",
       "line": "공용",
       "name": "탁도진",
       "position": "작업원",
@@ -1050,7 +1050,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 96,
       "company": "한울",
-      "dept": "품질검사",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "배성호",
       "position": "작업원",
@@ -1061,7 +1061,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 97,
       "company": "한울",
-      "dept": "출하관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "안태식",
       "position": "작업원",
@@ -1072,7 +1072,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 98,
       "company": "부림텍",
-      "dept": "검사1팀",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "강동원",
       "position": "작업원",
@@ -1083,7 +1083,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 99,
       "company": "부림텍",
-      "dept": "검사1팀",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "송지훈",
       "position": "작업원",
@@ -1094,7 +1094,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 100,
       "company": "부림텍",
-      "dept": "검사2팀",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "고재명",
       "position": "작업원",
@@ -1105,7 +1105,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 101,
       "company": "부림텍",
-      "dept": "검사2팀",
+      "dept": "압출동",
       "line": "NX4 G-RUN",
       "name": "곽준호",
       "position": "작업원",
@@ -1116,7 +1116,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 102,
       "company": "부림텍",
-      "dept": "포장라인",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "민동혁",
       "position": "작업원",
@@ -1127,7 +1127,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 103,
       "company": "부림텍",
-      "dept": "포장라인",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "노승환",
       "position": "작업원",
@@ -1138,7 +1138,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 104,
       "company": "부림텍",
-      "dept": "포장라인",
+      "dept": "압출동",
       "line": "NX4a G-RUN",
       "name": "천태진",
       "position": "작업원",
@@ -1149,7 +1149,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 105,
       "company": "부림텍",
-      "dept": "출하관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "표성준",
       "position": "작업원",
@@ -1160,7 +1160,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 106,
       "company": "부림텍",
-      "dept": "출하관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "하원식",
       "position": "작업원",
@@ -1171,7 +1171,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 107,
       "company": "부림텍",
-      "dept": "공정기술",
+      "dept": "압출동",
       "line": "공용",
       "name": "석진우",
       "position": "작업원",
@@ -1182,7 +1182,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 151,
       "company": "(주)조영산업",
-      "dept": "생산기술",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "GGGGGGGG",
       "position": "작업원",
@@ -1193,7 +1193,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 108,
       "company": "유성",
-      "dept": "생산부",
+      "dept": "압출동",
       "line": "1라인",
       "name": "김유성",
       "position": "반장/조장",
@@ -1204,7 +1204,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 109,
       "company": "유성",
-      "dept": "생산부",
+      "dept": "압출동",
       "line": "1라인",
       "name": "박유성",
       "position": "작업원",
@@ -1215,7 +1215,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 110,
       "company": "유성",
-      "dept": "가공부",
+      "dept": "가공동",
       "line": "가공1팀",
       "name": "이진우",
       "position": "작업원",
@@ -1226,7 +1226,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 111,
       "company": "유성",
-      "dept": "가공부",
+      "dept": "가공동",
       "line": "가공2팀",
       "name": "최동현",
       "position": "작업원",
@@ -1237,7 +1237,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 112,
       "company": "유성",
-      "dept": "품질부",
+      "dept": "압출동",
       "line": "검사팀",
       "name": "강태수",
       "position": "작업원",
@@ -1601,7 +1601,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 10,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "크리스토퍼",
       "daily": {
@@ -1640,7 +1640,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 11,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "찬턴",
       "daily": {
@@ -1679,7 +1679,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 12,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "로빈(야간)",
       "daily": {
@@ -1718,7 +1718,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 13,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "채수연",
       "daily": {
@@ -1757,7 +1757,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 14,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "피아",
       "daily": {
@@ -1796,7 +1796,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 15,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "데이시",
       "daily": {
@@ -1835,7 +1835,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 16,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "짱",
       "daily": {
@@ -1874,7 +1874,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 17,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA",
       "name": "김선옥",
       "daily": {
@@ -1913,7 +1913,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 18,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "윤희수",
       "daily": {
@@ -1952,7 +1952,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 19,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "데니스",
       "daily": {
@@ -1991,7 +1991,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 20,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "주재순",
       "daily": {
@@ -2030,7 +2030,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 21,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "HR",
       "name": "김수연",
       "daily": {
@@ -2069,7 +2069,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 22,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA.HR",
       "name": "이스라엘",
       "daily": {
@@ -2108,7 +2108,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 23,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "버나드",
       "daily": {
@@ -2147,7 +2147,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 24,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "롤란도",
       "daily": {
@@ -2186,7 +2186,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 25,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "돈돈",
       "daily": {
@@ -2225,7 +2225,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 26,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "알라딘",
       "daily": {
@@ -2264,7 +2264,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 27,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "김순미",
       "daily": {
@@ -2303,7 +2303,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 28,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4a",
       "name": "양인순",
       "daily": {
@@ -2342,7 +2342,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 29,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "박순복",
       "daily": {
@@ -2381,7 +2381,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 30,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "김상아",
       "daily": {
@@ -2420,7 +2420,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 31,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "김윤자",
       "daily": {
@@ -2459,7 +2459,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 32,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4",
       "name": "김현희",
       "daily": {
@@ -2498,7 +2498,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 33,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "손선희",
       "daily": {
@@ -2537,7 +2537,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 34,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "이영숙",
       "daily": {
@@ -2576,7 +2576,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 35,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "수베트",
       "daily": {
@@ -2615,7 +2615,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 36,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "치찬",
       "daily": {
@@ -2654,7 +2654,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 37,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "NX4.NX4a",
       "name": "콩지",
       "daily": {
@@ -2693,7 +2693,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 38,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "JA.HR",
       "name": "케넷",
       "daily": {
@@ -2732,7 +2732,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 39,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "Channel",
       "name": "정상근",
       "daily": {
@@ -2771,7 +2771,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 40,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "Channel",
       "name": "링링",
       "daily": {
@@ -2810,7 +2810,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 41,
       "company": "(주)오륙",
-      "dept": "가공동(AB동)",
+      "dept": "가공동",
       "line": "Channel",
       "name": "유미",
       "daily": {
@@ -2849,7 +2849,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 42,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "공영국",
       "daily": {
@@ -2888,7 +2888,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 43,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "심임대",
       "daily": {
@@ -2927,7 +2927,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 44,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "이상은",
       "daily": {
@@ -2966,7 +2966,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 45,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "닉",
       "daily": {
@@ -3005,7 +3005,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 46,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "마이클",
       "daily": {
@@ -3044,7 +3044,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 47,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "존카를로",
       "daily": {
@@ -3083,7 +3083,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 48,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "지미",
       "daily": {
@@ -3122,7 +3122,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 49,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "만",
       "daily": {
@@ -3161,7 +3161,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 50,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "샤먼",
       "daily": {
@@ -3200,7 +3200,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 51,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "쿠마루",
       "daily": {
@@ -3239,7 +3239,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 52,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "압출동",
       "name": "이수루",
       "daily": {
@@ -3278,7 +3278,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 53,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "코팅",
       "name": "준",
       "daily": {
@@ -3317,7 +3317,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 54,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "유성-15",
       "name": "이성기",
       "daily": {
@@ -3356,7 +3356,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 55,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "유성-15",
       "name": "조마루",
       "daily": {
@@ -3395,7 +3395,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 56,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "소재준비",
       "name": "쏘탈",
       "daily": {
@@ -3434,7 +3434,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 57,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "론나차이",
       "daily": {
@@ -3473,7 +3473,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 58,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "마리오",
       "daily": {
@@ -3512,7 +3512,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 59,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "제날드",
       "daily": {
@@ -3551,7 +3551,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 60,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "팔라",
       "daily": {
@@ -3590,7 +3590,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 61,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "DT",
       "name": "누리",
       "daily": {
@@ -3629,7 +3629,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 62,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "데란스",
       "daily": {
@@ -3668,7 +3668,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 63,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "포티퐁",
       "daily": {
@@ -3707,7 +3707,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 64,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "린",
       "daily": {
@@ -3746,7 +3746,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 65,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "넷플립",
       "daily": {
@@ -3785,7 +3785,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 66,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "제인",
       "daily": {
@@ -3824,7 +3824,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 67,
       "company": "(주)오륙",
-      "dept": "압출·특수라인",
+      "dept": "압출동",
       "line": "JK1",
       "name": "그레이스",
       "daily": {
@@ -3863,7 +3863,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 68,
       "company": "(주)조영산업",
-      "dept": "조립1팀",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "김영수",
       "daily": {
@@ -3902,7 +3902,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 69,
       "company": "(주)조영산업",
-      "dept": "조립1팀",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "박진우",
       "daily": {
@@ -3941,7 +3941,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 70,
       "company": "(주)조영산업",
-      "dept": "조립1팀",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "정성훈",
       "daily": {
@@ -3980,7 +3980,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 71,
       "company": "(주)조영산업",
-      "dept": "조립2팀",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "최도현",
       "daily": {
@@ -4019,7 +4019,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 72,
       "company": "(주)조영산업",
-      "dept": "조립2팀",
+      "dept": "압출동",
       "line": "NX4 G-RUN",
       "name": "이상호",
       "daily": {
@@ -4058,7 +4058,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 73,
       "company": "(주)조영산업",
-      "dept": "조립2팀",
+      "dept": "압출동",
       "line": "NX4 G-RUN",
       "name": "한상민",
       "daily": {
@@ -4097,7 +4097,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 74,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "조태현",
       "daily": {
@@ -4136,7 +4136,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 75,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "윤서준",
       "daily": {
@@ -4175,7 +4175,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 76,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "NX4a G-RUN",
       "name": "문지훈",
       "daily": {
@@ -4214,7 +4214,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 77,
       "company": "(주)조영산업",
-      "dept": "사출라인",
+      "dept": "압출동",
       "line": "공용",
       "name": "백승우",
       "daily": {
@@ -4253,7 +4253,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 78,
       "company": "(주)조영산업",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "HR G-RUN",
       "name": "서준혁",
       "daily": {
@@ -4292,7 +4292,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 79,
       "company": "(주)조영산업",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "JA G-RUN",
       "name": "임현우",
       "daily": {
@@ -4331,7 +4331,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 80,
       "company": "(주)조영산업",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "구자민",
       "daily": {
@@ -4370,7 +4370,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 81,
       "company": "(주)조영산업",
-      "dept": "도장팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "허동욱",
       "daily": {
@@ -4409,7 +4409,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 82,
       "company": "(주)조영산업",
-      "dept": "도장팀",
+      "dept": "가공동",
       "line": "공용",
       "name": "유재성",
       "daily": {
@@ -4448,7 +4448,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 83,
       "company": "(주)조영산업",
-      "dept": "품질관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "송원호",
       "daily": {
@@ -4487,7 +4487,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 84,
       "company": "(주)조영산업",
-      "dept": "품질관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "진태경",
       "daily": {
@@ -4526,7 +4526,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 85,
       "company": "(주)조영산업",
-      "dept": "생산기술",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "남기범",
       "daily": {
@@ -4565,7 +4565,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 86,
       "company": "한울",
-      "dept": "프레스팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "정대현",
       "daily": {
@@ -4604,7 +4604,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 87,
       "company": "한울",
-      "dept": "프레스팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "최민성",
       "daily": {
@@ -4643,7 +4643,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 88,
       "company": "한울",
-      "dept": "프레스팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "강태양",
       "daily": {
@@ -4682,7 +4682,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 89,
       "company": "한울",
-      "dept": "용접1팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "이승준",
       "daily": {
@@ -4721,7 +4721,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 90,
       "company": "한울",
-      "dept": "용접1팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "신현수",
       "daily": {
@@ -4760,7 +4760,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 91,
       "company": "한울",
-      "dept": "용접2팀",
+      "dept": "가공동",
       "line": "HR G-RUN",
       "name": "오상우",
       "daily": {
@@ -4799,7 +4799,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 92,
       "company": "한울",
-      "dept": "용접2팀",
+      "dept": "가공동",
       "line": "JA G-RUN",
       "name": "황정민",
       "daily": {
@@ -4838,7 +4838,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 93,
       "company": "한울",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "NX4 G-RUN",
       "name": "류지훈",
       "daily": {
@@ -4877,7 +4877,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 94,
       "company": "한울",
-      "dept": "가공팀",
+      "dept": "가공동",
       "line": "NX4a G-RUN",
       "name": "조재현",
       "daily": {
@@ -4916,7 +4916,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 95,
       "company": "한울",
-      "dept": "부품성형",
+      "dept": "가공동",
       "line": "공용",
       "name": "탁도진",
       "daily": {
@@ -4955,7 +4955,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 96,
       "company": "한울",
-      "dept": "품질검사",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "배성호",
       "daily": {
@@ -4994,7 +4994,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 97,
       "company": "한울",
-      "dept": "출하관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "안태식",
       "daily": {
@@ -5033,7 +5033,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 98,
       "company": "부림텍",
-      "dept": "검사1팀",
+      "dept": "압출동",
       "line": "4대 공용",
       "name": "강동원",
       "daily": {
@@ -5072,7 +5072,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 99,
       "company": "부림텍",
-      "dept": "검사1팀",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "송지훈",
       "daily": {
@@ -5111,7 +5111,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 100,
       "company": "부림텍",
-      "dept": "검사2팀",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "고재명",
       "daily": {
@@ -5150,7 +5150,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 101,
       "company": "부림텍",
-      "dept": "검사2팀",
+      "dept": "압출동",
       "line": "NX4 G-RUN",
       "name": "곽준호",
       "daily": {
@@ -5189,7 +5189,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 102,
       "company": "부림텍",
-      "dept": "포장라인",
+      "dept": "압출동",
       "line": "HR G-RUN",
       "name": "민동혁",
       "daily": {
@@ -5228,7 +5228,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 103,
       "company": "부림텍",
-      "dept": "포장라인",
+      "dept": "압출동",
       "line": "JA G-RUN",
       "name": "노승환",
       "daily": {
@@ -5267,7 +5267,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 104,
       "company": "부림텍",
-      "dept": "포장라인",
+      "dept": "압출동",
       "line": "NX4a G-RUN",
       "name": "천태진",
       "daily": {
@@ -5306,7 +5306,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 105,
       "company": "부림텍",
-      "dept": "출하관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "표성준",
       "daily": {
@@ -5345,7 +5345,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 106,
       "company": "부림텍",
-      "dept": "출하관리",
+      "dept": "관리부",
       "line": "4대 공용",
       "name": "하원식",
       "daily": {
@@ -5384,7 +5384,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 107,
       "company": "부림텍",
-      "dept": "공정기술",
+      "dept": "압출동",
       "line": "공용",
       "name": "석진우",
       "daily": {
@@ -5423,7 +5423,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 108,
       "company": "유성",
-      "dept": "생산부",
+      "dept": "압출동",
       "line": "1라인",
       "name": "김유성",
       "position": "반장/조장",
@@ -5463,7 +5463,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 109,
       "company": "유성",
-      "dept": "생산부",
+      "dept": "압출동",
       "line": "1라인",
       "name": "박유성",
       "position": "작업원",
@@ -5503,7 +5503,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 110,
       "company": "유성",
-      "dept": "가공부",
+      "dept": "가공동",
       "line": "가공1팀",
       "name": "이진우",
       "position": "작업원",
@@ -5543,7 +5543,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 111,
       "company": "유성",
-      "dept": "가공부",
+      "dept": "가공동",
       "line": "가공2팀",
       "name": "최동현",
       "position": "작업원",
@@ -5583,7 +5583,7 @@ export const INITIAL_SMART_OVERTIME_DATA = {
     {
       "no": 112,
       "company": "유성",
-      "dept": "품질부",
+      "dept": "압출동",
       "line": "검사팀",
       "name": "강태수",
       "position": "작업원",

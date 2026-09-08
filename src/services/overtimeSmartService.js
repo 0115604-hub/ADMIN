@@ -15,6 +15,17 @@ const FIRESTORE_DOC_ID = "overtime_2026_09";
 
 export const COMPANIES = ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"];
 
+export const DEPARTMENTS = ["관리부", "가공동", "압출동"];
+
+export const normalizeDept = (dept) => {
+  if (!dept) return "압출동";
+  const str = String(dept).trim();
+  if (str === "관리부" || str === "가공동" || str === "압출동") return str;
+  if (str.includes("관리") || str.includes("총괄") || str.includes("기술") || str.includes("출하")) return "관리부";
+  if (str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장")) return "가공동";
+  return "압출동";
+};
+
 export const COMPANY_THEMES = {
   "(주)오륙": {
     name: "(주)오륙",
@@ -358,7 +369,9 @@ export const getLocalSmartOvertimeData = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-        return parsed;
+        const normalizedMatrix = (parsed.attendanceMatrix || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
+        const normalizedMaster = (parsed.masterWorkers || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
+        return { ...parsed, attendanceMatrix: normalizedMatrix, masterWorkers: normalizedMaster };
       }
     }
   } catch (err) {
@@ -406,8 +419,11 @@ export const subscribeSmartOvertimeData = (callback) => {
         if (docSnap.exists()) {
           const cloudData = docSnap.data();
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
-            callback(cloudData);
+            const normalizedMatrix = (cloudData.attendanceMatrix || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
+            const normalizedMaster = (cloudData.masterWorkers || []).map(w => ({ ...w, dept: normalizeDept(w.dept) }));
+            const normData = { ...cloudData, attendanceMatrix: normalizedMatrix, masterWorkers: normalizedMaster };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(normData));
+            callback(normData);
             return;
           }
         }

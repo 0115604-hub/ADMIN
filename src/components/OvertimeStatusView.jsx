@@ -48,6 +48,7 @@ import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
 import {
   COMPANIES,
+  DEPARTMENTS,
   COMPANY_THEMES,
   ATTENDANCE_OPTIONS,
   getOptionMeta,
@@ -60,7 +61,8 @@ import {
   saveSmartOvertimeData,
   subscribeSmartOvertimeData,
   exportSmartOvertimeToExcel,
-  importSmartOvertimeFromExcel
+  importSmartOvertimeFromExcel,
+  normalizeDept
 } from "../services/overtimeSmartService.js";
 import {
   getLocalOvertimeReports,
@@ -84,7 +86,7 @@ export const OvertimeStatusView = () => {
   const [selectedDay, setSelectedDay] = useState(8); // Default 9월 8일
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("전체");
   const [searchWorkerQuery, setSearchWorkerQuery] = useState("");
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState("전체");
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState("전체"); // '전체', '관리부', '가공동', '압출동'
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [showToast, setShowToast] = useState(false);
@@ -92,7 +94,7 @@ export const OvertimeStatusView = () => {
   // Dedicated Company Worker Management Modal (공장별 근로자 추가 및 삭제 전용 모달)
   const [managingCompany, setManagingCompany] = useState(null); // e.g. "(주)오륙", "유성"
   const [quickNewWorkerName, setQuickNewWorkerName] = useState("");
-  const [quickNewWorkerDept, setQuickNewWorkerDept] = useState("");
+  const [quickNewWorkerDept, setQuickNewWorkerDept] = useState("가공동"); // Default to '가공동'
   const [quickNewWorkerLine, setQuickNewWorkerLine] = useState("");
   const [quickNewWorkerPos, setQuickNewWorkerPos] = useState("작업원");
 
@@ -219,7 +221,7 @@ export const OvertimeStatusView = () => {
       return;
     }
     const company = managingCompany || "(주)오륙";
-    const dept = quickNewWorkerDept.trim() || "생산부";
+    const dept = normalizeDept(quickNewWorkerDept || "가공동");
     const line = quickNewWorkerLine.trim() || dept;
     const name = quickNewWorkerName.trim();
     const position = quickNewWorkerPos || "작업원";
@@ -261,9 +263,8 @@ export const OvertimeStatusView = () => {
 
     await handleSaveLedger(updatedData);
     setQuickNewWorkerName("");
-    setQuickNewWorkerDept("");
     setQuickNewWorkerLine("");
-    triggerToast(`🎉 [${company}] ${name} 신규 근로자 등록 완료!`);
+    triggerToast(`🎉 [${company}] ${name} 신규 근로자 등록 완료 (${dept})`);
   };
 
   // Quick Delete Worker (from Company Modal or Master List)
@@ -296,20 +297,26 @@ export const OvertimeStatusView = () => {
       return;
     }
 
+    const normalizedDeptVal = normalizeDept(workerFormData.dept);
+    const normalizedData = {
+      ...workerFormData,
+      dept: normalizedDeptVal
+    };
+
     if (editingWorker) {
       // Edit existing
       const updatedMaster = smartData.masterWorkers.map((w) =>
-        w.no === editingWorker.no ? { ...w, ...workerFormData } : w
+        w.no === editingWorker.no ? { ...w, ...normalizedData } : w
       );
       const updatedMatrix = smartData.attendanceMatrix.map((w) =>
         w.no === editingWorker.no
           ? {
               ...w,
-              company: workerFormData.company,
-              dept: workerFormData.dept,
-              line: workerFormData.line,
-              name: workerFormData.name,
-              position: workerFormData.position
+              company: normalizedData.company,
+              dept: normalizedData.dept,
+              line: normalizedData.line,
+              name: normalizedData.name,
+              position: normalizedData.position
             }
           : w
       );
@@ -320,13 +327,13 @@ export const OvertimeStatusView = () => {
         attendanceMatrix: updatedMatrix
       };
       await handleSaveLedger(newLedger);
-      triggerToast(`✏️ ${workerFormData.name} 근로자 정보 수정 완료`);
+      triggerToast(`✏️ ${normalizedData.name} 근로자 정보 수정 완료 (${normalizedDeptVal})`);
     } else {
       // Add new
       const nextNo = (smartData.masterWorkers?.length || 0) + 1;
       const newWorkerObj = {
         no: nextNo,
-        ...workerFormData
+        ...normalizedData
       };
       const emptyDaily = {};
       for (let d = 1; d <= 30; d++) {
@@ -334,11 +341,11 @@ export const OvertimeStatusView = () => {
       }
       const newMatrixRow = {
         no: nextNo,
-        company: workerFormData.company,
-        dept: workerFormData.dept,
-        line: workerFormData.line,
-        name: workerFormData.name,
-        position: workerFormData.position,
+        company: normalizedData.company,
+        dept: normalizedData.dept,
+        line: normalizedData.line,
+        name: normalizedData.name,
+        position: normalizedData.position,
         daily: emptyDaily
       };
 
@@ -348,7 +355,7 @@ export const OvertimeStatusView = () => {
         attendanceMatrix: [...smartData.attendanceMatrix, newMatrixRow]
       };
       await handleSaveLedger(newLedger);
-      triggerToast(`🎉 ${workerFormData.name} 신규 근로자 등록 완료`);
+      triggerToast(`🎉 ${normalizedData.name} 신규 근로자 등록 완료 (${normalizedDeptVal})`);
     }
 
     setIsWorkerModalOpen(false);
@@ -360,7 +367,7 @@ export const OvertimeStatusView = () => {
     setEditingWorker(worker);
     setWorkerFormData({
       company: worker.company || "(주)오륙",
-      dept: worker.dept || "생산부",
+      dept: normalizeDept(worker.dept || "관리부"),
       line: worker.line || "",
       name: worker.name || "",
       position: worker.position || "작업원",
@@ -417,19 +424,11 @@ export const OvertimeStatusView = () => {
     return calculateDeptSummary(smartData.attendanceMatrix || [], selectedDay);
   }, [smartData.attendanceMatrix, selectedDay]);
 
-  // Unique Department List for Filters
-  const departmentOptions = useMemo(() => {
-    const depts = new Set();
-    (smartData.attendanceMatrix || []).forEach((w) => {
-      if (w.dept) depts.add(w.dept);
-    });
-    return Array.from(depts);
-  }, [smartData.attendanceMatrix]);
-
   // Filtered attendance rows for Daily Input and Summary tabs
   const filteredAttendanceWorkers = useMemo(() => {
     let list = (smartData.attendanceMatrix || []).map((w, originalIdx) => ({
       ...w,
+      dept: normalizeDept(w.dept),
       originalMatrixIndex: originalIdx
     }));
 
@@ -478,7 +477,7 @@ export const OvertimeStatusView = () => {
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 font-medium">
-              (주)오륙 • (주)조영산업 • 한울 • 부림텍 • <strong className="text-cyan-300 font-black">유성</strong> 5개사 일일 근태·잔업 원클릭 관리 및 자동 정산
+              (주)오륙 • (주)조영산업 • 한울 • 부림텍 • <strong className="text-cyan-300 font-black">유성</strong> 5개사 | 부서: <strong className="text-white font-bold">관리부 • 가공동 • 압출동</strong>
             </p>
           </div>
 
@@ -596,7 +595,7 @@ export const OvertimeStatusView = () => {
                   <button
                     onClick={() => {
                       setManagingCompany(compName);
-                      setQuickNewWorkerDept("");
+                      setQuickNewWorkerDept("가공동");
                       setQuickNewWorkerLine("");
                       setQuickNewWorkerName("");
                     }}
@@ -701,21 +700,39 @@ export const OvertimeStatusView = () => {
               </div>
             </div>
 
-            {/* Department Filter & Search Bar */}
+            {/* ⭐ STRICT 3 DEPARTMENTS FILTER (관리부, 가공동, 압출동) & Search Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800">
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Filter className="w-4 h-4 text-slate-400" />
+                <Filter className="w-4 h-4 text-cyan-400" />
                 <span className="text-xs font-bold text-slate-300 whitespace-nowrap">부서 선택:</span>
                 <select
                   value={selectedDeptFilter}
                   onChange={(e) => setSelectedDeptFilter(e.target.value)}
-                  className="bg-slate-950 text-white font-bold text-xs sm:text-sm border-2 border-slate-600 focus:border-cyan-400 rounded-xl px-3 py-1.5 cursor-pointer w-full sm:w-48"
+                  className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-cyan-400 focus:border-cyan-300 rounded-xl px-3.5 py-2 cursor-pointer w-full sm:w-56 shadow-sm"
                 >
-                  <option value="전체" className="bg-slate-900 text-white font-bold">전체 부서</option>
-                  {departmentOptions.map((d) => (
+                  <option value="전체" className="bg-slate-900 text-white font-bold">전체 부서 (전체보기)</option>
+                  {DEPARTMENTS.map((d) => (
                     <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
                   ))}
                 </select>
+
+                {/* Quick Department Buttons for Extra Speed */}
+                <div className="hidden md:flex items-center gap-1 ml-2">
+                  {["전체", ...DEPARTMENTS].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setSelectedDeptFilter(d)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        selectedDeptFilter === d
+                          ? "bg-cyan-400 text-slate-950 font-black shadow-xs ring-1 ring-cyan-200"
+                          : "bg-slate-800 text-slate-400 hover:text-white border border-slate-700 text-[11px]"
+                      }`}
+                    >
+                      {d === "전체" ? "전체" : d}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="relative w-full sm:w-72">
@@ -904,8 +921,10 @@ export const OvertimeStatusView = () => {
                               {worker.company}
                             </span>
                           </td>
-                          <td className="p-3 font-bold text-slate-700 dark:text-slate-300">
-                            {worker.dept}
+                          <td className="p-3">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                              {worker.dept}
+                            </span>
                           </td>
                           <td className="p-3 text-slate-500 font-medium">
                             {worker.line || "-"}
@@ -1163,7 +1182,7 @@ export const OvertimeStatusView = () => {
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td className="p-1.5 text-center font-mono text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10">{idx + 1}</td>
                       <td className="p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
-                      <td className="p-1.5 text-slate-500 truncate max-w-[80px]">{w.dept}</td>
+                      <td className="p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
                       <td className="p-1.5 font-black sticky left-28 bg-white dark:bg-slate-900 z-10">{w.name}</td>
                       {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => {
                         const val = w.daily ? w.daily[d] : "";
@@ -1302,7 +1321,11 @@ export const OvertimeStatusView = () => {
                   <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                     <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
                     <td className="p-3 font-bold text-slate-900 dark:text-white">{w.company}</td>
-                    <td className="p-3 text-slate-600 dark:text-slate-300">{w.dept}</td>
+                    <td className="p-3 font-bold text-slate-800 dark:text-slate-200">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+                        {normalizeDept(w.dept)}
+                      </span>
+                    </td>
                     <td className="p-3 text-slate-500">{w.line || "-"}</td>
                     <td className="p-3 font-black text-sm text-slate-900 dark:text-white">{w.name}</td>
                     <td className="p-3 text-slate-600 dark:text-slate-300">{w.position || "작업원"}</td>
@@ -1425,14 +1448,16 @@ export const OvertimeStatusView = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1">소속 부서</label>
-                  <input
-                    type="text"
-                    placeholder="예: 생산부 / 관리부"
+                  <label className="block text-[10px] font-bold text-slate-400 mb-1">소속 부서 *</label>
+                  <select
                     value={quickNewWorkerDept}
                     onChange={(e) => setQuickNewWorkerDept(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border-2 border-slate-600 focus:border-cyan-400 text-white text-xs font-bold"
-                  />
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border-2 border-slate-600 focus:border-cyan-400 text-white text-xs font-bold cursor-pointer"
+                  >
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 mb-1">차종 / 라인</label>
@@ -1480,7 +1505,8 @@ export const OvertimeStatusView = () => {
                         <span className="font-mono text-xs text-slate-500 font-bold w-6">{worker.no}</span>
                         <div className="min-w-0">
                           <span className="font-black text-sm text-white">{worker.name}</span>
-                          <span className="ml-2 text-xs text-slate-400 font-medium">{worker.dept} • {worker.line || "기본"}</span>
+                          <span className="ml-2 text-xs font-bold px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">{normalizeDept(worker.dept)}</span>
+                          <span className="ml-1 text-xs text-slate-400 font-medium">• {worker.line || "기본"}</span>
                         </div>
                       </div>
 
@@ -1535,7 +1561,7 @@ export const OvertimeStatusView = () => {
                   <select
                     value={workerFormData.company}
                     onChange={(e) => setWorkerFormData({ ...workerFormData, company: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 text-white border-2 border-slate-600 focus:border-cyan-400 text-xs font-bold"
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 text-white border-2 border-slate-600 focus:border-cyan-400 text-xs font-bold cursor-pointer"
                   >
                     {COMPANIES.map((c) => (
                       <option key={c} value={c} className="bg-slate-900 text-white font-bold">{c}</option>
@@ -1558,14 +1584,16 @@ export const OvertimeStatusView = () => {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">소속 부서</label>
-                  <input
-                    type="text"
-                    placeholder="예: 관리부 / 생산부"
+                  <label className="block text-xs font-bold text-slate-300 mb-1">소속 부서 *</label>
+                  <select
                     value={workerFormData.dept}
                     onChange={(e) => setWorkerFormData({ ...workerFormData, dept: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 text-white border-2 border-slate-600 focus:border-cyan-400 text-xs font-bold"
-                  />
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 text-white border-2 border-slate-600 focus:border-cyan-400 text-xs font-bold cursor-pointer"
+                  >
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
