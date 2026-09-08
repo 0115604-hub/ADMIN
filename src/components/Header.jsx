@@ -75,6 +75,10 @@ export const Header = ({
             <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-white tracking-tight truncate">
               {title === "월간경영현황" || title === "총괄 손익 대시보드" ? "현황" : title}
             </h2>
+            <span className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              실시간 동기화
+            </span>
           </div>
         )}
 

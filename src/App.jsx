@@ -20,7 +20,6 @@ import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
 import { OryukLogo } from "./components/OryukLogo";
-import { VersionUpdateBanner, syncAppVersionToFirestore } from "./components/VersionUpdateBanner";
 import { useAuth } from "./context/AuthContext";
 import { useMonth } from "./context/MonthContext";
 import {
@@ -204,19 +203,11 @@ export const App = () => {
   }
 
   if (!isAuthenticated) {
-    return (
-      <>
-        <VersionUpdateBanner />
-        <AuthModal />
-      </>
-    );
+    return <AuthModal />;
   }
 
   return (
     <div className="flex min-h-screen max-w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
-      {/* Real-time deployment version update detector */}
-      <VersionUpdateBanner />
-
       {/* Sidebar (Admin Only - Desktop & Mobile Drawer) */}
       {!isOperator && (
         <Sidebar
