@@ -1489,224 +1489,327 @@ export const OvertimeStatusView = () => {
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
-          {/* Header & Plant Mapping Info */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              <h3 className="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <span>특근실시 보고서 관리</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
-                  ⚡ 공장별 실시간 자동 연동
-                </span>
-              </h3>
-            </div>
-            
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
-              <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800">
-                🏭 삼랑진공장: (주)오륙, 유성
+          {/* Header & Title Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                <FileText className="w-5 h-5" />
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800">
-                🏭 한림공장: (주)조영산업, 한울, 부림텍
-              </span>
+              <div>
+                <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>근태 및 특근 보고서 관리 대장</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold border border-purple-200 dark:border-purple-800">
+                    총 {legacyReports.length}건 등록됨
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  등록된 일자별·업체별 근태 및 특근실시 보고서를 실시간으로 확인, 수정, 출력, 삭제 관리할 수 있습니다.
+                </p>
+              </div>
             </div>
+
+            <button
+              onClick={() => setActiveTab("daily_input")}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md shadow-cyan-900/30 active:scale-95 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>새 근태/특근 작성하기</span>
+            </button>
           </div>
 
-          {/* 🌟 다가올 주말 기준 공장별 취합 위젯 (삼랑진공장 & 한림공장 요약 카드) */}
-          <div className="space-y-3 p-4 rounded-2xl bg-slate-950 border-2 border-indigo-500/40 shadow-lg">
-            {/* Weekend Selector Tabs */}
-            <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-800">
-              <span className="text-xs font-black text-cyan-300 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-cyan-400 animate-spin" />
-                <span>주말 특근 취합 기준일 선택:</span>
-              </span>
+          {/* 🔍 Search & Company Filter Controls Bar */}
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Company / Plant Filter Chips */}
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { day: 5, label: "9월 5일(토) [1차 지난 주말]" },
-                  { day: 12, label: "🌟 9월 12일(토) [다가올 이번 주말]" },
-                  { day: 19, label: "9월 19일(토) [3차]" },
-                  { day: 26, label: "9월 26일(토) [4차]" }
-                ].map((wk) => (
-                  <button
-                    key={wk.day}
-                    onClick={() => setSelectedWeekendDay(wk.day)}
-                    className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      selectedWeekendDay === wk.day
-                        ? "bg-indigo-600 text-white font-black ring-2 ring-indigo-400 shadow-md scale-105"
-                        : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
-                    }`}
-                  >
-                    {wk.label}
-                  </button>
-                ))}
+                <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
+                  <Filter className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>소속 필터:</span>
+                </span>
+                {["전체", "삼랑진공장", "한림공장", ...COMPANIES].map((comp) => {
+                  const isActive = reportListFilter === comp;
+                  return (
+                    <button
+                      key={comp}
+                      onClick={() => setReportListFilter(comp)}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400 scale-105"
+                          : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                      }`}
+                    >
+                      {comp}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative w-full md:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="보고서 제목, 일자, 작성자 검색..."
+                  value={reportListSearch}
+                  onChange={(e) => setReportListSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 outline-hidden"
+                />
               </div>
             </div>
 
-            {/* 2 Plant Weekend Cards Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 pt-1">
-              {/* Card 1: 삼랑진공장 ((주)오륙 + 유성 취합) */}
-              <div
-                onClick={() => {
-                  const rep = legacyReports.find(r => r.id === weekendPlantSummary.samrangjin.reportId) || {
-                    id: weekendPlantSummary.samrangjin.reportId,
-                    plant: "삼랑진공장",
-                    title: `2026년 9월 ${selectedWeekendDay}일(토) 삼랑진공장 특근실시 보고서`,
-                    workDate: `2026-09-${String(selectedWeekendDay).padStart(2, "0")}`,
-                    workDateFormatted: weekendPlantSummary.samrangjin.dateFormatted,
-                    author: "양인나 선임",
-                    authorTitle: "선임",
-                    totalWorkers: weekendPlantSummary.samrangjin.headcount,
-                    totalHours: weekendPlantSummary.samrangjin.manHours,
-                    cost: weekendPlantSummary.samrangjin.cost,
-                    approval: [
-                      { role: "담당", name: "양인나", status: "완료" },
-                      { role: "책임", name: "윤경수", status: "완료" },
-                      { role: "이사", name: "이명재", status: "완료" },
-                      { role: "대표", name: "권태형", status: "완료" }
-                    ],
-                    items: weekendPlantSummary.samrangjin.lines.map((ln, idx) => ({
-                      id: idx + 1,
-                      category: ln.name,
-                      workContent: `삼랑진공장 ${ln.name} 특근 긴급 가동`,
-                      names: "(주)오륙 + 유성 작업자",
-                      hours: 8,
-                      count: ln.count
-                    }))
-                  };
-                  setSelectedLegacyReport(rep);
-                  setIsLegacyModalOpen(true);
-                }}
-                className="p-3.5 rounded-2xl bg-slate-900/90 border border-amber-500/50 hover:border-amber-400 transition-all space-y-2.5 shadow-md cursor-pointer group"
-                title="클릭 시 삼랑진공장 특근보고서 상세 보기"
-              >
-                {/* Card Header */}
-                <div className="flex items-center justify-between flex-wrap gap-1.5 pb-2 border-b border-slate-800">
-                  <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500 text-white font-black text-xs shadow-xs">
-                      삼랑진공장
-                    </span>
-                    <span className="px-2 py-0.5 rounded-lg bg-amber-950 text-amber-200 border border-amber-600/50 font-mono text-xs font-bold">
-                      {weekendPlantSummary.samrangjin.dateFormatted}
-                    </span>
-                    <span className="text-xs font-bold text-slate-300">
-                      {weekendPlantSummary.samrangjin.author}
-                    </span>
+            {/* Live Filter Summary Metrics */}
+            {(() => {
+              const filtered = (legacyReports || []).filter((r) => {
+                if (reportListFilter !== "전체") {
+                  const matchPlant = r.plant === reportListFilter;
+                  const matchComp = r.company === reportListFilter || (r.companies && r.companies.includes(reportListFilter));
+                  if (!matchPlant && !matchComp) return false;
+                }
+                if (reportListSearch.trim()) {
+                  const q = reportListSearch.toLowerCase().trim();
+                  const matchText = [
+                    r.title,
+                    r.workDate,
+                    r.workDateFormatted,
+                    r.author,
+                    r.plant,
+                    r.company,
+                    ...(r.companies || []),
+                    ...(r.reasons || [])
+                  ].filter(Boolean).join(" ").toLowerCase();
+                  if (!matchText.includes(q)) return false;
+                }
+                return true;
+              });
+
+              const totalHeadcount = filtered.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+              const totalHours = filtered.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+              const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
+
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-xs">
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400 font-bold">조회 보고서</span>
+                    <span className="font-mono font-black text-purple-400">{filtered.length}건</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm sm:text-base font-black text-rose-400 font-mono">
-                      ₩{weekendPlantSummary.samrangjin.cost.toLocaleString()}
-                    </span>
-                    <span className="text-xs text-slate-400 font-bold">
-                      ({weekendPlantSummary.samrangjin.headcount}명)
-                    </span>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400 font-bold">총 투입인원</span>
+                    <span className="font-mono font-black text-emerald-400">{totalHeadcount}명</span>
+                  </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400 font-bold">총 투입공수</span>
+                    <span className="font-mono font-black text-cyan-300">{totalHours} M/H</span>
+                  </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400 font-bold">총 예상노무비</span>
+                    <span className="font-mono font-black text-rose-400">₩{totalCost.toLocaleString()}</span>
                   </div>
                 </div>
-
-                {/* Line Breakdown Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {weekendPlantSummary.samrangjin.lines.map((ln, idx) => (
-                    <span
-                      key={`${ln.name}_${idx}`}
-                      className="px-2 py-0.5 rounded-md bg-slate-950 text-[11px] font-bold border border-slate-800 text-slate-300 flex items-center gap-1"
-                    >
-                      <span>{ln.name}:</span>
-                      <strong className="text-purple-400 font-black">{ln.count}명</strong>
-                    </span>
-                  ))}
-                </div>
-
-                <div className="pt-1 flex justify-end">
-                  <span className="text-[11px] font-black text-amber-400 group-hover:underline flex items-center gap-1">
-                    <span>📑 삼랑진공장 특근보고서 상세 확인 및 결재</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 2: 한림공장 ((주)조영산업 + 한울 + 부림텍 취합) */}
-              <div
-                onClick={() => {
-                  const rep = legacyReports.find(r => r.id === weekendPlantSummary.hallim.reportId) || {
-                    id: weekendPlantSummary.hallim.reportId,
-                    plant: "한림공장",
-                    title: `2026년 9월 ${selectedWeekendDay}일(토) 한림공장 특근실시 보고서`,
-                    workDate: `2026-09-${String(selectedWeekendDay).padStart(2, "0")}`,
-                    workDateFormatted: weekendPlantSummary.hallim.dateFormatted,
-                    author: weekendPlantSummary.hallim.author,
-                    authorTitle: "선임",
-                    totalWorkers: weekendPlantSummary.hallim.headcount,
-                    totalHours: weekendPlantSummary.hallim.manHours,
-                    cost: weekendPlantSummary.hallim.cost,
-                    approval: [
-                      { role: "담당", name: "우창용", status: "완료" },
-                      { role: "책임", name: "김동욱", status: "완료" },
-                      { role: "이사", name: "이명재", status: "완료" },
-                      { role: "대표", name: "권태형", status: "완료" }
-                    ],
-                    items: weekendPlantSummary.hallim.lines.map((ln, idx) => ({
-                      id: idx + 1,
-                      category: ln.name,
-                      workContent: `한림공장 ${ln.name} 특근 가동`,
-                      names: "(주)조영산업 + 한울 + 부림텍 작업자",
-                      hours: 8,
-                      count: ln.count
-                    }))
-                  };
-                  setSelectedLegacyReport(rep);
-                  setIsLegacyModalOpen(true);
-                }}
-                className="p-3.5 rounded-2xl bg-slate-900/90 border border-emerald-500/50 hover:border-emerald-400 transition-all space-y-2.5 shadow-md cursor-pointer group"
-                title="클릭 시 한림공장 특근보고서 상세 보기"
-              >
-                {/* Card Header */}
-                <div className="flex items-center justify-between flex-wrap gap-1.5 pb-2 border-b border-slate-800">
-                  <div className="flex items-center gap-2 flex-wrap min-w-0">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white font-black text-xs shadow-xs">
-                      한림공장
-                    </span>
-                    <span className="px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-200 border border-emerald-600/50 font-mono text-xs font-bold">
-                      {weekendPlantSummary.hallim.dateFormatted}
-                    </span>
-                    <span className="text-xs font-bold text-slate-300">
-                      {weekendPlantSummary.hallim.author}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm sm:text-base font-black text-rose-400 font-mono">
-                      ₩{weekendPlantSummary.hallim.cost.toLocaleString()}
-                    </span>
-                    <span className="text-xs text-slate-400 font-bold">
-                      ({weekendPlantSummary.hallim.headcount}명)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Line Breakdown Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {weekendPlantSummary.hallim.lines.map((ln, idx) => (
-                    <span
-                      key={`${ln.name}_${idx}`}
-                      className="px-2 py-0.5 rounded-md bg-slate-950 text-[11px] font-bold border border-slate-800 text-slate-300 flex items-center gap-1"
-                    >
-                      <span>{ln.name}:</span>
-                      <strong className="text-purple-400 font-black">{ln.count}명</strong>
-                    </span>
-                  ))}
-                </div>
-
-                <div className="pt-1 flex justify-end">
-                  <span className="text-[11px] font-black text-emerald-400 group-hover:underline flex items-center gap-1">
-                    <span>📑 한림공장 특근보고서 상세 확인 및 결재</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
+
+          {/* 📋 Registered Reports List Cards */}
+          {(() => {
+            const filtered = (legacyReports || []).filter((r) => {
+              if (reportListFilter !== "전체") {
+                const matchPlant = r.plant === reportListFilter;
+                const matchComp = r.company === reportListFilter || (r.companies && r.companies.includes(reportListFilter));
+                if (!matchPlant && !matchComp) return false;
+              }
+              if (reportListSearch.trim()) {
+                const q = reportListSearch.toLowerCase().trim();
+                const matchText = [
+                  r.title,
+                  r.workDate,
+                  r.workDateFormatted,
+                  r.author,
+                  r.plant,
+                  r.company,
+                  ...(r.companies || []),
+                  ...(r.reasons || [])
+                ].filter(Boolean).join(" ").toLowerCase();
+                if (!matchText.includes(q)) return false;
+              }
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
+                  <FileText className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
+                  <div className="space-y-1">
+                    <h4 className="font-black text-base text-white">등록된 근태/특근 보고서가 없습니다</h4>
+                    <p className="text-xs text-slate-400">
+                      {reportListFilter !== "전체" || reportListSearch
+                        ? "검색 조건에 일치하는 보고서가 없습니다. 필터를 변경해보세요."
+                        : "'📝 근태/잔업/특근 등록' 탭에서 인원 근태를 작성한 후 보고서를 등록해보세요."}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("daily_input")}
+                    className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs inline-flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>근태/잔업/특근 등록하러 가기</span>
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {filtered.map((report, idx) => {
+                  const plantName = report.plant || getPlantForCompany(report.company || "");
+                  const isSam = plantName === "삼랑진공장" || report.company === "(주)오륙" || report.company === "유성";
+                  const badgeColor = isSam
+                    ? "bg-amber-950 text-amber-300 border-amber-700/70"
+                    : "bg-emerald-950 text-emerald-300 border-emerald-700/70";
+
+                  const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
+                  const totalManHours = report.totalHours || (workersCount * 8);
+                  const cost = report.cost || (totalManHours * 15000);
+
+                  // Extract worker attendance status counts if available
+                  const otCounts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "연차": 0, "결근": 0, "특근": 0 };
+                  if (report.items && Array.isArray(report.items)) {
+                    report.items.forEach((it) => {
+                      const code = String(it.attendanceCode || it.category || "").trim();
+                      if (code === "🟢" || code === "정시" || code === "17") otCounts["정시"]++;
+                      else if (code === "19" || code === "19시") otCounts["19시"]++;
+                      else if (code === "21" || code === "21시") otCounts["21시"]++;
+                      else if (code === "22" || code === "22시") otCounts["22시"]++;
+                      else if (code === "연차") otCounts["연차"]++;
+                      else if (code === "결근") otCounts["결근"]++;
+                      else if (code === "특근" || code === "주말특근") otCounts["특근"]++;
+                    });
+                  }
+
+                  return (
+                    <div
+                      key={report.id || idx}
+                      onClick={() => {
+                        setSelectedLegacyReport(report);
+                        setIsLegacyModalOpen(true);
+                      }}
+                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800 hover:border-purple-500/80 transition-all duration-200 space-y-3 shadow-md group cursor-pointer"
+                    >
+                      {/* Card Top: Metadata, Badges & Cost */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                        <div className="flex items-center gap-2 flex-wrap min-w-0">
+                          <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0">
+                            #{idx + 1}
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-lg font-black text-xs border ${badgeColor}`}>
+                            {report.company || report.plant || plantName}
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-lg bg-slate-900 text-cyan-300 border border-slate-700 font-mono text-xs font-bold">
+                            📅 {report.workDateFormatted || report.workDate}
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            작성자: <strong className="text-white">{report.author || "양인나 선임"}</strong>
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                          <span className="text-sm sm:text-base font-black text-rose-400 font-mono">
+                            ₩{cost.toLocaleString()}
+                          </span>
+                          <span className="text-xs text-slate-400 font-bold">
+                            ({workersCount}명 • {totalManHours} M/H)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Middle: Title & Approval Chain */}
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                        <div className="space-y-1 min-w-0">
+                          <h4 className="font-black text-sm sm:text-base text-white group-hover:text-cyan-300 transition-colors truncate">
+                            {report.title || `${report.workDate} ${report.company || report.plant} 특근실시 보고서`}
+                          </h4>
+                          {report.reasons && report.reasons.length > 0 && (
+                            <p className="text-xs text-slate-400 line-clamp-1 font-medium">
+                              {report.reasons[0]}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Approval Chain Summary */}
+                        <div className="flex items-center gap-1 shrink-0 text-[11px] font-bold">
+                          {(report.approval || [
+                            { role: "담당", name: "양인나" },
+                            { role: "책임", name: "윤경수" },
+                            { role: "이사", name: "이명재" },
+                            { role: "대표", name: "권태형" }
+                          ]).map((ap, apIdx) => (
+                            <div key={apIdx} className="flex items-center">
+                              <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300 flex items-center gap-1">
+                                <span className="text-slate-500 text-[10px]">{ap.role}</span>
+                                <span className="font-black text-white">{ap.name}</span>
+                              </span>
+                              {apIdx < 3 && <span className="text-slate-600 px-0.5 font-bold">➔</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Card Bottom: Attendance Pills & Management Action Buttons */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
+                        {/* Attendance Breakdown Pills */}
+                        <div className="flex items-center gap-1.5 flex-wrap text-[10.5px] font-mono font-bold">
+                          {otCounts["정시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/80">🟢 정시 {otCounts["정시"]}명</span>}
+                          {otCounts["19시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/80">🟡 19시 {otCounts["19시"]}명</span>}
+                          {otCounts["21시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/80">🟠 21시 {otCounts["21시"]}명</span>}
+                          {otCounts["22시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/80">🔴 22시 {otCounts["22시"]}명</span>}
+                          {otCounts["특근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/80">🌙 특근 {otCounts["특근"]}명</span>}
+                          {otCounts["연차"] > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/80">🌴 연차 {otCounts["연차"]}명</span>}
+                          {otCounts["결근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/80">❌ 결근 {otCounts["결근"]}명</span>}
+                        </div>
+
+                        {/* Management Action Buttons */}
+                        <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedLegacyReport(report);
+                              setIsLegacyModalOpen(true);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-sm flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>상세확인</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleEditReport(report)}
+                            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                            title="해당 일자 및 소속업체로 이동하여 수정/재입력"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+                            <span>수정/재입력</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteReport(report.id, e)}
+                            className="px-2.5 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                            title="보고서 삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>삭제</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 📑 MODAL: 등록 클릭 시 뜨는 특근/근태 보고서 팝업창 (내용 작성 및 검토) */}
       {/* ========================================================================= */}
       {isReportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
@@ -2295,69 +2398,239 @@ export const OvertimeStatusView = () => {
         </div>
       )}
 
-      {/* 📑 MODAL: 특근보고서 상세 모달 */}
+      {/* 📑 MODAL: 근태/특근보고서 상세 확인 및 결재 모달 (등록 모달과 100% 동일한 정식 서식) */}
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-3xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-950">
-              <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                <FileText className="w-5 h-5 text-purple-600" />
-                <span>{selectedLegacyReport.title || formatKoreanWorkDate(selectedLegacyReport.workDate)} 상세 내역</span>
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full border-2 border-purple-400 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  <FileText className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
+                    <span>근태 및 특근실시 보고서 상세 내역</span>
+                    <span className="text-xs px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800 font-mono">
+                      {selectedLegacyReport.workDateFormatted || selectedLegacyReport.workDate}
+                    </span>
+                  </h3>
+                </div>
+              </div>
+
               <button
                 onClick={() => setIsLegacyModalOpen(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-100 dark:bg-slate-800/60 p-3 rounded-2xl">
-                <div>작성자: <strong>{selectedLegacyReport.author}</strong></div>
-                <div>일자: <strong>{selectedLegacyReport.workDate}</strong></div>
-                <div>총 인원: <strong>{selectedLegacyReport.totalWorkers || selectedLegacyReport.items?.length}명</strong></div>
-                <div>총 공수: <strong>{selectedLegacyReport.totalHours}H</strong></div>
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* Top Approval Box & Meta Grid */}
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                <div className="space-y-2 flex-1">
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 block pb-0.5">보고서 제목</span>
+                    <div className="font-black text-white text-sm sm:text-base">
+                      {selectedLegacyReport.title || `${selectedLegacyReport.workDate} 특근실시 보고서`}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div>
+                      <span className="text-slate-400 font-bold block pb-0.5">작성자:</span>
+                      <span className="font-bold text-white">{selectedLegacyReport.author || "양인나 선임"}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block pb-0.5">대상 업체/공장:</span>
+                      <span className="font-bold text-cyan-300">
+                        {selectedLegacyReport.company || selectedLegacyReport.plant || "통합"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4 Approval Blocks */}
+                <div className="shrink-0 space-y-1">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10.5px] font-black text-purple-300 flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                      <span>결재선</span>
+                    </span>
+                    <span className="text-[9.5px] text-emerald-400 font-bold">결재 완료</span>
+                  </div>
+                  <div className="border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-md">
+                    <div className="grid grid-cols-4 divide-x divide-slate-700 text-center font-bold text-[11px]">
+                      {(selectedLegacyReport.approval || [
+                        { role: "담당", name: "양인나" },
+                        { role: "책임", name: "윤경수" },
+                        { role: "이사", name: "이명재" },
+                        { role: "대표", name: "권태형" }
+                      ]).map((st, sIdx) => (
+                        <div key={sIdx} className="bg-slate-800 py-1 px-2 text-slate-300 font-black">
+                          {st.role}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-4 divide-x divide-slate-700 text-center text-xs h-14 items-center bg-slate-900/90">
+                      {(selectedLegacyReport.approval || [
+                        { role: "담당", name: "양인나", status: "완료" },
+                        { role: "책임", name: "윤경수", status: "완료" },
+                        { role: "이사", name: "이명재", status: "완료" },
+                        { role: "대표", name: "권태형", status: "완료" }
+                      ]).map((st, sIdx) => (
+                        <div key={sIdx} className="p-1 flex flex-col items-center justify-center space-y-0.5">
+                          <span className="font-black text-white text-xs">{st.name}</span>
+                          <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 font-bold">
+                            {st.status || "완료"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                      <th className="p-2">No.</th>
-                      <th className="p-2">공장/업체</th>
-                      <th className="p-2">차종/라인</th>
-                      <th className="p-2">작업자</th>
-                      <th className="p-2">근무시간</th>
-                      <th className="p-2">공수(H)</th>
-                      <th className="p-2">작업내용</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {(selectedLegacyReport.items || []).map((it, idx) => (
-                      <tr key={idx}>
-                        <td className="p-2 text-slate-400 font-mono">{idx + 1}</td>
-                        <td className="p-2 font-bold">{it.factory || it.company || selectedLegacyReport.plant || "-"}</td>
-                        <td className="p-2">{it.category || it.carType || it.line || "-"}</td>
-                        <td className="p-2 font-bold">{it.workerName || it.names || "-"}</td>
-                        <td className="p-2">{it.startTime || "08:00"} ~ {it.endTime || "17:00"}</td>
-                        <td className="p-2 font-mono font-bold text-purple-600">{(it.hours || 8) * (it.count || 1)}H</td>
-                        <td className="p-2 text-slate-500">{it.workContent || it.workDetails || "-"}</td>
-                      </tr>
+              {/* Summary KPIs */}
+              {(() => {
+                const workersCount = selectedLegacyReport.totalWorkers || (selectedLegacyReport.items ? selectedLegacyReport.items.length : 0);
+                const totalHours = selectedLegacyReport.totalHours || (workersCount * 8);
+                const cost = selectedLegacyReport.cost || (totalHours * 15000);
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">출근/투입 인원</span>
+                      <span className="font-mono font-black text-sm text-emerald-400">{workersCount}명</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">총 투입 공수</span>
+                      <span className="font-mono font-black text-sm text-cyan-300">{totalHours} M/H</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">소속 공장/업체</span>
+                      <span className="font-mono font-black text-sm text-purple-400">{selectedLegacyReport.company || selectedLegacyReport.plant || "-"}</span>
+                    </div>
+                    <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
+                      <span className="text-[10.5px] text-slate-400 font-bold block">예상 총 노무비</span>
+                      <span className="font-mono font-black text-rose-400">₩{cost.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Reason / Notes Area */}
+              {selectedLegacyReport.reasons && selectedLegacyReport.reasons.length > 0 && (
+                <div className="space-y-1 p-3 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-purple-400" />
+                    <span>특근 사유 및 주요 작업 내용</span>
+                  </span>
+                  <div className="space-y-1 text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap">
+                    {selectedLegacyReport.reasons.map((rs, rIdx) => (
+                      <div key={rIdx}>{rs}</div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Workers Summary: 선택된 인원 + 근태현황만 축약 표시 (미입력 제외) */}
+              {(() => {
+                const items = selectedLegacyReport.items || [];
+                const validItems = items.filter((it) => {
+                  const val = String(it.attendanceCode || it.category || "").trim();
+                  return val !== "" && val !== "미입력" && val !== "-";
+                });
+
+                const displayItems = validItems.length > 0 ? validItems : items;
+
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-purple-400" />
+                        <span>투입 작업자 명단 ({displayItems.length}명)</span>
+                      </span>
+                    </div>
+
+                    <div className="border border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto bg-slate-950/60 p-2">
+                      {displayItems.length === 0 ? (
+                        <div className="py-6 text-center text-slate-500 font-bold text-xs">
+                          등록된 투입 인원 정보가 없습니다.
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
+                          {displayItems.map((it, idx) => {
+                            const getBadge = (code) => {
+                              const str = String(code || "").trim();
+                              if (str === "🟢" || str === "정시" || str === "17") return { label: "🟢 정시", bg: "bg-emerald-950 text-emerald-300 border-emerald-700/80" };
+                              if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
+                              if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
+                              if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
+                              if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
+                              if (str === "결근") return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
+                              if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
+                              if (str === "-" || str === "휴무") return { label: "- 휴무", bg: "bg-slate-800 text-slate-400 border-slate-700" };
+                              return { label: str || "특근", bg: "bg-purple-950 text-purple-300 border-purple-700" };
+                            };
+
+                            const badge = getBadge(it.attendanceCode || it.category || "특근");
+
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800/90 text-xs"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-mono text-[10.5px] text-slate-500 w-5 text-right shrink-0">{idx + 1}.</span>
+                                  <span className="text-[11px] font-bold text-slate-400 shrink-0">{it.company || it.factory || ""}</span>
+                                  <span className="text-[11px] text-slate-500 shrink-0">{it.dept || it.line || it.category || ""}</span>
+                                  <span className="font-black text-white text-xs truncate">{it.workerName || it.names || "-"}</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold border shrink-0 whitespace-nowrap ${badge.bg}`}>
+                                  {badge.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end">
+            {/* Modal Footer Actions */}
+            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
               <button
-                onClick={() => setIsLegacyModalOpen(false)}
-                className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs cursor-pointer"
+                type="button"
+                onClick={() => handleDeleteReport(selectedLegacyReport.id)}
+                className="px-4 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
               >
-                닫기
+                <Trash2 className="w-4 h-4" />
+                <span>보고서 삭제</span>
               </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>인쇄 / 출력</span>
+                </button>
+
+                <button
+                  onClick={() => setIsLegacyModalOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs cursor-pointer active:scale-95 transition-all"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           </div>
         </div>
