@@ -815,13 +815,10 @@ export const AuthModal = () => {
                           }`}
                           title="탭하여 품질경보/공지 내용 수정 및 전체 사진 보기"
                         >
-                          {/* Left: Index, Badges, Title & Content Summary */}
+                          {/* Left: Badges, Title & Content Summary */}
                           <div className="flex items-start md:items-center gap-2 min-w-0 flex-1">
-                            {/* Sequence & Badges */}
+                            {/* Badges */}
                             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                              <span className="w-5 h-5 rounded-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 text-[11px] font-black flex items-center justify-center font-mono shrink-0">
-                                {idx + 1}
-                              </span>
                               {isMeeting ? (
                                 <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
                                   🗓️ 회의
