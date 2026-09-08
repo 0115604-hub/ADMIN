@@ -1099,22 +1099,51 @@ export const OvertimeStatusView = () => {
                   </select>
                 </div>
 
-                {/* Company Filter Pills */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs font-bold text-slate-400 mr-0.5 shrink-0">업체 필터:</span>
-                  {["전체", ...COMPANIES].map((comp) => (
-                    <button
-                      key={comp}
-                      onClick={() => setSelectedCompanyFilter(comp)}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                        selectedCompanyFilter === comp
-                          ? "bg-cyan-500 text-slate-950 shadow-md font-black ring-2 ring-cyan-300"
-                          : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700"
-                      }`}
-                    >
-                      {comp}
-                    </button>
-                  ))}
+                {/* Plant / Company Filter Pills (삼랑진공장 & 한림공장 분리 체계) */}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {/* 삼랑진공장 Group ((주)오륙, 유성) */}
+                  <div className="flex items-center gap-1 p-1 bg-slate-950/80 border border-amber-600/50 rounded-xl shadow-xs">
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-950 text-amber-300 font-black text-xs border border-amber-700/60 flex items-center gap-1">
+                      <Factory className="w-3 h-3 text-amber-400" />
+                      <span>삼랑진</span>
+                    </span>
+                    {["(주)오륙", "유성"].map((comp) => (
+                      <button
+                        key={comp}
+                        type="button"
+                        onClick={() => setSelectedCompanyFilter(comp)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          selectedCompanyFilter === comp
+                            ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 scale-102"
+                            : "bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700"
+                        }`}
+                      >
+                        {comp}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 한림공장 Group ((주)조영산업, 한울, 부림텍) */}
+                  <div className="flex items-center gap-1 p-1 bg-slate-950/80 border border-emerald-600/50 rounded-xl shadow-xs">
+                    <span className="px-2 py-0.5 rounded-lg bg-emerald-950 text-emerald-300 font-black text-xs border border-emerald-700/60 flex items-center gap-1">
+                      <Factory className="w-3 h-3 text-emerald-400" />
+                      <span>한림</span>
+                    </span>
+                    {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                      <button
+                        key={comp}
+                        type="button"
+                        onClick={() => setSelectedCompanyFilter(comp)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          selectedCompanyFilter === comp
+                            ? "bg-emerald-500 text-slate-950 shadow-md ring-2 ring-emerald-300 scale-102"
+                            : "bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700"
+                        }`}
+                      >
+                        {comp}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1401,12 +1430,47 @@ export const OvertimeStatusView = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {COMPANIES.map((comp) => {
+                  {/* 삼랑진공장 Group ((주)오륙, 유성) */}
+                  <tr className="bg-amber-950/40 text-amber-300 font-black border-y border-amber-800/60">
+                    <td colSpan={10} className="py-2 px-3 flex items-center gap-1.5 text-xs">
+                      <Factory className="w-3.5 h-3.5 text-amber-400" />
+                      <span>🏭 삼랑진공장 ((주)오륙, 유성)</span>
+                    </td>
+                  </tr>
+                  {["(주)오륙", "유성"].map((comp) => {
                     const row = dailySummary.companyBreakdown?.[comp] || {};
                     return (
                       <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-cyan-500" />
+                        <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                          <span>{comp}</span>
+                        </td>
+                        <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{row.total || 0}명</td>
+                        <td className="p-3 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">{row.attended || 0}명</td>
+                        <td className="p-3 text-center font-mono">{row.regular || 0}명</td>
+                        <td className="p-3 text-center font-mono text-amber-600">{row.ot19 || 0}명</td>
+                        <td className="p-3 text-center font-mono text-orange-600">{row.ot21 || 0}명</td>
+                        <td className="p-3 text-center font-mono text-rose-600">{row.ot22 || 0}명</td>
+                        <td className="p-3 text-center font-mono text-purple-600">{row.specialNight || 0}명</td>
+                        <td className="p-3 text-center font-mono font-black text-amber-600 dark:text-amber-400">+{row.otHours || 0} H</td>
+                        <td className="p-3 text-center font-mono font-black text-indigo-600 dark:text-indigo-400">{row.totalHours || 0} H</td>
+                      </tr>
+                    );
+                  })}
+
+                  {/* 한림공장 Group ((주)조영산업, 한울, 부림텍) */}
+                  <tr className="bg-emerald-950/40 text-emerald-300 font-black border-y border-emerald-800/60">
+                    <td colSpan={10} className="py-2 px-3 flex items-center gap-1.5 text-xs">
+                      <Factory className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>🏭 한림공장 ((주)조영산업, 한울, 부림텍)</span>
+                    </td>
+                  </tr>
+                  {["(주)조영산업", "한울", "부림텍"].map((comp) => {
+                    const row = dailySummary.companyBreakdown?.[comp] || {};
+                    return (
+                      <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="p-3 font-black text-slate-900 dark:text-white flex items-center gap-2 pl-6">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                           <span>{comp}</span>
                         </td>
                         <td className="p-3 text-center font-mono font-bold text-slate-600 dark:text-slate-300">{row.total || 0}명</td>
@@ -1478,7 +1542,7 @@ export const OvertimeStatusView = () => {
                       </h3>
                     </div>
 
-                    {/* Company Dropdown Select */}
+                    {/* Company Dropdown Select (공장별 그룹화) */}
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-500 dark:text-slate-400">업체 선택:</span>
                       <select
@@ -1487,33 +1551,76 @@ export const OvertimeStatusView = () => {
                         className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-indigo-400 focus:border-indigo-300 rounded-xl px-3 py-1.5 cursor-pointer shadow-sm"
                       >
                         <option value="전체" className="bg-slate-900 text-white font-bold">전체 (5개 협력사 통합)</option>
-                        {COMPANIES.map((comp) => (
-                          <option key={comp} value={comp} className="bg-slate-900 text-white font-bold">
-                            {comp}
-                          </option>
-                        ))}
+                        <optgroup label="🏭 삼랑진공장" className="bg-slate-950 text-amber-300 font-bold">
+                          <option value="(주)오륙" className="bg-slate-900 text-white font-bold">(주)오륙</option>
+                          <option value="유성" className="bg-slate-900 text-white font-bold">유성</option>
+                        </optgroup>
+                        <optgroup label="🏭 한림공장" className="bg-slate-950 text-emerald-300 font-bold">
+                          <option value="(주)조영산업" className="bg-slate-900 text-white font-bold">(주)조영산업</option>
+                          <option value="한울" className="bg-slate-900 text-white font-bold">한울</option>
+                          <option value="부림텍" className="bg-slate-900 text-white font-bold">부림텍</option>
+                        </optgroup>
                       </select>
                     </div>
                   </div>
 
-                  {/* Company Quick Filter Pills */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {["전체", ...COMPANIES].map((comp) => {
-                      const isSel = matrixCompanyFilter === comp;
-                      return (
+                  {/* Company Quick Filter Pills (삼랑진 & 한림 분리 체계) */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setMatrixCompanyFilter("전체")}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        matrixCompanyFilter === "전체"
+                          ? "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      전체
+                    </button>
+
+                    {/* 삼랑진 그룹 */}
+                    <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-950 border border-amber-600/50 rounded-xl">
+                      <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 px-1.5 flex items-center gap-0.5">
+                        <Factory className="w-3 h-3" />
+                        <span>삼랑진:</span>
+                      </span>
+                      {["(주)오륙", "유성"].map((comp) => (
                         <button
                           key={comp}
+                          type="button"
                           onClick={() => setMatrixCompanyFilter(comp)}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                            isSel
-                              ? "bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                          className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            matrixCompanyFilter === comp
+                              ? "bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300"
+                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
                           }`}
                         >
                           {comp}
                         </button>
-                      );
-                    })}
+                      ))}
+                    </div>
+
+                    {/* 한림 그룹 */}
+                    <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-950 border border-emerald-600/50 rounded-xl">
+                      <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 px-1.5 flex items-center gap-0.5">
+                        <Factory className="w-3 h-3" />
+                        <span>한림:</span>
+                      </span>
+                      {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                        <button
+                          key={comp}
+                          type="button"
+                          onClick={() => setMatrixCompanyFilter(comp)}
+                          className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                            matrixCompanyFilter === comp
+                              ? "bg-emerald-500 text-slate-950 shadow-xs ring-1 ring-emerald-300"
+                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          {comp}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -1640,28 +1747,83 @@ export const OvertimeStatusView = () => {
 
             return (
               <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-                {/* Left: 소속 필터 버튼군 */}
-                <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Left: 소속 필터 버튼군 (공장/회사 체계 분리) */}
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-bold text-slate-400 mr-0.5 flex items-center gap-1 shrink-0">
                     <Filter className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>소속:</span>
+                    <span>필터:</span>
                   </span>
-                  {["전체", "삼랑진공장", "한림공장", ...COMPANIES].map((comp) => {
-                    const isActive = reportListFilter === comp;
-                    return (
+
+                  {/* 전체 */}
+                  <button
+                    type="button"
+                    onClick={() => setReportListFilter("전체")}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      reportListFilter === "전체"
+                        ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400"
+                        : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                    }`}
+                  >
+                    전체
+                  </button>
+
+                  {/* 삼랑진공장 그룹 */}
+                  <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-amber-700/60 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setReportListFilter("삼랑진공장")}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        reportListFilter === "삼랑진공장"
+                          ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                          : "text-amber-300 hover:bg-amber-950"
+                      }`}
+                    >
+                      삼랑진공장
+                    </button>
+                    {["(주)오륙", "유성"].map((comp) => (
                       <button
                         key={comp}
+                        type="button"
                         onClick={() => setReportListFilter(comp)}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          isActive
-                            ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400 scale-102"
-                            : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                        className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
+                          reportListFilter === comp
+                            ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                            : "text-slate-300 hover:text-white hover:bg-slate-800"
                         }`}
                       >
                         {comp}
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+
+                  {/* 한림공장 그룹 */}
+                  <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-emerald-700/60 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setReportListFilter("한림공장")}
+                      className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                        reportListFilter === "한림공장"
+                          ? "bg-emerald-500 text-slate-950 font-black shadow-xs"
+                          : "text-emerald-300 hover:bg-emerald-950"
+                      }`}
+                    >
+                      한림공장
+                    </button>
+                    {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                      <button
+                        key={comp}
+                        type="button"
+                        onClick={() => setReportListFilter(comp)}
+                        className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
+                          reportListFilter === comp
+                            ? "bg-emerald-400 text-slate-950 font-black shadow-xs"
+                            : "text-slate-300 hover:text-white hover:bg-slate-800"
+                        }`}
+                      >
+                        {comp}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Right: 1줄 초간결 실시간 통계 뱃지 & 검색창 */}
@@ -1824,8 +1986,10 @@ export const OvertimeStatusView = () => {
                         </span>
 
                         {/* Company / Plant Badge */}
-                        <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 ${badgeColor}`}>
-                          {(report.company && report.company !== "전체") ? report.company : (report.plant || plantName)}
+                        <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${badgeColor}`}>
+                          <span>{isSam ? "삼랑진" : "한림"}</span>
+                          <span>•</span>
+                          <span>{(report.company && report.company !== "전체") ? report.company : (report.plant || plantName)}</span>
                         </span>
 
                         {/* Work Date Badge */}
