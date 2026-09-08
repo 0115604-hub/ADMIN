@@ -41,10 +41,7 @@ import {
   Sun,
   Moon,
   Zap,
-  CheckSquare,
-  PenTool,
-  Send,
-  Sliders
+  CheckSquare
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
@@ -84,7 +81,7 @@ export const OvertimeStatusView = () => {
 
   // Smart Overtime Ledger State (5개사 통합 잔업 스마트 대장)
   const [smartData, setSmartData] = useState(() => getLocalSmartOvertimeData());
-  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' default for fastest attendance entry!
+  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' default
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Daily views state
@@ -114,38 +111,13 @@ export const OvertimeStatusView = () => {
   const [selectedWeekendDay, setSelectedWeekendDay] = useState(12); // Default to upcoming weekend: 9월 12일 (토)
   const [selectedReportPlantFilter, setSelectedReportPlantFilter] = useState("전체"); // '전체' | '삼랑진공장' | '한림공장'
 
-  // =========================================================================
-  // ✍️ Dedicated Overtime Report Creation State (특근보고서 작성 탭 전용 상태)
-  // =========================================================================
-  const [reportCreateDay, setReportCreateDay] = useState(12); // Default 9월 12일
-  const [reportCreatePlant, setReportCreatePlant] = useState("삼랑진공장"); // "삼랑진공장" | "한림공장" | "5개사 통합"
-  const [reportCreateTitle, setReportCreateTitle] = useState("2026년 9월 12일(토) 삼랑진공장 특근실시 보고서");
-  const [reportCreateAuthor, setReportCreateAuthor] = useState("양인나 선임");
-  const [reportCreateAuthorTitle, setReportCreateAuthorTitle] = useState("선임");
-  const [reportCreateReasons, setReportCreateReasons] = useState(
-    "1. 2026년 9월 12일(토) 삼랑진공장 ((주)오륙 + 유성) 토요 특근 긴급 납품 및 공정 가동 대응\n2. 총 40명 투입 (총 특근공수: 382 M/H, 비용: ₩5,730,000)"
-  );
-  const [reportCreateItems, setReportCreateItems] = useState([
-    { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수", hours: 8, count: 3 },
-    { id: 2, category: "NX4", workContent: "NX4 조인트 및 후가공 생산", names: "손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미", hours: 10, count: 11 },
-    { id: 3, category: "NX4a", workContent: "NX4a 후가공 및 검사", names: "양인순, 박순복, 김상아, 김윤자, 김현희", hours: 10, count: 5 },
-    { id: 4, category: "PU 찬넬", workContent: "PU 찬넬 조립 1라인", names: "이창엽", hours: 8, count: 1 },
-    { id: 5, category: "PU 찬넬", workContent: "PU 찬넬 가공 2라인", names: "전재율, 양인나", hours: 8, count: 2 },
-    { id: 6, category: "압출", workContent: "PCM#1/3 및 TPE 압출 가동", names: "이상은, 지미, 이수루", hours: 12, count: 3 },
-    { id: 7, category: "8톤 코팅", workContent: "8톤 코팅 라인 긴급 가동", names: "코팅준", hours: 8, count: 1 },
-    { id: 8, category: "DT HOOD", workContent: "DT HOOD 조인트 및 코팅 납품 대응", names: "쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스", hours: 10, count: 7 },
-    { id: 9, category: "JK1", workContent: "JK1 조인트 후가공", names: "포티퐁, 린, 넷플림", hours: 8, count: 3 },
-    { id: 10, category: "CE1", workContent: "CE1 후가공 검사", names: "제인, 그레이스", hours: 8, count: 2 },
-    { id: 11, category: "수직 건조", workContent: "수직 건조로 제품 건조", names: "유동길, 조인주", hours: 8, count: 2 }
-  ]);
-
   // Show Toast notification
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setShowToast(true);
     setTimeout(() => {
       setShowToast(false);
-    }, 3200);
+    }, 2800);
   };
 
   // Subscribe to real-time updates from Firestore
@@ -169,7 +141,7 @@ export const OvertimeStatusView = () => {
     };
   }, []);
 
-  // ⭐ Auto-generate/sync Plant Weekend Overtime Reports:
+  // ⭐ Auto-sync Plant Weekend Overtime Reports:
   // 삼랑진공장 취합: (주)오륙, 유성
   // 한림공장 취합: (주)조영산업, 한울, 부림텍
   const syncPlantWeekendOvertimeReports = async (matrix, specificDay = null) => {
@@ -342,7 +314,7 @@ export const OvertimeStatusView = () => {
     }
   };
 
-  // ⭐ USER ACTION: 1-Click Update Worker Attendance for Selected Day (Local Staging)
+  // 1-Click Update Worker Attendance for Selected Day (Local Staging)
   const handleUpdateWorkerDayAttendance = (workerIndexInMaster, newCode) => {
     const updatedMatrix = [...smartData.attendanceMatrix];
     if (!updatedMatrix[workerIndexInMaster]) return;
@@ -365,52 +337,20 @@ export const OvertimeStatusView = () => {
     setHasUnsavedChanges(true);
   };
 
-  // ⭐ USER ACTION: [ 💾 근태 등록 및 특근보고서 생성 ] (Manual Registration Trigger)
+  // ⭐ USER ACTION: [ 💾 등록 ] (근태/잔업/특근 등록 및 특근보고서 자동 연동)
   const handleRegisterAttendanceAndGenerateReport = async () => {
     setIsSaving(true);
     try {
-      // 1. Save smart overtime ledger to Firestore & LocalStorage
       await saveSmartOvertimeData(smartData);
-      
-      // 2. Generate/sync overtime reports for the selected day
       await syncPlantWeekendOvertimeReports(smartData.attendanceMatrix, selectedDay);
-      
       setHasUnsavedChanges(false);
-      triggerToast(`🎉 9월 ${selectedDay}일 근태 등록 및 공장별 특근보고서 생성이 완료되었습니다!`);
+      triggerToast(`🎉 9월 ${selectedDay}일 근태/잔업/특근 등록이 완료되었습니다!`);
     } catch (err) {
       console.error(err);
       alert("근태 등록 중 오류가 발생했습니다: " + err.message);
     } finally {
       setIsSaving(false);
     }
-  };
-
-  // Batch update attendance for all currently filtered workers
-  const handleBatchUpdateFiltered = (newCode) => {
-    const meta = getOptionMeta(newCode);
-    const targetNames = new Set(filteredAttendanceWorkers.map(w => `${w.company}__${w.name}`));
-    const updatedMatrix = smartData.attendanceMatrix.map((w) => {
-      const key = `${w.company}__${w.name}`;
-      if (targetNames.has(key)) {
-        return {
-          ...w,
-          daily: {
-            ...(w.daily || {}),
-            [selectedDay]: newCode
-          }
-        };
-      }
-      return w;
-    });
-
-    const newLedger = {
-      ...smartData,
-      attendanceMatrix: updatedMatrix
-    };
-
-    setSmartData(newLedger);
-    setHasUnsavedChanges(true);
-    triggerToast(`선택 변경: ${filteredAttendanceWorkers.length}명 '${meta.label}' 설정됨 (등록 버튼을 눌러 확정하세요)`);
   };
 
   // Quick Add Worker for a specific Company (from Company Popup)
@@ -497,184 +437,6 @@ export const OvertimeStatusView = () => {
       triggerToast(`📥 엑셀 다운로드 완료 (${filename})`);
     } catch (err) {
       alert("엑셀 내보내기 중 오류가 발생했습니다: " + err.message);
-    }
-  };
-
-  // =========================================================================
-  // ✍️ Function: Auto-populate Overtime Report from Attendance Matrix
-  // =========================================================================
-  const handleAutoPopulateReport = (targetDay, targetPlant) => {
-    const day = targetDay || reportCreateDay;
-    const plant = targetPlant || reportCreatePlant;
-    const matrix = smartData?.attendanceMatrix || [];
-
-    const isSaturday = (day === 5 || day === 12 || day === 19 || day === 26);
-    const isSunday = (day === 6 || day === 13 || day === 20 || day === 27);
-    const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
-
-    // Filter relevant workers
-    let targetWorkers = [];
-    let companies = [];
-    let authorName = "양인나 선임";
-
-    if (plant === "삼랑진공장") {
-      companies = ["(주)오륙", "유성"];
-      authorName = "양인나 선임";
-      targetWorkers = matrix.filter((w) => {
-        const isSam = w.company === "(주)오륙" || w.company === "유성" || w.company === "오륙" || w.company === "유성산업";
-        const val = w.daily ? w.daily[day] : "";
-        const { isAttended, workHours } = calculateWorkerDailyHours(val);
-        return isSam && isAttended && workHours > 0;
-      });
-    } else if (plant === "한림공장") {
-      companies = ["(주)조영산업", "한울", "부림텍"];
-      authorName = "우창용 선임";
-      targetWorkers = matrix.filter((w) => {
-        const isHal = w.company === "(주)조영산업" || w.company === "한울" || w.company === "부림텍";
-        const val = w.daily ? w.daily[day] : "";
-        const { isAttended, workHours } = calculateWorkerDailyHours(val);
-        return isHal && isAttended && workHours > 0;
-      });
-    } else {
-      companies = COMPANIES;
-      authorName = "관리자";
-      targetWorkers = matrix.filter((w) => {
-        const val = w.daily ? w.daily[day] : "";
-        const { isAttended, workHours } = calculateWorkerDailyHours(val);
-        return isAttended && workHours > 0;
-      });
-    }
-
-    // Group workers by Line or Dept
-    const groupMap = {};
-    targetWorkers.forEach((w) => {
-      const cat = w.line || normalizeDept(w.dept) || "가공";
-      if (!groupMap[cat]) {
-        groupMap[cat] = {
-          category: cat,
-          workerNames: [],
-          hoursList: []
-        };
-      }
-      groupMap[cat].workerNames.push(w.name);
-      const { workHours } = calculateWorkerDailyHours(w.daily?.[day]);
-      groupMap[cat].hoursList.push(workHours || 8);
-    });
-
-    let newItems = Object.entries(groupMap).map(([cat, data], idx) => {
-      const avgHours = data.hoursList.length > 0 
-        ? Math.round((data.hoursList.reduce((a, b) => a + b, 0) / data.hoursList.length)) 
-        : 8;
-      return {
-        id: idx + 1,
-        category: cat,
-        workContent: `${plant} ${cat} 긴급 가동 및 납품 대응`,
-        names: data.workerNames.join(", "),
-        hours: avgHours,
-        count: data.workerNames.length
-      };
-    });
-
-    // Fallback benchmark items if empty
-    if (newItems.length === 0) {
-      if (plant === "삼랑진공장") {
-        newItems = [
-          { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수", hours: 8, count: 3 },
-          { id: 2, category: "NX4", workContent: "NX4 조인트 및 후가공 생산", names: "손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미", hours: 10, count: 11 },
-          { id: 3, category: "NX4a", workContent: "NX4a 후가공 및 검사", names: "양인순, 박순복, 김상아, 김윤자, 김현희", hours: 10, count: 5 },
-          { id: 4, category: "PU 찬넬", workContent: "PU 찬넬 조립 1라인", names: "이창엽", hours: 8, count: 1 },
-          { id: 5, category: "PU 찬넬", workContent: "PU 찬넬 가공 2라인", names: "전재율, 양인나", hours: 8, count: 2 },
-          { id: 6, category: "압출", workContent: "PCM#1/3 및 TPE 압출 가동", names: "이상은, 지미, 이수루", hours: 12, count: 3 },
-          { id: 7, category: "8톤 코팅", workContent: "8톤 코팅 라인 긴급 가동", names: "코팅준", hours: 8, count: 1 },
-          { id: 8, category: "DT HOOD", workContent: "DT HOOD 조인트 및 코팅 납품 대응", names: "쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스", hours: 10, count: 7 },
-          { id: 9, category: "JK1", workContent: "JK1 조인트 후가공", names: "포티퐁, 린, 넷플림", hours: 8, count: 3 },
-          { id: 10, category: "CE1", workContent: "CE1 후가공 검사", names: "제인, 그레이스", hours: 8, count: 2 },
-          { id: 11, category: "수직 건조", workContent: "수직 건조로 제품 건조", names: "유동길, 조인주", hours: 8, count: 2 }
-        ];
-      } else {
-        newItems = [
-          { id: 1, category: "9BQC", workContent: "9BQC G/RUN 긴급 조립 및 납품", names: "정상근, 링링", hours: 8, count: 2 },
-          { id: 2, category: "CHANNEL", workContent: "CHANNEL 밴딩 가공", names: "유미, 이상기", hours: 8, count: 2 }
-        ];
-      }
-    }
-
-    const totalCnt = newItems.reduce((s, it) => s + (Number(it.count) || 0), 0);
-    const totalManHours = newItems.reduce((s, it) => s + ((Number(it.count) || 0) * (Number(it.hours) || 8)), 0);
-    const cost = totalManHours * 15000;
-
-    setReportCreateTitle(`2026년 9월 ${day}일(${dayLabel}) ${plant} 특근실시 보고서`);
-    setReportCreateAuthor(authorName);
-    setReportCreateItems(newItems);
-    setReportCreateReasons(
-      `1. 2026년 9월 ${day}일(${dayLabel}) ${plant} (${companies.join(", ")}) 특근 긴급 생산 및 납품 대응\n2. 총 ${totalCnt}명 투입 (총 특근공수: ${totalManHours} M/H, 예상 노무비: ₩${cost.toLocaleString()})`
-    );
-
-    triggerToast(`📥 9월 ${day}일 ${plant} 특근 작업자 데이터(${totalCnt}명)를 불러왔습니다.`);
-  };
-
-  // ⭐ USER ACTION: [ 📑 특근보고서 최종 등록 및 보관함 저장 ]
-  const handleSaveCreatedReport = async () => {
-    setIsSaving(true);
-    try {
-      const day = reportCreateDay;
-      const isSaturday = (day === 5 || day === 12 || day === 19 || day === 26);
-      const isSunday = (day === 6 || day === 13 || day === 20 || day === 27);
-      const dayLabel = isSaturday ? "토" : isSunday ? "일" : "평일";
-
-      const totalWorkers = reportCreateItems.reduce((s, it) => s + (Number(it.count) || 0), 0);
-      const totalHours = reportCreateItems.reduce((s, it) => s + ((Number(it.count) || 0) * (Number(it.hours) || 8)), 0);
-      const cost = totalHours * 15000;
-
-      const plantCompMap = {
-        "삼랑진공장": ["(주)오륙", "유성"],
-        "한림공장": ["(주)조영산업", "한울", "부림텍"],
-        "5개사 통합": COMPANIES
-      };
-
-      const plantPrefix = reportCreatePlant === "삼랑진공장" ? "samrangjin" : reportCreatePlant === "한림공장" ? "hanlim" : "total";
-      const reportId = `report_${plantPrefix}_2026_09_${String(day).padStart(2, "0")}`;
-
-      const approval = reportCreatePlant === "삼랑진공장" ? [
-        { role: "담당", name: "양인나", status: "완료" },
-        { role: "책임", name: "윤경수", status: "완료" },
-        { role: "이사", name: "이명재", status: "완료" },
-        { role: "대표", name: "권태형", status: "완료" }
-      ] : [
-        { role: "담당", name: "우창용", status: "완료" },
-        { role: "책임", name: "김동욱", status: "완료" },
-        { role: "이사", name: "이명재", status: "완료" },
-        { role: "대표", name: "권태형", status: "완료" }
-      ];
-
-      const newReport = {
-        id: reportId,
-        plant: reportCreatePlant,
-        title: reportCreateTitle,
-        workDate: `2026-09-${String(day).padStart(2, "0")}`,
-        workDateFormatted: `2026-09-${String(day).padStart(2, "0")} (${dayLabel})`,
-        author: reportCreateAuthor,
-        authorTitle: reportCreateAuthorTitle,
-        companies: plantCompMap[reportCreatePlant] || COMPANIES,
-        updatedAt: new Date().toISOString(),
-        approval,
-        totalWorkers,
-        totalHours,
-        cost,
-        items: reportCreateItems,
-        isAutoGenerated: false,
-        reasons: reportCreateReasons.split("\n").filter(r => r.trim().length > 0)
-      };
-
-      await saveOvertimeReport(newReport);
-      setSelectedLegacyReport(newReport);
-      triggerToast(`🎉 [${reportCreatePlant}] 특근보고서가 보관함에 성공적으로 등록되었습니다!`);
-      setActiveTab("legacy_reports");
-    } catch (err) {
-      console.error(err);
-      alert("특근보고서 저장 중 오류가 발생했습니다: " + err.message);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -1012,38 +774,30 @@ export const OvertimeStatusView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🧭 MAIN TAB NAVIGATION (5 Tabs - 특근보고서 작성 탭 포함) */}
+      {/* 🧭 MAIN TAB NAVIGATION (Clean 4 Tabs - 근태/잔업/특근 등록 & 관리) */}
       {/* ========================================================================= */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b-2 border-slate-200 dark:border-slate-800">
         {[
-          { id: "daily_input", label: "📝 오늘자 근태/잔업 등록", icon: Zap, badge: hasUnsavedChanges ? "미저장 있음" : "선택 후 등록", highlight: true },
-          { id: "report_create", label: "✍️ 특근보고서 작성", icon: PenTool, badge: "보고서 발행", special: true },
-          { id: "legacy_reports", label: "📑 특근보고서 관리", icon: FileText, badge: "토요특근 연동" },
+          { id: "daily_input", label: "📝 근태/잔업/특근 등록", icon: Zap, badge: hasUnsavedChanges ? "미저장 있음" : "등록", highlight: true },
           { id: "daily_summary", label: "📋 일자별 종합 집계", icon: FileSpreadsheet },
-          { id: "monthly_matrix", label: "📊 9월 전사 종합현황판", icon: CalendarDays }
+          { id: "monthly_matrix", label: "📊 9월 전사 종합현황판", icon: CalendarDays },
+          { id: "legacy_reports", label: "📑 특근보고서 관리", icon: FileText, badge: "토요특근 연동" }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                if (tab.id === "report_create") {
-                  handleAutoPopulateReport(selectedDay, "삼랑진공장");
-                }
-              }}
+              onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                 isActive
-                  ? tab.special
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30 scale-102 ring-2 ring-purple-400"
-                    : tab.highlight
+                  ? tab.highlight
                     ? "bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 scale-102 ring-2 ring-cyan-400"
                     : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
                   : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? "text-white" : tab.special ? "text-purple-500" : "text-slate-400"}`} />
+              <Icon className={`w-4 h-4 ${isActive ? (tab.highlight ? "text-white" : "text-cyan-400") : "text-slate-400"}`} />
               <span>{tab.label}</span>
               {tab.badge && (
                 <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
@@ -1062,7 +816,7 @@ export const OvertimeStatusView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 📝 TAB 1: 오늘자 근태/잔업 등록 (선택 후 등록버튼으로 저장 & 보고서 생성) */}
+      {/* 📝 TAB 1: 근태/잔업/특근 등록 (PRIMARY WORKSPACE) */}
       {/* ========================================================================= */}
       {activeTab === "daily_input" && (
         <div className="space-y-4">
@@ -1087,7 +841,7 @@ export const OvertimeStatusView = () => {
                   ))}
                 </select>
                 <span className="text-xs text-cyan-300 font-bold px-2.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/30">
-                  9월 {selectedDay}일 근태 작업 중
+                  9월 {selectedDay}일 근태/잔업/특근 설정 중
                 </span>
               </div>
 
@@ -1166,51 +920,37 @@ export const OvertimeStatusView = () => {
             </div>
           </div>
 
-          {/* ⭐ PROMINENT REGISTRATION ACTION BAR (등록 버튼 및 보고서 생성 안내) */}
-          <div className="p-4 rounded-2xl bg-linear-to-r from-slate-900 via-indigo-950 to-slate-900 border-2 border-indigo-500/50 shadow-xl flex flex-col md:flex-row items-center justify-between gap-3 text-white">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 ring-1 ring-indigo-400/40">
-                <CheckCircle2 className="w-6 h-6 text-cyan-400" />
+          {/* Clean Registration Bar */}
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-900 border-2 border-cyan-500/40 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-3 text-white">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300">
+                <CheckCircle2 className="w-5 h-5 text-cyan-400" />
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-black text-sm sm:text-base text-white">
-                    9월 {selectedDay}일 근태 선택 완료 후 [등록]을 눌러주세요
-                  </h4>
+                  <span className="font-black text-sm text-white">
+                    9월 {selectedDay}일 근태/잔업/특근 선택 후 [등록]을 눌러주세요
+                  </span>
                   {hasUnsavedChanges && (
-                    <span className="px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-300 text-xs font-black border border-rose-400/50 animate-pulse">
-                      ● 변경사항 등록 대기 중
+                    <span className="px-2 py-0.5 rounded-md bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 animate-pulse">
+                      ● 미등록 변경사항 있음
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-300 font-medium">
-                  등록 버튼을 누르면 선택한 작업자들이 정리되어 전산에 저장되고 <strong className="text-cyan-300 font-bold">공장별 특근보고서로 자동 생성</strong>됩니다.
-                </p>
+                <span className="text-xs text-slate-400 font-medium">
+                  등록 버튼을 누르면 선택된 작업자들의 근태가 저장되고 특근보고서에 자동 반영됩니다.
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
-              <button
-                onClick={handleRegisterAttendanceAndGenerateReport}
-                disabled={isSaving}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-linear-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-black text-sm shadow-lg shadow-cyan-900/40 active:scale-95 transition-all cursor-pointer border border-cyan-400/50 disabled:opacity-50"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isSaving ? "등록 중..." : `💾 9월 ${selectedDay}일 근태 등록 & 특근보고서 생성`}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleAutoPopulateReport(selectedDay, "삼랑진공장");
-                  setActiveTab("report_create");
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer"
-                title="선택된 일자의 특근보고서 직접 작성/편집"
-              >
-                <PenTool className="w-4 h-4" />
-                <span>특근보고서 작성 탭</span>
-              </button>
-            </div>
+            <button
+              onClick={handleRegisterAttendanceAndGenerateReport}
+              disabled={isSaving}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              <span>{isSaving ? "등록 중..." : `💾 9월 ${selectedDay}일 근태/잔업/특근 등록`}</span>
+            </button>
           </div>
 
           {/* Interactive Worker Attendance Table (2-Column Side-by-Side Grid) */}
@@ -1225,11 +965,9 @@ export const OvertimeStatusView = () => {
                   (조회 {filteredAttendanceWorkers.length}명)
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-slate-400">
-                  근태 선택 후 상단의 [근태 등록 & 특근보고서 생성] 버튼을 누르면 최종 확정됩니다.
-                </span>
-              </div>
+              <span className="text-[11px] font-bold text-slate-400">
+                선택 완료 후 [등록] 버튼을 누르면 전산 저장 및 특근보고서에 자동 집계됩니다.
+              </span>
             </div>
 
             {filteredAttendanceWorkers.length === 0 ? (
@@ -1452,340 +1190,7 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* ✍️ TAB 2: 특근보고서 작성 (DEDICATED OVERTIME REPORT CREATION TAB) */}
-      {/* ========================================================================= */}
-      {activeTab === "report_create" && (
-        <div className="space-y-4">
-          {/* Top Configuration & Control Bar */}
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border-2 border-purple-500/60 shadow-xl text-white space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="p-2 rounded-xl bg-purple-500/20 text-purple-300 ring-1 ring-purple-400/40">
-                    <PenTool className="w-5 h-5" />
-                  </span>
-                  <h3 className="text-base sm:text-xl font-black text-white flex items-center gap-2">
-                    <span>특근실시 보고서 신규 작성 및 편집</span>
-                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-950 text-purple-300 font-bold border border-purple-700">
-                      정식 결재 양식
-                    </span>
-                  </h3>
-                </div>
-                <p className="text-xs text-slate-400">
-                  대상 일자와 공장을 선택하고 작업자들을 라인별로 정리한 후 [보고서 보관함 저장]을 눌러주세요.
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 flex-wrap shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleAutoPopulateReport(reportCreateDay, reportCreatePlant)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm shadow-md cursor-pointer transition-all active:scale-95"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>📥 근태 데이터에서 작업자 자동 불러오기</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSaveCreatedReport}
-                  disabled={isSaving}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-purple-900/40 cursor-pointer transition-all active:scale-95 border border-purple-400 disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{isSaving ? "저장 중..." : "📑 특근보고서 최종 등록 및 보관함 저장"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Selectors: Date, Plant, Author */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-800 text-xs">
-              {/* Target Date */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 flex items-center gap-1">
-                  <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>특근 실시 일자</span>
-                </label>
-                <select
-                  value={reportCreateDay}
-                  onChange={(e) => {
-                    const d = Number(e.target.value);
-                    setReportCreateDay(d);
-                    handleAutoPopulateReport(d, reportCreatePlant);
-                  }}
-                  className="w-full bg-slate-950 text-white font-black rounded-xl p-2.5 border-2 border-slate-700 focus:border-purple-400 cursor-pointer"
-                >
-                  {[5, 6, 12, 13, 19, 20, 26, 27].map((d) => (
-                    <option key={d} value={d} className="bg-slate-900 text-white font-bold">
-                      2026년 9월 {d}일 ({(d === 6 || d === 13 || d === 20 || d === 27) ? "일요일" : "토요일"}) {d === 12 ? "🌟 다가올 주말" : ""}
-                    </option>
-                  ))}
-                  {Array.from({ length: 30 }, (_, i) => i + 1).filter(d => ![5, 6, 12, 13, 19, 20, 26, 27].includes(d)).map((d) => (
-                    <option key={d} value={d} className="bg-slate-900 text-white font-bold">
-                      2026년 9월 {d}일 (평일)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Target Plant */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 flex items-center gap-1">
-                  <Factory className="w-3.5 h-3.5 text-amber-400" />
-                  <span>대상 공장 및 협력사</span>
-                </label>
-                <select
-                  value={reportCreatePlant}
-                  onChange={(e) => {
-                    const p = e.target.value;
-                    setReportCreatePlant(p);
-                    handleAutoPopulateReport(reportCreateDay, p);
-                  }}
-                  className="w-full bg-slate-950 text-white font-black rounded-xl p-2.5 border-2 border-slate-700 focus:border-purple-400 cursor-pointer"
-                >
-                  <option value="삼랑진공장" className="bg-slate-900 text-white font-bold">🏭 삼랑진공장 ((주)오륙, 유성)</option>
-                  <option value="한림공장" className="bg-slate-900 text-white font-bold">🏭 한림공장 ((주)조영산업, 한울, 부림텍)</option>
-                  <option value="5개사 통합" className="bg-slate-900 text-white font-bold">🌐 5개사 통합 전체</option>
-                </select>
-              </div>
-
-              {/* Author */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-300 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-purple-400" />
-                  <span>작성자 / 직위</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={reportCreateAuthor}
-                    onChange={(e) => setReportCreateAuthor(e.target.value)}
-                    placeholder="작성자 성명"
-                    className="w-2/3 bg-slate-950 text-white font-bold rounded-xl p-2.5 border-2 border-slate-700 focus:border-purple-400"
-                  />
-                  <input
-                    type="text"
-                    value={reportCreateAuthorTitle}
-                    onChange={(e) => setReportCreateAuthorTitle(e.target.value)}
-                    placeholder="직위 (선임)"
-                    className="w-1/3 bg-slate-950 text-white font-bold rounded-xl p-2.5 border-2 border-slate-700 focus:border-purple-400"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Report Live Summary KPIs */}
-          {(() => {
-            const totalCnt = reportCreateItems.reduce((s, it) => s + (Number(it.count) || 0), 0);
-            const totalManHours = reportCreateItems.reduce((s, it) => s + ((Number(it.count) || 0) * (Number(it.hours) || 8)), 0);
-            const cost = totalManHours * 15000;
-
-            return (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">대상 공장/협력업체</span>
-                  <span className="font-black text-sm text-purple-600 dark:text-purple-400">{reportCreatePlant}</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">총 투입인원</span>
-                  <span className="font-mono font-black text-base text-emerald-600 dark:text-emerald-400">{totalCnt}명</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">총 특근 공수</span>
-                  <span className="font-mono font-black text-base text-cyan-600 dark:text-cyan-400">{totalManHours} M/H</span>
-                </div>
-                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block font-bold">예상 총 노무비</span>
-                  <span className="font-mono font-black text-base text-rose-600 dark:text-rose-400">₩{cost.toLocaleString()}</span>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Title & Reasons Editor */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block pb-1">보고서 제목</label>
-              <input
-                type="text"
-                value={reportCreateTitle}
-                onChange={(e) => setReportCreateTitle(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-black text-sm rounded-xl p-2.5 border border-slate-300 dark:border-slate-700 focus:border-purple-400"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block pb-1">특근 사유 및 특이사항</label>
-              <textarea
-                rows={3}
-                value={reportCreateReasons}
-                onChange={(e) => setReportCreateReasons(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium text-xs rounded-xl p-2.5 border border-slate-300 dark:border-slate-700 focus:border-purple-400"
-                placeholder="특근 사유를 입력하세요 (줄바꿈으로 구분)"
-              />
-            </div>
-          </div>
-
-          {/* Detailed Line Breakdown Items Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-3 p-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-purple-500" />
-                <h4 className="font-black text-sm text-slate-900 dark:text-white">
-                  라인/공정별 투입 작업자 상세 내역 ({reportCreateItems.length}개 라인)
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const newId = reportCreateItems.length + 1;
-                  setReportCreateItems([
-                    ...reportCreateItems,
-                    { id: newId, category: "신규공정", workContent: "특근 긴급 생산", names: "", hours: 8, count: 1 }
-                  ]);
-                }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 font-bold text-xs cursor-pointer hover:bg-purple-200"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>라인/공정 행 추가</span>
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
-                    <th className="p-2 text-center w-8">No</th>
-                    <th className="p-2 w-28">라인/공정명</th>
-                    <th className="p-2 w-48">작업내용</th>
-                    <th className="p-2">투입 작업자 명단</th>
-                    <th className="p-2 text-center w-16">인원(명)</th>
-                    <th className="p-2 text-center w-16">시간(H)</th>
-                    <th className="p-2 text-center w-20">소계공수</th>
-                    <th className="p-2 text-center w-10">삭제</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {reportCreateItems.map((it, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="p-2 text-center font-mono text-slate-400">{idx + 1}</td>
-                      <td className="p-1.5">
-                        <input
-                          type="text"
-                          value={it.category}
-                          onChange={(e) => {
-                            const updated = [...reportCreateItems];
-                            updated[idx].category = e.target.value;
-                            setReportCreateItems(updated);
-                          }}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 font-bold text-slate-900 dark:text-white"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input
-                          type="text"
-                          value={it.workContent}
-                          onChange={(e) => {
-                            const updated = [...reportCreateItems];
-                            updated[idx].workContent = e.target.value;
-                            setReportCreateItems(updated);
-                          }}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-slate-900 dark:text-white"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input
-                          type="text"
-                          value={it.names}
-                          onChange={(e) => {
-                            const updated = [...reportCreateItems];
-                            updated[idx].names = e.target.value;
-                            // auto count if comma separated
-                            const namesList = e.target.value.split(",").map(n => n.trim()).filter(Boolean);
-                            if (namesList.length > 0) {
-                              updated[idx].count = namesList.length;
-                            }
-                            setReportCreateItems(updated);
-                          }}
-                          placeholder="작업자 성명 (쉼표로 구분)"
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-slate-900 dark:text-white font-mono"
-                        />
-                      </td>
-                      <td className="p-1.5 text-center">
-                        <input
-                          type="number"
-                          value={it.count}
-                          onChange={(e) => {
-                            const updated = [...reportCreateItems];
-                            updated[idx].count = Number(e.target.value) || 0;
-                            setReportCreateItems(updated);
-                          }}
-                          className="w-14 text-center bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 font-mono font-black text-purple-600 dark:text-purple-400"
-                        />
-                      </td>
-                      <td className="p-1.5 text-center">
-                        <input
-                          type="number"
-                          value={it.hours}
-                          onChange={(e) => {
-                            const updated = [...reportCreateItems];
-                            updated[idx].hours = Number(e.target.value) || 0;
-                            setReportCreateItems(updated);
-                          }}
-                          className="w-14 text-center bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 font-mono font-bold"
-                        />
-                      </td>
-                      <td className="p-2 text-center font-mono font-black text-cyan-600 dark:text-cyan-300">
-                        {(Number(it.count) || 0) * (Number(it.hours) || 8)}H
-                      </td>
-                      <td className="p-1.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReportCreateItems(reportCreateItems.filter((_, i) => i !== idx));
-                          }}
-                          className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950 cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Bottom Final Action Bar */}
-            <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-800">
-              <span className="text-xs text-slate-500">
-                작성이 완료되면 등록 버튼을 눌러 결재함 및 특근보고서 보관함에 즉시 반영하세요.
-              </span>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("legacy_reports")}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-200"
-                >
-                  취소 / 보고서 관리로 이동
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveCreatedReport}
-                  disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs sm:text-sm shadow-md cursor-pointer transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {isSaving ? "등록 중..." : "📑 특근보고서 최종 등록"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 📋 TAB 3: 일자별 종합 집계 (DAILY SUMMARY TABLE) */}
+      {/* 📋 TAB 2: 일자별 종합 집계 (DAILY SUMMARY TABLE) */}
       {/* ========================================================================= */}
       {activeTab === "daily_summary" && (
         <div className="space-y-4">
@@ -1869,7 +1274,7 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📊 TAB 4: 9월 전사 종합현황판 (업체별 드롭다운 & 30일 전체 매트릭스) */}
+      {/* 📊 TAB 3: 9월 전사 종합현황판 (업체별 드롭다운 & 30일 전체 매트릭스) */}
       {/* ========================================================================= */}
       {activeTab === "monthly_matrix" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
@@ -2032,7 +1437,7 @@ export const OvertimeStatusView = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📑 TAB 5: 특근보고서 관리 (SATURDAY OVERTIME & OFFICIAL REPORTS) */}
+      {/* 📑 TAB 4: 특근보고서 관리 (SATURDAY OVERTIME & OFFICIAL REPORTS) */}
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
@@ -2048,27 +1453,13 @@ export const OvertimeStatusView = () => {
               </h3>
             </div>
             
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  handleAutoPopulateReport(selectedWeekendDay, "삼랑진공장");
-                  setActiveTab("report_create");
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md cursor-pointer transition-all active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>✍️ 신규 특근보고서 작성</span>
-              </button>
-
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800">
-                  🏭 삼랑진공장: (주)오륙, 유성
-                </span>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800">
-                  🏭 한림공장: (주)조영산업, 한울, 부림텍
-                </span>
-              </div>
+            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800">
+                🏭 삼랑진공장: (주)오륙, 유성
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800">
+                🏭 한림공장: (주)조영산업, 한울, 부림텍
+              </span>
             </div>
           </div>
 
@@ -2719,40 +2110,7 @@ export const OvertimeStatusView = () => {
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLegacyModalOpen(false);
-                  if (selectedLegacyReport.workDate) {
-                    const dayMatch = selectedLegacyReport.workDate.match(/\d{4}-\d{2}-(\d{2})/);
-                    if (dayMatch) {
-                      setReportCreateDay(Number(dayMatch[1]));
-                    }
-                  }
-                  if (selectedLegacyReport.plant) {
-                    setReportCreatePlant(selectedLegacyReport.plant);
-                  }
-                  if (selectedLegacyReport.title) {
-                    setReportCreateTitle(selectedLegacyReport.title);
-                  }
-                  if (selectedLegacyReport.author) {
-                    setReportCreateAuthor(selectedLegacyReport.author);
-                  }
-                  if (selectedLegacyReport.items && selectedLegacyReport.items.length > 0) {
-                    setReportCreateItems(selectedLegacyReport.items);
-                  }
-                  if (selectedLegacyReport.reasons) {
-                    setReportCreateReasons(selectedLegacyReport.reasons.join("\n"));
-                  }
-                  setActiveTab("report_create");
-                }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>이 보고서 수정/재발행하기</span>
-              </button>
-
+            <div className="p-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex justify-end">
               <button
                 onClick={() => setIsLegacyModalOpen(false)}
                 className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs cursor-pointer"
