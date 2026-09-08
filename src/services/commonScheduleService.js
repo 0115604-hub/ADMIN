@@ -36,6 +36,8 @@ export const saveCommonSchedule = async (scheduleItem) => {
   const current = getLocalCommonSchedules();
   const startDate = scheduleItem.startDate || scheduleItem.date || getKSTDateString();
   const endDate = scheduleItem.endDate || scheduleItem.date || startDate;
+  const existingItem = current.find((s) => s.id === scheduleItem.id);
+
   const newItem = {
     id: scheduleItem.id || `sched_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
     date: startDate,
@@ -47,7 +49,10 @@ export const saveCommonSchedule = async (scheduleItem) => {
     author: scheduleItem.author || "ADMIN",
     isCompleted: Boolean(scheduleItem.isCompleted),
     completedAt: scheduleItem.completedAt || (scheduleItem.isCompleted ? new Date().toISOString() : null),
-    createdAt: scheduleItem.createdAt || new Date().toISOString()
+    createdAt: scheduleItem.createdAt || new Date().toISOString(),
+    comments: Array.isArray(scheduleItem.comments)
+      ? scheduleItem.comments
+      : existingItem?.comments || []
   };
 
   const existingIdx = current.findIndex((s) => s.id === newItem.id);
@@ -84,6 +89,81 @@ export const saveCommonSchedule = async (scheduleItem) => {
   }
 
   return updated;
+};
+
+export const addCommonScheduleComment = async (scheduleId, commentData) => {
+  const current = getLocalCommonSchedules();
+  const targetIdx = current.findIndex((s) => s.id === scheduleId);
+  if (targetIdx < 0) return { updatedList: current, newComment: null, updatedItem: null };
+
+  const targetItem = current[targetIdx];
+  const newComment = {
+    id: `cmt_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+    author: commentData.author || "작성자",
+    role: commentData.role || "",
+    plant: commentData.plant || "",
+    text: (commentData.text || "").trim(),
+    createdAt: new Date().toISOString()
+  };
+
+  const updatedComments = Array.isArray(targetItem.comments)
+    ? [...targetItem.comments, newComment]
+    : [newComment];
+
+  const updatedItem = {
+    ...targetItem,
+    comments: updatedComments
+  };
+
+  const updated = [...current];
+  updated[targetIdx] = updatedItem;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Local storage error in addCommonScheduleComment:", e);
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, scheduleId);
+    await setDoc(docRef, updatedItem, { merge: true });
+  } catch (e) {
+    console.warn("Firestore addCommonScheduleComment warning:", e);
+  }
+
+  return { updatedList: updated, newComment, updatedItem };
+};
+
+export const deleteCommonScheduleComment = async (scheduleId, commentId) => {
+  const current = getLocalCommonSchedules();
+  const targetIdx = current.findIndex((s) => s.id === scheduleId);
+  if (targetIdx < 0) return { updatedList: current, updatedItem: null };
+
+  const targetItem = current[targetIdx];
+  const updatedComments = (targetItem.comments || []).filter((c) => c.id !== commentId);
+
+  const updatedItem = {
+    ...targetItem,
+    comments: updatedComments
+  };
+
+  const updated = [...current];
+  updated[targetIdx] = updatedItem;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error("Local storage error in deleteCommonScheduleComment:", e);
+  }
+
+  try {
+    const docRef = doc(db, COLLECTION_NAME, scheduleId);
+    await setDoc(docRef, updatedItem, { merge: true });
+  } catch (e) {
+    console.warn("Firestore deleteCommonScheduleComment warning:", e);
+  }
+
+  return { updatedList: updated, updatedItem };
 };
 
 export const toggleCompleteCommonSchedule = async (scheduleId, isCompleted = true) => {
@@ -182,7 +262,6 @@ export const subscribeCommonSchedules = (callback) => {
 };
 
 export const cleanupExpiredCommonSchedules = async () => {
-  // 일정 이력(등록시점부터 일정일, 완료까지)을 팝업 관리 창에서 확인할 수 있도록 영구 보존합니다.
   return getLocalCommonSchedules();
 };
 
@@ -196,7 +275,6 @@ export const getTodayCommonSchedules = (targetDate = null) => {
     const endDate = s.endDate || startDate;
     const effectiveStart = regDate <= startDate ? regDate : startDate;
 
-    // 등록일(또는 시작일)부터 종료일까지 노출, 종료일이 지난 일정은 제외
     return Boolean(effectiveStart && endDate && effectiveStart <= dateStr && dateStr <= endDate);
   });
 };
@@ -205,43 +283,33 @@ export const getScheduleCategoryMeta = (target) => {
   switch (target) {
     case "맛집":
       return {
-        emoji: "🍷",
         badge: "맛집 탐방",
-        icon: "🍽️",
         phrase: "맛있는 음식과 함께하는 행복한 시간",
         accent: "text-rose-600 dark:text-rose-400"
       };
     case "여행":
       return {
-        emoji: "✈️",
         badge: "여행 / 힐링",
-        icon: "🏖️",
         phrase: "도심을 벗어나 둘만의 힐링 여행",
         accent: "text-amber-600 dark:text-amber-400"
       };
     case "세미나":
       return {
-        emoji: "🎓",
         badge: "세미나",
-        icon: "🏛️",
         phrase: "새로운 비전과 도약을 위한 자리",
         accent: "text-blue-600 dark:text-blue-400"
       };
     case "교육":
       return {
-        emoji: "📚",
         badge: "교육 / 역량",
-        icon: "💡",
         phrase: "함께 배우고 성장하는 시간",
         accent: "text-emerald-600 dark:text-emerald-400"
       };
     case "기타":
     default:
       return {
-        emoji: "💍",
-        badge: target || "특별한 일정",
-        icon: "✨",
-        phrase: "태형 & 미영 두 분만의 소중한 순간",
+        badge: target || "공통 일정",
+        phrase: "사내 공통 일정",
         accent: "text-purple-600 dark:text-purple-400"
       };
   }
@@ -249,7 +317,7 @@ export const getScheduleCategoryMeta = (target) => {
 
 export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateString()) => {
   if (!scheds || scheds.length === 0) {
-    return "• 등록된 태형&미영 일정이 없습니다. ✨";
+    return "• 등록된 공통 일정이 없습니다.";
   }
   const sorted = [...scheds].sort((a, b) => {
     const aStart = a.startDate || a.date || "";
@@ -262,15 +330,16 @@ export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateSt
     const startDate = s.startDate || s.date;
     const endDate = s.endDate || startDate;
     const cat = getScheduleCategoryMeta(s.target);
-    const timeStr = s.time && s.time !== "종일" ? ` [⏰ ${s.time}]` : "";
+    const timeStr = s.time && s.time !== "종일" ? ` [${s.time}]` : "";
     const sFormatted = startDate.slice(5).replace("-", ".");
     const eFormatted = endDate.slice(5).replace("-", ".");
+    const commentsCount = Array.isArray(s.comments) && s.comments.length > 0 ? ` (의견 ${s.comments.length}건)` : "";
     if (startDate !== endDate) {
-      return `• ${cat.emoji} [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
+      return `• [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
     } else if (startDate === todayStr) {
-      return `• ${cat.emoji} [오늘]${timeStr} <b>${s.title}</b> (${cat.badge})`;
+      return `• [오늘]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
     } else {
-      return `• ${cat.emoji} [${sFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
+      return `• [${sFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
     }
   }).join("\n");
 };
@@ -280,12 +349,10 @@ export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText
 
   let text = templateText;
 
-  // Update date header if provided
   if (dateFormatted) {
     text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
   }
 
-  // If explicit placeholder exists
   if (text.includes("{commonSchedules}")) {
     return text.replace(/\{commonSchedules\}/g, schedulesText);
   }
@@ -293,13 +360,10 @@ export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText
     return text.replace(/\$\{commonSchedules\}/g, schedulesText);
   }
 
-  // If section [3] exists (e.g. <b>[3] ... </b> or [3] ... up to separator or link)
   const section3Regex = /(<b>\[3\][^<]*?<\/b>|\[3\][^\n]*\n)([\s\S]*?)(?=(━━━━━━━━━━━━━━━━━━━━━|<a\s+href|$))/i;
   if (section3Regex.test(text)) {
     return text.replace(section3Regex, `$1\n${schedulesText}\n`);
   }
 
-  // Fallback
-  return `${text}\n\n<b>[3] 태형이랑 & 미영이랑</b>\n${schedulesText}`;
+  return `${text}\n\n<b>[3] 사내 공통일정</b>\n${schedulesText}`;
 };
-
