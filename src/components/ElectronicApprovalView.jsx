@@ -48,6 +48,7 @@ import {
   APPROVAL_MANAGERS,
   syncPlantOvertimeToApprovalBox
 } from "../services/approvalService";
+import { KWON_SIGNATURE_RED, KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -949,9 +950,10 @@ export const ElectronicApprovalView = () => {
                     <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative">
                       {st.status === "APPROVED" ? (
                         st.role === "대표" || st.name === "권태형" || st.name === "대표이사" ? (
-                          /* 🌟 대표이사 권태형 맞춤형 전자서명 + 직인 인장 */
-                          <div className="w-14 h-12 flex flex-col items-center justify-center relative select-none transform rotate-[-3deg] animate-scaleUp">
-                            <div className="w-12 h-12 rounded-full border-2 border-rose-600 bg-rose-50/40 dark:bg-rose-950/40 flex flex-col items-center justify-center p-0.5 shadow-xs">
+                          /* 🌟 대표이사 권태형 실제 친필 서명 + 공식 직인 인장 */
+                          <div className="w-16 h-14 flex items-center justify-center relative select-none animate-scaleUp">
+                            {/* 대표이사 공식 붉은색 인장 */}
+                            <div className="w-12 h-12 rounded-full border-2 border-rose-600 bg-rose-50/40 dark:bg-rose-950/40 flex flex-col items-center justify-center p-0.5 shadow-xs transform rotate-[-2deg]">
                               <span className="text-[6.5px] font-black text-rose-700 dark:text-rose-300 leading-none">대표이사</span>
                               <span className="text-[9.5px] font-black text-rose-600 dark:text-rose-400 font-serif tracking-tight my-0.5">
                                 권태형
@@ -960,6 +962,12 @@ export const ElectronicApprovalView = () => {
                                 결재 [인]
                               </span>
                             </div>
+                            {/* 권태형 대표이사 실제 자필 친필 서명 투명 오버레이 */}
+                            <img
+                              src={KWON_SIGNATURE_RED}
+                              alt="권태형 대표이사 서명"
+                              className="absolute inset-0 w-full h-full object-contain pointer-events-none transform scale-110 rotate-[-4deg] drop-shadow-xs opacity-95"
+                            />
                           </div>
                         ) : (
                           <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs`}>
