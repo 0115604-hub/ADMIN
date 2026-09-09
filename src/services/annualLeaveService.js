@@ -6,8 +6,8 @@ import {
   getDocs,
   onSnapshot
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { getKSTDateString } from "../utils/dateUtils";
+import { db } from "../firebase.js";
+import { getKSTDateString } from "../utils/dateUtils.js";
 
 const COLLECTION_NAME = "annual_leaves";
 const LOCAL_STORAGE_KEY = "oryuk_annual_leaves_v1";
@@ -144,13 +144,8 @@ export const saveAnnualLeave = async (newLeave) => {
     id: leaveId,
     daysCount,
     endDate: cleanData.endDate || cleanData.startDate,
-    createdAt: cleanData.createdAt || new Date().toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    }),
+    createdAt: cleanData.createdAt || new Date().toISOString(),
+    createdDate: cleanData.createdDate || getKSTDateString(),
     updatedAt: new Date().toISOString()
   };
 
@@ -331,63 +326,97 @@ export const getLeaveTypeMeta = (typeStr = "") => {
   };
 };
 
+// Helper to normalize date string to 'YYYY-MM-DD'
+const normalizeDateStr = (raw) => {
+  if (!raw) return "";
+  const str = String(raw).trim();
+  if (str.includes("T")) {
+    return str.slice(0, 10);
+  }
+  const cleaned = str.replace(/\./g, "-").replace(/\//g, "-").replace(/\s+/g, "");
+  const parts = cleaned.split("-").filter(Boolean);
+  if (parts.length === 3) {
+    const y = parts[0];
+    const m = parts[1].padStart(2, "0");
+    const d = parts[2].padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  return str.slice(0, 10);
+};
+
 // Helper: Calculate worker's current/upcoming annual leave status
-// Exposure period: from registration date (createdAt) to completed or target event date (endDate/startDate)
 export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = { excludeTodo: true }) => {
   if (!allLeaves || !Array.isArray(allLeaves) || allLeaves.length === 0) return null;
 
   try {
     const todayStr = getKSTDateString();
 
+    const uId = userId ? String(userId).trim() : "";
+    const uName = userName ? String(userName).trim() : "";
+
     // Match leaves for this worker (by userId or userName)
     const userLeaves = allLeaves.filter((l) => {
       if (!l) return false;
-      const matchUser = (userId && l.userId === userId) || (userName && l.userName === userName);
-      if (!matchUser) return false;
       if (l.isCompleted || l.isDismissed) return false;
 
       // Filter out private '할일' if excludeTodo option is true
       if (options.excludeTodo) {
-        const type = l.leaveType || "";
+        const type = String(l.leaveType || "");
         if (type === "할일" || type.includes("할일")) return false;
       }
-      return true;
+
+      const lUserId = l.userId ? String(l.userId).trim() : "";
+      const lUserName = l.userName ? String(l.userName).trim() : "";
+
+      const matchId = Boolean(uId && (lUserId === uId || lUserId === `user_${uName}`));
+      const matchName = Boolean(
+        uName && (lUserName === uName || lUserName.startsWith(uName) || uName.startsWith(lUserName))
+      );
+
+      return matchId || matchName;
     });
 
     if (userLeaves.length === 0) return null;
 
-    // Filter valid leaves that should be exposed:
-    // Registration date (createdAt or createdDate) <= todayStr <= (endDate or startDate)
+    // Filter valid leaves that have not ended in the past (endDate >= todayStr)
     const validLeaves = userLeaves.filter((l) => {
-      const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
-      const startDate = l.startDate || l.date || regDate;
-      const targetEndDate = l.endDate || l.startDate || l.date || regDate;
-      const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
+      const rawStart = l.startDate || l.date || "";
+      const rawEnd = l.endDate || rawStart;
+      const start = normalizeDateStr(rawStart);
+      const end = normalizeDateStr(rawEnd) || start;
 
-      return Boolean(effectiveStart && targetEndDate && effectiveStart <= todayStr && todayStr <= targetEndDate);
+      // Ignore past events (end date < todayStr)
+      if (!end || end < todayStr) {
+        return false;
+      }
+      return true;
     });
 
     if (validLeaves.length === 0) return null;
 
-    // 1. Check for active leave today (startDate <= today <= endDate)
-    const activeTodayLeave = validLeaves.find(
-      (l) => Boolean(l && l.startDate && l.startDate <= todayStr && todayStr <= (l.endDate || l.startDate))
-    );
-
-    // Helper to get compact label for small mobile chips
+    // Helper to get compact label for badges
     const getCompactType = (typeName) => {
-      if (typeName === "RNA 회의" || typeName.includes("회의")) return "회의";
-      if (typeName.includes("오전반차")) return "오전";
-      if (typeName.includes("오후반차")) return "오후";
-      if (typeName.includes("특근")) return "특근";
-      if (typeName.includes("삼랑진")) return "삼랑진";
-      if (typeName.includes("한림")) return "한림";
-      if (typeName.includes("출장") || typeName.includes("교육")) return "출장";
-      if (typeName.includes("업체방문")) return "방문";
-      if (typeName.includes("외출")) return "외출";
-      if (typeName.includes("할일")) return "할일";
-      return typeName;
+      const t = String(typeName || "");
+      if (t.includes("삼랑진")) return "삼랑진";
+      if (t.includes("한림")) return "한림";
+      if (t.includes("오전반차") || t === "반차(오전)") return "오전";
+      if (t.includes("오후반차") || t === "반차(오후)") return "오후";
+      if (t.includes("특근")) return "특근";
+      if (t.includes("출장") || t.includes("교육")) return "출장";
+      if (t.includes("외출")) return "외출";
+      if (t.includes("RNA") || t.includes("회의")) return "회의";
+      if (t.includes("할일")) return "할일";
+      if (t.includes("업체방문")) return "방문";
+      if (t.includes("연차")) return "연차";
+      return t || "일정";
     };
+
+    // 1. Check for active leave TODAY (startDate <= todayStr <= endDate)
+    const activeTodayLeave = validLeaves.find((l) => {
+      const start = normalizeDateStr(l.startDate || l.date || "");
+      const end = normalizeDateStr(l.endDate || start) || start;
+      return Boolean(start && end && start <= todayStr && todayStr <= end);
+    });
 
     if (activeTodayLeave) {
       const meta = getLeaveTypeMeta(activeTodayLeave.leaveType);
@@ -397,38 +426,55 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         isToday: true,
         type: meta.type,
         emoji: meta.emoji,
-        displayBadge: activeTodayLeave.startDate === todayStr ? `오늘·${compactType}` : `${compactType}`,
-        mobileBadge: activeTodayLeave.startDate === todayStr ? `오늘·${compactType}` : `${compactType}`,
+        displayBadge: `오늘·${compactType}`,
+        mobileBadge: `오늘·${compactType}`,
         label: `${meta.emoji} [오늘] ${meta.activeLabel || meta.type}`,
-        fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType ? ` (${activeTodayLeave.reason})` : ""}`,
+        fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${
+          activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType
+            ? ` (${activeTodayLeave.reason})`
+            : ""
+        }`,
         badgeColor: meta.activeBadge,
         leave: activeTodayLeave,
         allValidLeaves: validLeaves
       };
     }
 
-    // 2. Otherwise, upcoming scheduled leave within exposure period (regDate <= todayStr < startDate)
+    // 2. Otherwise, find the EARLIEST upcoming scheduled leave in the FUTURE (startDate > todayStr)
     const upcomingLeaves = validLeaves
-      .filter((l) => Boolean(l && l.startDate && l.startDate > todayStr))
-      .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
+      .filter((l) => {
+        const start = normalizeDateStr(l.startDate || l.date || "");
+        return Boolean(start && start > todayStr);
+      })
+      .sort((a, b) => {
+        const aStart = normalizeDateStr(a.startDate || a.date || "");
+        const bStart = normalizeDateStr(b.startDate || b.date || "");
+        return aStart.localeCompare(bStart);
+      });
 
     if (upcomingLeaves.length > 0) {
       const nextLeave = upcomingLeaves[0];
       const meta = getLeaveTypeMeta(nextLeave.leaveType);
       const compactType = getCompactType(meta.type);
-      const dateParts = (nextLeave.startDate || "").split("-");
-      const shortDate = dateParts.length === 3 ? `${dateParts[1]}.${dateParts[2]}` : nextLeave.startDate;
-      const shortMonthDay = dateParts.length === 3 ? `${parseInt(dateParts[1], 10)}.${parseInt(dateParts[2], 10)}` : nextLeave.startDate;
+      const startNorm = normalizeDateStr(nextLeave.startDate || nextLeave.date || "");
+      const dateParts = startNorm.split("-");
+      const shortMonthDay =
+        dateParts.length === 3
+          ? `${parseInt(dateParts[1], 10)}.${parseInt(dateParts[2], 10)}`
+          : startNorm.slice(5);
+
       return {
         status: "SCHEDULED",
         isToday: false,
         type: meta.type,
         emoji: meta.emoji,
-        shortDate,
+        shortDate: shortMonthDay,
         displayBadge: `${shortMonthDay}·${compactType}`,
         mobileBadge: `${shortMonthDay}·${compactType}`,
-        label: `${meta.emoji} ${shortDate} ${meta.type}`,
-        fullLabel: `${nextLeave.startDate} ${nextLeave.leaveType}${nextLeave.reason && nextLeave.reason !== nextLeave.leaveType ? ` (${nextLeave.reason})` : ""}`,
+        label: `${meta.emoji} ${shortMonthDay} ${meta.type}`,
+        fullLabel: `${nextLeave.startDate} ${nextLeave.leaveType}${
+          nextLeave.reason && nextLeave.reason !== nextLeave.leaveType ? ` (${nextLeave.reason})` : ""
+        }`,
         badgeColor: meta.scheduledBadge,
         leave: nextLeave,
         allValidLeaves: validLeaves
