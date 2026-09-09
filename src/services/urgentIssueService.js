@@ -94,6 +94,8 @@ export const saveUrgentIssue = async (issueData) => {
     ...issueData,
     id,
     category: issueData.category || "품질경보",
+    expireDate: issueData.expireDate || issueData.targetDate || "",
+    targetDate: issueData.targetDate || issueData.expireDate || "",
     images: issueData.images || [],
     actionImages: issueData.actionImages || [],
     actionResult: issueData.actionResult || "",
@@ -217,8 +219,8 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       console.warn("Firestore deleteDoc fallback to local:", e);
     }
 
-    // Trigger Telegram notification on delete (exactly once)
-    if (target) {
+    // Trigger Telegram notification on manual delete (skip on automated date expiration cleanup)
+    if (target && !deleterName?.includes("자동")) {
       try {
         const deletedItem = {
           ...target,

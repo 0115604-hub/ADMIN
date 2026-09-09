@@ -138,12 +138,13 @@ export const AuthModal = () => {
   const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "unresolved" | "closed"
   const ISSUES_PER_PAGE = 5;
 
-  // New Issue Form State (사진 첨부 지원)
+  // New Issue Form State (사진 첨부 및 사내공지/회의일정 만료일자 지원)
   const [newIssueForm, setNewIssueForm] = useState({
     category: "품질경보",
     plant: "삼랑진공장",
     author: "방상국",
     authorTitle: "선임",
+    expireDate: "",
     title: "",
     content: "",
     images: [],
@@ -260,22 +261,52 @@ export const AuthModal = () => {
     return () => unsub();
   }, []);
 
-  // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved), 전체(All)
+  const todayDateStr = useMemo(() => getKSTDateString(), []);
+
+  // ⭐ Helper: 사내공지 / 회의일정 지정 날짜 경과 여부 확인 (경과 시 접속화면 자동 숨김/삭제)
+  const isItemExpired = (item) => {
+    if (!item) return false;
+    const isNoticeOrMeeting =
+      item.category === "공지사항" ||
+      item.category === "사내공지" ||
+      item.category === "공유사항" ||
+      item.category === "회의일정";
+    if (isNoticeOrMeeting) {
+      const exp = item.expireDate || item.targetDate;
+      if (exp && exp < todayDateStr) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // ⭐ 사내공지 및 회의일정 지정 날짜 경과 시 자동으로 접속화면 및 DB에서 삭제 정리
+  useEffect(() => {
+    if (!urgentIssues || urgentIssues.length === 0) return;
+    const expiredList = urgentIssues.filter((i) => !i.isDeleted && isItemExpired(i));
+    if (expiredList.length > 0) {
+      expiredList.forEach((item) => {
+        deleteUrgentIssue(item.id, "시스템 (날짜 경과 자동 정리)").catch(() => {});
+      });
+    }
+  }, [urgentIssues, todayDateStr]);
+
+  // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved), 전체(All) (날짜 경과 항목 접속화면 제외)
   const unresolvedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved);
-  }, [urgentIssues]);
+    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i));
+  }, [urgentIssues, todayDateStr]);
 
   const closedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && i.isResolved);
-  }, [urgentIssues]);
+    return urgentIssues.filter((i) => !i.isDeleted && i.isResolved && !isItemExpired(i));
+  }, [urgentIssues, todayDateStr]);
 
   const deletedIssues = useMemo(() => {
     return urgentIssues.filter((i) => i.isDeleted);
   }, [urgentIssues]);
 
   const activeIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted);
-  }, [urgentIssues]);
+    return urgentIssues.filter((i) => !i.isDeleted && !isItemExpired(i));
+  }, [urgentIssues, todayDateStr]);
 
   const qualityIssuesCount = useMemo(() => {
     return activeIssues.filter(
@@ -313,8 +344,6 @@ export const AuthModal = () => {
     if (issueFilterTab === "closed") return closedIssues;
     return urgentIssues.filter((i) => !i.isDeleted);
   }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues]);
-
-  const todayDateStr = useMemo(() => getKSTDateString(), []);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
   const samrangjinLeaveCount = useMemo(() => {
@@ -414,6 +443,7 @@ export const AuthModal = () => {
       plant: issue.plant || "삼랑진공장",
       author: issue.author || "방상국",
       authorTitle: issue.authorTitle || "선임",
+      expireDate: issue.expireDate || issue.targetDate || todayDateStr,
       title: issue.title || "",
       content: issue.content || "",
       images: issue.images ? [...issue.images] : [],
@@ -436,11 +466,22 @@ export const AuthModal = () => {
       return;
     }
 
+    const isNoticeOrMeeting =
+      newIssueForm.category === "공지사항" ||
+      newIssueForm.category === "사내공지" ||
+      newIssueForm.category === "공유사항" ||
+      newIssueForm.category === "회의일정";
+    const effectiveExpireDate = isNoticeOrMeeting
+      ? newIssueForm.expireDate || todayDateStr
+      : newIssueForm.expireDate || "";
+
     const hasAction = Boolean(newIssueForm.actionResult && newIssueForm.actionResult.trim());
     await saveUrgentIssue({
       ...newIssueForm,
       id: editingIssue ? editingIssue.id : undefined,
       category: newIssueForm.category || "품질경보",
+      expireDate: effectiveExpireDate,
+      targetDate: effectiveExpireDate,
       images: newIssueForm.images || [],
       actionImages: newIssueForm.actionImages || [],
       actionAuthor: hasAction ? (newIssueForm.actionAuthor || newIssueForm.author) : (editingIssue?.actionAuthor || ""),
@@ -455,6 +496,7 @@ export const AuthModal = () => {
       plant: "삼랑진공장",
       author: "방상국",
       authorTitle: "선임",
+      expireDate: todayDateStr,
       title: "",
       content: "",
       images: [],
@@ -754,6 +796,7 @@ export const AuthModal = () => {
                       plant: "삼랑진공장",
                       author: "방상국",
                       authorTitle: "선임",
+                      expireDate: todayDateStr,
                       title: "",
                       content: "",
                       images: [],
@@ -839,6 +882,17 @@ export const AuthModal = () => {
                               }`}>
                                 {item.plant}
                               </span>
+                              {item.expireDate && (
+                                <span className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono ${
+                                  isMeeting
+                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
+                                    : isNotice
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                                    : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
+                                }`}>
+                                  {isMeeting ? `📅 회의: ${item.expireDate.slice(5)}` : isNotice ? `📅 만료: ~${item.expireDate.slice(5)}` : `📅 ${item.expireDate.slice(5)}`}
+                                </span>
+                              )}
                             </div>
 
                             {/* Title & Content Summary */}
@@ -1001,6 +1055,17 @@ export const AuthModal = () => {
                               }`}>
                                 {item.plant}
                               </span>
+                              {item.expireDate && (
+                                <span className={`px-2 py-0.8 rounded-lg text-xs sm:text-sm font-bold shrink-0 font-mono ${
+                                  isMeeting
+                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
+                                    : isNotice
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                                    : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
+                                }`}>
+                                  {isMeeting ? `📅 회의: ${item.expireDate.slice(5)}` : isNotice ? `📅 만료: ~${item.expireDate.slice(5)}` : `📅 ${item.expireDate.slice(5)}`}
+                                </span>
+                              )}
                               <span className="text-xs sm:text-sm text-slate-400 shrink-0 font-bold">
                                 {item.author} • {item.createdAt}
                               </span>
@@ -1822,6 +1887,17 @@ export const AuthModal = () => {
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                             {item.plant}
                           </span>
+                          {item.expireDate && (
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                              isItemMeeting
+                                ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
+                                : isItemNotice
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                                : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                            }`}>
+                              {isItemMeeting ? `📅 회의: ${item.expireDate}` : isItemNotice ? `📅 만료: ~${item.expireDate}` : `📅 ${item.expireDate}`}
+                            </span>
+                          )}
                           <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
                             작성자: <strong>{item.author} {item.authorTitle || ""}</strong> ({item.createdAt})
                           </span>
@@ -1996,6 +2072,19 @@ export const AuthModal = () => {
                             }`}>
                               {it.plant?.replace("공장", "") || "공장"}
                             </span>
+
+                            {/* Date Badge */}
+                            {it.expireDate && (
+                              <span className={`px-1 py-0.2 rounded text-[9px] font-bold font-mono shrink-0 ${
+                                isItMeeting
+                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
+                                  : isItNotice
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                                  : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                              }`}>
+                                {it.expireDate.slice(5)}
+                              </span>
+                            )}
 
                             {/* Content Snippet */}
                             <span className={`text-xs truncate flex-1 ${
@@ -2305,6 +2394,38 @@ export const AuthModal = () => {
                     </select>
                   </div>
                 </div>
+
+                {/* 📅 ⭐ 사내공지 / 회의일정 날짜 지정 필드 (지정 날짜 경과 시 접속화면에서 자동 제거) */}
+                {(newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" || newIssueForm.category === "회의일정") && (
+                  <div className={`p-3 rounded-2xl border transition-all ${
+                    newIssueForm.category === "회의일정"
+                      ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/30"
+                      : "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Calendar className={`w-3.5 h-3.5 ${newIssueForm.category === "회의일정" ? "text-purple-600" : "text-emerald-600"}`} />
+                          <span>
+                            {newIssueForm.category === "회의일정" ? "회의 진행일자 (지정일 경과 시 자동 삭제)" : "공지 게시 만료일자 (지정일 경과 시 자동 삭제)"}
+                          </span>
+                        </label>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {newIssueForm.category === "회의일정"
+                            ? "* 설정한 회의 일자가 지나면(경과 시) 접속화면에서 자동으로 지워집니다."
+                            : "* 설정한 공지 만료일이 지나면(경과 시) 접속화면에서 자동으로 지워집니다."}
+                        </p>
+                      </div>
+                      <input
+                        type="date"
+                        required
+                        value={newIssueForm.expireDate || todayDateStr}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                        className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs focus:ring-2 focus:ring-emerald-500 shrink-0 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 제목 */}

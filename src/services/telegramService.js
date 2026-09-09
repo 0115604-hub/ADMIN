@@ -418,6 +418,9 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
   const timeStr = issueItem?.time || getKSTTimeString();
   const category = issueItem?.category || "품질경보";
 
+  const expireDate = issueItem?.expireDate || issueItem?.targetDate || "";
+  const expireDateStr = expireDate ? (category === "회의일정" ? `\n• <b>회의일자:</b> <b>${expireDate}</b>` : `\n• <b>게시만료:</b> <b>${expireDate}</b>`) : "";
+
   let message = "";
   if (category === "회의일정") {
     message = `
@@ -425,7 +428,7 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>대상:</b> ${plant}
 • <b>등록자:</b> <b>${writer}</b>
-• <b>회의제목:</b> <b>${title}</b>
+• <b>회의제목:</b> <b>${title}</b>${expireDateStr}
 ${content ? `\n<b>[회의 일정/안건]</b>\n${content}\n` : ""}
 • <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
 ━━━━━━━━━━━━━━━━━━━━━
@@ -438,7 +441,7 @@ ${content ? `\n<b>[회의 일정/안건]</b>\n${content}\n` : ""}
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>대상:</b> ${plant}
 • <b>공지자:</b> <b>${writer}</b>
-• <b>공지제목:</b> <b>${title}</b>
+• <b>공지제목:</b> <b>${title}</b>${expireDateStr}
 ${content ? `\n<b>[공지 내용]</b>\n${content}\n` : ""}
 • <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
 ━━━━━━━━━━━━━━━━━━━━━
