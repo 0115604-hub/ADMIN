@@ -128,7 +128,7 @@ export const INITIAL_APPROVAL_DOCS = [
     drafter: "양인나",
     drafterTitle: "선임",
     createdAt: "2026-09-05 18:00",
-    content: "■ [삼랑진공장] 2026년 9월 5일(토) 특근보고서 취합 내역\n\n1. 특근 개요\n- 일자: 2026년 9월 5일 (토요일)\n- 대상 사업장: 삼랑진공장 ((주)오륙, 유성)\n- 총 투입 인원: 40명\n- 총 투입 공수: 382 M/H\n- 총 소요 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n- (주)오륙: 38명 / 362 M/H / ₩5,430,000 (관리자 3명, NX4 11명, NX4a 5명, PU찬넬 3명, 압출 3명, 8톤코팅 1명, DT HOOD 7명, JK1 3명, CE1 2명)\n- 유성: 2명 / 20 M/H / ₩300,000 (수직 건조로 제품 건조 및 압출 대응)\n- 합계: 40명 / 382 M/H / ₩5,730,000\n\n3. 특근 사유 및 주요 작업\n- 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 가동\n- 삼랑진공장 소속 (주)오륙 및 유성 생산/가공/압출 라인 정상 가동 완료",
+    content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황 (근로자 명단)\n• (주)오륙 (38명): 손선희, 이영숙, 양인순, 박순복, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이명재, 설유철, 윤경수\n• 유성 (2명): 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
     amount: "₩5,730,000",
     status: "IN_PROGRESS",
     currentStep: 2,
@@ -745,19 +745,26 @@ export const syncPlantOvertimeToApprovalBox = async ({
         let workerCount = 0;
         let workerHours = 0;
         let workerCost = 0;
-        let workDesc = "";
+        let workerNamesList = [];
 
         if (compRep) {
           workerCount = compRep.totalWorkers || (compRep.items ? compRep.items.length : 0);
           workerHours = compRep.totalHours || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
           workerCost = compRep.cost || (workerHours * 15000);
+          
           if (compRep.items && compRep.items.length > 0) {
-            const lines = compRep.items.map(it => `${it.category || it.line || "가공"}(${it.count || 1}명)`).slice(0, 5).join(", ");
-            workDesc = lines;
-          } else {
-            workDesc = `${comp} 주말 가동 및 납품 대응`;
+            compRep.items.forEach(it => {
+              if (it.workerName) {
+                workerNamesList.push(it.workerName);
+              } else if (it.names) {
+                const parts = String(it.names).split(",").map(n => n.replace(/외 \d+명/g, "").trim()).filter(Boolean);
+                workerNamesList.push(...parts);
+              }
+            });
           }
-        } else if (attendedMatrixWorkers.length > 0) {
+        }
+        
+        if (workerNamesList.length === 0 && attendedMatrixWorkers.length > 0) {
           workerCount = attendedMatrixWorkers.length;
           workerHours = attendedMatrixWorkers.reduce((sum, w) => {
             const val = w.daily ? w.daily[dayNum] : "";
@@ -766,9 +773,11 @@ export const syncPlantOvertimeToApprovalBox = async ({
             return sum + (val === "🟢" ? 8 : 8);
           }, 0);
           workerCost = workerHours * 15000;
-          const depts = Array.from(new Set(attendedMatrixWorkers.map(w => w.dept || "가공동"))).join(", ");
-          workDesc = `${depts} 가동 및 생산 대응`;
+          workerNamesList = attendedMatrixWorkers.map(w => w.name).filter(Boolean);
         }
+
+        // Clean & Deduplicate worker names
+        const uniqueWorkerNames = Array.from(new Set(workerNamesList));
 
         if (workerCount > 0 || compRep) {
           participatingCompanies.push(comp);
@@ -777,7 +786,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
             workerCount,
             workerHours,
             workerCost,
-            workDesc: workDesc || `${comp} 생산 라인 가동`
+            workerNames: uniqueWorkerNames.length > 0 ? uniqueWorkerNames : ["작업자 등록 완료"]
           });
           totalPlantWorkers += workerCount;
           totalPlantHours += workerHours;
@@ -806,27 +815,23 @@ export const syncPlantOvertimeToApprovalBox = async ({
         ? "생산총괄 ((주)오륙 + 유성)"
         : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
 
+      // ⭐ 세부투입현황: 이름으로 간략하게 표시
       const breakdownText = companySummaries.map(cs => 
-        `- ${cs.company}: ${cs.workerCount}명 / ${cs.workerHours} M/H / ₩${cs.workerCost.toLocaleString()} (${cs.workDesc})`
+        `• ${cs.company} (${cs.workerCount}명): ${cs.workerNames.join(", ")}`
       ).join("\n");
 
-      const content = `■ [${targetPlant}] 2026년 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 결재의 건
+      // ⭐ 초간결 특근 취합 결재 문서 내용
+      const content = `■ 9월 ${dayNum}일(${dayLabel}) [${targetPlant}] 특근보고서 취합
 
-1. 특근 개요
-- 일자: 2026년 9월 ${dayNum}일 (${dayLabel}요일)
-- 대상 사업장: ${targetPlant} (${targetCompanies.join(", ")})
-- 등록 협력사: ${titleCompList.join(", ")}
-- 총 투입 인원: ${totalPlantWorkers}명
-- 총 투입 공수: ${totalPlantHours} M/H
-- 총 소요 노무비: ₩${totalPlantCost.toLocaleString()}
+1. 특근 요약
+• 대상: ${targetPlant} (${targetCompanies.join(", ")})
+• 총 투입: ${totalPlantWorkers}명 (${totalPlantHours} M/H) | 총 노무비: ₩${totalPlantCost.toLocaleString()}
 
-2. 회사별 세부 투입 현황
-${breakdownText || "- 등록된 회사별 세부 내역 취합 완료"}
-- 합계: ${totalPlantWorkers}명 / ${totalPlantHours} M/H / ₩${totalPlantCost.toLocaleString()}
+2. 세부 투입 현황 (근로자 명단)
+${breakdownText || "• 등록된 근로자 명단 취합 완료"}
 
-3. 특근 사유 및 주요 작업
-- 현대/기아 자동차 긴급 납품 물량 대응 및 토요/일요 특근 가동
-- ${targetPlant} 소속 협력사 (${titleCompList.join(", ")}) 생산 라인 가동 및 검사/출하 완료`;
+3. 주요 작업 내용
+• 현대/기아 긴급 납품 물량 대응 및 ${targetPlant} 주말 가동 완료`;
 
       // Build or preserve steps
       let steps;
