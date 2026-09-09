@@ -48,6 +48,7 @@ import {
   APPROVAL_MANAGERS,
   syncPlantOvertimeToApprovalBox
 } from "../services/approvalService";
+import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -964,11 +965,22 @@ export const ElectronicApprovalView = () => {
                   {selectedDoc.steps.map((st, idx) => (
                     <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative">
                       {st.status === "APPROVED" ? (
-                        <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs select-none animate-scaleUp`}>
-                          <span className="text-[7.5px] font-bold">오륙</span>
-                          <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
-                          <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
-                        </div>
+                        st.name === "권태형" || (st.role === "대표" && st.name !== "최미영") ? (
+                          /* 🌟 권태형 대표이사 실제 자필 친필 서명 (투명 배경) */
+                          <div className="w-16 h-13 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
+                            <img
+                              src={KWON_SIGNATURE_BLACK}
+                              alt="권태형 대표이사 서명"
+                              className="w-full h-full object-contain filter drop-shadow-xs"
+                            />
+                          </div>
+                        ) : (
+                          <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs select-none animate-scaleUp`}>
+                            <span className="text-[7.5px] font-bold">오륙</span>
+                            <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
+                            <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
+                          </div>
+                        )
                       ) : st.status === "HOLD" ? (
                         <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg]">
                           <span>보류</span>
