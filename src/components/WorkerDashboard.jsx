@@ -1909,29 +1909,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
           {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-            {/* Left: Plant, Worker Name, Title, and Process (3 cols) */}
-            <div className="lg:col-span-3 flex items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 min-w-0">
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black border shrink-0 ${
-                workerPlant?.includes("삼랑진")
-                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200"
-                  : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200"
-              }`}>
-                <Factory className="w-3 h-3" />
-                <span>{workerPlant}</span>
-              </span>
-
-              <div className="flex items-baseline gap-1.5 min-w-0 truncate">
-                <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+            {/* Left: Worker Name and Title (Clean & Prominent High-Visibility Tab) */}
+            <div className="lg:col-span-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-50/90 via-white to-indigo-50/60 dark:from-blue-950/50 dark:via-slate-800 dark:to-slate-800/80 border-2 border-blue-500/50 dark:border-blue-500/40 shadow-xs ring-1 ring-blue-400/20 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="flex items-center gap-2 min-w-0 truncate">
+                <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
                   {workerFullName}
                 </span>
-                <span className="text-xs font-extrabold text-slate-500 dark:text-slate-400 shrink-0">
+                <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/70 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 text-xs font-black shrink-0 shadow-2xs">
                   {officialTitle}
                 </span>
               </div>
-
-              <span className="text-[10.5px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700 shrink-0 hidden sm:inline-block">
-                {isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : assignedProcess}
-              </span>
             </div>
 
             {/* Right: Quick Schedule Register Form (9 cols) */}
