@@ -34,7 +34,11 @@ import {
   Plus,
   Tag,
   PieChart,
-  Target
+  Target,
+  SlidersHorizontal,
+  RotateCcw,
+  Percent,
+  TrendingDown
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -48,7 +52,11 @@ import {
   getQualityMonthlyAggregation,
   getQualityDailyAggregation,
   parseQualityExcelFiles,
-  QUALITY_CORE_ITEMS
+  QUALITY_CORE_ITEMS,
+  calculateItemQualityTargets,
+  saveQualityTargets,
+  subscribeQualityTargets,
+  getPreviousYearMonth
 } from "../services/qualityService";
 
 export const DailyQualityView = () => {
@@ -220,6 +228,115 @@ export const DailyQualityView = () => {
     });
     return () => unsub();
   }, []);
+
+  // ⭐ Sub-Tab Switcher State ("dashboard" | "target_settings")
+  const [activeQualityTab, setActiveQualityTab] = useState("dashboard");
+
+  // ⭐ Quality Target Settings State (차종별 목표관리선)
+  const [qualityTargets, setQualityTargets] = useState(null);
+  const [customTargetInputs, setCustomTargetInputs] = useState(null);
+  const [isSavingTargets, setIsSavingTargets] = useState(false);
+
+  // Auto-calculated target defaults based on previous month's actual performance
+  const autoCalculatedTargets = useMemo(() => {
+    return calculateItemQualityTargets(allRecords, selectedMonth || "2026-09");
+  }, [allRecords, selectedMonth]);
+
+  // Subscribe to real-time target updates
+  useEffect(() => {
+    const unsub = subscribeQualityTargets(selectedMonth || "2026-09", (targets) => {
+      setQualityTargets(targets);
+      setCustomTargetInputs(targets);
+    }, allRecords);
+    return () => unsub();
+  }, [selectedMonth, allRecords]);
+
+  // Effective Active Targets (saved custom targets or auto-calculated)
+  const activeTargets = customTargetInputs || qualityTargets || autoCalculatedTargets;
+
+  const targetOverall = activeTargets?.overall?.targetRate ?? 0.59;
+  const targetJa = activeTargets?.items?.ja?.targetRate ?? 0.82;
+  const targetHr = activeTargets?.items?.hr?.targetRate ?? 0.53;
+  const targetNx4a = activeTargets?.items?.nx4a?.targetRate ?? 0.72;
+  const targetNx4 = activeTargets?.items?.nx4?.targetRate ?? 0.19;
+
+  const getItemTarget = (itemId) => {
+    const id = (itemId || "").toLowerCase();
+    return activeTargets?.items?.[id]?.targetRate ?? 0.70;
+  };
+
+  // Handler: Update individual item target rate in local edit form
+  const handleUpdateItemTargetRate = (itemId, newRate) => {
+    const cleanRate = Math.max(0, Number(Number(newRate).toFixed(2)) || 0);
+    const base = customTargetInputs || activeTargets;
+    const updated = {
+      ...base,
+      items: {
+        ...(base.items || {}),
+        [itemId]: {
+          ...(base.items?.[itemId] || {}),
+          targetRate: cleanRate
+        }
+      }
+    };
+    setCustomTargetInputs(updated);
+  };
+
+  // Handler: Update overall target rate
+  const handleUpdateOverallTargetRate = (newRate) => {
+    const cleanRate = Math.max(0, Number(Number(newRate).toFixed(2)) || 0);
+    const base = customTargetInputs || activeTargets;
+    const updated = {
+      ...base,
+      overall: {
+        ...(base.overall || {}),
+        targetRate: cleanRate
+      }
+    };
+    setCustomTargetInputs(updated);
+  };
+
+  // Handler: Auto-recalculate from previous month actuals
+  const handleAutoRecalculateTargets = () => {
+    const calculated = calculateItemQualityTargets(allRecords, selectedMonth || "2026-09");
+    setCustomTargetInputs(calculated);
+    setUploadToast({
+      type: "success",
+      message: `⚡ ${getPreviousYearMonth(selectedMonth)} 실적 기반으로 당월(${selectedMonth}) 차종별 목표관리선이 자동 재계산되었습니다! (1% 미만: 5% 감축, 1% 이상: 10% 감축)`
+    });
+    setTimeout(() => setUploadToast(null), 5000);
+  };
+
+  // Handler: Save targets to Firestore and LocalStorage
+  const handleSaveTargets = async () => {
+    setIsSavingTargets(true);
+    try {
+      const dataToSave = customTargetInputs || activeTargets;
+      await saveQualityTargets(selectedMonth || "2026-09", dataToSave);
+      setQualityTargets(dataToSave);
+      setUploadToast({
+        type: "success",
+        message: `💾 ${selectedMonth} 차종별 품질 목표관리선 설정이 성공적으로 저장되었습니다!`
+      });
+      setTimeout(() => setUploadToast(null), 4000);
+    } catch (err) {
+      console.error("Save targets error:", err);
+      alert("목표관리선 저장 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingTargets(false);
+    }
+  };
+
+  // Handler: Reset to system default targets
+  const handleResetTargets = () => {
+    const calculated = calculateItemQualityTargets(allRecords, selectedMonth || "2026-09");
+    setCustomTargetInputs(calculated);
+    setUploadToast({
+      type: "info",
+      message: "목표관리선이 시스템 표준 자동 산출값으로 초기화되었습니다."
+    });
+    setTimeout(() => setUploadToast(null), 4000);
+  };
 
   // Close popup with ESC key
   useEffect(() => {
@@ -464,13 +581,58 @@ export const DailyQualityView = () => {
 
   // Top summary rate
   const overallDefectRate = monthlyData.overallDefectRate !== undefined ? monthlyData.overallDefectRate : (monthlyData.totalDefectRate || 0);
-  const isOverallGood = overallDefectRate <= 0.70;
+  const isOverallGood = overallDefectRate <= targetOverall;
   const scrapTotalRate = monthlyData.totalInspectQty > 0
     ? Number((((monthlyData.totalScrapQty || 0) / monthlyData.totalInspectQty) * 100).toFixed(2))
     : 0;
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn pb-24 max-w-[1600px] mx-auto px-1.5 sm:px-0">
+      {/* ========================================================================= */}
+      {/* 0. SUB TAB SWITCHER (📊 품질실적 대시보드 / 🎯 목표관리 설정) */}
+      {/* ========================================================================= */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white dark:bg-slate-900 p-2 sm:p-2.5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setActiveQualityTab("dashboard")}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg sm:rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeQualityTab === "dashboard"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <BarChart2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>품질실적 대시보드</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveQualityTab("target_settings")}
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-lg sm:rounded-xl text-xs font-black transition-all cursor-pointer ${
+              activeQualityTab === "target_settings"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Target className="w-4 h-4 text-amber-300" />
+            <span>목표관리 설정 (차종별 관리선)</span>
+            <span className="hidden md:inline-block px-1.5 py-0.2 rounded-full text-[9px] bg-amber-400/20 text-amber-300 border border-amber-400/30">
+              전월대비 5%/10% 감축
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 px-2 text-xs text-slate-500 dark:text-slate-400 font-bold">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>당월 종합 목표: <strong className="font-mono text-emerald-600 dark:text-emerald-400 font-black">{targetOverall}% 이하</strong></span>
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span className="text-[11px] text-slate-400">전월({getPreviousYearMonth(selectedMonth)}) 실적 연동</span>
+        </div>
+      </div>
+
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & MONTH SELECTION / EXPORT */}
       {/* ========================================================================= */}
@@ -489,7 +651,7 @@ export const DailyQualityView = () => {
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
-              <span>품질 관리 목표치: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">0.70% 이하</strong></span>
+              <span>품질 관리 목표치: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">종합 {targetOverall}% 이하</strong> (차종별 맞춤 관리선 적용)</span>
               <span className="text-slate-300 dark:text-slate-700">•</span>
               <span>담당: <strong className="text-slate-700 dark:text-slate-300 font-bold">이창엽 선임</strong></span>
               <span className="text-slate-300 dark:text-slate-700">•</span>
@@ -525,6 +687,19 @@ export const DailyQualityView = () => {
             <span>품질실적 직접입력</span>
           </button>
 
+          {/* ⭐ 목표관리선 설정 버튼 */}
+          <button
+            onClick={() => setActiveQualityTab("target_settings")}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-xs cursor-pointer border ${
+              activeQualityTab === "target_settings"
+                ? "bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-500/20"
+                : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+            }`}
+          >
+            <Target className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+            <span>목표관리선 설정</span>
+          </button>
+
           {/* Export Excel Button */}
           <button
             onClick={() => handleExportExcel()}
@@ -537,603 +712,1064 @@ export const DailyQualityView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ MONTHLY OVERVIEW KPI BANNER (5-STAT OVERVIEW) */}
+      {/* TAB 1. ⭐ [품질실적 대시보드 탭] 메인 대시보드 뷰 */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-        {/* Card 1: 총 검사수량 */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
-            <span>{selectedMonth.slice(5, 7)}월 총 검사수량</span>
-            <Activity className="w-3.5 h-3.5 text-blue-500" />
-          </div>
-          <div className="text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
-            {monthlyData.totalInspectQty.toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
-          </div>
-          <div className="text-[10px] text-slate-400 truncate">
-            4개 차종 누적 검사 합계
-          </div>
-        </div>
-
-        {/* Card 2: 총 불량수량 */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
-            <span>총 불량수량</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-          </div>
-          <div className="text-base sm:text-lg font-black font-mono text-rose-600 dark:text-rose-400">
-            {monthlyData.totalDefectQty.toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
-          </div>
-          <div className="text-[10px] text-slate-400 truncate">
-            어퍼떨어짐 · 수포 · 스코치 등
-          </div>
-        </div>
-
-        {/* Card 3: 종합 품질 불량률 */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
-            <span>종합 품질 불량률</span>
-            <Target className="w-3.5 h-3.5 text-emerald-500" />
-          </div>
-          <div className="flex items-baseline gap-1.5">
-            <span className={`text-base sm:text-lg font-black font-mono ${isOverallGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-              {overallDefectRate}%
-            </span>
-            <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${isOverallGood ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"}`}>
-              {isOverallGood ? "목표달성 ✓" : "관리주의 🚨"}
-            </span>
-          </div>
-          <div className="text-[10px] text-slate-400 truncate">
-            관리 기준: 0.70% 이하
-          </div>
-        </div>
-
-        {/* Card 4: 소재 폐기수량 */}
-        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
-            <span>총 소재 폐기수량</span>
-            <Layers className="w-3.5 h-3.5 text-amber-500" />
-          </div>
-          <div className="text-base sm:text-lg font-black font-mono text-amber-600 dark:text-amber-400">
-            {(monthlyData.totalScrapQty || 0).toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
-          </div>
-          <div className="text-[10px] text-slate-400 truncate">
-            폐기율: <strong className="font-mono text-amber-600 dark:text-amber-400 font-bold">{scrapTotalRate}%</strong> (소재 A·B·C)
-          </div>
-        </div>
-
-        {/* Card 5: 총 품질 손실액 */}
-        <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
-            <span>총 품질 손실금액</span>
-            <DollarSign className="w-3.5 h-3.5 text-rose-500" />
-          </div>
-          <div className="text-base sm:text-lg font-black font-mono text-rose-600 dark:text-rose-400">
-            ₩ {monthlyData.totalLossAmount.toLocaleString()}
-          </div>
-          <div className="text-[10px] text-slate-400 truncate">
-            단가 기준 불량 손실 총액
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. ⭐ 4대 코어 품목별 핵심 카드 (JA, HR, NX4, NX4a) - 품질불량률 + 소재폐기불량률 */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {monthlyData.items.map((it) => {
-          const isGood = it.defectRate <= 0.70;
-          const isHr = it.id === "hr";
-          const isNx = it.id === "nx4" || it.id === "nx4a";
-          const scrapQty = it.scrapTotal || ((it.scrapA || 0) + (it.scrapB || 0) + (it.scrapC || 0));
-          const scrapRate = it.inspectQty > 0 ? Number(((scrapQty / it.inspectQty) * 100).toFixed(2)) : 0;
-
-          // Theme colors
-          const themeConfig = {
-            ja: {
-              border: isGood ? "border-emerald-200 dark:border-emerald-800/60" : "border-rose-300 dark:border-rose-800",
-              bg: "bg-white dark:bg-slate-900",
-              badgeBg: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
-              accent: "text-emerald-600 dark:text-emerald-400",
-              bar: "bg-emerald-500"
-            },
-            hr: {
-              border: isGood ? "border-emerald-200 dark:border-emerald-800/60" : "border-rose-300 dark:border-rose-800/80",
-              bg: isGood ? "bg-white dark:bg-slate-900" : "bg-rose-50/30 dark:bg-rose-950/20",
-              badgeBg: isGood ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20" : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
-              accent: isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
-              bar: isGood ? "bg-emerald-500" : "bg-rose-500"
-            },
-            nx4a: {
-              border: isGood ? "border-teal-200 dark:border-teal-800/60" : "border-rose-300 dark:border-rose-800",
-              bg: "bg-white dark:bg-slate-900",
-              badgeBg: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20",
-              accent: "text-teal-600 dark:text-teal-400",
-              bar: "bg-teal-500"
-            },
-            nx4: {
-              border: isGood ? "border-blue-200 dark:border-blue-800/60" : "border-rose-300 dark:border-rose-800",
-              bg: "bg-white dark:bg-slate-900",
-              badgeBg: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
-              accent: "text-blue-600 dark:text-blue-400",
-              bar: "bg-blue-500"
-            }
-          };
-          const theme = themeConfig[it.id] || themeConfig.ja;
-
-          return (
-            <div
-              key={it.id}
-              onClick={() => setPopupItem(it)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setPopupItem(it)}
-              className={`p-4 rounded-2xl sm:rounded-3xl border ${theme.border} ${theme.bg} transition-all duration-200 cursor-pointer select-none hover:shadow-lg hover:border-emerald-400 dark:hover:border-emerald-600 hover:-translate-y-0.5 active:translate-y-0 shadow-xs flex flex-col justify-between space-y-3`}
-            >
-              {/* Header: Item Title & Status Badge */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`w-2.5 h-2.5 rounded-full ${theme.bar} shrink-0`}></span>
-                  <div className="min-w-0">
-                    <span className="font-black text-sm text-slate-900 dark:text-white truncate block">
-                      {it.name}
-                    </span>
-                    <span className="text-[10.5px] font-bold text-slate-400">
-                      차종: {it.carModel} · 단가 ₩{it.id === "ja" ? "3,116" : it.id === "hr" ? "2,372" : "5,747"}
-                    </span>
-                  </div>
-                </div>
-
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 border ${
-                    isGood
-                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                      : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse"
-                  }`}
-                >
-                  {isGood ? "목표달성 ✓" : "관리주의 🚨"}
-                </span>
+      {activeQualityTab === "dashboard" && (
+        <>
+          {/* ========================================================================= */}
+          {/* 2. ⭐ MONTHLY OVERVIEW KPI BANNER (5-STAT OVERVIEW) */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+            {/* Card 1: 총 검사수량 */}
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                <span>{selectedMonth.slice(5, 7)}월 총 검사수량</span>
+                <Activity className="w-3.5 h-3.5 text-blue-500" />
               </div>
-
-              {/* Middle Metric 1: 품질 불량률 */}
-              <div className="space-y-1 pt-1">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                    품질 불량률
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-bold font-mono">
-                    {it.inspectQty.toLocaleString()} EA / <strong className="text-rose-600 dark:text-rose-400">{it.defectQty} 불량</strong>
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span
-                    className={`text-2xl sm:text-3xl font-black font-mono leading-tight ${
-                      isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                    }`}
-                  >
-                    {it.defectRate}%
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    (목표 0.70% {it.defectRate <= 0.70 ? "이내" : "초과"})
-                  </span>
-                </div>
+              <div className="text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
+                {monthlyData.totalInspectQty.toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
               </div>
-
-              {/* Middle Metric 2: 소재 폐기불량률 (Scrap Defect Rate & Breakdown) */}
-              <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                    <span>♻️ 소재 폐기율</span>
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-black font-mono text-amber-700 dark:text-amber-400">
-                      {scrapRate}%
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-bold">
-                      ({scrapQty.toLocaleString()} EA)
-                    </span>
-                  </div>
-                </div>
-
-                {isNx ? (
-                  <div className="flex items-center gap-1.5 justify-between pt-0.5 text-[9.5px] font-mono font-bold">
-                    <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                      A: {it.scrapA || 0}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
-                      B: {it.scrapB || 0}
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
-                      C: {it.scrapC || 0}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-[9.5px] text-slate-400 truncate">
-                    일반 부적합 및 폐기 수량 관리
-                  </div>
-                )}
-              </div>
-
-              {/* Footer: Loss Amount & Trigger Button */}
-              <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
-                <span className="text-slate-500 dark:text-slate-400 font-bold font-mono truncate">
-                  손실액: <strong className="text-rose-600 dark:text-rose-400 font-black">₩{it.lossAmount.toLocaleString()}</strong>
-                </span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-black flex items-center gap-1 hover:underline text-[11px]">
-                  <span>상세 정리본</span>
-                  <ArrowRight className="w-3 h-3" />
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. ⭐ MAIN 2-COLUMN DASHBOARD (LEFT: GRAPH 50% / RIGHT: DEFECT CAUSE 50%) */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        {/* ========================================================= */}
-        {/* LEFT PANE (50%): 📈 일자별 불량률 추이선 SVG 차트 */}
-        {/* ========================================================= */}
-        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3.5">
-          {/* Left Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                    일자별 불량률 추이선
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                    {selectedMonth.slice(5, 7)}월 실적
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  목표 관리선: <strong className="text-rose-500 font-bold">0.70% 이하</strong> 관리
-                </p>
+              <div className="text-[10px] text-slate-400 truncate">
+                4개 차종 누적 검사 합계
               </div>
             </div>
 
-            {/* Item Filter Chips */}
-            <div className="flex items-center gap-1 text-[10.5px] font-bold flex-wrap shrink-0">
-              <button
-                type="button"
-                onClick={() => setQualityGraphFilter("all")}
-                className={`px-2 py-0.5 rounded text-[10.5px] font-black cursor-pointer transition-colors ${
-                  qualityGraphFilter === "all"
-                    ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                }`}
-              >
-                전체
-              </button>
-              <button
-                type="button"
-                onClick={() => setQualityGraphFilter("hr")}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
-                  qualityGraphFilter === "hr"
-                    ? "bg-rose-500 text-white"
-                    : "text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> HR
-              </button>
-              <button
-                type="button"
-                onClick={() => setQualityGraphFilter("ja")}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
-                  qualityGraphFilter === "ja"
-                    ? "bg-emerald-600 text-white"
-                    : "text-emerald-600 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> JA
-              </button>
-              <button
-                type="button"
-                onClick={() => setQualityGraphFilter("nx4a")}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
-                  qualityGraphFilter === "nx4a"
-                    ? "bg-teal-600 text-white"
-                    : "text-teal-600 dark:text-teal-400 bg-teal-50/70 dark:bg-teal-950/40 hover:bg-teal-100"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span> NX4a
-              </button>
-              <button
-                type="button"
-                onClick={() => setQualityGraphFilter("nx4")}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
-                  qualityGraphFilter === "nx4"
-                    ? "bg-blue-600 text-white"
-                    : "text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> NX4
-              </button>
+            {/* Card 2: 총 불량수량 */}
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                <span>총 불량수량</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+              </div>
+              <div className="text-base sm:text-lg font-black font-mono text-rose-600 dark:text-rose-400">
+                {monthlyData.totalDefectQty.toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
+              </div>
+              <div className="text-[10px] text-slate-400 truncate">
+                어퍼떨어짐 · 수포 · 스코치 등
+              </div>
+            </div>
+
+            {/* Card 3: 종합 품질 불량률 */}
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                <span>종합 품질 불량률</span>
+                <Target className="w-3.5 h-3.5 text-emerald-500" />
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className={`text-base sm:text-lg font-black font-mono ${isOverallGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {overallDefectRate}%
+                </span>
+                <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${isOverallGood ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300" : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300"}`}>
+                  {isOverallGood ? "목표달성 ✓" : "관리주의 🚨"}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 truncate">
+                관리 기준: 종합 <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{targetOverall}% 이하</strong>
+              </div>
+            </div>
+
+            {/* Card 4: 소재 폐기수량 */}
+            <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                <span>총 소재 폐기수량</span>
+                <Layers className="w-3.5 h-3.5 text-amber-500" />
+              </div>
+              <div className="text-base sm:text-lg font-black font-mono text-amber-600 dark:text-amber-400">
+                {(monthlyData.totalScrapQty || 0).toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
+              </div>
+              <div className="text-[10px] text-slate-400 truncate">
+                폐기율: <strong className="font-mono text-amber-600 dark:text-amber-400 font-bold">{scrapTotalRate}%</strong> (소재 A·B·C)
+              </div>
+            </div>
+
+            {/* Card 5: 총 품질 손실액 */}
+            <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold">
+                <span>총 품질 손실금액</span>
+                <DollarSign className="w-3.5 h-3.5 text-rose-500" />
+              </div>
+              <div className="text-base sm:text-lg font-black font-mono text-rose-600 dark:text-rose-400">
+                ₩ {monthlyData.totalLossAmount.toLocaleString()}
+              </div>
+              <div className="text-[10px] text-slate-400 truncate">
+                단가 기준 불량 손실 총액
+              </div>
             </div>
           </div>
 
-          {/* SVG Line Chart */}
-          <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 overflow-hidden relative">
-            {(() => {
-              const N = chartDays.length;
-              const xStart = 75;
-              const xEnd = 620;
-              const stepX = N > 1 ? (xEnd - xStart) / (N - 1) : 0;
-              const getY = (rate) => Math.round(190 - Math.min(Math.max(rate, 0), 1.6) * 100);
-
-              const chartItemConfigs = [
-                { id: "hr", name: "HR", color: "#F43F5E", activeColor: "#E11D48", strokeWidth: 3, circleRadius: 4 },
-                { id: "ja", name: "JA", color: "#10B981", activeColor: "#059669", strokeWidth: 2.5, circleRadius: 3.5 },
-                { id: "nx4a", name: "NX4a", color: "#14B8A6", activeColor: "#0D9488", strokeWidth: 2, circleRadius: 3 },
-                { id: "nx4", name: "NX4", color: "#3B82F6", activeColor: "#2563EB", strokeWidth: 2, circleRadius: 3 }
-              ];
-
-              return (
-                <svg viewBox="0 0 680 230" className="w-full h-auto overflow-visible select-none">
-                  {/* Y Axis Grid Lines */}
-                  <line x1="45" y1="190" x2="665" y2="190" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                  <text x="36" y="194" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.0%</text>
-
-                  <line x1="45" y1="140" x2="665" y2="140" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                  <text x="36" y="144" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.5%</text>
-
-                  {/* TARGET LINE: 0.70% (Y = 120) */}
-                  <line x1="45" y1="120" x2="665" y2="120" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,4" />
-                  <rect x="590" y="111" width="75" height="18" rx="4" fill="#EF4444" fillOpacity="0.15" />
-                  <text x="627" y="124" fontSize="9" fontWeight="900" fill="#DC2626" textAnchor="middle">목표 0.70%</text>
-
-                  <line x1="45" y1="90" x2="665" y2="90" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                  <text x="36" y="94" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.0%</text>
-
-                  <line x1="45" y1="40" x2="665" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                  <text x="36" y="44" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.5%</text>
-
-                  {/* X Axis Labels */}
-                  {chartDays.map((d, idx) => {
-                    const x = N === 1 ? 340 : Math.round(xStart + idx * stepX);
-                    const parts = (d.date || "").split("-");
-                    const month = parts[1] ? parseInt(parts[1], 10) : 9;
-                    const day = parts[2] ? parseInt(parts[2], 10) : 1;
-                    const dayLabel = `${month}.${day}(${d.dayOfWeek || "월"})`;
-                    return (
-                      <text
-                        key={d.date || idx}
-                        x={x}
-                        y="210"
-                        fontSize="10"
-                        fontWeight="bold"
-                        fill="currentColor"
-                        opacity="0.7"
-                        textAnchor="middle"
-                      >
-                        {dayLabel}
-                      </text>
-                    );
-                  })}
-
-                  {/* Dynamic Item Polylines and Dots */}
-                  {chartItemConfigs.map((cfg) => {
-                    const isVisible = qualityGraphFilter === "all" || qualityGraphFilter === cfg.id;
-                    const pts = chartDays.map((d, idx) => {
-                      const it = d.items?.[cfg.id];
-                      const rate = it ? (Number(it.defectRate) || 0) : 0;
-                      const hasWork = it && (it.inspectQty > 0 || it.defectQty > 0);
-                      const x = N === 1 ? 340 : Math.round(xStart + idx * stepX);
-                      const y = getY(rate);
-                      return { x, y, rate, hasWork, date: d.date };
-                    });
-
-                    const validPts = pts.filter((p) => p.hasWork);
-                    const pointsStr = validPts.map((p) => `${p.x},${p.y}`).join(" ");
-
-                    return (
-                      <g
-                        key={cfg.id}
-                        opacity={isVisible ? 1 : 0.12}
-                        className="transition-opacity duration-200"
-                      >
-                        {validPts.length > 1 && (
-                          <polyline
-                            fill="none"
-                            stroke={cfg.color}
-                            strokeWidth={cfg.strokeWidth}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            points={pointsStr}
-                          />
-                        )}
-                        {validPts.map((p, idx) => {
-                          const isWarning = p.rate > 0.70;
-                          const isZero = p.rate === 0;
-                          const showLabel = idx === validPts.length - 1 || isWarning || isZero;
-
-                          return (
-                            <g key={idx}>
-                              <circle
-                                cx={p.x}
-                                cy={p.y}
-                                r={isWarning ? cfg.circleRadius + 1 : cfg.circleRadius}
-                                fill={isWarning ? cfg.activeColor : cfg.color}
-                              />
-                              {showLabel && (
-                                <text
-                                  x={p.x}
-                                  y={p.y - (p.y <= 45 ? -12 : 7)}
-                                  fontSize="8.5"
-                                  fontWeight="900"
-                                  fill={isWarning ? "#DC2626" : cfg.color}
-                                  textAnchor="middle"
-                                >
-                                  {p.rate.toFixed(2)}%{isWarning ? "🚨" : ""}
-                                </text>
-                              )}
-                            </g>
-                          );
-                        })}
-                      </g>
-                    );
-                  })}
-                </svg>
-              );
-            })()}
-          </div>
-
-          {/* Bottom Legend Mini Summary (100% Dynamic from monthlyData) */}
-          <div className="grid grid-cols-4 gap-2 pt-1 text-[10px] text-center font-bold">
+          {/* ========================================================================= */}
+          {/* 3. ⭐ 4대 코어 품목별 핵심 카드 (JA, HR, NX4, NX4a) - 품질불량률 + 소재폐기불량률 */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {monthlyData.items.map((it) => {
-              const isGood = it.defectRate <= 0.70;
-              const themeStyle = isGood
-                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/40"
-                : "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200/60 dark:border-rose-900/40";
+              const itemTarget = getItemTarget(it.id);
+              const isGood = it.defectRate <= itemTarget;
+              const isHr = it.id === "hr";
+              const isNx = it.id === "nx4" || it.id === "nx4a";
+              const scrapQty = it.scrapTotal || ((it.scrapA || 0) + (it.scrapB || 0) + (it.scrapC || 0));
+              const scrapRate = it.inspectQty > 0 ? Number(((scrapQty / it.inspectQty) * 100).toFixed(2)) : 0;
+
+              // Theme colors
+              const themeConfig = {
+                ja: {
+                  border: isGood ? "border-emerald-200 dark:border-emerald-800/60" : "border-rose-300 dark:border-rose-800",
+                  bg: "bg-white dark:bg-slate-900",
+                  badgeBg: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+                  accent: "text-emerald-600 dark:text-emerald-400",
+                  bar: "bg-emerald-500"
+                },
+                hr: {
+                  border: isGood ? "border-emerald-200 dark:border-emerald-800/60" : "border-rose-300 dark:border-rose-800/80",
+                  bg: isGood ? "bg-white dark:bg-slate-900" : "bg-rose-50/30 dark:bg-rose-950/20",
+                  badgeBg: isGood ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20" : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+                  accent: isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+                  bar: isGood ? "bg-emerald-500" : "bg-rose-500"
+                },
+                nx4a: {
+                  border: isGood ? "border-teal-200 dark:border-teal-800/60" : "border-rose-300 dark:border-rose-800",
+                  bg: "bg-white dark:bg-slate-900",
+                  badgeBg: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20",
+                  accent: "text-teal-600 dark:text-teal-400",
+                  bar: "bg-teal-500"
+                },
+                nx4: {
+                  border: isGood ? "border-blue-200 dark:border-blue-800/60" : "border-rose-300 dark:border-rose-800",
+                  bg: "bg-white dark:bg-slate-900",
+                  badgeBg: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20",
+                  accent: "text-blue-600 dark:text-blue-400",
+                  bar: "bg-blue-500"
+                }
+              };
+              const theme = themeConfig[it.id] || themeConfig.ja;
+
               return (
                 <div
                   key={it.id}
                   onClick={() => setPopupItem(it)}
-                  className={`p-2 rounded-xl border cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs ${themeStyle}`}
-                  title={`${it.name} 상세 일자별 정리본 보기`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setPopupItem(it)}
+                  className={`p-4 rounded-2xl sm:rounded-3xl border ${theme.border} ${theme.bg} transition-all duration-200 cursor-pointer select-none hover:shadow-lg hover:border-emerald-400 dark:hover:border-emerald-600 hover:-translate-y-0.5 active:translate-y-0 shadow-xs flex flex-col justify-between space-y-3`}
                 >
-                  <span className="block text-[9.5px] opacity-75">{it.name}</span>
-                  <span className="text-xs font-black font-mono">{it.defectRate}%</span>
+                  {/* Header: Item Title & Status Badge */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={`w-2.5 h-2.5 rounded-full ${theme.bar} shrink-0`}></span>
+                      <div className="min-w-0">
+                        <span className="font-black text-sm text-slate-900 dark:text-white truncate block">
+                          {it.name}
+                        </span>
+                        <span className="text-[10.5px] font-bold text-slate-400">
+                          차종: {it.carModel} · 단가 ₩{it.id === "ja" ? "3,116" : it.id === "hr" ? "2,372" : "5,747"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 border ${
+                        isGood
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                          : "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse"
+                      }`}
+                    >
+                      {isGood ? "목표달성 ✓" : "관리주의 🚨"}
+                    </span>
+                  </div>
+
+                  {/* Middle Metric 1: 품질 불량률 */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        품질 불량률
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-bold font-mono">
+                        {it.inspectQty.toLocaleString()} EA / <strong className="text-rose-600 dark:text-rose-400">{it.defectQty} 불량</strong>
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className={`text-2xl sm:text-3xl font-black font-mono leading-tight ${
+                          isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {it.defectRate}%
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        (목표 {itemTarget.toFixed(2)}% {it.defectRate <= itemTarget ? "이내" : "초과"})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Middle Metric 2: 소재 폐기불량률 (Scrap Defect Rate & Breakdown) */}
+                  <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                        <span>♻️ 소재 폐기율</span>
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-black font-mono text-amber-700 dark:text-amber-400">
+                          {scrapRate}%
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-bold">
+                          ({scrapQty.toLocaleString()} EA)
+                        </span>
+                      </div>
+                    </div>
+
+                    {isNx ? (
+                      <div className="flex items-center gap-1.5 justify-between pt-0.5 text-[9.5px] font-mono font-bold">
+                        <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                          A: {it.scrapA || 0}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
+                          B: {it.scrapB || 0}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                          C: {it.scrapC || 0}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-[9.5px] text-slate-400 truncate">
+                        일반 부적합 및 폐기 수량 관리
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer: Loss Amount & Trigger Button */}
+                  <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-100 dark:border-slate-800/80">
+                    <span className="text-slate-500 dark:text-slate-400 font-bold font-mono truncate">
+                      손실액: <strong className="text-rose-600 dark:text-rose-400 font-black">₩{it.lossAmount.toLocaleString()}</strong>
+                    </span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-black flex items-center gap-1 hover:underline text-[11px]">
+                      <span>상세 정리본</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </span>
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>
 
-        {/* ========================================================= */}
-        {/* RIGHT PANE (50%): 🚨 주요 불량 원인 분석 & 파레토 도넛 차트 */}
-        {/* ========================================================= */}
-        <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3.5">
-          {/* Right Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                    주요 불량 원인 분석
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
-                    총 {monthlyData.totalDefectQty}건 발생
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                  발생 빈도 순위 및 핵심 취약 불량 유형 분석
-                </p>
-              </div>
-            </div>
-
-            <div className="text-left sm:text-right shrink-0">
-              <span className="text-[10px] text-slate-400 font-bold block">누적 품질 손실액</span>
-              <span className="text-xs sm:text-sm font-black font-mono text-rose-600 dark:text-rose-400">
-                ₩{monthlyData.totalLossAmount.toLocaleString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Donut Chart + Defect Reasons Breakdown (Dynamic) */}
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-            {/* Donut Chart (5 cols) */}
-            <div className="sm:col-span-5 flex items-center justify-center">
-              <div className="relative flex items-center justify-center">
-                <svg viewBox="0 0 160 160" className="w-28 h-28 sm:w-36 sm:h-36">
-                  {monthlyData.totalDefectQty === 0 ? (
-                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="20" />
-                  ) : (
-                    (() => {
-                      let currentOffset = 0;
-                      const circumference = 345;
-                      return dynamicDefectAnalysis.categories.map((cat, idx) => {
-                        const segLen = Math.max(4, (cat.percent / 100) * circumference);
-                        const strokeDasharray = `${segLen} ${circumference}`;
-                        const strokeDashoffset = -currentOffset;
-                        currentOffset += segLen;
-                        return (
-                          <circle
-                            key={cat.id || idx}
-                            cx="80"
-                            cy="80"
-                            r="55"
-                            fill="transparent"
-                            stroke={cat.color}
-                            strokeWidth="20"
-                            strokeDasharray={strokeDasharray}
-                            strokeDashoffset={strokeDashoffset}
-                          />
-                        );
-                      });
-                    })()
-                  )}
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                  <span className="text-[10px] font-bold text-slate-400">총 불량수량</span>
-                  <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono leading-tight">
-                    {monthlyData.totalDefectQty} EA
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Defect Reasons Ranked List (7 cols) */}
-            <div className="sm:col-span-7 space-y-2 text-xs">
-              {dynamicDefectAnalysis.categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={`p-2 rounded-xl border space-y-1 ${cat.bgBadge}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`w-2 h-2 rounded-full ${cat.barColor} shrink-0`}></span>
-                      <span className={`font-black truncate text-xs ${cat.textColor}`}>
-                        {cat.id}. {cat.name}
+          {/* ========================================================================= */}
+          {/* 4. ⭐ MAIN 2-COLUMN DASHBOARD (LEFT: GRAPH 50% / RIGHT: DEFECT CAUSE 50%) */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+            {/* ========================================================= */}
+            {/* LEFT PANE (50%): 📈 일자별 불량률 추이선 SVG 차트 */}
+            {/* ========================================================= */}
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3.5">
+              {/* Left Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                        일자별 불량률 추이선
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                        {selectedMonth.slice(5, 7)}월 실적
                       </span>
                     </div>
-                    <span className={`font-mono font-black text-xs shrink-0 ${cat.numColor}`}>
-                      {cat.count}건 ({cat.percent}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200/60 dark:bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className={`${cat.barColor} h-full rounded-full transition-all`}
-                      style={{ width: `${Math.min(cat.percent, 100)}%` }}
-                    ></div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      목표 관리선: <strong className="text-rose-500 font-bold">{qualityGraphFilter === "all" ? `종합 ${targetOverall}%` : `${qualityGraphFilter.toUpperCase()} ${getItemTarget(qualityGraphFilter).toFixed(2)}%`} 이하</strong> 관리
+                    </p>
                   </div>
                 </div>
-              ))}
+
+                {/* Item Filter Chips */}
+                <div className="flex items-center gap-1 text-[10.5px] font-bold flex-wrap shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setQualityGraphFilter("all")}
+                    className={`px-2 py-0.5 rounded text-[10.5px] font-black cursor-pointer transition-colors ${
+                      qualityGraphFilter === "all"
+                        ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    }`}
+                  >
+                    전체
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQualityGraphFilter("hr")}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                      qualityGraphFilter === "hr"
+                        ? "bg-rose-500 text-white"
+                        : "text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> HR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQualityGraphFilter("ja")}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                      qualityGraphFilter === "ja"
+                        ? "bg-emerald-600 text-white"
+                        : "text-emerald-600 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> JA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQualityGraphFilter("nx4a")}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                      qualityGraphFilter === "nx4a"
+                        ? "bg-teal-600 text-white"
+                        : "text-teal-600 dark:text-teal-400 bg-teal-50/70 dark:bg-teal-950/40 hover:bg-teal-100"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span> NX4a
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQualityGraphFilter("nx4")}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                      qualityGraphFilter === "nx4"
+                        ? "bg-blue-600 text-white"
+                        : "text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100"
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> NX4
+                  </button>
+                </div>
+              </div>
+
+              {/* SVG Line Chart */}
+              <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 overflow-hidden relative">
+                {(() => {
+                  const N = chartDays.length;
+                  const xStart = 75;
+                  const xEnd = 620;
+                  const stepX = N > 1 ? (xEnd - xStart) / (N - 1) : 0;
+                  const getY = (rate) => Math.round(190 - Math.min(Math.max(rate, 0), 1.6) * 100);
+
+                  const activeTargetRate = qualityGraphFilter === "all"
+                    ? targetOverall
+                    : getItemTarget(qualityGraphFilter);
+                  const targetY = getY(activeTargetRate);
+                  const targetLabel = qualityGraphFilter === "all"
+                    ? `종합 ${activeTargetRate.toFixed(2)}%`
+                    : `${qualityGraphFilter.toUpperCase()} ${activeTargetRate.toFixed(2)}%`;
+
+                  const chartItemConfigs = [
+                    { id: "hr", name: "HR", color: "#F43F5E", activeColor: "#E11D48", strokeWidth: 3, circleRadius: 4 },
+                    { id: "ja", name: "JA", color: "#10B981", activeColor: "#059669", strokeWidth: 2.5, circleRadius: 3.5 },
+                    { id: "nx4a", name: "NX4a", color: "#14B8A6", activeColor: "#0D9488", strokeWidth: 2, circleRadius: 3 },
+                    { id: "nx4", name: "NX4", color: "#3B82F6", activeColor: "#2563EB", strokeWidth: 2, circleRadius: 3 }
+                  ];
+
+                  return (
+                    <svg viewBox="0 0 680 230" className="w-full h-auto overflow-visible select-none">
+                      {/* Y Axis Grid Lines */}
+                      <line x1="45" y1="190" x2="665" y2="190" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                      <text x="36" y="194" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.0%</text>
+
+                      <line x1="45" y1="140" x2="665" y2="140" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                      <text x="36" y="144" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.5%</text>
+
+                      {/* DYNAMIC TARGET LINE */}
+                      <line x1="45" y1={targetY} x2="665" y2={targetY} stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,4" />
+                      <rect x="575" y={Math.max(6, targetY - 9)} width="90" height="18" rx="4" fill="#EF4444" fillOpacity="0.15" />
+                      <text x="620" y={Math.max(6, targetY - 9) + 13} fontSize="9" fontWeight="900" fill="#DC2626" textAnchor="middle">목표 {targetLabel}</text>
+
+                      <line x1="45" y1="90" x2="665" y2="90" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                      <text x="36" y="94" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.0%</text>
+
+                      <line x1="45" y1="40" x2="665" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                      <text x="36" y="44" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.5%</text>
+
+                      {/* X Axis Labels */}
+                      {chartDays.map((d, idx) => {
+                        const x = N === 1 ? 340 : Math.round(xStart + idx * stepX);
+                        const parts = (d.date || "").split("-");
+                        const month = parts[1] ? parseInt(parts[1], 10) : 9;
+                        const day = parts[2] ? parseInt(parts[2], 10) : 1;
+                        const dayLabel = `${month}.${day}(${d.dayOfWeek || "월"})`;
+                        return (
+                          <text
+                            key={d.date || idx}
+                            x={x}
+                            y="210"
+                            fontSize="10"
+                            fontWeight="bold"
+                            fill="currentColor"
+                            opacity="0.7"
+                            textAnchor="middle"
+                          >
+                            {dayLabel}
+                          </text>
+                        );
+                      })}
+
+                      {/* Dynamic Item Polylines and Dots */}
+                      {chartItemConfigs.map((cfg) => {
+                        const isVisible = qualityGraphFilter === "all" || qualityGraphFilter === cfg.id;
+                        const itemTarget = getItemTarget(cfg.id);
+                        const pts = chartDays.map((d, idx) => {
+                          const it = d.items?.[cfg.id];
+                          const rate = it ? (Number(it.defectRate) || 0) : 0;
+                          const hasWork = it && (it.inspectQty > 0 || it.defectQty > 0);
+                          const x = N === 1 ? 340 : Math.round(xStart + idx * stepX);
+                          const y = getY(rate);
+                          return { x, y, rate, hasWork, date: d.date };
+                        });
+
+                        const validPts = pts.filter((p) => p.hasWork);
+                        const pointsStr = validPts.map((p) => `${p.x},${p.y}`).join(" ");
+
+                        return (
+                          <g
+                            key={cfg.id}
+                            opacity={isVisible ? 1 : 0.12}
+                            className="transition-opacity duration-200"
+                          >
+                            {validPts.length > 1 && (
+                              <polyline
+                                fill="none"
+                                stroke={cfg.color}
+                                strokeWidth={cfg.strokeWidth}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                points={pointsStr}
+                              />
+                            )}
+                            {validPts.map((p, idx) => {
+                              const isWarning = p.rate > itemTarget;
+                              const isZero = p.rate === 0;
+                              const showLabel = idx === validPts.length - 1 || isWarning || isZero;
+
+                              return (
+                                <g key={idx}>
+                                  <circle
+                                    cx={p.x}
+                                    cy={p.y}
+                                    r={isWarning ? cfg.circleRadius + 1 : cfg.circleRadius}
+                                    fill={isWarning ? cfg.activeColor : cfg.color}
+                                  />
+                                  {showLabel && (
+                                    <text
+                                      x={p.x}
+                                      y={p.y - (p.y <= 45 ? -12 : 7)}
+                                      fontSize="8.5"
+                                      fontWeight="900"
+                                      fill={isWarning ? "#DC2626" : cfg.color}
+                                      textAnchor="middle"
+                                    >
+                                      {p.rate.toFixed(2)}%{isWarning ? "🚨" : ""}
+                                    </text>
+                                  )}
+                                </g>
+                              );
+                            })}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  );
+                })()}
+              </div>
+
+              {/* Bottom Legend Mini Summary (100% Dynamic from monthlyData) */}
+              <div className="grid grid-cols-4 gap-2 pt-1 text-[10px] text-center font-bold">
+                {monthlyData.items.map((it) => {
+                  const itemTarget = getItemTarget(it.id);
+                  const isGood = it.defectRate <= itemTarget;
+                  const themeStyle = isGood
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/40"
+                    : "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200/60 dark:border-rose-900/40";
+                  return (
+                    <div
+                      key={it.id}
+                      onClick={() => setPopupItem(it)}
+                      className={`p-2 rounded-xl border cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs ${themeStyle}`}
+                      title={`${it.name} 상세 일자별 정리본 보기`}
+                    >
+                      <span className="block text-[9.5px] opacity-75">{it.name}</span>
+                      <span className="text-xs font-black font-mono">{it.defectRate}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ========================================================= */}
+            {/* RIGHT PANE (50%): 🚨 주요 불량 원인 분석 & 파레토 도넛 차트 */}
+            {/* ========================================================= */}
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3.5">
+              {/* Right Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                        주요 불량 원인 분석
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                        총 {monthlyData.totalDefectQty}건 발생
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                      발생 빈도 순위 및 핵심 취약 불량 유형 분석
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-left sm:text-right shrink-0">
+                  <span className="text-[10px] text-slate-400 font-bold block">누적 품질 손실액</span>
+                  <span className="text-xs sm:text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                    ₩{monthlyData.totalLossAmount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              {/* Donut Chart + Defect Reasons Breakdown (Dynamic) */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                {/* Donut Chart (5 cols) */}
+                <div className="sm:col-span-5 flex items-center justify-center">
+                  <div className="relative flex items-center justify-center">
+                    <svg viewBox="0 0 160 160" className="w-28 h-28 sm:w-36 sm:h-36">
+                      {monthlyData.totalDefectQty === 0 ? (
+                        <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="20" />
+                      ) : (
+                        (() => {
+                          let currentOffset = 0;
+                          const circumference = 345;
+                          return dynamicDefectAnalysis.categories.map((cat, idx) => {
+                            const segLen = Math.max(4, (cat.percent / 100) * circumference);
+                            const strokeDasharray = `${segLen} ${circumference}`;
+                            const strokeDashoffset = -currentOffset;
+                            currentOffset += segLen;
+                            return (
+                              <circle
+                                key={cat.id || idx}
+                                cx="80"
+                                cy="80"
+                                r="55"
+                                fill="transparent"
+                                stroke={cat.color}
+                                strokeWidth="20"
+                                strokeDasharray={strokeDasharray}
+                                strokeDashoffset={strokeDashoffset}
+                              />
+                            );
+                          });
+                        })()
+                      )}
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] font-bold text-slate-400">총 불량수량</span>
+                      <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono leading-tight">
+                        {monthlyData.totalDefectQty} EA
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Defect Reasons Ranked List (7 cols) */}
+                <div className="sm:col-span-7 space-y-2 text-xs">
+                  {dynamicDefectAnalysis.categories.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className={`p-2 rounded-xl border space-y-1 ${cat.bgBadge}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`w-2 h-2 rounded-full ${cat.barColor} shrink-0`}></span>
+                          <span className={`font-black truncate text-xs ${cat.textColor}`}>
+                            {cat.id}. {cat.name}
+                          </span>
+                        </div>
+                        <span className={`font-mono font-black text-xs shrink-0 ${cat.numColor}`}>
+                          {cat.count}건 ({cat.percent}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200/60 dark:bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className={`${cat.barColor} h-full rounded-full transition-all`}
+                          style={{ width: `${Math.min(cat.percent, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom Insight Callout & Quick Action */}
+              <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11.5px] text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-base">💡</span>
+                  <span className="truncate">
+                    {monthlyData.totalDefectQty === 0 ? (
+                      <strong>모든 차종의 품질 불량률이 0%로 완벽하게 관리되고 있습니다.</strong>
+                    ) : (
+                      <>
+                        최다 발생: <strong>{dynamicDefectAnalysis.categories[0]?.name || "품질 검사"}</strong> ({dynamicDefectAnalysis.categories[0]?.percent || 0}%) 집중 공정 개선 진행 중
+                      </>
+                    )}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPopupItem(monthlyData.items.find((i) => i.id === "hr") || monthlyData.items[0])}
+                  className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-black text-[10.5px] shrink-0 transition-colors cursor-pointer shadow-xs"
+                >
+                  HR 상세 분석 →
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2. ⭐ [목표관리 설정 탭] 아이템별 전월실적 대비 목표관리선 설정 화면 */}
+      {/* ========================================================================= */}
+      {activeQualityTab === "target_settings" && (
+        <div className="space-y-4 sm:space-y-5 animate-fadeIn">
+          {/* Top Info Banner with Formula Explanation */}
+          <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-900/60 shadow-lg space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                  <Target className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-black text-white">
+                      차종별 품질 목표관리선 설정 시스템
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-amber-400 text-slate-950">
+                      전월 실적 연동 자동 산출
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    기준월: <strong className="text-white">{selectedMonth}</strong> | 전월 실적 기준월: <strong className="text-amber-300">{getPreviousYearMonth(selectedMonth)}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Toolbar */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleAutoRecalculateTargets}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all shadow-md active:scale-95 cursor-pointer"
+                  title="전월 실적을 재집계하여 5%/10% 감축 규칙을 재적용합니다."
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>⚡ 전월실적 대비 자동 재계산</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSaveTargets}
+                  disabled={isSavingTargets}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSavingTargets ? "저장 중..." : "💾 당월 목표관리선 저장"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetTargets}
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  title="기본 자동 계산값으로 복원"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>초기화</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Formula Badges */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-indigo-900/50 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/40 flex items-start gap-2">
+                <span className="text-emerald-400 text-base font-black">①</span>
+                <div>
+                  <strong className="text-emerald-400 font-bold block">전월 불량률 1.0% 미만 시</strong>
+                  <span className="text-slate-300 text-[11px]">당월 목표 = 전월 실적 × 0.95 (<strong>5% 낮게 설정</strong> / 5% 감축)</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/40 flex items-start gap-2">
+                <span className="text-rose-400 text-base font-black">②</span>
+                <div>
+                  <strong className="text-rose-400 font-bold block">전월 불량률 1.0% 이상 시</strong>
+                  <span className="text-slate-300 text-[11px]">당월 목표 = 전월 실적 × 0.90 (<strong>10% 낮게 설정</strong> / 10% 집중 감축)</span>
+                </div>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-indigo-800/40 flex items-start gap-2">
+                <span className="text-amber-400 text-base font-black">③</span>
+                <div>
+                  <strong className="text-amber-400 font-bold block">실시간 정합 및 커스텀 조절</strong>
+                  <span className="text-slate-300 text-[11px]">목표값을 수동 미세 조정한 후 <strong>[저장]</strong> 시 모든 차트/대시보드에 즉시 연동</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Bottom Insight Callout & Quick Action */}
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/80 dark:border-amber-900/40 text-[11.5px] text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base">💡</span>
-              <span className="truncate">
-                {monthlyData.totalDefectQty === 0 ? (
-                  <strong>모든 차종의 품질 불량률이 0%로 완벽하게 관리되고 있습니다.</strong>
-                ) : (
-                  <>
-                    최다 발생: <strong>{dynamicDefectAnalysis.categories[0]?.name || "품질 검사"}</strong> ({dynamicDefectAnalysis.categories[0]?.percent || 0}%) 집중 공정 개선 진행 중
-                  </>
-                )}
-              </span>
+          {/* 5 Item Setting Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* 4 Core Items */}
+            {QUALITY_CORE_ITEMS.map((core) => {
+              const itemTargetObj = activeTargets?.items?.[core.id] || {};
+              const prevRate = itemTargetObj.prevRate !== undefined ? itemTargetObj.prevRate : (core.id === "ja" ? 0.86 : core.id === "nx4a" ? 0.76 : core.id === "nx4" ? 0.20 : 0.56);
+              const targetRate = itemTargetObj.targetRate !== undefined ? itemTargetObj.targetRate : (prevRate < 1.0 ? Number((prevRate * 0.95).toFixed(2)) : Number((prevRate * 0.90).toFixed(2)));
+              
+              const currentMonthItem = monthlyData.items.find((i) => i.id === core.id) || { inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0 };
+              const currentRate = currentMonthItem.defectRate || 0;
+              const isAchieved = currentRate <= targetRate;
+              const gap = Number((currentRate - targetRate).toFixed(2));
+
+              const themeMap = {
+                ja: { border: "border-emerald-200 dark:border-emerald-800", dot: "bg-emerald-500", text: "text-emerald-600 dark:text-emerald-400" },
+                hr: { border: "border-rose-200 dark:border-rose-800", dot: "bg-rose-500", text: "text-rose-600 dark:text-rose-400" },
+                nx4a: { border: "border-teal-200 dark:border-teal-800", dot: "bg-teal-500", text: "text-teal-600 dark:text-teal-400" },
+                nx4: { border: "border-blue-200 dark:border-blue-800", dot: "bg-blue-500", text: "text-blue-600 dark:text-blue-400" }
+              };
+              const theme = themeMap[core.id] || themeMap.ja;
+
+              return (
+                <div
+                  key={core.id}
+                  className={`bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border ${theme.border} shadow-sm space-y-4 flex flex-col justify-between`}
+                >
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-3 h-3 rounded-full ${theme.dot}`}></span>
+                      <div>
+                        <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                          {core.name}
+                        </h3>
+                        <span className="text-[11px] text-slate-400 font-bold">
+                          차종: {core.carModel} · 단가 ₩{core.defaultUnitPrice.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black border ${
+                      isAchieved
+                        ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                        : "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800 animate-pulse"
+                    }`}>
+                      {isAchieved ? "목표 달성 순항 중 ✓" : "관리주의 (초과) 🚨"}
+                    </span>
+                  </div>
+
+                  {/* Previous Month Performance Box */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-1 text-xs">
+                    <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+                      <span className="font-bold flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>전월({getPreviousYearMonth(selectedMonth)}) 실적 불량률</span>
+                      </span>
+                      <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
+                        {prevRate.toFixed(2)}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                      <span>검사 {(itemTargetObj.prevInspectQty || 0).toLocaleString()} EA / 불량 {(itemTargetObj.prevDefectQty || 0).toLocaleString()} EA</span>
+                      <span className={`px-1.5 py-0.2 rounded font-black text-[10px] ${
+                        prevRate < 1.0 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                      }`}>
+                        {prevRate < 1.0 ? "5% 낮게 설정 (×0.95)" : "10% 낮게 설정 (×0.90)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Target Management Input Control */}
+                  <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                        <Target className="w-3.5 h-3.5 text-amber-600" />
+                        <span>당월({selectedMonth}) 목표관리선</span>
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        자동산출: {(prevRate < 1.0 ? prevRate * 0.95 : prevRate * 0.90).toFixed(2)}%
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemTargetRate(core.id, Math.max(0.01, targetRate - 0.05))}
+                        className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 cursor-pointer shadow-2xs"
+                      >
+                        -0.05%
+                      </button>
+
+                      <div className="relative flex-1">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0.01"
+                          max="10.0"
+                          value={targetRate}
+                          onChange={(e) => handleUpdateItemTargetRate(core.id, e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 font-mono font-black text-base text-slate-900 dark:text-white text-center outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-black text-slate-400">%</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateItemTargetRate(core.id, targetRate + 0.05)}
+                        className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-xs font-black text-slate-700 dark:text-slate-300 hover:bg-slate-100 cursor-pointer shadow-2xs"
+                      >
+                        +0.05%
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Current Month Actual vs Target Gap */}
+                  <div className="space-y-1.5 text-xs pt-1">
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-500 dark:text-slate-400">
+                        당월 현재 실적 불량률
+                      </span>
+                      <div className="flex items-center gap-1.5 font-mono">
+                        <strong className={`font-black ${isAchieved ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                          {currentRate}%
+                        </strong>
+                        <span className="text-[10.5px] text-slate-400">
+                          ({isAchieved ? `${Math.abs(gap)}%p 여유` : `+${gap}%p 초과`})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden relative">
+                      <div
+                        className={`h-full rounded-full transition-all ${isAchieved ? "bg-emerald-500" : "bg-rose-500"}`}
+                        style={{ width: `${Math.min(100, Math.max(5, (currentRate / (targetRate || 1)) * 100))}%` }}
+                      ></div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-400">
+                      <span>검사량 {currentMonthItem.inspectQty.toLocaleString()} EA 기준</span>
+                      <span>허용 최대 불량수: <strong className="font-mono text-slate-700 dark:text-slate-300 font-bold">{Math.floor((currentMonthItem.inspectQty * targetRate) / 100)} EA</strong></span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Overall Card (종합 합계) */}
+            <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-indigo-800 shadow-sm space-y-4 flex flex-col justify-between">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-indigo-800/80">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm sm:text-base text-white">
+                      종합 품질 불량률 목표선
+                    </h3>
+                    <span className="text-[11px] text-indigo-300">
+                      4개 코어 차종 통합 누적 관리선
+                    </span>
+                  </div>
+                </div>
+
+                <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black border ${
+                  overallDefectRate <= targetOverall
+                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                    : "bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse"
+                }`}>
+                  {overallDefectRate <= targetOverall ? "종합 달성 ✓" : "종합 관리필요 🚨"}
+                </span>
+              </div>
+
+              {/* Prev Month Box */}
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-indigo-800/60 space-y-1 text-xs">
+                <div className="flex items-center justify-between text-indigo-200">
+                  <span className="font-bold flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>전월({getPreviousYearMonth(selectedMonth)}) 종합 불량률</span>
+                  </span>
+                  <span className="font-mono font-black text-sm text-white">
+                    {(activeTargets?.overall?.prevRate || 0.62).toFixed(2)}%
+                  </span>
+                </div>
+                <div className="text-[10.5px] text-indigo-300">
+                  전월 1% 미만 적용: 5% 감축 (×0.95 = {((activeTargets?.overall?.prevRate || 0.62) * 0.95).toFixed(2)}%)
+                </div>
+              </div>
+
+              {/* Target Input */}
+              <div className="p-3.5 rounded-2xl bg-indigo-900/40 border border-indigo-700/60 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                    <Target className="w-3.5 h-3.5 text-amber-400" />
+                    <span>당월({selectedMonth}) 종합 목표선</span>
+                  </label>
+                  <span className="text-[10px] text-indigo-300 font-bold">
+                    기본값: 0.59%
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateOverallTargetRate(Math.max(0.01, targetOverall - 0.05))}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-indigo-700 text-xs font-black text-white hover:bg-slate-700 cursor-pointer"
+                  >
+                    -0.05%
+                  </button>
+
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max="10.0"
+                      value={targetOverall}
+                      onChange={(e) => handleUpdateOverallTargetRate(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-amber-400 bg-slate-900 font-mono font-black text-base text-amber-300 text-center outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                    <span className="absolute right-3 top-2 text-xs font-black text-slate-400">%</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateOverallTargetRate(targetOverall + 0.05)}
+                    className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-indigo-700 text-xs font-black text-white hover:bg-slate-700 cursor-pointer"
+                  >
+                    +0.05%
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Status */}
+              <div className="space-y-1.5 text-xs pt-1">
+                <div className="flex items-center justify-between font-bold text-indigo-200">
+                  <span>당월 종합 현재 불량률</span>
+                  <span className="font-mono font-black text-base text-white">
+                    {overallDefectRate}%
+                  </span>
+                </div>
+                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${overallDefectRate <= targetOverall ? "bg-emerald-400" : "bg-rose-500"}`}
+                    style={{ width: `${Math.min(100, Math.max(5, (overallDefectRate / (targetOverall || 1)) * 100))}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setPopupItem(monthlyData.items.find((i) => i.id === "hr") || monthlyData.items[0])}
-              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-black text-[10.5px] shrink-0 transition-colors cursor-pointer shadow-xs"
-            >
-              HR 상세 분석 →
-            </button>
+          </div>
+
+          {/* Comparison Table */}
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <Layers className="w-4 h-4 text-emerald-600" />
+              <span>차종별 전월 실적 대비 당월 품질 목표관리선 종합 비교표</span>
+            </h3>
+
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                    <th className="p-3 text-center">품목명 / 차종</th>
+                    <th className="p-3 text-right">단가</th>
+                    <th className="p-3 text-right">전월 실적불량률</th>
+                    <th className="p-3 text-center">적용 규칙</th>
+                    <th className="p-3 text-center bg-amber-50/60 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300 font-black">
+                      당월 목표관리선
+                    </th>
+                    <th className="p-3 text-right">당월 현재실적</th>
+                    <th className="p-3 text-center">목표 달성 여부</th>
+                    <th className="p-3 text-right">손실금액</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {QUALITY_CORE_ITEMS.map((core) => {
+                    const itemTargetObj = activeTargets?.items?.[core.id] || {};
+                    const prevRate = itemTargetObj.prevRate !== undefined ? itemTargetObj.prevRate : (core.id === "ja" ? 0.86 : core.id === "nx4a" ? 0.76 : core.id === "nx4" ? 0.20 : 0.56);
+                    const targetRate = itemTargetObj.targetRate !== undefined ? itemTargetObj.targetRate : (prevRate < 1.0 ? Number((prevRate * 0.95).toFixed(2)) : Number((prevRate * 0.90).toFixed(2)));
+                    const cur = monthlyData.items.find((i) => i.id === core.id) || { inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0 };
+                    const isGood = cur.defectRate <= targetRate;
+
+                    return (
+                      <tr key={core.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                        <td className="p-3 font-black text-slate-900 dark:text-white">
+                          {core.name} ({core.carModel})
+                        </td>
+                        <td className="p-3 text-right font-mono text-slate-500">
+                          ₩{core.defaultUnitPrice.toLocaleString()}
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                          {prevRate.toFixed(2)}%
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="px-2 py-0.5 rounded text-[10.5px] font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {prevRate < 1.0 ? "5% 감축 (×0.95)" : "10% 감축 (×0.90)"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center font-mono font-black text-amber-700 dark:text-amber-400 bg-amber-50/40 dark:bg-amber-950/10 text-sm">
+                          {targetRate.toFixed(2)}% 이하
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold">
+                          <span className={isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+                            {cur.defectRate}%
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2.5 py-1 rounded-md text-[10.5px] font-black ${
+                            isGood ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}>
+                            {isGood ? "목표 달성 ✓" : "초과 주의 🚨"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                          ₩{cur.lossAmount.toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-amber-500">
+                    <td className="p-3">📊 종합 합계</td>
+                    <td className="p-3 text-right font-mono">-</td>
+                    <td className="p-3 text-right font-mono text-amber-300">
+                      {(activeTargets?.overall?.prevRate || 0.62).toFixed(2)}%
+                    </td>
+                    <td className="p-3 text-center text-slate-300 text-[10.5px]">전월대비 5% 감축</td>
+                    <td className="p-3 text-center font-mono text-amber-300 text-sm">
+                      {targetOverall.toFixed(2)}% 이하
+                    </td>
+                    <td className="p-3 text-right font-mono text-emerald-400">
+                      {overallDefectRate}%
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10.5px] ${
+                        overallDefectRate <= targetOverall ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                      }`}>
+                        {overallDefectRate <= targetOverall ? "종합 달성" : "관리 주의"}
+                      </span>
+                    </td>
+                    <td className="p-3 text-right font-mono text-rose-300">
+                      ₩{monthlyData.totalLossAmount.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 5. ⭐ [공통 하단] 품질 엑셀 파일 드래그 앤 드롭 업로드 영역 */}
