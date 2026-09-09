@@ -874,20 +874,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       approvalDocLines = lines.join("\n") + more;
     }
 
-    // 3. 전일 업무일지 미결
-    const workLogs = getLocalWorkLogs();
-    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
-    let workLogLines = "• 없음 (전건 승인완료)";
-    if (pendingLogs.length > 0) {
-      const lines = pendingLogs.slice(0, 5).map((l) => {
-        const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-        return `• ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
-      });
-      const more = pendingLogs.length > 5 ? `\n• 외 ${pendingLogs.length - 5}건` : "";
-      workLogLines = lines.join("\n") + more;
-    }
-
-    // 4. 회의 & 사내공지 (다가올 회의 및 유효한 사내공지)
+    // 3. 회의 & 사내공지 (다가올 회의 및 유효한 사내공지)
     const allUrgent = getLocalUrgentIssues();
     const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
     const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
@@ -925,13 +912,10 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 📑 <b>[2] 전일 전자결재 미결 ${pendingDocs.length > 0 ? `(${pendingDocs.length}건)` : ""}</b>
 ${approvalDocLines}
 
-📝 <b>[3] 전일 업무일지 미결 ${pendingLogs.length > 0 ? `(${pendingLogs.length}건)` : ""}</b>
-${workLogLines}
-
-📅 <b>[4] 회의 & 사내공지</b>
+📅 <b>[3] 회의 & 사내공지</b>
 ${noticeMeetingLines}
 ━━━━━━━━━━━━━━━━━━━━━
-※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.
+※ 미결된 전자결재는 금일 오전 중 확인 부탁드립니다.
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 

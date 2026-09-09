@@ -282,11 +282,6 @@ export const approveWorkLog = async (id, approver = {}) => {
     console.error("Firestore approve sync error:", e);
   }
 
-  // Telegram notification on work log approval
-  sendWorkLogApprovedTelegram(updatedLog, approver).catch((err) => {
-    console.warn("Telegram work log approval alert error:", err);
-  });
-
   return updatedLocal;
 };
 
