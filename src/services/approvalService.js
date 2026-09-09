@@ -737,7 +737,18 @@ export const syncPlantOvertimeToApprovalBox = async ({
         (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
       );
 
-      // Aggregate data per company
+      const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
+
+      // ⭐ If no explicit overtime reports exist for this plant on this date (e.g. user deleted them):
+      if (plantReports.length === 0) {
+        if (existingDoc) {
+          // If all reports were deleted, remove the approval document
+          await deleteApprovalDocument(canonicalDocId);
+        }
+        continue;
+      }
+
+      // Aggregate data ONLY from actual registered reports (compRep)
       const companySummaries = [];
       let totalPlantWorkers = 0;
       let totalPlantHours = 0;
@@ -747,18 +758,11 @@ export const syncPlantOvertimeToApprovalBox = async ({
       targetCompanies.forEach(comp => {
         // 1. Check if individual report exists
         const compRep = plantReports.find(r => r.company === comp || (Array.isArray(r.companies) && r.companies.includes(comp)));
-        
-        // 2. Check matrix
-        const compWorkers = allMatrix.filter(w => w.company === comp);
-        const attendedMatrixWorkers = compWorkers.filter(w => {
-          const val = w.daily ? w.daily[dayNum] : "";
-          if (!val || val === "-" || val === "휴" || val === "공" || val === "연" || val === "반" || val === "조" || val === "지" || val === "무") return false;
-          return true;
-        });
+        if (!compRep) return;
 
-        let workerCount = 0;
-        let workerHours = 0;
-        let workerCost = 0;
+        let workerCount = compRep.totalWorkers || (compRep.items ? compRep.items.length : 0);
+        let workerHours = compRep.totalHours || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
+        let workerCost = compRep.cost || (workerHours * 15000);
         let managersList = [];
         let workersList = [];
 
@@ -767,50 +771,24 @@ export const syncPlantOvertimeToApprovalBox = async ({
           "안태식", "표성준", "하원식", "김유성", "권태형", "방상국"
         ];
 
-        if (compRep) {
-          workerCount = compRep.totalWorkers || (compRep.items ? compRep.items.length : 0);
-          workerHours = compRep.totalHours || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
-          workerCost = compRep.cost || (workerHours * 15000);
-          
-          if (compRep.items && compRep.items.length > 0) {
-            compRep.items.forEach(it => {
-              const isManagerCategory = (it.category || "").includes("관리") || (it.dept || "").includes("관리") || (it.workContent || "").includes("총괄");
-              const namesFromItem = [];
-              if (it.workerName) {
-                namesFromItem.push(it.workerName);
-              } else if (it.names) {
-                const parts = String(it.names).split(",").map(n => n.replace(/외 \d+명/g, "").trim()).filter(Boolean);
-                namesFromItem.push(...parts);
-              }
-
-              namesFromItem.forEach(name => {
-                if (isManagerCategory || KNOWN_MANAGERS.includes(name)) {
-                  managersList.push(name);
-                } else {
-                  workersList.push(name);
-                }
-              });
-            });
-          }
-        }
-        
-        if (managersList.length === 0 && workersList.length === 0 && attendedMatrixWorkers.length > 0) {
-          workerCount = attendedMatrixWorkers.length;
-          workerHours = attendedMatrixWorkers.reduce((sum, w) => {
-            const val = w.daily ? w.daily[dayNum] : "";
-            const num = Number(val);
-            if (!isNaN(num) && num > 0) return sum + num;
-            return sum + (val === "🟢" ? 8 : 8);
-          }, 0);
-          workerCost = workerHours * 15000;
-          
-          attendedMatrixWorkers.forEach(w => {
-            const isManager = (w.dept || "").includes("관리") || (w.position || "").includes("책임") || (w.position || "").includes("이사") || KNOWN_MANAGERS.includes(w.name);
-            if (isManager) {
-              managersList.push(w.name);
-            } else {
-              workersList.push(w.name);
+        if (compRep.items && compRep.items.length > 0) {
+          compRep.items.forEach(it => {
+            const isManagerCategory = (it.category || "").includes("관리") || (it.dept || "").includes("관리") || (it.workContent || "").includes("총괄");
+            const namesFromItem = [];
+            if (it.workerName) {
+              namesFromItem.push(it.workerName);
+            } else if (it.names) {
+              const parts = String(it.names).split(",").map(n => n.replace(/외 \d+명/g, "").trim()).filter(Boolean);
+              namesFromItem.push(...parts);
             }
+
+            namesFromItem.forEach(name => {
+              if (isManagerCategory || KNOWN_MANAGERS.includes(name)) {
+                managersList.push(name);
+              } else {
+                workersList.push(name);
+              }
+            });
           });
         }
 
@@ -833,10 +811,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         }
       });
 
-      const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
-
-      // If no workers and no reports for this plant on this date:
-      if (totalPlantWorkers === 0 && plantReports.length === 0) {
+      // If no workers or no valid companies for this plant on this date:
+      if (totalPlantWorkers === 0 || companySummaries.length === 0) {
         if (existingDoc) {
           // If all reports were deleted, remove the approval document
           await deleteApprovalDocument(canonicalDocId);
