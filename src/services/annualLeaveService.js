@@ -426,9 +426,9 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         isToday: true,
         type: meta.type,
         emoji: meta.emoji,
-        displayBadge: `오늘·${compactType}`,
-        mobileBadge: `오늘·${compactType}`,
-        label: `${meta.emoji} [오늘] ${meta.activeLabel || meta.type}`,
+        displayBadge: compactType,
+        mobileBadge: compactType,
+        label: `${meta.emoji} ${meta.activeLabel || meta.type}`,
         fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${
           activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType
             ? ` (${activeTodayLeave.reason})`
