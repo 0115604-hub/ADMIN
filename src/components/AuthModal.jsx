@@ -961,14 +961,12 @@ export const AuthModal = () => {
                     {activeIssues.map((item) => {
                       const isMeeting = item.category === "회의일정";
                       const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
-                      const replyCount = item.replies?.length || 0;
-                      const hasImages = (item.images && item.images.length > 0) || (item.actionImages && item.actionImages.length > 0);
 
                       return (
                         <div
                           key={item.id}
                           onClick={() => handleOpenEditIssue(item)}
-                          className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
+                          className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-1.5 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                             item.isResolved
                               ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                               : isMeeting
@@ -979,8 +977,8 @@ export const AuthModal = () => {
                           }`}
                           title="탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"
                         >
-                          {/* 1단: 상단 배지 (좌측: 카테고리/공장/일시 • 우측: 사진/회신/상태배지 및 상세진입 화살표) */}
-                          <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap pb-1.5 border-b border-slate-200/60 dark:border-slate-800/60">
+                          {/* 1단: 상단 배지 (좌측: 카테고리/공장/일시 • 우측: 상세보기 화살표) */}
+                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60">
                             {/* 좌측 배지 */}
                             <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                               {isMeeting ? (
@@ -1022,39 +1020,16 @@ export const AuthModal = () => {
                                     : `📅 ${item.expireDate.slice(5)}`}
                                 </span>
                               )}
-                              <span className="text-[11px] text-slate-400 font-bold shrink-0 hidden md:inline">
-                                {item.author} • {item.createdAt}
-                              </span>
                             </div>
 
-                            {/* 우측 상태 배지 (잡다한 액션 버튼 제거 → 탭 시 팝업에서 해결) */}
-                            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                              {hasImages && (
-                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center gap-0.5 border border-rose-200 dark:border-rose-900 shrink-0">
-                                  <Camera className="w-2.5 h-2.5" />
-                                  <span>사진</span>
-                                </span>
-                              )}
-                              {replyCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center gap-0.5 border border-purple-200 dark:border-purple-900 shrink-0">
-                                  <MessageCircle className="w-2.5 h-2.5" />
-                                  <span>회신 {replyCount}</span>
-                                </span>
-                              )}
-                              {item.isResolved ? (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0 shadow-2xs">
-                                  조치완료
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse shrink-0 shadow-2xs">
-                                  조치대기
-                                </span>
-                              )}
-                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            {/* 우측 탭 안내 화살표 */}
+                            <div className="flex items-center gap-1 shrink-0 ml-auto text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                              <span className="text-[10.5px] font-bold hidden sm:inline">상세보기</span>
+                              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                             </div>
                           </div>
 
-                          {/* 2단: 전체 너비 제목 및 내용 (PC/모바일 모두 글자 잘림 없이 시원하게 표시) */}
+                          {/* 2단: 전체 너비 제목 및 내용 */}
                           <div className="min-w-0">
                             <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words group-hover:underline ${
                               isMeeting
@@ -1072,26 +1047,14 @@ export const AuthModal = () => {
                             )}
                           </div>
 
-                          {/* 3단: 작성자 일시 및 실시간 회의/조치 결과 */}
-                          <div className="flex items-center justify-between gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex-wrap pt-0.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                                작성: {item.author} ({item.createdAt})
+                          {/* 3단: 조치/회의 결과 (등록된 경우만 깔끔하게 노출) */}
+                          {item.actionResult && (
+                            <div className="text-[11px] sm:text-xs pt-0.5 break-words">
+                              <span className={`font-extrabold ${isMeeting ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                └ {isMeeting ? "회의결과" : "조치결과"}: {item.actionResult}
                               </span>
-                              {item.actionResult ? (
-                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 break-words">
-                                  • └ {isMeeting ? "회의결과" : "조치결과"}: {item.actionResult} ({item.actionAuthor || "작업자"} • {item.actionAt})
-                                </span>
-                              ) : (
-                                <span className="font-bold text-amber-600 dark:text-amber-400 shrink-0">
-                                  • {isMeeting ? "회의결과 대기중" : "조치 대기중"}
-                                </span>
-                              )}
                             </div>
-                            <span className="text-[10.5px] font-bold text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors shrink-0 hidden sm:inline">
-                              👉 탭하여 상세/조치/수정
-                            </span>
-                          </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1104,13 +1067,12 @@ export const AuthModal = () => {
                     {activeIssues.map((item) => {
                       const isMeeting = item.category === "회의일정";
                       const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
-                      const replyCount = item.replies?.length || 0;
 
                       return (
                         <div
                           key={item.id}
                           onClick={() => handleOpenEditIssue(item)}
-                          className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col justify-center gap-2 sm:gap-2.5 shadow-sm cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
+                          className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col justify-center gap-2 shadow-sm cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                             item.isResolved
                               ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
                               : isMeeting
@@ -1121,8 +1083,8 @@ export const AuthModal = () => {
                           }`}
                           title="탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"
                         >
-                          {/* 1번째 줄: [품질경보/사내공지/회의일정] [공장] [일시] + [조치상태] */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
+                          {/* 1번째 줄: [품질경보/사내공지/회의일정] [공장] [일시] */}
+                          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
                               {isMeeting ? (
                                 <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-purple-600 text-white shrink-0 shadow-xs tracking-wide">
@@ -1163,29 +1125,12 @@ export const AuthModal = () => {
                                     : `📅 ${item.expireDate.slice(5)}`}
                                 </span>
                               )}
-                              <span className="text-xs sm:text-sm text-slate-400 shrink-0 font-bold ml-auto sm:ml-0">
-                                {item.author} • {item.createdAt}
-                              </span>
                             </div>
 
-                            {/* Right: Reply count & Status */}
-                            <div className="flex items-center gap-1.5 shrink-0 justify-end">
-                              {replyCount > 0 && (
-                                <span className="px-2 py-0.8 rounded-lg text-xs font-black bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800 flex items-center gap-0.5">
-                                  <MessageCircle className="w-3 h-3" />
-                                  <span>회신 {replyCount}</span>
-                                </span>
-                              )}
-                              {item.isResolved ? (
-                                <span className="px-2.5 py-0.8 rounded-lg text-xs sm:text-sm font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs">
-                                  조치완료
-                                </span>
-                              ) : (
-                                <span className="px-2.5 py-0.8 rounded-lg text-xs sm:text-sm font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse shadow-2xs">
-                                  조치대기
-                                </span>
-                              )}
-                              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            {/* 우측 상세보기 안내 */}
+                            <div className="flex items-center gap-1 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors shrink-0">
+                              <span className="text-xs font-bold hidden sm:inline">상세보기</span>
+                              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                             </div>
                           </div>
 
@@ -1219,117 +1164,17 @@ export const AuthModal = () => {
                             )}
                           </div>
 
-                          {/* 3번째 줄: └ 조치/회의결과: [내용] (작성자 시간) */}
-                          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-between gap-2.5">
-                            <div className="flex items-start sm:items-center gap-1.5 min-w-0 flex-1">
-                              <span className="text-slate-400 font-black shrink-0 text-xs sm:text-sm">└</span>
-                              {isMeeting ? (
-                                item.actionResult ? (
-                                  <div className="min-w-0 break-words text-xs sm:text-sm md:text-base">
-                                    <span className="font-black text-purple-600 dark:text-purple-400 mr-1.5">
-                                      회의결과:
-                                    </span>
-                                    <span className="font-extrabold text-slate-800 dark:text-slate-100">
-                                      {item.actionResult}
-                                    </span>
-                                    <span className="text-[11px] sm:text-xs text-purple-600 dark:text-purple-400 ml-1.5 font-bold">
-                                      ({item.actionAuthor || "작업자"} • {item.actionAt})
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <div className="text-xs sm:text-sm text-purple-600 dark:text-purple-400 font-bold">
-                                    <span className="font-black mr-1">회의결과:</span>
-                                    <span className="text-slate-400 italic">아직 등록된 회의결과가 없습니다. (탭하여 결과 입력)</span>
-                                  </div>
-                                )
-                              ) : item.actionResult ? (
-                                <div className="min-w-0 break-words text-xs sm:text-sm md:text-base">
-                                  <span className="font-black text-emerald-600 dark:text-emerald-400 mr-1.5">
-                                    조치결과:
-                                  </span>
-                                  <span className="font-extrabold text-slate-800 dark:text-slate-100">
-                                    {item.actionResult}
-                                  </span>
-                                  <span className="text-[11px] sm:text-xs text-emerald-600 dark:text-emerald-400 ml-1.5 font-bold">
-                                    ({item.actionAuthor || "작업자"} • {item.actionAt})
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="text-xs sm:text-sm text-amber-600 dark:text-amber-400 font-bold">
-                                  <span className="font-black mr-1">조치결과:</span>
-                                  <span className="text-slate-400 italic">아직 등록된 조치결과가 없습니다. (탭하여 조치결과 입력)</span>
-                                </div>
-                              )}
-                            </div>
-                            <span className="text-xs font-bold text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors shrink-0 hidden sm:inline">
-                              👉 탭하여 상세/조치/수정
-                            </span>
-                          </div>
-
-                          {/* 4번째 줄: 첨부 사진 썸네일 (현장 사진 & 조치 사진 - 크기 확대) */}
-                          {((item.images && item.images.length > 0) || (item.actionImages && item.actionImages.length > 0)) && (
-                            <div className="flex items-center gap-3 pt-2 pl-2 flex-wrap border-t border-slate-100 dark:border-slate-800/80">
-                              {/* 현장 첨부 사진 */}
-                              {item.images && item.images.length > 0 && (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs sm:text-sm font-black text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                                    <Camera className="w-3.5 h-3.5" />
-                                    <span>현장사진({item.images.length}장):</span>
-                                  </span>
-                                  {item.images.map((img, idx) => (
-                                    <button
-                                      key={img.id || idx}
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewImageModal({ url: img.dataUrl, name: img.name || `품질경보사진_${idx + 1}` });
-                                      }}
-                                      className="group/img relative rounded-xl overflow-hidden border-2 border-rose-300 dark:border-rose-900/60 hover:border-rose-500 transition-all shadow-xs cursor-pointer"
-                                      title="클릭하여 원본 사진 크게 보기"
-                                    >
-                                      <img
-                                        src={img.dataUrl}
-                                        alt={img.name || "품질경보 사진"}
-                                        className="w-10 h-10 sm:w-12 sm:h-12 object-cover group-hover/img:scale-110 transition-transform"
-                                      />
-                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white">
-                                        <ZoomIn className="w-3.5 h-3.5" />
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* 조치 완료 첨부 사진 */}
-                              {item.actionImages && item.actionImages.length > 0 && (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs sm:text-sm font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                    <Camera className="w-3.5 h-3.5" />
-                                    <span>조치사진({item.actionImages.length}장):</span>
-                                  </span>
-                                  {item.actionImages.map((img, idx) => (
-                                    <button
-                                      key={img.id || idx}
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` });
-                                      }}
-                                      className="group/img relative rounded-xl overflow-hidden border-2 border-emerald-300 dark:border-emerald-900/60 hover:border-emerald-500 transition-all shadow-xs cursor-pointer"
-                                      title="클릭하여 원본 사진 크게 보기"
-                                    >
-                                      <img
-                                        src={img.dataUrl}
-                                        alt={img.name || "조치 사진"}
-                                        className="w-10 h-10 sm:w-12 sm:h-12 object-cover group-hover:scale-110 transition-transform"
-                                      />
-                                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
-                                        <ZoomIn className="w-3.5 h-3.5" />
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
+                          {/* 3번째 줄: └ 조치/회의결과: [내용] (등록된 경우만 깔끔하게 노출) */}
+                          {item.actionResult && (
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-between gap-2">
+                              <div className="min-w-0 break-words text-xs sm:text-sm">
+                                <span className={`font-black mr-1.5 ${isMeeting ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                                  └ {isMeeting ? "회의결과:" : "조치결과:"}
+                                </span>
+                                <span className="font-extrabold text-slate-800 dark:text-slate-100">
+                                  {item.actionResult}
+                                </span>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1643,14 +1488,14 @@ export const AuthModal = () => {
 
         return (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn"
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
             onClick={() => {
               setIsListModalOpen(false);
               setSelectedListItem(null);
             }}
           >
             <div
-              className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp text-xs max-h-[94vh] flex flex-col"
+              className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-2xl w-full p-3 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp text-xs max-h-[94vh] flex flex-col cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
               {/* 1. Modal Header */}
@@ -2280,8 +2125,17 @@ export const AuthModal = () => {
       {/* 🌟 1. 품질경보 / 사내공지 / 회의일정 통합 상세·조치·수정·삭제 팝업 모달 */}
       {/* ========================================================================= */}
       {isIssueModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-xl w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 sm:space-y-4 my-auto animate-scaleUp max-h-[92vh] overflow-y-auto">
+        <div
+          onClick={() => {
+            setIsIssueModalOpen(false);
+            setEditingIssue(null);
+          }}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-xl w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 sm:space-y-4 my-auto animate-scaleUp max-h-[92vh] overflow-y-auto cursor-default"
+          >
             {/* Header */}
             <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
@@ -2975,8 +2829,14 @@ export const AuthModal = () => {
       {actionModalData.isOpen && actionModalData.issue && (() => {
         const isMeetingAction = actionModalData.issue.category === "회의일정";
         return (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-lg w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
+          <div
+            onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
+            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-lg w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp cursor-default"
+            >
               <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <div className={`p-2 rounded-xl text-white shadow-xs ${isMeetingAction ? "bg-purple-600" : "bg-emerald-500"}`}>
@@ -2996,7 +2856,7 @@ export const AuthModal = () => {
                 <button
                   type="button"
                   onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold"
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
                 >
                   ✕
                 </button>
@@ -3206,8 +3066,14 @@ export const AuthModal = () => {
       {/* 🌟 3. 공장 품질경보 및 공지사항 삭제 전용 권한 확인 모달 (이명재 / 김동욱 권한 검증) */}
       {/* ========================================================================= */}
       {deleteModalData.isOpen && deleteModalData.issue && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-md w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp">
+        <div
+          onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl max-w-md w-full p-3.5 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3 sm:space-y-4 my-auto animate-scaleUp cursor-default"
+          >
             <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs">
@@ -3318,8 +3184,14 @@ export const AuthModal = () => {
       {/* 🌟 4. 텔레그램 연동 관리자(Admin) 권한 인증 모달 */}
       {/* ========================================================================= */}
       {telegramAdminPinModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-5 sm:p-6 border-2 border-sky-400 dark:border-sky-600 shadow-2xl space-y-4 my-auto animate-scaleUp">
+        <div
+          onClick={() => setTelegramAdminPinModal({ isOpen: false, pinInput: "", errorMsg: "" })}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-5 sm:p-6 border-2 border-sky-400 dark:border-sky-600 shadow-2xl space-y-4 my-auto animate-scaleUp cursor-default"
+          >
             {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
@@ -3410,8 +3282,14 @@ export const AuthModal = () => {
       {/* 🌟 5. 텔레그램 봇 실시간 알림 설정 모달 */}
       {/* ========================================================================= */}
       {isTelegramModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border-2 border-sky-400 dark:border-sky-600 shadow-2xl space-y-4 my-auto animate-scaleUp">
+        <div
+          onClick={() => setIsTelegramModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-6 border-2 border-sky-400 dark:border-sky-600 shadow-2xl space-y-4 my-auto animate-scaleUp cursor-default"
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
@@ -3544,11 +3422,11 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {previewImageModal && (
         <div
-          className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn"
+          className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn cursor-pointer"
           onClick={() => setPreviewImageModal(null)}
         >
           <div
-            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-800"
+            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-800 cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
