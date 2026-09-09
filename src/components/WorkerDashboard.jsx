@@ -4414,37 +4414,57 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               </select>
                             </div>
 
-                            {/* 설비명 (선택한 대분류에 해당하는 설비 목록만 노출) */}
+                            {/* 설비명 (대분류에 연동되며, 내용직접입력 선택 시 별도 하위창 없이 해당 칸에 직접 입력) */}
                             <div>
                               <label className="block text-[10.5px] font-bold text-slate-600 dark:text-slate-400 mb-1">
                                 설비명 ({item.category})
                               </label>
-                              <select
-                                value={item.equipmentName}
-                                onChange={(e) => handleUpdateMaintenanceItem(item.id, "equipmentName", e.target.value)}
-                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                              >
-                                {(JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category] || ["내용직접입력"]).map((eq) => (
-                                  <option key={eq} value={eq}>
-                                    {eq === "내용직접입력" ? "내용직접입력 (직접입력)" : eq}
-                                  </option>
-                                ))}
-                              </select>
+
+                              {isCustom ? (
+                                <div className="relative flex items-center">
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder={item.category === "치공구" ? "치공구명 직접 입력" : "설비명 직접 입력"}
+                                    value={item.customEquipmentName || ""}
+                                    onChange={(e) => handleUpdateMaintenanceItem(item.id, "customEquipmentName", e.target.value)}
+                                    className="w-full px-2.5 py-1.5 pr-14 rounded-xl border-2 border-blue-500 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none shadow-2xs"
+                                  />
+                                  {JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category]?.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const firstEq = JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category][0];
+                                        handleUpdateMaintenanceItem(item.id, "equipmentName", firstEq);
+                                        handleUpdateMaintenanceItem(item.id, "customEquipmentName", "");
+                                      }}
+                                      className="absolute right-1 top-1 bottom-1 px-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-0.5 cursor-pointer"
+                                      title="목록에서 다시 선택하기"
+                                    >
+                                      <span>목록</span>
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <select
+                                  value={item.equipmentName}
+                                  onChange={(e) => {
+                                    handleUpdateMaintenanceItem(item.id, "equipmentName", e.target.value);
+                                    if (e.target.value === "내용직접입력") {
+                                      handleUpdateMaintenanceItem(item.id, "customEquipmentName", "");
+                                    }
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                                >
+                                  {(JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category] || ["내용직접입력"]).map((eq) => (
+                                    <option key={eq} value={eq}>
+                                      {eq === "내용직접입력" ? "✏️ 내용직접입력 (직접입력)" : eq}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                             </div>
                           </div>
-
-                          {/* Custom equipment name input if 직접입력 is selected */}
-                          {isCustom && (
-                            <div className="animate-fadeIn">
-                              <input
-                                type="text"
-                                placeholder="설비명을 직접 입력해 주세요 (예: 500TON 사출기, 냉각수 펌프 등)"
-                                value={item.customEquipmentName}
-                                onChange={(e) => handleUpdateMaintenanceItem(item.id, "customEquipmentName", e.target.value)}
-                                className="w-full px-3 py-1.5 rounded-xl border border-blue-400 dark:border-blue-500 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs"
-                              />
-                            </div>
-                          )}
 
                           {/* 설비보전내용 입력란 */}
                           <div>
