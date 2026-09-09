@@ -612,6 +612,10 @@ ${header}
  * 5. 전자결재 기안 상신 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담당 결재자") => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || config.sendApprovals === false) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
   const nowStr = getKSTFormattedString();
   const message = `
 <b>🟦 [전자결재 기안 상신]</b>
@@ -629,11 +633,20 @@ export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담
 };
 
 /**
- * 6. 전자결재 승인 즉시 알림 (파랑색 🟦)
+ * 6. 전자결재 최종 승인 완료 알림 (파랑색 🟦)
+ * ※ 중간 승인은 단톡방 알림 발송을 전면 차단하고, 대표이사 최종 승인 완료(isFinal===true) 시에만 발송
  */
 export const sendApprovalStepTelegram = async (docItem, approverName, comment = "", isFinal = false, nextApproverName = null) => {
-  const titleHeader = isFinal ? "🟦 [전자결재 최종 승인 완료]" : "🟦 [전자결재 중간 승인 알림]";
-  const nextLine = nextApproverName ? `• <b>다음 결재자:</b> ${nextApproverName}\n` : "";
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || config.sendApprovals === false) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
+  // 중간 결재 단계(선임, 팀장, 이사 등) 승인 시 텔레그램 단톡방 알림 발송 완전 차단
+  if (!isFinal) {
+    return { success: true, skipped: true, reason: "INTERMEDIATE_STEP_APPROVAL_SILENCED" };
+  }
+
+  const titleHeader = "🟦 [전자결재 최종 승인 완료]";
   const nowStr = getKSTFormattedString();
 
   const message = `
@@ -642,8 +655,8 @@ export const sendApprovalStepTelegram = async (docItem, approverName, comment = 
 • <b>공장:</b> ${docItem.plant || "삼랑진공장"}
 • <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
 • <b>결재제목:</b> <b>${docItem.title}</b>
-• <b>승인자:</b> <b>${approverName}</b>
-${nextLine}• <b>일시:</b> ${nowStr}
+• <b>최종승인자:</b> <b>${approverName}</b>
+• <b>일시:</b> ${nowStr}
 ----------------------------------------
 <a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
 `.trim();
@@ -655,6 +668,10 @@ ${nextLine}• <b>일시:</b> ${nowStr}
  * 7. 전자결재 반려 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || config.sendApprovals === false) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
   const nowStr = getKSTFormattedString();
   const message = `
 <b>🟦 [전자결재 반려 알림]</b>
@@ -676,6 +693,10 @@ export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) 
  * 8. 전자결재 보류 즉시 알림 (파랑색 🟦)
  */
 export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || config.sendApprovals === false) {
+    return { success: false, reason: "NOT_CONFIGURED" };
+  }
   const nowStr = getKSTFormattedString();
   const message = `
 <b>🟦 [전자결재 보류 알림]</b>

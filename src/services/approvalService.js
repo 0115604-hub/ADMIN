@@ -528,10 +528,12 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
 
   const saved = await saveApprovalDocument(updatedTarget);
 
-  // Telegram notification on step approval
-  sendApprovalStepTelegram(updatedTarget, approverName, comment, isAllApproved).catch((err) => {
-    console.warn("Telegram approval step alert error:", err);
-  });
+  // Telegram notification on step approval (오직 최종 승인 완료 시에만 발송)
+  if (isAllApproved) {
+    sendApprovalStepTelegram(updatedTarget, approverName, comment, true).catch((err) => {
+      console.warn("Telegram approval step alert error:", err);
+    });
+  }
 
   return saved;
 };
