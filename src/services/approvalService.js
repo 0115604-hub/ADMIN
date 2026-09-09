@@ -30,7 +30,7 @@ export const APPROVAL_MANAGERS = {
     { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" }
   ],
   CEO: [
-    { name: "대표이사", title: "대표", plant: "본사", process: "대표이사" }
+    { name: "권태형", title: "대표이사", plant: "본사", process: "대표이사" }
   ]
 };
 
@@ -120,8 +120,8 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
     },
     {
       role: "대표",
-      name: "대표이사",
-      title: "대표",
+      name: "권태형",
+      title: "대표이사",
       status: "WAITING",
       date: "",
       comment: ""
@@ -344,14 +344,14 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
 
-  // 1. ADMIN Mode -> Representative (대표이사) Top Authority
+  // 1. ADMIN Mode -> Representative (대표이사 권태형) Top Authority
   if (isAdmin) {
     return {
       canApprove: true,
       stepIndex: activeStepIdx,
       stepRole,
       isRepresentative: true,
-      approverName: "대표이사"
+      approverName: "권태형"
     };
   }
 

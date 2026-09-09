@@ -138,7 +138,7 @@ export const ElectronicApprovalView = () => {
     drafterTitle: currentProfile?.title || "선임",
     leadName: "설유철", // Default Step 2 (책임)
     directorName: "이명재", // Step 3 (이사)
-    ceoName: "대표이사", // Step 4 (대표)
+    ceoName: "권태형", // Step 4 (대표이사)
     title: "",
     content: "",
     amount: "",
@@ -948,11 +948,26 @@ export const ElectronicApprovalView = () => {
                   {selectedDoc.steps.map((st, idx) => (
                     <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative">
                       {st.status === "APPROVED" ? (
-                        <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs`}>
-                          <span className="text-[7.5px] font-bold">오륙</span>
-                          <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
-                          <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
-                        </div>
+                        st.role === "대표" || st.name === "권태형" || st.name === "대표이사" ? (
+                          /* 🌟 대표이사 권태형 맞춤형 전자서명 + 직인 인장 */
+                          <div className="w-14 h-12 flex flex-col items-center justify-center relative select-none transform rotate-[-3deg] animate-scaleUp">
+                            <div className="w-12 h-12 rounded-full border-2 border-rose-600 bg-rose-50/40 dark:bg-rose-950/40 flex flex-col items-center justify-center p-0.5 shadow-xs">
+                              <span className="text-[6.5px] font-black text-rose-700 dark:text-rose-300 leading-none">대표이사</span>
+                              <span className="text-[9.5px] font-black text-rose-600 dark:text-rose-400 font-serif tracking-tight my-0.5">
+                                권태형
+                              </span>
+                              <span className="text-[6.5px] font-bold text-rose-700 dark:text-rose-300 border-t border-rose-400/80 dark:border-rose-700 px-1 leading-none">
+                                결재 [인]
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs`}>
+                            <span className="text-[7.5px] font-bold">오륙</span>
+                            <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
+                            <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
+                          </div>
+                        )
                       ) : st.status === "HOLD" ? (
                         <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg]">
                           <span>보류</span>
@@ -1130,11 +1145,11 @@ export const ElectronicApprovalView = () => {
                   <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                     <Stamp className="w-4 h-4 text-emerald-600" />
                     <span>
-                      {isAdmin ? "대표이사 결재 승인 및 인장 날인" : "전자결재 처리 (승인/보류/반려)"}
+                      {isAdmin ? "대표이사 권태형 결재 승인 및 서명 날인" : "전자결재 처리 (승인/보류/반려)"}
                     </span>
                   </span>
                   <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300">
-                    현재 사용자: <strong>{isAdmin ? "대표이사(ADMIN)" : `${currentProfile?.name} (${currentProfile?.title || "작업자"})`}</strong>
+                    현재 사용자: <strong>{isAdmin ? "대표이사 권태형" : `${currentProfile?.name} (${currentProfile?.title || "작업자"})`}</strong>
                   </span>
                 </div>
 
@@ -1168,10 +1183,10 @@ export const ElectronicApprovalView = () => {
                           <button
                             type="button"
                             onClick={handleApprove}
-                            className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                            className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                           >
                             <Stamp className="w-3.5 h-3.5" />
-                            <span>{isAdmin ? "👑 대표이사 최종 승인 및 날인" : "✓ 승인 및 도장 날인"}</span>
+                            <span>{isAdmin ? "👑 대표이사 권태형 최종 승인 및 서명 날인" : "✓ 승인 및 도장 날인"}</span>
                           </button>
                         </div>
                       </div>

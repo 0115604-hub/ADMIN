@@ -10,14 +10,14 @@ import { recordUserAccess } from "../services/accessLogService";
 export const ADMIN_USERS = [
   {
     id: "admin_general",
-    name: "ADMIN",
-    title: "관리자",
-    displayName: "ADMIN",
+    name: "권태형",
+    title: "대표이사",
+    displayName: "권태형 대표이사 (ADMIN)",
     role: "ADMIN",
-    roleLabel: "ADMIN",
+    roleLabel: "본사 • 대표이사 권태형",
     plant: "본사",
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
-    avatar: "A",
+    avatar: "권",
     pin: "0090"
   }
 ];
