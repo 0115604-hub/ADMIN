@@ -323,6 +323,42 @@ const HANLIM_OVERTIME = {
   reason: "CHANNEL 밴딩/가공 지원, JK1 조인트 및 후가공 납품 대응, PU KD 재고 확보"
 };
 
+// 🌟 [설비보전 전용: 전재율 책임] 설비 대분류 및 설비명 드롭다운 항목 정의
+export const JAEYUL_EQUIPMENT_CATEGORIES = [
+  "압출기",
+  "사출기",
+  "컴프레셔",
+  "코팅설비",
+  "치공구",
+  "기타"
+];
+
+export const JAEYUL_EQUIPMENT_OPTIONS = [
+  "PCM 1호",
+  "PCM 2호",
+  "PCM 3호",
+  "TPE 1호",
+  "PVC",
+  "300TON",
+  "45TON",
+  "25TON",
+  "압출동 컴프레셔",
+  "AB동 컴프레셔",
+  "C동 컴프레셔",
+  "코팅(8턴)",
+  "코팅(서랍)",
+  "내용직접입력"
+];
+
+export const JAEYUL_CATEGORY_EQUIPMENT_MAP = {
+  "압출기": ["PCM 1호", "PCM 2호", "PCM 3호", "TPE 1호", "PVC", "내용직접입력"],
+  "사출기": ["300TON", "45TON", "25TON", "내용직접입력"],
+  "컴프레셔": ["압출동 컴프레셔", "AB동 컴프레셔", "C동 컴프레셔", "내용직접입력"],
+  "코팅설비": ["코팅(8턴)", "코팅(서랍)", "내용직접입력"],
+  "치공구": ["치공구 점검/정비", "내용직접입력"],
+  "기타": ["내용직접입력"]
+};
+
 export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const { currentProfile, isOperator, isAdmin } = useAuth();
   const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, isCurrentMonth, allMonthlyData } = useMonth();
@@ -333,6 +369,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const officialTitle = currentProfile?.title || "선임";
   const assignedProcess = currentProfile?.assignedProcess || "가공동 관리";
   const isInjoo = currentProfile?.name === "조인주" || currentProfile?.id === "sam_ij";
+  const isJaeyul = currentProfile?.name === "전재율" || currentProfile?.id === "sam_jy" || currentProfile?.assignedProcess === "설비보전" || (assignedProcess?.includes("설비보전"));
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
   const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출") || (assignedProcess?.includes("압출"));
   const isChangyong = currentProfile?.name === "우창용" || currentProfile?.id === "hal_cy";
@@ -657,6 +694,56 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       ...prev,
       images: (prev.images || []).filter((_, i) => i !== idx)
     }));
+  };
+
+  // 🌟 [전재율 책임 전용] 설비보전 항목 동적 추가/수정/삭제 상태
+  const [maintenanceItems, setMaintenanceItems] = useState([
+    {
+      id: 1,
+      category: "압출기",
+      equipmentName: "PCM 1호",
+      customEquipmentName: "",
+      content: ""
+    }
+  ]);
+
+  const handleAddMaintenanceItem = () => {
+    setMaintenanceItems((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        category: "압출기",
+        equipmentName: "PCM 1호",
+        customEquipmentName: "",
+        content: ""
+      }
+    ]);
+  };
+
+  const handleRemoveMaintenanceItem = (id) => {
+    if (maintenanceItems.length <= 1) {
+      alert("최소 1개 이상의 설비보전 항목이 필요합니다.");
+      return;
+    }
+    setMaintenanceItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleUpdateMaintenanceItem = (id, field, value) => {
+    setMaintenanceItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        if (field === "category") {
+          const defaultEquips = JAEYUL_CATEGORY_EQUIPMENT_MAP[value] || JAEYUL_EQUIPMENT_OPTIONS;
+          return {
+            ...item,
+            category: value,
+            equipmentName: defaultEquips[0] || "PCM 1호",
+            customEquipmentName: ""
+          };
+        }
+        return { ...item, [field]: value };
+      })
+    );
   };
 
   useEffect(() => {
@@ -1643,6 +1730,86 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // Save work log (Cloud Firestore + Local)
   const handleSaveLog = async (e) => {
     e.preventDefault();
+
+    // 🌟 [설비보전 전용: 전재율 책임]
+    if (isJaeyul) {
+      const filledItems = maintenanceItems.filter((it) => it.content && it.content.trim());
+      if (filledItems.length === 0) {
+        alert("최소 1개 이상의 설비보전내용을 입력해 주세요.");
+        return;
+      }
+
+      const formattedContent = filledItems
+        .map((it, idx) => {
+          const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+            ? (it.customEquipmentName?.trim() || "직접입력")
+            : it.equipmentName;
+          return `[${idx + 1}] ${it.category} > ${eqName}\n• 설비보전내용: ${it.content.trim()}`;
+        })
+        .join("\n\n");
+
+      const lineSummary = filledItems
+        .map((it) => {
+          const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+            ? (it.customEquipmentName?.trim() || "직접입력")
+            : it.equipmentName;
+          return `${it.category}(${eqName})`;
+        })
+        .join(", ");
+
+      const newLog = {
+        id: String(Date.now()),
+        date: formData.date,
+        plant: formData.plant,
+        writer: currentProfile?.name || workerFullName,
+        title: officialTitle,
+        process: "설비보전",
+        shift: formData.shift,
+        line: lineSummary || "설비보전 점검",
+        workContent: formattedContent,
+        maintenanceItems: filledItems.map((it) => ({
+          category: it.category,
+          equipmentName: (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+            ? (it.customEquipmentName?.trim() || "직접입력")
+            : it.equipmentName,
+          content: it.content.trim()
+        })),
+        issues: "-",
+        images: formData.images || [],
+        status: "완료",
+        createdAt: new Date().toLocaleString("ko-KR", {
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        })
+      };
+
+      await saveWorkLog(newLog);
+
+      setMaintenanceItems([
+        {
+          id: 1,
+          category: "압출기",
+          equipmentName: "PCM 1호",
+          customEquipmentName: "",
+          content: ""
+        }
+      ]);
+
+      setFormData((prev) => ({
+        ...prev,
+        workContent: "",
+        issues: "",
+        images: []
+      }));
+
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 3000);
+      setIsModalOpen(false);
+      return;
+    }
+
     if (!formData.workContent.trim()) {
       alert("작업 내용을 입력해 주세요.");
       return;
@@ -3238,25 +3405,31 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             <div className="space-y-1.5">
               <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-blue-600" />
-                <span>1. 작업 내용 전문</span>
+                <span>
+                  {selectedLogDetail.process === "설비보전" || selectedLogDetail.writer === "전재율"
+                    ? "1. 설비보전 작업 및 점검 내용 전문"
+                    : "1. 작업 내용 전문"}
+                </span>
               </span>
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
                 {selectedLogDetail.workContent || "작업 내용이 없습니다."}
               </div>
             </div>
 
-            {/* 2. 특이사항 및 전달사항 */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <span>2. 특이사항 및 전달사항</span>
-              </span>
-              <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
-                {selectedLogDetail.issues && selectedLogDetail.issues !== "특이사항 없음"
-                  ? selectedLogDetail.issues
-                  : "특이사항 없음 (정상 작업 완료)"}
+            {/* 2. 특이사항 및 전달사항 (설비보전 일지에는 비노출) */}
+            {selectedLogDetail.process !== "설비보전" && selectedLogDetail.writer !== "전재율" && (
+              <div className="space-y-1.5">
+                <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <span>2. 특이사항 및 전달사항</span>
+                </span>
+                <div className="p-3.5 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs leading-relaxed font-medium whitespace-pre-wrap">
+                  {selectedLogDetail.issues && selectedLogDetail.issues !== "특이사항 없음"
+                    ? selectedLogDetail.issues
+                    : "특이사항 없음 (정상 작업 완료)"}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* ⭐ 라인별 엑셀 파일 매칭 & 비가동 공유 섹션 (실제 lineFileMatches 보유 시만 표시) */}
             {(() => {
@@ -4114,6 +4287,339 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   )}
                 </div>
               </div>
+            </div>
+          ) : isJaeyul ? (
+            /* ========================================================================= */
+            /* ⭐ [설비보전 전용: 전재율 책임] 설비보전일지 작성 모달 (동적 항목 추가 지원) */
+            /* ========================================================================= */
+            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border-2 border-blue-500/40 dark:border-blue-600/40 shadow-2xl space-y-4 my-6 animate-scaleUp">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-500/20">
+                    <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>오늘의 설비보전일지 작성</span>
+                    </h3>
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+                      {workerPlant} • {workerFullName} {officialTitle} [설비보전]
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveLog} className="space-y-4 text-xs">
+                {/* 1. 작성일자, 소속공장, 근무형태 (상단 기본 정보) */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">작성일자</label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">소속공장</label>
+                    <select
+                      value={formData.plant}
+                      onChange={(e) => setFormData({ ...formData, plant: e.target.value })}
+                      className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                    >
+                      <option value="삼랑진공장">삼랑진공장</option>
+                      <option value="한림공장">한림공장</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">근무형태</label>
+                    <select
+                      value={formData.shift}
+                      onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
+                      className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                    >
+                      <option value="주간">주간 (08:00~17:00)</option>
+                      <option value="야간">야간 (20:00~05:00)</option>
+                      <option value="특근">주말 특근</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 2. 설비보전 점검 및 작업 내역 (동적 항목 리스트) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <Wrench className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>설비보전 작업 및 점검 내역 ({maintenanceItems.length}개 항목)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddMaintenanceItem}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 font-black text-xs border border-blue-200 dark:border-blue-800 active:scale-95 transition-all shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>+ 항목 추가</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                    {maintenanceItems.map((item, index) => {
+                      const isCustom = item.equipmentName === "내용직접입력" || item.equipmentName === "직접입력" || item.equipmentName === "내용입력 (직접입력)";
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border-2 border-slate-200/80 dark:border-slate-700/80 space-y-2.5 relative group"
+                        >
+                          {/* Item Card Header */}
+                          <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/60 dark:border-slate-700/60">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-600 text-white font-black text-[11px] shadow-2xs">
+                              항목 #{index + 1}
+                            </span>
+
+                            {maintenanceItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMaintenanceItem(item.id)}
+                                className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 text-xs font-black px-2 py-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              >
+                                ✕ 항목 삭제
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Selectors: 대분류 & 설비명 */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {/* 대분류 */}
+                            <div>
+                              <label className="block text-[10.5px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                대분류
+                              </label>
+                              <select
+                                value={item.category}
+                                onChange={(e) => handleUpdateMaintenanceItem(item.id, "category", e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                              >
+                                {JAEYUL_EQUIPMENT_CATEGORIES.map((cat) => (
+                                  <option key={cat} value={cat}>{cat}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* 설비명 */}
+                            <div>
+                              <label className="block text-[10.5px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                                설비명
+                              </label>
+                              <select
+                                value={item.equipmentName}
+                                onChange={(e) => handleUpdateMaintenanceItem(item.id, "equipmentName", e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                              >
+                                <optgroup label="압출기">
+                                  <option value="PCM 1호">PCM 1호</option>
+                                  <option value="PCM 2호">PCM 2호</option>
+                                  <option value="PCM 3호">PCM 3호</option>
+                                  <option value="TPE 1호">TPE 1호</option>
+                                  <option value="PVC">PVC</option>
+                                </optgroup>
+                                <optgroup label="사출기">
+                                  <option value="300TON">300TON</option>
+                                  <option value="45TON">45TON</option>
+                                  <option value="25TON">25TON</option>
+                                </optgroup>
+                                <optgroup label="컴프레셔">
+                                  <option value="압출동 컴프레셔">압출동 컴프레셔</option>
+                                  <option value="AB동 컴프레셔">AB동 컴프레셔</option>
+                                  <option value="C동 컴프레셔">C동 컴프레셔</option>
+                                </optgroup>
+                                <optgroup label="코팅설비">
+                                  <option value="코팅(8턴)">코팅(8턴)</option>
+                                  <option value="코팅(서랍)">코팅(서랍)</option>
+                                </optgroup>
+                                <optgroup label="치공구 및 직접입력">
+                                  <option value="내용직접입력">내용직접입력</option>
+                                  <option value="내용입력 (직접입력)">내용입력 (직접입력)</option>
+                                </optgroup>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Custom equipment name input if 직접입력 is selected */}
+                          {isCustom && (
+                            <div className="animate-fadeIn">
+                              <input
+                                type="text"
+                                placeholder="설비명을 직접 입력해 주세요 (예: 500TON 사출기, 냉각수 펌프 등)"
+                                value={item.customEquipmentName}
+                                onChange={(e) => handleUpdateMaintenanceItem(item.id, "customEquipmentName", e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-xl border border-blue-400 dark:border-blue-500 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 shadow-2xs"
+                              />
+                            </div>
+                          )}
+
+                          {/* 설비보전내용 입력란 */}
+                          <div>
+                            <label className="block text-[10.5px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                              설비보전내용 <span className="text-rose-500">*</span>
+                            </label>
+                            <textarea
+                              rows="2"
+                              placeholder="설비 점검, 정비, 부품 교체, 트러블 슈팅, 오일 보충 내역 등을 상세히 기록해 주세요."
+                              value={item.content}
+                              onChange={(e) => handleUpdateMaintenanceItem(item.id, "content", e.target.value)}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                            ></textarea>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom + 항목 추가 button */}
+                  <button
+                    type="button"
+                    onClick={handleAddMaintenanceItem}
+                    className="w-full py-2.5 rounded-2xl border-2 border-dashed border-blue-400/80 dark:border-blue-600/80 bg-blue-50/50 hover:bg-blue-50 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-black text-xs transition-all flex items-center justify-center gap-1.5 active:scale-98 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>설비보전 항목 추가하기</span>
+                  </button>
+                </div>
+
+                {/* 📷 현장 작업 사진 첨부 (촬영 우선) */}
+                <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Camera className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>설비보전 현장 / 부품 사진 첨부 (촬영 우선, 최대 5장)</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {formData.images?.length || 0}/5장
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input
+                        type="file"
+                        id="worklog-camera-jaeyul"
+                        accept="image/*"
+                        capture="environment"
+                        disabled={isProcessingImages || (formData.images?.length || 0) >= 5}
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            handleWorkLogImageFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="worklog-camera-jaeyul"
+                        className={`w-full py-2.5 px-2 rounded-xl border-2 flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-xs active:scale-95 text-center ${
+                          (formData.images?.length || 0) >= 5
+                            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                            : "border-blue-500 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-200 ring-1 ring-blue-500/30 font-black"
+                        }`}
+                      >
+                        <Camera className="w-4 h-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                        <span className="text-xs font-black truncate">
+                          {isProcessingImages ? "압축 중..." : (formData.images?.length || 0) >= 5 ? "5장 완료" : "📸 현장 사진 즉시 촬영"}
+                        </span>
+                      </label>
+                    </div>
+
+                    <div>
+                      <input
+                        type="file"
+                        id="worklog-gallery-jaeyul"
+                        accept="image/*"
+                        multiple
+                        disabled={isProcessingImages || (formData.images?.length || 0) >= 5}
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            handleWorkLogImageFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="worklog-gallery-jaeyul"
+                        className={`w-full py-2.5 px-2 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95 text-center ${
+                          (formData.images?.length || 0) >= 5
+                            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                            : "border-slate-300 dark:border-slate-700 hover:border-slate-400 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold"
+                        }`}
+                      >
+                        <UploadCloud className="w-4 h-4 shrink-0 text-slate-400" />
+                        <span className="text-xs font-bold truncate">📁 앨범 / 파일 선택</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {formData.images && formData.images.length > 0 && (
+                    <div className="grid grid-cols-5 gap-2 pt-1">
+                      {formData.images.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 aspect-square shadow-2xs"
+                        >
+                          <img
+                            src={img.dataUrl}
+                            alt={img.name || `사진 ${idx + 1}`}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진 ${idx + 1}` })}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveWorkLogImage(idx)}
+                            className="absolute top-1 right-1 w-4.5 h-4.5 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-black transition-colors cursor-pointer"
+                            title="삭제"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                  {logSavedToast && (
+                    <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>일지가 저장되었습니다!</span>
+                    </span>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>오늘의 설비보전일지 등록</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
           ) : isExtrusionWorker ? (
             /* ========================================================================= */
