@@ -426,7 +426,7 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
 };
 
 // Save or Create an Approval Document (All Workers can draft)
-export const saveApprovalDocument = async (docData) => {
+export const saveApprovalDocument = async (docData, options = {}) => {
   const current = getLocalApprovalDocs();
   const id = docData.id || `appr_${Date.now()}`;
   const now = new Date();
@@ -468,8 +468,8 @@ export const saveApprovalDocument = async (docData) => {
     console.warn("Firestore save approval document fallback to local:", e);
   }
 
-  // Telegram alert on new draft submission
-  if (existingIdx < 0) {
+  // Telegram alert on new draft submission (ONLY for direct manual draft submission, NEVER on background sync or deletion)
+  if (existingIdx < 0 && !options.suppressTelegram && !docData._suppressTelegram) {
     sendApprovalDraftTelegram(fullItem).catch((err) => {
       console.warn("Telegram draft alert error:", err);
     });
@@ -648,7 +648,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
   company = null,
   workDate = null,
   matrix = null,
-  reports = null
+  reports = null,
+  isDeleteAction = false
 } = {}) => {
   try {
     // 1. Determine target plants to aggregate
@@ -737,13 +738,20 @@ export const syncPlantOvertimeToApprovalBox = async ({
         (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
       );
 
-      const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
-
       // ⭐ If no explicit overtime reports exist for this plant on this date (e.g. user deleted them):
       if (plantReports.length === 0) {
-        if (existingDoc) {
-          // If all reports were deleted, remove the approval document
-          await deleteApprovalDocument(canonicalDocId);
+        const allMatchingDocs = getLocalApprovalDocs().filter(d => 
+          d.type === "OVERTIME" &&
+          d.plant === targetPlant &&
+          (
+            d.id === canonicalDocId ||
+            (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
+            (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+            (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+          )
+        );
+        for (const d of allMatchingDocs) {
+          await deleteApprovalDocument(d.id);
         }
         continue;
       }
@@ -813,13 +821,23 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
       // If no workers or no valid companies for this plant on this date:
       if (totalPlantWorkers === 0 || companySummaries.length === 0) {
-        if (existingDoc) {
-          // If all reports were deleted, remove the approval document
-          await deleteApprovalDocument(canonicalDocId);
+        const allMatchingDocs = getLocalApprovalDocs().filter(d => 
+          d.type === "OVERTIME" &&
+          d.plant === targetPlant &&
+          (
+            d.id === canonicalDocId ||
+            (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
+            (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+            (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+          )
+        );
+        for (const d of allMatchingDocs) {
+          await deleteApprovalDocument(d.id);
         }
         continue;
       }
 
+      const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
       const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "송원호";
       const drafterTitle = targetPlant === "삼랑진공장" ? "선임" : "담당";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
@@ -888,7 +906,8 @@ ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
         holdReason: existingDoc?.holdReason || ""
       });
 
-      const saved = await saveApprovalDocument(approvalDoc);
+      // Always suppress telegram during background overtime aggregation sync
+      const saved = await saveApprovalDocument(approvalDoc, { suppressTelegram: true });
       syncedDocs.push(saved);
     }
 

@@ -529,7 +529,8 @@ export const OvertimeStatusView = () => {
           company: targetRep.company,
           workDate: targetRep.workDate,
           matrix: synchedMatrix,
-          reports: nextReports
+          reports: nextReports,
+          isDeleteAction: true
         });
       }
 
