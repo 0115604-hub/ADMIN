@@ -15,7 +15,7 @@ import {
 } from "./telegramService";
 
 const COLLECTION_NAME = "approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v4_manager_worker_split";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v5_pure_pending";
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -35,6 +35,7 @@ export const APPROVAL_MANAGERS = {
 };
 
 // Clean and Normalize Document: ensure role '이사' is always '이명재' and content has manager/worker split
+// ⭐ 결재 자동 승인 방지: 4단계 모두 실제로 승인되지 않은 문서는 절대 APPROVED 상태가 되지 않도록 방어
 export const normalizeApprovalDoc = (d) => {
   if (!d) return d;
   const fixedSteps = (d.steps || []).map((st) => {
@@ -48,12 +49,19 @@ export const normalizeApprovalDoc = (d) => {
     return st;
   });
 
+  // Check if every single step (from Step 1 to Step 4) is actually APPROVED
+  const isTrulyAllApproved = fixedSteps.length === 4 && fixedSteps.every((st) => st.status === "APPROVED");
+  let normalizedStatus = d.status || "IN_PROGRESS";
+  if (normalizedStatus === "APPROVED" && !isTrulyAllApproved) {
+    normalizedStatus = "IN_PROGRESS";
+  }
+
   let fixedContent = d.content || "";
   if (d.id === "appr_ot_samrangjin_20260905" || ((d.title || "").includes("9월 5일") && (d.title || "").includes("삼랑진공장"))) {
     fixedContent = `■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (38명)\n  - 관리자: 이명재, 설유철, 윤경수\n  - 작업자: 손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 양인순, 박순복, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동`;
   }
 
-  return { ...d, steps: fixedSteps, content: fixedContent };
+  return { ...d, steps: fixedSteps, status: normalizedStatus, content: fixedContent };
 };
 
 // Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 대표이사)
@@ -184,13 +192,13 @@ export const INITIAL_APPROVAL_DOCS = [
     createdAt: "2026-09-02 14:20",
     content: "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 일시: 2026년 9월 5일 (금) 1일간\n- 업무 대행자: 방상국 선임",
     amount: "-",
-    status: "APPROVED",
-    currentStep: 4,
+    status: "IN_PROGRESS",
+    currentStep: 2,
     steps: [
       { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-02 14:20", comment: "신청 완료" },
-      { role: "책임", name: "윤경수", title: "책임", status: "APPROVED", date: "2026-09-02 15:10", comment: "업무 대행 확인 승인" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-02 16:00", comment: "승인 완료" },
-      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-02 17:30", comment: "최종 승인" }
+      { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
     ],
     rejectReason: "",
     holdReason: ""

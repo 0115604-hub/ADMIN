@@ -778,9 +778,11 @@ export const ElectronicApprovalView = () => {
                           {doc.steps.map((st, idx) => (
                             <div
                               key={idx}
-                              title={`[${st.role}] ${st.name} : ${st.status}`}
+                              title={`[${st.role}] ${st.name} : ${idx === 0 ? "기안완료" : st.status === "APPROVED" ? "승인완료" : st.status === "HOLD" ? "보류중" : st.status === "REJECTED" ? "반려" : st.status === "PENDING" ? "결재대기" : "대기"}`}
                               className={`w-6 h-6 rounded-md flex items-center justify-center text-[9.5px] font-black border transition-all ${
-                                st.status === "APPROVED"
+                                idx === 0
+                                  ? "bg-blue-600 text-white border-blue-700"
+                                  : st.status === "APPROVED"
                                   ? "bg-emerald-500 text-white border-emerald-600"
                                   : st.status === "HOLD"
                                   ? "bg-amber-400 text-slate-950 border-amber-500 animate-pulse font-bold"
@@ -791,7 +793,9 @@ export const ElectronicApprovalView = () => {
                                   : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
                               }`}
                             >
-                              {st.status === "APPROVED"
+                              {idx === 0
+                                ? "기"
+                                : st.status === "APPROVED"
                                 ? "인"
                                 : st.status === "HOLD"
                                 ? "류"
@@ -862,8 +866,17 @@ export const ElectronicApprovalView = () => {
       {/* 4. Official Document Detail & Approval Popup Dialog */}
       {/* ========================================================================= */}
       {selectedDoc && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6">
+        <div
+          onClick={() => {
+            setSelectedDoc(null);
+            setActionType("APPROVE");
+          }}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6 cursor-default"
+          >
             {/* Header Dialog Controls */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
@@ -930,10 +943,10 @@ export const ElectronicApprovalView = () => {
                   {selectedDoc.steps.map((st, idx) => (
                     <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative">
                       {st.status === "APPROVED" ? (
-                        <div className="w-11 h-11 rounded-full border-2 border-rose-600 text-rose-600 flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs">
+                        <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs`}>
                           <span className="text-[7.5px] font-bold">오륙</span>
                           <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
-                          <span className="text-[7.5px]">승인</span>
+                          <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
                         </div>
                       ) : st.status === "HOLD" ? (
                         <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg]">
@@ -1265,8 +1278,14 @@ export const ElectronicApprovalView = () => {
       {/* 5. New Draft Registration Modal (담당: 전작업자, 책임: 책임직급, 이사: 이명재, 대표: 대표이사) */}
       {/* ========================================================================= */}
       {isDraftModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6">
+        <div
+          onClick={() => setIsDraftModalOpen(false)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6 cursor-default"
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-xs">
