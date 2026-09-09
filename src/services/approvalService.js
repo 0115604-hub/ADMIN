@@ -118,6 +118,30 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
 // Initial sample approval documents (All with 이명재 이사)
 export const INITIAL_APPROVAL_DOCS = [
   {
+    id: "appr_ot_samrangjin_20260905",
+    docNumber: "ORYUK-2026-0905-SAM",
+    type: "OVERTIME",
+    typeName: "특근보고서 (취합)",
+    title: "[삼랑진공장] 9월 5일(토) 특근보고서 취합 ((주)오륙, 유성)",
+    plant: "삼랑진공장",
+    department: "생산총괄 ((주)오륙 + 유성)",
+    drafter: "양인나",
+    drafterTitle: "선임",
+    createdAt: "2026-09-05 18:00",
+    content: "■ [삼랑진공장] 2026년 9월 5일(토) 특근보고서 취합 내역\n\n1. 특근 개요\n- 일자: 2026년 9월 5일 (토요일)\n- 대상 사업장: 삼랑진공장 ((주)오륙, 유성)\n- 총 투입 인원: 40명\n- 총 투입 공수: 382 M/H\n- 총 소요 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n- (주)오륙: 38명 / 362 M/H / ₩5,430,000 (관리자 3명, NX4 11명, NX4a 5명, PU찬넬 3명, 압출 3명, 8톤코팅 1명, DT HOOD 7명, JK1 3명, CE1 2명)\n- 유성: 2명 / 20 M/H / ₩300,000 (수직 건조로 제품 건조 및 압출 대응)\n- 합계: 40명 / 382 M/H / ₩5,730,000\n\n3. 특근 사유 및 주요 작업\n- 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 가동\n- 삼랑진공장 소속 (주)오륙 및 유성 생산/가공/압출 라인 정상 가동 완료",
+    amount: "₩5,730,000",
+    status: "IN_PROGRESS",
+    currentStep: 2,
+    steps: [
+      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-05 18:00", comment: "특근 취합 기안 상신" },
+      { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
     id: "appr_20260903_001",
     docNumber: "ORYUK-2026-0901",
     type: "OVERTIME",
@@ -571,3 +595,238 @@ export const deleteApprovalDocument = async (id) => {
 
   return updated;
 };
+
+// ⭐ 공장별 소속 협력사 특근보고서 결재함 자동 취합 및 등록 연동 (Plant-Level Weekend Overtime Approval Synthesis)
+// 삼랑진공장: (주)오륙, 유성 취합 ➔ 결재함 자동 등록
+// 한림공장: (주)조영산업, 한울, 부림텍 취합 ➔ 결재함 자동 등록
+const PLANT_COMPANIES_MAP = {
+  "삼랑진공장": ["(주)오륙", "유성"],
+  "한림공장": ["(주)조영산업", "한울", "부림텍"]
+};
+
+export const syncPlantOvertimeToApprovalBox = async ({
+  plant = null,
+  company = null,
+  workDate = null,
+  matrix = null,
+  reports = null
+} = {}) => {
+  try {
+    // 1. Determine target plants to aggregate
+    let targetPlants = [];
+    if (plant === "삼랑진공장" || company === "(주)오륙" || company === "유성") {
+      targetPlants = ["삼랑진공장"];
+    } else if (plant === "한림공장" || company === "(주)조영산업" || company === "한울" || company === "부림텍") {
+      targetPlants = ["한림공장"];
+    } else {
+      targetPlants = ["삼랑진공장", "한림공장"];
+    }
+
+    // 2. Parse day and workDate
+    let dayNum = 5;
+    let workDateStr = "2026-09-05";
+    if (typeof workDate === "number") {
+      dayNum = workDate;
+      workDateStr = `2026-09-${String(dayNum).padStart(2, "0")}`;
+    } else if (typeof workDate === "string" && workDate) {
+      const match = workDate.match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+      if (match) {
+        dayNum = parseInt(match[3], 10);
+        workDateStr = `2026-09-${String(dayNum).padStart(2, "0")}`;
+      }
+    }
+
+    const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
+    const dt = new Date(2026, 8, dayNum);
+    const dayLabel = dayOfWeekNames[dt.getDay()] || "토";
+
+    let allReports = Array.isArray(reports) && reports.length > 0 ? reports : [];
+    if (allReports.length === 0 && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
+        if (raw) allReports = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    let allMatrix = Array.isArray(matrix) && matrix.length > 0 ? matrix : [];
+    if (allMatrix.length === 0 && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("oryuk_smart_overtime_data_store_v10_company_separated");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          allMatrix = parsed.attendanceMatrix || [];
+        }
+      } catch (e) {}
+    }
+
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    const currentApprovalDocs = getLocalApprovalDocs();
+    const syncedDocs = [];
+
+    for (const targetPlant of targetPlants) {
+      const targetCompanies = PLANT_COMPANIES_MAP[targetPlant] || [];
+      const plantReports = allReports.filter(r => 
+        (r.plant === targetPlant || targetCompanies.includes(r.company)) && 
+        (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
+      );
+
+      // Aggregate data per company
+      const companySummaries = [];
+      let totalPlantWorkers = 0;
+      let totalPlantHours = 0;
+      let totalPlantCost = 0;
+
+      targetCompanies.forEach(comp => {
+        // 1. Check if report exists
+        const compRep = plantReports.find(r => r.company === comp || (Array.isArray(r.companies) && r.companies.includes(comp)));
+        
+        // 2. Check matrix
+        const compWorkers = allMatrix.filter(w => w.company === comp);
+        const attendedMatrixWorkers = compWorkers.filter(w => {
+          const val = w.daily ? w.daily[dayNum] : "";
+          if (!val || val === "-" || val === "휴" || val === "공" || val === "연" || val === "반" || val === "조" || val === "지" || val === "무") return false;
+          return true;
+        });
+
+        let workerCount = 0;
+        let workerHours = 0;
+        let workerCost = 0;
+        let workDesc = "";
+
+        if (compRep) {
+          workerCount = compRep.totalWorkers || (compRep.items ? compRep.items.length : 0);
+          workerHours = compRep.totalHours || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
+          workerCost = compRep.cost || (workerHours * 15000);
+          if (compRep.items && compRep.items.length > 0) {
+            const lines = compRep.items.map(it => `${it.category || it.line || "가공"}(${it.count || 1}명)`).slice(0, 5).join(", ");
+            workDesc = lines;
+          } else {
+            workDesc = `${comp} 주말 가동 및 납품 대응`;
+          }
+        } else if (attendedMatrixWorkers.length > 0) {
+          workerCount = attendedMatrixWorkers.length;
+          workerHours = attendedMatrixWorkers.reduce((sum, w) => {
+            const val = w.daily ? w.daily[dayNum] : "";
+            const num = Number(val);
+            if (!isNaN(num) && num > 0) return sum + num;
+            return sum + (val === "🟢" ? 8 : 8);
+          }, 0);
+          workerCost = workerHours * 15000;
+          const depts = Array.from(new Set(attendedMatrixWorkers.map(w => w.dept || "가공동"))).join(", ");
+          workDesc = `${depts} 가동 및 생산 대응`;
+        }
+
+        if (workerCount > 0 || compRep) {
+          companySummaries.push({
+            company: comp,
+            workerCount,
+            workerHours,
+            workerCost,
+            workDesc: workDesc || `${comp} 생산 라인 가동`
+          });
+          totalPlantWorkers += workerCount;
+          totalPlantHours += workerHours;
+          totalPlantCost += workerCost;
+        }
+      });
+
+      // Skip creating empty doc if no workers/reports and doesn't exist
+      const docId = `appr_ot_${targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim"}_${workDateStr.replace(/-/g, "")}`;
+      const existingDoc = currentApprovalDocs.find(d => d.id === docId);
+
+      if (totalPlantWorkers === 0 && !existingDoc) {
+        continue;
+      }
+
+      // If 0 but existingDoc exists, keep existing stats if non-zero
+      if (totalPlantWorkers === 0 && existingDoc) {
+        continue;
+      }
+
+      const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "송원호";
+      const drafterTitle = targetPlant === "삼랑진공장" ? "선임" : "담당";
+      const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
+
+      const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 (${targetCompanies.join(", ")})`;
+      const department = targetPlant === "삼랑진공장"
+        ? "생산총괄 ((주)오륙 + 유성)"
+        : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
+
+      const breakdownText = companySummaries.map(cs => 
+        `- ${cs.company}: ${cs.workerCount}명 / ${cs.workerHours} M/H / ₩${cs.workerCost.toLocaleString()} (${cs.workDesc})`
+      ).join("\n");
+
+      const content = `■ [${targetPlant}] 2026년 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 결재의 건
+
+1. 특근 개요
+- 일자: 2026년 9월 ${dayNum}일 (${dayLabel}요일)
+- 대상 사업장: ${targetPlant} (${targetCompanies.join(", ")})
+- 총 투입 인원: ${totalPlantWorkers}명
+- 총 투입 공수: ${totalPlantHours} M/H
+- 총 소요 노무비: ₩${totalPlantCost.toLocaleString()}
+
+2. 회사별 세부 투입 현황
+${breakdownText || "- 등록된 회사별 세부 내역 취합 완료"}
+- 합계: ${totalPlantWorkers}명 / ${totalPlantHours} M/H / ₩${totalPlantCost.toLocaleString()}
+
+3. 특근 사유 및 주요 작업
+- 현대/기아 자동차 긴급 납품 물량 대응 및 토요/일요 특근 가동
+- ${targetPlant} 소속 협력사 (${targetCompanies.join(", ")}) 생산 라인 가동 및 검사/출하 완료`;
+
+      // Build or preserve steps
+      let steps;
+      if (existingDoc && existingDoc.steps && existingDoc.steps.length === 4) {
+        steps = existingDoc.steps.map(st => {
+          if (st.role === "이사") {
+            return { ...st, name: "이명재", title: "이사" };
+          }
+          return st;
+        });
+      } else {
+        steps = [
+          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: nowStr, comment: "특근 취합 기안 상신" },
+          { role: "책임", name: leadName, title: "책임", status: "PENDING", date: "", comment: "" },
+          { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+          { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+        ];
+      }
+
+      const approvalDoc = normalizeApprovalDoc({
+        id: docId,
+        docNumber: `ORYUK-2026-09${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
+        type: "OVERTIME",
+        typeName: "특근보고서 (취합)",
+        title,
+        plant: targetPlant,
+        department,
+        drafter: drafterName,
+        drafterTitle,
+        createdAt: existingDoc?.createdAt || nowStr,
+        content,
+        amount: `₩${totalPlantCost.toLocaleString()}`,
+        status: existingDoc?.status || "IN_PROGRESS",
+        currentStep: existingDoc?.currentStep || 2,
+        steps,
+        rejectReason: existingDoc?.rejectReason || "",
+        holdReason: existingDoc?.holdReason || ""
+      });
+
+      const saved = await saveApprovalDocument(approvalDoc);
+      syncedDocs.push(saved);
+    }
+
+    return syncedDocs;
+  } catch (err) {
+    console.error("syncPlantOvertimeToApprovalBox error:", err);
+    return [];
+  }
+};
+

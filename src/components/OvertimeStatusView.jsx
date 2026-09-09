@@ -76,6 +76,7 @@ import {
   PLANT_COMPANIES,
   getPlantForCompany
 } from "../services/overtimeService";
+import { syncPlantOvertimeToApprovalBox } from "../services/approvalService";
 import { getKSTDateString } from "../utils/dateUtils";
 
 // ⭐ Precise Date & Weekend Helpers (2026년 9월 캘린더 기준)
@@ -446,13 +447,32 @@ export const OvertimeStatusView = () => {
         reasons: reportModalNotes.split("\n").filter(Boolean)
       };
 
+      const updatedReports = [companyReport, ...legacyReports.filter((r) => r.id !== companyReport.id)];
       await saveOvertimeReport(companyReport);
-      setLegacyReports((prev) => [companyReport, ...prev.filter((r) => r.id !== companyReport.id)]);
+      setLegacyReports(updatedReports);
       
+      // ⭐ 공장별 소속 협력사 특근보고서 결재함 자동 취합 및 연동
+      // 삼랑진공장: (주)오륙 + 유성 취합 ➔ 결재함 자동 등록
+      // 한림공장: (주)조영산업 + 한울 + 부림텍 취합 ➔ 결재함 자동 등록
+      if (isWk) {
+        await syncPlantOvertimeToApprovalBox({
+          plant: selectedCompanyFilter === "전체" ? null : compMeta.plant,
+          company: selectedCompanyFilter,
+          workDate: `2026-09-${String(d).padStart(2, "0")}`,
+          matrix: smartData.attendanceMatrix,
+          reports: updatedReports
+        });
+      }
       
       setHasUnsavedChanges(false);
       setIsReportModalOpen(false);
-      triggerToast(`🎉 [${selectedCompanyFilter}] 관리자 결재선 적용 ${reportType}가 등록되었습니다!`);
+      
+      if (isWk) {
+        const plantLabel = compMeta.plant || (selectedCompanyFilter === "전체" ? "전 공장" : "공장");
+        triggerToast(`🎉 [${selectedCompanyFilter}] ${reportType} 등록 및 [${plantLabel}] 협력사 취합 결재함 연동이 완료되었습니다!`);
+      } else {
+        triggerToast(`🎉 [${selectedCompanyFilter}] 관리자 결재선 적용 ${reportType}가 등록되었습니다!`);
+      }
     } catch (err) {
       console.error(err);
       alert("등록 중 오류가 발생했습니다: " + err.message);
