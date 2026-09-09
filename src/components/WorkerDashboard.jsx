@@ -1889,9 +1889,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {/* 📌 사내 공통일정 (1줄 간결 바 • 결재 패널 상단 • ADMIN 전용 노출 • 클릭 시 실시간 의견/코멘트 팝업) */}
       {/* ========================================================================= */}
-      {/* ========================================================================= */}
-      {/* 📌 사내 공통일정 (1줄 간결 바 • 결재 패널 상단 • ADMIN 전용 노출 • 클릭 시 실시간 의견/코멘트 팝업) */}
-      {/* ========================================================================= */}
       {isAdmin && (
         <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-indigo-500/40 dark:border-indigo-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 min-w-0 max-w-full">
           {/* Mobile Top Header / Desktop Left Section */}
