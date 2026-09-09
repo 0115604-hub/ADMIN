@@ -1209,7 +1209,7 @@ export const OvertimeStatusView = () => {
                                     )}
                                   </td>
 
-                                  {/* 근태 선택 버튼 6개 (정시, 19시, 21시, 22시, 연차, 결근) */}
+                                  {/* 근태 선택 버튼 7개 (정시, 19시, 21시, 22시, 야간, 연차, 결근) */}
                                   <td className="py-1 px-1 text-center whitespace-nowrap">
                                     <div className="flex items-center justify-center gap-1">
                                       {/* 정시 */}
@@ -1266,6 +1266,20 @@ export const OvertimeStatusView = () => {
                                         }`}
                                       >
                                         22시
+                                      </button>
+
+                                      {/* 야간 */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "야간")}
+                                        title="야간 근무 (8시간)"
+                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                          currentVal === "야간"
+                                            ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400"
+                                            : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                                        }`}
+                                      >
+                                        야간
                                       </button>
 
                                       {/* 연차 */}
@@ -1939,7 +1953,7 @@ export const OvertimeStatusView = () => {
                   const cost = report.cost || (totalManHours * 15000);
 
                   // Extract worker attendance status counts if available
-                  const otCounts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "연차": 0, "결근": 0, "특근": 0 };
+                  const otCounts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "야간": 0, "연차": 0, "결근": 0, "특근": 0 };
                   if (report.items && Array.isArray(report.items)) {
                     report.items.forEach((it) => {
                       const code = String(it.attendanceCode || it.category || "").trim();
@@ -1947,6 +1961,7 @@ export const OvertimeStatusView = () => {
                       else if (code === "19" || code === "19시") otCounts["19시"]++;
                       else if (code === "21" || code === "21시") otCounts["21시"]++;
                       else if (code === "22" || code === "22시") otCounts["22시"]++;
+                      else if (code === "야간") otCounts["야간"]++;
                       else if (code === "연차") otCounts["연차"]++;
                       else if (code === "결근") otCounts["결근"]++;
                       else if (code === "특근" || code === "주말특근") otCounts["특근"]++;
@@ -2009,6 +2024,7 @@ export const OvertimeStatusView = () => {
                           {otCounts["19시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">🟡 {otCounts["19시"]}</span>}
                           {otCounts["21시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/60">🟠 {otCounts["21시"]}</span>}
                           {otCounts["22시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">🔴 {otCounts["22시"]}</span>}
+                          {otCounts["야간"] > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">🌌 {otCounts["야간"]}</span>}
                           {otCounts["특근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">🌙 {otCounts["특근"]}</span>}
                           {otCounts["연차"] > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60">🌴 {otCounts["연차"]}</span>}
                           {otCounts["결근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60">❌ {otCounts["결근"]}</span>}
@@ -2253,13 +2269,14 @@ export const OvertimeStatusView = () => {
                       {/* 근태별 인원 요약 뱃지 */}
                       <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono font-bold">
                         {(() => {
-                          const counts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "연차": 0, "결근": 0, "특근": 0 };
+                          const counts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "야간": 0, "연차": 0, "결근": 0, "특근": 0 };
                           enteredWorkers.forEach((w) => {
                             const val = w.daily ? w.daily[selectedDay] : "";
                             if (val === "🟢" || val === "정시" || val === "17") counts["정시"]++;
                             else if (val === "19" || val === "19시") counts["19시"]++;
                             else if (val === "21" || val === "21시") counts["21시"]++;
                             else if (val === "22" || val === "22시") counts["22시"]++;
+                            else if (val === "야간") counts["야간"]++;
                             else if (val === "연차") counts["연차"]++;
                             else if (val === "결근") counts["결근"]++;
                             else if (val === "특근" || val === "주말특근") counts["특근"]++;
@@ -2270,6 +2287,7 @@ export const OvertimeStatusView = () => {
                               {counts["19시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-800">🟡 19시 {counts["19시"]}명</span>}
                               {counts["21시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-orange-950 text-orange-300 border border-orange-800">🟠 21시 {counts["21시"]}명</span>}
                               {counts["22시"] > 0 && <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-800">🔴 22시 {counts["22시"]}명</span>}
+                              {counts["야간"] > 0 && <span className="px-2 py-0.5 rounded-md bg-indigo-950 text-indigo-300 border border-indigo-800">🌌 야간 {counts["야간"]}명</span>}
                               {counts["특근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800">🌙 특근 {counts["특근"]}명</span>}
                               {counts["연차"] > 0 && <span className="px-2 py-0.5 rounded-md bg-sky-950 text-sky-300 border border-sky-800">🌴 연차 {counts["연차"]}명</span>}
                               {counts["결근"] > 0 && <span className="px-2 py-0.5 rounded-md bg-red-950 text-red-300 border border-red-800">❌ 결근 {counts["결근"]}명</span>}
@@ -2295,6 +2313,7 @@ export const OvertimeStatusView = () => {
                               if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
                               if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
                               if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
+                              if (str === "야간") return { label: "🌌 야간", bg: "bg-indigo-950 text-indigo-300 border-indigo-700/80" };
                               if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
                               if (str === "결근") return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
                               if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
@@ -2857,6 +2876,7 @@ export const OvertimeStatusView = () => {
                               if (str === "19" || str === "19시") return { label: "🟡 19시(+2H)", bg: "bg-amber-950 text-amber-300 border-amber-700/80" };
                               if (str === "21" || str === "21시") return { label: "🟠 21시(+4H)", bg: "bg-orange-950 text-orange-300 border-orange-700/80" };
                               if (str === "22" || str === "22시") return { label: "🔴 22시(+5H)", bg: "bg-rose-950 text-rose-300 border-rose-700/80" };
+                              if (str === "야간") return { label: "🌌 야간", bg: "bg-indigo-950 text-indigo-300 border-indigo-700/80" };
                               if (str === "연차") return { label: "🌴 연차", bg: "bg-sky-950 text-sky-300 border-sky-700/80" };
                               if (str === "결근") return { label: "❌ 결근", bg: "bg-red-950 text-red-300 border-red-700/80" };
                               if (str === "특근" || str === "주말특근") return { label: "🌙 특근(8H)", bg: "bg-purple-950 text-purple-300 border-purple-700/80" };
