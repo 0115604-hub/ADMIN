@@ -75,10 +75,10 @@ export const DailyQualityView = () => {
     return `${y}-${m}-${d}`;
   });
   const [directItemsInput, setDirectItemsInput] = useState({
-    ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
-    hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
-    nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
-    nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 }
+    ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 },
+    hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 },
+    nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 },
+    nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 }
   });
   const [isSavingDirectInput, setIsSavingDirectInput] = useState(false);
 
@@ -86,10 +86,10 @@ export const DailyQualityView = () => {
   const loadDateRecordsIntoDirectForm = (targetDate) => {
     const matching = allRecords.filter((r) => r.date === targetDate);
     const newInputs = {
-      ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
-      hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
-      nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
-      nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 }
+      ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 },
+      hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 },
+      nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 },
+      nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 }
     };
 
     matching.forEach((r) => {
@@ -98,7 +98,8 @@ export const DailyQualityView = () => {
         const scrapA = r.scrapA || 0;
         const scrapB = r.scrapB || 0;
         const scrapC = r.scrapC || 0;
-        const scrapTotal = r.scrapTotal !== undefined ? r.scrapTotal : (scrapA + scrapB + scrapC);
+        const scrapD = r.scrapD || 0;
+        const scrapTotal = r.scrapTotal !== undefined ? r.scrapTotal : (scrapA + scrapB + scrapC + scrapD);
 
         newInputs[key] = {
           inspectQty: r.inspectQty || 0,
@@ -108,6 +109,7 @@ export const DailyQualityView = () => {
           scrapA,
           scrapB,
           scrapC,
+          scrapD,
           scrapTotal
         };
       }
@@ -139,7 +141,7 @@ export const DailyQualityView = () => {
       const author = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "선임"}` : "이창엽 선임";
 
       const recordsToSave = QUALITY_CORE_ITEMS.map((core) => {
-        const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 };
+        const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 };
         const inspectQty = Math.max(0, Math.round(Number(it.inspectQty) || 0));
         const defectQty = Math.max(0, Math.round(Number(it.defectQty) || 0));
         const defectRate = inspectQty > 0 ? Number(((defectQty / inspectQty) * 100).toFixed(2)) : 0;
@@ -148,7 +150,8 @@ export const DailyQualityView = () => {
         const scrapA = Math.max(0, Math.round(Number(it.scrapA) || 0));
         const scrapB = Math.max(0, Math.round(Number(it.scrapB) || 0));
         const scrapC = Math.max(0, Math.round(Number(it.scrapC) || 0));
-        const scrapTotal = scrapA + scrapB + scrapC;
+        const scrapD = Math.max(0, Math.round(Number(it.scrapD) || 0));
+        const scrapTotal = scrapA + scrapB + scrapC + scrapD;
 
         return {
           id: generateQualityRecordId(directInputDate, core.id),
@@ -166,6 +169,7 @@ export const DailyQualityView = () => {
           scrapA,
           scrapB,
           scrapC,
+          scrapD,
           scrapTotal,
           uploader: author,
           updatedAt: new Date().toISOString()
@@ -488,11 +492,11 @@ export const DailyQualityView = () => {
         [`[${targetItem.name}] ${selectedMonth} 일자별 품질 검사 & 불량 정리본`],
         ["차종", targetItem.carModel, "조회기준월", selectedMonth, "품질목표", "0.70% 이하", "출력일시", new Date().toLocaleString("ko-KR")],
         [],
-        ["검사일자", "요일", "검사수량(EA)", "불량수량(EA)", "아이템 불량률(%)", "소재A 폐기", "소재B 폐기", "소재C 폐기", "총 폐기(EA)", "품질 손실금액(원)", "주요 불량 사유(WORST)"]
+        ["검사일자", "요일", "검사수량(EA)", "불량수량(EA)", "아이템 불량률(%)", "소재A 폐기", "소재B 폐기", "소재C 폐기", "소재D 폐기", "총 폐기(EA)", "품질 손실금액(원)", "주요 불량 사유(WORST)"]
       ];
 
       dailyList.forEach((d) => {
-        const it = d.items?.[targetItem.id] || { inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "-", scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 };
+        const it = d.items?.[targetItem.id] || { inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "-", scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 };
         rows.push([
           d.date,
           `${d.dayOfWeek}요일`,
@@ -502,6 +506,7 @@ export const DailyQualityView = () => {
           it.scrapA || 0,
           it.scrapB || 0,
           it.scrapC || 0,
+          it.scrapD || 0,
           it.scrapTotal || 0,
           it.lossAmount,
           it.worstReason || "-"
@@ -518,6 +523,7 @@ export const DailyQualityView = () => {
         targetItem.scrapA || 0,
         targetItem.scrapB || 0,
         targetItem.scrapC || 0,
+        targetItem.scrapD || 0,
         targetItem.scrapTotal || 0,
         targetItem.lossAmount,
         targetItem.worstReason
@@ -777,7 +783,7 @@ export const DailyQualityView = () => {
                 {(monthlyData.totalScrapQty || 0).toLocaleString()} <span className="text-[11px] font-normal text-slate-400">EA</span>
               </div>
               <div className="text-[10px] text-slate-400 truncate">
-                폐기율: <strong className="font-mono text-amber-600 dark:text-amber-400 font-bold">{scrapTotalRate}%</strong> (소재 A·B·C)
+                폐기율: <strong className="font-mono text-amber-600 dark:text-amber-400 font-bold">{scrapTotalRate}%</strong> (소재 A·B·C·D)
               </div>
             </div>
 
@@ -805,7 +811,7 @@ export const DailyQualityView = () => {
               const isGood = it.defectRate <= itemTarget;
               const isHr = it.id === "hr";
               const isNx = it.id === "nx4" || it.id === "nx4a";
-              const scrapQty = it.scrapTotal || ((it.scrapA || 0) + (it.scrapB || 0) + (it.scrapC || 0));
+              const scrapQty = it.scrapTotal || ((it.scrapA || 0) + (it.scrapB || 0) + (it.scrapC || 0) + (it.scrapD || 0));
               const scrapRate = it.inspectQty > 0 ? Number(((scrapQty / it.inspectQty) * 100).toFixed(2)) : 0;
 
               // Theme colors
@@ -915,16 +921,19 @@ export const DailyQualityView = () => {
                       </div>
                     </div>
 
-                    {isNx ? (
-                      <div className="flex items-center gap-1.5 justify-between pt-0.5 text-[9.5px] font-mono font-bold">
-                        <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                    {(it.scrapA || it.scrapB || it.scrapC || it.scrapD) ? (
+                      <div className="grid grid-cols-4 gap-1 pt-0.5 text-[9px] font-mono font-bold text-center">
+                        <span className="px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
                           A: {it.scrapA || 0}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
+                        <span className="px-1 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">
                           B: {it.scrapB || 0}
                         </span>
-                        <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
+                        <span className="px-1 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
                           C: {it.scrapC || 0}
+                        </span>
+                        <span className="px-1 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                          D: {it.scrapD || 0}
                         </span>
                       </div>
                     ) : (
@@ -1959,6 +1968,7 @@ export const DailyQualityView = () => {
                         scrapA: 0,
                         scrapB: 0,
                         scrapC: 0,
+                        scrapD: 0,
                         scrapTotal: 0
                       };
                       const isGood = rec.defectRate <= 0.70;
@@ -2012,9 +2022,9 @@ export const DailyQualityView = () => {
                             {hasWork && (rec.scrapTotal || 0) > 0 ? (
                               <span className="font-bold text-amber-700 dark:text-amber-300">
                                 {rec.scrapTotal} EA
-                                {(rec.scrapA || rec.scrapB || rec.scrapC) ? (
+                                {(rec.scrapA || rec.scrapB || rec.scrapC || rec.scrapD) ? (
                                   <span className="text-[10px] text-slate-400 ml-1">
-                                    (A:{rec.scrapA || 0}, B:{rec.scrapB || 0}, C:{rec.scrapC || 0})
+                                    (A:{rec.scrapA || 0}, B:{rec.scrapB || 0}, C:{rec.scrapC || 0}, D:{rec.scrapD || 0})
                                   </span>
                                 ) : null}
                               </span>
@@ -2198,7 +2208,7 @@ export const DailyQualityView = () => {
             <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 {QUALITY_CORE_ITEMS.map((core) => {
-                  const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 };
+                  const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0 };
                   const insp = Math.max(0, Number(it.inspectQty) || 0);
                   const def = Math.max(0, Number(it.defectQty) || 0);
                   const rate = insp > 0 ? Number(((def / insp) * 100).toFixed(2)) : 0;
@@ -2293,18 +2303,18 @@ export const DailyQualityView = () => {
                         </div>
                       </div>
 
-                      {/* ♻️ 3-Material Waste Scrap Inputs (소재 A / B / C) */}
+                      {/* ♻️ 4-Material Waste Scrap Inputs (소재 A / B / C / D) */}
                       <div className="p-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                             <span className="text-amber-500">♻️</span>
-                            <span>3종 소재 폐기수량 (소재 A / B / C)</span>
+                            <span>4종 소재 폐기수량 (소재 A / B / C / D)</span>
                           </span>
                           <span className="text-[10.5px] font-mono font-bold text-slate-500">
-                            합계: <strong className="text-rose-600 dark:text-rose-400 font-black">{(Number(it.scrapA || 0) + Number(it.scrapB || 0) + Number(it.scrapC || 0)).toLocaleString()} EA</strong>
+                            합계: <strong className="text-rose-600 dark:text-rose-400 font-black">{(Number(it.scrapA || 0) + Number(it.scrapB || 0) + Number(it.scrapC || 0) + Number(it.scrapD || 0)).toLocaleString()} EA</strong>
                           </span>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           <div>
                             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
                               소재 A 폐기
@@ -2316,13 +2326,13 @@ export const DailyQualityView = () => {
                               value={it.scrapA || ""}
                               onChange={(e) => {
                                 const val = Math.max(0, parseInt(e.target.value) || 0);
-                                const scrapTotal = val + (Number(it.scrapB) || 0) + (Number(it.scrapC) || 0);
+                                const scrapTotal = val + (Number(it.scrapB) || 0) + (Number(it.scrapC) || 0) + (Number(it.scrapD) || 0);
                                 setDirectItemsInput({
                                   ...directItemsInput,
                                   [core.id]: { ...it, scrapA: val, scrapTotal }
                                 });
                               }}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-blue-600 dark:text-blue-400 text-right outline-none focus:ring-1 focus:ring-blue-500"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-blue-600 dark:text-blue-400 text-right outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </div>
                           <div>
@@ -2336,13 +2346,13 @@ export const DailyQualityView = () => {
                               value={it.scrapB || ""}
                               onChange={(e) => {
                                 const val = Math.max(0, parseInt(e.target.value) || 0);
-                                const scrapTotal = (Number(it.scrapA) || 0) + val + (Number(it.scrapC) || 0);
+                                const scrapTotal = (Number(it.scrapA) || 0) + val + (Number(it.scrapC) || 0) + (Number(it.scrapD) || 0);
                                 setDirectItemsInput({
                                   ...directItemsInput,
                                   [core.id]: { ...it, scrapB: val, scrapTotal }
                                 });
                               }}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-orange-600 dark:text-orange-400 text-right outline-none focus:ring-1 focus:ring-orange-500"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-orange-600 dark:text-orange-400 text-right outline-none focus:ring-1 focus:ring-orange-500"
                             />
                           </div>
                           <div>
@@ -2356,13 +2366,33 @@ export const DailyQualityView = () => {
                               value={it.scrapC || ""}
                               onChange={(e) => {
                                 const val = Math.max(0, parseInt(e.target.value) || 0);
-                                const scrapTotal = (Number(it.scrapA) || 0) + (Number(it.scrapB) || 0) + val;
+                                const scrapTotal = (Number(it.scrapA) || 0) + (Number(it.scrapB) || 0) + val + (Number(it.scrapD) || 0);
                                 setDirectItemsInput({
                                   ...directItemsInput,
                                   [core.id]: { ...it, scrapC: val, scrapTotal }
                                 });
                               }}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-amber-600 dark:text-amber-400 text-right outline-none focus:ring-1 focus:ring-amber-500"
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-amber-600 dark:text-amber-400 text-right outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
+                              소재 D 폐기
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={it.scrapD || ""}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value) || 0);
+                                const scrapTotal = (Number(it.scrapA) || 0) + (Number(it.scrapB) || 0) + (Number(it.scrapC) || 0) + val;
+                                setDirectItemsInput({
+                                  ...directItemsInput,
+                                  [core.id]: { ...it, scrapD: val, scrapTotal }
+                                });
+                              }}
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-purple-600 dark:text-purple-400 text-right outline-none focus:ring-1 focus:ring-purple-500"
                             />
                           </div>
                         </div>
