@@ -355,7 +355,7 @@ export const JAEYUL_CATEGORY_EQUIPMENT_MAP = {
   "사출기": ["300TON", "45TON", "25TON", "내용직접입력"],
   "컴프레셔": ["압출동 컴프레셔", "AB동 컴프레셔", "C동 컴프레셔", "내용직접입력"],
   "코팅설비": ["코팅(8턴)", "코팅(서랍)", "내용직접입력"],
-  "치공구": ["치공구 점검/정비", "내용직접입력"],
+  "치공구": ["내용직접입력"],
   "기타": ["내용직접입력"]
 };
 
@@ -4414,41 +4414,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               </select>
                             </div>
 
-                            {/* 설비명 */}
+                            {/* 설비명 (선택한 대분류에 해당하는 설비 목록만 노출) */}
                             <div>
                               <label className="block text-[10.5px] font-bold text-slate-600 dark:text-slate-400 mb-1">
-                                설비명
+                                설비명 ({item.category})
                               </label>
                               <select
                                 value={item.equipmentName}
                                 onChange={(e) => handleUpdateMaintenanceItem(item.id, "equipmentName", e.target.value)}
                                 className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
                               >
-                                <optgroup label="압출기">
-                                  <option value="PCM 1호">PCM 1호</option>
-                                  <option value="PCM 2호">PCM 2호</option>
-                                  <option value="PCM 3호">PCM 3호</option>
-                                  <option value="TPE 1호">TPE 1호</option>
-                                  <option value="PVC">PVC</option>
-                                </optgroup>
-                                <optgroup label="사출기">
-                                  <option value="300TON">300TON</option>
-                                  <option value="45TON">45TON</option>
-                                  <option value="25TON">25TON</option>
-                                </optgroup>
-                                <optgroup label="컴프레셔">
-                                  <option value="압출동 컴프레셔">압출동 컴프레셔</option>
-                                  <option value="AB동 컴프레셔">AB동 컴프레셔</option>
-                                  <option value="C동 컴프레셔">C동 컴프레셔</option>
-                                </optgroup>
-                                <optgroup label="코팅설비">
-                                  <option value="코팅(8턴)">코팅(8턴)</option>
-                                  <option value="코팅(서랍)">코팅(서랍)</option>
-                                </optgroup>
-                                <optgroup label="치공구 및 직접입력">
-                                  <option value="내용직접입력">내용직접입력</option>
-                                  <option value="내용입력 (직접입력)">내용입력 (직접입력)</option>
-                                </optgroup>
+                                {(JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category] || ["내용직접입력"]).map((eq) => (
+                                  <option key={eq} value={eq}>
+                                    {eq === "내용직접입력" ? "내용직접입력 (직접입력)" : eq}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                           </div>
