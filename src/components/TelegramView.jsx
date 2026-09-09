@@ -206,7 +206,8 @@ export const TelegramView = () => {
     const combined = [];
     upcomingMeetings.forEach((m) => {
       const d = m.expireDate || m.targetDate || "";
-      const dText = d ? `${d.slice(5)} ` : "";
+      const t = m.meetingTime ? ` ${m.meetingTime}` : "";
+      const dText = d ? `${d.slice(5)}${t} ` : "";
       combined.push(`• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`);
     });
     activeNotices.forEach((n) => {

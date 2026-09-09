@@ -94,6 +94,7 @@ export const saveUrgentIssue = async (issueData) => {
     category: issueData.category || "품질경보",
     expireDate: issueData.expireDate || issueData.targetDate || "",
     targetDate: issueData.targetDate || issueData.expireDate || "",
+    meetingTime: issueData.meetingTime || "",
     images: issueData.images || [],
     actionImages: issueData.actionImages || [],
     actionResult: issueData.actionResult || "",

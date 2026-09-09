@@ -419,7 +419,12 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
   const category = issueItem?.category || "품질경보";
 
   const expireDate = issueItem?.expireDate || issueItem?.targetDate || "";
-  const expireDateStr = expireDate ? (category === "회의일정" ? `\n• <b>회의일자:</b> <b>${expireDate}</b>` : `\n• <b>게시만료:</b> <b>${expireDate}</b>`) : "";
+  const meetingTime = issueItem?.meetingTime || "";
+  const expireDateStr = expireDate
+    ? (category === "회의일정"
+        ? `\n• <b>회의일시:</b> <b>${expireDate}${meetingTime ? ` ${meetingTime}` : ""}</b>`
+        : `\n• <b>게시만료:</b> <b>${expireDate}</b>`)
+    : "";
 
   let message = "";
   if (category === "회의일정") {
@@ -896,7 +901,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     const combined = [];
     upcomingMeetings.forEach((m) => {
       const d = m.expireDate || m.targetDate || "";
-      const dText = d ? `${d.slice(5)} ` : "";
+      const t = m.meetingTime ? ` ${m.meetingTime}` : "";
+      const dText = d ? `${d.slice(5)}${t} ` : "";
       combined.push(`• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`);
     });
     activeNotices.forEach((n) => {
