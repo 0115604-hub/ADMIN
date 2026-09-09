@@ -351,7 +351,7 @@ export const ElectronicApprovalView = () => {
       ...draftForm,
       steps,
       status: "IN_PROGRESS"
-    });
+    }, { isDirectManualDraft: true, sendDraftTelegram: true });
 
     setIsDraftModalOpen(false);
     setDraftForm({

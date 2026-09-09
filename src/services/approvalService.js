@@ -469,7 +469,13 @@ export const saveApprovalDocument = async (docData, options = {}) => {
   }
 
   // Telegram alert on new draft submission (ONLY for direct manual draft submission, NEVER on background sync or deletion)
-  if (existingIdx < 0 && !options.suppressTelegram && !docData._suppressTelegram) {
+  const shouldSendDraftTelegram =
+    existingIdx < 0 &&
+    options.isDirectManualDraft === true &&
+    !options.suppressTelegram &&
+    !docData._suppressTelegram;
+
+  if (shouldSendDraftTelegram) {
     sendApprovalDraftTelegram(fullItem).catch((err) => {
       console.warn("Telegram draft alert error:", err);
     });
@@ -680,16 +686,17 @@ export const syncPlantOvertimeToApprovalBox = async ({
     const dt = new Date(2026, 8, dayNum);
     const dayLabel = dayOfWeekNames[dt.getDay()] || "토";
 
-    let allReports = Array.isArray(reports) && reports.length > 0 ? reports : [];
-    if (allReports.length === 0 && typeof window !== "undefined") {
+    let allReports = Array.isArray(reports) ? reports : null;
+    if (allReports === null && typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
         if (raw) allReports = JSON.parse(raw);
       } catch (e) {}
     }
+    if (!allReports) allReports = [];
 
-    let allMatrix = Array.isArray(matrix) && matrix.length > 0 ? matrix : [];
-    if (allMatrix.length === 0 && typeof window !== "undefined") {
+    let allMatrix = Array.isArray(matrix) ? matrix : null;
+    if (allMatrix === null && typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem("oryuk_smart_overtime_data_store_v10_company_separated");
         if (raw) {
@@ -698,6 +705,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         }
       } catch (e) {}
     }
+    if (!allMatrix) allMatrix = [];
 
     const nowStr = new Date().toLocaleString("ko-KR", {
       year: "numeric",
