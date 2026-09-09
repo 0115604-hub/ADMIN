@@ -243,6 +243,67 @@ export const DailyQualityView = () => {
     return getQualityDailyAggregation(allRecords, selectedMonth || "2026-09");
   }, [allRecords, selectedMonth]);
 
+  // Dynamic sorted days for SVG chart (in chronological ascending order)
+  const chartDays = useMemo(() => {
+    const list = dailyList.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const workingDays = list.filter((d) => d.totalInspectQty > 0 || d.totalDefectQty > 0);
+    return workingDays.length > 0 ? workingDays : list;
+  }, [dailyList]);
+
+  // Dynamic Pareto defect reasons calculation
+  const dynamicDefectAnalysis = useMemo(() => {
+    const targetYM = selectedMonth || "2026-09";
+    const monthRecords = allRecords.filter((r) => r.yearMonth === targetYM || (r.date && r.date.startsWith(targetYM)));
+    const reasonCounts = new Map();
+    let totalDefects = 0;
+
+    monthRecords.forEach((r) => {
+      if (r.defectQty > 0 && r.worstReason && r.worstReason !== "-") {
+        totalDefects += r.defectQty;
+        const parts = r.worstReason.split(/[,/·\n]/).map((p) => p.trim()).filter(Boolean);
+        parts.forEach((p) => {
+          const match = p.match(/^(.+?)\s*\(([0-9]+)\s*건?\)$/);
+          if (match) {
+            const name = match[1].trim();
+            const cnt = parseInt(match[2], 10) || 1;
+            reasonCounts.set(name, (reasonCounts.get(name) || 0) + cnt);
+          } else {
+            reasonCounts.set(p, (reasonCounts.get(p) || 0) + (r.defectQty > 0 ? r.defectQty : 1));
+          }
+        });
+      }
+    });
+
+    const totalTally = Array.from(reasonCounts.values()).reduce((sum, v) => sum + v, 0) || totalDefects || 1;
+    const sortedCategories = Array.from(reasonCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name, count], idx) => {
+        const percent = Math.round((count / totalTally) * 100);
+        return {
+          id: idx + 1,
+          name,
+          count,
+          percent,
+          color: idx === 0 ? "#EF4444" : idx === 1 ? "#F97316" : idx === 2 ? "#FBBF24" : "#10B981",
+          bgBadge: idx === 0 ? "bg-rose-50 dark:bg-rose-950/40 border-rose-200/70 dark:border-rose-900/50" :
+                    idx === 1 ? "bg-amber-50 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-900/50" :
+                    idx === 2 ? "bg-yellow-50 dark:bg-yellow-950/40 border-yellow-200/70 dark:border-yellow-900/50" :
+                    "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/50",
+          barColor: idx === 0 ? "bg-rose-500" : idx === 1 ? "bg-orange-500" : idx === 2 ? "bg-yellow-500" : "bg-emerald-500",
+          textColor: idx === 0 ? "text-rose-800 dark:text-rose-200" : idx === 1 ? "text-amber-800 dark:text-amber-200" : idx === 2 ? "text-yellow-800 dark:text-yellow-200" : "text-emerald-800 dark:text-emerald-200",
+          numColor: idx === 0 ? "text-rose-600 dark:text-rose-400" : idx === 1 ? "text-orange-600 dark:text-orange-400" : idx === 2 ? "text-yellow-600 dark:text-yellow-400" : "text-emerald-600 dark:text-emerald-400"
+        };
+      });
+
+    return {
+      totalDefects: monthlyData.totalDefectQty || totalDefects,
+      categories: sortedCategories.length > 0 ? sortedCategories : [
+        { id: 1, name: "특이 불량 없음 (목표 100% 달성)", count: 0, percent: 100, color: "#10B981", bgBadge: "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/70", barColor: "bg-emerald-500", textColor: "text-emerald-800 dark:text-emerald-200", numColor: "text-emerald-600 dark:text-emerald-400" }
+      ]
+    };
+  }, [allRecords, selectedMonth, monthlyData.totalDefectQty]);
+
   // Handle Excel Files Upload
   const handleUploadFiles = async (files) => {
     if (!files || files.length === 0) return;
@@ -402,7 +463,7 @@ export const DailyQualityView = () => {
   };
 
   // Top summary rate
-  const overallDefectRate = monthlyData.totalDefectRate || 0;
+  const overallDefectRate = monthlyData.overallDefectRate !== undefined ? monthlyData.overallDefectRate : (monthlyData.totalDefectRate || 0);
   const isOverallGood = overallDefectRate <= 0.70;
   const scrapTotalRate = monthlyData.totalInspectQty > 0
     ? Number((((monthlyData.totalScrapQty || 0) / monthlyData.totalInspectQty) * 100).toFixed(2))
@@ -576,11 +637,11 @@ export const DailyQualityView = () => {
               bar: "bg-emerald-500"
             },
             hr: {
-              border: isGood ? "border-slate-200 dark:border-slate-800" : "border-rose-300 dark:border-rose-800/80",
+              border: isGood ? "border-emerald-200 dark:border-emerald-800/60" : "border-rose-300 dark:border-rose-800/80",
               bg: isGood ? "bg-white dark:bg-slate-900" : "bg-rose-50/30 dark:bg-rose-950/20",
-              badgeBg: "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
-              accent: "text-rose-600 dark:text-rose-400",
-              bar: "bg-rose-500"
+              badgeBg: isGood ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20" : "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20",
+              accent: isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400",
+              bar: isGood ? "bg-emerald-500" : "bg-rose-500"
             },
             nx4a: {
               border: isGood ? "border-teal-200 dark:border-teal-800/60" : "border-rose-300 dark:border-rose-800",
@@ -798,123 +859,149 @@ export const DailyQualityView = () => {
 
           {/* SVG Line Chart */}
           <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 overflow-hidden relative">
-            <svg viewBox="0 0 680 230" className="w-full h-auto overflow-visible select-none">
-              {/* Y Axis Grid Lines */}
-              <line x1="45" y1="190" x2="665" y2="190" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-              <text x="36" y="194" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.0%</text>
+            {(() => {
+              const N = chartDays.length;
+              const xStart = 75;
+              const xEnd = 620;
+              const stepX = N > 1 ? (xEnd - xStart) / (N - 1) : 0;
+              const getY = (rate) => Math.round(190 - Math.min(Math.max(rate, 0), 1.6) * 100);
 
-              <line x1="45" y1="140" x2="665" y2="140" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-              <text x="36" y="144" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.5%</text>
+              const chartItemConfigs = [
+                { id: "hr", name: "HR", color: "#F43F5E", activeColor: "#E11D48", strokeWidth: 3, circleRadius: 4 },
+                { id: "ja", name: "JA", color: "#10B981", activeColor: "#059669", strokeWidth: 2.5, circleRadius: 3.5 },
+                { id: "nx4a", name: "NX4a", color: "#14B8A6", activeColor: "#0D9488", strokeWidth: 2, circleRadius: 3 },
+                { id: "nx4", name: "NX4", color: "#3B82F6", activeColor: "#2563EB", strokeWidth: 2, circleRadius: 3 }
+              ];
 
-              {/* TARGET LINE: 0.70% (Y = 120) */}
-              <line x1="45" y1="120" x2="665" y2="120" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,4" />
-              <rect x="590" y="111" width="75" height="18" rx="4" fill="#EF4444" fillOpacity="0.15" />
-              <text x="627" y="124" fontSize="9" fontWeight="900" fill="#DC2626" textAnchor="middle">목표 0.70%</text>
+              return (
+                <svg viewBox="0 0 680 230" className="w-full h-auto overflow-visible select-none">
+                  {/* Y Axis Grid Lines */}
+                  <line x1="45" y1="190" x2="665" y2="190" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                  <text x="36" y="194" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.0%</text>
 
-              <line x1="45" y1="90" x2="665" y2="90" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-              <text x="36" y="94" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.0%</text>
+                  <line x1="45" y1="140" x2="665" y2="140" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                  <text x="36" y="144" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.5%</text>
 
-              <line x1="45" y1="40" x2="665" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-              <text x="36" y="44" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.5%</text>
+                  {/* TARGET LINE: 0.70% (Y = 120) */}
+                  <line x1="45" y1="120" x2="665" y2="120" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,4" />
+                  <rect x="590" y="111" width="75" height="18" rx="4" fill="#EF4444" fillOpacity="0.15" />
+                  <text x="627" y="124" fontSize="9" fontWeight="900" fill="#DC2626" textAnchor="middle">목표 0.70%</text>
 
-              {/* X Axis Labels */}
-              <text x="75" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.1(화)</text>
-              <text x="160" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.2(수)</text>
-              <text x="245" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.3(목)</text>
-              <text x="330" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.4(금)</text>
-              <text x="415" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.5(토)</text>
-              <text x="500" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.7(월)</text>
-              <text x="585" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.8(화)</text>
+                  <line x1="45" y1="90" x2="665" y2="90" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                  <text x="36" y="94" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.0%</text>
 
-              {/* HR G-RUN Line (Red) */}
-              <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "hr" ? 1 : 0.12} className="transition-opacity">
-                <polyline
-                  fill="none"
-                  stroke="#F43F5E"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points="75,74 160,122 245,95 330,57 415,95 500,81 585,78"
-                />
-                <circle cx="75" cy="74" r="3.5" fill="#F43F5E" />
-                <circle cx="160" cy="122" r="3.5" fill="#F43F5E" />
-                <circle cx="245" cy="95" r="3.5" fill="#F43F5E" />
-                <circle cx="330" cy="57" r="4.5" fill="#E11D48" />
-                <text x="330" y="46" fontSize="9" fontWeight="900" fill="#E11D48" textAnchor="middle">1.33%🚨</text>
-                <circle cx="415" cy="95" r="3.5" fill="#F43F5E" />
-                <circle cx="500" cy="81" r="3.5" fill="#F43F5E" />
-                <circle cx="585" cy="78" r="4.5" fill="#E11D48" />
-                <text x="585" y="67" fontSize="9" fontWeight="900" fill="#E11D48" textAnchor="middle">1.12%</text>
-              </g>
+                  <line x1="45" y1="40" x2="665" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                  <text x="36" y="44" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.5%</text>
 
-              {/* JA G-RUN Line (Green) */}
-              <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "ja" ? 1 : 0.12} className="transition-opacity">
-                <polyline
-                  fill="none"
-                  stroke="#10B981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points="75,156 160,150 245,163 330,144 415,150 500,151 585,145"
-                />
-                <circle cx="75" cy="156" r="3" fill="#10B981" />
-                <circle cx="160" cy="150" r="3" fill="#10B981" />
-                <circle cx="245" cy="163" r="3" fill="#10B981" />
-                <circle cx="330" cy="144" r="3" fill="#10B981" />
-                <circle cx="415" cy="150" r="3" fill="#10B981" />
-                <circle cx="500" cy="151" r="3" fill="#10B981" />
-                <circle cx="585" cy="145" r="3.5" fill="#059669" />
-                <text x="585" y="136" fontSize="8.5" fontWeight="bold" fill="#059669" textAnchor="middle">0.45%</text>
-              </g>
+                  {/* X Axis Labels */}
+                  {chartDays.map((d, idx) => {
+                    const x = N === 1 ? 340 : Math.round(xStart + idx * stepX);
+                    const parts = (d.date || "").split("-");
+                    const month = parts[1] ? parseInt(parts[1], 10) : 9;
+                    const day = parts[2] ? parseInt(parts[2], 10) : 1;
+                    const dayLabel = `${month}.${day}(${d.dayOfWeek || "월"})`;
+                    return (
+                      <text
+                        key={d.date || idx}
+                        x={x}
+                        y="210"
+                        fontSize="10"
+                        fontWeight="bold"
+                        fill="currentColor"
+                        opacity="0.7"
+                        textAnchor="middle"
+                      >
+                        {dayLabel}
+                      </text>
+                    );
+                  })}
 
-              {/* NX4a G-RUN Line (Teal) */}
-              <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "nx4a" ? 1 : 0.12} className="transition-opacity">
-                <polyline
-                  fill="none"
-                  stroke="#14B8A6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points="75,159 160,151 245,170 330,140 415,169 500,151 585,148"
-                />
-                <circle cx="585" cy="148" r="3" fill="#14B8A6" />
-                <text x="585" y="162" fontSize="8.5" fontWeight="bold" fill="#0D9488" textAnchor="middle">0.42%</text>
-              </g>
+                  {/* Dynamic Item Polylines and Dots */}
+                  {chartItemConfigs.map((cfg) => {
+                    const isVisible = qualityGraphFilter === "all" || qualityGraphFilter === cfg.id;
+                    const pts = chartDays.map((d, idx) => {
+                      const it = d.items?.[cfg.id];
+                      const rate = it ? (Number(it.defectRate) || 0) : 0;
+                      const hasWork = it && (it.inspectQty > 0 || it.defectQty > 0);
+                      const x = N === 1 ? 340 : Math.round(xStart + idx * stepX);
+                      const y = getY(rate);
+                      return { x, y, rate, hasWork, date: d.date };
+                    });
 
-              {/* NX4 G-RUN Line (Blue) */}
-              <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "nx4" ? 1 : 0.12} className="transition-opacity">
-                <polyline
-                  fill="none"
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points="75,169 160,159 245,148 330,160 415,170 500,160 585,163"
-                />
-                <circle cx="585" cy="163" r="3" fill="#3B82F6" />
-                <text x="585" y="179" fontSize="8.5" fontWeight="bold" fill="#2563EB" textAnchor="middle">0.27%</text>
-              </g>
-            </svg>
+                    const validPts = pts.filter((p) => p.hasWork);
+                    const pointsStr = validPts.map((p) => `${p.x},${p.y}`).join(" ");
+
+                    return (
+                      <g
+                        key={cfg.id}
+                        opacity={isVisible ? 1 : 0.12}
+                        className="transition-opacity duration-200"
+                      >
+                        {validPts.length > 1 && (
+                          <polyline
+                            fill="none"
+                            stroke={cfg.color}
+                            strokeWidth={cfg.strokeWidth}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            points={pointsStr}
+                          />
+                        )}
+                        {validPts.map((p, idx) => {
+                          const isWarning = p.rate > 0.70;
+                          const isZero = p.rate === 0;
+                          const showLabel = idx === validPts.length - 1 || isWarning || isZero;
+
+                          return (
+                            <g key={idx}>
+                              <circle
+                                cx={p.x}
+                                cy={p.y}
+                                r={isWarning ? cfg.circleRadius + 1 : cfg.circleRadius}
+                                fill={isWarning ? cfg.activeColor : cfg.color}
+                              />
+                              {showLabel && (
+                                <text
+                                  x={p.x}
+                                  y={p.y - (p.y <= 45 ? -12 : 7)}
+                                  fontSize="8.5"
+                                  fontWeight="900"
+                                  fill={isWarning ? "#DC2626" : cfg.color}
+                                  textAnchor="middle"
+                                >
+                                  {p.rate.toFixed(2)}%{isWarning ? "🚨" : ""}
+                                </text>
+                              )}
+                            </g>
+                          );
+                        })}
+                      </g>
+                    );
+                  })}
+                </svg>
+              );
+            })()}
           </div>
 
-          {/* Bottom Legend Mini Summary */}
+          {/* Bottom Legend Mini Summary (100% Dynamic from monthlyData) */}
           <div className="grid grid-cols-4 gap-2 pt-1 text-[10px] text-center font-bold">
-            <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/40">
-              <span className="block text-[9.5px] opacity-75">HR G-RUN</span>
-              <span className="text-xs font-black font-mono">1.12%</span>
-            </div>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/40">
-              <span className="block text-[9.5px] opacity-75">JA G-RUN</span>
-              <span className="text-xs font-black font-mono">0.45%</span>
-            </div>
-            <div className="p-2 rounded-xl bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-900/40">
-              <span className="block text-[9.5px] opacity-75">NX4a G-RUN</span>
-              <span className="text-xs font-black font-mono">0.42%</span>
-            </div>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40">
-              <span className="block text-[9.5px] opacity-75">NX4 G-RUN</span>
-              <span className="text-xs font-black font-mono">0.27%</span>
-            </div>
+            {monthlyData.items.map((it) => {
+              const isGood = it.defectRate <= 0.70;
+              const themeStyle = isGood
+                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-900/40"
+                : "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200/60 dark:border-rose-900/40";
+              return (
+                <div
+                  key={it.id}
+                  onClick={() => setPopupItem(it)}
+                  className={`p-2 rounded-xl border cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs ${themeStyle}`}
+                  title={`${it.name} 상세 일자별 정리본 보기`}
+                >
+                  <span className="block text-[9.5px] opacity-75">{it.name}</span>
+                  <span className="text-xs font-black font-mono">{it.defectRate}%</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -951,20 +1038,39 @@ export const DailyQualityView = () => {
             </div>
           </div>
 
-          {/* Donut Chart + Defect Reasons Breakdown */}
+          {/* Donut Chart + Defect Reasons Breakdown (Dynamic) */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
             {/* Donut Chart (5 cols) */}
             <div className="sm:col-span-5 flex items-center justify-center">
               <div className="relative flex items-center justify-center">
                 <svg viewBox="0 0 160 160" className="w-28 h-28 sm:w-36 sm:h-36">
-                  {/* Segment 1: 둔각/직각 어퍼 떨어짐 (38%) */}
-                  <circle cx="80" cy="80" r="55" fill="transparent" stroke="#EF4444" strokeWidth="20" strokeDasharray="131 345" strokeDashoffset="0" />
-                  {/* Segment 2: 수포/기포 (29%) */}
-                  <circle cx="80" cy="80" r="55" fill="transparent" stroke="#F97316" strokeWidth="20" strokeDasharray="100 345" strokeDashoffset="-131" />
-                  {/* Segment 3: 스코치/흑점 (18%) */}
-                  <circle cx="80" cy="80" r="55" fill="transparent" stroke="#FBBF24" strokeWidth="20" strokeDasharray="62 345" strokeDashoffset="-231" />
-                  {/* Segment 4: 사상/삽입불량 (15%) */}
-                  <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="20" strokeDasharray="52 345" strokeDashoffset="-293" />
+                  {monthlyData.totalDefectQty === 0 ? (
+                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="20" />
+                  ) : (
+                    (() => {
+                      let currentOffset = 0;
+                      const circumference = 345;
+                      return dynamicDefectAnalysis.categories.map((cat, idx) => {
+                        const segLen = Math.max(4, (cat.percent / 100) * circumference);
+                        const strokeDasharray = `${segLen} ${circumference}`;
+                        const strokeDashoffset = -currentOffset;
+                        currentOffset += segLen;
+                        return (
+                          <circle
+                            key={cat.id || idx}
+                            cx="80"
+                            cy="80"
+                            r="55"
+                            fill="transparent"
+                            stroke={cat.color}
+                            strokeWidth="20"
+                            strokeDasharray={strokeDasharray}
+                            strokeDashoffset={strokeDashoffset}
+                          />
+                        );
+                      });
+                    })()
+                  )}
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                   <span className="text-[10px] font-bold text-slate-400">총 불량수량</span>
@@ -977,57 +1083,30 @@ export const DailyQualityView = () => {
 
             {/* Defect Reasons Ranked List (7 cols) */}
             <div className="sm:col-span-7 space-y-2 text-xs">
-              <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/50 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
-                    <span className="font-black text-rose-800 dark:text-rose-200 truncate text-xs">1. 둔각·직각 어퍼 떨어짐</span>
+              {dynamicDefectAnalysis.categories.map((cat) => (
+                <div
+                  key={cat.id}
+                  className={`p-2 rounded-xl border space-y-1 ${cat.bgBadge}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`w-2 h-2 rounded-full ${cat.barColor} shrink-0`}></span>
+                      <span className={`font-black truncate text-xs ${cat.textColor}`}>
+                        {cat.id}. {cat.name}
+                      </span>
+                    </div>
+                    <span className={`font-mono font-black text-xs shrink-0 ${cat.numColor}`}>
+                      {cat.count}건 ({cat.percent}%)
+                    </span>
                   </div>
-                  <span className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs shrink-0">42건 (38%)</span>
-                </div>
-                <div className="w-full bg-rose-200/60 dark:bg-rose-900/50 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-rose-500 h-full rounded-full" style={{ width: "38%" }}></div>
-                </div>
-              </div>
-
-              <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-900/50 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0"></span>
-                    <span className="font-black text-amber-800 dark:text-amber-200 truncate text-xs">2. 수포 / 기포 / 미성형</span>
+                  <div className="w-full bg-slate-200/60 dark:bg-slate-700/50 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className={`${cat.barColor} h-full rounded-full transition-all`}
+                      style={{ width: `${Math.min(cat.percent, 100)}%` }}
+                    ></div>
                   </div>
-                  <span className="font-mono font-black text-orange-600 dark:text-orange-400 text-xs shrink-0">33건 (29%)</span>
                 </div>
-                <div className="w-full bg-orange-200/60 dark:bg-orange-900/50 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-orange-500 h-full rounded-full" style={{ width: "29%" }}></div>
-                </div>
-              </div>
-
-              <div className="p-2 rounded-xl bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200/70 dark:border-yellow-900/50 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
-                    <span className="font-black text-yellow-800 dark:text-yellow-200 truncate text-xs">3. 스코치 / 흑점 이물</span>
-                  </div>
-                  <span className="font-mono font-black text-yellow-600 dark:text-yellow-400 text-xs shrink-0">20건 (18%)</span>
-                </div>
-                <div className="w-full bg-yellow-200/60 dark:bg-yellow-900/50 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-yellow-500 h-full rounded-full" style={{ width: "18%" }}></div>
-                </div>
-              </div>
-
-              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50 space-y-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                    <span className="font-black text-emerald-800 dark:text-emerald-200 truncate text-xs">4. 사상불량 / 삽입불량</span>
-                  </div>
-                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0">17건 (15%)</span>
-                </div>
-                <div className="w-full bg-emerald-200/60 dark:bg-emerald-900/50 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: "15%" }}></div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -1036,7 +1115,13 @@ export const DailyQualityView = () => {
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base">💡</span>
               <span className="truncate">
-                <strong>HR & JA</strong> 차종의 <strong>어퍼 떨어짐·수포 불량</strong>이 전체의 <strong>67%</strong>를 차지합니다.
+                {monthlyData.totalDefectQty === 0 ? (
+                  <strong>모든 차종의 품질 불량률이 0%로 완벽하게 관리되고 있습니다.</strong>
+                ) : (
+                  <>
+                    최다 발생: <strong>{dynamicDefectAnalysis.categories[0]?.name || "품질 검사"}</strong> ({dynamicDefectAnalysis.categories[0]?.percent || 0}%) 집중 공정 개선 진행 중
+                  </>
+                )}
               </span>
             </div>
             <button

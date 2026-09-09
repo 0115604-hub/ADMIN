@@ -147,6 +147,12 @@ export const sanitizeQualityRecord = (rec) => {
   const scrapC = Math.max(0, Math.round(Number(rec.scrapC) || 0));
   const scrapTotal = rec.scrapTotal !== undefined ? Math.max(0, Math.round(Number(rec.scrapTotal))) : (scrapA + scrapB + scrapC);
 
+  // If defectQty is 0, worstReason is "-"
+  let worstReason = "-";
+  if (defectQty > 0) {
+    worstReason = String(rec.worstReason && rec.worstReason !== "-" ? rec.worstReason : coreDef.defaultDefectReason);
+  }
+
   return {
     id,
     date,
@@ -158,7 +164,7 @@ export const sanitizeQualityRecord = (rec) => {
     inspectQty,
     defectQty,
     defectRate,
-    worstReason: String(rec.worstReason || coreDef.defaultDefectReason),
+    worstReason,
     lossAmount,
     scrapA,
     scrapB,
@@ -426,6 +432,40 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
   const items = Object.values(itemMap).map((it) => {
     const rate = it.inspectQty > 0 ? Number(((it.defectQty / it.inspectQty) * 100).toFixed(2)) : 0;
     it.defectRate = rate;
+
+    // Dynamic Monthly Worst Reason Calculation
+    if (targetYM !== "2026-08" || monthRecords.length > 24) {
+      if (it.defectQty === 0) {
+        it.worstReason = "-";
+      } else if (it.dailyRecords.length > 0) {
+        const reasonTally = new Map();
+        it.dailyRecords.forEach((dr) => {
+          if (dr.defectQty > 0 && dr.worstReason && dr.worstReason !== "-") {
+            // Split multiple reasons like "둔각 떨어짐 (7건), 수포 (5건)" or "수포, 스코치"
+            const parts = dr.worstReason.split(/[,/·\n]/).map((p) => p.trim()).filter(Boolean);
+            parts.forEach((p) => {
+              const match = p.match(/^(.+?)\s*\(([0-9]+)\s*건?\)$/);
+              if (match) {
+                const name = match[1].trim();
+                const cnt = parseInt(match[2], 10) || 1;
+                reasonTally.set(name, (reasonTally.get(name) || 0) + cnt);
+              } else {
+                reasonTally.set(p, (reasonTally.get(p) || 0) + 1);
+              }
+            });
+          }
+        });
+
+        if (reasonTally.size > 0) {
+          const sortedReasons = Array.from(reasonTally.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, cnt]) => `${name} (${cnt}건)`);
+          it.worstReason = sortedReasons.join(", ");
+        }
+      }
+    }
+
     totalInspectQty += it.inspectQty;
     totalDefectQty += it.defectQty;
     totalLossAmount += it.lossAmount;
@@ -459,6 +499,7 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
     totalInspectQty,
     totalDefectQty,
     overallDefectRate,
+    totalDefectRate: overallDefectRate, // For backward compatibility
     totalLossAmount,
     totalScrapA,
     totalScrapB,
@@ -714,11 +755,11 @@ export const parseQualityExcelFiles = async (files = []) => {
       let rowDef = -1;
       for (let r = 0; r < rows.length; r++) {
         const row = rows[r] || [];
-        const label = (String(row[0] || "") + " " + String(row[1] || "") + " " + String(row[2] || "") + " " + String(row[3] || "")).trim();
-        if (label === "총검사수" || (label.includes("검사수량") && label.includes("합계")) || (r === 39 && label.includes("합계"))) {
+        const label = (String(row[0] || "") + " " + String(row[1] || "") + " " + String(row[2] || "") + " " + String(row[3] || "")).replace(/\s+/g, "").toUpperCase();
+        if (label.includes("총검사수") || label.includes("검사수량") || label.includes("검사합계") || (r === 39 && label.includes("합계"))) {
           if (rowInsp === -1) rowInsp = r;
         }
-        if (label === "총불량수" || (label.includes("불량수량") && label.includes("합계")) || (r === 44 && label.includes("합계"))) {
+        if (label.includes("총불량수") || label.includes("불량수량") || label.includes("불량합계") || (r === 44 && label.includes("합계"))) {
           if (rowDef === -1) rowDef = r;
         }
       }
@@ -739,16 +780,18 @@ export const parseQualityExcelFiles = async (files = []) => {
 
         // Defect reasons
         let reasons = [];
-        for (let r = Math.max(rowDef + 1, 10); r < rows.length; r++) {
-          const row = rows[r];
-          if (!row) continue;
-          const dType = String(row[3] || row[2] || row[1] || "").trim();
-          const cnt = Math.round(Number(row[d.col]) || 0);
-          if (cnt > 0 && typeof dType === "string" && isNaN(Number(dType)) && !dType.includes("합계") && !dType.includes("불량") && !dType.includes("구분") && !dType.includes("TOTAL") && !dType.includes("불량율") && !dType.includes("%")) {
-            reasons.push(`${dType} (${cnt}건)`);
+        if (def > 0) {
+          for (let r = Math.max(rowDef + 1, 10); r < rows.length; r++) {
+            const row = rows[r];
+            if (!row) continue;
+            const dType = String(row[3] || row[2] || row[1] || "").trim();
+            const cnt = Math.round(Number(row[d.col]) || 0);
+            if (cnt > 0 && typeof dType === "string" && isNaN(Number(dType)) && !dType.includes("합계") && !dType.includes("불량") && !dType.includes("구분") && !dType.includes("TOTAL") && !dType.includes("불량율") && !dType.includes("%")) {
+              reasons.push(`${dType} (${cnt}건)`);
+            }
           }
         }
-        const worstReason = reasons.length > 0 ? reasons.slice(0, 3).join(", ") : defaultReason;
+        const worstReason = def === 0 ? "-" : (reasons.length > 0 ? reasons.slice(0, 3).join(", ") : defaultReason);
 
         const key = `qual_${d.dateStr}_${itemId}`;
         parsedRecords.push({

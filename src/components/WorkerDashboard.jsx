@@ -2939,7 +2939,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             const items = liveQualityCurrentMonthly?.items || liveQualityPrevMonthly.items;
             return items.map((it) => {
               const isGood = it.defectRate <= 0.70;
-              const isHr = it.id === "hr";
 
               return (
                 <div
@@ -2949,9 +2948,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   tabIndex={0}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setQualityPopupItem(it)}
                   className={`p-3 rounded-2xl border transition-all cursor-pointer select-none ${
-                    isHr
-                      ? "border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 hover:border-rose-400"
-                      : "border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-400"
+                    isGood
+                      ? "border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-400"
+                      : "border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 hover:border-rose-400"
                   } hover:scale-[1.02] active:scale-98 shadow-xs space-y-1.5`}
                 >
                   <div className="flex items-center justify-between">
