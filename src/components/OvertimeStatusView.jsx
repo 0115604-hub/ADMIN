@@ -169,6 +169,40 @@ export const getFullCompanyPlantLabel = (report) => {
   return `${plant} ${comp}`;
 };
 
+export const getCleanReportSummary = (report) => {
+  if (!report) return "";
+
+  // 1. Check custom reasons/notes (e.g. user entered custom reason or note)
+  if (report.reasons && Array.isArray(report.reasons) && report.reasons.length > 0) {
+    const meaningfulReason = report.reasons.find((r) => {
+      const str = typeof r === "string" ? r : r.text || r.reason || "";
+      return (
+        str &&
+        !str.includes("근태보고서") &&
+        !str.includes("특근보고서") &&
+        !str.includes("정규 생산 라인 가동") &&
+        !str.includes("출근/투입")
+      );
+    });
+    if (meaningfulReason) {
+      const text = typeof meaningfulReason === "string" ? meaningfulReason : meaningfulReason.text;
+      return text.replace(/^\d+[\.\)]\s*/, "").trim();
+    }
+  }
+
+  // 2. Extract departments / work contents from items
+  if (report.items && Array.isArray(report.items) && report.items.length > 0) {
+    const depts = Array.from(
+      new Set(report.items.map((it) => it.category || it.dept || "").filter(Boolean))
+    );
+    if (depts.length > 0) {
+      return `${depts.join(" • ")} 생산 가동`;
+    }
+  }
+
+  return isWeekendByDate(report.workDate || report.title) ? "주말 특근 가동" : "정규 라인 가동";
+};
+
 export const getCleanReportTitle = (report) => {
   if (!report) return "";
   const rawTitle = typeof report === "string" ? report : String(report?.title || "");
@@ -1898,7 +1932,7 @@ export const OvertimeStatusView = () => {
                   // ⭐ 평일: 근태보고서 / 주말: 특근보고서
                   const isWeekend = isWeekendByDate(report.workDate || report.title);
                   const reportCategory = isWeekend ? "특근보고서" : "근태보고서";
-                  const cleanDisplayTitle = getCleanReportTitle(report);
+                  const reportSummary = getCleanReportSummary(report);
 
                   const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
                   const totalManHours = report.totalHours || (workersCount * 8);
@@ -1932,7 +1966,7 @@ export const OvertimeStatusView = () => {
                           : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
                       }`}
                     >
-                      {/* Left: No, Category Badge, Company Badge, Date (월/일), Title */}
+                      {/* Left: No, Category Badge, Company Badge, Date (월/일), Summary Note */}
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
                         <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
                           #{idx + 1}
@@ -1959,11 +1993,11 @@ export const OvertimeStatusView = () => {
                           📅 {formatShortMonthDay(report.workDate || report.workDateFormatted || report.title)}
                         </span>
 
-                        {/* Title (보고서 헤드: 9월 8일(화) 삼랑진공장 (주)오륙 근태보고서) */}
-                        <span className={`font-black text-xs sm:text-sm truncate transition-colors ${
-                          isWeekend ? "text-rose-100 group-hover:text-rose-300" : "text-slate-100 group-hover:text-cyan-300"
+                        {/* Summary Note / Work Description (중복 없는 깔끔한 내용 요약) */}
+                        <span className={`font-bold text-xs sm:text-sm truncate transition-colors ${
+                          isWeekend ? "text-rose-200 group-hover:text-rose-300" : "text-slate-300 group-hover:text-cyan-300"
                         }`}>
-                          {cleanDisplayTitle}
+                          {reportSummary}
                         </span>
                       </div>
 
