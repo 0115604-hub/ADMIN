@@ -128,7 +128,7 @@ export const INITIAL_APPROVAL_DOCS = [
     drafter: "양인나",
     drafterTitle: "선임",
     createdAt: "2026-09-05 18:00",
-    content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황 (근로자 명단)\n• (주)오륙 (38명): 손선희, 이영숙, 양인순, 박순복, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이명재, 설유철, 윤경수\n• 유성 (2명): 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
+    content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (38명)\n  - 관리자: 이명재, 설유철, 윤경수\n  - 작업자: 손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 양인순, 박순복, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
     amount: "₩5,730,000",
     status: "IN_PROGRESS",
     currentStep: 2,
@@ -745,7 +745,13 @@ export const syncPlantOvertimeToApprovalBox = async ({
         let workerCount = 0;
         let workerHours = 0;
         let workerCost = 0;
-        let workerNamesList = [];
+        let managersList = [];
+        let workersList = [];
+
+        const KNOWN_MANAGERS = [
+          "이명재", "설유철", "윤경수", "김동욱", "송원호", "진태경",
+          "안태식", "표성준", "하원식", "김유성", "권태형", "방상국"
+        ];
 
         if (compRep) {
           workerCount = compRep.totalWorkers || (compRep.items ? compRep.items.length : 0);
@@ -754,17 +760,27 @@ export const syncPlantOvertimeToApprovalBox = async ({
           
           if (compRep.items && compRep.items.length > 0) {
             compRep.items.forEach(it => {
+              const isManagerCategory = (it.category || "").includes("관리") || (it.dept || "").includes("관리") || (it.workContent || "").includes("총괄");
+              const namesFromItem = [];
               if (it.workerName) {
-                workerNamesList.push(it.workerName);
+                namesFromItem.push(it.workerName);
               } else if (it.names) {
                 const parts = String(it.names).split(",").map(n => n.replace(/외 \d+명/g, "").trim()).filter(Boolean);
-                workerNamesList.push(...parts);
+                namesFromItem.push(...parts);
               }
+
+              namesFromItem.forEach(name => {
+                if (isManagerCategory || KNOWN_MANAGERS.includes(name)) {
+                  managersList.push(name);
+                } else {
+                  workersList.push(name);
+                }
+              });
             });
           }
         }
         
-        if (workerNamesList.length === 0 && attendedMatrixWorkers.length > 0) {
+        if (managersList.length === 0 && workersList.length === 0 && attendedMatrixWorkers.length > 0) {
           workerCount = attendedMatrixWorkers.length;
           workerHours = attendedMatrixWorkers.reduce((sum, w) => {
             const val = w.daily ? w.daily[dayNum] : "";
@@ -773,11 +789,19 @@ export const syncPlantOvertimeToApprovalBox = async ({
             return sum + (val === "🟢" ? 8 : 8);
           }, 0);
           workerCost = workerHours * 15000;
-          workerNamesList = attendedMatrixWorkers.map(w => w.name).filter(Boolean);
+          
+          attendedMatrixWorkers.forEach(w => {
+            const isManager = (w.dept || "").includes("관리") || (w.position || "").includes("책임") || (w.position || "").includes("이사") || KNOWN_MANAGERS.includes(w.name);
+            if (isManager) {
+              managersList.push(w.name);
+            } else {
+              workersList.push(w.name);
+            }
+          });
         }
 
-        // Clean & Deduplicate worker names
-        const uniqueWorkerNames = Array.from(new Set(workerNamesList));
+        const uniqueManagers = Array.from(new Set(managersList));
+        const uniqueWorkers = Array.from(new Set(workersList)).filter(w => !uniqueManagers.includes(w));
 
         if (workerCount > 0 || compRep) {
           participatingCompanies.push(comp);
@@ -786,7 +810,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
             workerCount,
             workerHours,
             workerCost,
-            workerNames: uniqueWorkerNames.length > 0 ? uniqueWorkerNames : ["작업자 등록 완료"]
+            managers: uniqueManagers,
+            workers: uniqueWorkers
           });
           totalPlantWorkers += workerCount;
           totalPlantHours += workerHours;
@@ -815,10 +840,12 @@ export const syncPlantOvertimeToApprovalBox = async ({
         ? "생산총괄 ((주)오륙 + 유성)"
         : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
 
-      // ⭐ 세부투입현황: 이름으로 간략하게 표시
-      const breakdownText = companySummaries.map(cs => 
-        `• ${cs.company} (${cs.workerCount}명): ${cs.workerNames.join(", ")}`
-      ).join("\n");
+      // ⭐ 세부투입현황: 회사별로 관리자 / 작업자 분리 표시
+      const breakdownText = companySummaries.map(cs => {
+        const mgrText = cs.managers.length > 0 ? cs.managers.join(", ") : "-";
+        const wrkText = cs.workers.length > 0 ? cs.workers.join(", ") : "-";
+        return `• ${cs.company} (${cs.workerCount}명)\n  - 관리자: ${mgrText}\n  - 작업자: ${wrkText}`;
+      }).join("\n");
 
       // ⭐ 초간결 특근 취합 결재 문서 내용
       const content = `■ 9월 ${dayNum}일(${dayLabel}) [${targetPlant}] 특근보고서 취합
@@ -827,7 +854,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
 • 대상: ${targetPlant} (${targetCompanies.join(", ")})
 • 총 투입: ${totalPlantWorkers}명 (${totalPlantHours} M/H) | 총 노무비: ₩${totalPlantCost.toLocaleString()}
 
-2. 세부 투입 현황 (근로자 명단)
+2. 회사별 세부 투입 현황
 ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
 
 3. 주요 작업 내용
