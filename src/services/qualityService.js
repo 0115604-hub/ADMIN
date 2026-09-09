@@ -64,47 +64,53 @@ export const INITIAL_QUALITY_RECORDS = [
   // ==========================================
   // 2026-09 실적 (이창엽 선임 업로드 엑셀 원본 100% 정합 데이터)
   // ==========================================
-  // 2026-09-01 (화) - 일자별 불량률 0.46% (검사 4,611 / 불량 21 / 손실 ₩83,864)
-  { id: "qual_2026-09-01_ja", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1451, defectQty: 14, defectRate: 0.96, worstReason: "둔각 떨어짐 (7건), 수포 (5건), 스코치 (1건)", lossAmount: 43624, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-01_nx4a", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 4, defectRate: 0.33, worstReason: "스코치 (3건), 사상불량 (1건)", lossAmount: 22988, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-01_nx4", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 3, defectRate: 0.21, worstReason: "사상불량 (2건), 둔_삽입불량 (1건)", lossAmount: 17241, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-01_hr", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 520, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
+  // 2026-09-01 (화) - 일자별 불량률 0.46% (검사 4,611 / 불량 21 / 손실 ₩83,864 / 소재폐기 7EA)
+  { id: "qual_2026-09-01_ja", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1451, defectQty: 14, defectRate: 0.96, worstReason: "둔각 떨어짐 (7건), 수포 (5건), 스코치 (1건)", lossAmount: 43624, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-01_nx4a", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 4, defectRate: 0.33, worstReason: "스코치 (3건), 사상불량 (1건)", lossAmount: 22988, scrapA: 2, scrapB: 1, scrapC: 1, scrapTotal: 4, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-01_nx4", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 3, defectRate: 0.21, worstReason: "사상불량 (2건), 둔_삽입불량 (1건)", lossAmount: 17241, scrapA: 1, scrapB: 1, scrapC: 1, scrapTotal: 3, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-01_hr", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 520, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
 
-  // 2026-09-02 (수) - 일자별 불량률 0.66% (검사 4,707 / 불량 31 / 손실 ₩104,942)
-  { id: "qual_2026-09-02_ja", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1268, defectQty: 15, defectRate: 1.18, worstReason: "둔각 떨어짐 (6건), 수포 (5건), 사상불량 (2건)", lossAmount: 46740, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-02_nx4a", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 5, defectRate: 0.42, worstReason: "스코치 (3건), 직_삽입불량 (2건)", lossAmount: 28735, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-02_nx4", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "사상불량 (1건)", lossAmount: 5747, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-02_hr", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 799, defectQty: 10, defectRate: 1.25, worstReason: "직각 떨어짐 (5건), 둔각 떨어짐 (5건)", lossAmount: 23720, uploader: "이창엽 선임" },
+  // 2026-09-02 (수) - 일자별 불량률 0.66% (검사 4,707 / 불량 31 / 손실 ₩104,942 / 소재폐기 7EA)
+  { id: "qual_2026-09-02_ja", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1268, defectQty: 15, defectRate: 1.18, worstReason: "둔각 떨어짐 (6건), 수포 (5건), 사상불량 (2건)", lossAmount: 46740, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-02_nx4a", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 5, defectRate: 0.42, worstReason: "스코치 (3건), 직_삽입불량 (2건)", lossAmount: 28735, scrapA: 3, scrapB: 2, scrapC: 1, scrapTotal: 6, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-02_nx4", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "사상불량 (1건)", lossAmount: 5747, scrapA: 1, scrapB: 0, scrapC: 0, scrapTotal: 1, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-02_hr", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 799, defectQty: 10, defectRate: 1.25, worstReason: "직각 떨어짐 (5건), 둔각 떨어짐 (5건)", lossAmount: 23720, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
 
-  // 2026-09-03 (목) - 일자별 불량률 0.50% (검사 4,799 / 불량 24 / 손실 ₩101,094)
-  { id: "qual_2026-09-03_ja", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1209, defectQty: 14, defectRate: 1.16, worstReason: "수포 (9건), 둔각 떨어짐 (3건), 사상불량 (2건)", lossAmount: 43624, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-03_nx4a", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 7, defectRate: 0.58, worstReason: "직_삽입불량 (4건), 둔_삽입불량 (2건), 스코치 (1건)", lossAmount: 40229, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-03_nx4", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 3, defectRate: 0.18, worstReason: "사상불량 (2건), 둔_삽입불량 (1건)", lossAmount: 17241, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-03_hr", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 710, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
+  // 2026-09-03 (목) - 일자별 불량률 0.50% (검사 4,799 / 불량 24 / 손실 ₩101,094 / 소재폐기 11EA)
+  { id: "qual_2026-09-03_ja", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1209, defectQty: 14, defectRate: 1.16, worstReason: "수포 (9건), 둔각 떨어짐 (3건), 사상불량 (2건)", lossAmount: 43624, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-03_nx4a", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 7, defectRate: 0.58, worstReason: "직_삽입불량 (4건), 둔_삽입불량 (2건), 스코치 (1건)", lossAmount: 40229, scrapA: 4, scrapB: 2, scrapC: 2, scrapTotal: 8, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-03_nx4", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 3, defectRate: 0.18, worstReason: "사상불량 (2건), 둔_삽입불량 (1건)", lossAmount: 17241, scrapA: 2, scrapB: 1, scrapC: 0, scrapTotal: 3, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-03_hr", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 710, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
 
-  // 2026-09-04 (금) - 일자별 불량률 0.40% (검사 5,000 / 불량 20 / 손실 ₩61,231)
-  { id: "qual_2026-09-04_ja", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1265, defectQty: 14, defectRate: 1.11, worstReason: "스코치 (5건), 수포 (4건), 둔각 떨어짐 (4건)", lossAmount: 43624, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-04_nx4a", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "둔_삽입불량 (1건)", lossAmount: 5747, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-04_nx4", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-04_hr", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 615, defectQty: 5, defectRate: 0.81, worstReason: "스코치 (5건)", lossAmount: 11860, uploader: "이창엽 선임" },
+  // 2026-09-04 (금) - 일자별 불량률 0.40% (검사 5,000 / 불량 20 / 손실 ₩61,231 / 소재폐기 1EA)
+  { id: "qual_2026-09-04_ja", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1265, defectQty: 14, defectRate: 1.11, worstReason: "스코치 (5건), 수포 (4건), 둔각 떨어짐 (4건)", lossAmount: 43624, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-04_nx4a", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "둔_삽입불량 (1건)", lossAmount: 5747, scrapA: 1, scrapB: 0, scrapC: 0, scrapTotal: 1, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-04_nx4", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-04_hr", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 615, defectQty: 5, defectRate: 0.81, worstReason: "스코치 (5건)", lossAmount: 11860, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
 
-  // 2026-09-05 (토) - 일자별 불량률 0.28% (검사 2,880 / 불량 8 / 손실 ₩45,976)
-  { id: "qual_2026-09-05_ja", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-05_nx4a", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 6, defectRate: 0.50, worstReason: "스코치 (4건), 둔각 떨어짐 (2건)", lossAmount: 34482, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-05_nx4", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 2, defectRate: 0.12, worstReason: "사상불량 (2건)", lossAmount: 11494, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-05_hr", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
+  // 2026-09-05 (토) - 일자별 불량률 0.28% (검사 2,880 / 불량 8 / 손실 ₩45,976 / 소재폐기 8EA)
+  { id: "qual_2026-09-05_ja", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-05_nx4a", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 6, defectRate: 0.50, worstReason: "스코치 (4건), 둔각 떨어짐 (2건)", lossAmount: 34482, scrapA: 3, scrapB: 2, scrapC: 1, scrapTotal: 6, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-05_nx4", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 2, defectRate: 0.12, worstReason: "사상불량 (2건)", lossAmount: 11494, scrapA: 1, scrapB: 1, scrapC: 0, scrapTotal: 2, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-05_hr", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
 
   // 2026-09-06 (일) - 휴무
-  { id: "qual_2026-09-06_ja", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-06_nx4a", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-06_nx4", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-06_hr", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-06_ja", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-06_nx4a", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-06_nx4", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-06_hr", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
 
   // 2026-09-07 (월) - 미가동 / 휴무
-  { id: "qual_2026-09-07_ja", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-07_nx4a", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-07_nx4", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-07_hr", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" }
+  { id: "qual_2026-09-07_ja", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-07_nx4a", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-07_nx4", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-07_hr", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+
+  // 2026-09-08 (화) - 일자별 불량률 0.47% (검사 4,625 / 불량 22 / 손실 ₩87,023 / 소재폐기 10EA)
+  { id: "qual_2026-09-08_ja", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1320, defectQty: 6, defectRate: 0.45, worstReason: "수포 (4건), 둔각 떨어짐 (2건)", lossAmount: 18696, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-08_nx4a", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 5, defectRate: 0.42, worstReason: "스코치 (3건), 사상불량 (2건)", lossAmount: 28735, scrapA: 3, scrapB: 2, scrapC: 1, scrapTotal: 6, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-08_nx4", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1480, defectQty: 4, defectRate: 0.27, worstReason: "사상불량 (3건), 둔_삽입불량 (1건)", lossAmount: 22988, scrapA: 2, scrapB: 1, scrapC: 1, scrapTotal: 4, uploader: "이창엽 선임" },
+  { id: "qual_2026-09-08_hr", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 625, defectQty: 7, defectRate: 1.12, worstReason: "직각 떨어짐 (4건), 둔각 떨어짐 (3건)", lossAmount: 16604, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, uploader: "이창엽 선임" }
 ];
 
 /**
@@ -135,6 +141,12 @@ export const sanitizeQualityRecord = (rec) => {
 
   const dayOfWeek = rec.dayOfWeek || getDayOfWeek(date);
 
+  // 3 Material Waste / Scrap Quantities (소재 A, B, C)
+  const scrapA = Math.max(0, Math.round(Number(rec.scrapA) || 0));
+  const scrapB = Math.max(0, Math.round(Number(rec.scrapB) || 0));
+  const scrapC = Math.max(0, Math.round(Number(rec.scrapC) || 0));
+  const scrapTotal = rec.scrapTotal !== undefined ? Math.max(0, Math.round(Number(rec.scrapTotal))) : (scrapA + scrapB + scrapC);
+
   return {
     id,
     date,
@@ -148,6 +160,10 @@ export const sanitizeQualityRecord = (rec) => {
     defectRate,
     worstReason: String(rec.worstReason || coreDef.defaultDefectReason),
     lossAmount,
+    scrapA,
+    scrapB,
+    scrapC,
+    scrapTotal,
     uploader: String(rec.uploader || "이창엽 선임"),
     updatedAt: new Date().toISOString()
   };
@@ -338,7 +354,7 @@ export const deleteQualityRecordsByDate = async (dateStr) => {
 };
 
 /**
- * Compute Monthly Aggregation (No Duplicates, Dynamic Reason Breakdown)
+ * Compute Monthly Aggregation (No Duplicates, Dynamic Reason Breakdown & 3-Material Waste Scrap)
  */
 export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-09") => {
   const targetYM = yearMonth || "2026-09";
@@ -347,12 +363,16 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
   let totalInspectQty = 0;
   let totalDefectQty = 0;
   let totalLossAmount = 0;
+  let totalScrapA = 0;
+  let totalScrapB = 0;
+  let totalScrapC = 0;
+  let totalScrapQty = 0;
 
   const itemMap = {
-    ja: { id: "ja", name: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "둔각 떨어짐 (20건), 수포 (23건), 스코치 (6건)", dailyRecords: [] },
-    nx4a: { id: "nx4a", name: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "스코치 (12건), 직_삽입불량 (4건), 둔_삽입불량 (4건)", dailyRecords: [] },
-    nx4: { id: "nx4", name: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "사상불량 (4건), 둔_삽입불량 (5건)", dailyRecords: [] },
-    hr: { id: "hr", name: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, worstReason: "직각 떨어짐 (5건), 둔각 떨어짐 (5건), 스코치 (5건)", dailyRecords: [] }
+    ja: { id: "ja", name: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, worstReason: "둔각 떨어짐 (20건), 수포 (23건), 스코치 (6건)", dailyRecords: [] },
+    nx4a: { id: "nx4a", name: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, worstReason: "스코치 (12건), 직_삽입불량 (4건), 둔_삽입불량 (4건)", dailyRecords: [] },
+    nx4: { id: "nx4", name: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, worstReason: "사상불량 (4건), 둔_삽입불량 (5건)", dailyRecords: [] },
+    hr: { id: "hr", name: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0, lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0, worstReason: "직각 떨어짐 (5건), 둔각 떨어짐 (5건), 스코치 (5건)", dailyRecords: [] }
   };
 
   // August baseline static dataset if full records not imported
@@ -365,11 +385,19 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
     itemMap.nx4a.inspectQty = 50400;
     itemMap.nx4a.defectQty = 302;
     itemMap.nx4a.lossAmount = 1735594;
+    itemMap.nx4a.scrapA = 78;
+    itemMap.nx4a.scrapB = 54;
+    itemMap.nx4a.scrapC = 32;
+    itemMap.nx4a.scrapTotal = 164;
     itemMap.nx4a.worstReason = "스코치 (148건), 직_찢어짐 (62건), 사상불량 (44건)";
 
     itemMap.nx4.inspectQty = 25880;
     itemMap.nx4.defectQty = 34;
     itemMap.nx4.lossAmount = 195398;
+    itemMap.nx4.scrapA = 36;
+    itemMap.nx4.scrapB = 22;
+    itemMap.nx4.scrapC = 14;
+    itemMap.nx4.scrapTotal = 72;
     itemMap.nx4.worstReason = "사상불량 (18건), 둔_삽입불량 (9건), 기타 (7건)";
 
     itemMap.hr.inspectQty = 20858;
@@ -387,6 +415,10 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
         it.inspectQty += r.inspectQty;
         it.defectQty += r.defectQty;
         it.lossAmount += r.lossAmount;
+        it.scrapA += (r.scrapA || 0);
+        it.scrapB += (r.scrapB || 0);
+        it.scrapC += (r.scrapC || 0);
+        it.scrapTotal += (r.scrapTotal || ((r.scrapA || 0) + (r.scrapB || 0) + (r.scrapC || 0)));
       }
     }
   });
@@ -397,6 +429,10 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
     totalInspectQty += it.inspectQty;
     totalDefectQty += it.defectQty;
     totalLossAmount += it.lossAmount;
+    totalScrapA += it.scrapA;
+    totalScrapB += it.scrapB;
+    totalScrapC += it.scrapC;
+    totalScrapQty += it.scrapTotal;
     return it;
   });
 
@@ -406,12 +442,29 @@ export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-
   const overallDefectRate = totalInspectQty > 0 ? Number(((totalDefectQty / totalInspectQty) * 100).toFixed(2)) : 0;
   const maxDefectItem = items.reduce((max, cur) => (cur.defectRate > max.defectRate ? cur : max), items[0]);
 
+  // Specific scrap summary for NX4 and NX4a (소재 A, B, C 3종 소재)
+  const nx4Scrap = itemMap.nx4;
+  const nx4aScrap = itemMap.nx4a;
+  const core3MaterialsScrap = {
+    scrapA: nx4Scrap.scrapA + nx4aScrap.scrapA,
+    scrapB: nx4Scrap.scrapB + nx4aScrap.scrapB,
+    scrapC: nx4Scrap.scrapC + nx4aScrap.scrapC,
+    scrapTotal: nx4Scrap.scrapTotal + nx4aScrap.scrapTotal,
+    nx4: { scrapA: nx4Scrap.scrapA, scrapB: nx4Scrap.scrapB, scrapC: nx4Scrap.scrapC, scrapTotal: nx4Scrap.scrapTotal },
+    nx4a: { scrapA: nx4aScrap.scrapA, scrapB: nx4aScrap.scrapB, scrapC: nx4aScrap.scrapC, scrapTotal: nx4aScrap.scrapTotal }
+  };
+
   return {
     yearMonth: targetYM,
     totalInspectQty,
     totalDefectQty,
     overallDefectRate,
     totalLossAmount,
+    totalScrapA,
+    totalScrapB,
+    totalScrapC,
+    totalScrapQty,
+    core3MaterialsScrap,
     maxDefectItem,
     items,
     monthRecordsCount: monthRecords.length
@@ -434,6 +487,10 @@ export const getQualityDailyAggregation = (allRecords = [], yearMonth = "2026-09
         totalInspectQty: 0,
         totalDefectQty: 0,
         totalLossAmount: 0,
+        totalScrapA: 0,
+        totalScrapB: 0,
+        totalScrapC: 0,
+        totalScrapQty: 0,
         items: {},
         records: []
       });
@@ -444,6 +501,10 @@ export const getQualityDailyAggregation = (allRecords = [], yearMonth = "2026-09
     dayData.totalInspectQty += r.inspectQty;
     dayData.totalDefectQty += r.defectQty;
     dayData.totalLossAmount += r.lossAmount;
+    dayData.totalScrapA += (r.scrapA || 0);
+    dayData.totalScrapB += (r.scrapB || 0);
+    dayData.totalScrapC += (r.scrapC || 0);
+    dayData.totalScrapQty += (r.scrapTotal || ((r.scrapA || 0) + (r.scrapB || 0) + (r.scrapC || 0)));
   });
 
   const dailyList = Array.from(dateMap.values()).map((d) => {

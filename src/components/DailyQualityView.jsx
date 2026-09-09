@@ -71,10 +71,10 @@ export const DailyQualityView = () => {
     return `${y}-${m}-${d}`;
   });
   const [directItemsInput, setDirectItemsInput] = useState({
-    ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116 },
-    hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372 },
-    nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 },
-    nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 }
+    ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
+    hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
+    nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
+    nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 }
   });
   const [isSavingDirectInput, setIsSavingDirectInput] = useState(false);
 
@@ -82,20 +82,29 @@ export const DailyQualityView = () => {
   const loadDateRecordsIntoDirectForm = (targetDate) => {
     const matching = allRecords.filter((r) => r.date === targetDate);
     const newInputs = {
-      ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116 },
-      hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372 },
-      nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 },
-      nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 }
+      ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
+      hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
+      nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 },
+      nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 }
     };
 
     matching.forEach((r) => {
       const key = r.itemId ? r.itemId.toLowerCase() : "";
       if (newInputs[key]) {
+        const scrapA = r.scrapA || 0;
+        const scrapB = r.scrapB || 0;
+        const scrapC = r.scrapC || 0;
+        const scrapTotal = r.scrapTotal !== undefined ? r.scrapTotal : (scrapA + scrapB + scrapC);
+
         newInputs[key] = {
           inspectQty: r.inspectQty || 0,
           defectQty: r.defectQty || 0,
           worstReason: r.worstReason && r.worstReason !== "-" ? r.worstReason : "",
-          unitPrice: r.unitPrice || QUALITY_CORE_ITEMS.find((c) => c.id === key)?.defaultUnitPrice || newInputs[key].unitPrice
+          unitPrice: r.unitPrice || QUALITY_CORE_ITEMS.find((c) => c.id === key)?.defaultUnitPrice || newInputs[key].unitPrice,
+          scrapA,
+          scrapB,
+          scrapC,
+          scrapTotal
         };
       }
     });
@@ -126,12 +135,16 @@ export const DailyQualityView = () => {
       const author = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "선임"}` : "이창엽 선임";
 
       const recordsToSave = QUALITY_CORE_ITEMS.map((core) => {
-        const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice };
+        const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice, scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 };
         const inspectQty = Math.max(0, Math.round(Number(it.inspectQty) || 0));
         const defectQty = Math.max(0, Math.round(Number(it.defectQty) || 0));
         const defectRate = inspectQty > 0 ? Number(((defectQty / inspectQty) * 100).toFixed(2)) : 0;
         const unitPrice = it.unitPrice || core.defaultUnitPrice;
         const lossAmount = Math.round(defectQty * unitPrice);
+        const scrapA = Math.max(0, Math.round(Number(it.scrapA) || 0));
+        const scrapB = Math.max(0, Math.round(Number(it.scrapB) || 0));
+        const scrapC = Math.max(0, Math.round(Number(it.scrapC) || 0));
+        const scrapTotal = scrapA + scrapB + scrapC;
 
         return {
           id: generateQualityRecordId(directInputDate, core.id),
@@ -146,6 +159,10 @@ export const DailyQualityView = () => {
           defectRate,
           worstReason: it.worstReason.trim() || (defectQty === 0 ? "-" : core.defaultDefectReason),
           lossAmount,
+          scrapA,
+          scrapB,
+          scrapC,
+          scrapTotal,
           uploader: author,
           updatedAt: new Date().toISOString()
         };
@@ -442,7 +459,7 @@ export const DailyQualityView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ 4대 코어 품목별 불량률 추이 (좌측: 그래프) & 주요 불량 원인 분석 (우측: 원인분석) */}
+      {/* 2. ⭐ 4대 코어 품목별 불량률 추이 (좌측: 그래프) & 주요 불량 원인 및 소재별 폐기수량 분석 (우측) */}
       {/* ========================================================================= */}
       <div className="space-y-4">
         {/* 4 Core Item Quick Chips (Click to Open Detail Popup) */}
@@ -507,8 +524,8 @@ export const DailyQualityView = () => {
           })()}
         </div>
 
-        {/* 2-Column Responsive Layout: [LEFT: Graph] & [RIGHT: Defect Cause Analysis] */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 2-Column Responsive Layout: [LEFT: Graph] & [RIGHT: Defect Cause & 3-Material Waste Analysis] */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {/* ========================================================= */}
           {/* LEFT: 📈 일자별 불량률 추이선 및 실적 그래프 */}
           {/* ========================================================= */}
@@ -717,107 +734,247 @@ export const DailyQualityView = () => {
           </div>
 
           {/* ========================================================= */}
-          {/* RIGHT: 🚨 주요 불량 원인 및 유형별 파레토 분석 */}
+          {/* RIGHT: 🚨 주요 불량 원인 분석 + ♻️ 3종 소재별 폐기수량 패널 */}
           {/* ========================================================= */}
-          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
-            {/* Right Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                      주요 불량 원인 분석
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
-                      총 {monthlyData.totalDefectQty}건 발생
-                    </span>
+          <div className="space-y-4">
+            {/* Card 1: 🚨 주요 불량 원인 분석 */}
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+              {/* Right Header */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                    발생 빈도 순위 및 차종별 핵심 취약 불량 분석
-                  </p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                        주요 불량 원인 분석
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                        총 {monthlyData.totalDefectQty}건 발생
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                      발생 빈도 순위 및 차종별 핵심 취약 불량 분석
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] text-slate-400 font-bold block">누적 손실액</span>
+                  <span className="text-xs font-black font-mono text-rose-600 dark:text-rose-400">
+                    ₩{monthlyData.totalLossAmount.toLocaleString()}
+                  </span>
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
-                <span className="text-[10px] text-slate-400 font-bold block">누적 손실액</span>
-                <span className="text-xs font-black font-mono text-rose-600 dark:text-rose-400">
-                  ₩{monthlyData.totalLossAmount.toLocaleString()}
+              {/* Donut Chart + Defect Reasons Breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                {/* Donut Chart (4 cols) */}
+                <div className="sm:col-span-4 flex items-center justify-center">
+                  <div className="relative flex items-center justify-center">
+                    <svg viewBox="0 0 160 160" className="w-28 h-28 sm:w-32 sm:h-32">
+                      <circle cx="80" cy="80" r="55" fill="transparent" stroke="#EF4444" strokeWidth="18" strokeDasharray="131 345" strokeDashoffset="0" />
+                      <circle cx="80" cy="80" r="55" fill="transparent" stroke="#F97316" strokeWidth="18" strokeDasharray="100 345" strokeDashoffset="-131" />
+                      <circle cx="80" cy="80" r="55" fill="transparent" stroke="#FBBF24" strokeWidth="18" strokeDasharray="62 345" strokeDashoffset="-231" />
+                      <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="18" strokeDasharray="52 345" strokeDashoffset="-293" />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] font-bold text-slate-400">총 불량</span>
+                      <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono leading-tight">
+                        {monthlyData.totalDefectQty} EA
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Defect Reasons List (8 cols) */}
+                <div className="sm:col-span-8 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                      <span className="font-black text-rose-800 dark:text-rose-200 truncate">1. 둔각·직각 어퍼 떨어짐</span>
+                    </div>
+                    <span className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs shrink-0">42건 (38%)</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-900/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0"></span>
+                      <span className="font-black text-amber-800 dark:text-amber-200 truncate">2. 수포 / 기포 / 미성형</span>
+                    </div>
+                    <span className="font-mono font-black text-orange-600 dark:text-orange-400 text-xs shrink-0">33건 (29%)</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200/70 dark:border-yellow-900/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
+                      <span className="font-black text-yellow-800 dark:text-yellow-200 truncate">3. 스코치 / 흑점 이물</span>
+                    </div>
+                    <span className="font-mono font-black text-yellow-600 dark:text-yellow-400 text-xs shrink-0">20건 (18%)</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span className="font-black text-emerald-800 dark:text-emerald-200 truncate">4. 사상불량 / 삽입불량</span>
+                    </div>
+                    <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0">17건 (15%)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Insight Callout */}
+              <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-amber-500">💡</span>
+                  <span><strong>HR & JA</strong> 어퍼 떨어짐·수포 불량이 <strong>67%</strong> 차지</span>
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setPopupItem(monthlyData.items.find((i) => i.id === "hr") || monthlyData.items[0])}
+                  className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline shrink-0 ml-2 cursor-pointer"
+                >
+                  상세 팝업 →
+                </button>
               </div>
             </div>
 
-            {/* Donut Chart + Defect Reasons Breakdown */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-              {/* Donut Chart (4 cols) */}
-              <div className="sm:col-span-4 flex items-center justify-center">
-                <div className="relative flex items-center justify-center">
-                  <svg viewBox="0 0 160 160" className="w-28 h-28 sm:w-32 sm:h-32">
-                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#EF4444" strokeWidth="18" strokeDasharray="131 345" strokeDashoffset="0" />
-                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#F97316" strokeWidth="18" strokeDasharray="100 345" strokeDashoffset="-131" />
-                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#FBBF24" strokeWidth="18" strokeDasharray="62 345" strokeDashoffset="-231" />
-                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="18" strokeDasharray="52 345" strokeDashoffset="-293" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-[10px] font-bold text-slate-400">총 불량</span>
-                    <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono leading-tight">
-                      {monthlyData.totalDefectQty} EA
-                    </span>
+            {/* Card 2: ⭐ ♻️ NX4 · NX4a 3종 소재별 일간 및 월간 누적 폐기수량 패널 */}
+            <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-amber-200/80 dark:border-amber-900/50 shadow-sm space-y-3.5">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-amber-500/10 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                    <Layers className="w-4 h-4" />
                   </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                        NX4 · NX4a 3종 소재별 폐기수량 현황
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+                        소재 A · B · C 관리
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      3개 소재로 생산되는 NX4 / NX4a의 <strong>일간 폐기수량</strong> 및 <strong>월간 누적 폐기량</strong>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] text-slate-400 font-bold block">{selectedMonth.slice(5, 7)}월 총 누적 폐기</span>
+                  <span className="text-sm sm:text-base font-black font-mono text-amber-600 dark:text-amber-400">
+                    {(monthlyData.totalScrapQty || 0).toLocaleString()} EA
+                  </span>
                 </div>
               </div>
 
-              {/* Defect Reasons List (8 cols) */}
-              <div className="sm:col-span-8 space-y-1.5 text-xs">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
-                    <span className="font-black text-rose-800 dark:text-rose-200 truncate">1. 둔각·직각 어퍼 떨어짐</span>
+              {/* Monthly Cumulative Summary by Material A, B, C */}
+              {(() => {
+                const scrapA = monthlyData.totalScrapA || 0;
+                const scrapB = monthlyData.totalScrapB || 0;
+                const scrapC = monthlyData.totalScrapC || 0;
+                const total = scrapA + scrapB + scrapC || 1;
+                const pctA = Math.round((scrapA / total) * 100);
+                const pctB = Math.round((scrapB / total) * 100);
+                const pctC = Math.round((scrapC / total) * 100);
+
+                return (
+                  <div className="space-y-2.5">
+                    {/* Material 3-Grid Cards */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 space-y-0.5">
+                        <span className="text-[10px] font-black text-blue-700 dark:text-blue-300 block">소재 A 누적 폐기</span>
+                        <div className="text-sm sm:text-base font-black font-mono text-blue-600 dark:text-blue-400">
+                          {scrapA.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">EA</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-blue-500 font-mono">점유율 {pctA}%</span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-900/50 space-y-0.5">
+                        <span className="text-[10px] font-black text-orange-700 dark:text-orange-300 block">소재 B 누적 폐기</span>
+                        <div className="text-sm sm:text-base font-black font-mono text-orange-600 dark:text-orange-400">
+                          {scrapB.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">EA</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-orange-500 font-mono">점유율 {pctB}%</span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-0.5">
+                        <span className="text-[10px] font-black text-amber-700 dark:text-amber-300 block">소재 C 누적 폐기</span>
+                        <div className="text-sm sm:text-base font-black font-mono text-amber-600 dark:text-amber-400">
+                          {scrapC.toLocaleString()} <span className="text-[10px] font-normal text-slate-400">EA</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-amber-500 font-mono">점유율 {pctC}%</span>
+                      </div>
+                    </div>
+
+                    {/* Proportional Progress Bar */}
+                    <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                      <div style={{ width: `${pctA}%` }} className="bg-blue-500 h-full transition-all" title={`소재 A: ${scrapA}EA (${pctA}%)`}></div>
+                      <div style={{ width: `${pctB}%` }} className="bg-orange-500 h-full transition-all" title={`소재 B: ${scrapB}EA (${pctB}%)`}></div>
+                      <div style={{ width: `${pctC}%` }} className="bg-amber-400 h-full transition-all" title={`소재 C: ${scrapC}EA (${pctC}%)`}></div>
+                    </div>
                   </div>
-                  <span className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs shrink-0">42건 (38%)</span>
+                );
+              })()}
+
+              {/* Daily Scrap Table / Matrix (일간 폐기수량 내역) */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <span>📅 일자별 소재 폐기수량 내역</span>
+                  </span>
+                  <span className="text-[10.5px] text-slate-400">최근 일자 순</span>
                 </div>
 
-                <div className="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-900/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0"></span>
-                    <span className="font-black text-amber-800 dark:text-amber-200 truncate">2. 수포 / 기포 / 미성형</span>
-                  </div>
-                  <span className="font-mono font-black text-orange-600 dark:text-orange-400 text-xs shrink-0">33건 (29%)</span>
-                </div>
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200/80 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 text-[11px]">
+                  {dailyList.filter(d => (d.totalScrapQty || 0) > 0 || (d.records && d.records.some(r => r.itemId === "nx4" || r.itemId === "nx4a"))).slice(0, 7).map((d) => {
+                    const nx4aRec = d.items?.nx4a || { scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 };
+                    const nx4Rec = d.items?.nx4 || { scrapA: 0, scrapB: 0, scrapC: 0, scrapTotal: 0 };
+                    const dayTotalA = (nx4aRec.scrapA || 0) + (nx4Rec.scrapA || 0);
+                    const dayTotalB = (nx4aRec.scrapB || 0) + (nx4Rec.scrapB || 0);
+                    const dayTotalC = (nx4aRec.scrapC || 0) + (nx4Rec.scrapC || 0);
+                    const dayTotalScrap = dayTotalA + dayTotalB + dayTotalC;
 
-                <div className="flex items-center justify-between p-2 rounded-xl bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200/70 dark:border-yellow-900/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
-                    <span className="font-black text-yellow-800 dark:text-yellow-200 truncate">3. 스코치 / 흑점 이물</span>
-                  </div>
-                  <span className="font-mono font-black text-yellow-600 dark:text-yellow-400 text-xs shrink-0">20건 (18%)</span>
-                </div>
+                    return (
+                      <div key={d.date} className="p-2.5 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-black font-mono text-slate-900 dark:text-white shrink-0">
+                            {d.date.slice(5)} ({d.dayOfWeek})
+                          </span>
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold">
+                              A: {dayTotalA}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 font-bold">
+                              B: {dayTotalB}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">
+                              C: {dayTotalC}
+                            </span>
+                          </div>
+                        </div>
 
-                <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                    <span className="font-black text-emerald-800 dark:text-emerald-200 truncate">4. 사상불량 / 삽입불량</span>
-                  </div>
-                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0">17건 (15%)</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-black font-mono text-xs text-rose-600 dark:text-rose-400">
+                            {dayTotalScrap > 0 ? `${dayTotalScrap} EA 폐기` : "0 EA"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDirectInputModal(d.date)}
+                            className="p-1 rounded-md text-[10px] text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                            title="당일 실적 및 폐기수량 수정"
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
-
-            {/* Bottom Insight Callout */}
-            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span className="text-amber-500">💡</span>
-                <span><strong>HR & JA</strong> 어퍼 떨어짐·수포 불량이 <strong>67%</strong> 차지</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setPopupItem(monthlyData.items.find((i) => i.id === "hr") || monthlyData.items[0])}
-                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline shrink-0 ml-2 cursor-pointer"
-              >
-                상세 팝업 →
-              </button>
             </div>
           </div>
         </div>
@@ -1667,6 +1824,81 @@ export const DailyQualityView = () => {
                             }}
                             className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-black text-sm text-rose-600 dark:text-rose-400 text-right outline-none focus:ring-2 focus:ring-rose-500"
                           />
+                        </div>
+                      </div>
+
+                      {/* ♻️ 3-Material Waste Scrap Inputs (소재 A / B / C) */}
+                      <div className="p-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <span className="text-amber-500">♻️</span>
+                            <span>3종 소재 폐기수량 (소재 A / B / C)</span>
+                          </span>
+                          <span className="text-[10.5px] font-mono font-bold text-slate-500">
+                            합계: <strong className="text-rose-600 dark:text-rose-400 font-black">{(Number(it.scrapA || 0) + Number(it.scrapB || 0) + Number(it.scrapC || 0)).toLocaleString()} EA</strong>
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
+                              소재 A 폐기
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={it.scrapA || ""}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value) || 0);
+                                const scrapTotal = val + (Number(it.scrapB) || 0) + (Number(it.scrapC) || 0);
+                                setDirectItemsInput({
+                                  ...directItemsInput,
+                                  [core.id]: { ...it, scrapA: val, scrapTotal }
+                                });
+                              }}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-blue-600 dark:text-blue-400 text-right outline-none focus:ring-1 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
+                              소재 B 폐기
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={it.scrapB || ""}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value) || 0);
+                                const scrapTotal = (Number(it.scrapA) || 0) + val + (Number(it.scrapC) || 0);
+                                setDirectItemsInput({
+                                  ...directItemsInput,
+                                  [core.id]: { ...it, scrapB: val, scrapTotal }
+                                });
+                              }}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-orange-600 dark:text-orange-400 text-right outline-none focus:ring-1 focus:ring-orange-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-0.5">
+                              소재 C 폐기
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={it.scrapC || ""}
+                              onChange={(e) => {
+                                const val = Math.max(0, parseInt(e.target.value) || 0);
+                                const scrapTotal = (Number(it.scrapA) || 0) + (Number(it.scrapB) || 0) + val;
+                                setDirectItemsInput({
+                                  ...directItemsInput,
+                                  [core.id]: { ...it, scrapC: val, scrapTotal }
+                                });
+                              }}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-amber-600 dark:text-amber-400 text-right outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                          </div>
                         </div>
                       </div>
 
