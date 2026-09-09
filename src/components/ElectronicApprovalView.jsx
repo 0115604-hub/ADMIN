@@ -446,9 +446,13 @@ export const ElectronicApprovalView = () => {
     alert("문서가 [반려] 처리되었습니다.");
   };
 
-  // Delete Document
+  // Delete Document (Only ADMIN)
   const handleDelete = async (id, e) => {
     if (e) e.stopPropagation();
+    if (!isAdmin) {
+      alert("결재 문서 삭제 권한이 없습니다. (총괄관리자 ADMIN 전용)");
+      return;
+    }
     if (window.confirm("이 결재 문서를 완전히 삭제하시겠습니까?")) {
       const updated = await deleteApprovalDocument(id);
       setApprovalDocs(updated);
@@ -839,15 +843,17 @@ export const ElectronicApprovalView = () => {
                           >
                             상세
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDelete(doc.id, e)}
-                            className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800"
-                            title="결재 문서 삭제"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                            <span>삭제</span>
-                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDelete(doc.id, e)}
+                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800"
+                              title="결재 문서 삭제 (ADMIN 전용)"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>삭제</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -899,15 +905,17 @@ export const ElectronicApprovalView = () => {
                   <Printer className="w-3.5 h-3.5" />
                   <span>인쇄</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleDelete(selectedDoc.id, e)}
-                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800 transition-all"
-                  title="결재 문서 삭제"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>삭제</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleDelete(selectedDoc.id, e)}
+                    className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800 transition-all"
+                    title="결재 문서 삭제 (ADMIN 전용)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>삭제</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -1245,14 +1253,15 @@ export const ElectronicApprovalView = () => {
 
             {/* Bottom Actions */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-              {(isAdmin || selectedDoc.drafter === currentProfile?.name) && (
+              {isAdmin && (
                 <button
                   type="button"
                   onClick={(e) => handleDelete(selectedDoc.id, e)}
                   className="text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1"
+                  title="결재 문서 삭제 (ADMIN 전용)"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>문서 삭제</span>
+                  <span>문서 삭제 (ADMIN)</span>
                 </button>
               )}
 
