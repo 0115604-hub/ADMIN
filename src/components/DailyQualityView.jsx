@@ -442,68 +442,9 @@ export const DailyQualityView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. ⭐ 4대 코어 품목별 불량률 추이 & 실적 그래프 (심플 그래프 시각화) */}
+      {/* 2. ⭐ 4대 코어 품목별 불량률 추이 (좌측: 그래프) & 주요 불량 원인 분석 (우측: 원인분석) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-        {/* Header with Mode Toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
-                  4대 코어 품목별 불량률 추이 및 실적 분석
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
-                  {selectedMonth.slice(5, 7)}월 실적
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                일자별 불량률 추이선과 <strong>목표 관리선(0.70%)</strong>으로 한눈에 파악 (품목 칩 클릭 시 상세 팝업)
-              </p>
-            </div>
-          </div>
-
-          {/* View Mode Toggle Buttons */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0 self-start sm:self-center">
-            <button
-              type="button"
-              onClick={() => setQualityGraphMode("trend")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                qualityGraphMode === "trend"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              📈 추이선
-            </button>
-            <button
-              type="button"
-              onClick={() => setQualityGraphMode("bar")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                qualityGraphMode === "bar"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              📊 실적 바
-            </button>
-            <button
-              type="button"
-              onClick={() => setQualityGraphMode("reason")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                qualityGraphMode === "reason"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              🚨 원인 분석
-            </button>
-          </div>
-        </div>
-
+      <div className="space-y-4">
         {/* 4 Core Item Quick Chips (Click to Open Detail Popup) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {(() => {
@@ -556,7 +497,7 @@ export const DailyQualityView = () => {
                   <div className="flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-100 dark:border-slate-800">
                     <span className="truncate">손실: ₩{it.lossAmount.toLocaleString()}</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
-                      <span>팝업</span>
+                      <span>상세팝업</span>
                       <ArrowRight className="w-2.5 h-2.5" />
                     </span>
                   </div>
@@ -566,22 +507,42 @@ export const DailyQualityView = () => {
           })()}
         </div>
 
-        {/* GRAPH VIEW 1: Trend Line Chart with 0.70% Goal Threshold Line */}
-        {qualityGraphMode === "trend" && (
-          <div className="space-y-2 pt-1 animate-fadeIn">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-slate-900 dark:text-white">일자별 불량률 추이선 (9.1 ~ 9.8)</span>
-                <span className="text-[11px] text-slate-400">(빨간 점선: 품질 목표선 0.70%)</span>
+        {/* 2-Column Responsive Layout: [LEFT: Graph] & [RIGHT: Defect Cause Analysis] */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* ========================================================= */}
+          {/* LEFT: 📈 일자별 불량률 추이선 및 실적 그래프 */}
+          {/* ========================================================= */}
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+            {/* Left Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                      일자별 불량률 추이선
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                      {selectedMonth.slice(5, 7)}월 실적
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    목표 관리선: <strong className="text-rose-500">0.70% 이하</strong> 관리
+                  </p>
+                </div>
               </div>
 
-              {/* Item Toggles */}
-              <div className="flex items-center gap-1.5 text-[11px] font-bold flex-wrap">
+              {/* Item Filter Chips */}
+              <div className="flex items-center gap-1 text-[10.5px] font-bold flex-wrap shrink-0">
                 <button
                   type="button"
                   onClick={() => setQualityGraphFilter("all")}
                   className={`px-2 py-0.5 rounded text-[10.5px] font-black cursor-pointer transition-colors ${
-                    qualityGraphFilter === "all" ? "bg-slate-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                    qualityGraphFilter === "all"
+                      ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
                   }`}
                 >
                   전체
@@ -589,241 +550,277 @@ export const DailyQualityView = () => {
                 <button
                   type="button"
                   onClick={() => setQualityGraphFilter("hr")}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer ${
-                    qualityGraphFilter === "hr" ? "bg-rose-500 text-white" : "text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                    qualityGraphFilter === "hr"
+                      ? "bg-rose-500 text-white"
+                      : "text-rose-600 dark:text-rose-400 bg-rose-50/70 dark:bg-rose-950/40 hover:bg-rose-100"
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-rose-500"></span> HR
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> HR
                 </button>
                 <button
                   type="button"
                   onClick={() => setQualityGraphFilter("ja")}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer ${
-                    qualityGraphFilter === "ja" ? "bg-emerald-600 text-white" : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                    qualityGraphFilter === "ja"
+                      ? "bg-emerald-600 text-white"
+                      : "text-emerald-600 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100"
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> JA
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> JA
                 </button>
                 <button
                   type="button"
                   onClick={() => setQualityGraphFilter("nx4a")}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer ${
-                    qualityGraphFilter === "nx4a" ? "bg-teal-600 text-white" : "text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-950/40"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                    qualityGraphFilter === "nx4a"
+                      ? "bg-teal-600 text-white"
+                      : "text-teal-600 dark:text-teal-400 bg-teal-50/70 dark:bg-teal-950/40 hover:bg-teal-100"
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-teal-500"></span> NX4a
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span> NX4a
                 </button>
                 <button
                   type="button"
                   onClick={() => setQualityGraphFilter("nx4")}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer ${
-                    qualityGraphFilter === "nx4" ? "bg-blue-600 text-white" : "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold cursor-pointer transition-colors ${
+                    qualityGraphFilter === "nx4"
+                      ? "bg-blue-600 text-white"
+                      : "text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100"
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span> NX4
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> NX4
                 </button>
               </div>
             </div>
 
-            {/* SVG Line Chart Container */}
-            <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:p-4 overflow-hidden relative">
-              <svg viewBox="0 0 700 230" className="w-full h-auto overflow-visible select-none">
+            {/* SVG Line Chart */}
+            <div className="w-full bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2.5 sm:p-3 overflow-hidden relative">
+              <svg viewBox="0 0 680 230" className="w-full h-auto overflow-visible select-none">
                 {/* Y Axis Grid Lines */}
-                <line x1="50" y1="190" x2="680" y2="190" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                <text x="40" y="194" fontSize="10" fill="currentColor" opacity="0.5" textAnchor="end">0.0%</text>
+                <line x1="45" y1="190" x2="665" y2="190" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                <text x="36" y="194" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.0%</text>
 
-                <line x1="50" y1="140" x2="680" y2="140" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                <text x="40" y="144" fontSize="10" fill="currentColor" opacity="0.5" textAnchor="end">0.5%</text>
+                <line x1="45" y1="140" x2="665" y2="140" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                <text x="36" y="144" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">0.5%</text>
 
                 {/* TARGET LINE: 0.70% (Y = 120) */}
-                <line x1="50" y1="120" x2="680" y2="120" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,4" />
-                <rect x="605" y="111" width="75" height="18" rx="4" fill="#EF4444" fillOpacity="0.15" />
-                <text x="642" y="124" fontSize="9.5" fontWeight="900" fill="#DC2626" textAnchor="middle">목표선 0.70%</text>
+                <line x1="45" y1="120" x2="665" y2="120" stroke="#EF4444" strokeWidth="1.5" strokeDasharray="4,4" />
+                <rect x="590" y="111" width="75" height="18" rx="4" fill="#EF4444" fillOpacity="0.15" />
+                <text x="627" y="124" fontSize="9" fontWeight="900" fill="#DC2626" textAnchor="middle">목표 0.70%</text>
 
-                <line x1="50" y1="90" x2="680" y2="90" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                <text x="40" y="94" fontSize="10" fill="currentColor" opacity="0.5" textAnchor="end">1.0%</text>
+                <line x1="45" y1="90" x2="665" y2="90" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                <text x="36" y="94" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.0%</text>
 
-                <line x1="50" y1="40" x2="680" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
-                <text x="40" y="44" fontSize="10" fill="currentColor" opacity="0.5" textAnchor="end">1.5%</text>
+                <line x1="45" y1="40" x2="665" y2="40" stroke="currentColor" strokeOpacity="0.1" strokeWidth="1" />
+                <text x="36" y="44" fontSize="9.5" fill="currentColor" opacity="0.5" textAnchor="end">1.5%</text>
 
                 {/* X Axis Labels */}
-                <text x="80" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.1(화)</text>
-                <text x="170" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.2(수)</text>
-                <text x="260" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.3(목)</text>
-                <text x="350" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.4(금)</text>
-                <text x="440" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.5(토)</text>
-                <text x="530" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.7(월)</text>
-                <text x="620" y="212" fontSize="10.5" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.8(화)</text>
+                <text x="75" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.1(화)</text>
+                <text x="160" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.2(수)</text>
+                <text x="245" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.3(목)</text>
+                <text x="330" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.4(금)</text>
+                <text x="415" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.5(토)</text>
+                <text x="500" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.7(월)</text>
+                <text x="585" y="210" fontSize="10" fontWeight="bold" fill="currentColor" opacity="0.7" textAnchor="middle">9.8(화)</text>
 
                 {/* HR G-RUN Line (Red) */}
-                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "hr" ? 1 : 0.15} className="transition-opacity">
+                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "hr" ? 1 : 0.12} className="transition-opacity">
                   <polyline
                     fill="none"
                     stroke="#F43F5E"
                     strokeWidth="3"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    points="80,74 170,122 260,95 350,57 440,95 530,81 620,78"
+                    points="75,74 160,122 245,95 330,57 415,95 500,81 585,78"
                   />
-                  <circle cx="80" cy="74" r="4" fill="#F43F5E" />
-                  <circle cx="170" cy="122" r="4" fill="#F43F5E" />
-                  <circle cx="260" cy="95" r="4" fill="#F43F5E" />
-                  <circle cx="350" cy="57" r="4.5" fill="#E11D48" />
-                  <text x="350" y="47" fontSize="9.5" fontWeight="900" fill="#E11D48" textAnchor="middle">1.33%🚨</text>
-                  <circle cx="440" cy="95" r="4" fill="#F43F5E" />
-                  <circle cx="530" cy="81" r="4" fill="#F43F5E" />
-                  <circle cx="620" cy="78" r="4.5" fill="#E11D48" />
-                  <text x="620" y="68" fontSize="9.5" fontWeight="900" fill="#E11D48" textAnchor="middle">1.12%</text>
+                  <circle cx="75" cy="74" r="3.5" fill="#F43F5E" />
+                  <circle cx="160" cy="122" r="3.5" fill="#F43F5E" />
+                  <circle cx="245" cy="95" r="3.5" fill="#F43F5E" />
+                  <circle cx="330" cy="57" r="4.5" fill="#E11D48" />
+                  <text x="330" y="46" fontSize="9" fontWeight="900" fill="#E11D48" textAnchor="middle">1.33%🚨</text>
+                  <circle cx="415" cy="95" r="3.5" fill="#F43F5E" />
+                  <circle cx="500" cy="81" r="3.5" fill="#F43F5E" />
+                  <circle cx="585" cy="78" r="4.5" fill="#E11D48" />
+                  <text x="585" y="67" fontSize="9" fontWeight="900" fill="#E11D48" textAnchor="middle">1.12%</text>
                 </g>
 
                 {/* JA G-RUN Line (Green) */}
-                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "ja" ? 1 : 0.15} className="transition-opacity">
+                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "ja" ? 1 : 0.12} className="transition-opacity">
                   <polyline
                     fill="none"
                     stroke="#10B981"
                     strokeWidth="2.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    points="80,156 170,150 260,163 350,144 440,150 530,151 620,145"
+                    points="75,156 160,150 245,163 330,144 415,150 500,151 585,145"
                   />
-                  <circle cx="80" cy="156" r="3.5" fill="#10B981" />
-                  <circle cx="170" cy="150" r="3.5" fill="#10B981" />
-                  <circle cx="260" cy="163" r="3.5" fill="#10B981" />
-                  <circle cx="350" cy="144" r="3.5" fill="#10B981" />
-                  <circle cx="440" cy="150" r="3.5" fill="#10B981" />
-                  <circle cx="530" cy="151" r="3.5" fill="#10B981" />
-                  <circle cx="620" cy="145" r="4" fill="#059669" />
-                  <text x="620" y="136" fontSize="9" fontWeight="bold" fill="#059669" textAnchor="middle">0.45%</text>
+                  <circle cx="75" cy="156" r="3" fill="#10B981" />
+                  <circle cx="160" cy="150" r="3" fill="#10B981" />
+                  <circle cx="245" cy="163" r="3" fill="#10B981" />
+                  <circle cx="330" cy="144" r="3" fill="#10B981" />
+                  <circle cx="415" cy="150" r="3" fill="#10B981" />
+                  <circle cx="500" cy="151" r="3" fill="#10B981" />
+                  <circle cx="585" cy="145" r="3.5" fill="#059669" />
+                  <text x="585" y="136" fontSize="8.5" fontWeight="bold" fill="#059669" textAnchor="middle">0.45%</text>
                 </g>
 
                 {/* NX4a G-RUN Line (Teal) */}
-                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "nx4a" ? 1 : 0.15} className="transition-opacity">
+                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "nx4a" ? 1 : 0.12} className="transition-opacity">
                   <polyline
                     fill="none"
                     stroke="#14B8A6"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    points="80,159 170,151 260,170 350,140 440,169 530,151 620,148"
+                    points="75,159 160,151 245,170 330,140 415,169 500,151 585,148"
                   />
-                  <circle cx="620" cy="148" r="3.5" fill="#14B8A6" />
-                  <text x="620" y="162" fontSize="9" fontWeight="bold" fill="#0D9488" textAnchor="middle">0.42%</text>
+                  <circle cx="585" cy="148" r="3" fill="#14B8A6" />
+                  <text x="585" y="162" fontSize="8.5" fontWeight="bold" fill="#0D9488" textAnchor="middle">0.42%</text>
                 </g>
 
                 {/* NX4 G-RUN Line (Blue) */}
-                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "nx4" ? 1 : 0.15} className="transition-opacity">
+                <g opacity={qualityGraphFilter === "all" || qualityGraphFilter === "nx4" ? 1 : 0.12} className="transition-opacity">
                   <polyline
                     fill="none"
                     stroke="#3B82F6"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    points="80,169 170,159 260,148 350,160 440,170 530,160 620,163"
+                    points="75,169 160,159 245,148 330,160 415,170 500,160 585,163"
                   />
-                  <circle cx="620" cy="163" r="3.5" fill="#3B82F6" />
-                  <text x="620" y="180" fontSize="9" fontWeight="bold" fill="#2563EB" textAnchor="middle">0.27%</text>
+                  <circle cx="585" cy="163" r="3" fill="#3B82F6" />
+                  <text x="585" y="179" fontSize="8.5" fontWeight="bold" fill="#2563EB" textAnchor="middle">0.27%</text>
                 </g>
               </svg>
             </div>
+
+            {/* Bottom Legend Mini Summary */}
+            <div className="grid grid-cols-4 gap-1.5 pt-1 text-[10px] text-center font-bold">
+              <div className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border border-rose-200/60 dark:border-rose-900/40">
+                <span className="block text-[9px] opacity-75">HR G-RUN</span>
+                <span className="text-xs font-black font-mono">1.12%</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/40">
+                <span className="block text-[9px] opacity-75">JA G-RUN</span>
+                <span className="text-xs font-black font-mono">0.45%</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-900/40">
+                <span className="block text-[9px] opacity-75">NX4a G-RUN</span>
+                <span className="text-xs font-black font-mono">0.42%</span>
+              </div>
+              <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40">
+                <span className="block text-[9px] opacity-75">NX4 G-RUN</span>
+                <span className="text-xs font-black font-mono">0.27%</span>
+              </div>
+            </div>
           </div>
-        )}
 
-        {/* GRAPH VIEW 2: Horizontal Bar Chart Comparison */}
-        {qualityGraphMode === "bar" && (
-          <div className="space-y-2.5 pt-1 animate-fadeIn">
-            {monthlyData.items.map((it) => {
-              const isGood = it.defectRate <= 0.70;
-              const isHr = it.id === "hr";
-              const barPercent = Math.min(100, Math.max(15, (it.defectRate / 1.5) * 100));
-
-              return (
-                <div
-                  key={it.id}
-                  onClick={() => setPopupItem(it)}
-                  className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 rounded-xl space-y-1.5 cursor-pointer hover:border-emerald-400 transition-all"
-                >
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black text-slate-900 dark:text-white">{it.name}</span>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                        isGood ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
-                      }`}>
-                        {isGood ? "목표달성 ✓" : "관리주의 🚨"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[11px] text-slate-400">{it.inspectQty.toLocaleString()}EA 검사 / {it.defectQty}불량</span>
-                      <span className={`text-base font-black font-mono ${
-                        isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                      }`}>
-                        {it.defectRate}%
-                      </span>
-                    </div>
+          {/* ========================================================= */}
+          {/* RIGHT: 🚨 주요 불량 원인 및 유형별 파레토 분석 */}
+          {/* ========================================================= */}
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-3">
+            {/* Right Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-rose-500/10 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                      주요 불량 원인 분석
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                      총 {monthlyData.totalDefectQty}건 발생
+                    </span>
                   </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+                    발생 빈도 순위 및 차종별 핵심 취약 불량 분석
+                  </p>
+                </div>
+              </div>
 
-                  <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 relative">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${
-                        isHr ? "bg-gradient-to-r from-rose-500 to-red-600" : "bg-gradient-to-r from-emerald-500 to-teal-400"
-                      }`}
-                      style={{ width: `${barPercent}%` }}
-                    ></div>
-                    {/* 0.70% target marker (46.6%) */}
-                    <div className="absolute top-0 bottom-0 left-[46.6%] w-0.5 bg-slate-900 dark:bg-white z-10 opacity-70" title="목표선 0.70%"></div>
-                  </div>
+              <div className="text-right shrink-0">
+                <span className="text-[10px] text-slate-400 font-bold block">누적 손실액</span>
+                <span className="text-xs font-black font-mono text-rose-600 dark:text-rose-400">
+                  ₩{monthlyData.totalLossAmount.toLocaleString()}
+                </span>
+              </div>
+            </div>
 
-                  <div className="flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
-                    <span>주요 원인: {it.worstReason || "-"}</span>
-                    <span className="font-mono text-slate-700 dark:text-slate-300 font-bold">손실액: ₩{it.lossAmount.toLocaleString()}</span>
+            {/* Donut Chart + Defect Reasons Breakdown */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50 dark:bg-slate-800/40 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+              {/* Donut Chart (4 cols) */}
+              <div className="sm:col-span-4 flex items-center justify-center">
+                <div className="relative flex items-center justify-center">
+                  <svg viewBox="0 0 160 160" className="w-28 h-28 sm:w-32 sm:h-32">
+                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#EF4444" strokeWidth="18" strokeDasharray="131 345" strokeDashoffset="0" />
+                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#F97316" strokeWidth="18" strokeDasharray="100 345" strokeDashoffset="-131" />
+                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#FBBF24" strokeWidth="18" strokeDasharray="62 345" strokeDashoffset="-231" />
+                    <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="18" strokeDasharray="52 345" strokeDashoffset="-293" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-[10px] font-bold text-slate-400">총 불량</span>
+                    <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white font-mono leading-tight">
+                      {monthlyData.totalDefectQty} EA
+                    </span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </div>
 
-        {/* GRAPH VIEW 3: Donut / Pareto Breakdown */}
-        {qualityGraphMode === "reason" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-fadeIn">
-            <div className="flex items-center justify-center">
-              <svg viewBox="0 0 160 160" className="w-36 h-36">
-                <circle cx="80" cy="80" r="55" fill="transparent" stroke="#EF4444" strokeWidth="20" strokeDasharray="131 345" strokeDashoffset="0" />
-                <circle cx="80" cy="80" r="55" fill="transparent" stroke="#F97316" strokeWidth="20" strokeDasharray="100 345" strokeDashoffset="-131" />
-                <circle cx="80" cy="80" r="55" fill="transparent" stroke="#FBBF24" strokeWidth="20" strokeDasharray="62 345" strokeDashoffset="-231" />
-                <circle cx="80" cy="80" r="55" fill="transparent" stroke="#10B981" strokeWidth="20" strokeDasharray="52 345" strokeDashoffset="-293" />
-                <text x="80" y="76" fontSize="11" fontWeight="bold" fill="currentColor" textAnchor="middle">총 불량</text>
-                <text x="80" y="93" fontSize="14" fontWeight="900" fill="currentColor" textAnchor="middle">112 EA</text>
-              </svg>
+              {/* Defect Reasons List (8 cols) */}
+              <div className="sm:col-span-8 space-y-1.5 text-xs">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200/70 dark:border-rose-900/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                    <span className="font-black text-rose-800 dark:text-rose-200 truncate">1. 둔각·직각 어퍼 떨어짐</span>
+                  </div>
+                  <span className="font-mono font-black text-rose-600 dark:text-rose-400 text-xs shrink-0">42건 (38%)</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/70 dark:border-amber-900/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-orange-500 shrink-0"></span>
+                    <span className="font-black text-amber-800 dark:text-amber-200 truncate">2. 수포 / 기포 / 미성형</span>
+                  </div>
+                  <span className="font-mono font-black text-orange-600 dark:text-orange-400 text-xs shrink-0">33건 (29%)</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200/70 dark:border-yellow-900/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0"></span>
+                    <span className="font-black text-yellow-800 dark:text-yellow-200 truncate">3. 스코치 / 흑점 이물</span>
+                  </div>
+                  <span className="font-mono font-black text-yellow-600 dark:text-yellow-400 text-xs shrink-0">20건 (18%)</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span className="font-black text-emerald-800 dark:text-emerald-200 truncate">4. 사상불량 / 삽입불량</span>
+                  </div>
+                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0">17건 (15%)</span>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/40">
-                <span className="flex items-center gap-2 font-bold text-rose-700 dark:text-rose-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 1. 찍힘 / 스크래치
-                </span>
-                <span className="font-mono font-black text-rose-600">42건 (38%)</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40">
-                <span className="flex items-center gap-2 font-bold text-amber-700 dark:text-amber-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span> 2. 기포 / 미성형
-                </span>
-                <span className="font-mono font-black text-orange-600">33건 (29%)</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900/40">
-                <span className="flex items-center gap-2 font-bold text-yellow-700 dark:text-yellow-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span> 3. 흑점 / 외관이물
-                </span>
-                <span className="font-mono font-black text-yellow-600">20건 (18%)</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                <span className="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-300">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 4. 치수 / 단차 불량
-                </span>
-                <span className="font-mono font-black text-emerald-600">17건 (15%)</span>
-              </div>
+            {/* Bottom Insight Callout */}
+            <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span className="text-amber-500">💡</span>
+                <span><strong>HR & JA</strong> 어퍼 떨어짐·수포 불량이 <strong>67%</strong> 차지</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setPopupItem(monthlyData.items.find((i) => i.id === "hr") || monthlyData.items[0])}
+                className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline shrink-0 ml-2 cursor-pointer"
+              >
+                상세 팝업 →
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
