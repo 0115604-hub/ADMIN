@@ -150,6 +150,9 @@ import {
   deleteCommonSchedule,
   toggleCompleteCommonSchedule,
   subscribeCommonSchedules,
+  subscribeCommonScheduleArchive,
+  getLocalCommonScheduleArchive,
+  isScheduleExpired,
   addCommonScheduleComment,
   deleteCommonScheduleComment,
   getTodayCommonSchedules,
@@ -1043,6 +1046,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   });
   const [commonScheduleSaving, setCommonScheduleSaving] = useState(false);
   const [commonScheduleModalOpen, setCommonScheduleModalOpen] = useState(false);
+  const [commonScheduleArchive, setCommonScheduleArchive] = useState([]);
   const [selectedCommonScheduleForComments, setSelectedCommonScheduleForComments] = useState(null);
   const [commonScheduleCommentInput, setCommonScheduleCommentInput] = useState("");
   const [commonScheduleCommentSubmitting, setCommonScheduleCommentSubmitting] = useState(false);
@@ -1052,10 +1056,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   useEffect(() => {
     cleanupExpiredCommonSchedules();
-    const unsub = subscribeCommonSchedules((scheds) => {
+    const unsubSched = subscribeCommonSchedules((scheds) => {
       setCommonSchedules(scheds);
     });
-    return () => unsub();
+    const unsubArch = subscribeCommonScheduleArchive((archs) => {
+      setCommonScheduleArchive(archs);
+    });
+
+    // 30초 주기로 시간 경과 일정 실시간 자동 삭제 및 대장 이관
+    const timer = setInterval(() => {
+      cleanupExpiredCommonSchedules();
+    }, 30000);
+
+    return () => {
+      unsubSched();
+      unsubArch();
+      clearInterval(timer);
+    };
   }, []);
 
   const allActiveCommonSchedules = useMemo(() => {
@@ -1099,35 +1116,25 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [commonSchedules, todayDateStr]);
 
   const scheduleCounts = useMemo(() => {
-    if (!commonSchedules || !Array.isArray(commonSchedules)) return { all: 0, active: 0, completed: 0 };
-    const completed = commonSchedules.filter((s) => s.isCompleted).length;
-    const active = commonSchedules.length - completed;
-    return { all: commonSchedules.length, active, completed };
-  }, [commonSchedules]);
+    const active = (commonSchedules || []).filter((s) => !isScheduleExpired(s) && !s.isCompleted).length;
+    const archive = (commonScheduleArchive || []).length;
+    return { all: active + archive, active, archive };
+  }, [commonSchedules, commonScheduleArchive]);
 
   const modalFilteredSchedules = useMemo(() => {
-    if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
-    let list = [...commonSchedules];
-    if (commonScheduleFilterTab === "active") {
-      list = list.filter((s) => !s.isCompleted);
-    } else if (commonScheduleFilterTab === "completed") {
-      list = list.filter((s) => s.isCompleted);
+    if (commonScheduleFilterTab === "archive") {
+      return [...(commonScheduleArchive || [])].sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
     }
-    return list.sort((a, b) => {
-      if (commonScheduleFilterTab === "all" && Boolean(a.isCompleted) !== Boolean(b.isCompleted)) {
-        return a.isCompleted ? 1 : -1;
-      }
-      if (!a.isCompleted && !b.isCompleted) {
+    // Default: active non-expired schedules
+    return (commonSchedules || [])
+      .filter((s) => !isScheduleExpired(s) && !s.isCompleted)
+      .sort((a, b) => {
         const aDate = a.startDate || a.date || "";
         const bDate = b.startDate || b.date || "";
         if (aDate !== bDate) return aDate.localeCompare(bDate);
         return (a.time || "").localeCompare(b.time || "");
-      }
-      const aDate = a.completedAt || a.startDate || a.date || "";
-      const bDate = b.completedAt || b.startDate || b.date || "";
-      return bDate.localeCompare(aDate);
-    });
-  }, [commonSchedules, commonScheduleFilterTab]);
+      });
+  }, [commonSchedules, commonScheduleArchive, commonScheduleFilterTab]);
 
   const handleToggleCompleteCommonSchedule = async (id, currentCompleted) => {
     const nextCompleted = !currentCompleted;

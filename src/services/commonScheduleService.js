@@ -3,48 +3,175 @@ import { db } from "../firebase";
 import { getKSTDateString } from "../utils/dateUtils";
 
 const STORAGE_KEY = "oryuk_common_schedules_v1";
+const ARCHIVE_STORAGE_KEY = "oryuk_common_schedules_archive_v1";
 const COLLECTION_NAME = "company_common_schedules";
+const ARCHIVE_COLLECTION_NAME = "company_common_schedules_archive";
 
-// Initial sample common schedules (Live interactive sample)
-const DEFAULT_COMMON_SCHEDULES = [
-  {
-    id: "sched_20260908_seminar",
-    title: "2026 스마트 공장 고도화 및 품질 혁신 세미나",
-    target: "세미나",
-    startDate: "2026-09-08",
-    endDate: "2026-09-09",
-    date: "2026-09-08",
-    time: "14:00",
-    author: "ADMIN",
-    createdAt: "2026-09-08T09:00:00.000Z",
-    isCompleted: false,
-    comments: [
-      {
-        id: "cmt_1",
-        author: "이명재",
-        role: "이사",
-        plant: "삼랑진공장",
-        text: "삼랑진공장 품질관리팀 전원 참석 예정입니다.",
-        createdAt: "2026-09-08T10:30:00.000Z"
-      },
-      {
-        id: "cmt_2",
-        author: "김동욱",
-        role: "책임",
-        plant: "한림공장",
-        text: "한림공장 라인 가동 일정 확인 후 2명 참석하겠습니다.",
-        createdAt: "2026-09-08T11:15:00.000Z"
-      }
-    ]
+// Initial sample common schedules
+const DEFAULT_COMMON_SCHEDULES = [];
+
+/**
+ * KST 기준 현재 날짜(YYYY-MM-DD) 및 시간(HH:mm) 문자열 반환
+ */
+export const getKSTCurrentDateTime = () => {
+  const now = new Date();
+  // KST is UTC+9
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const kst = new Date(utc + (9 * 3600000));
+  
+  const yyyy = kst.getFullYear();
+  const mm = String(kst.getMonth() + 1).padStart(2, "0");
+  const dd = String(kst.getDate()).padStart(2, "0");
+  const hours = String(kst.getHours()).padStart(2, "0");
+  const minutes = String(kst.getMinutes()).padStart(2, "0");
+
+  return {
+    date: `${yyyy}-${mm}-${dd}`,
+    time: `${hours}:${minutes}`,
+    dateTimeStr: `${yyyy}-${mm}-${dd} ${hours}:${minutes}`,
+    timestamp: kst.getTime()
+  };
+};
+
+/**
+ * 일정의 날짜 및 시간이 현재 KST 기준 경과(만료)했는지 판별
+ * @param {Object} schedule - { startDate, endDate, date, time }
+ * @returns {boolean}
+ */
+export const isScheduleExpired = (schedule) => {
+  if (!schedule) return false;
+
+  const current = getKSTCurrentDateTime();
+  const targetDate = schedule.endDate || schedule.startDate || schedule.date || current.date;
+  const time = (schedule.time || "종일").trim();
+
+  // 1. '종일'인 경우: 해당 날짜의 23:59:59까지 유효 (즉, 날짜가 오늘보다 이전이면 경과됨)
+  if (time === "종일" || !time) {
+    return targetDate < current.date;
   }
-];
+
+  // 2. 특정 시간(예: '14:00', '09:30')이 지정된 경우: 해당 날짜의 시간 경과 시 즉시 만료
+  const formattedTime = time.length === 5 ? time : time.padStart(5, "0");
+  const targetDateTime = `${targetDate} ${formattedTime}`;
+
+  return current.dateTimeStr > targetDateTime;
+};
+
+/* ========================================================================= */
+/* 📂 1. 보관 대장 (Archive Ledger) 로컬 & Firestore 관리 */
+/* ========================================================================= */
+
+export const getLocalCommonScheduleArchive = () => {
+  try {
+    const saved = localStorage.getItem(ARCHIVE_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to parse local schedule archive:", e);
+  }
+  return [];
+};
+
+/**
+ * 삭제/경과된 일정을 보관대장에 등록
+ */
+export const saveToCommonScheduleArchive = async (scheduleItem, reason = "시간 경과 자동 삭제 및 대장 이관") => {
+  if (!scheduleItem) return;
+
+  const currentArchive = getLocalCommonScheduleArchive();
+  const kstNow = getKSTCurrentDateTime();
+
+  const archiveEntry = {
+    ...scheduleItem,
+    archivedAt: new Date().toISOString(),
+    archivedAtKST: kstNow.dateTimeStr,
+    archiveReason: reason,
+    isArchived: true
+  };
+
+  // Prevent duplicates in archive
+  const existingIdx = currentArchive.findIndex((item) => item.id === archiveEntry.id);
+  let updatedArchive;
+  if (existingIdx >= 0) {
+    updatedArchive = [...currentArchive];
+    updatedArchive[existingIdx] = archiveEntry;
+  } else {
+    updatedArchive = [archiveEntry, ...currentArchive];
+  }
+
+  // Sort by archivedAt desc
+  updatedArchive.sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
+
+  try {
+    localStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(updatedArchive));
+  } catch (e) {
+    console.error("Failed to save to local schedule archive:", e);
+  }
+
+  try {
+    const docRef = doc(db, ARCHIVE_COLLECTION_NAME, archiveEntry.id);
+    await setDoc(docRef, archiveEntry, { merge: true });
+  } catch (e) {
+    console.warn("Firestore saveToCommonScheduleArchive warning:", e);
+  }
+
+  return updatedArchive;
+};
+
+/**
+ * 보관대장 실시간 구독
+ */
+export const subscribeCommonScheduleArchive = (callback) => {
+  try {
+    const colRef = collection(db, ARCHIVE_COLLECTION_NAME);
+    const q = query(colRef);
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const items = [];
+          snapshot.forEach((docSnap) => {
+            items.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          items.sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
+          localStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(items));
+          if (callback) callback(items);
+        } else {
+          const localItems = getLocalCommonScheduleArchive();
+          if (callback) callback(localItems);
+        }
+      },
+      (error) => {
+        console.warn("Firestore archive sync warning (using local):", error);
+        const localItems = getLocalCommonScheduleArchive();
+        if (callback) callback(localItems);
+      }
+    );
+
+    return unsubscribe;
+  } catch (e) {
+    console.error("subscribeCommonScheduleArchive error:", e);
+    const localItems = getLocalCommonScheduleArchive();
+    if (callback) callback(localItems);
+    return () => {};
+  }
+};
+
+/* ========================================================================= */
+/* 📅 2. 활성 공통 일정 (Active Schedules) 관리 */
+/* ========================================================================= */
 
 export const getLocalCommonSchedules = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -54,6 +181,9 @@ export const getLocalCommonSchedules = () => {
   return DEFAULT_COMMON_SCHEDULES;
 };
 
+/**
+ * 신규 일정 등록 및 수정
+ */
 export const saveCommonSchedule = async (scheduleItem) => {
   const current = getLocalCommonSchedules();
   const startDate = scheduleItem.startDate || scheduleItem.date || getKSTDateString();
@@ -113,6 +243,54 @@ export const saveCommonSchedule = async (scheduleItem) => {
   return updated;
 };
 
+/**
+ * ⚡ [핵심 기능] 날짜 및 시간이 경과된 일정 자동 삭제 및 보관대장 등록 이관
+ */
+export const cleanupExpiredCommonSchedules = async () => {
+  const current = getLocalCommonSchedules();
+  if (!current || current.length === 0) return [];
+
+  const expiredItems = [];
+  const activeItems = [];
+
+  for (const item of current) {
+    if (isScheduleExpired(item)) {
+      expiredItems.push(item);
+    } else {
+      activeItems.push(item);
+    }
+  }
+
+  if (expiredItems.length > 0) {
+    console.log(`[공통일정 자동정리] 시간 경과된 일정 ${expiredItems.length}건을 보관대장으로 이관하고 삭제합니다:`, expiredItems);
+
+    // 1. 보관대장(Archive)에 등록
+    for (const exp of expiredItems) {
+      await saveToCommonScheduleArchive(exp, "선택 날짜/시간 경과 자동 삭제 및 대장 이관");
+      
+      // 2. Firestore 활성 컬렉션에서 삭제
+      try {
+        const docRef = doc(db, COLLECTION_NAME, exp.id);
+        await deleteDoc(docRef);
+      } catch (e) {
+        console.warn("Firestore cleanup delete error:", e);
+      }
+    }
+
+    // 3. 로컬 스토리지 활성 목록 갱신
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(activeItems));
+    } catch (e) {
+      console.error("LocalStorage update error in cleanupExpiredCommonSchedules:", e);
+    }
+  }
+
+  return activeItems;
+};
+
+/**
+ * 댓글(의견) 등록
+ */
 export const addCommonScheduleComment = async (scheduleId, commentData) => {
   const current = getLocalCommonSchedules();
   const targetIdx = current.findIndex((s) => s.id === scheduleId);
@@ -218,8 +396,19 @@ export const toggleCompleteCommonSchedule = async (scheduleId, isCompleted = tru
   return updated;
 };
 
-export const deleteCommonSchedule = async (scheduleId) => {
+/**
+ * 관리자 수동 삭제 시에도 보관 대장에 자동 등록 후 삭제
+ */
+export const deleteCommonSchedule = async (scheduleId, reason = "관리자 수동 삭제") => {
   const current = getLocalCommonSchedules();
+  const target = current.find((s) => s.id === scheduleId);
+
+  // 1. 대장에 등록
+  if (target) {
+    await saveToCommonScheduleArchive(target, reason);
+  }
+
+  // 2. 활성 목록에서 제거
   const updated = current.filter((s) => s.id !== scheduleId);
 
   try {
@@ -245,7 +434,7 @@ export const subscribeCommonSchedules = (callback) => {
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         if (!snapshot.empty) {
           const items = [];
           snapshot.forEach((docSnap) => {
@@ -261,16 +450,21 @@ export const subscribeCommonSchedules = (callback) => {
             return (a.time || "").localeCompare(b.time || "");
           });
           localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-          if (callback) callback(items);
+          
+          // 실시간으로 경과된 일정 자동 정리 및 대장 이관
+          const cleanedItems = await cleanupExpiredCommonSchedules();
+          if (callback) callback(cleanedItems);
         } else {
           const localItems = getLocalCommonSchedules();
-          if (callback) callback(localItems);
+          const cleaned = await cleanupExpiredCommonSchedules();
+          if (callback) callback(cleaned);
         }
       },
-      (error) => {
+      async (error) => {
         console.warn("Firestore common schedules sync warning (using local):", error);
         const localItems = getLocalCommonSchedules();
-        if (callback) callback(localItems);
+        const cleaned = await cleanupExpiredCommonSchedules();
+        if (callback) callback(cleaned);
       }
     );
 
@@ -283,20 +477,16 @@ export const subscribeCommonSchedules = (callback) => {
   }
 };
 
-export const cleanupExpiredCommonSchedules = async () => {
-  return getLocalCommonSchedules();
-};
-
 export const getUncompletedCommonSchedules = () => {
   const all = getLocalCommonSchedules();
-  return all.filter((s) => !s.isCompleted);
+  return all.filter((s) => !s.isCompleted && !isScheduleExpired(s));
 };
 
 export const getTodayCommonSchedules = (targetDate = null) => {
   const dateStr = targetDate || getKSTDateString();
   const all = getLocalCommonSchedules();
   return all.filter((s) => {
-    if (s.isCompleted) return false;
+    if (s.isCompleted || isScheduleExpired(s)) return false;
     const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
     const startDate = s.startDate || s.date;
     const endDate = s.endDate || startDate;
@@ -343,10 +533,11 @@ export const getScheduleCategoryMeta = (target) => {
 };
 
 export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateString()) => {
-  if (!scheds || scheds.length === 0) {
+  const validScheds = (scheds || []).filter((s) => !isScheduleExpired(s));
+  if (validScheds.length === 0) {
     return "• 등록된 공통 일정이 없습니다.";
   }
-  const sorted = [...scheds].sort((a, b) => {
+  const sorted = [...validScheds].sort((a, b) => {
     const aStart = a.startDate || a.date || "";
     const bStart = b.startDate || b.date || "";
     if (aStart !== bStart) return aStart.localeCompare(bStart);
