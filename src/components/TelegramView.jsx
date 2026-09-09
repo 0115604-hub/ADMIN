@@ -182,6 +182,21 @@ export const TelegramView = () => {
     return lines.join("\n") + more;
   }, [morningApprovalDocs]);
 
+  const morningWorkLogs = useMemo(() => {
+    const logs = getLocalWorkLogs();
+    return logs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
+  }, []);
+
+  const morningWorkLogLines = useMemo(() => {
+    if (morningWorkLogs.length === 0) return "• 없음 (전건 승인완료)";
+    const lines = morningWorkLogs.slice(0, 5).map((l) => {
+      const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
+      return `• ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
+    });
+    const more = morningWorkLogs.length > 5 ? `\n• 외 ${morningWorkLogs.length - 5}건` : "";
+    return lines.join("\n") + more;
+  }, [morningWorkLogs]);
+
   // Live active meetings & notices
   const morningNoticeMeetings = useMemo(() => {
     const allUrgent = getLocalUrgentIssues();
@@ -211,7 +226,7 @@ export const TelegramView = () => {
     const nowTime = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
     if (unifiedMsgType === "briefing") {
-      return `<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n👥 <b>[1] 금일 근태 / 휴가 현황</b>\n• 삼랑진: ${morningLeaveSamStr}\n• 한림: ${morningLeaveHanStr}\n\n📑 <b>[2] 전일 전자결재 미결 ${morningApprovalDocs.length > 0 ? `(${morningApprovalDocs.length}건)` : ""}</b>\n${morningApprovalDocLines}\n\n📅 <b>[3] 회의 & 사내공지</b>\n${morningNoticeMeetings}\n━━━━━━━━━━━━━━━━━━━━━\n※ 미결된 전자결재는 금일 오전 중 확인 부탁드립니다.\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
+      return `<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n👥 <b>[1] 금일 근태 / 휴가 현황</b>\n• 삼랑진: ${morningLeaveSamStr}\n• 한림: ${morningLeaveHanStr}\n\n📑 <b>[2] 전일 전자결재 미결 ${morningApprovalDocs.length > 0 ? `(${morningApprovalDocs.length}건)` : ""}</b>\n${morningApprovalDocLines}\n\n📝 <b>[3] 전일 업무일지 미결 ${morningWorkLogs.length > 0 ? `(${morningWorkLogs.length}건)` : ""}</b>\n${morningWorkLogLines}\n\n📅 <b>[4] 회의 & 사내공지</b>\n${morningNoticeMeetings}\n━━━━━━━━━━━━━━━━━━━━━\n※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
     }
 
     if (unifiedMsgType === "quality") {
