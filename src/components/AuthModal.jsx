@@ -885,6 +885,8 @@ export const AuthModal = () => {
                                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
                                   : item.plant === "삼랑진공장"
                                   ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
+                                  : item.plant === "화승 R&A"
+                                  ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
                                   : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
                               }`}>
                                 {item.plant}
@@ -1058,6 +1060,8 @@ export const AuthModal = () => {
                                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
                                   : item.plant === "삼랑진공장"
                                   ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
+                                  : item.plant === "화승 R&A"
+                                  ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
                                   : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
                               }`}>
                                 {item.plant}
@@ -2011,9 +2015,11 @@ export const AuthModal = () => {
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                                 : it.plant === "삼랑진공장"
                                 ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                : it.plant === "화승 R&A"
+                                ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
                                 : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
                             }`}>
-                              {it.plant?.replace("공장", "") || "공장"}
+                              {it.plant === "화승 R&A" ? "화승 R&A" : it.plant?.replace("공장", "") || "전체"}
                             </span>
 
                             {/* Date Badge */}
@@ -2305,11 +2311,12 @@ export const AuthModal = () => {
                     <select
                       value={newIssueForm.plant}
                       onChange={(e) => setNewIssueForm({ ...newIssueForm, plant: e.target.value })}
-                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs sm:text-sm"
                     >
                       <option value="삼랑진공장">삼랑진공장</option>
                       <option value="한림공장">한림공장</option>
-                      <option value="전사 공통">전사 공통</option>
+                      <option value="화승 R&A">화승 R&A</option>
+                      <option value="전체">전체</option>
                     </select>
                   </div>
 
