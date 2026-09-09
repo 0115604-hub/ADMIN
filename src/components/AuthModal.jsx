@@ -342,8 +342,9 @@ export const AuthModal = () => {
   const filteredIssues = useMemo(() => {
     if (issueFilterTab === "unresolved") return unresolvedIssues;
     if (issueFilterTab === "closed") return closedIssues;
-    return urgentIssues.filter((i) => !i.isDeleted);
-  }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues]);
+    if (issueFilterTab === "deleted") return urgentIssues.filter((i) => i.isDeleted || isItemExpired(i));
+    return urgentIssues; // [전체]: 삭제 및 만료된 과거 모든 이력 보존
+  }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues, todayDateStr]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
   const samrangjinLeaveCount = useMemo(() => {
@@ -1846,6 +1847,25 @@ export const AuthModal = () => {
                       {closedIssues.length}
                     </span>
                   </button>
+
+                  {/* 4. [삭제/만료] */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIssueFilterTab("deleted");
+                      setIssueModalPage(1);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                      issueFilterTab === "deleted"
+                        ? "bg-rose-600 text-white shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <span>삭제/만료</span>
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200">
+                      {deletedIssues.length}
+                    </span>
+                  </button>
                 </div>
 
                 <button
@@ -1965,8 +1985,49 @@ export const AuthModal = () => {
                         </div>
                       )}
 
-                      {/* 🌟 복구 기능 버튼 (Restore Action Button) */}
-                      <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                      {/* Replies / Responses for Meeting or Notice */}
+                      {item.replies && item.replies.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            <span className="flex items-center gap-1">
+                              <span>💬 회신 및 참석 현황</span>
+                              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 font-bold">
+                                {item.replies.length}건
+                              </span>
+                            </span>
+                          </div>
+                          <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                            {item.replies.map((rep) => (
+                              <div
+                                key={rep.id}
+                                className="p-2 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 text-[11px] flex items-center justify-between gap-2"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
+                                    rep.attendanceStatus === "참석"
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                      : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                  }`}>
+                                    {rep.attendanceStatus || "확인"}
+                                  </span>
+                                  <strong className="text-slate-800 dark:text-slate-200 shrink-0 font-bold">
+                                    {rep.author}
+                                  </strong>
+                                  <span className="text-slate-600 dark:text-slate-300 truncate">
+                                    {rep.content}
+                                  </span>
+                                </div>
+                                <span className="text-[9.5px] text-slate-400 shrink-0 font-mono">
+                                  {rep.createdAt?.slice(5) || ""}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 🌟 Action & Restore Buttons */}
+                      <div className="flex items-center justify-between gap-2 pt-1 flex-wrap border-t border-slate-200/60 dark:border-slate-800">
                         <div className="flex items-center gap-2 flex-wrap">
                           <button
                             type="button"
@@ -1981,16 +2042,54 @@ export const AuthModal = () => {
                             <span>내용 수정</span>
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={(e) => handleRestoreIssue(item.id, e)}
-                            className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/30 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                            title="이 항목을 첫화면 품질경보로 복구"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            <span>이 항목 첫화면으로 복구</span>
-                          </button>
+                          {!isItemDeleted && !isItemResolved && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                handleOpenActionModal(item, e);
+                                setIsListModalOpen(false);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                              title="조치 결과 입력"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>조치결과 입력</span>
+                            </button>
+                          )}
+
+                          {isItemDeleted ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleRestoreIssue(item.id, e)}
+                              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/30 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 animate-pulse"
+                              title="이 항목을 첫화면 품질경보로 복구"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>🔄 첫화면으로 복구</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                handleOpenDeleteModal(item, e);
+                                setIsListModalOpen(false);
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/60 dark:text-slate-300 dark:hover:text-rose-300 font-bold text-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                              title="항목 삭제 (관리자 승인 필요)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>삭제</span>
+                            </button>
+                          )}
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedListItem(null)}
+                          className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-bold px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                          닫기 ✕
+                        </button>
                       </div>
                     </div>
                   );
@@ -2003,10 +2102,12 @@ export const AuthModal = () => {
                       <div className="text-lg">📭</div>
                       <p>
                         {issueFilterTab === "unresolved"
-                          ? "현재 미결(조치대기) 상태인 항목이 없습니다. (모두 조치/종결됨)"
+                          ? "현재 진행중(조치대기) 상태인 항목이 없습니다."
                           : issueFilterTab === "closed"
-                          ? "종결(조치완료 또는 삭제)된 내역이 없습니다."
-                          : "등록된 품질경보 및 공지사항이 없습니다."}
+                          ? "종결(조치완료)된 내역이 없습니다."
+                          : issueFilterTab === "deleted"
+                          ? "삭제 또는 기간만료된 내역이 없습니다."
+                          : "등록된 관리대장 이력이 없습니다."}
                       </p>
                     </div>
                   ) : (

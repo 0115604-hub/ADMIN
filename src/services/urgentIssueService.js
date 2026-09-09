@@ -55,9 +55,7 @@ export const subscribeUrgentIssues = (onUpdate) => {
         const list = [];
         snapshot.forEach((d) => {
           const item = { id: d.id, ...d.data() };
-          if (!item.isDeleted) {
-            list.push(item);
-          }
+          list.push(item);
         });
         // Sort by createdAt descending
         list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
@@ -197,7 +195,7 @@ export const deleteIssueReply = async (issueId, replyId) => {
 // In-flight deletion lock to prevent duplicate Telegram messages and race conditions
 const activeDeletes = new Set();
 
-// Delete an urgent issue permanently from Firestore & local storage
+// Delete an urgent issue (Soft Delete: remains in registry/대장 with isDeleted: true)
 export const deleteUrgentIssue = async (id, deleterName = "") => {
   if (activeDeletes.has(id)) {
     return getLocalUrgentIssues();
@@ -207,26 +205,38 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
   try {
     const current = getLocalUrgentIssues();
     const target = current.find((i) => i.id === id);
+    if (!target) return current;
 
-    // Remove from local storage immediately
-    const updated = current.filter((i) => i.id !== id);
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    // Soft delete: Mark isDeleted: true so it is preserved in 대장
+    const deletedItem = {
+      ...target,
+      isDeleted: true,
+      deletedAt: nowStr,
+      deletedBy: deleterName || "관리자"
+    };
+
+    const updated = current.map((i) => (i.id === id ? deletedItem : i));
     saveLocalUrgentIssues(updated);
 
-    // Delete directly and permanently from Firestore
+    // Save soft-deleted record to Firestore
     try {
-      await deleteDoc(doc(db, COLLECTION_NAME, id));
+      await setDoc(doc(db, COLLECTION_NAME, id), deletedItem);
     } catch (e) {
-      console.warn("Firestore deleteDoc fallback to local:", e);
+      console.warn("Firestore soft delete fallback to local:", e);
     }
 
     // Trigger Telegram notification on manual delete (skip on automated date expiration cleanup)
-    if (target && !deleterName?.includes("자동")) {
+    if (!deleterName?.includes("자동")) {
       try {
-        const deletedItem = {
-          ...target,
-          isDeleted: true,
-          deletedBy: deleterName || "관리자"
-        };
         await sendQualityDeleteTelegram(deletedItem, deleterName);
       } catch (err) {
         console.warn("Telegram delete alert error:", err);
