@@ -261,9 +261,34 @@ export const subscribeApprovalDocs = (onUpdate) => {
               setDoc(doc(db, COLLECTION_NAME, d.id), normalized).catch(() => {});
             }
           });
-          list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-          saveLocalApprovalDocs(list);
-          onUpdate(list);
+
+          // ⭐ Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
+          const seenOtKeys = new Set();
+          const cleanList = [];
+          for (const item of list) {
+            if (item.type === "OVERTIME") {
+              const dateMatch = (item.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) || (item.docNumber || "").match(/09\d{2}/) || (item.id || "").match(/2026\d{4}/);
+              const dateKey = dateMatch ? dateMatch[0] : item.createdAt?.slice(0, 10) || item.id;
+              const otKey = `${item.plant || "전사"}_${dateKey}`;
+
+              if (seenOtKeys.has(otKey)) {
+                // If a non-canonical duplicate is found, clean it from Firestore
+                if (item.id && !item.id.startsWith("appr_ot_")) {
+                  try {
+                    deleteDoc(doc(db, COLLECTION_NAME, item.id));
+                  } catch (e) {}
+                  continue;
+                }
+              } else {
+                seenOtKeys.add(otKey);
+              }
+            }
+            cleanList.push(item);
+          }
+
+          cleanList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+          saveLocalApprovalDocs(cleanList);
+          onUpdate(cleanList);
         } else {
           const locals = getLocalApprovalDocs();
           locals.forEach((item) => {
@@ -673,6 +698,26 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
     for (const targetPlant of targetPlants) {
       const targetCompanies = PLANT_COMPANIES_MAP[targetPlant] || [];
+      const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
+      const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+
+      // 🧹 1. Clean any duplicate overtime approval documents for this plant and date
+      const duplicateDocs = currentApprovalDocs.filter(d => 
+        d.id !== canonicalDocId &&
+        d.type === "OVERTIME" &&
+        d.plant === targetPlant &&
+        (
+          (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
+          (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+          (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+        )
+      );
+
+      for (const dup of duplicateDocs) {
+        await deleteApprovalDocument(dup.id);
+      }
+
+      // Filter reports for this plant and date
       const plantReports = allReports.filter(r => 
         (r.plant === targetPlant || targetCompanies.includes(r.company)) && 
         (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
@@ -683,9 +728,10 @@ export const syncPlantOvertimeToApprovalBox = async ({
       let totalPlantWorkers = 0;
       let totalPlantHours = 0;
       let totalPlantCost = 0;
+      const participatingCompanies = [];
 
       targetCompanies.forEach(comp => {
-        // 1. Check if report exists
+        // 1. Check if individual report exists
         const compRep = plantReports.find(r => r.company === comp || (Array.isArray(r.companies) && r.companies.includes(comp)));
         
         // 2. Check matrix
@@ -725,6 +771,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         }
 
         if (workerCount > 0 || compRep) {
+          participatingCompanies.push(comp);
           companySummaries.push({
             company: comp,
             workerCount,
@@ -738,16 +785,14 @@ export const syncPlantOvertimeToApprovalBox = async ({
         }
       });
 
-      // Skip creating empty doc if no workers/reports and doesn't exist
-      const docId = `appr_ot_${targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim"}_${workDateStr.replace(/-/g, "")}`;
-      const existingDoc = currentApprovalDocs.find(d => d.id === docId);
+      const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
 
-      if (totalPlantWorkers === 0 && !existingDoc) {
-        continue;
-      }
-
-      // If 0 but existingDoc exists, keep existing stats if non-zero
-      if (totalPlantWorkers === 0 && existingDoc) {
+      // If no workers and no reports for this plant on this date:
+      if (totalPlantWorkers === 0 && plantReports.length === 0) {
+        if (existingDoc) {
+          // If all reports were deleted, remove the approval document
+          await deleteApprovalDocument(canonicalDocId);
+        }
         continue;
       }
 
@@ -755,7 +800,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const drafterTitle = targetPlant === "삼랑진공장" ? "선임" : "담당";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
-      const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 (${targetCompanies.join(", ")})`;
+      const titleCompList = participatingCompanies.length > 0 ? participatingCompanies : targetCompanies;
+      const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
         ? "생산총괄 ((주)오륙 + 유성)"
         : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
@@ -769,6 +815,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
 1. 특근 개요
 - 일자: 2026년 9월 ${dayNum}일 (${dayLabel}요일)
 - 대상 사업장: ${targetPlant} (${targetCompanies.join(", ")})
+- 등록 협력사: ${titleCompList.join(", ")}
 - 총 투입 인원: ${totalPlantWorkers}명
 - 총 투입 공수: ${totalPlantHours} M/H
 - 총 소요 노무비: ₩${totalPlantCost.toLocaleString()}
@@ -779,7 +826,7 @@ ${breakdownText || "- 등록된 회사별 세부 내역 취합 완료"}
 
 3. 특근 사유 및 주요 작업
 - 현대/기아 자동차 긴급 납품 물량 대응 및 토요/일요 특근 가동
-- ${targetPlant} 소속 협력사 (${targetCompanies.join(", ")}) 생산 라인 가동 및 검사/출하 완료`;
+- ${targetPlant} 소속 협력사 (${titleCompList.join(", ")}) 생산 라인 가동 및 검사/출하 완료`;
 
       // Build or preserve steps
       let steps;
@@ -800,7 +847,7 @@ ${breakdownText || "- 등록된 회사별 세부 내역 취합 완료"}
       }
 
       const approvalDoc = normalizeApprovalDoc({
-        id: docId,
+        id: canonicalDocId,
         docNumber: `ORYUK-2026-09${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
         type: "OVERTIME",
         typeName: "특근보고서 (취합)",

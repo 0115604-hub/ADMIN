@@ -508,6 +508,7 @@ export const OvertimeStatusView = () => {
     if (e) e.stopPropagation();
     if (!window.confirm("정말로 이 특근보고서를 삭제하시겠습니까?")) return;
     try {
+      const targetRep = legacyReports.find((r) => r.id === reportId);
       await deleteOvertimeReport(reportId);
       const nextReports = legacyReports.filter((r) => r.id !== reportId);
       setLegacyReports(nextReports);
@@ -520,6 +521,18 @@ export const OvertimeStatusView = () => {
       };
       setSmartData(updatedLedger);
       await saveSmartOvertimeData(updatedLedger);
+
+      // ⭐ 결재함 특근보고서 실시간 재수정/정리
+      if (targetRep) {
+        await syncPlantOvertimeToApprovalBox({
+          plant: targetRep.plant,
+          company: targetRep.company,
+          workDate: targetRep.workDate,
+          matrix: synchedMatrix,
+          reports: nextReports
+        });
+      }
+
       if (selectedLegacyReport && selectedLegacyReport.id === reportId) {
         setIsLegacyModalOpen(false);
         setSelectedLegacyReport(null);
