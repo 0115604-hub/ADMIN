@@ -1837,39 +1837,39 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       )}
 
-      {/* 📑 전자결재 대기 현황 (1줄 간결 바) */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-emerald-500/40 dark:border-emerald-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0 max-w-full">
-        <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+      {/* 📑 전자결재 대기 현황 (1줄 완벽 바) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 border border-emerald-500/40 dark:border-emerald-600/40 shadow-2xs flex items-center justify-between gap-2 min-w-0 max-w-full">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
           <div className="p-1 rounded-lg bg-emerald-600 text-white shadow-xs shrink-0">
             <FileSignature className="w-3.5 h-3.5" />
           </div>
           <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
-            전자결재 대기 현황
+            전자결재 대기
           </span>
 
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {pendingCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 animate-pulse flex items-center gap-1">
-                <Clock className="w-3 h-3" />
+              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 animate-pulse flex items-center gap-0.5 sm:gap-1">
+                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 <span>미결 {pendingCount}건</span>
               </span>
             )}
             {holdCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 flex items-center gap-1">
-                <PauseCircle className="w-3 h-3" />
+              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 flex items-center gap-0.5 sm:gap-1">
+                <PauseCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 <span>보류 {holdCount}건</span>
               </span>
             )}
             {pendingOrHoldDocs.length === 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                <span>대기 없음 (완료)</span>
+              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 flex items-center gap-0.5 sm:gap-1">
+                <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600" />
+                <span>대기 없음</span>
               </span>
             )}
           </div>
 
           {pendingOrHoldDocs.length > 0 && (
-            <div className="hidden md:flex items-center gap-2 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
+            <div className="hidden lg:flex items-center gap-2 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
               <span className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 shrink-0">최근 대기:</span>
               <div
                 onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
@@ -1885,13 +1885,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[11px] sm:text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap"
           >
-            <span>전체 결재함</span>
+            <span>결재함</span>
             <ArrowRight className="w-3 h-3" />
           </button>
         </div>
@@ -2351,9 +2351,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
               1. {monthTitle} 매입매출현황 요약
             </h2>
           </div>
@@ -2361,14 +2361,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("vehicle_sales")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
             >
-              <span className="relative flex h-2 w-2 shrink-0">
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
               </span>
               <span>매출 상세</span>
-              <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
             </button>
           )}
         </div>
@@ -2402,12 +2402,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 2. ⭐ [2위치] 압출동 주간 비가동내역 요약 (월별 그래프 + 당월 누적시간 단독 합산) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
               2. 압출동 주간 비가동내역 요약
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
               9월 당월 누적
             </span>
           </div>
@@ -2415,14 +2415,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("extrusion_downtime")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
             >
-              <span className="relative flex h-2 w-2 shrink-0">
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
               </span>
               <span>비가동 상세</span>
-              <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
             </button>
           )}
         </div>
@@ -2525,12 +2525,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5 min-w-0 max-w-full overflow-hidden">
         {/* Header with Quality Detail Link */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
               3. 중요ITEM 품질현황
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
+            <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0">
               {selectedMonth?.slice(5, 7) || "9"}월 실적
             </span>
           </div>
@@ -2538,14 +2538,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("daily_quality")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
             >
-              <span className="relative flex h-2 w-2 shrink-0">
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
               </span>
               <span>품질 상세</span>
-              <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
             </button>
           )}
         </div>
@@ -2617,30 +2617,30 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 4. ⭐ [4위치] 근태현황 및 관리 (잔업 스마트 통합관리대장 연동) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-2">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
               <span>4. 근태현황 및 관리</span>
-              <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300">
+              <span className="hidden sm:inline-block text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300">
                 5개사 잔업스마트대장
               </span>
             </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shrink-0">
-              9월 누적: <strong className="font-mono text-[10.5px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400">평일잔업 880H • 주말특근 440H</strong> (총 6,650 M/H)
+            <span className="hidden md:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shrink-0">
+              9월: 평일 880H • 주말 440H
             </span>
           </div>
 
           {onNavigateTab && (
             <button
               onClick={() => onNavigateTab("overtime_status")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-black border border-cyan-400 dark:border-cyan-600 ring-2 ring-cyan-400/40 shadow-xs shadow-cyan-500/20 animate-pulse transition-all active:scale-95 cursor-pointer self-end sm:self-auto shrink-0"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/80 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-200 text-xs font-black border border-cyan-400 dark:border-cyan-600 ring-2 ring-cyan-400/40 shadow-xs shadow-cyan-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 ml-auto whitespace-nowrap"
             >
-              <span className="relative flex h-2 w-2 shrink-0">
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-cyan-500"></span>
               </span>
-              <span>📊 5개사 근태/잔업 대장 상세관리</span>
-              <ArrowRight className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+              <span>근태 상세</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-cyan-600 dark:text-cyan-400" />
             </button>
           )}
         </div>
@@ -2820,18 +2820,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 truncate">
+            <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate">
               5. 일일업무일지 현황
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             <select
               value={filterPlant}
               onChange={(e) => setFilterPlant(e.target.value)}
-              className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+              className="px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <option value="all">전체 ({workLogs.length})</option>
               <option value="삼랑진공장">삼랑진 ({workLogs.filter((l) => l.plant === "삼랑진공장").length})</option>
@@ -2840,14 +2840,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab("electronic_approval")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0"
+                className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
               >
-                <span className="relative flex h-2 w-2 shrink-0">
+                <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
                 </span>
                 <span>업무일지 상세</span>
-                <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
               </button>
             )}
           </div>
