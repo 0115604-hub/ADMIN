@@ -245,10 +245,18 @@ export const restoreUrgentIssue = async (id) => {
   const target = current.find((i) => i.id === id);
   if (!target) return current;
 
+  // If restoring an item whose date was in the past, update expireDate/targetDate to today
+  const todayStr = new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD
+  const isPast =
+    (target.expireDate && target.expireDate < todayStr) ||
+    (target.targetDate && target.targetDate < todayStr);
+
   const restoredItem = {
     ...target,
     isDeleted: false,
     isResolved: false,
+    expireDate: isPast ? todayStr : (target.expireDate || ""),
+    targetDate: isPast ? todayStr : (target.targetDate || ""),
     deletedAt: "",
     deletedBy: ""
   };
