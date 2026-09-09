@@ -930,6 +930,30 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     });
   };
 
+  const togglePlantSharedWorkers = (plantIndex) => {
+    const targetPlantWorkers =
+      PLANTS[plantIndex]?.workers?.filter(
+        (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+      ) || [];
+    if (targetPlantWorkers.length === 0) return;
+
+    setSharedWorkers((prev) => {
+      const allSelected = targetPlantWorkers.every((pw) => prev.some((sw) => sw.id === pw.id));
+      if (allSelected) {
+        // 해당 공장 전체 작업자 선택 해제
+        const targetIds = new Set(targetPlantWorkers.map((pw) => pw.id));
+        return prev.filter((sw) => !targetIds.has(sw.id));
+      } else {
+        // 해당 공장 전체 작업자 선택 (기존 선택 유지하며 추가)
+        const currentMap = new Map(prev.map((w) => [w.id, w]));
+        targetPlantWorkers.forEach((pw) => {
+          currentMap.set(pw.id, pw);
+        });
+        return Array.from(currentMap.values());
+      }
+    });
+  };
+
   const [scheduleWeekAnchor, setScheduleWeekAnchor] = useState(() => getKSTDateString());
 
   const handlePrevWeek = () => {
@@ -2333,10 +2357,40 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
                         {/* 한림공장 작업자 */}
                         <div>
-                          <div className="text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 mb-1 flex items-center gap-1">
-                            <Factory className="w-3 h-3" />
-                            <span>한림공장</span>
-                          </div>
+                          {(() => {
+                            const plantWorkers =
+                              PLANTS[1]?.workers?.filter(
+                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+                              ) || [];
+                            const isAllPlantSelected =
+                              plantWorkers.length > 0 &&
+                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
+
+                            return (
+                              <div
+                                onClick={() => togglePlantSharedWorkers(1)}
+                                className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
+                                title="한림공장 작업자 전체 선택 / 해제"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-emerald-600" />
+                                  <span className="group-hover:underline">한림공장</span>
+                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                    ({plantWorkers.length}명)
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                    isAllPlantSelected
+                                      ? "bg-emerald-600 text-white shadow-2xs"
+                                      : "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                                  }`}
+                                >
+                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
+                                </span>
+                              </div>
+                            );
+                          })()}
                           <div className="grid grid-cols-2 gap-1">
                             {PLANTS[1]?.workers
                               ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
@@ -2347,9 +2401,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                     key={w.id}
                                     type="button"
                                     onClick={() => toggleSharedWorker(w)}
-                                    className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
                                       isSelected
-                                        ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs"
+                                        ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs ring-1 ring-emerald-400/50"
                                         : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
                                     }`}
                                   >
@@ -2365,10 +2419,40 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                         {/* 삼랑진공장 작업자 */}
                         <div>
-                          <div className="text-[10.5px] font-black text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
-                            <Factory className="w-3 h-3" />
-                            <span>삼랑진공장</span>
-                          </div>
+                          {(() => {
+                            const plantWorkers =
+                              PLANTS[0]?.workers?.filter(
+                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+                              ) || [];
+                            const isAllPlantSelected =
+                              plantWorkers.length > 0 &&
+                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
+
+                            return (
+                              <div
+                                onClick={() => togglePlantSharedWorkers(0)}
+                                className="text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
+                                title="삼랑진공장 작업자 전체 선택 / 해제"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
+                                  <span className="group-hover:underline">삼랑진공장</span>
+                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                    ({plantWorkers.length}명)
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                    isAllPlantSelected
+                                      ? "bg-amber-600 text-white shadow-2xs"
+                                      : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                                  }`}
+                                >
+                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
+                                </span>
+                              </div>
+                            );
+                          })()}
                           <div className="grid grid-cols-2 gap-1">
                             {PLANTS[0]?.workers
                               ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
@@ -2379,9 +2463,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                     key={w.id}
                                     type="button"
                                     onClick={() => toggleSharedWorker(w)}
-                                    className={`px-2 py-1 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer ${
+                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
                                       isSelected
-                                        ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs"
+                                        ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs ring-1 ring-amber-400/50"
                                         : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
                                     }`}
                                   >
