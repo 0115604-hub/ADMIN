@@ -2323,11 +2323,11 @@ export const AuthModal = () => {
                   </div>
                 </div>
 
-                {/* 대상 공장 & 작성자 (전작업자 선택 가능) */}
+                {/* 공장 & 작성자 (전작업자 선택 가능) */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                      대상 공장
+                      공장
                     </label>
                     <select
                       value={newIssueForm.plant}
