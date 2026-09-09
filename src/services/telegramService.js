@@ -842,7 +842,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
   try {
     const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
 
-    // 1. 연차 현황
+    // 1. 금일 근태 / 휴가 현황 (공장별 구분)
     const leaves = getLocalAnnualLeaves();
     const activeLeaves = leaves.filter((l) => {
       if (!l.startDate) return false;
@@ -851,41 +851,65 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       return start <= todayStr && todayStr <= end;
     });
 
-    let leaveSummary = "없음 (전원 정상 출근)";
-    if (activeLeaves.length > 0) {
-      const list = activeLeaves.map((l) => {
-        const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-        const typeShort = l.leaveType || "연차";
-        return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
-      });
-      leaveSummary = list.join(", ");
-    }
+    const samLeaves = activeLeaves.filter((l) => !l.plant?.includes("한림"));
+    const hanLeaves = activeLeaves.filter((l) => l.plant?.includes("한림"));
 
-    // 2. 미결재 현황 (전자결재 + 업무일지)
+    const samStr = samLeaves.length > 0
+      ? samLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
+      : "전원 정상 출근";
+    const hanStr = hanLeaves.length > 0
+      ? hanLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
+      : "전원 정상 출근";
+
+    // 2. 전일 전자결재 미결 (특근보고서, 품의서 등)
     const approvalDocs = getLocalApprovalDocs();
     const pendingDocs = approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
-
-    const workLogs = getLocalWorkLogs();
-    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
-
-    let approvalSummary = "없음 (전건 결재완료)";
-    const totalPending = pendingDocs.length + pendingLogs.length;
-    if (totalPending > 0) {
-      const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
-      const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
-      const previewList = [...docTitles, ...logTitles].slice(0, 3);
-      const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
-      approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
+    let approvalDocLines = "• 없음 (전건 결재완료)";
+    if (pendingDocs.length > 0) {
+      const lines = pendingDocs.slice(0, 5).map((d) => {
+        const nextApprover = d.approvers?.find((a) => a.status === "PENDING")?.name || "결재자";
+        return `• ${d.title} (기안: ${d.drafter || "작성자"} ➜ 결재대기: ${nextApprover})`;
+      });
+      const more = pendingDocs.length > 5 ? `\n• 외 ${pendingDocs.length - 5}건` : "";
+      approvalDocLines = lines.join("\n") + more;
     }
 
-    // 3. 품질경보 미삭제 / 미조치 현황 (삭제 및 조치완료 항목 제외)
-    const activeUrgentIssues = getLocalUrgentIssues().filter((i) => !i.isDeleted && !i.isResolved);
-    let urgentSummary = "없음 (전건 종결완료)";
-    if (activeUrgentIssues.length > 0) {
-      const issueTitles = activeUrgentIssues.map((i) => i.title || i.content).filter(Boolean);
-      const previewList = issueTitles.slice(0, 2);
-      const moreText = activeUrgentIssues.length > 2 ? ` 외 ${activeUrgentIssues.length - 2}건` : "";
-      urgentSummary = `미조치 ${activeUrgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+    // 3. 전일 업무일지 미결
+    const workLogs = getLocalWorkLogs();
+    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
+    let workLogLines = "• 없음 (전건 승인완료)";
+    if (pendingLogs.length > 0) {
+      const lines = pendingLogs.slice(0, 5).map((l) => {
+        const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
+        return `• ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
+      });
+      const more = pendingLogs.length > 5 ? `\n• 외 ${pendingLogs.length - 5}건` : "";
+      workLogLines = lines.join("\n") + more;
+    }
+
+    // 4. 회의 & 사내공지 (다가올 회의 및 유효한 사내공지)
+    const allUrgent = getLocalUrgentIssues();
+    const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
+    const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
+
+    let noticeMeetingLines = "• 예정된 회의 및 공지사항 없음";
+    const combined = [];
+    upcomingMeetings.forEach((m) => {
+      const d = m.expireDate || m.targetDate || "";
+      const dText = d ? `${d.slice(5)} ` : "";
+      combined.push(`• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`);
+    });
+    activeNotices.forEach((n) => {
+      const d = n.expireDate || n.targetDate || "";
+      const dText = d ? `~${d.slice(5)} ` : "";
+      combined.push(`• [공지] ${dText}${n.title || n.content}`);
+    });
+
+    if (combined.length > 0) {
+      noticeMeetingLines = combined.slice(0, 5).join("\n");
+      if (combined.length > 5) {
+        noticeMeetingLines += `\n• 외 ${combined.length - 5}건`;
+      }
     }
 
     const savedBriefingTemplate = getLocalTelegramTemplates()["unified_briefing"]?.text;
@@ -894,15 +918,20 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 <b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
-<b>[1] 근태 / 휴가 현황</b>
-• ${leaveSummary}
+👥 <b>[1] 금일 근태 / 휴가 현황</b>
+• 삼랑진: ${samStr}
+• 한림: ${hanStr}
 
-<b>[2] 미결재 현황</b>
-• ${approvalSummary}
+📑 <b>[2] 전일 전자결재 미결 ${pendingDocs.length > 0 ? `(${pendingDocs.length}건)` : ""}</b>
+${approvalDocLines}
 
-<b>[3] 품질경보 / 공지 현황</b>
-• ${urgentSummary}
+📝 <b>[3] 전일 업무일지 미결 ${pendingLogs.length > 0 ? `(${pendingLogs.length}건)` : ""}</b>
+${workLogLines}
+
+📅 <b>[4] 회의 & 사내공지</b>
+${noticeMeetingLines}
 ━━━━━━━━━━━━━━━━━━━━━
+※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 

@@ -166,14 +166,6 @@ export const addIssueReply = async (issueId, replyData) => {
   };
 
   const saved = await saveUrgentIssue(updatedItem);
-
-  // Trigger real-time Telegram notification for reply
-  try {
-    await sendMeetingReplyTelegram(target, newReply);
-  } catch (err) {
-    console.warn("Telegram meeting reply alert error:", err);
-  }
-
   return saved;
 };
 
@@ -234,15 +226,6 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       console.warn("Firestore soft delete fallback to local:", e);
     }
 
-    // Trigger Telegram notification on manual delete (skip on automated date expiration cleanup)
-    if (!deleterName?.includes("자동")) {
-      try {
-        await sendQualityDeleteTelegram(deletedItem, deleterName);
-      } catch (err) {
-        console.warn("Telegram delete alert error:", err);
-      }
-    }
-
     return updated;
   } finally {
     setTimeout(() => {
@@ -282,7 +265,7 @@ export const restoreUrgentIssue = async (id) => {
   return updated;
 };
 
-// Update action result (조치결과 입력 및 조치완료 처리)
+// Update action result (조치결과 입력 및 조치완료 처리 - 품질경보만 텔레그램 발송)
 export const updateUrgentIssueActionResult = async (id, actionResult, actionAuthor = "", actionImages = []) => {
   const current = getLocalUrgentIssues();
   const target = current.find((i) => i.id === id);
@@ -309,8 +292,8 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
 
   const saved = await saveUrgentIssue(updatedTarget);
 
-  // Trigger real-time Telegram notification for action completed
-  if (trimmed) {
+  // Trigger real-time Telegram notification ONLY for 품질경보 조치완료 (사내공지/회의일정은 등록시만 발송)
+  if (trimmed && updatedTarget.category === "품질경보") {
     sendQualityActionTelegram(updatedTarget, {
       actionAuthor: updatedTarget.actionAuthor,
       actionContent: trimmed,
