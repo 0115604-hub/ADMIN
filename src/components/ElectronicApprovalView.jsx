@@ -45,7 +45,8 @@ import {
   deleteApprovalDocument,
   checkApprovalPermission,
   getAutoApprovalSteps,
-  APPROVAL_MANAGERS
+  APPROVAL_MANAGERS,
+  syncPlantOvertimeToApprovalBox
 } from "../services/approvalService";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
@@ -146,6 +147,9 @@ export const ElectronicApprovalView = () => {
 
   // Real-time Cloud Synchronization
   useEffect(() => {
+    // Ensure weekend overtime reports are normalized and synced to approval box
+    syncPlantOvertimeToApprovalBox({ plant: "삼랑진공장", workDate: 5 }).catch(() => {});
+
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
       if (selectedDoc) {

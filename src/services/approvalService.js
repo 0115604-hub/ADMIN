@@ -15,7 +15,7 @@ import {
 } from "./telegramService";
 
 const COLLECTION_NAME = "approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v2";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v4_manager_worker_split";
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -34,10 +34,10 @@ export const APPROVAL_MANAGERS = {
   ]
 };
 
-// Clean and Normalize Document: ensure role '이사' is always '이명재'
+// Clean and Normalize Document: ensure role '이사' is always '이명재' and content has manager/worker split
 export const normalizeApprovalDoc = (d) => {
-  if (!d || !d.steps) return d;
-  const fixedSteps = d.steps.map((st) => {
+  if (!d) return d;
+  const fixedSteps = (d.steps || []).map((st) => {
     if (st.role === "이사") {
       return {
         ...st,
@@ -47,7 +47,13 @@ export const normalizeApprovalDoc = (d) => {
     }
     return st;
   });
-  return { ...d, steps: fixedSteps };
+
+  let fixedContent = d.content || "";
+  if (d.id === "appr_ot_samrangjin_20260905" || ((d.title || "").includes("9월 5일") && (d.title || "").includes("삼랑진공장"))) {
+    fixedContent = `■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (38명)\n  - 관리자: 이명재, 설유철, 윤경수\n  - 작업자: 손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 양인순, 박순복, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동`;
+  }
+
+  return { ...d, steps: fixedSteps, content: fixedContent };
 };
 
 // Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 대표이사)
@@ -255,10 +261,10 @@ export const subscribeApprovalDocs = (onUpdate) => {
             const normalized = normalizeApprovalDoc(rawDoc);
             list.push(normalized);
 
-            // If remote doc had wrong director name, quietly sync correction to Firestore
+            // If remote doc had wrong director name or outdated content, quietly sync correction to Firestore
             const directorStep = rawDoc.steps?.find((st) => st.role === "이사");
-            if (directorStep && directorStep.name !== "이명재") {
-              setDoc(doc(db, COLLECTION_NAME, d.id), normalized).catch(() => {});
+            if (rawDoc.content !== normalized.content || (directorStep && directorStep.name !== "이명재")) {
+              setDoc(doc(db, COLLECTION_NAME, d.id), normalized, { merge: true }).catch(() => {});
             }
           });
 
