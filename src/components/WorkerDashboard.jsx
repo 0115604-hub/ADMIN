@@ -1909,18 +1909,44 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
           {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-            {/* Left: Worker Name and Title (Clean & Prominent High-Visibility Tab) */}
-            <div className="lg:col-span-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-50/90 via-white to-indigo-50/60 dark:from-blue-950/50 dark:via-slate-800 dark:to-slate-800/80 border-2 border-blue-500/50 dark:border-blue-500/40 shadow-xs ring-1 ring-blue-400/20 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                <User className="w-4 h-4" />
-              </div>
-              <div className="flex items-center gap-2 min-w-0 truncate">
-                <span className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
-                  {workerFullName}
-                </span>
-                <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/70 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700 text-xs font-black shrink-0 shadow-2xs">
-                  {officialTitle}
-                </span>
+            {/* Left: Worker Name and Title (Executive Luxury VIP Tab Design) */}
+            <div className="lg:col-span-3 min-w-0">
+              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl px-3 py-2 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white border-2 border-indigo-500/40 dark:border-indigo-400/40 shadow-md shadow-indigo-950/40 ring-1 ring-white/10 group transition-all">
+                {/* Ambient Soft Glow Highlights */}
+                <div className="absolute -top-6 -right-6 w-20 h-20 bg-gradient-to-br from-blue-500/20 via-indigo-500/20 to-transparent rounded-full blur-xl pointer-events-none" />
+                <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-tr from-cyan-500/15 to-transparent rounded-full blur-lg pointer-events-none" />
+
+                <div className="relative flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2.5 min-w-0 truncate">
+                    {/* Dynamic Glowing Avatar with Online Status Indicator */}
+                    <div className="relative shrink-0">
+                      <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 p-[1.5px] shadow-sm shadow-cyan-500/30">
+                        <div className="w-full h-full rounded-[10px] bg-slate-900/90 backdrop-blur-xs flex items-center justify-center text-cyan-300">
+                          <User className="w-4 h-4 text-cyan-300 drop-shadow-xs" />
+                        </div>
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-950 rounded-full shadow-xs ring-1 ring-emerald-400/50">
+                        <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                      </span>
+                    </div>
+
+                    {/* Worker Name with Sub-tag */}
+                    <div className="flex flex-col min-w-0 truncate leading-tight">
+                      <span className="text-[9px] font-extrabold text-cyan-400/90 tracking-wider flex items-center gap-1 uppercase">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
+                        LOGIN USER
+                      </span>
+                      <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs truncate">
+                        {workerFullName}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Sleek Jewel Title Badge */}
+                  <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
+                    {officialTitle}
+                  </span>
+                </div>
               </div>
             </div>
 
