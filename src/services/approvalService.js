@@ -30,7 +30,8 @@ export const APPROVAL_MANAGERS = {
     { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" }
   ],
   CEO: [
-    { name: "권태형", title: "대표이사", plant: "본사", process: "대표이사" }
+    { name: "권태형", title: "대표이사", plant: "본사", process: "대표이사" },
+    { name: "최미영", title: "전무", plant: "본사", process: "전무" }
   ]
 };
 
@@ -64,8 +65,8 @@ export const normalizeApprovalDoc = (d) => {
   return { ...d, steps: fixedSteps, status: normalizedStatus, content: fixedContent };
 };
 
-// Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 대표이사)
-export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, selectedLeadName) => {
+// Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 권태형 대표이사 / 최미영 전무)
+export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, selectedLeadName, selectedCeoName) => {
   const now = new Date();
   const nowStr = now.toLocaleString("ko-KR", {
     year: "numeric",
@@ -92,6 +93,9 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
       }
     }
   }
+
+  const ceoName = selectedCeoName || "권태형";
+  const ceoTitle = ceoName === "최미영" ? "전무" : "대표이사";
 
   return [
     {
@@ -120,8 +124,8 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
     },
     {
       role: "대표",
-      name: "권태형",
-      title: "대표이사",
+      name: ceoName,
+      title: ceoTitle,
       status: "WAITING",
       date: "",
       comment: ""
@@ -344,14 +348,15 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
   const userName = currentProfile?.name || "";
   const userTitle = currentProfile?.title || "";
 
-  // 1. ADMIN Mode -> Representative (대표이사 권태형) Top Authority
+  // 1. ADMIN Mode -> Top Authority (권태형 대표이사 또는 최미영 전무)
   if (isAdmin) {
+    const adminApprover = currentProfile?.name || "권태형";
     return {
       canApprove: true,
       stepIndex: activeStepIdx,
       stepRole,
       isRepresentative: true,
-      approverName: "권태형"
+      approverName: adminApprover
     };
   }
 
@@ -405,20 +410,20 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 5. Step 4: 대표 (대표이사)
+  // 5. Step 4: 대표 (대표이사 권태형 / 전무 최미영)
   if (stepRole === "대표") {
-    if (userTitle === "대표" || userName === "대표이사" || isAdmin) {
+    if (userTitle === "대표" || userTitle === "대표이사" || userTitle === "전무" || userName === "권태형" || userName === "최미영" || userName === "대표이사" || isAdmin) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
         stepRole,
         isRepresentative: true,
-        approverName: "대표이사"
+        approverName: userName || "권태형"
       };
     }
     return {
       canApprove: false,
-      reason: "대표이사(ADMIN) 최종 결재 권한이 필요합니다."
+      reason: "대표이사/전무(ADMIN) 최종 결재 권한이 필요합니다."
     };
   }
 

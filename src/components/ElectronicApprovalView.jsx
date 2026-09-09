@@ -48,7 +48,6 @@ import {
   APPROVAL_MANAGERS,
   syncPlantOvertimeToApprovalBox
 } from "../services/approvalService";
-import { KWON_SIGNATURE_RED, KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -129,6 +128,11 @@ export const ElectronicApprovalView = () => {
     return list;
   }, []);
 
+  // ADMIN Approver Selector State (권태형 대표이사 vs 최미영 전무)
+  const [adminApprover, setAdminApprover] = useState(
+    currentProfile?.name === "최미영" ? "최미영" : "권태형"
+  );
+
   // New Draft Form State (담당: 전작업자)
   const [draftForm, setDraftForm] = useState({
     type: "OVERTIME",
@@ -139,7 +143,7 @@ export const ElectronicApprovalView = () => {
     drafterTitle: currentProfile?.title || "선임",
     leadName: "설유철", // Default Step 2 (책임)
     directorName: "이명재", // Step 3 (이사)
-    ceoName: "권태형", // Step 4 (대표이사)
+    ceoName: currentProfile?.name === "최미영" ? "최미영" : "권태형", // Step 4 (대표/전무)
     title: "",
     content: "",
     amount: "",
@@ -173,13 +177,19 @@ export const ElectronicApprovalView = () => {
         else autoLead = "설유철";
       }
 
+      const defaultCeo = currentProfile.name === "최미영" ? "최미영" : "권태형";
+      if (currentProfile.role === "ADMIN") {
+        setAdminApprover(defaultCeo);
+      }
+
       setDraftForm((prev) => ({
         ...prev,
         plant: p,
         department: proc,
         drafter: currentProfile.name || "작업자",
         drafterTitle: currentProfile.title || "선임",
-        leadName: autoLead
+        leadName: autoLead,
+        ceoName: prev.ceoName || defaultCeo
       }));
     }
   }, [currentProfile]);
@@ -345,7 +355,8 @@ export const ElectronicApprovalView = () => {
       draftForm.drafter,
       draftForm.drafterTitle,
       draftForm.department,
-      draftForm.leadName
+      draftForm.leadName,
+      draftForm.ceoName
     );
 
     await saveApprovalDocument({
@@ -354,17 +365,18 @@ export const ElectronicApprovalView = () => {
       status: "IN_PROGRESS"
     }, { isDirectManualDraft: true, sendDraftTelegram: true });
 
+    const defaultCeo = currentProfile?.name === "최미영" ? "최미영" : "권태형";
     setIsDraftModalOpen(false);
     setDraftForm({
       type: "OVERTIME",
       typeName: "특근 신청서",
       plant: currentProfile?.plant || "삼랑진공장",
       department: currentProfile?.assignedProcess || "압출동 관리",
-      drafter: currentProfile?.name || "방상국",
+      drafter: currentProfile?.name || "작업자",
       drafterTitle: currentProfile?.title || "선임",
       leadName: "설유철",
       directorName: "이명재",
-      ceoName: "대표이사",
+      ceoName: defaultCeo,
       title: "",
       content: "",
       amount: "",
@@ -381,18 +393,21 @@ export const ElectronicApprovalView = () => {
       return;
     }
 
-    const approverName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
+    const approverName = isAdmin
+      ? adminApprover
+      : (currentPermission.approverName || currentProfile?.name || "결재자");
+
     const updated = await approveDocumentStep(
       selectedDoc.id,
       currentPermission.stepIndex,
       approverName,
-      approvalComment || (isAdmin ? "대표이사 최종 승인" : "승인")
+      approvalComment || (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "승인")
     );
 
     setSelectedDoc(updated);
     setApprovalComment("");
     setActionType("APPROVE");
-    alert(`[${approverName}] 전자 인장 날인 및 결재 승인이 완료되었습니다.`);
+    alert(`[${approverName}] 전자 도장 날인 및 결재 승인이 완료되었습니다.`);
   };
 
   // Handle Hold Step (보류)
@@ -949,33 +964,11 @@ export const ElectronicApprovalView = () => {
                   {selectedDoc.steps.map((st, idx) => (
                     <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative">
                       {st.status === "APPROVED" ? (
-                        st.role === "대표" || st.name === "권태형" || st.name === "대표이사" ? (
-                          /* 🌟 대표이사 권태형 실제 친필 서명 + 공식 직인 인장 */
-                          <div className="w-16 h-14 flex items-center justify-center relative select-none animate-scaleUp">
-                            {/* 대표이사 공식 붉은색 인장 */}
-                            <div className="w-12 h-12 rounded-full border-2 border-rose-600 bg-rose-50/40 dark:bg-rose-950/40 flex flex-col items-center justify-center p-0.5 shadow-xs transform rotate-[-2deg]">
-                              <span className="text-[6.5px] font-black text-rose-700 dark:text-rose-300 leading-none">대표이사</span>
-                              <span className="text-[9.5px] font-black text-rose-600 dark:text-rose-400 font-serif tracking-tight my-0.5">
-                                권태형
-                              </span>
-                              <span className="text-[6.5px] font-bold text-rose-700 dark:text-rose-300 border-t border-rose-400/80 dark:border-rose-700 px-1 leading-none">
-                                결재 [인]
-                              </span>
-                            </div>
-                            {/* 권태형 대표이사 실제 자필 친필 서명 투명 오버레이 */}
-                            <img
-                              src={KWON_SIGNATURE_RED}
-                              alt="권태형 대표이사 서명"
-                              className="absolute inset-0 w-full h-full object-contain pointer-events-none transform scale-110 rotate-[-4deg] drop-shadow-xs opacity-95"
-                            />
-                          </div>
-                        ) : (
-                          <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs`}>
-                            <span className="text-[7.5px] font-bold">오륙</span>
-                            <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
-                            <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
-                          </div>
-                        )
+                        <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs select-none animate-scaleUp`}>
+                          <span className="text-[7.5px] font-bold">오륙</span>
+                          <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
+                          <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
+                        </div>
                       ) : st.status === "HOLD" ? (
                         <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg]">
                           <span>보류</span>
@@ -1149,16 +1142,48 @@ export const ElectronicApprovalView = () => {
             {/* Approval Execution Controls */}
             {(selectedDoc.status === "IN_PROGRESS" || selectedDoc.status === "HOLD") && (
               <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
                     <Stamp className="w-4 h-4 text-emerald-600" />
                     <span>
-                      {isAdmin ? "대표이사 권태형 결재 승인 및 서명 날인" : "전자결재 처리 (승인/보류/반려)"}
+                      {isAdmin ? "ADMIN 최고 결재 승인 및 도장 날인" : "전자결재 처리 (승인/보류/반려)"}
                     </span>
                   </span>
-                  <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300">
-                    현재 사용자: <strong>{isAdmin ? "대표이사 권태형" : `${currentProfile?.name} (${currentProfile?.title || "작업자"})`}</strong>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {isAdmin ? (
+                      <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-emerald-300 dark:border-emerald-700 shadow-2xs">
+                        <span className="text-[10px] font-bold text-slate-500 px-1">결재자 선택:</span>
+                        <button
+                          type="button"
+                          onClick={() => setAdminApprover("권태형")}
+                          className={`px-2 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                            adminApprover === "권태형"
+                              ? "bg-blue-600 text-white shadow-xs"
+                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          <span>👑</span>
+                          <span>권태형 대표이사</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminApprover("최미영")}
+                          className={`px-2 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                            adminApprover === "최미영"
+                              ? "bg-indigo-600 text-white shadow-xs"
+                              : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          <span>💎</span>
+                          <span>최미영 전무</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300">
+                        현재 사용자: <strong>{`${currentProfile?.name} (${currentProfile?.title || "작업자"})`}</strong>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {currentPermission.canApprove ? (
@@ -1194,7 +1219,11 @@ export const ElectronicApprovalView = () => {
                             className="px-6 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                           >
                             <Stamp className="w-3.5 h-3.5" />
-                            <span>{isAdmin ? "👑 대표이사 권태형 최종 승인 및 서명 날인" : "✓ 승인 및 도장 날인"}</span>
+                            <span>
+                              {isAdmin
+                                ? `👑 ${adminApprover === "최미영" ? "전무 최미영" : "대표이사 권태형"} 최종 승인 및 날인`
+                                : "✓ 승인 및 도장 날인"}
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -1598,13 +1627,21 @@ export const ElectronicApprovalView = () => {
                     <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">총괄 이사</span>
                   </div>
 
-                  {/* 4. 대표 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">4. 대표 (CEO)</span>
-                    <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
-                      대표이사
-                    </strong>
-                    <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">ADMIN 승인</span>
+                  {/* 4. 대표 (CEO/전무 선택) */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">4. 대표 (CEO/전무)</span>
+                    <select
+                      value={draftForm.ceoName || "권태형"}
+                      onChange={(e) => setDraftForm({ ...draftForm, ceoName: e.target.value })}
+                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
+                    >
+                      {APPROVAL_MANAGERS.CEO.map((m) => (
+                        <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {m.name} ({m.title})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">최종 결재자</span>
                   </div>
                 </div>
               </div>

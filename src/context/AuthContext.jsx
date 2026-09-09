@@ -9,15 +9,27 @@ import { recordUserAccess } from "../services/accessLogService";
 // Factory and User Hierarchy Definitions with Official Titles
 export const ADMIN_USERS = [
   {
-    id: "admin_general",
+    id: "admin_kwon",
     name: "권태형",
     title: "대표이사",
-    displayName: "권태형 대표이사 (ADMIN)",
+    displayName: "ADMIN",
     role: "ADMIN",
     roleLabel: "본사 • 대표이사 권태형",
     plant: "본사",
     badgeColor: "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300",
     avatar: "권",
+    pin: "0090"
+  },
+  {
+    id: "admin_choi",
+    name: "최미영",
+    title: "전무",
+    displayName: "ADMIN",
+    role: "ADMIN",
+    roleLabel: "본사 • 전무 최미영",
+    plant: "본사",
+    badgeColor: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-300",
+    avatar: "최",
     pin: "0090"
   }
 ];

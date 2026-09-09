@@ -100,7 +100,7 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
 
   const displayName = isOperator
     ? `${currentProfile?.name} ${currentProfile?.title || ""}`
-    : "ADMIN";
+    : (currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || ""}` : "ADMIN");
 
   const displayPlant = isOperator
     ? currentProfile?.plant

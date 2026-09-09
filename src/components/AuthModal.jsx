@@ -1488,20 +1488,18 @@ export const AuthModal = () => {
               </div>
 
               {/* ========================================================================= */}
-              {/* 3. BOTTOM ACTIONS: ADMIN */}
+              {/* 3. BOTTOM ACTIONS: ADMIN (파란색 단일 ADMIN 버튼) */}
               {/* ========================================================================= */}
-              <div className="pt-1.5 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 flex-wrap">
-                {ADMIN_USERS.map((admin) => (
-                  <button
-                    key={admin.id}
-                    onClick={() => handleUserClick(admin)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-[11px] sm:text-xs font-black transition-all shadow-2xs group active:scale-95 cursor-pointer"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>{admin.displayName || admin.name}</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                ))}
+              <div className="pt-2 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleUserClick(ADMIN_USERS[0])}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-black transition-all shadow-md shadow-blue-500/25 group active:scale-95 cursor-pointer border border-blue-500/60"
+                >
+                  <Shield className="w-4 h-4 text-blue-100" />
+                  <span>ADMIN</span>
+                  <ChevronRight className="w-4 h-4 text-blue-200 group-hover:translate-x-0.5 transition-transform" />
+                </button>
               </div>
             </div>
           ) : (
@@ -1509,12 +1507,36 @@ export const AuthModal = () => {
             /* PIN Input Form View */
             /* ========================================================================= */
             <form onSubmit={handlePinSubmit} className="space-y-4 animate-fadeIn">
+              {/* ADMIN 사용자 선택 탭 (권태형 대표이사 / 최미영 전무) */}
+              {selectedUser.role === "ADMIN" && (
+                <div className="p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-1.5">
+                  {ADMIN_USERS.map((admin) => {
+                    const isSelected = selectedUser.name === admin.name;
+                    return (
+                      <button
+                        key={admin.id}
+                        type="button"
+                        onClick={() => setSelectedUser(admin)}
+                        className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
+                            : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        <span>{admin.name === "권태형" ? "👑" : "💎"}</span>
+                        <span>{admin.name} {admin.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {/* Hero Spotlight Profile Card */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 to-blue-50/30 dark:from-slate-800/80 dark:to-blue-950/30 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-lg shadow-md ${
                     selectedUser.role === "ADMIN"
-                      ? "bg-slate-800 ring-2 ring-indigo-500/40"
+                      ? selectedUser.name === "최미영" ? "bg-indigo-600 ring-2 ring-indigo-400/40" : "bg-blue-600 ring-2 ring-blue-400/40"
                       : selectedUser.plant === "한림공장"
                       ? "bg-emerald-600 ring-2 ring-emerald-400/40"
                       : "bg-amber-500 ring-2 ring-amber-400/40"
@@ -1523,10 +1545,10 @@ export const AuthModal = () => {
                   </div>
                   <div>
                     <h4 className="font-black text-lg text-slate-900 dark:text-white">
-                      {selectedUser.name}
+                      {selectedUser.name} {selectedUser.role === "ADMIN" ? selectedUser.title : ""}
                     </h4>
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      {selectedUser.role === "ADMIN" ? "최고 관리자 모드" : `${selectedUser.plant} • ${selectedUser.title || "작업자"}`}
+                      {selectedUser.role === "ADMIN" ? `최고 관리자 모드 (${selectedUser.title})` : `${selectedUser.plant} • ${selectedUser.title || "작업자"}`}
                     </span>
                   </div>
                 </div>
