@@ -873,33 +873,34 @@ export const AuthModal = () => {
                           title="탭하여 품질경보/공지 내용 수정 및 전체 사진 보기"
                         >
                           {/* Left: Badges, Title & Content Summary */}
-                          <div className="flex items-start md:items-center gap-2 min-w-0 flex-1">
-                            {/* Badges */}
-                            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                              {isMeeting ? (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
-                                  회의
+                          <div className="flex flex-col md:flex-row md:items-center gap-1.5 md:gap-3 min-w-0 flex-1">
+                            {/* Badges strip (Mobile: row with inline status badge) */}
+                            <div className="flex items-center justify-between md:justify-start gap-1.5 shrink-0 flex-wrap">
+                              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                                {isMeeting ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
+                                    회의
+                                  </span>
+                                ) : isNotice ? (
+                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
+                                    공지
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
+                                    경보
+                                  </span>
+                                )}
+                                <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
+                                  item.plant === "한림공장"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                                    : item.plant === "삼랑진공장"
+                                    ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
+                                    : item.plant === "화승 R&A"
+                                    ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
+                                    : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
+                                }`}>
+                                  {item.plant}
                                 </span>
-                              ) : isNotice ? (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
-                                  공지
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
-                                  경보
-                                </span>
-                              )}
-                              <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
-                                item.plant === "한림공장"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                  : item.plant === "삼랑진공장"
-                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
-                                  : item.plant === "화승 R&A"
-                                  ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
-                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                              }`}>
-                                {item.plant}
-                              </span>
                                 {item.expireDate && (
                                   <span className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono ${
                                     isMeeting
@@ -915,12 +916,38 @@ export const AuthModal = () => {
                                       : `📅 ${item.expireDate.slice(5)}`}
                                   </span>
                                 )}
+                              </div>
+
+                              {/* Mobile Only: Inline Status Badges */}
+                              <div className="flex md:hidden items-center gap-1 shrink-0 ml-auto">
+                                {hasImages && (
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center gap-0.5 border border-rose-200 dark:border-rose-900 shrink-0">
+                                    <Camera className="w-2.5 h-2.5" />
+                                    <span>사진</span>
+                                  </span>
+                                )}
+                                {replyCount > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center gap-0.5 border border-purple-200 dark:border-purple-900 shrink-0">
+                                    <MessageCircle className="w-2.5 h-2.5" />
+                                    <span>{replyCount}</span>
+                                  </span>
+                                )}
+                                {item.isResolved ? (
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
+                                    완료
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse shrink-0">
+                                    대기
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Title & Content Summary */}
                             <div className="min-w-0 flex-1">
                               <div className="flex items-baseline gap-2 flex-wrap">
-                                <h4 className={`text-xs sm:text-sm md:text-base font-black truncate group-hover:underline ${
+                                <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words group-hover:underline ${
                                   isMeeting
                                     ? "text-purple-800 dark:text-purple-300"
                                     : !isNotice
@@ -942,7 +969,7 @@ export const AuthModal = () => {
                                   {item.author} ({item.createdAt})
                                 </span>
                                 {item.actionResult ? (
-                                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 truncate max-w-xs sm:max-w-md">
+                                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 truncate max-w-full sm:max-w-md">
                                     • └ {isMeeting ? "회의결과" : "조치결과"}: {item.actionResult} ({item.actionAuthor || "작업자"})
                                   </span>
                                 ) : (
@@ -954,29 +981,32 @@ export const AuthModal = () => {
                             </div>
                           </div>
 
-                          {/* Right: Badges & One-touch Action Buttons */}
-                          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 self-end md:self-auto flex-wrap sm:flex-nowrap">
-                            {hasImages && (
-                              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center gap-0.5 border border-rose-200 dark:border-rose-900 shrink-0">
-                                <Camera className="w-3 h-3" />
-                                <span>사진</span>
-                              </span>
-                            )}
-                            {replyCount > 0 && (
-                              <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center gap-0.5 border border-purple-200 dark:border-purple-900 shrink-0">
-                                <MessageCircle className="w-3 h-3" />
-                                <span>회신 {replyCount}</span>
-                              </span>
-                            )}
-                            {item.isResolved ? (
-                              <span className="px-2 py-0.8 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
-                                조치완료
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.8 rounded-md text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse shrink-0">
-                                조치대기
-                              </span>
-                            )}
+                          {/* Right: Desktop Badges & Action Buttons */}
+                          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end pt-1 md:pt-0 border-t md:border-t-0 border-slate-200/60 dark:border-slate-800/60">
+                            {/* Desktop Badges */}
+                            <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                              {hasImages && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center gap-0.5 border border-rose-200 dark:border-rose-900 shrink-0">
+                                  <Camera className="w-3 h-3" />
+                                  <span>사진</span>
+                                </span>
+                              )}
+                              {replyCount > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 flex items-center gap-0.5 border border-purple-200 dark:border-purple-900 shrink-0">
+                                  <MessageCircle className="w-3 h-3" />
+                                  <span>회신 {replyCount}</span>
+                                </span>
+                              )}
+                              {item.isResolved ? (
+                                <span className="px-2 py-0.8 rounded-md text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
+                                  조치완료
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.8 rounded-md text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse shrink-0">
+                                  조치대기
+                                </span>
+                              )}
+                            </div>
 
                             {/* Action Button: 조치결과 입력/수정 */}
                             <button
@@ -985,7 +1015,7 @@ export const AuthModal = () => {
                                 e.stopPropagation();
                                 handleOpenActionModal(item, e);
                               }}
-                              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-black transition-all shrink-0 cursor-pointer shadow-2xs ${
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all shrink-0 cursor-pointer shadow-2xs active:scale-95 ${
                                 isMeeting
                                   ? item.actionResult
                                     ? "bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
@@ -996,14 +1026,14 @@ export const AuthModal = () => {
                               }`}
                               title={isMeeting ? "회의결과 입력/수정" : "조치결과 입력/수정"}
                             >
-                              {isMeeting ? "결과입력" : "조치입력"}
+                              {isMeeting ? (item.actionResult ? "결과수정" : "결과입력") : (item.actionResult ? "조치수정" : "조치입력")}
                             </button>
 
                             {/* Edit Button: 기존 내용 전체 수정 */}
                             <button
                               type="button"
                               onClick={(e) => handleOpenEditIssue(item, e)}
-                              className="px-2 sm:px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-0.5 shadow-2xs cursor-pointer shrink-0"
+                              className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-0.5 shadow-2xs cursor-pointer shrink-0 active:scale-95"
                               title="기존 품질경보/공지 내용 수정"
                             >
                               <Edit3 className="w-3 h-3" />
@@ -1052,8 +1082,8 @@ export const AuthModal = () => {
                           }`}
                           title="탭하여 품질경보/공지 내용 수정하기"
                         >
-                          {/* 1번째 줄: [품질경보/사내공지/회의일정] [공장] (작성자 시간) + [회신건수] [수정] [조치상태] [삭제] */}
-                          <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                          {/* 1번째 줄: [품질경보/사내공지/회의일정] [공장] [일시] + [회신건수] [수정] [조치상태] [삭제] */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
                             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
                               {isMeeting ? (
                                 <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-purple-600 text-white shrink-0 shadow-xs tracking-wide">
@@ -1094,13 +1124,13 @@ export const AuthModal = () => {
                                     : `📅 ${item.expireDate.slice(5)}`}
                                 </span>
                               )}
-                              <span className="text-xs sm:text-sm text-slate-400 shrink-0 font-bold">
+                              <span className="text-xs sm:text-sm text-slate-400 shrink-0 font-bold ml-auto sm:ml-0">
                                 {item.author} • {item.createdAt}
                               </span>
                             </div>
 
                             {/* Right: Reply count, Edit badge, Status & Delete */}
-                            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
+                            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 justify-end">
                               {replyCount > 0 && (
                                 <span className="px-2 py-0.8 rounded-lg text-xs font-black bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800 flex items-center gap-0.5">
                                   <MessageCircle className="w-3 h-3" />
@@ -1110,7 +1140,7 @@ export const AuthModal = () => {
                               <button
                                 type="button"
                                 onClick={(e) => handleOpenEditIssue(item, e)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                                className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1 shadow-2xs transition-colors cursor-pointer active:scale-95"
                                 title="기존 품질경보/공지 내용 수정"
                               >
                                 <Edit3 className="w-3 h-3" />
@@ -1213,14 +1243,14 @@ export const AuthModal = () => {
                             </div>
 
                             {/* Right: Action Input / Edit Button */}
-                            <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+                            <div className="flex items-center gap-1 shrink-0 self-stretch sm:self-auto justify-end">
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenActionModal(item, e);
                                 }}
-                                className={`px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-black transition-all shrink-0 active:scale-95 cursor-pointer shadow-xs ${
+                                className={`w-full sm:w-auto px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-black transition-all shrink-0 active:scale-95 cursor-pointer shadow-xs text-center ${
                                   isMeeting
                                     ? item.actionResult
                                       ? "bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
@@ -2401,27 +2431,29 @@ export const AuthModal = () => {
                           <Calendar className="w-3.5 h-3.5 text-purple-600" />
                           <span>회의 진행 일시</span>
                         </label>
-                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
                           {/* 날짜 선택 */}
-                          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 shadow-xs">
+                          <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 shadow-xs w-full">
                             <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">날짜:</span>
                             <input
                               type="date"
                               required
                               value={newIssueForm.expireDate || todayDateStr}
                               onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                              className="bg-transparent font-mono font-black text-xs text-slate-900 dark:text-white outline-none cursor-pointer"
+                              className="bg-transparent font-mono font-black text-xs text-slate-900 dark:text-white outline-none cursor-pointer flex-1 text-right sm:text-left"
                             />
                           </div>
 
                           {/* 시간 드롭다운 (06시~17시, 30분 단위) */}
-                          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 shadow-xs">
-                            <Clock className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">시간:</span>
+                          <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-white dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 shadow-xs w-full">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Clock className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">시간:</span>
+                            </div>
                             <select
                               value={newIssueForm.meetingTime || "14:00"}
                               onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingTime: e.target.value })}
-                              className="bg-transparent font-mono font-black text-xs text-purple-700 dark:text-purple-300 outline-none cursor-pointer pr-1"
+                              className="bg-transparent font-mono font-black text-xs text-purple-700 dark:text-purple-300 outline-none cursor-pointer pr-1 flex-1 text-right sm:text-left"
                             >
                               {[
                                 "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",

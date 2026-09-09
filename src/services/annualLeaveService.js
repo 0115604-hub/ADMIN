@@ -354,15 +354,29 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
       (l) => Boolean(l && l.startDate && l.startDate <= todayStr && todayStr <= (l.endDate || l.startDate))
     );
 
+    // Helper to get compact label for small mobile chips
+    const getCompactType = (typeName) => {
+      if (typeName === "RNA 회의" || typeName.includes("회의")) return "회의";
+      if (typeName.includes("오전반차")) return "오전";
+      if (typeName.includes("오후반차")) return "오후";
+      if (typeName.includes("특근")) return "특근";
+      if (typeName.includes("출장") || typeName.includes("교육")) return "출장";
+      if (typeName.includes("업체방문")) return "방문";
+      if (typeName.includes("외출")) return "외출";
+      if (typeName.includes("할일")) return "할일";
+      return typeName;
+    };
+
     if (activeTodayLeave) {
       const meta = getLeaveTypeMeta(activeTodayLeave.leaveType);
+      const compactType = getCompactType(meta.type);
       return {
         status: "ACTIVE",
         isToday: true,
         type: meta.type,
         emoji: meta.emoji,
         displayBadge: activeTodayLeave.startDate === todayStr ? `[오늘] ${meta.type}` : `${meta.type}`,
-        mobileBadge: activeTodayLeave.startDate === todayStr ? `오늘·${meta.type}` : `${meta.type}`,
+        mobileBadge: activeTodayLeave.startDate === todayStr ? `오늘·${compactType}` : `${compactType}`,
         label: `${meta.emoji} [오늘] ${meta.activeLabel || meta.type}`,
         fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType ? ` (${activeTodayLeave.reason})` : ""}`,
         badgeColor: meta.activeBadge,
@@ -379,6 +393,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
     if (upcomingLeaves.length > 0) {
       const nextLeave = upcomingLeaves[0];
       const meta = getLeaveTypeMeta(nextLeave.leaveType);
+      const compactType = getCompactType(meta.type);
       const dateParts = (nextLeave.startDate || "").split("-");
       const shortDate = dateParts.length === 3 ? `${dateParts[1]}.${dateParts[2]}` : nextLeave.startDate;
       const shortMonthDay = dateParts.length === 3 ? `${parseInt(dateParts[1], 10)}.${parseInt(dateParts[2], 10)}` : nextLeave.startDate;
@@ -389,7 +404,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         emoji: meta.emoji,
         shortDate,
         displayBadge: `${shortDate} ${meta.type}`,
-        mobileBadge: `${shortMonthDay}·${meta.type}`,
+        mobileBadge: `${shortMonthDay}·${compactType}`,
         label: `${meta.emoji} ${shortDate} ${meta.type}`,
         fullLabel: `${nextLeave.startDate} ${nextLeave.leaveType}${nextLeave.reason && nextLeave.reason !== nextLeave.leaveType ? ` (${nextLeave.reason})` : ""}`,
         badgeColor: meta.scheduledBadge,
