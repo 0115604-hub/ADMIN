@@ -198,7 +198,7 @@ export const ElectronicApprovalView = () => {
 
   // Filtered Documents
   const filteredDocs = useMemo(() => {
-    return approvalDocs.filter((doc) => {
+    const list = approvalDocs.filter((doc) => {
       if (selectedPlant !== "ALL" && doc.plant !== selectedPlant) return false;
 
       if (selectedTab === "PENDING") {
@@ -220,15 +220,48 @@ export const ElectronicApprovalView = () => {
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
-          doc.title.toLowerCase().includes(q) ||
-          doc.drafter.toLowerCase().includes(q) ||
-          doc.docNumber.toLowerCase().includes(q) ||
-          doc.content.toLowerCase().includes(q)
+          (doc.title || "").toLowerCase().includes(q) ||
+          (doc.drafter || "").toLowerCase().includes(q) ||
+          (doc.docNumber || "").toLowerCase().includes(q) ||
+          (doc.content || "").toLowerCase().includes(q)
         );
       }
 
       return true;
     });
+
+    // ⭐ 최근 등록순(최신 기안일시/업데이트일시 기준 내림차순) 정렬
+    list.sort((a, b) => {
+      const getDocTimestamp = (d) => {
+        if (!d) return 0;
+        if (d.updatedAt) {
+          const t = new Date(d.updatedAt).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        if (d.createdAt) {
+          const cleanStr = String(d.createdAt).replace(/\./g, "-").replace(/\s+/, "T");
+          const t = new Date(cleanStr).getTime();
+          if (!isNaN(t) && t > 0) return t;
+        }
+        if (d.id) {
+          const m = d.id.match(/2026\d{4}|\d{10,13}/);
+          if (m) {
+            if (m[0].length === 8) {
+              const y = m[0].slice(0, 4);
+              const mon = m[0].slice(4, 6);
+              const day = m[0].slice(6, 8);
+              return new Date(`${y}-${mon}-${day}T18:00:00`).getTime();
+            }
+            const n = parseInt(m[0], 10);
+            if (!isNaN(n)) return n;
+          }
+        }
+        return 0;
+      };
+      return getDocTimestamp(b) - getDocTimestamp(a);
+    });
+
+    return list;
   }, [approvalDocs, selectedTab, selectedPlant, searchQuery, currentProfile]);
 
   // Statistics
@@ -674,7 +707,7 @@ export const ElectronicApprovalView = () => {
                   <th className="py-3 px-2.5 w-24 whitespace-nowrap">소요금액</th>
                   <th className="py-3 px-3 w-48 text-center whitespace-nowrap">결재선 (담당/책임/이사/대표)</th>
                   <th className="py-3 px-2.5 w-24 text-center whitespace-nowrap">문서상태</th>
-                  <th className="py-3 px-3 w-20 text-center whitespace-nowrap">열람</th>
+                  <th className="py-3 px-3 w-28 text-center whitespace-nowrap">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -794,18 +827,27 @@ export const ElectronicApprovalView = () => {
                         )}
                       </td>
 
-                      {/* 10. 열람 버튼 */}
+                      {/* 10. 관리/삭제 버튼 */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDoc(doc);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all shadow-xs"
-                        >
-                          상세
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDoc(doc)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all shadow-xs"
+                            title="상세 열람 및 결재"
+                          >
+                            상세
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDelete(doc.id, e)}
+                            className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800"
+                            title="결재 문서 삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>삭제</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -846,6 +888,15 @@ export const ElectronicApprovalView = () => {
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>인쇄</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleDelete(selectedDoc.id, e)}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800 transition-all"
+                  title="결재 문서 삭제"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>삭제</span>
                 </button>
                 <button
                   type="button"
