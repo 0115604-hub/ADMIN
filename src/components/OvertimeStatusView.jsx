@@ -77,6 +77,7 @@ import {
   getPlantForCompany
 } from "../services/overtimeService";
 import { syncPlantOvertimeToApprovalBox } from "../services/approvalService";
+import { KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 import { getKSTDateString } from "../utils/dateUtils";
 
 // ⭐ Precise Date & Weekend Helpers (2026년 9월 캘린더 기준)
@@ -2768,31 +2769,42 @@ export const OvertimeStatusView = () => {
                     </span>
                     <span className="text-[9.5px] text-emerald-400 font-bold">결재 완료</span>
                   </div>
-                  <div className="border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-md">
-                    <div className="grid grid-cols-4 divide-x divide-slate-700 text-center font-bold text-[11px]">
+                  <div className="border border-slate-700 rounded-xl overflow-hidden bg-white text-slate-900 shadow-md">
+                    <div className="grid grid-cols-4 divide-x divide-slate-300 text-center font-bold text-[11px] bg-slate-100 text-slate-800">
                       {(selectedLegacyReport.approval || [
                         { role: "담당", name: "양인나" },
                         { role: "책임", name: "윤경수" },
                         { role: "이사", name: "이명재" },
                         { role: "대표", name: "권태형" }
                       ]).map((st, sIdx) => (
-                        <div key={sIdx} className="bg-slate-800 py-1 px-2 text-slate-300 font-black">
+                        <div key={sIdx} className="py-1 px-2 font-black">
                           {st.role}
                         </div>
                       ))}
                     </div>
-                    <div className="grid grid-cols-4 divide-x divide-slate-700 text-center text-xs h-14 items-center bg-slate-900/90">
+                    <div className="grid grid-cols-4 divide-x divide-slate-300 text-center text-xs h-15 items-center bg-white">
                       {(selectedLegacyReport.approval || [
                         { role: "담당", name: "양인나", status: "완료" },
                         { role: "책임", name: "윤경수", status: "완료" },
                         { role: "이사", name: "이명재", status: "완료" },
                         { role: "대표", name: "권태형", status: "완료" }
                       ]).map((st, sIdx) => (
-                        <div key={sIdx} className="p-1 flex flex-col items-center justify-center space-y-0.5">
-                          <span className="font-black text-white text-xs">{st.name}</span>
-                          <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/80 font-bold">
-                            {st.status || "완료"}
-                          </span>
+                        <div key={sIdx} className="p-1 flex flex-col items-center justify-center space-y-0.5 relative h-full">
+                          {st.role === "대표" || st.name === "권태형" ? (
+                            <div className="w-15 h-11 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
+                              <img
+                                src={KWON_SIGNATURE_BLACK}
+                                alt="권태형 대표이사 친필 서명"
+                                className="w-full h-full object-contain filter drop-shadow-xs"
+                              />
+                            </div>
+                          ) : (
+                            <div className={`w-10 h-10 rounded-full border-2 ${sIdx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-5deg] select-none bg-white`}>
+                              <span className="text-[7px] font-bold">오륙</span>
+                              <span className="text-[10px] font-black">{st.name?.slice(0, 3)}</span>
+                              <span className="text-[7px]">{sIdx === 0 ? "기안" : "승인"}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

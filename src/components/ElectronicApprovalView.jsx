@@ -796,12 +796,14 @@ export const ElectronicApprovalView = () => {
                           {doc.steps.map((st, idx) => (
                             <div
                               key={idx}
-                              title={`[${st.role}] ${st.name} : ${idx === 0 ? "기안완료" : st.status === "APPROVED" ? "승인완료" : st.status === "HOLD" ? "보류중" : st.status === "REJECTED" ? "반려" : st.status === "PENDING" ? "결재대기" : "대기"}`}
+                              title={`[${st.role}] ${st.name} : ${idx === 0 ? "기안완료" : st.status === "APPROVED" ? ((st.role === "대표" || st.name === "권태형") ? "대표이사 친필서명 승인완료" : "승인완료") : st.status === "HOLD" ? "보류중" : st.status === "REJECTED" ? "반려" : st.status === "PENDING" ? "결재대기" : "대기"}`}
                               className={`w-6 h-6 rounded-md flex items-center justify-center text-[9.5px] font-black border transition-all ${
                                 idx === 0
                                   ? "bg-blue-600 text-white border-blue-700"
                                   : st.status === "APPROVED"
-                                  ? "bg-emerald-500 text-white border-emerald-600"
+                                  ? (st.role === "대표" || st.name === "권태형")
+                                    ? "bg-amber-500 text-slate-950 border-amber-600 shadow-2xs font-black"
+                                    : "bg-emerald-500 text-white border-emerald-600"
                                   : st.status === "HOLD"
                                   ? "bg-amber-400 text-slate-950 border-amber-500 animate-pulse font-bold"
                                   : st.status === "REJECTED"
@@ -814,7 +816,9 @@ export const ElectronicApprovalView = () => {
                               {idx === 0
                                 ? "기"
                                 : st.status === "APPROVED"
-                                ? "인"
+                                ? (st.role === "대표" || st.name === "권태형")
+                                  ? "✍️"
+                                  : "인"
                                 : st.status === "HOLD"
                                 ? "류"
                                 : st.status === "REJECTED"
@@ -948,9 +952,9 @@ export const ElectronicApprovalView = () => {
 
             {/* Official 4-Step Approval Seal Box */}
             <div className="flex justify-end">
-              <div className="border-2 border-slate-900 dark:border-slate-600 rounded-xl overflow-hidden text-xs">
-                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-600 font-bold bg-slate-100 dark:bg-slate-800">
-                  <div className="p-1 w-10 flex items-center justify-center bg-slate-200 dark:bg-slate-700 font-black text-[11px]">
+              <div className="border-2 border-slate-900 dark:border-slate-500 rounded-xl overflow-hidden text-xs bg-white shadow-sm">
+                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-500 font-bold bg-slate-100 text-slate-900">
+                  <div className="p-1 w-10 flex items-center justify-center bg-slate-200 font-black text-[11px]">
                     결<br />재
                   </div>
                   {selectedDoc.steps.map((st, idx) => (
@@ -960,49 +964,49 @@ export const ElectronicApprovalView = () => {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-600 h-16 bg-white dark:bg-slate-900">
-                  <div className="w-10 bg-slate-50 dark:bg-slate-800/50"></div>
+                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-500 h-16 bg-white">
+                  <div className="w-10 bg-slate-50"></div>
                   {selectedDoc.steps.map((st, idx) => (
-                    <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative">
+                    <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative bg-white">
                       {st.status === "APPROVED" ? (
                         st.name === "권태형" || (st.role === "대표" && st.name !== "최미영") ? (
                           /* 🌟 권태형 대표이사 실제 자필 친필 서명 (투명 배경) */
                           <div className="w-16 h-13 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
                             <img
                               src={KWON_SIGNATURE_BLACK}
-                              alt="권태형 대표이사 서명"
+                              alt="권태형 대표이사 친필 서명"
                               className="w-full h-full object-contain filter drop-shadow-xs"
                             />
                           </div>
                         ) : (
-                          <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs select-none animate-scaleUp`}>
+                          <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs select-none animate-scaleUp bg-white`}>
                             <span className="text-[7.5px] font-bold">오륙</span>
                             <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
                             <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
                           </div>
                         )
                       ) : st.status === "HOLD" ? (
-                        <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg]">
+                        <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg] bg-white">
                           <span>보류</span>
                           <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
                         </div>
                       ) : st.status === "REJECTED" ? (
-                        <div className="w-11 h-11 rounded-full border-2 border-slate-700 text-slate-700 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-6deg]">
+                        <div className="w-11 h-11 rounded-full border-2 border-slate-700 text-slate-700 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-6deg] bg-white">
                           <span>반려</span>
                           <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
                         </div>
                       ) : st.status === "PENDING" ? (
-                        <span className="text-[10.5px] font-black text-rose-600 dark:text-rose-400 animate-pulse">
+                        <span className="text-[10.5px] font-black text-rose-600 animate-pulse">
                           결재대기
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-300">-</span>
+                        <span className="text-[10px] text-slate-400">-</span>
                       )}
                     </div>
                   ))}
                 </div>
 
-                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-600 text-[9px] bg-slate-50 dark:bg-slate-800 text-slate-500 font-mono">
+                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-500 text-[9px] bg-slate-50 text-slate-600 font-mono">
                   <div className="w-10">날짜</div>
                   {selectedDoc.steps.map((st, idx) => (
                     <div key={idx} className="w-16 p-0.5 truncate">

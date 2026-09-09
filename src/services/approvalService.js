@@ -15,7 +15,7 @@ import {
 } from "./telegramService";
 
 const COLLECTION_NAME = "approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v5_pure_pending";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v6_kwon_sign";
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -45,6 +45,18 @@ export const normalizeApprovalDoc = (d) => {
         ...st,
         name: "이명재",
         title: "이사"
+      };
+    }
+    if (st.role === "대표") {
+      const isApproved = st.status === "APPROVED";
+      let ceoName = st.name;
+      if (!ceoName || ceoName === "대표이사" || ceoName === "대표" || (isApproved && ceoName !== "최미영")) {
+        ceoName = "권태형";
+      }
+      return {
+        ...st,
+        name: ceoName,
+        title: ceoName === "최미영" ? "전무" : "대표이사"
       };
     }
     return st;
@@ -227,6 +239,78 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
+    id: "appr_approved_20260830_001",
+    docNumber: "ORYUK-2026-0830-SAM",
+    type: "OVERTIME",
+    typeName: "특근보고서 (결재완료)",
+    title: "[삼랑진공장] 8월 30일(일) 특근실시보고서 취합 ((주)오륙, 유성)",
+    plant: "삼랑진공장",
+    department: "생산총괄 ((주)오륙 + 유성)",
+    drafter: "양인나",
+    drafterTitle: "선임",
+    createdAt: "2026-08-30 18:00",
+    content: "■ 8월 30일(일) [삼랑진공장] 특근실시보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 36명 (288 M/H) | 총 노무비: ₩4,320,000\n\n2. 주요 작업 내용\n• 현대 NX4a 긴급 납품 물량 대응 및 주말 특근 정상 가동 완료\n• 결재선 4단계 전원 승인 완료 (대표이사 최종 재가)",
+    amount: "₩4,320,000",
+    status: "APPROVED",
+    currentStep: 4,
+    steps: [
+      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-08-30 18:00", comment: "특근 취합 기안 상신" },
+      { role: "책임", name: "설유철", title: "책임", status: "APPROVED", date: "2026-08-31 09:10", comment: "현장 인원 확인 이상없음" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-08-31 14:20", comment: "공수 및 비용 검토 승인" },
+      { role: "대표", name: "권태형", title: "대표이사", status: "APPROVED", date: "2026-08-31 17:00", comment: "대표이사 최종 결재 승인" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
+    id: "appr_approved_20260828_002",
+    docNumber: "ORYUK-2026-0828-EXP",
+    type: "EXPENSE",
+    typeName: "자재구매 품의서 (결재완료)",
+    title: "압출 1, 2호기 메인 감속기 오일 및 에어필터 정기 교체 자재 구매 품의",
+    plant: "삼랑진공장",
+    department: "설비보전",
+    drafter: "전재율",
+    drafterTitle: "책임",
+    createdAt: "2026-08-28 11:30",
+    content: "설비 예방보전 및 정기점검용 소모자재 구매 품의입니다.\n- 공급처: 대한윤활유\n- 품명: 고점도 기어유 200L 및 에어클리너 8EA\n- 납품 및 교체 완료 예정일: 2026-09-02",
+    amount: "₩1,850,000",
+    status: "APPROVED",
+    currentStep: 4,
+    steps: [
+      { role: "담당", name: "전재율", title: "선임", status: "APPROVED", date: "2026-08-28 11:30", comment: "품의 상신" },
+      { role: "책임", name: "전재율", title: "책임", status: "APPROVED", date: "2026-08-28 13:00", comment: "부품 규격 확인 완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-08-28 15:40", comment: "예산 집행 승인" },
+      { role: "대표", name: "권태형", title: "대표이사", status: "APPROVED", date: "2026-08-29 10:15", comment: "대표이사 승인 및 발주 재가" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
+    id: "appr_approved_20260825_003",
+    docNumber: "ORYUK-2026-0825-GEN",
+    type: "GENERAL",
+    typeName: "일반 업무기안 (결재완료)",
+    title: "2026년 3분기 공장 안전관리 및 환경개선 종합계획 승인의 건",
+    plant: "한림공장",
+    department: "총괄관리",
+    drafter: "김동욱",
+    drafterTitle: "책임",
+    createdAt: "2026-08-25 09:00",
+    content: "한림공장 작업장 안전 통로 확보, 유해물질 보관함 교체 및 비상소화설비 정기점검 계획을 상신하오니 결재 바랍니다.",
+    amount: "₩950,000",
+    status: "APPROVED",
+    currentStep: 4,
+    steps: [
+      { role: "담당", name: "김동욱", title: "선임", status: "APPROVED", date: "2026-08-25 09:00", comment: "계획안 상신" },
+      { role: "책임", name: "김동욱", title: "책임", status: "APPROVED", date: "2026-08-25 10:30", comment: "현장 점검 완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-08-25 14:00", comment: "안전 조치 계획 검토" },
+      { role: "대표", name: "권태형", title: "대표이사", status: "APPROVED", date: "2026-08-26 11:00", comment: "대표이사 결재 승인 - 안전 최우선 시공" }
     ],
     rejectReason: "",
     holdReason: ""
