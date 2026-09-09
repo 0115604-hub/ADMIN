@@ -49,6 +49,12 @@ export const App = () => {
 
   // Sync default tab and always reset to current month (당월) upon user login
   useEffect(() => {
+    try {
+      document.documentElement.style.zoom = "";
+      document.body.style.zoom = "";
+      localStorage.removeItem("oryuk_screen_zoom_idx");
+    } catch (e) {}
+
     if (currentProfile) {
       setActiveTab("worker_dashboard");
       if (resetToCurrentMonth) {
