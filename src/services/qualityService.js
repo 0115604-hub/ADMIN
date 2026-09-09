@@ -315,6 +315,29 @@ export const deleteQualityRecord = async (recordId) => {
 };
 
 /**
+ * Delete all quality records for a specific date
+ */
+export const deleteQualityRecordsByDate = async (dateStr) => {
+  if (!dateStr) return [];
+  const localCurrent = getLocalQualityRecords();
+  const toDelete = localCurrent.filter((r) => r.date === dateStr);
+  const remaining = localCurrent.filter((r) => r.date !== dateStr);
+  saveLocalQualityRecords(remaining);
+
+  try {
+    const batch = writeBatch(db);
+    toDelete.forEach((r) => {
+      const docRef = doc(db, COLLECTION_NAME, r.id);
+      batch.delete(docRef);
+    });
+    await batch.commit();
+  } catch (e) {
+    console.warn("Firestore deleteQualityRecordsByDate fallback to local:", e);
+  }
+  return remaining;
+};
+
+/**
  * Compute Monthly Aggregation (No Duplicates, Dynamic Reason Breakdown)
  */
 export const getQualityMonthlyAggregation = (allRecords = [], yearMonth = "2026-09") => {

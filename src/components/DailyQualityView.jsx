@@ -26,7 +26,13 @@ import {
   RefreshCw,
   FileCheck,
   X,
-  Eye
+  Eye,
+  PlusCircle,
+  Edit3,
+  Trash2,
+  Save,
+  Plus,
+  Tag
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
@@ -35,6 +41,8 @@ import * as XLSX from "xlsx";
 import {
   subscribeQualityRecords,
   saveQualityRecordsBatch,
+  deleteQualityRecordsByDate,
+  generateQualityRecordId,
   getQualityMonthlyAggregation,
   getQualityDailyAggregation,
   parseQualityExcelFiles,
@@ -52,6 +60,127 @@ export const DailyQualityView = () => {
 
   // Selected Item Filter: "all" | "ja" | "hr" | "nx4" | "nx4a"
   const [selectedItemId, setSelectedItemId] = useState("all");
+
+  // ⭐ Direct Quality Input Modal State (이창엽 선임 전용 일일 실적 직접 입력 & 수정)
+  const [isDirectInputModalOpen, setIsDirectInputModalOpen] = useState(false);
+  const [directInputDate, setDirectInputDate] = useState(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  });
+  const [directItemsInput, setDirectItemsInput] = useState({
+    ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116 },
+    hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372 },
+    nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 },
+    nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 }
+  });
+  const [isSavingDirectInput, setIsSavingDirectInput] = useState(false);
+
+  // Helper: Load existing records for a specific date into the direct input form
+  const loadDateRecordsIntoDirectForm = (targetDate) => {
+    const matching = allRecords.filter((r) => r.date === targetDate);
+    const newInputs = {
+      ja: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 3116 },
+      hr: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 2372 },
+      nx4: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 },
+      nx4a: { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: 5747 }
+    };
+
+    matching.forEach((r) => {
+      const key = r.itemId ? r.itemId.toLowerCase() : "";
+      if (newInputs[key]) {
+        newInputs[key] = {
+          inspectQty: r.inspectQty || 0,
+          defectQty: r.defectQty || 0,
+          worstReason: r.worstReason && r.worstReason !== "-" ? r.worstReason : "",
+          unitPrice: r.unitPrice || QUALITY_CORE_ITEMS.find((c) => c.id === key)?.defaultUnitPrice || newInputs[key].unitPrice
+        };
+      }
+    });
+
+    setDirectItemsInput(newInputs);
+  };
+
+  // Open Direct Input Modal
+  const handleOpenDirectInputModal = (targetDate = null) => {
+    const dateToUse = targetDate || directInputDate || new Date().toISOString().split("T")[0];
+    setDirectInputDate(dateToUse);
+    loadDateRecordsIntoDirectForm(dateToUse);
+    setIsDirectInputModalOpen(true);
+  };
+
+  // Save Direct Input
+  const handleSaveDirectInput = async () => {
+    if (!directInputDate) {
+      alert("입력할 일자를 선택해 주세요.");
+      return;
+    }
+
+    setIsSavingDirectInput(true);
+    try {
+      const dt = new Date(directInputDate);
+      const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+      const dayOfWeek = dayNames[dt.getDay()] || "월";
+      const author = currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "선임"}` : "이창엽 선임";
+
+      const recordsToSave = QUALITY_CORE_ITEMS.map((core) => {
+        const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice };
+        const inspectQty = Math.max(0, Math.round(Number(it.inspectQty) || 0));
+        const defectQty = Math.max(0, Math.round(Number(it.defectQty) || 0));
+        const defectRate = inspectQty > 0 ? Number(((defectQty / inspectQty) * 100).toFixed(2)) : 0;
+        const unitPrice = it.unitPrice || core.defaultUnitPrice;
+        const lossAmount = Math.round(defectQty * unitPrice);
+
+        return {
+          id: generateQualityRecordId(directInputDate, core.id),
+          date: directInputDate,
+          yearMonth: directInputDate.slice(0, 7),
+          dayOfWeek,
+          itemId: core.id,
+          itemName: core.name,
+          carModel: core.carModel,
+          inspectQty,
+          defectQty,
+          defectRate,
+          worstReason: it.worstReason.trim() || (defectQty === 0 ? "-" : core.defaultDefectReason),
+          lossAmount,
+          uploader: author,
+          updatedAt: new Date().toISOString()
+        };
+      });
+
+      await saveQualityRecordsBatch(recordsToSave);
+      setIsDirectInputModalOpen(false);
+      setUploadToast({
+        type: "success",
+        message: `✅ ${directInputDate} (${dayOfWeek}) 4개 차종 품질 검사/불량 실적이 정확하게 저장되었습니다!`
+      });
+      setTimeout(() => setUploadToast(null), 5000);
+    } catch (err) {
+      console.error("Save direct quality error:", err);
+      alert("저장 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingDirectInput(false);
+    }
+  };
+
+  // Delete Direct Input for Date
+  const handleDeleteDirectDate = async () => {
+    if (!confirm(`${directInputDate} 등록된 4개 차종 품질 실적을 전체 삭제하시겠습니까?`)) return;
+    try {
+      await deleteQualityRecordsByDate(directInputDate);
+      setIsDirectInputModalOpen(false);
+      setUploadToast({
+        type: "info",
+        message: `🗑️ ${directInputDate} 품질 실적 데이터가 삭제되었습니다.`
+      });
+      setTimeout(() => setUploadToast(null), 4000);
+    } catch (err) {
+      console.error("Delete direct quality error:", err);
+    }
+  };
 
   // ⭐ Popup Modal State for Item-specific Daily Breakdown
   const [popupItem, setPopupItem] = useState(null);
@@ -292,10 +421,19 @@ export const DailyQualityView = () => {
             </select>
           </div>
 
+          {/* ⭐ Direct Input Button (이창엽 선임 전용 직접 입력 포맷) */}
+          <button
+            onClick={() => handleOpenDirectInputModal()}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>일일 품질실적 직접 입력 / 수정</span>
+          </button>
+
           {/* Export Excel Button */}
           <button
             onClick={() => handleExportExcel()}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black transition-all shadow-xs cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
             <span>엑셀 보고서 출력</span>
@@ -876,6 +1014,19 @@ export const DailyQualityView = () => {
                           <td className="p-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                             ₩ {d.totalLossAmount.toLocaleString()}
                           </td>
+
+                          {/* Quick Edit Button */}
+                          <td className="p-3 text-center whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDirectInputModal(d.date)}
+                              title={`${d.date} 실적 수정`}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs font-black border border-indigo-200 dark:border-indigo-800 transition-all active:scale-95 cursor-pointer flex items-center gap-1 mx-auto"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>수정</span>
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -925,6 +1076,7 @@ export const DailyQualityView = () => {
                           <th className="p-3 text-center">아이템 불량률(%)</th>
                           <th className="p-3 text-left">주요 불량 사유 (WORST)</th>
                           <th className="p-3 text-right">품질 손실금액</th>
+                          <th className="p-3 text-center w-16 whitespace-nowrap">수정</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1342,6 +1494,324 @@ export const DailyQualityView = () => {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 7. [MODAL] 일일 품질 / 불량 실적 직접 입력 및 수정 모달 (이창엽 선임 전용 포맷) */}
+      {/* ========================================================================= */}
+      {isDirectInputModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          onClick={() => setIsDirectInputModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[92vh] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-scaleUp cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white flex items-center justify-between shrink-0 border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 shadow-md">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-black text-white">
+                      일일 품질 / 불량 실적 직접 입력 포맷
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
+                      실시간 자동 분석 & 시각화
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    이창엽 선임의 일일 검사/불량 수량을 직접 입력하면 불량률 및 손실액이 100% 자동 계산됩니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setIsDirectInputModalOpen(false)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                title="닫기 (ESC)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Date Selection Control Bar */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 shadow-xs">
+                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">검사 일자:</span>
+                  <input
+                    type="date"
+                    value={directInputDate}
+                    onChange={(e) => {
+                      setDirectInputDate(e.target.value);
+                      loadDateRecordsIntoDirectForm(e.target.value);
+                    }}
+                    className="bg-transparent font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-white outline-none cursor-pointer"
+                  />
+                </div>
+
+                {allRecords.some((r) => r.date === directInputDate) ? (
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-black border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>기존 등록된 데이터 수정 중</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-xs font-black border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>신규 일자 등록 모드</span>
+                  </span>
+                )}
+              </div>
+
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                입력자: <strong className="text-slate-800 dark:text-slate-200">{currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "선임"}` : "이창엽 선임"}</strong>
+              </div>
+            </div>
+
+            {/* Modal Body: 4 Core Item Input Cards */}
+            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {QUALITY_CORE_ITEMS.map((core) => {
+                  const it = directItemsInput[core.id] || { inspectQty: 0, defectQty: 0, worstReason: "", unitPrice: core.defaultUnitPrice };
+                  const insp = Math.max(0, Number(it.inspectQty) || 0);
+                  const def = Math.max(0, Number(it.defectQty) || 0);
+                  const rate = insp > 0 ? Number(((def / insp) * 100).toFixed(2)) : 0;
+                  const unitPrice = it.unitPrice || core.defaultUnitPrice;
+                  const loss = Math.round(def * unitPrice);
+                  const isGood = rate <= 0.70;
+
+                  const themeMap = {
+                    ja: { border: "border-indigo-200 dark:border-indigo-800", bg: "bg-indigo-50/40 dark:bg-indigo-950/20", tag: "bg-indigo-600", text: "text-indigo-600 dark:text-indigo-400" },
+                    hr: { border: "border-teal-200 dark:border-teal-800", bg: "bg-teal-50/40 dark:bg-teal-950/20", tag: "bg-teal-600", text: "text-teal-600 dark:text-teal-400" },
+                    nx4: { border: "border-amber-200 dark:border-amber-800", bg: "bg-amber-50/40 dark:bg-amber-950/20", tag: "bg-amber-600", text: "text-amber-600 dark:text-amber-400" },
+                    nx4a: { border: "border-purple-200 dark:border-purple-800", bg: "bg-purple-50/40 dark:bg-purple-950/20", tag: "bg-purple-600", text: "text-purple-600 dark:text-purple-400" }
+                  };
+                  const theme = themeMap[core.id] || themeMap.ja;
+
+                  const commonDefects = [
+                    "수포", "스코치", "사상불량", "둔각 떨어짐", "직각 떨어짐", "직_어퍼떨어짐", "둔_어퍼떨어짐", "삽입불량"
+                  ];
+
+                  const handleAddDefectTag = (tag) => {
+                    const current = it.worstReason ? it.worstReason.split(",").map(s => s.trim()).filter(Boolean) : [];
+                    if (!current.includes(tag)) {
+                      current.push(tag);
+                    } else {
+                      // Toggle off
+                      const idx = current.indexOf(tag);
+                      current.splice(idx, 1);
+                    }
+                    setDirectItemsInput({
+                      ...directItemsInput,
+                      [core.id]: { ...it, worstReason: current.join(", ") }
+                    });
+                  };
+
+                  return (
+                    <div
+                      key={core.id}
+                      className={`p-4 rounded-2xl border ${theme.border} ${theme.bg} space-y-3 shadow-xs`}
+                    >
+                      {/* Item Header */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${theme.tag}`}></span>
+                          <span className="font-black text-sm text-slate-900 dark:text-white">
+                            {core.name} ({core.carModel})
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 font-bold">
+                          단가: ₩{unitPrice.toLocaleString()}원
+                        </span>
+                      </div>
+
+                      {/* Input Fields (검사수량 & 불량수량) */}
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                            검사수량 (EA)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={it.inspectQty || ""}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0);
+                              setDirectItemsInput({
+                                ...directItemsInput,
+                                [core.id]: { ...it, inspectQty: val }
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-black text-sm text-slate-900 dark:text-white text-right outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                            불량수량 (EA)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={it.defectQty || ""}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0);
+                              setDirectItemsInput({
+                                ...directItemsInput,
+                                [core.id]: { ...it, defectQty: val }
+                              });
+                            }}
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-black text-sm text-rose-600 dark:text-rose-400 text-right outline-none focus:ring-2 focus:ring-rose-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Real-time Calculated Metrics */}
+                      <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <span className="text-slate-500">불량률:</span>
+                          <span className={`font-mono font-black px-1.5 py-0.5 rounded ${
+                            isGood ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                          }`}>
+                            {rate}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 font-bold">
+                          <span className="text-slate-500">품질 손실액:</span>
+                          <span className="font-mono font-black text-rose-600 dark:text-rose-400">
+                            ₩ {loss.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Defect Reasons & Quick Tags */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block">
+                          주요 불량 사유
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="예: 둔각 떨어짐 (6건), 수포 (4건)"
+                          value={it.worstReason}
+                          onChange={(e) => {
+                            setDirectItemsInput({
+                              ...directItemsInput,
+                              [core.id]: { ...it, worstReason: e.target.value }
+                            });
+                          }}
+                          className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+
+                        {/* Quick Defect Reason Chips */}
+                        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                          {commonDefects.map((dTag) => {
+                            const isSelected = it.worstReason?.includes(dTag);
+                            return (
+                              <button
+                                key={dTag}
+                                type="button"
+                                onClick={() => handleAddDefectTag(dTag)}
+                                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-emerald-600 text-white shadow-xs"
+                                    : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                }`}
+                              >
+                                {isSelected ? "✓ " : "+ "}{dTag}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Summary Bar & Footer Actions */}
+            <div className="p-4 sm:p-5 bg-slate-900 text-white border-t border-slate-700 shrink-0 space-y-3">
+              {/* Live Day Totals */}
+              {(() => {
+                const totalInsp = Object.values(directItemsInput).reduce((sum, it) => sum + (Math.max(0, Number(it.inspectQty) || 0)), 0);
+                const totalDef = Object.values(directItemsInput).reduce((sum, it) => sum + (Math.max(0, Number(it.defectQty) || 0)), 0);
+                const totalLoss = Object.entries(directItemsInput).reduce((sum, [k, it]) => {
+                  const def = Math.max(0, Number(it.defectQty) || 0);
+                  const price = it.unitPrice || QUALITY_CORE_ITEMS.find(c => c.id === k)?.defaultUnitPrice || 3000;
+                  return sum + (def * price);
+                }, 0);
+                const avgRate = totalInsp > 0 ? Number(((totalDef / totalInsp) * 100).toFixed(2)) : 0;
+
+                return (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">당일 총 검사수량</span>
+                      <strong className="text-sm sm:text-base font-black font-mono text-white">{totalInsp.toLocaleString()} EA</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">당일 총 불량수량</span>
+                      <strong className="text-sm sm:text-base font-black font-mono text-rose-400">{totalDef.toLocaleString()} EA</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">당일 종합 불량률</span>
+                      <strong className={`text-sm sm:text-base font-black font-mono ${avgRate <= 0.70 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {avgRate}% {avgRate <= 0.70 ? "(목표달성)" : "(관리주의)"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">당일 총 손실금액</span>
+                      <strong className="text-sm sm:text-base font-black font-mono text-amber-300">₩ {totalLoss.toLocaleString()}</strong>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                {allRecords.some((r) => r.date === directInputDate) ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteDirectDate}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>당일 데이터 삭제</span>
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsDirectInputModalOpen(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveDirectInput}
+                    disabled={isSavingDirectInput}
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-xs font-black transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isSavingDirectInput ? "저장 중..." : "💾 당일 품질 실적 저장"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
