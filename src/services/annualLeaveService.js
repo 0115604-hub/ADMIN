@@ -250,6 +250,26 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-sky-500 text-white font-black shadow-2xs"
     };
   }
+  if (type.includes("삼랑진")) {
+    return {
+      type: "삼랑진공장",
+      emoji: "🏭",
+      activeLabel: "삼랑진공장",
+      scheduledLabelPrefix: "삼랑진",
+      activeBadge: "bg-amber-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-amber-500 text-white font-black shadow-2xs"
+    };
+  }
+  if (type.includes("한림")) {
+    return {
+      type: "한림공장",
+      emoji: "🏭",
+      activeLabel: "한림공장",
+      scheduledLabelPrefix: "한림",
+      activeBadge: "bg-emerald-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-emerald-500 text-white font-black shadow-2xs"
+    };
+  }
   if (type.includes("업체방문")) {
     return {
       type: "업체방문",
@@ -360,6 +380,8 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
       if (typeName.includes("오전반차")) return "오전";
       if (typeName.includes("오후반차")) return "오후";
       if (typeName.includes("특근")) return "특근";
+      if (typeName.includes("삼랑진")) return "삼랑진";
+      if (typeName.includes("한림")) return "한림";
       if (typeName.includes("출장") || typeName.includes("교육")) return "출장";
       if (typeName.includes("업체방문")) return "방문";
       if (typeName.includes("외출")) return "외출";

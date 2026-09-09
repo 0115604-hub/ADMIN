@@ -2239,7 +2239,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <option value="오전반차">🌤️ 오전반차</option>
                     <option value="오후반차">⛅ 오후반차</option>
                     <option value="할일">📝 할일</option>
-                    <option value="업체방문">🏢 업체방문</option>
+                    <option value="삼랑진공장">🏭 삼랑진공장</option>
+                    <option value="한림공장">🏭 한림공장</option>
                     <option value="RNA 회의">👔 RNA 회의</option>
                     <option value="외출">🚶 외출</option>
                     <option value="특근(휴일근무)">⚡ 특근(휴일)</option>
