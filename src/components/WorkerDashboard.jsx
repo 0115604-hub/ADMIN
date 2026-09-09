@@ -95,7 +95,7 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
   });
 };
 import { useAuth, PLANTS } from "../context/AuthContext";
-import { useMonth } from "../context/MonthContext";
+import { useMonth, DEFAULT_MONTH_LIST } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { parseExcelFile } from "../utils/excelHelper";
 import {
@@ -4032,7 +4032,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               onChange={(e) => setParsedResult((prev) => ({ ...prev, yearMonth: e.target.value }))}
                               className="px-2 py-1 rounded-lg border border-emerald-400 dark:border-emerald-600 bg-white dark:bg-slate-800 font-black text-xs text-emerald-900 dark:text-emerald-100 cursor-pointer shadow-2xs"
                             >
-                              {DEFAULT_MONTH_LIST.map((m) => (
+                              {(availableMonths || DEFAULT_MONTH_LIST || ["2026-09", "2026-08", "2026-07"]).map((m) => (
                                 <option key={m} value={m}>
                                   {m.slice(0, 4)}년 {parseInt(m.slice(5), 10)}월
                                 </option>
