@@ -1,15 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LogOut,
   Calendar,
   ArrowLeft,
   Menu,
-  Plus
+  Plus,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
+
+const ZOOM_STEPS = [0.85, 0.90, 1.0, 1.10, 1.25, 1.40];
 
 export const Header = ({
   title,
@@ -22,6 +27,43 @@ export const Header = ({
 }) => {
   const { isOperator, isAdmin, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
+
+  // Screen Zoom State (Persisted in localStorage)
+  const [zoomIndex, setZoomIndex] = useState(() => {
+    try {
+      const saved = localStorage.getItem("oryuk_screen_zoom_idx");
+      if (saved !== null) {
+        const idx = parseInt(saved, 10);
+        if (idx >= 0 && idx < ZOOM_STEPS.length) return idx;
+      }
+    } catch (e) {}
+    return 2; // Default 1.0 (100%)
+  });
+
+  const currentZoom = ZOOM_STEPS[zoomIndex];
+
+  // Apply zoom to document body/documentElement
+  useEffect(() => {
+    try {
+      document.documentElement.style.zoom = `${currentZoom}`;
+      document.body.style.zoom = `${currentZoom}`;
+      localStorage.setItem("oryuk_screen_zoom_idx", String(zoomIndex));
+    } catch (e) {
+      console.error("Failed to apply zoom:", e);
+    }
+  }, [zoomIndex, currentZoom]);
+
+  const handleZoomIn = () => {
+    setZoomIndex((prev) => Math.min(prev + 1, ZOOM_STEPS.length - 1));
+  };
+
+  const handleZoomOut = () => {
+    setZoomIndex((prev) => Math.max(prev - 1, 0));
+  };
+
+  const handleZoomReset = () => {
+    setZoomIndex(2); // 1.0 (100%)
+  };
 
   const formatMonthShort = (ym) => {
     const parts = ym.split("-");
@@ -117,6 +159,36 @@ export const Header = ({
             )}
           </div>
         )}
+
+        {/* ⭐ [요청반영] 화면 확대/축소 원터치 컨트롤러 (Pinch-to-zoom 제스처 및 원터치 배율 조절) */}
+        <div className="flex items-center rounded-xl sm:rounded-2xl bg-slate-100/90 dark:bg-slate-800/90 p-0.5 sm:p-1 border border-slate-200/90 dark:border-slate-700 shadow-2xs shrink-0">
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            disabled={zoomIndex === 0}
+            className="p-1 sm:p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90 cursor-pointer"
+            title="화면 축소 (작게 보기)"
+          >
+            <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomReset}
+            className="px-1 sm:px-2 py-0.5 text-[10px] sm:text-xs font-black text-blue-600 dark:text-blue-400 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all tracking-tight cursor-pointer select-none"
+            title="클릭 시 100% 기본 배율로 초기화"
+          >
+            {Math.round(currentZoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            disabled={zoomIndex === ZOOM_STEPS.length - 1}
+            className="p-1 sm:p-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-90 cursor-pointer"
+            title="화면 확대 (크게 보기)"
+          >
+            <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </button>
+        </div>
 
         {/* Month Selector */}
         <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 border-2 border-blue-500/40 dark:border-blue-500/50 shadow-2xs hover:border-blue-600 transition-all shrink-0">
