@@ -55,11 +55,6 @@ export const DailyQualityView = () => {
   const { formatAmount } = useCurrency();
   const fileInputRef = useRef(null);
 
-  // Active View Mode: "daily" (일자별 아이템 실적 - 기본 추천) vs "monthly" (월간 아이템 종합)
-  const [activeTab, setActiveTab] = useState("daily");
-
-  // Selected Item Filter: "all" | "ja" | "hr" | "nx4" | "nx4a"
-  const [selectedItemId, setSelectedItemId] = useState("all");
 
   // ⭐ Direct Quality Input Modal State (이창엽 선임 전용 일일 실적 직접 입력 & 수정)
   const [isDirectInputModalOpen, setIsDirectInputModalOpen] = useState(false);
@@ -462,13 +457,16 @@ export const DailyQualityView = () => {
       {/* 2. ⭐ 4대 코어 품목별 불량률 추이 (좌측: 그래프) & 주요 불량 원인 및 소재별 폐기수량 분석 (우측) */}
       {/* ========================================================================= */}
       <div className="space-y-4">
-        {/* 4 Core Item Quick Chips (Click to Open Detail Popup) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {/* 4 Core Item Quick Chips with Defect & Scrap Rate (Click to Open Detail Popup) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {(() => {
             const items = monthlyData.items;
             return items.map((it) => {
               const isGood = it.defectRate <= 0.70;
               const isHr = it.id === "hr";
+              const isNx = it.id === "nx4" || it.id === "nx4a";
+              const scrapQty = it.scrapTotal || ((it.scrapA || 0) + (it.scrapB || 0) + (it.scrapC || 0));
+              const scrapRate = it.inspectQty > 0 ? Number(((scrapQty / it.inspectQty) * 100).toFixed(2)) : 0;
 
               return (
                 <div
@@ -477,12 +475,13 @@ export const DailyQualityView = () => {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setPopupItem(it)}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                  className={`p-3.5 rounded-2xl sm:rounded-3xl border transition-all cursor-pointer select-none ${
                     isHr
                       ? "border-rose-200 dark:border-rose-900/60 bg-rose-50/40 dark:bg-rose-950/20 hover:border-rose-400"
                       : "border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-400"
-                  } hover:scale-[1.02] active:scale-98 shadow-xs space-y-1.5`}
+                  } hover:scale-[1.02] active:scale-98 shadow-xs space-y-2.5`}
                 >
+                  {/* Top: Name & Status Badge */}
                   <div className="flex items-center justify-between">
                     <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                       {it.name}
@@ -498,21 +497,60 @@ export const DailyQualityView = () => {
                     </span>
                   </div>
 
-                  <div className="flex items-baseline justify-between pt-0.5">
-                    <span
-                      className={`text-lg sm:text-xl font-black font-mono leading-none ${
-                        isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {it.defectRate}%
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-bold">
-                      {it.inspectQty.toLocaleString()}EA / {it.defectQty}불량
-                    </span>
+                  {/* Rate Metrics: 품질 불량률 & 폐기 불량률 */}
+                  <div className="space-y-1.5">
+                    {/* 1. 품질 불량률 */}
+                    <div className="flex items-baseline justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-bold text-slate-400">품질불량률</span>
+                        <span
+                          className={`text-lg sm:text-xl font-black font-mono leading-none ${
+                            isGood ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                          }`}
+                        >
+                          {it.defectRate}%
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        {it.inspectQty.toLocaleString()}EA / {it.defectQty}불량
+                      </span>
+                    </div>
+
+                    {/* 2. ⭐ 폐기 불량률 (Scrap Defect Rate) */}
+                    <div className="p-2 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 border border-amber-500/20 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="text-[9.5px] font-black text-amber-700 dark:text-amber-300 block">
+                          소재 폐기불량률
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm sm:text-base font-black font-mono text-amber-600 dark:text-amber-400">
+                            {scrapRate}%
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold">
+                            ({scrapQty.toLocaleString()} EA)
+                          </span>
+                        </div>
+                      </div>
+
+                      {isNx ? (
+                        <div className="text-[9.5px] font-mono text-right text-amber-800 dark:text-amber-300 font-bold space-y-0.5">
+                          <div className="flex items-center gap-1 justify-end">
+                            <span className="px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">A:{it.scrapA || 0}</span>
+                            <span className="px-1 py-0.2 rounded bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300">B:{it.scrapB || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1 justify-end">
+                            <span className="px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">C:{it.scrapC || 0}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-bold">전체 폐기</span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-slate-100 dark:border-slate-800">
-                    <span className="truncate">손실: ₩{it.lossAmount.toLocaleString()}</span>
+                  {/* Footer: Loss amount & Detail Modal Trigger */}
+                  <div className="flex items-center justify-between text-[9.5px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span className="truncate">손실액: ₩{it.lossAmount.toLocaleString()}</span>
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
                       <span>상세팝업</span>
                       <ArrowRight className="w-2.5 h-2.5" />
@@ -979,374 +1017,6 @@ export const DailyQualityView = () => {
           </div>
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* 3. VIEW MODE TOGGLE & ITEM SELECTOR */}
-      {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-2">
-        {/* Main Tab Toggle: Daily vs Monthly */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveTab("daily")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black transition-all ${
-              activeTab === "daily"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
-                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
-            }`}
-          >
-            <Clock className="w-4 h-4" />
-            <span>📅 매일 일자별 아이템 실적표 (엑셀 100% 일치)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("monthly")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs sm:text-sm font-black transition-all ${
-              activeTab === "monthly"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.02]"
-                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
-            }`}
-          >
-            <BarChart2 className="w-4 h-4" />
-            <span>📊 {selectedMonth.slice(5, 7)}월 아이템별 누적 실적</span>
-          </button>
-        </div>
-
-        {/* Item Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <button
-            onClick={() => setSelectedItemId("all")}
-            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-colors shrink-0 ${
-              selectedItemId === "all"
-                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            전체 4대 차종 대조
-          </button>
-          {QUALITY_CORE_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setSelectedItemId(item.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 ${
-                selectedItemId === item.id
-                  ? "bg-indigo-600 text-white font-black"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-              }`}
-            >
-              {item.carModel} G-RUN
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. [DAILY VIEW] 일자별 아이템 세부 실적 (엑셀과 100% 일치) */}
-      {/* ========================================================================= */}
-      {activeTab === "daily" && (
-        <div className="space-y-4 animate-fadeIn">
-          {/* 1. All Items Direct Comparison Daily Matrix Table */}
-          {selectedItemId === "all" ? (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                      {selectedMonth} 일자별 4대 차종 불량률 현황 (엑셀 원본 대조표)
-                    </h2>
-                    <p className="text-[11px] text-slate-400">
-                      각 일자별로 JA, HR, NX4, NX4a의 <strong>검사수량 / 불량수량 / 개별 불량률</strong>이 엑셀과 완전히 동일하게 표시됩니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-black text-slate-600 dark:text-slate-300">
-                      <th className="p-3 text-center">검사일자</th>
-                      <th className="p-3 text-center bg-indigo-50/50 dark:bg-indigo-950/30">JA G-RUN (검사 / 불량 / 불량률)</th>
-                      <th className="p-3 text-center bg-teal-50/50 dark:bg-teal-950/30">HR G-RUN (검사 / 불량 / 불량률)</th>
-                      <th className="p-3 text-center bg-amber-50/50 dark:bg-amber-950/30">NX4 G-RUN (검사 / 불량 / 불량률)</th>
-                      <th className="p-3 text-center bg-purple-50/50 dark:bg-purple-950/30">NX4a G-RUN (검사 / 불량 / 불량률)</th>
-                      <th className="p-3 text-right">당일 손실액</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {dailyList.map((d) => {
-                      const ja = d.items?.ja || { inspectQty: 0, defectQty: 0, defectRate: 0 };
-                      const hr = d.items?.hr || { inspectQty: 0, defectQty: 0, defectRate: 0 };
-                      const nx4 = d.items?.nx4 || { inspectQty: 0, defectQty: 0, defectRate: 0 };
-                      const nx4a = d.items?.nx4a || { inspectQty: 0, defectQty: 0, defectRate: 0 };
-
-                      return (
-                        <tr key={d.date} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                          {/* Date */}
-                          <td className="p-3 font-black text-slate-900 dark:text-white whitespace-nowrap text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                              <span>{d.date.slice(5)} ({d.dayOfWeek})</span>
-                            </div>
-                          </td>
-
-                          {/* JA */}
-                          <td className="p-3 text-center bg-indigo-50/20 dark:bg-indigo-950/10 cursor-pointer hover:bg-indigo-50/50 transition-colors" onClick={() => setPopupItem(monthlyData.items.find(i => i.id === 'ja'))}>
-                            {ja.inspectQty > 0 ? (
-                              <div className="space-y-0.5">
-                                <span className="font-mono text-slate-700 dark:text-slate-300">
-                                  {ja.inspectQty.toLocaleString()} EA / <strong className="text-rose-600 font-black">{ja.defectQty}불량</strong>
-                                </span>
-                                <div className="font-mono font-black text-xs">
-                                  <span className={`px-1.5 py-0.2 rounded ${ja.defectRate > 0.70 ? "text-rose-600 bg-rose-100 dark:bg-rose-950" : "text-emerald-600 bg-emerald-100 dark:bg-emerald-950"}`}>
-                                    {ja.defectRate}%
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* HR */}
-                          <td className="p-3 text-center bg-teal-50/20 dark:bg-teal-950/10 cursor-pointer hover:bg-teal-50/50 transition-colors" onClick={() => setPopupItem(monthlyData.items.find(i => i.id === 'hr'))}>
-                            {hr.inspectQty > 0 ? (
-                              <div className="space-y-0.5">
-                                <span className="font-mono text-slate-700 dark:text-slate-300">
-                                  {hr.inspectQty.toLocaleString()} EA / <strong className="text-rose-600 font-black">{hr.defectQty}불량</strong>
-                                </span>
-                                <div className="font-mono font-black text-xs">
-                                  <span className={`px-1.5 py-0.2 rounded ${hr.defectRate > 0.70 ? "text-rose-600 bg-rose-100 dark:bg-rose-950" : "text-emerald-600 bg-emerald-100 dark:bg-emerald-950"}`}>
-                                    {hr.defectRate}%
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* NX4 */}
-                          <td className="p-3 text-center bg-amber-50/20 dark:bg-amber-950/10 cursor-pointer hover:bg-amber-50/50 transition-colors" onClick={() => setPopupItem(monthlyData.items.find(i => i.id === 'nx4'))}>
-                            {nx4.inspectQty > 0 ? (
-                              <div className="space-y-0.5">
-                                <span className="font-mono text-slate-700 dark:text-slate-300">
-                                  {nx4.inspectQty.toLocaleString()} EA / <strong className="text-rose-600 font-black">{nx4.defectQty}불량</strong>
-                                </span>
-                                <div className="font-mono font-black text-xs">
-                                  <span className={`px-1.5 py-0.2 rounded ${nx4.defectRate > 0.70 ? "text-rose-600 bg-rose-100 dark:bg-rose-950" : "text-emerald-600 bg-emerald-100 dark:bg-emerald-950"}`}>
-                                    {nx4.defectRate}%
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* NX4a */}
-                          <td className="p-3 text-center bg-purple-50/20 dark:bg-purple-950/10 cursor-pointer hover:bg-purple-50/50 transition-colors" onClick={() => setPopupItem(monthlyData.items.find(i => i.id === 'nx4a'))}>
-                            {nx4a.inspectQty > 0 ? (
-                              <div className="space-y-0.5">
-                                <span className="font-mono text-slate-700 dark:text-slate-300">
-                                  {nx4a.inspectQty.toLocaleString()} EA / <strong className="text-rose-600 font-black">{nx4a.defectQty}불량</strong>
-                                </span>
-                                <div className="font-mono font-black text-xs">
-                                  <span className={`px-1.5 py-0.2 rounded ${nx4a.defectRate > 0.70 ? "text-rose-600 bg-rose-100 dark:bg-rose-950" : "text-emerald-600 bg-emerald-100 dark:bg-emerald-950"}`}>
-                                    {nx4a.defectRate}%
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-slate-400">-</span>
-                            )}
-                          </td>
-
-                          {/* Loss Amount */}
-                          <td className="p-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                            ₩ {d.totalLossAmount.toLocaleString()}
-                          </td>
-
-                          {/* Quick Edit Button */}
-                          <td className="p-3 text-center whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDirectInputModal(d.date)}
-                              title={`${d.date} 실적 수정`}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs font-black border border-indigo-200 dark:border-indigo-800 transition-all active:scale-95 cursor-pointer flex items-center gap-1 mx-auto"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              <span>수정</span>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            /* 2. Single Selected Item Detailed Daily Table */
-            (() => {
-              const targetItem = monthlyData.items.find((it) => it.id === selectedItemId);
-              if (!targetItem) return null;
-
-              return (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600">
-                        <BarChart2 className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                          {targetItem.name} 일자별 품질 실적 대장 (9월 누계 불량률: {targetItem.defectRate}%)
-                        </h2>
-                        <p className="text-[11px] text-slate-400">
-                          이창엽 선임의 엑셀 시트와 완전히 일치하는 일일 검사 및 불량 내역입니다.
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => handleExportExcel(targetItem)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>{targetItem.carModel} 엑셀 다운</span>
-                    </button>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-[11px] font-black text-slate-600 dark:text-slate-300">
-                          <th className="p-3 text-center">검사일자</th>
-                          <th className="p-3 text-center">검사수량</th>
-                          <th className="p-3 text-center">불량수량</th>
-                          <th className="p-3 text-center">아이템 불량률(%)</th>
-                          <th className="p-3 text-left">주요 불량 사유 (WORST)</th>
-                          <th className="p-3 text-right">품질 손실금액</th>
-                          <th className="p-3 text-center w-16 whitespace-nowrap">수정</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {dailyList.map((d) => {
-                          const itemRec = d.items?.[selectedItemId] || { inspectQty: 0, defectQty: 0, defectRate: 0, worstReason: "-" };
-                          const isGood = itemRec.defectRate <= 0.70;
-
-                          return (
-                            <tr key={d.date} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="p-3 font-black text-slate-900 dark:text-white whitespace-nowrap text-center">
-                                {d.date} ({d.dayOfWeek})
-                              </td>
-                              <td className="p-3 text-center font-mono font-bold text-slate-800 dark:text-slate-200">
-                                {itemRec.inspectQty.toLocaleString()} EA
-                              </td>
-                              <td className="p-3 text-center font-mono font-bold text-rose-600 dark:text-rose-400">
-                                {itemRec.defectQty.toLocaleString()} EA
-                              </td>
-                              <td className="p-3 text-center">
-                                {itemRec.inspectQty > 0 ? (
-                                  <span className={`px-2 py-0.5 rounded text-xs font-mono font-black ${
-                                    isGood
-                                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                                      : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                                  }`}>
-                                    {itemRec.defectRate}%
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400">-</span>
-                                )}
-                              </td>
-                              <td className="p-3 text-slate-700 dark:text-slate-300 font-medium">
-                                {itemRec.worstReason || "-"}
-                              </td>
-                              <td className="p-3 text-right font-mono font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                                ₩ {itemRec.lossAmount?.toLocaleString() || 0}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            })()
-          )}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 5. [MONTHLY VIEW] 월간 아이템별 누적 실적 요약 */}
-      {/* ========================================================================= */}
-      {activeTab === "monthly" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600">
-                <BarChart2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h2 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                  {selectedMonth} 4대 코어 품목별 누적 결산 실적
-                </h2>
-                <p className="text-[11px] text-slate-400">
-                  차종별로 누적 검사수량 대비 불량수량과 정확한 품목 불량률을 관리합니다.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            {monthlyData.items.map((it) => (
-              <div
-                key={it.id}
-                onClick={() => setPopupItem(it)}
-                className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all group select-none"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-black text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                    {it.name}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-base font-black font-mono ${
-                      it.defectRate <= 0.70 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                    }`}>
-                      {it.defectRate}%
-                    </span>
-                    <span className="text-indigo-600 text-xs font-bold">❯</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                    <span className="text-[10px] text-slate-400 block">검사수량</span>
-                    <strong className="font-mono font-bold text-slate-800 dark:text-slate-200">{it.inspectQty.toLocaleString()} EA</strong>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                    <span className="text-[10px] text-slate-400 block">불량수량</span>
-                    <strong className="font-mono font-bold text-rose-600 dark:text-rose-400">{it.defectQty.toLocaleString()} EA</strong>
-                  </div>
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                    <span className="text-[10px] text-slate-400 block">품질손실</span>
-                    <strong className="font-mono font-bold text-slate-800 dark:text-slate-200">₩ {it.lossAmount.toLocaleString()}</strong>
-                  </div>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs">
-                  <span className="text-[10px] text-slate-400 font-bold block mb-0.5">주요 불량 사유:</span>
-                  <span className="text-slate-700 dark:text-slate-300 font-medium">{it.worstReason}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 6. [공통 하단] 품질 엑셀 파일 드래그 앤 드롭 업로드 영역 */}
