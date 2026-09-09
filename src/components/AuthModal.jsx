@@ -65,7 +65,8 @@ import {
   restoreUrgentIssue,
   updateUrgentIssueActionResult,
   addIssueReply,
-  deleteIssueReply
+  deleteIssueReply,
+  sortIssuesByCustomPriority
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
@@ -291,21 +292,28 @@ export const AuthModal = () => {
     }
   }, [urgentIssues, todayDateStr]);
 
-  // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved), 전체(All) (날짜 경과 항목 접속화면 제외)
+  // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved), 전체(All) (우선순위: 품질경보(등록순) -> 회의일정(다가오는날짜순) -> 공지사항(다가오는날짜순))
   const unresolvedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i));
+    return sortIssuesByCustomPriority(
+      urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i))
+    );
   }, [urgentIssues, todayDateStr]);
 
   const closedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && i.isResolved && !isItemExpired(i));
+    return sortIssuesByCustomPriority(
+      urgentIssues.filter((i) => !i.isDeleted && i.isResolved && !isItemExpired(i))
+    );
   }, [urgentIssues, todayDateStr]);
 
   const deletedIssues = useMemo(() => {
     return urgentIssues.filter((i) => i.isDeleted);
   }, [urgentIssues]);
 
+  // ⭐ [요청사항 반영] 첫 화면 노출: 1위 품질경보(등록순) -> 2위 회의일정(다가오는 날짜순) -> 3위 공지사항(다가오는 날짜순)
   const activeIssues = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && !isItemExpired(i));
+    return sortIssuesByCustomPriority(
+      urgentIssues.filter((i) => !i.isDeleted && !isItemExpired(i))
+    );
   }, [urgentIssues, todayDateStr]);
 
   const qualityIssuesCount = useMemo(() => {
@@ -343,7 +351,7 @@ export const AuthModal = () => {
     if (issueFilterTab === "unresolved") return unresolvedIssues;
     if (issueFilterTab === "closed") return closedIssues;
     if (issueFilterTab === "deleted") return urgentIssues.filter((i) => i.isDeleted || isItemExpired(i));
-    return urgentIssues; // [전체]: 삭제 및 만료된 과거 모든 이력 보존
+    return sortIssuesByCustomPriority(urgentIssues); // [전체]: 삭제 및 만료된 과거 모든 이력 보존
   }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues, todayDateStr]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')

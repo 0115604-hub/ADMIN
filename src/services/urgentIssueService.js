@@ -45,6 +45,76 @@ export const saveLocalUrgentIssues = (issues) => {
   }
 };
 
+// Helper: Category Priority and Smart Sorting for Quality Alert / Meeting / Notice
+// 1위: 품질경보 (최신 등록일시 내림차순)
+// 2위: 회의일정 (다가오는 날짜 오름차순 + 시간 오름차순 + 최신등록 내림차순)
+// 3위: 공지사항/사내공지/공유사항 (다가오는 만료/공지일 오름차순 + 최신등록 내림차순)
+export const sortIssuesByCustomPriority = (list = []) => {
+  if (!Array.isArray(list) || list.length === 0) return [];
+
+  const getCategoryPriority = (item) => {
+    const cat = item?.category || "";
+    if (
+      cat === "품질경보" ||
+      (!cat.includes("공지") && !cat.includes("공유") && cat !== "회의일정")
+    ) {
+      return 1;
+    }
+    if (cat === "회의일정") {
+      return 2;
+    }
+    return 3;
+  };
+
+  return [...list].sort((a, b) => {
+    const prioA = getCategoryPriority(a);
+    const prioB = getCategoryPriority(b);
+
+    // 1. 카테고리 우선순위: 품질경보(1) -> 회의일정(2) -> 공지사항(3)
+    if (prioA !== prioB) {
+      return prioA - prioB;
+    }
+
+    // 2. 카테고리별 내부 정렬
+    // [1위: 품질경보] -> 등록순 (최신 등록일시/생성순 내림차순)
+    if (prioA === 1) {
+      const timeA = a.createdAt || "";
+      const timeB = b.createdAt || "";
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    }
+
+    // [2위: 회의일정] -> 다가오는 날짜순 (오름차순) + 시간순 + 최신등록순
+    if (prioA === 2) {
+      const dateA = a.expireDate || a.targetDate || "9999-99-99";
+      const dateB = b.expireDate || b.targetDate || "9999-99-99";
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+      const timeA = a.meetingTime || "99:99";
+      const timeB = b.meetingTime || "99:99";
+      if (timeA !== timeB) {
+        return timeA.localeCompare(timeB);
+      }
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
+    }
+
+    // [3위: 공지사항] -> 다가오는 날짜순 (오름차순: 만료/목표일 가까운 순) + 최신등록순
+    if (prioA === 3) {
+      const dateA = a.expireDate || a.targetDate || "9999-99-99";
+      const dateB = b.expireDate || b.targetDate || "9999-99-99";
+      if (dateA !== dateB) {
+        return dateA.localeCompare(dateB);
+      }
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
+    }
+
+    return 0;
+  });
+};
+
 // Real-time Cloud Synchronization
 export const subscribeUrgentIssues = (onUpdate) => {
   try {
@@ -57,20 +127,19 @@ export const subscribeUrgentIssues = (onUpdate) => {
           const item = { id: d.id, ...d.data() };
           list.push(item);
         });
-        // Sort by createdAt descending
-        list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        saveLocalUrgentIssues(list);
-        onUpdate(list);
+        const sorted = sortIssuesByCustomPriority(list);
+        saveLocalUrgentIssues(sorted);
+        onUpdate(sorted);
       },
       (error) => {
         console.warn("Firestore urgent_issues sync warning (offline/rule):", error);
-        onUpdate(getLocalUrgentIssues());
+        onUpdate(sortIssuesByCustomPriority(getLocalUrgentIssues()));
       }
     );
     return unsubscribe;
   } catch (e) {
     console.error("subscribeUrgentIssues error:", e);
-    onUpdate(getLocalUrgentIssues());
+    onUpdate(sortIssuesByCustomPriority(getLocalUrgentIssues()));
     return () => {};
   }
 };
@@ -117,7 +186,8 @@ export const saveUrgentIssue = async (issueData) => {
     updated = [fullItem, ...current];
   }
 
-  saveLocalUrgentIssues(updated);
+  const sorted = sortIssuesByCustomPriority(updated);
+  saveLocalUrgentIssues(sorted);
 
   try {
     await setDoc(doc(db, COLLECTION_NAME, id), fullItem);
@@ -218,7 +288,8 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
     };
 
     const updated = current.map((i) => (i.id === id ? deletedItem : i));
-    saveLocalUrgentIssues(updated);
+    const sorted = sortIssuesByCustomPriority(updated);
+    saveLocalUrgentIssues(sorted);
 
     // Save soft-deleted record to Firestore
     try {
@@ -227,7 +298,7 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       console.warn("Firestore soft delete fallback to local:", e);
     }
 
-    return updated;
+    return sorted;
   } finally {
     setTimeout(() => {
       activeDeletes.delete(id);
@@ -263,7 +334,8 @@ export const restoreUrgentIssue = async (id) => {
   };
 
   const updated = current.map((i) => (i.id === id ? restoredItem : i));
-  saveLocalUrgentIssues(updated);
+  const sorted = sortIssuesByCustomPriority(updated);
+  saveLocalUrgentIssues(sorted);
 
   try {
     await setDoc(doc(db, COLLECTION_NAME, id), restoredItem);
@@ -271,7 +343,7 @@ export const restoreUrgentIssue = async (id) => {
     console.warn("Firestore restore fallback to local:", e);
   }
 
-  return updated;
+  return sorted;
 };
 
 // Update action result (조치결과 입력 및 조치완료 처리 - 품질경보만 텔레그램 발송)
