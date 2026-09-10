@@ -56,6 +56,13 @@ import {
   subscribeAnnualLeaves,
   getUserLeaveStatus
 } from "../services/annualLeaveService";
+import {
+  COMPANIES,
+  COMPANY_THEMES,
+  subscribeSmartOvertimeData,
+  getLocalSmartOvertimeData
+} from "../services/overtimeSmartService";
+import { INITIAL_SMART_OVERTIME_DATA } from "../data/masterOvertimeSmartData";
 import { getKSTDateString, getKSTTimeInfo } from "../utils/dateUtils";
 import {
   getLocalUrgentIssues,
@@ -123,6 +130,7 @@ export const AuthModal = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [annualLeaves, setAnnualLeaves] = useState(() => getAnnualLeaves());
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
 
   // Urgent Issues State
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
@@ -274,6 +282,16 @@ export const AuthModal = () => {
       setUrgentIssues(issues);
     });
     return () => unsub();
+  }, []);
+
+  // Real-time Cloud Synchronization for Smart Overtime & Attendance Data (5개사 근태)
+  useEffect(() => {
+    const unsub = subscribeSmartOvertimeData((data) => {
+      if (data) setSmartOvertimeData(data);
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
   }, []);
 
   const todayDateStr = useMemo(() => getKSTDateString(), []);
@@ -650,17 +668,17 @@ export const AuthModal = () => {
     return PLANTS[1].workers.filter((w) => Boolean(getUserLeaveStatus(w.id, w.name, annualLeaves, { excludeTodo: true }))).length;
   }, [annualLeaves]);
 
-  // 👑 변동사항이 있는 관리자 (본사 대표이사/전무, 공장 총괄관리자 및 책임급 관리자) 실시간 추적
+  // 👑 변동사항이 있는 관리자 (본사 대표이사/전무, 공장 총괄관리자 및 책임/선임급 관리자) 실시간 추적
   const managerLeaves = useMemo(() => {
     if (!annualLeaves || annualLeaves.length === 0) return [];
 
     const candidateManagers = [
       ...ADMIN_USERS,
       ...PLANTS[0].workers.filter(
-        (w) => w.title === "이사" || w.title === "책임" || w.assignedProcess === "총괄관리" || w.name === "이명재"
+        (w) => w.title === "이사" || w.title === "책임" || w.title === "선임" || w.assignedProcess?.includes("관리") || w.assignedProcess?.includes("총괄") || w.name === "이명재"
       ),
       ...PLANTS[1].workers.filter(
-        (w) => w.title === "이사" || w.title === "책임" || w.assignedProcess === "총괄관리" || w.name === "김동욱"
+        (w) => w.title === "이사" || w.title === "책임" || w.title === "선임" || w.assignedProcess?.includes("관리") || w.assignedProcess?.includes("총괄") || w.name === "김동욱"
       )
     ];
 
@@ -684,6 +702,91 @@ export const AuthModal = () => {
       })
       .filter(Boolean);
   }, [annualLeaves]);
+
+  // 🏢 5개사별 당일 근태 현황 (결근 및 조퇴 실시간 집계)
+  const companyAttendanceStats = useMemo(() => {
+    const companies = COMPANIES || ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"];
+    
+    const todayDayNum = parseInt(todayDateStr.split("-")[2], 10) || new Date().getDate();
+    const masterWorkers = smartOvertimeData?.masterWorkers || INITIAL_SMART_OVERTIME_DATA?.masterWorkers || [];
+    const matrix = smartOvertimeData?.attendanceMatrix || INITIAL_SMART_OVERTIME_DATA?.attendanceMatrix || [];
+
+    // Helper: 작업자 이름 또는 소속 공장 기반으로 5개사 매핑
+    const findCompanyForWorker = (name, plant) => {
+      const trimmed = String(name || "").trim();
+      const found = masterWorkers.find((w) => w.name?.trim() === trimmed);
+      if (found?.company) return found.company;
+      if (plant === "삼랑진공장") return "(주)오륙";
+      if (plant === "한림공장") return "(주)조영산업";
+      return "(주)오륙";
+    };
+
+    const statsMap = {};
+    companies.forEach((comp) => {
+      statsMap[comp] = {
+        company: comp,
+        absentList: [],
+        earlyLeaveList: []
+      };
+    });
+
+    // 1. 연차/근태 데이터 (annualLeaves)에서 오늘 일자 결근/조퇴 건 집계
+    if (Array.isArray(annualLeaves)) {
+      annualLeaves.forEach((leave) => {
+        if (!leave || leave.isCompleted || leave.isDismissed) return;
+        const start = leave.startDate || leave.date || "";
+        const end = leave.endDate || start;
+        if (!start || !end || start > todayDateStr || todayDateStr > end) return;
+
+        const type = String(leave.leaveType || "");
+        const reason = String(leave.reason || "");
+        const userName = leave.userName?.trim();
+        if (!userName) return;
+
+        const comp = findCompanyForWorker(userName, leave.plant);
+        if (!statsMap[comp]) return;
+
+        if (type.includes("결근") || reason.includes("결근")) {
+          if (!statsMap[comp].absentList.some((x) => x.name === userName)) {
+            statsMap[comp].absentList.push({ name: userName, reason: reason || "결근" });
+          }
+        } else if (type.includes("조퇴") || reason.includes("조퇴")) {
+          if (!statsMap[comp].earlyLeaveList.some((x) => x.name === userName)) {
+            statsMap[comp].earlyLeaveList.push({ name: userName, reason: reason || "조퇴" });
+          }
+        }
+      });
+    }
+
+    // 2. 잔업/근태 매트릭스 (smartOvertimeData.attendanceMatrix)에서 당일 근태 코드 집계
+    if (Array.isArray(matrix)) {
+      matrix.forEach((w) => {
+        const comp = w.company || "(주)오륙";
+        if (!statsMap[comp]) return;
+        const val = String(w.daily?.[todayDayNum] || "").trim();
+        const userName = w.name?.trim();
+        if (!userName) return;
+
+        if (val === "결근" || val.includes("결근")) {
+          if (!statsMap[comp].absentList.some((x) => x.name === userName)) {
+            statsMap[comp].absentList.push({ name: userName, reason: "결근" });
+          }
+        } else if (val === "조퇴" || val.includes("조퇴")) {
+          if (!statsMap[comp].earlyLeaveList.some((x) => x.name === userName)) {
+            statsMap[comp].earlyLeaveList.push({ name: userName, reason: "조퇴" });
+          }
+        }
+      });
+    }
+
+    return companies.map((comp) => ({
+      company: comp,
+      absentCount: statsMap[comp].absentList.length,
+      absentList: statsMap[comp].absentList,
+      earlyLeaveCount: statsMap[comp].earlyLeaveList.length,
+      earlyLeaveList: statsMap[comp].earlyLeaveList
+    }));
+  }, [annualLeaves, smartOvertimeData, todayDateStr]);
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
@@ -1918,67 +2021,175 @@ export const AuthModal = () => {
             /* PIN Input Form View (작업자 탭 시 진입) */
             /* ========================================================================= */
             <form onSubmit={handlePinSubmit} className="space-y-3.5 animate-fadeIn">
-              {/* ⚡ ⭐ 실시간 변동사항이 있는 관리자 상태 (작업자가 로그인하려고 탭했을 때만 점멸 노출) */}
-              {managerLeaves.length > 0 && (
-                <div className="p-2.5 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-amber-500/15 dark:from-amber-950/50 dark:via-rose-950/40 dark:to-amber-950/50 border-2 border-amber-400 dark:border-amber-600 shadow-md animate-pulse space-y-2">
-                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                      </span>
-                      <strong className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <span className="text-rose-600 dark:text-rose-400">⚡ 관리자 변동사항 안내</span>
-                        <span className="text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                          {managerLeaves.length}명
+              {/* ========================================================================= */}
+              {/* ⚡ ⭐ 상단 2분할 패널: [좌측] 관리자근무상황 (점멸) + [우측] 회사별 근태현황 (5개사 미니패널 - 결근/조퇴) */}
+              {/* ========================================================================= */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3">
+                {/* 1. 좌측: 관리자근무상황 (점멸 유지) */}
+                <div className={`p-2.5 sm:p-3 rounded-2xl border-2 transition-all ${
+                  managerLeaves.length > 0
+                    ? "bg-gradient-to-br from-amber-500/15 via-rose-500/15 to-amber-500/15 dark:from-amber-950/40 dark:via-rose-950/30 dark:to-amber-950/40 border-amber-400 dark:border-amber-600 shadow-md animate-pulse"
+                    : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 shadow-xs"
+                } lg:col-span-5 flex flex-col justify-between space-y-2`}>
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
+                            managerLeaves.length > 0 ? "bg-rose-400" : "bg-emerald-400"
+                          } opacity-75`}></span>
+                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                            managerLeaves.length > 0 ? "bg-rose-500" : "bg-emerald-500"
+                          }`}></span>
                         </span>
-                      </strong>
+                        <strong className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span className={managerLeaves.length > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-200"}>
+                            ⚡ 관리자근무상황
+                          </span>
+                          {managerLeaves.length > 0 && (
+                            <span className="text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                              변동 {managerLeaves.length}명
+                            </span>
+                          )}
+                        </strong>
+                      </div>
+                      <span className={`text-[9.5px] sm:text-[10px] font-black px-2 py-0.5 rounded-full text-white shadow-2xs flex items-center gap-1 ${
+                        managerLeaves.length > 0 ? "bg-rose-600 animate-pulse" : "bg-emerald-600"
+                      }`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                        <span>{managerLeaves.length > 0 ? "실시간 점멸" : "정상 근무중"}</span>
+                      </span>
                     </div>
-                    <span className="text-[9.5px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-2xs animate-pulse flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                      <span>실시간 점멸 알림</span>
-                    </span>
-                  </div>
 
-                  {/* Manager Cards Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 pt-0.5">
-                    {managerLeaves.map((m) => {
-                      const ls = m.leaveStatus;
-                      return (
-                        <div
-                          key={m.id || m.name}
-                          className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-amber-300 dark:border-amber-700/80 shadow-xs flex items-center justify-between gap-2"
-                        >
-                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                            <span className={`px-1.5 py-0.5 rounded text-[9.5px] sm:text-[10px] font-black shrink-0 ${
-                              m.plant === "삼랑진공장"
-                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
-                                : m.plant === "한림공장"
-                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
-                                : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300"
-                            }`}>
-                              {m.plant}
-                            </span>
-                            <div className="min-w-0">
-                              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
-                                {m.name} <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{m.title || "관리자"}</span>
-                              </span>
+                    {/* Manager Cards */}
+                    {managerLeaves.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-1.5">
+                        {managerLeaves.map((m) => {
+                          const ls = m.leaveStatus;
+                          return (
+                            <div
+                              key={m.id || m.name}
+                              className="p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/80 shadow-2xs flex items-center justify-between gap-2"
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${
+                                  m.plant === "삼랑진공장"
+                                    ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
+                                    : m.plant === "한림공장"
+                                    ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
+                                    : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300"
+                                }`}>
+                                  {m.plant}
+                                </span>
+                                <span className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                  {m.name} <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{m.title || "관리자"}</span>
+                                </span>
+                              </div>
+
+                              <div className="shrink-0">
+                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-rose-600 to-amber-600 text-white shadow-2xs border border-rose-400 animate-pulse flex items-center gap-1">
+                                  <span>{ls.emoji || "⚡"}</span>
+                                  <span>{ls.line2 ? `${ls.line1} (${ls.line2})` : ls.displayBadge?.replace('\n', ' ') || ls.label}</span>
+                                </span>
+                              </div>
                             </div>
-                          </div>
-
-                          {/* Status Badge with blinking pulse */}
-                          <div className="shrink-0">
-                            <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-rose-600 to-amber-600 text-white shadow-xs border border-rose-400 animate-pulse flex items-center gap-1">
-                              <span>{ls.emoji || "⚡"}</span>
-                              <span>{ls.line2 ? `${ls.line1} (${ls.line2})` : ls.displayBadge?.replace('\n', ' ') || ls.label}</span>
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="py-3 px-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-center gap-2 text-center">
+                        <span className="text-emerald-500 font-bold text-sm animate-pulse">✨</span>
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                          관리자 전원 <strong className="text-emerald-600 dark:text-emerald-400 font-black">정상 근무중</strong> (변동 없음)
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+
+                {/* 2. 우측: 회사별 근태현황 (5개사 작은패널 - 결근/조퇴 전용) */}
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 shadow-xs lg:col-span-7 flex flex-col justify-between space-y-2">
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span className="text-blue-600 dark:text-blue-400">🏢</span>
+                          <span>회사별 근태현황</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                          (오늘 결근 · 조퇴 집계)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        <span>5개사 실시간</span>
+                      </div>
+                    </div>
+
+                    {/* 5개 작은 패널 그리드 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+                      {companyAttendanceStats.map((stat) => {
+                        const compName = stat.company;
+                        const theme = COMPANY_THEMES[compName] || {
+                          badge: "bg-slate-100 text-slate-800 border-slate-300",
+                          border: "border-slate-200"
+                        };
+                        const hasIssue = stat.absentCount > 0 || stat.earlyLeaveCount > 0;
+
+                        return (
+                          <div
+                            key={compName}
+                            className={`p-2 rounded-xl bg-white dark:bg-slate-900 border ${
+                              hasIssue
+                                ? "border-rose-300 dark:border-rose-800 shadow-2xs ring-1 ring-rose-400/30"
+                                : "border-slate-200 dark:border-slate-700/80 shadow-2xs"
+                            } flex flex-col justify-between min-w-0 transition-all`}
+                          >
+                            {/* Company Header */}
+                            <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-100 dark:border-slate-800">
+                              <span className={`text-[10px] sm:text-[11px] font-black px-1.5 py-0.5 rounded truncate ${theme.badge}`}>
+                                {compName}
+                              </span>
+                            </div>
+
+                            {/* Status Section: 결근 & 조퇴 */}
+                            <div className="pt-1.5 space-y-1">
+                              {/* 결근 */}
+                              <div className="flex items-center justify-between gap-1 text-[10px]">
+                                <span className="font-bold text-slate-500 dark:text-slate-400">결근</span>
+                                {stat.absentCount > 0 ? (
+                                  <span
+                                    title={stat.absentList.map((a) => `${a.name}(${a.reason})`).join(", ")}
+                                    className="px-1.5 py-0.2 rounded font-black text-[10px] bg-rose-600 text-white animate-pulse truncate max-w-[70px]"
+                                  >
+                                    {stat.absentCount}명 ({stat.absentList.map((a) => a.name).join(",")})
+                                  </span>
+                                ) : (
+                                  <span className="font-bold text-slate-400 dark:text-slate-500">0</span>
+                                )}
+                              </div>
+
+                              {/* 조퇴 */}
+                              <div className="flex items-center justify-between gap-1 text-[10px]">
+                                <span className="font-bold text-slate-500 dark:text-slate-400">조퇴</span>
+                                {stat.earlyLeaveCount > 0 ? (
+                                  <span
+                                    title={stat.earlyLeaveList.map((a) => `${a.name}(${a.reason})`).join(", ")}
+                                    className="px-1.5 py-0.2 rounded font-black text-[10px] bg-amber-600 text-white animate-pulse truncate max-w-[70px]"
+                                  >
+                                    {stat.earlyLeaveCount}명 ({stat.earlyLeaveList.map((a) => a.name).join(",")})
+                                  </span>
+                                ) : (
+                                  <span className="font-bold text-slate-400 dark:text-slate-500">0</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* ADMIN 사용자 선택 탭 (권태형 대표이사 / 최미영 전무) */}
               {selectedUser.role === "ADMIN" && (

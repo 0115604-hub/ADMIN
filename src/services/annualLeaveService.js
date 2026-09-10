@@ -315,6 +315,26 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-cyan-500 text-white font-black shadow-2xs"
     };
   }
+  if (type.includes("결근")) {
+    return {
+      type: "결근",
+      emoji: "❌",
+      activeLabel: "결근",
+      scheduledLabelPrefix: "결근",
+      activeBadge: "bg-rose-700 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-rose-600 text-white font-black shadow-2xs"
+    };
+  }
+  if (type.includes("조퇴")) {
+    return {
+      type: "조퇴",
+      emoji: "🏃",
+      activeLabel: "조퇴",
+      scheduledLabelPrefix: "조퇴",
+      activeBadge: "bg-amber-600 text-white font-black animate-pulse shadow-xs",
+      scheduledBadge: "bg-amber-500 text-white font-black shadow-2xs"
+    };
+  }
   // Default: 연차(하루) / 연차(전일) / 연차
   return {
     type: "연차",
