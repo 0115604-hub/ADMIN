@@ -1234,21 +1234,21 @@ export const AuthModal = () => {
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
                         className={`px-1.5 sm:px-2.5 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[42px] rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1.5 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isMyeongjae
-                            ? `bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black border border-amber-400 shadow-xs ${
+                            ? `bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-black border-2 border-amber-400 shadow-md ${
                                 isLeaveToday ? "ring-2 ring-rose-500 animate-pulse" : ""
                               }`
                             : isLeaveToday
-                            ? "bg-rose-50/95 dark:bg-rose-950/60 border-2 border-rose-500 dark:border-rose-600 ring-2 ring-rose-400/80 dark:ring-rose-500/80 animate-pulse text-rose-950 dark:text-rose-100 shadow-xs"
+                            ? "bg-rose-50/95 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600 ring-2 ring-rose-400/80 dark:ring-rose-500/80 animate-pulse text-slate-950 dark:text-white shadow-xs"
                             : hasLeave
-                            ? "bg-blue-50/90 dark:bg-blue-950/50 border-blue-300 dark:border-blue-700 hover:border-blue-500 text-blue-950 dark:text-blue-100 shadow-2xs"
+                            ? "bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-600 hover:border-blue-500 text-slate-950 dark:text-white shadow-2xs"
                             : isPartner
-                            ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 text-purple-900 dark:text-purple-200"
-                            : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-amber-400 text-slate-800 dark:text-slate-100"
+                            ? "bg-white dark:bg-slate-800/90 border border-purple-300 dark:border-purple-800/70 hover:border-purple-400 text-purple-900 dark:text-purple-200 shadow-xs"
+                            : "bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-amber-400 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        <div className="flex items-center min-w-0 flex-1 overflow-hidden">
-                          <span className={`text-[10.5px] sm:text-xs font-black truncate min-w-0 flex-1 ${
-                            isMyeongjae ? "text-slate-950 font-black" : "text-slate-900 dark:text-white"
+                        <div className="flex items-center min-w-0 flex-1 overflow-hidden pr-0.5">
+                          <span className={`text-xs sm:text-[13px] font-black truncate min-w-0 flex-1 tracking-tight ${
+                            isMyeongjae ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" : "text-slate-950 dark:text-white font-black"
                           }`}>
                             {worker.name}
                           </span>
@@ -1260,7 +1260,7 @@ export const AuthModal = () => {
                             : hasLeave
                             ? "text-white bg-blue-600 font-black shadow-2xs"
                             : isMyeongjae
-                            ? "text-slate-950 bg-amber-400/80 font-black"
+                            ? "text-amber-950 bg-amber-200 font-black shadow-2xs"
                             : isPartner
                             ? "text-purple-600 dark:text-purple-400"
                             : "text-slate-400 dark:text-slate-400"
@@ -1328,21 +1328,21 @@ export const AuthModal = () => {
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
                         className={`px-1.5 sm:px-2.5 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[42px] rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1.5 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isDongwook
-                            ? `bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border border-emerald-400 shadow-xs ${
+                            ? `bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border-2 border-emerald-400 shadow-md ${
                                 isLeaveToday ? "ring-2 ring-rose-500 animate-pulse" : ""
                               }`
                             : isLeaveToday
-                            ? "bg-rose-50/95 dark:bg-rose-950/60 border-2 border-rose-500 dark:border-rose-600 ring-2 ring-rose-400/80 dark:ring-rose-500/80 animate-pulse text-rose-950 dark:text-rose-100 shadow-xs"
+                            ? "bg-rose-50/95 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600 ring-2 ring-rose-400/80 dark:ring-rose-500/80 animate-pulse text-slate-950 dark:text-white shadow-xs"
                             : hasLeave
-                            ? "bg-blue-50/90 dark:bg-blue-950/50 border-blue-300 dark:border-blue-700 hover:border-blue-500 text-blue-950 dark:text-blue-100 shadow-2xs"
+                            ? "bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-600 hover:border-blue-500 text-slate-950 dark:text-white shadow-2xs"
                             : isPartner
-                            ? "bg-white dark:bg-slate-800/80 border-purple-200 dark:border-purple-800/60 hover:border-purple-400 text-purple-900 dark:text-purple-200"
-                            : "bg-white dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 text-slate-800 dark:text-slate-100"
+                            ? "bg-white dark:bg-slate-800/90 border border-purple-300 dark:border-purple-800/70 hover:border-purple-400 text-purple-900 dark:text-purple-200 shadow-xs"
+                            : "bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-emerald-400 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        <div className="flex items-center min-w-0 flex-1 overflow-hidden">
-                          <span className={`text-[10.5px] sm:text-xs font-black truncate min-w-0 flex-1 ${
-                            isDongwook ? "text-white font-black" : "text-slate-900 dark:text-white"
+                        <div className="flex items-center min-w-0 flex-1 overflow-hidden pr-0.5">
+                          <span className={`text-xs sm:text-[13px] font-black truncate min-w-0 flex-1 tracking-tight ${
+                            isDongwook ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" : "text-slate-950 dark:text-white font-black"
                           }`}>
                             {worker.name}
                           </span>
@@ -1354,7 +1354,7 @@ export const AuthModal = () => {
                             : hasLeave
                             ? "text-white bg-blue-600 font-black shadow-2xs"
                             : isDongwook
-                            ? "text-white bg-emerald-700/80 font-black"
+                            ? "text-emerald-950 bg-emerald-200 font-black shadow-2xs"
                             : isPartner
                             ? "text-purple-600 dark:text-purple-400"
                             : "text-slate-400 dark:text-slate-400"
