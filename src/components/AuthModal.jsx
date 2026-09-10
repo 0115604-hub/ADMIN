@@ -1281,57 +1281,73 @@ export const AuthModal = () => {
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
-                        className={`p-1 sm:p-1.5 min-h-[42px] sm:min-h-[44px] rounded-xl border transition-all flex items-center justify-between gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
+                        className={`min-h-[42px] sm:min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
                           isMyeongjae
-                            ? `bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-black border-2 border-amber-400 shadow-md ${
+                            ? `border-amber-400 bg-amber-700 shadow-md ${
                                 isLeaveToday ? "ring-2 ring-rose-500 animate-pulse" : ""
                               }`
                             : isLeaveToday
-                            ? "bg-rose-50/95 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600 ring-2 ring-rose-400/80 dark:ring-rose-500/80 animate-pulse text-slate-950 dark:text-white shadow-xs"
+                            ? "border-rose-500 bg-slate-900 ring-2 ring-rose-400/80 animate-pulse text-white shadow-xs"
                             : hasLeave
-                            ? "bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-600 hover:border-blue-500 text-slate-950 dark:text-white shadow-2xs"
+                            ? "border-blue-400 dark:border-blue-500 bg-slate-900 text-white shadow-2xs"
                             : isPartner
-                            ? "bg-white dark:bg-slate-800/90 border border-purple-300 dark:border-purple-800/70 hover:border-purple-400 text-purple-900 dark:text-purple-200 shadow-xs"
-                            : "bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-amber-400 text-slate-900 dark:text-white shadow-xs"
+                            ? "border-purple-300 dark:border-purple-800/80 bg-white dark:bg-slate-900 text-purple-900 dark:text-purple-200 shadow-xs"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        {/* 좌측: 작업자 이름 */}
-                        <div className="flex items-center min-w-0 shrink-0 pl-1">
+                        {/* 좌측: 이름 구역 (38%) */}
+                        <div className={`w-[38%] sm:w-[38%] flex items-center justify-center px-1 text-center shrink-0 ${
+                          isMyeongjae
+                            ? "bg-amber-800"
+                            : isLeaveToday
+                            ? "bg-rose-950/90"
+                            : hasLeave
+                            ? "bg-blue-950/90"
+                            : isPartner
+                            ? "bg-purple-50 dark:bg-purple-950/50"
+                            : "bg-slate-100 dark:bg-slate-800"
+                        }`}>
                           <span className={`text-xs sm:text-[13px] font-black truncate tracking-tight ${
-                            isMyeongjae ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" : "text-slate-950 dark:text-white font-black"
+                            isMyeongjae
+                              ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                              : isLeaveToday || hasLeave
+                              ? "text-white font-black"
+                              : "text-slate-950 dark:text-white font-black"
                           }`}>
                             {worker.name}
                           </span>
                         </div>
 
-                        {/* 우측: 빈 공간 100% 가득 채우는 상태 박스 (풀필 인셋 블록) */}
-                        <div className={`flex-1 h-full min-h-[32px] sm:min-h-[34px] rounded-lg flex flex-col justify-center items-center text-center px-1 leading-none shadow-inner ${
-                          isLeaveToday
-                            ? "text-white bg-rose-600 font-black shadow-xs ring-1 ring-rose-400"
+                        {/* 우측: 상태 구역 (62% - 여백 없이 맞닿는 분할 플레이트) */}
+                        <div className={`w-[62%] sm:w-[62%] flex flex-col justify-center items-center text-center px-1.5 py-0.5 leading-tight ${
+                          isMyeongjae
+                            ? hasLeave
+                              ? "bg-rose-600 text-white border-l-2 border-amber-400"
+                              : "bg-amber-600 text-white border-l-2 border-amber-400"
+                            : isLeaveToday
+                            ? "bg-rose-600 text-white border-l-2 border-rose-400"
                             : hasLeave
-                            ? "text-white bg-blue-600 font-black shadow-2xs"
-                            : isMyeongjae
-                            ? "text-amber-950 bg-amber-200 font-black shadow-2xs"
+                            ? "bg-blue-600 text-white border-l-2 border-blue-400"
                             : isPartner
-                            ? "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800"
-                            : "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/70"
+                            ? "bg-purple-100 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200 border-l border-purple-300 dark:border-purple-800"
+                            : "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700"
                         }`}>
                           {hasLeave ? (
                             leaveStatus.line2 ? (
-                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[7.5px] sm:text-[8.5px] font-black">
-                                <span className="whitespace-nowrap">{leaveStatus.line1}</span>
-                                <span className="whitespace-nowrap opacity-95">{leaveStatus.line2}</span>
+                              <span className="flex flex-col items-center justify-center leading-tight">
+                                <span className="text-[10px] sm:text-[11px] font-black whitespace-nowrap">{leaveStatus.line1}</span>
+                                <span className="text-[9px] sm:text-[10px] font-black whitespace-nowrap text-amber-200 mt-0.5">{leaveStatus.line2}</span>
                               </span>
                             ) : (
-                              <span className="text-[8px] sm:text-[9.5px] font-black whitespace-nowrap">
+                              <span className="text-[10.5px] sm:text-[11.5px] font-black whitespace-nowrap">
                                 <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
                                 <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
                               </span>
                             )
                           ) : isPartner ? (
-                            <span className="text-[8px] sm:text-[9.5px] font-bold">협력</span>
+                            <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
                           ) : (
-                            <span className="text-[8px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
+                            <span className="text-[10.5px] sm:text-[11.5px] font-bold">{worker.title || "선임"}</span>
                           )}
                         </div>
                       </button>
@@ -1377,57 +1393,73 @@ export const AuthModal = () => {
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
-                        className={`p-1 sm:p-1.5 min-h-[42px] sm:min-h-[44px] rounded-xl border transition-all flex items-center justify-between gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
+                        className={`min-h-[42px] sm:min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
                           isDongwook
-                            ? `bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border-2 border-emerald-400 shadow-md ${
+                            ? `border-emerald-400 bg-emerald-700 shadow-md ${
                                 isLeaveToday ? "ring-2 ring-rose-500 animate-pulse" : ""
                               }`
                             : isLeaveToday
-                            ? "bg-rose-50/95 dark:bg-rose-950/70 border-2 border-rose-500 dark:border-rose-600 ring-2 ring-rose-400/80 dark:ring-rose-500/80 animate-pulse text-slate-950 dark:text-white shadow-xs"
+                            ? "border-rose-500 bg-slate-900 ring-2 ring-rose-400/80 animate-pulse text-white shadow-xs"
                             : hasLeave
-                            ? "bg-blue-50/90 dark:bg-blue-950/60 border-2 border-blue-400 dark:border-blue-600 hover:border-blue-500 text-slate-950 dark:text-white shadow-2xs"
+                            ? "border-blue-400 dark:border-blue-500 bg-slate-900 text-white shadow-2xs"
                             : isPartner
-                            ? "bg-white dark:bg-slate-800/90 border border-purple-300 dark:border-purple-800/70 hover:border-purple-400 text-purple-900 dark:text-purple-200 shadow-xs"
-                            : "bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-emerald-400 text-slate-900 dark:text-white shadow-xs"
+                            ? "border-purple-300 dark:border-purple-800/80 bg-white dark:bg-slate-900 text-purple-900 dark:text-purple-200 shadow-xs"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        {/* 좌측: 작업자 이름 */}
-                        <div className="flex items-center min-w-0 shrink-0 pl-1">
+                        {/* 좌측: 이름 구역 (38%) */}
+                        <div className={`w-[38%] sm:w-[38%] flex items-center justify-center px-1 text-center shrink-0 ${
+                          isDongwook
+                            ? "bg-emerald-800"
+                            : isLeaveToday
+                            ? "bg-rose-950/90"
+                            : hasLeave
+                            ? "bg-blue-950/90"
+                            : isPartner
+                            ? "bg-purple-50 dark:bg-purple-950/50"
+                            : "bg-slate-100 dark:bg-slate-800"
+                        }`}>
                           <span className={`text-xs sm:text-[13px] font-black truncate tracking-tight ${
-                            isDongwook ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" : "text-slate-950 dark:text-white font-black"
+                            isDongwook
+                              ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                              : isLeaveToday || hasLeave
+                              ? "text-white font-black"
+                              : "text-slate-950 dark:text-white font-black"
                           }`}>
                             {worker.name}
                           </span>
                         </div>
 
-                        {/* 우측: 빈 공간 100% 가득 채우는 상태 박스 (풀필 인셋 블록) */}
-                        <div className={`flex-1 h-full min-h-[32px] sm:min-h-[34px] rounded-lg flex flex-col justify-center items-center text-center px-1 leading-none shadow-inner ${
-                          isLeaveToday
-                            ? "text-white bg-rose-600 font-black shadow-xs ring-1 ring-rose-400"
+                        {/* 우측: 상태 구역 (62% - 여백 없이 맞닿는 분할 플레이트) */}
+                        <div className={`w-[62%] sm:w-[62%] flex flex-col justify-center items-center text-center px-1.5 py-0.5 leading-tight ${
+                          isDongwook
+                            ? hasLeave
+                              ? "bg-rose-600 text-white border-l-2 border-emerald-400"
+                              : "bg-emerald-600 text-white border-l-2 border-emerald-400"
+                            : isLeaveToday
+                            ? "bg-rose-600 text-white border-l-2 border-rose-400"
                             : hasLeave
-                            ? "text-white bg-blue-600 font-black shadow-2xs"
-                            : isDongwook
-                            ? "text-emerald-950 bg-emerald-200 font-black shadow-2xs"
+                            ? "bg-blue-600 text-white border-l-2 border-blue-400"
                             : isPartner
-                            ? "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800"
-                            : "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/70"
+                            ? "bg-purple-100 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200 border-l border-purple-300 dark:border-purple-800"
+                            : "bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700"
                         }`}>
                           {hasLeave ? (
                             leaveStatus.line2 ? (
-                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[7.5px] sm:text-[8.5px] font-black">
-                                <span className="whitespace-nowrap">{leaveStatus.line1}</span>
-                                <span className="whitespace-nowrap opacity-95">{leaveStatus.line2}</span>
+                              <span className="flex flex-col items-center justify-center leading-tight">
+                                <span className="text-[10px] sm:text-[11px] font-black whitespace-nowrap">{leaveStatus.line1}</span>
+                                <span className="text-[9px] sm:text-[10px] font-black whitespace-nowrap text-amber-200 mt-0.5">{leaveStatus.line2}</span>
                               </span>
                             ) : (
-                              <span className="text-[8px] sm:text-[9.5px] font-black whitespace-nowrap">
+                              <span className="text-[10.5px] sm:text-[11.5px] font-black whitespace-nowrap">
                                 <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
                                 <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
                               </span>
                             )
                           ) : isPartner ? (
-                            <span className="text-[8px] sm:text-[9.5px] font-bold">협력</span>
+                            <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
                           ) : (
-                            <span className="text-[8px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
+                            <span className="text-[10.5px] sm:text-[11.5px] font-bold">{worker.title || "선임"}</span>
                           )}
                         </div>
                       </button>
