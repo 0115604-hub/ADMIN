@@ -2067,44 +2067,44 @@ export const AuthModal = () => {
                 {/* 중앙 구분선 */}
                 <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-0.5"></div>
 
-                {/* [오른쪽] 회사별 근태 (1줄 인라인) */}
+                {/* [오른쪽] 회사별 근태 (결근/조퇴 발생 시에만 표시) */}
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="text-[11px] font-black text-slate-800 dark:text-slate-200 flex items-center gap-0.5 shrink-0">
                     <span className="text-blue-600 dark:text-blue-400 text-xs">🏢</span>
                     <span>회사별:</span>
                   </span>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    {companyAttendanceStats.map((stat) => {
-                      const compName = stat.company;
-                      const shortName = compName.replace("(주)", "");
-                      const hasAbsent = stat.absentCount > 0;
-                      const hasEarly = stat.earlyLeaveCount > 0;
-                      const hasIssue = hasAbsent || hasEarly;
+                  {companyAttendanceStats.some((s) => s.absentCount > 0 || s.earlyLeaveCount > 0) ? (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {companyAttendanceStats
+                        .filter((s) => s.absentCount > 0 || s.earlyLeaveCount > 0)
+                        .map((stat) => {
+                          const compName = stat.company;
+                          const shortName = compName.replace("(주)", "");
+                          const hasAbsent = stat.absentCount > 0;
+                          const hasEarly = stat.earlyLeaveCount > 0;
 
-                      return (
-                        <div
-                          key={compName}
-                          title={`${compName}${hasAbsent ? ` | 결근: ${stat.absentList.map((a) => `${a.name}(${a.reason})`).join(", ")}` : ""}${hasEarly ? ` | 조퇴: ${stat.earlyLeaveList.map((a) => `${a.name}(${a.reason})`).join(", ")}` : ""}`}
-                          className={`px-1.5 py-0.5 rounded-md border flex items-center gap-1 text-[10px] font-black shrink-0 transition-all ${
-                            hasIssue
-                              ? "bg-rose-50 dark:bg-rose-950/80 border-rose-400 dark:border-rose-700 text-rose-700 dark:text-rose-300 shadow-2xs animate-pulse"
-                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                          }`}
-                        >
-                          <span className="text-slate-500 dark:text-slate-400 font-bold">{shortName}</span>
-                          {hasIssue ? (
-                            <div className="flex items-center gap-0.5">
-                              {hasAbsent && <span className="px-1 rounded bg-rose-600 text-white text-[9px]">결{stat.absentCount}</span>}
-                              {hasEarly && <span className="px-1 rounded bg-amber-600 text-white text-[9px]">조{stat.earlyLeaveCount}</span>}
+                          return (
+                            <div
+                              key={compName}
+                              title={`${compName}${hasAbsent ? ` | 결근: ${stat.absentList.map((a) => `${a.name}(${a.reason})`).join(", ")}` : ""}${hasEarly ? ` | 조퇴: ${stat.earlyLeaveList.map((a) => `${a.name}(${a.reason})`).join(", ")}` : ""}`}
+                              className="px-1.5 py-0.5 rounded-md border border-rose-400 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 shadow-2xs animate-pulse flex items-center gap-1 text-[10px] font-black shrink-0"
+                            >
+                              <span className="text-slate-900 dark:text-white font-bold">{shortName}</span>
+                              <div className="flex items-center gap-0.5">
+                                {hasAbsent && <span className="px-1 rounded bg-rose-600 text-white text-[9px]">결{stat.absentCount}</span>}
+                                {hasEarly && <span className="px-1 rounded bg-amber-600 text-white text-[9px]">조{stat.earlyLeaveCount}</span>}
+                              </div>
                             </div>
-                          ) : (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[9px]">정상</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
+                      <span>✓</span>
+                      <span>전원 정상</span>
+                    </span>
+                  )}
                 </div>
               </div>
 
