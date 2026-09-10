@@ -202,15 +202,25 @@ async function completeBriefingLock(briefingType, todayStr, isSuccess, errorMsg 
   }
 }
 
+function sanitizeTelegramText(text) {
+  if (!text || typeof text !== "string") return text;
+  return text
+    .replace(/방상국\s*차장/g, "권태형 대표이사")
+    .replace(/방상국\s*선임/g, "설유철 책임")
+    .replace(/방상국\s*대표이사/g, "권태형 대표이사")
+    .replace(/방상국/g, "권태형");
+}
+
 async function sendTelegramMessage(token, chatId, text) {
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
+  const sanitizedText = sanitizeTelegramText(text);
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text: text,
+        text: sanitizedText,
         parse_mode: "HTML",
         disable_web_page_preview: true
       })
@@ -266,7 +276,7 @@ export async function runAllBriefings(force = false) {
       console.log(`[오륙통합방 모닝브리핑] Lock acquired. Generating briefing for ${todayStr}...`);
 
       try {
-        // 1-1. 연차 현황
+        // 1-1. 연차 현황 (삼랑진 / 한림 구분)
         let activeLeaves = [];
         try {
           const snap = await getDocs(collection(db, "annual_leaves"));
@@ -283,15 +293,15 @@ export async function runAllBriefings(force = false) {
           console.warn("Error fetching annual leaves:", e.message);
         }
 
-        let leaveSummary = "없음 (전원 정상 출근)";
-        if (activeLeaves.length > 0) {
-          const list = activeLeaves.map((l) => {
-            const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-            const typeShort = l.leaveType || "연차";
-            return `${l.userName} ${l.title || "선임"}(${plantShort}/${typeShort})`;
-          });
-          leaveSummary = list.join(", ");
-        }
+        const samLeaves = activeLeaves.filter((l) => !l.plant?.includes("한림"));
+        const hanLeaves = activeLeaves.filter((l) => l.plant?.includes("한림"));
+
+        const samStr = samLeaves.length > 0
+          ? samLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
+          : "전원 정상 출근";
+        const hanStr = hanLeaves.length > 0
+          ? hanLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
+          : "전원 정상 출근";
 
         // 1-2. 미결재 현황
         let pendingDocs = [];
@@ -307,6 +317,17 @@ export async function runAllBriefings(force = false) {
           console.warn("Error fetching approvals:", e.message);
         }
 
+        let approvalDocLines = "• 없음 (전건 결재완료)";
+        if (pendingDocs.length > 0) {
+          const lines = pendingDocs.slice(0, 5).map((d) => {
+            const nextApprover = d.approvers?.find((a) => a.status === "PENDING")?.name || "결재자";
+            return `• ${d.title} (기안: ${d.drafter || "작성자"} ➜ 결재대기: ${nextApprover})`;
+          });
+          const more = pendingDocs.length > 5 ? `\n• 외 ${pendingDocs.length - 5}건` : "";
+          approvalDocLines = lines.join("\n") + more;
+        }
+
+        // 1-3. 업무일지 미결
         let pendingLogs = [];
         try {
           const snap = await getDocs(collection(db, "work_logs"));
@@ -320,36 +341,69 @@ export async function runAllBriefings(force = false) {
           console.warn("Error fetching work logs:", e.message);
         }
 
-        let approvalSummary = "없음 (전건 결재완료)";
-        const totalPending = pendingDocs.length + pendingLogs.length;
-        if (totalPending > 0) {
-          const docTitles = pendingDocs.map((d) => d.title).filter(Boolean);
-          const logTitles = pendingLogs.map((l) => `${l.writer} 업무일지`).filter(Boolean);
-          const previewList = [...docTitles, ...logTitles].slice(0, 3);
-          const moreText = totalPending > 3 ? ` 외 ${totalPending - 3}건` : "";
-          approvalSummary = `총 ${totalPending}건 (${previewList.join(", ")}${moreText})`;
+        let workLogLines = "• 없음 (전건 승인완료)";
+        if (pendingLogs.length > 0) {
+          const lines = pendingLogs.slice(0, 5).map((l) => {
+            const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
+            return `• ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
+          });
+          const more = pendingLogs.length > 5 ? `\n• 외 ${pendingLogs.length - 5}건` : "";
+          workLogLines = lines.join("\n") + more;
         }
 
-        // 1-3. 품질경보 미조치 현황
-        let urgentIssues = [];
+        // 1-4. 진행중인 오픈이슈 및 품질경보/공지
+        let allIssues = [];
         try {
           const snap = await getDocs(collection(db, "urgent_issues"));
           snap.forEach((docSnap) => {
             const i = docSnap.data();
-            if (!i.isDeleted && !i.isResolved) {
-              urgentIssues.push(i);
-            }
+            allIssues.push(i);
           });
         } catch (e) {
           console.warn("Error fetching urgent issues:", e.message);
         }
 
-        let urgentSummary = "없음 (전건 종결완료)";
-        if (urgentIssues.length > 0) {
-          const issueTitles = urgentIssues.map((i) => i.title || i.content).filter(Boolean);
-          const previewList = issueTitles.slice(0, 2);
-          const moreText = urgentIssues.length > 2 ? ` 외 ${activeUrgentIssues?.length ? activeUrgentIssues.length - 2 : urgentIssues.length - 2}건` : "";
-          urgentSummary = `미조치 ${urgentIssues.length}건 (${previewList.join(", ")}${moreText})`;
+        const activeOpenIssues = allIssues.filter(
+          (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue")
+        );
+        let openIssueLines = "• 진행중인 오픈이슈 없음";
+        if (activeOpenIssues.length > 0) {
+          const oLines = activeOpenIssues.map((o) => {
+            const d = o.expireDate || o.targetDate || "";
+            const dText = d ? `(~${d.slice(5)}) ` : "";
+            const replyCount = o.replies?.length || 0;
+            const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
+            return `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+          });
+          openIssueLines = oLines.slice(0, 5).join("\n");
+          if (oLines.length > 5) {
+            openIssueLines += `\n• 외 ${oLines.length - 5}건`;
+          }
+        }
+
+        // 1-5. 회의 & 사내공지
+        const upcomingMeetings = allIssues.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
+        const activeNotices = allIssues.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
+
+        let noticeMeetingLines = "• 예정된 회의 및 공지사항 없음";
+        const combined = [];
+        upcomingMeetings.forEach((m) => {
+          const d = m.expireDate || m.targetDate || "";
+          const t = m.meetingTime ? ` ${m.meetingTime}` : "";
+          const dText = d ? `${d.slice(5)}${t} ` : "";
+          combined.push(`• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`);
+        });
+        activeNotices.forEach((n) => {
+          const d = n.expireDate || n.targetDate || "";
+          const dText = d ? `~${d.slice(5)} ` : "";
+          combined.push(`• [공지] ${dText}${n.title || n.content}`);
+        });
+
+        if (combined.length > 0) {
+          noticeMeetingLines = combined.slice(0, 5).join("\n");
+          if (combined.length > 5) {
+            noticeMeetingLines += `\n• 외 ${combined.length - 5}건`;
+          }
         }
 
         const savedUnifiedTemplate = customTemplates["unified_briefing"]?.text;
@@ -357,14 +411,21 @@ export async function runAllBriefings(force = false) {
 <b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
-<b>[1] 근태 / 휴가 현황</b>
-• ${leaveSummary}
+👥 <b>[1] 금일 근태 / 휴가 현황</b>
+• 삼랑진: ${samStr}
+• 한림: ${hanStr}
 
-<b>[2] 미결재 현황</b>
-• ${approvalSummary}
+📑 <b>[2] 전일 전자결재 미결 ${pendingDocs.length > 0 ? `(${pendingDocs.length}건)` : ""}</b>
+${approvalDocLines}
 
-<b>[3] 품질경보 / 공지 현황</b>
-• ${urgentSummary}
+📝 <b>[3] 전일 업무일지 미결 ${pendingLogs.length > 0 ? `(${pendingLogs.length}건)` : ""}</b>
+${workLogLines}
+
+🚨 <b>[4] 진행중인 오픈이슈 ${activeOpenIssues.length > 0 ? `(${activeOpenIssues.length}건)` : ""}</b>
+${openIssueLines}
+
+📢 <b>[5] 회의일정 & 사내공지 ${combined.length > 0 ? `(${combined.length}건)` : ""}</b>
+${noticeMeetingLines}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();

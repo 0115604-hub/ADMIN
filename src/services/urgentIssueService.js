@@ -153,7 +153,7 @@ export const subscribeUrgentIssues = (onUpdate) => {
         const list = [];
         snapshot.forEach((d) => {
           const item = { id: d.id, ...d.data() };
-          list.push(item);
+          list.push(sanitizeUrgentIssueItem(item));
         });
         const sorted = sortIssuesByCustomPriority(list);
         saveLocalUrgentIssues(sorted);

@@ -133,7 +133,20 @@ export const sanitizeTelegramTemplateText = (text) => {
     .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
     .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
     .replace(/경영정보공유/g, "")
-    .replace(/경영정보/g, "");
+    .replace(/경영정보/g, "")
+    .replace(/방상국\s*차장/g, "권태형 대표이사")
+    .replace(/방상국\s*선임/g, "설유철 책임")
+    .replace(/방상국\s*대표이사/g, "권태형 대표이사")
+    .replace(/방상국/g, "권태형");
+};
+
+export const sanitizeTelegramMessageText = (text) => {
+  if (!text || typeof text !== "string") return text;
+  return text
+    .replace(/방상국\s*차장/g, "권태형 대표이사")
+    .replace(/방상국\s*선임/g, "설유철 책임")
+    .replace(/방상국\s*대표이사/g, "권태형 대표이사")
+    .replace(/방상국/g, "권태형");
 };
 
 export const sanitizeTelegramTemplates = (data) => {
@@ -226,6 +239,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
     return { success: false, reason: "NOT_CONFIGURED" };
   }
 
+  const sanitizedText = sanitizeTelegramMessageText(text);
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
@@ -240,7 +254,7 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
       signal: controller?.signal,
       body: JSON.stringify({
         chat_id: chatId,
-        text: text,
+        text: sanitizedText,
         parse_mode: "HTML",
         disable_web_page_preview: true
       })
@@ -271,6 +285,7 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
     return { success: false, reason: "NOT_CONFIGURED" };
   }
 
+  const sanitizedCaption = sanitizeTelegramMessageText(caption);
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
   const endpoint = `https://api.telegram.org/bot${token}/sendPhoto`;
@@ -282,8 +297,8 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
     const resBlob = await (await fetch(photoDataUrl)).blob();
     const formData = new FormData();
     formData.append("chat_id", chatId);
-    if (caption) {
-      formData.append("caption", caption);
+    if (sanitizedCaption) {
+      formData.append("caption", sanitizedCaption);
       formData.append("parse_mode", "HTML");
       formData.append("show_caption_above_media", "true");
     }
