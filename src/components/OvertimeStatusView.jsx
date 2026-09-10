@@ -2139,8 +2139,13 @@ export const OvertimeStatusView = () => {
       {/* 📑 MODAL: 등록 클릭 시 뜨는 특근/근태 보고서 팝업창 (내용 작성 및 검토) */}
       {/* ========================================================================= */}
       {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+        <div
+          onClick={() => setIsReportModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] cursor-default ${
             isWeekendByDate(selectedDay)
               ? "border-2 border-rose-500 shadow-rose-950/40"
               : "border-2 border-cyan-400"
@@ -2427,8 +2432,14 @@ export const OvertimeStatusView = () => {
       {/* ========================================================================= */}
       {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (초간결 3열 부서/성명/오늘근태 NO SCROLLING) */}
       {popupCompanyData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-5xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div
+          onClick={() => setPopupCompanyData(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-5xl w-full border-2 border-cyan-400 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default"
+          >
             {/* 1. Modal Header & Summary Pills Bar */}
             <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0 gap-2">
               <div className="flex items-center gap-3 flex-wrap min-w-0">
@@ -2575,8 +2586,14 @@ export const OvertimeStatusView = () => {
       {/* ========================================================================= */}
       {/* ⭐ MODAL: 업체별 근로자 추가/삭제 관리 모달 */}
       {selectedCompanyManageWorkers && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-3xl w-full border-2 border-purple-500 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div
+          onClick={() => setSelectedCompanyManageWorkers(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-3xl w-full border-2 border-purple-500 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default"
+          >
             {/* Modal Header */}
             <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -2764,7 +2781,10 @@ export const OvertimeStatusView = () => {
       {/* 📑 MODAL: 근태/특근보고서 상세 확인 및 결재 모달 (등록 모달과 100% 동일한 정식 서식) */}
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150">
+        <div
+          onClick={() => setIsLegacyModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+        >
           {(() => {
             const isWk = isWeekendByDate(selectedLegacyReport.workDate || selectedLegacyReport.title);
             const rawTitle = selectedLegacyReport.title || "";
@@ -2783,7 +2803,9 @@ export const OvertimeStatusView = () => {
             }
 
             return (
-          <div className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] cursor-default ${
             isWk ? "border-2 border-rose-500 shadow-rose-950/40" : "border-2 border-cyan-400"
           }`}>
             {/* Modal Header */}
