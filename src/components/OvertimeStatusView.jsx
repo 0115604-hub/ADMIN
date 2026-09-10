@@ -266,8 +266,28 @@ export const OvertimeStatusView = () => {
   const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' default
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
-  // Daily views state
-  const [selectedDay, setSelectedDay] = useState(8); // Default 9월 8일
+  // Daily views state (로그인 및 접속 시점의 실시간 당일 일자로 기본 선택)
+  const [selectedDay, setSelectedDay] = useState(() => {
+    try {
+      const kst = getKSTDateString(new Date());
+      const day = parseInt(kst.split("-")[2], 10);
+      return !isNaN(day) && day >= 1 && day <= 30 ? day : new Date().getDate() || 11;
+    } catch (e) {
+      return new Date().getDate() || 11;
+    }
+  });
+
+  // 로그인 사용자 변경 또는 재접속 시 당일 일자로 자동 동기화
+  useEffect(() => {
+    try {
+      const kst = getKSTDateString(new Date());
+      const day = parseInt(kst.split("-")[2], 10);
+      if (!isNaN(day) && day >= 1 && day <= 30) {
+        setSelectedDay(day);
+      }
+    } catch (e) {}
+  }, [currentProfile?.name]);
+
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("(주)오륙");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
