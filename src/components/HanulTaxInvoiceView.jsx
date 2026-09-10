@@ -99,7 +99,32 @@ export const HanulTaxInvoiceView = () => {
     return () => unsubscribe();
   }, [activeMonth]);
 
-  // Derived Values (8 Items)
+  // 🌟 1. 기준 원본 데이터 (상단 요약패널 전용 - 아래에서 단가를 수정해도 변경되지 않음)
+  const baselineSalesItems = useMemo(() => {
+    return getDefault9BQCSales(activeMonth);
+  }, [activeMonth]);
+
+  const baselineTotalQty = useMemo(() => {
+    return baselineSalesItems.reduce((acc, cur) => acc + (Number(cur.qty) || 0), 0);
+  }, [baselineSalesItems]);
+
+  const baselineTotalAmount = useMemo(() => {
+    return baselineSalesItems.reduce((acc, cur) => acc + (Number(cur.amount) || 0), 0);
+  }, [baselineSalesItems]);
+
+  const baselineTotalTax = useMemo(() => {
+    return Math.round(baselineTotalAmount * 0.1);
+  }, [baselineTotalAmount]);
+
+  const baselineTotalGross = useMemo(() => {
+    return baselineTotalAmount + baselineTotalTax;
+  }, [baselineTotalAmount, baselineTotalTax]);
+
+  const baselineAvgUnitPrice = useMemo(() => {
+    return baselineTotalQty > 0 ? Math.round(baselineTotalAmount / baselineTotalQty) : 0;
+  }, [baselineTotalAmount, baselineTotalQty]);
+
+  // 🌟 2. 수정 가능한 현재 데이터 (하단 자동계산/단가재수정 패널 전용)
   const salesItems = useMemo(() => {
     return monthData?.salesItems && monthData.salesItems.length === 8
       ? monthData.salesItems
@@ -212,28 +237,46 @@ export const HanulTaxInvoiceView = () => {
     return recomputed;
   }, []);
 
-  // Handler: Update single 9BQC Sales Row (단가 변경 시 합계금액 연동)
+  // 🌟 3. 단가 및 금액 수정 시 1-2번, 3-4번, 5-6번 자동 동기화
   const handleUpdateSalesRow = (id, field, value) => {
-    const updatedSales = salesItems.map((item) => {
-      if (item.id === id) {
+    const targetIdx = salesItems.findIndex((item) => item.id === id);
+    if (targetIdx === -1) return;
+
+    const numVal = Math.max(0, Number(value) || 0);
+
+    // 자동 동기화 페어 설정: 1(0) <-> 2(1), 3(2) <-> 4(3), 5(4) <-> 6(5)
+    let pairedIdx = -1;
+    if (targetIdx === 0) pairedIdx = 1;
+    else if (targetIdx === 1) pairedIdx = 0;
+    else if (targetIdx === 2) pairedIdx = 3;
+    else if (targetIdx === 3) pairedIdx = 2;
+    else if (targetIdx === 4) pairedIdx = 5;
+    else if (targetIdx === 5) pairedIdx = 4;
+
+    const updatedSales = salesItems.map((item, idx) => {
+      if (idx === targetIdx || idx === pairedIdx) {
         const updatedItem = { ...item };
+        const q = Number(item.qty) || 0;
 
         if (field === "unitPrice") {
-          const p = Math.max(0, Number(value) || 0);
-          const q = Number(item.qty) || 0;
-          updatedItem.unitPrice = p;
-          updatedItem.amount = q * p;
-          updatedItem.taxAmount = Math.round(q * p * 0.1);
-          updatedItem.totalAmount = Math.round(q * p * 1.1);
+          updatedItem.unitPrice = numVal;
+          updatedItem.amount = q * numVal;
+          updatedItem.taxAmount = Math.round(q * numVal * 0.1);
+          updatedItem.totalAmount = Math.round(q * numVal * 1.1);
         } else if (field === "amount") {
-          const a = Math.max(0, Number(value) || 0);
-          const q = Number(item.qty) || 0;
-          updatedItem.amount = a;
-          if (q > 0) {
-            updatedItem.unitPrice = Math.round(a / q);
+          if (idx === targetIdx) {
+            updatedItem.amount = numVal;
+            if (q > 0) {
+              updatedItem.unitPrice = Math.round(numVal / q);
+            }
+          } else if (idx === pairedIdx) {
+            const targetQty = Number(salesItems[targetIdx]?.qty) || 1;
+            const computedUnitPrice = targetQty > 0 ? Math.round(numVal / targetQty) : numVal;
+            updatedItem.unitPrice = computedUnitPrice;
+            updatedItem.amount = q * computedUnitPrice;
           }
-          updatedItem.taxAmount = Math.round(a * 0.1);
-          updatedItem.totalAmount = Math.round(a * 1.1);
+          updatedItem.taxAmount = Math.round(updatedItem.amount * 0.1);
+          updatedItem.totalAmount = Math.round(updatedItem.amount * 1.1);
         }
 
         return updatedItem;
@@ -291,20 +334,6 @@ export const HanulTaxInvoiceView = () => {
         invoiceAmount: amount,
         vatAmount: vat,
         totalInvoiceAmount: total
-      }
-    };
-    setMonthData(updated);
-    saveHanulMonthData(activeMonth, updated);
-    triggerSavedFeedback();
-  };
-
-  // Handler: Update other invoice metadata (Date, Status, Memo)
-  const handleInvoiceMetaChange = (field, value) => {
-    const updated = {
-      ...monthData,
-      invoiceConfig: {
-        ...invoiceConfig,
-        [field]: value
       }
     };
     setMonthData(updated);
@@ -379,8 +408,27 @@ export const HanulTaxInvoiceView = () => {
       [`기준월: ${monthTitle}`, `발행처: 한울`, `공급받는자: (주)오륙`, `발행일자: ${invoiceConfig.issueDate || ""}`],
       [`세금계산서 발행금액(공급가액): ${currentInvoiceAmount}`, `부가세(10%): ${currentVatAmount}`, `합계금액: ${currentTotalInvoice}`, `상태: ${invoiceConfig.status}`],
       [],
-      ["[9BQC 8가지 항목 단가/수량/매출 합계]"],
-      ["No", "구분", "품명 / 부품명", "수량(EA, 고정)", "단가(원)", "공급가액(원)", "비중(%)", "세액(10%)", "총 합계액(원)"],
+      ["[9BQC 8가지 항목 기준 단가/수량/매출 요약 (기준원형 보존)]"],
+      ["No", "구분", "품명 / 부품명", "수량(EA)", "기준단가(원)", "공급가액(원)", "비중(%)", "세액(10%)", "총 합계액(원)"],
+      ...baselineSalesItems.map((item, idx) => {
+        const itemRatio = baselineTotalAmount > 0 ? ((item.amount / baselineTotalAmount) * 100).toFixed(1) : "0.0";
+        const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
+        return [
+          idx + 1,
+          isFrt ? "FRT" : "RR",
+          `"${item.partName}"`,
+          item.qty,
+          item.unitPrice,
+          item.amount,
+          `${itemRatio}%`,
+          item.taxAmount,
+          item.totalAmount
+        ];
+      }),
+      ["기준총계", "-", "-", baselineTotalQty, "-", baselineTotalAmount, "100.0%", baselineTotalTax, baselineTotalGross],
+      [],
+      ["[9BQC 8가지 항목 재수정 단가 및 정산 현황]"],
+      ["No", "구분", "품명 / 부품명", "수량(EA)", "재수정단가(원)", "수정공급가액(원)", "비중(%)", "세액(10%)", "총 합계액(원)"],
       ...salesItems.map((item, idx) => {
         const itemRatio = totalSalesAmount > 0 ? ((item.amount / totalSalesAmount) * 100).toFixed(1) : "0.0";
         const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
@@ -396,7 +444,7 @@ export const HanulTaxInvoiceView = () => {
           item.totalAmount
         ];
       }),
-      ["총계", "-", "-", totalSalesQty, "-", totalSalesAmount, "100.0%", totalSalesTax, totalSalesGross]
+      ["수정총계", "-", "-", totalSalesQty, "-", totalSalesAmount, "100.0%", totalSalesTax, totalSalesGross]
     ];
 
     const csvContent = "\uFEFF" + rows.map((e) => e.join(",")).join("\n");
@@ -410,17 +458,12 @@ export const HanulTaxInvoiceView = () => {
     document.body.removeChild(link);
   };
 
-  // Computed RR ratio per item
-  const rrEachRatioPercent = useMemo(() => {
-    return ((100 - frtRatioPercent) / 6).toFixed(2);
-  }, [frtRatioPercent]);
-
   return (
     <div className="space-y-3 sm:space-y-3.5 animate-fadeIn pb-12">
       {/* ========================================================================= */}
-      {/* 🗓️ 최상단: 월 선택 탭 & 액션 바 */}
+      {/* 🗓️ 최상단: 월 선택(드롭다운 전용) & 액션 바 */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Title */}
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
@@ -438,38 +481,17 @@ export const HanulTaxInvoiceView = () => {
           </div>
         </div>
 
-        {/* Month Selector Pills & Action Buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap justify-between lg:justify-end">
-          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-1 px-1.5 text-slate-500 text-[11px] font-bold">
-              <Calendar className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-              <span className="hidden sm:inline">월선택:</span>
-            </div>
-            {availableMonths.slice(0, 5).map((m) => {
-              const isSelected = activeMonth === m;
-              const label = `${m.split("-")[1]}월`;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => handleSelectMonth(m)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-blue-600 text-white shadow-sm scale-105"
-                      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-
-            {/* Dropdown for other months */}
+        {/* 🌟 월 선택 (드롭다운만 적용) & 액션 버튼 */}
+        <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-end">
+          {/* Month Dropdown Only */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs">
+            <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <span className="text-xs font-bold text-slate-500">월선택:</span>
             <select
               value={activeMonth}
               onChange={(e) => handleSelectMonth(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 px-1.5 py-0.5 cursor-pointer focus:outline-none"
-              title="전체 월 선택"
+              className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-100 px-1 py-0.5 cursor-pointer focus:outline-none"
+              title="정산 대상 월 선택"
             >
               {availableMonths.map((m) => (
                 <option key={m} value={m} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
@@ -479,6 +501,7 @@ export const HanulTaxInvoiceView = () => {
             </select>
           </div>
 
+          {/* Excel Export & Saved Status */}
           <div className="flex items-center gap-1">
             <button
               onClick={handleExportCSV}
@@ -486,7 +509,7 @@ export const HanulTaxInvoiceView = () => {
               title="엑셀 CSV 다운로드"
             >
               <Download className="w-3.5 h-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">엑셀</span>
+              <span>엑셀</span>
             </button>
 
             <button
@@ -508,7 +531,7 @@ export const HanulTaxInvoiceView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 1. [제일 위] 8가지 항목을 각 1줄씩 표현한 요약 패널 (Summary 8-Rows Panel) */}
+      {/* 🌟 1. [제일 위] 8가지 항목 기준 요약 패널 (하단 단가 수정 시에도 원형 유지) */}
       {/* ========================================================================= */}
       <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white p-3.5 sm:p-4 rounded-2xl border border-indigo-500/30 shadow-lg relative overflow-hidden space-y-2.5">
         {/* Ambient glow */}
@@ -520,17 +543,17 @@ export const HanulTaxInvoiceView = () => {
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
               <h3 className="text-xs sm:text-sm font-black text-blue-100 flex items-center gap-1.5">
-                <span>📊 {monthTitle} 9BQC 8가지 항목 매출단가 요약 현황 (각 1줄)</span>
+                <span>📊 {monthTitle} 9BQC 8가지 항목 기준 매출단가 요약 (기준원형 보존)</span>
               </h3>
             </div>
             <div className="text-[11px] text-slate-300 font-medium flex items-center gap-2.5">
-              <span>총 매출수량: <strong className="text-white font-mono">{totalSalesQty.toLocaleString()} EA</strong></span>
+              <span>총 매출수량: <strong className="text-white font-mono">{baselineTotalQty.toLocaleString()} EA</strong></span>
               <span>•</span>
-              <span>평균단가: <strong className="text-white font-mono">₩{avgSalesUnitPrice.toLocaleString()}</strong></span>
+              <span>평균단가: <strong className="text-white font-mono">₩{baselineAvgUnitPrice.toLocaleString()}</strong></span>
             </div>
           </div>
 
-          {/* 🌟 8-Row Concise Summary Table */}
+          {/* 🌟 8-Row Baseline Summary Table (항상 기준값 유지) */}
           <div className="bg-black/30 backdrop-blur-md rounded-xl border border-white/15 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-200">
@@ -539,7 +562,7 @@ export const HanulTaxInvoiceView = () => {
                     <th className="py-2 px-2.5 text-center w-9">No</th>
                     <th className="py-2 px-2.5 font-bold text-white min-w-[170px]">품명 / 부품명</th>
                     <th className="py-2 px-2 text-right font-black text-blue-300 min-w-[85px]">수량 (EA)</th>
-                    <th className="py-2 px-2 text-right font-black text-indigo-300 min-w-[95px]">단가 (₩)</th>
+                    <th className="py-2 px-2 text-right font-black text-indigo-300 min-w-[95px]">기준단가 (₩)</th>
                     <th className="py-2 px-2.5 text-right font-black text-white min-w-[115px]">공급가액 (합계금액)</th>
                     <th className="py-2 px-2 text-center font-bold text-blue-300 min-w-[70px]">비중 (%)</th>
                     <th className="py-2 px-2 text-right font-mono text-amber-200/90 min-w-[85px]">세액 (10%)</th>
@@ -547,9 +570,9 @@ export const HanulTaxInvoiceView = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 font-medium text-xs">
-                  {salesItems.map((item, idx) => {
+                  {baselineSalesItems.map((item, idx) => {
                     const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
-                    const itemRatio = totalSalesAmount > 0 ? ((item.amount / totalSalesAmount) * 100).toFixed(1) : "0.0";
+                    const itemRatio = baselineTotalAmount > 0 ? ((item.amount / baselineTotalAmount) * 100).toFixed(1) : "0.0";
 
                     return (
                       <tr
@@ -602,22 +625,22 @@ export const HanulTaxInvoiceView = () => {
                       8개 항목 합계 총계 (Total)
                     </td>
                     <td className="py-2 px-2 text-right font-mono text-blue-200 font-black">
-                      {totalSalesQty.toLocaleString()} EA
+                      {baselineTotalQty.toLocaleString()} EA
                     </td>
                     <td className="py-2 px-2 text-right font-mono text-indigo-200 text-[11px]">
-                      평균 ₩{avgSalesUnitPrice.toLocaleString()}
+                      평균 ₩{baselineAvgUnitPrice.toLocaleString()}
                     </td>
                     <td className="py-2 px-2.5 text-right font-mono text-white text-xs sm:text-sm font-black">
-                      ₩ {totalSalesAmount.toLocaleString()}
+                      ₩ {baselineTotalAmount.toLocaleString()}
                     </td>
                     <td className="py-2 px-2 text-center font-mono text-blue-200 font-black text-[11px]">
                       100.0%
                     </td>
                     <td className="py-2 px-2 text-right font-mono text-amber-300 text-[11px]">
-                      ₩ {totalSalesTax.toLocaleString()}
+                      ₩ {baselineTotalTax.toLocaleString()}
                     </td>
                     <td className="py-2 px-2.5 text-right font-mono text-emerald-300 text-xs sm:text-sm font-black">
-                      ₩ {totalSalesGross.toLocaleString()}
+                      ₩ {baselineTotalGross.toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>
@@ -628,60 +651,29 @@ export const HanulTaxInvoiceView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 2. [그다음] 2순위: 세금계산서 발행패널 (간격 최적화 & 비율 자동 맞춤) */}
+      {/* 🌟 2. [세금계산서 발행패널] 심플 & 직관적 구성 */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-3.5 sm:p-4 rounded-2xl border border-blue-700/40 shadow-lg relative overflow-hidden space-y-3">
-        {/* Header Title & Actions */}
-        <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-white/10">
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-3 sm:p-3.5 rounded-2xl border border-blue-700/40 shadow-md space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-blue-500/30 border border-blue-400/30 text-blue-300">
+            <div className="p-1.5 rounded-lg bg-blue-500/30 text-blue-300">
               <Receipt className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-black text-xs sm:text-sm text-blue-100 tracking-wide flex items-center gap-1.5">
-                <span>✍️ {monthTitle} 한울 세금계산서 발행패널</span>
+              <h3 className="font-black text-xs sm:text-sm text-blue-100 flex items-center gap-1.5">
+                <span>✍️ 세금계산서 발행금액 설정</span>
               </h3>
               <p className="text-[11px] text-blue-200/70">
-                세금계산서 발행금액을 입력하면 <strong className="text-white">FRT 35%~45%</strong>, <strong className="text-white">RR 6종 0.1~0.15(10%~15%)</strong> 비율로 단가가 자동 역산됩니다.
+                발행 공급가액을 입력하면 하단 8개 품목 단가가 비율에 맞춰 자동 계산됩니다.
               </p>
             </div>
           </div>
 
+          {/* Right actions: Ratio presets & Quick buttons */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleApplyAutoDistribution(currentInvoiceAmount, frtRatioPercent)}
-              className="px-3 py-1 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white text-[11px] font-black border border-indigo-400/40 transition-all cursor-pointer active:scale-95 flex items-center gap-1 shadow-sm"
-              title="세금계산서 금액을 기준으로 FRT 및 RR 6종 단가를 즉시 자동 계산"
-            >
-              <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
-              <span>비율 기준 단가 자동 맞춤</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleApplySalesToInvoice}
-              className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/20 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
-              title="8개 품목 매출합계액을 세금계산서 금액으로 동기화"
-            >
-              <Coins className="w-3 h-3" />
-              <span>매출합계 적용</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Ratio Controller Bar (FRT 35%~45% & RR 6종 0.1~0.15) */}
-        <div className="p-2 sm:p-2.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 text-[11px] font-bold text-blue-200">
-              <Sliders className="w-3.5 h-3.5 text-blue-300" />
-              <span>배분 비율:</span>
-            </div>
-
-            {/* FRT Preset Pill Buttons */}
-            <div className="flex items-center gap-1 bg-black/25 p-0.5 rounded-lg border border-white/10">
-              <span className="text-[10px] text-white/70 px-1 font-bold">FRT:</span>
-              {[35, 38, 40, 42, 45].map((pct) => (
+            <div className="flex items-center gap-1 bg-black/30 p-0.5 rounded-lg border border-white/15 text-xs">
+              <span className="text-[10px] text-white/70 px-1 font-bold">FRT 비율:</span>
+              {[35, 40, 45].map((pct) => (
                 <button
                   key={pct}
                   type="button"
@@ -702,110 +694,67 @@ export const HanulTaxInvoiceView = () => {
               ))}
             </div>
 
-            {/* RR Share Display */}
-            <div className="text-[11px] text-indigo-200 font-medium px-2 py-0.5 rounded-lg bg-indigo-950/60 border border-indigo-500/30">
-              <span>RR 6종: <strong>각 {rrEachRatioPercent}%</strong> (0.1~0.15)</span>
-            </div>
+            <button
+              type="button"
+              onClick={handleApplySalesToInvoice}
+              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold border border-white/20 transition-all cursor-pointer active:scale-95 flex items-center gap-1"
+              title="하단 8개 품목 매출합계액을 세금계산서 금액으로 일치"
+            >
+              <Coins className="w-3 h-3 text-amber-300" />
+              <span>매출합계 가져오기</span>
+            </button>
           </div>
-
-          {/* Realtime toggle */}
-          <label className="flex items-center gap-1.5 text-[11px] font-bold text-white/80 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={autoRecomputeOnInput}
-              onChange={(e) => setAutoRecomputeOnInput(e.target.checked)}
-              className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 bg-white/20 border-white/30 cursor-pointer"
-            />
-            <span>금액 입력 시 단가 실시간 자동 맞춤</span>
-          </label>
         </div>
 
-        {/* Input & Metrics Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-          {/* 1) 수기 발행 공급가액 입력란 (5 Cols) */}
-          <div className="lg:col-span-5 bg-white/10 backdrop-blur-md p-2.5 sm:p-3 rounded-xl border border-white/20 space-y-1">
-            <label className="text-[11px] font-bold text-blue-200 block flex items-center justify-between">
-              <span>📝 세금계산서 발행 공급가액 (수기 입력)</span>
-              <span className="text-[10px] text-white/60">숫자 입력 시 부가세 & 단가 자동 계산</span>
-            </label>
+        {/* Input & Metrics in 1 Compact Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center text-xs">
+          {/* 1) 공급가액 수기 입력란 */}
+          <div className="bg-white/10 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-white/15 space-y-1">
+            <span className="text-[10.5px] font-bold text-blue-200 block">
+              📝 공급가액 (수기 입력)
+            </span>
             <div className="relative flex items-center">
-              <span className="absolute left-3 text-white/70 font-bold text-sm">₩</span>
+              <span className="absolute left-2.5 text-slate-700 font-bold text-xs">₩</span>
               <input
                 type="text"
                 value={currentInvoiceAmount ? currentInvoiceAmount.toLocaleString() : ""}
+                onFocus={(e) => e.target.select()}
                 onChange={handleInvoiceAmountChange}
                 placeholder="0"
-                className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white text-slate-900 font-mono font-black text-base sm:text-lg text-right shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                className="w-full pl-7 pr-2.5 py-1 rounded-lg bg-white text-slate-900 font-mono font-black text-sm sm:text-base text-right shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </div>
           </div>
 
-          {/* 2) VAT & Total Summary (4 Cols) */}
-          <div className="lg:col-span-4 grid grid-cols-2 gap-2">
-            {/* VAT (10%) */}
-            <div className="bg-white/10 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-white/15">
-              <span className="text-[10.5px] font-bold text-blue-200 block">부가세 (VAT 10%)</span>
-              <div className="font-mono font-black text-sm sm:text-base text-amber-300 mt-0.5 truncate">
-                ₩ {currentVatAmount.toLocaleString()}
-              </div>
-            </div>
-
-            {/* Total Issued */}
-            <div className="bg-white/10 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-white/15">
-              <span className="text-[10.5px] font-bold text-emerald-300 block">총 세금계산서 합계액</span>
-              <div className="font-mono font-black text-sm sm:text-base text-white mt-0.5 truncate">
-                ₩ {currentTotalInvoice.toLocaleString()}
-              </div>
+          {/* 2) 부가세 (10%) */}
+          <div className="bg-white/10 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-white/15 flex flex-col justify-between">
+            <span className="text-[10.5px] font-bold text-blue-200">세액 (VAT 10%)</span>
+            <div className="font-mono font-black text-sm sm:text-base text-amber-300 truncate mt-1 text-right">
+              ₩ {currentVatAmount.toLocaleString()}
             </div>
           </div>
 
-          {/* 3) Issue Date, Status & Reconciliation Badge (3 Cols) */}
-          <div className="lg:col-span-3 bg-white/10 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-white/15 flex flex-col justify-between space-y-1.5">
-            <div className="flex items-center justify-between gap-1.5">
-              <input
-                type="date"
-                value={invoiceConfig.issueDate || `${activeMonth}-30`}
-                onChange={(e) => handleInvoiceMetaChange("issueDate", e.target.value)}
-                className="px-2 py-0.5 rounded-lg bg-white/20 border border-white/20 text-white font-mono font-bold text-[11px] cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 w-full"
-              />
-              <select
-                value={invoiceConfig.status || "발행완료"}
-                onChange={(e) => handleInvoiceMetaChange("status", e.target.value)}
-                className={`px-2 py-0.5 rounded-lg font-black text-[11px] cursor-pointer focus:outline-none border shrink-0 ${
-                  invoiceConfig.status === "발행완료"
-                    ? "bg-emerald-500/80 border-emerald-400 text-white"
-                    : invoiceConfig.status === "발행대기"
-                    ? "bg-amber-500/80 border-amber-400 text-slate-950 font-black"
-                    : "bg-blue-500/80 border-blue-400 text-white"
-                }`}
-              >
-                <option value="발행완료" className="bg-slate-900 text-white font-bold">✓ 발행완료</option>
-                <option value="발행대기" className="bg-slate-900 text-amber-300 font-bold">⏳ 발행대기</option>
-                <option value="작성중" className="bg-slate-900 text-blue-300 font-bold">📝 작성중</option>
-              </select>
-            </div>
-
-            {/* Difference Badge */}
-            <div className="pt-1 border-t border-white/10 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-white/60">매출대비 차액:</span>
-              <span className={`text-[11px] font-black font-mono px-1.5 py-0.2 rounded ${
+          {/* 3) 총 발행 합계액 & 차액 배지 */}
+          <div className="bg-white/10 backdrop-blur-md p-2 sm:p-2.5 rounded-xl border border-white/15 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-[10.5px]">
+              <span className="font-bold text-emerald-300">총 세금계산서 합계</span>
+              <span className={`font-mono font-bold px-1.5 py-0.2 rounded text-[10px] ${
                 salesInvoiceDiff === 0
-                  ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
-                  : Math.abs(salesInvoiceDiff) < 100
-                  ? "bg-blue-500/30 text-blue-200 border border-blue-500/40"
-                  : salesInvoiceDiff > 0
-                  ? "bg-blue-500/30 text-blue-200 border border-blue-500/40"
-                  : "bg-rose-500/30 text-rose-300 border border-rose-500/40"
+                  ? "bg-emerald-500/40 text-emerald-200"
+                  : "bg-amber-500/40 text-amber-200"
               }`}>
-                {salesInvoiceDiff === 0 ? "✓ 0원 (일치)" : `${salesInvoiceDiff > 0 ? "+" : ""}${salesInvoiceDiff.toLocaleString()}원`}
+                차액: {salesInvoiceDiff === 0 ? "0원 (일치)" : `${salesInvoiceDiff.toLocaleString()}원`}
               </span>
+            </div>
+            <div className="font-mono font-black text-sm sm:text-base text-white truncate mt-1 text-right">
+              ₩ {currentTotalInvoice.toLocaleString()}
             </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 3. [그다음] 3순위: 단가재수정 및 실시간 자동계산 패널 (간격 축소 컴팩트 뷰) */}
+      {/* 🌟 3. [단가재수정 및 실시간 자동계산 패널] 1-2번/3-4번/5-6번 자동 동기화 */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Table Top Header */}
@@ -817,10 +766,10 @@ export const HanulTaxInvoiceView = () => {
             <div>
               <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                 <span>9BQC 8가지 항목 단가재수정 및 실시간 자동계산 패널</span>
-                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">
-                  (8줄 컴팩트 뷰)
-                </span>
               </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                ✏️ 1번 수정 시 2번 동일단가, 3번 수정 시 4번 동일단가, 5번 수정 시 6번 동일단가가 자동 삽입됩니다.
+              </p>
             </div>
           </div>
 
@@ -853,7 +802,7 @@ export const HanulTaxInvoiceView = () => {
                   </div>
                 </th>
 
-                {/* 🌟 2) 단가 재수정 (Primary Target) */}
+                {/* 🌟 2) 단가 재수정 (Primary Target - 1-2, 3-4, 5-6 연동) */}
                 <th className="py-2.5 px-2 text-right font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 min-w-[125px]">
                   단가 재수정 (₩) ✏️
                 </th>
@@ -889,6 +838,10 @@ export const HanulTaxInvoiceView = () => {
                 const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
                 const itemRatio = totalSalesAmount > 0 ? ((item.amount / totalSalesAmount) * 100).toFixed(1) : "0.0";
 
+                // Linked pair hint
+                const isPairLinked = idx <= 5;
+                const pairNum = idx === 0 || idx === 1 ? "1·2번 연동" : idx === 2 || idx === 3 ? "3·4번 연동" : idx === 4 || idx === 5 ? "5·6번 연동" : "";
+
                 return (
                   <tr
                     key={item.id || idx}
@@ -910,6 +863,11 @@ export const HanulTaxInvoiceView = () => {
                           {isFrt ? "FRT" : "RR"}
                         </span>
                         <span className="truncate">{item.partName}</span>
+                        {isPairLinked && (
+                          <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-medium hidden lg:inline">
+                            ({pairNum})
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -921,7 +879,7 @@ export const HanulTaxInvoiceView = () => {
                       </div>
                     </td>
 
-                    {/* 🌟 2) 단가 재수정 (컴팩트 인라인 입력창) */}
+                    {/* 🌟 2) 단가 재수정 (탭 시 전체선택 및 1-2, 3-4, 5-6 자동 연동) */}
                     <td className="py-1.5 px-2 text-right bg-indigo-50/60 dark:bg-indigo-950/30">
                       <div className="flex items-center justify-end gap-1">
                         <span className="text-[11px] text-indigo-500 font-black">₩</span>
@@ -929,6 +887,7 @@ export const HanulTaxInvoiceView = () => {
                           type="number"
                           min="0"
                           value={item.unitPrice}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleUpdateSalesRow(item.id, "unitPrice", e.target.value)}
                           className={`w-24 px-2 py-1 text-right rounded-lg border font-mono font-black text-xs shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
                             isModifiedPrice
@@ -947,6 +906,7 @@ export const HanulTaxInvoiceView = () => {
                           type="number"
                           min="0"
                           value={item.amount}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleUpdateSalesRow(item.id, "amount", e.target.value)}
                           className="w-28 px-2 py-1 text-right rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-black text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs shadow-2xs"
                         />
