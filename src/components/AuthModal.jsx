@@ -1247,16 +1247,7 @@ export const AuthModal = () => {
             {/* Panel Top Bar: Metrics & Actions */}
             <div className="p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/80 via-purple-50/60 to-emerald-50/60 dark:from-rose-950/70 dark:via-purple-950/50 dark:to-emerald-950/50">
               {/* Left: Open Issue Title & Live Counts */}
-              <div
-                onClick={() => {
-                  setIsListModalOpen(true);
-                  setSelectedListItem(null);
-                  setIssueFilterTab("all");
-                  setIssueModalPage(1);
-                }}
-                className="flex items-center gap-2 sm:gap-2.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
-                title="탭하여 오픈이슈 관리대장 전체 팝업 열기"
-              >
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                 <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-sm shrink-0">
                   <Pin className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
