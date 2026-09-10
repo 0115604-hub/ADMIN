@@ -5,63 +5,80 @@ import initialMultiMonthData from "../data/multiMonthMasterData.json";
 const STORAGE_KEY = "oryuk_hanul_tax_invoice_store_v1";
 const FIRESTORE_PATH = ["system_store", "hanul_tax_invoice_master"];
 
-export const STANDARD_6_9BQC_TEMPLATES = [
+export const STANDARD_8_9BQC_TEMPLATES = [
   {
     partName: "9BQC RR LH(PRI)",
     partNumber: "42933958",
     itemCode: "G1102-2756-00",
     defaultPrice: 11028,
-    monthlyQty: { "2026-09": 3660, "2026-08": 16560, "2026-07": 21480 }
+    monthlyQty: { "2026-09": 3660, "2026-08": 16560, "2026-07": 21480, default: 3660 }
   },
   {
     partName: "9BQC RR RH(PRI)",
     partNumber: "42933959",
     itemCode: "G1102-2757-00",
     defaultPrice: 11028,
-    monthlyQty: { "2026-09": 3660, "2026-08": 16560, "2026-07": 21420 }
+    monthlyQty: { "2026-09": 3660, "2026-08": 16560, "2026-07": 21420, default: 3660 }
   },
   {
     partName: "9BQC FRT LH",
     partNumber: "42933952",
     itemCode: "G1102-2752-00",
     defaultPrice: 2858,
-    monthlyQty: { "2026-09": 4800, "2026-08": 17800, "2026-07": 21400 }
+    monthlyQty: { "2026-09": 4800, "2026-08": 17800, "2026-07": 21400, default: 4800 }
   },
   {
     partName: "9BQC FRT RH",
     partNumber: "42933953",
     itemCode: "G1102-2753-00",
     defaultPrice: 2858,
-    monthlyQty: { "2026-09": 4800, "2026-08": 17800, "2026-07": 21200 }
+    monthlyQty: { "2026-09": 4800, "2026-08": 17800, "2026-07": 21200, default: 4800 }
   },
   {
     partName: "9BQC RR LH(TNI)",
     partNumber: "42933956",
     itemCode: "G1102-2754-00",
     defaultPrice: 10598,
-    monthlyQty: { "2026-09": 120, "2026-08": 720, "2026-07": 780 }
+    monthlyQty: { "2026-09": 120, "2026-08": 720, "2026-07": 780, default: 120 }
   },
   {
     partName: "9BQC RR RH(TNI)",
     partNumber: "42933957",
     itemCode: "G1102-2755-00",
     defaultPrice: 10598,
-    monthlyQty: { "2026-09": 120, "2026-08": 780, "2026-07": 780 }
+    monthlyQty: { "2026-09": 120, "2026-08": 780, "2026-07": 780, default: 120 }
+  },
+  {
+    partName: "9BQC Glass run RR RH PRIVACY",
+    partNumber: "42870825",
+    itemCode: "G1102-2463-00",
+    defaultPrice: 10627,
+    monthlyQty: { "2026-09": 100, "2026-08": 100, "2026-07": 100, default: 100 }
+  },
+  {
+    partName: "9BQC Glass run FR RH",
+    partNumber: "42896296",
+    itemCode: "G1102-2544-00",
+    defaultPrice: 2753,
+    monthlyQty: { "2026-09": 100, "2026-08": 100, "2026-07": 100, default: 100 }
   }
 ];
 
-// Default 9BQC 6 items extractor
+// Alias for backwards compatibility
+export const STANDARD_6_9BQC_TEMPLATES = STANDARD_8_9BQC_TEMPLATES;
+
+// Default 9BQC 8 items extractor
 export const getDefault9BQCSales = (yearMonth = "2026-09") => {
   const monthData = initialMultiMonthData[yearMonth] || initialMultiMonthData["2026-09"] || initialMultiMonthData["2026-07"];
   const bqcGroup = monthData?.vehicleSales?.find(
     (v) => v.vehicleGroup === "9BQC" || v.vehicleGroup?.includes("9BQC")
   );
 
-  return STANDARD_6_9BQC_TEMPLATES.map((tmpl, idx) => {
+  return STANDARD_8_9BQC_TEMPLATES.map((tmpl, idx) => {
     const matched = bqcGroup?.details?.find(
       (d) => d.partName === tmpl.partName || (d.partNumber && d.partNumber === tmpl.partNumber)
     );
-    const qty = matched && matched.qty !== undefined ? Number(matched.qty) : (tmpl.monthlyQty[yearMonth] ?? 1000);
+    const qty = matched && matched.qty !== undefined ? Number(matched.qty) : (tmpl.monthlyQty[yearMonth] ?? tmpl.monthlyQty.default ?? 100);
     const unitPrice = matched && matched.unitPrice !== undefined ? Number(matched.unitPrice) : tmpl.defaultPrice;
     const amount = qty * unitPrice;
     const taxAmount = Math.round(amount * 0.1);
