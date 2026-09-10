@@ -1217,19 +1217,18 @@ export const AuthModal = () => {
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
         <div className="p-3.5 sm:p-6 sm:px-7">
-          {/* Header Brand with Bright OryukLogo */}
+          {/* Header Brand with Bright OryukLogo (Click to Enter Admin Mode) */}
           <div className="text-center mb-3 sm:mb-4 flex flex-col items-center">
-            {/* Bright, Elevated Logo Container */}
-            <div className="relative mb-1.5 sm:mb-2">
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl sm:rounded-3xl blur-md opacity-40 animate-pulse"></div>
-              <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 sm:p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center">
-                <OryukLogo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md" />
+            {/* Bright, Elevated Logo Container - Clickable for Admin Access */}
+            <div
+              onClick={() => handleUserClick(ADMIN_USERS[0])}
+              className="relative mb-2 cursor-pointer group active:scale-95 transition-transform"
+              title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
+            >
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl sm:rounded-3xl blur-md opacity-40 group-hover:opacity-80 transition-opacity animate-pulse"></div>
+              <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 sm:p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center group-hover:border-blue-400 group-hover:shadow-blue-500/25 transition-all">
+                <OryukLogo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md group-hover:scale-105 transition-transform" />
               </div>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-700 text-blue-600 dark:text-blue-400 text-[10.5px] sm:text-xs font-black mb-1 shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>ORYUK SMART MES PORTAL</span>
             </div>
 
             <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
@@ -1833,21 +1832,6 @@ export const AuthModal = () => {
                     );
                   })}
                 </div>
-              </div>
-
-              {/* ========================================================================= */}
-              {/* 3. BOTTOM ACTIONS: ADMIN (파란색 단일 ADMIN 버튼) */}
-              {/* ========================================================================= */}
-              <div className="pt-2 flex items-center justify-end border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleUserClick(ADMIN_USERS[0])}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs sm:text-sm font-black transition-all shadow-md shadow-blue-500/25 group active:scale-95 cursor-pointer border border-blue-500/60"
-                >
-                  <Shield className="w-4 h-4 text-blue-100" />
-                  <span>ADMIN</span>
-                  <ChevronRight className="w-4 h-4 text-blue-200 group-hover:translate-x-0.5 transition-transform" />
-                </button>
               </div>
             </div>
           ) : (
