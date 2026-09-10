@@ -46,9 +46,10 @@ export const PLANTS = [
       { id: "sam_cy", name: "이창엽", title: "책임", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" },
       { id: "sam_jy", name: "전재율", title: "책임", plant: "삼랑진공장", assignedProcess: "설비보전", role: "OPERATOR", avatar: "전", pin: "11" },
       { id: "sam_in", name: "양인나", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "양", pin: "11" },
+      { id: "sam_dg", name: "유동길", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "유", pin: "11" },
       { id: "sam_ij", name: "조인주", title: "선임", plant: "삼랑진공장", assignedProcess: "경리업무", role: "OPERATOR", avatar: "조", pin: "11" },
       { id: "sam_sg", name: "이상기", title: "사원", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" },
-      { id: "sam_ys", name: "유성산업", title: "협력업체", plant: "삼랑진공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "유", pin: "11", isPartner: true }
+      { id: "sam_ys", name: "유성", title: "협력업체", plant: "삼랑진공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "유", pin: "11", isPartner: true }
     ]
   },
   {
