@@ -2022,166 +2022,132 @@ export const AuthModal = () => {
             /* ========================================================================= */
             <form onSubmit={handlePinSubmit} className="space-y-3.5 animate-fadeIn">
               {/* ========================================================================= */}
-              {/* ⚡ ⭐ 상단 2분할 패널: [좌측] 관리자근무상황 (점멸) + [우측] 회사별 근태현황 (5개사 미니패널 - 결근/조퇴) */}
+              {/* ⚡ ⭐ 상단 통합 1개 패널 (좌우 2분할): [좌측] 관리자근무상황 + [우측] 회사별 근태 (심플&컴팩트) */}
               {/* ========================================================================= */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3">
-                {/* 1. 좌측: 관리자근무상황 (점멸 유지) */}
-                <div className={`p-2.5 sm:p-3 rounded-2xl border-2 transition-all ${
-                  managerLeaves.length > 0
-                    ? "bg-gradient-to-br from-amber-500/15 via-rose-500/15 to-amber-500/15 dark:from-amber-950/40 dark:via-rose-950/30 dark:to-amber-950/40 border-amber-400 dark:border-amber-600 shadow-md animate-pulse"
-                    : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 shadow-xs"
-                } lg:col-span-5 flex flex-col justify-between space-y-2`}>
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5 flex-wrap mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="relative flex h-2.5 w-2.5">
+              <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-slate-800/70 border border-slate-200/90 dark:border-slate-700/80 shadow-xs">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5 md:divide-x divide-slate-200 dark:divide-slate-700/80">
+                  {/* 1. 좌측: 관리자근무상황 */}
+                  <div className="flex flex-col justify-between space-y-1.5 md:pr-2">
+                    {/* Mini Header */}
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="relative flex h-2 w-2">
                           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
                             managerLeaves.length > 0 ? "bg-rose-400" : "bg-emerald-400"
                           } opacity-75`}></span>
-                          <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                          <span className={`relative inline-flex rounded-full h-2 w-2 ${
                             managerLeaves.length > 0 ? "bg-rose-500" : "bg-emerald-500"
                           }`}></span>
                         </span>
-                        <strong className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span className={managerLeaves.length > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-800 dark:text-slate-200"}>
-                            ⚡ 관리자근무상황
-                          </span>
-                          {managerLeaves.length > 0 && (
-                            <span className="text-[10px] font-mono font-black px-1.5 py-0.2 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                              변동 {managerLeaves.length}명
-                            </span>
-                          )}
-                        </strong>
+                        <span className="text-[11px] sm:text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                          <span>⚡ 관리자근무상황</span>
+                        </span>
                       </div>
-                      <span className={`text-[9.5px] sm:text-[10px] font-black px-2 py-0.5 rounded-full text-white shadow-2xs flex items-center gap-1 ${
-                        managerLeaves.length > 0 ? "bg-rose-600 animate-pulse" : "bg-emerald-600"
+
+                      <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-full ${
+                        managerLeaves.length > 0
+                          ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 animate-pulse"
+                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
                       }`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-                        <span>{managerLeaves.length > 0 ? "실시간 점멸" : "정상 근무중"}</span>
+                        {managerLeaves.length > 0 ? `변동 ${managerLeaves.length}명` : "정상 근무중"}
                       </span>
                     </div>
 
-                    {/* Manager Cards */}
+                    {/* Content */}
                     {managerLeaves.length > 0 ? (
-                      <div className="grid grid-cols-1 gap-1.5">
+                      <div className="space-y-1">
                         {managerLeaves.map((m) => {
                           const ls = m.leaveStatus;
                           return (
                             <div
                               key={m.id || m.name}
-                              className="p-1.5 sm:p-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/80 shadow-2xs flex items-center justify-between gap-2"
+                              className="py-1 px-1.5 rounded-lg bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/70 flex items-center justify-between gap-1.5 text-xs shadow-2xs"
                             >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-black shrink-0 ${
+                              <div className="flex items-center gap-1 min-w-0">
+                                <span className={`px-1 py-0.2 rounded text-[8.5px] font-black shrink-0 ${
                                   m.plant === "삼랑진공장"
-                                    ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
+                                    ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300"
                                     : m.plant === "한림공장"
-                                    ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
-                                    : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-300"
+                                    ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+                                    : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300"
                                 }`}>
-                                  {m.plant}
+                                  {m.plant === "삼랑진공장" ? "삼랑진" : m.plant === "한림공장" ? "한림" : "본사"}
                                 </span>
-                                <span className="text-xs font-black text-slate-900 dark:text-white truncate">
-                                  {m.name} <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{m.title || "관리자"}</span>
+                                <span className="font-black text-slate-900 dark:text-white text-[11px] truncate">
+                                  {m.name} <span className="text-[9.5px] font-bold text-slate-500">{m.title || "관리자"}</span>
                                 </span>
                               </div>
 
-                              <div className="shrink-0">
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-rose-600 to-amber-600 text-white shadow-2xs border border-rose-400 animate-pulse flex items-center gap-1">
-                                  <span>{ls.emoji || "⚡"}</span>
-                                  <span>{ls.line2 ? `${ls.line1} (${ls.line2})` : ls.displayBadge?.replace('\n', ' ') || ls.label}</span>
-                                </span>
-                              </div>
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black bg-rose-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5 animate-pulse">
+                                <span>{ls.emoji || "⚡"}</span>
+                                <span>{ls.line2 ? `${ls.line1}(${ls.line2})` : ls.displayBadge?.replace('\n', ' ') || ls.label}</span>
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     ) : (
-                      <div className="py-3 px-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-center gap-2 text-center">
-                        <span className="text-emerald-500 font-bold text-sm animate-pulse">✨</span>
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                          관리자 전원 <strong className="text-emerald-600 dark:text-emerald-400 font-black">정상 근무중</strong> (변동 없음)
-                        </span>
+                      <div className="py-1.5 px-2 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-center gap-1 text-[11px] text-slate-600 dark:text-slate-300 font-bold">
+                        <span className="text-emerald-500 font-black">✓</span>
+                        <span>전원 정상 근무중 (변동 없음)</span>
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* 2. 우측: 회사별 근태현황 (5개사 작은패널 - 결근/조퇴 전용) */}
-                <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 shadow-xs lg:col-span-7 flex flex-col justify-between space-y-2">
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5 flex-wrap mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                          <span className="text-blue-600 dark:text-blue-400">🏢</span>
-                          <span>회사별 근태현황</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          (오늘 결근 · 조퇴 집계)
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 text-[9.5px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                        <span>5개사 실시간</span>
-                      </div>
+                  {/* 2. 우측: 회사별 근태 */}
+                  <div className="flex flex-col justify-between space-y-1.5 md:pl-2 pt-2 md:pt-0">
+                    {/* Mini Header */}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[11px] sm:text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <span className="text-blue-600 dark:text-blue-400">🏢</span>
+                        <span>회사별 근태</span>
+                        <span className="text-[9.5px] text-slate-400 font-normal">(오늘 결근·조퇴)</span>
+                      </span>
+                      <span className="text-[9.5px] font-bold text-slate-400">5개사</span>
                     </div>
 
-                    {/* 5개 작은 패널 그리드 */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+                    {/* 5 Companies 5-Columns Grid */}
+                    <div className="grid grid-cols-5 gap-1">
                       {companyAttendanceStats.map((stat) => {
                         const compName = stat.company;
-                        const theme = COMPANY_THEMES[compName] || {
-                          badge: "bg-slate-100 text-slate-800 border-slate-300",
-                          border: "border-slate-200"
-                        };
-                        const hasIssue = stat.absentCount > 0 || stat.earlyLeaveCount > 0;
+                        const shortName = compName.replace("(주)", "");
+                        const hasAbsent = stat.absentCount > 0;
+                        const hasEarly = stat.earlyLeaveCount > 0;
+                        const hasIssue = hasAbsent || hasEarly;
 
                         return (
                           <div
                             key={compName}
-                            className={`p-2 rounded-xl bg-white dark:bg-slate-900 border ${
+                            title={`${compName}${hasAbsent ? ` | 결근: ${stat.absentList.map((a) => `${a.name}(${a.reason})`).join(", ")}` : ""}${hasEarly ? ` | 조퇴: ${stat.earlyLeaveList.map((a) => `${a.name}(${a.reason})`).join(", ")}` : ""}`}
+                            className={`p-1 rounded-lg bg-white dark:bg-slate-900 border ${
                               hasIssue
-                                ? "border-rose-300 dark:border-rose-800 shadow-2xs ring-1 ring-rose-400/30"
+                                ? "border-rose-400 dark:border-rose-700 bg-rose-50/30 dark:bg-rose-950/20 shadow-2xs ring-1 ring-rose-400/20"
                                 : "border-slate-200 dark:border-slate-700/80 shadow-2xs"
-                            } flex flex-col justify-between min-w-0 transition-all`}
+                            } flex flex-col justify-between items-center text-center transition-all`}
                           >
-                            {/* Company Header */}
-                            <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-100 dark:border-slate-800">
-                              <span className={`text-[10px] sm:text-[11px] font-black px-1.5 py-0.5 rounded truncate ${theme.badge}`}>
-                                {compName}
-                              </span>
-                            </div>
+                            {/* Company Short Name */}
+                            <span className="text-[9.5px] font-black text-slate-800 dark:text-slate-200 truncate w-full block">
+                              {shortName}
+                            </span>
 
-                            {/* Status Section: 결근 & 조퇴 */}
-                            <div className="pt-1.5 space-y-1">
+                            {/* Status Row */}
+                            <div className="flex items-center justify-center gap-0.5 mt-0.5 w-full">
                               {/* 결근 */}
-                              <div className="flex items-center justify-between gap-1 text-[10px]">
-                                <span className="font-bold text-slate-500 dark:text-slate-400">결근</span>
-                                {stat.absentCount > 0 ? (
-                                  <span
-                                    title={stat.absentList.map((a) => `${a.name}(${a.reason})`).join(", ")}
-                                    className="px-1.5 py-0.2 rounded font-black text-[10px] bg-rose-600 text-white animate-pulse truncate max-w-[70px]"
-                                  >
-                                    {stat.absentCount}명 ({stat.absentList.map((a) => a.name).join(",")})
-                                  </span>
-                                ) : (
-                                  <span className="font-bold text-slate-400 dark:text-slate-500">0</span>
-                                )}
-                              </div>
-
+                              <span className={`px-1 py-0.2 rounded text-[8.5px] font-black ${
+                                hasAbsent
+                                  ? "bg-rose-600 text-white animate-pulse"
+                                  : "text-slate-400 bg-slate-100 dark:bg-slate-800"
+                              }`}>
+                                결{stat.absentCount}
+                              </span>
                               {/* 조퇴 */}
-                              <div className="flex items-center justify-between gap-1 text-[10px]">
-                                <span className="font-bold text-slate-500 dark:text-slate-400">조퇴</span>
-                                {stat.earlyLeaveCount > 0 ? (
-                                  <span
-                                    title={stat.earlyLeaveList.map((a) => `${a.name}(${a.reason})`).join(", ")}
-                                    className="px-1.5 py-0.2 rounded font-black text-[10px] bg-amber-600 text-white animate-pulse truncate max-w-[70px]"
-                                  >
-                                    {stat.earlyLeaveCount}명 ({stat.earlyLeaveList.map((a) => a.name).join(",")})
-                                  </span>
-                                ) : (
-                                  <span className="font-bold text-slate-400 dark:text-slate-500">0</span>
-                                )}
-                              </div>
+                              <span className={`px-1 py-0.2 rounded text-[8.5px] font-black ${
+                                hasEarly
+                                  ? "bg-amber-600 text-white animate-pulse"
+                                  : "text-slate-400 bg-slate-100 dark:bg-slate-800"
+                              }`}>
+                                조{stat.earlyLeaveCount}
+                              </span>
                             </div>
                           </div>
                         );
