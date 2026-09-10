@@ -394,21 +394,65 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
 
     if (validLeaves.length === 0) return null;
 
-    // Helper to get compact label for badges
-    const getCompactType = (typeName) => {
-      const t = String(typeName || "");
-      if (t.includes("삼랑진")) return "삼랑진";
-      if (t.includes("한림")) return "한림";
-      if (t.includes("오전반차") || t === "반차(오전)") return "오전";
-      if (t.includes("오후반차") || t === "반차(오후)") return "오후";
-      if (t.includes("특근")) return "특근";
-      if (t.includes("출장") || t.includes("교육")) return "출장";
-      if (t.includes("외출")) return "외출";
-      if (t.includes("RNA") || t.includes("회의")) return "회의";
-      if (t.includes("할일")) return "할일";
-      if (t.includes("업체방문")) return "방문";
-      if (t.includes("연차")) return "연차";
-      return t || "일정";
+    // Helper to get compact label and 2-line breakdown for badges
+    const getCompactBadgeInfo = (typeName, reason, name) => {
+      const t = String(typeName || "").trim();
+      const r = String(reason || "").trim();
+
+      let line1 = "";
+      let line2 = "";
+
+      if (t.includes("한림") || r.includes("한림")) {
+        line1 = "한림공장";
+        if (r.includes("클립") || t.includes("클립") || r.includes("MC") || r.includes("M/C")) {
+          line2 = "클립MC";
+        } else if (r && r !== t && !r.includes("한림")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        } else if (name === "이명재") {
+          line2 = "클립MC";
+        }
+      } else if (t.includes("삼랑진") || r.includes("삼랑진")) {
+        line1 = "삼랑진공장";
+        if (r && r !== t && !r.includes("삼랑진")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
+      } else if (t.includes("오전반차") || t === "반차(오전)") {
+        line1 = "오전반차";
+      } else if (t.includes("오후반차") || t === "반차(오후)") {
+        line1 = "오후반차";
+      } else if (t.includes("특근")) {
+        line1 = "특근";
+      } else if (t.includes("출장") || t.includes("교육")) {
+        line1 = "출장";
+        if (r && r !== t) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
+      } else if (t.includes("외출")) {
+        line1 = "외출";
+      } else if (t.includes("RNA") || t.includes("회의")) {
+        line1 = "회의";
+      } else if (t.includes("할일")) {
+        line1 = "할일";
+      } else if (t.includes("업체방문")) {
+        line1 = "방문";
+      } else if (t.includes("연차")) {
+        line1 = "연차";
+      } else {
+        line1 = t || "일정";
+      }
+
+      if (!line2 && r && r !== t) {
+        if (r.includes("클립")) {
+          line2 = "클립MC";
+        }
+      }
+
+      return {
+        line1,
+        line2,
+        displayBadge: line2 ? `${line1}\n${line2}` : line1,
+        compactType: line1
+      };
     };
 
     // 1. Check for active leave TODAY (startDate <= todayStr <= endDate)
@@ -420,14 +464,16 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
 
     if (activeTodayLeave) {
       const meta = getLeaveTypeMeta(activeTodayLeave.leaveType);
-      const compactType = getCompactType(meta.type);
+      const badgeInfo = getCompactBadgeInfo(meta.type, activeTodayLeave.reason, userName);
       return {
         status: "ACTIVE",
         isToday: true,
         type: meta.type,
         emoji: meta.emoji,
-        displayBadge: compactType,
-        mobileBadge: compactType,
+        line1: badgeInfo.line1,
+        line2: badgeInfo.line2,
+        displayBadge: badgeInfo.displayBadge,
+        mobileBadge: badgeInfo.displayBadge,
         label: `${meta.emoji} ${meta.activeLabel || meta.type}`,
         fullLabel: `${activeTodayLeave.startDate} ${activeTodayLeave.leaveType}${
           activeTodayLeave.reason && activeTodayLeave.reason !== activeTodayLeave.leaveType
@@ -455,7 +501,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
     if (upcomingLeaves.length > 0) {
       const nextLeave = upcomingLeaves[0];
       const meta = getLeaveTypeMeta(nextLeave.leaveType);
-      const compactType = getCompactType(meta.type);
+      const badgeInfo = getCompactBadgeInfo(meta.type, nextLeave.reason, userName);
       const startNorm = normalizeDateStr(nextLeave.startDate || nextLeave.date || "");
       const dateParts = startNorm.split("-");
       const shortMonthDay =
@@ -469,8 +515,10 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         type: meta.type,
         emoji: meta.emoji,
         shortDate: shortMonthDay,
-        displayBadge: `${shortMonthDay}·${compactType}`,
-        mobileBadge: `${shortMonthDay}·${compactType}`,
+        line1: badgeInfo.line2 ? badgeInfo.line1 : `${shortMonthDay}·${badgeInfo.line1}`,
+        line2: badgeInfo.line2 || "",
+        displayBadge: `${shortMonthDay}·${badgeInfo.displayBadge}`,
+        mobileBadge: `${shortMonthDay}·${badgeInfo.displayBadge}`,
         label: `${meta.emoji} ${shortMonthDay} ${meta.type}`,
         fullLabel: `${nextLeave.startDate} ${nextLeave.leaveType}${
           nextLeave.reason && nextLeave.reason !== nextLeave.leaveType ? ` (${nextLeave.reason})` : ""

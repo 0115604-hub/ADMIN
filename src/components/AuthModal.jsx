@@ -1254,7 +1254,7 @@ export const AuthModal = () => {
                           </span>
                         </div>
 
-                        <span className={`text-[7px] sm:text-[9.5px] font-bold shrink-0 px-1 py-0.2 rounded whitespace-nowrap tracking-tighter sm:tracking-normal ${
+                        <span className={`shrink-0 px-1 sm:px-1.5 py-0.5 rounded leading-none text-center flex flex-col justify-center items-center tracking-tighter sm:tracking-normal ${
                           isLeaveToday
                             ? "text-white bg-rose-600 font-black shadow-xs animate-pulse ring-1 ring-rose-400"
                             : hasLeave
@@ -1266,14 +1266,21 @@ export const AuthModal = () => {
                             : "text-slate-400 dark:text-slate-400"
                         }`}>
                           {hasLeave ? (
-                            <>
-                              <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
-                              <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
-                            </>
+                            leaveStatus.line2 ? (
+                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[6.5px] sm:text-[7.5px] font-black">
+                                <span className="whitespace-nowrap">{leaveStatus.line1}</span>
+                                <span className="whitespace-nowrap opacity-95">{leaveStatus.line2}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[7.5px] sm:text-[9.5px] font-bold whitespace-nowrap">
+                                <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
+                                <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
+                              </span>
+                            )
                           ) : isPartner ? (
-                            "협력"
+                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">협력</span>
                           ) : (
-                            worker.title || "선임"
+                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
                           )}
                         </span>
                       </button>
@@ -1341,7 +1348,7 @@ export const AuthModal = () => {
                           </span>
                         </div>
 
-                        <span className={`text-[7px] sm:text-[9.5px] font-bold shrink-0 px-1 py-0.2 rounded whitespace-nowrap tracking-tighter sm:tracking-normal ${
+                        <span className={`shrink-0 px-1 sm:px-1.5 py-0.5 rounded leading-none text-center flex flex-col justify-center items-center tracking-tighter sm:tracking-normal ${
                           isLeaveToday
                             ? "text-white bg-rose-600 font-black shadow-xs animate-pulse ring-1 ring-rose-400"
                             : hasLeave
@@ -1353,14 +1360,21 @@ export const AuthModal = () => {
                             : "text-slate-400 dark:text-slate-400"
                         }`}>
                           {hasLeave ? (
-                            <>
-                              <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
-                              <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
-                            </>
+                            leaveStatus.line2 ? (
+                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[6.5px] sm:text-[7.5px] font-black">
+                                <span className="whitespace-nowrap">{leaveStatus.line1}</span>
+                                <span className="whitespace-nowrap opacity-95">{leaveStatus.line2}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[7.5px] sm:text-[9.5px] font-bold whitespace-nowrap">
+                                <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
+                                <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
+                              </span>
+                            )
                           ) : isPartner ? (
-                            "협력"
+                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">협력</span>
                           ) : (
-                            worker.title || "선임"
+                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
                           )}
                         </span>
                       </button>
