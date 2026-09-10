@@ -20,6 +20,28 @@ const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 // Initial urgent issue samples (Empty by default to prevent zombie deleted items)
 export const INITIAL_URGENT_ISSUES = [];
 
+// Helper: Sanitize legacy author names (e.g. 방상국 -> 권태형 / 설유철)
+export const sanitizeUrgentIssueItem = (item) => {
+  if (!item) return item;
+  let updated = { ...item };
+  if (updated.author === "방상국") {
+    updated.author = "권태형";
+    updated.authorTitle = "대표이사";
+  }
+  if (updated.actionAuthor === "방상국") {
+    updated.actionAuthor = "설유철";
+  }
+  if (Array.isArray(updated.replies)) {
+    updated.replies = updated.replies.map((r) => {
+      if (r.author === "방상국") {
+        return { ...r, author: "설유철", authorTitle: "책임" };
+      }
+      return r;
+    });
+  }
+  return updated;
+};
+
 // Helper: Read local storage
 export const getLocalUrgentIssues = () => {
   try {
@@ -29,7 +51,8 @@ export const getLocalUrgentIssues = () => {
       return [];
     }
     const parsed = JSON.parse(data);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(sanitizeUrgentIssueItem);
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
     return [];

@@ -140,8 +140,8 @@ export const ElectronicApprovalView = () => {
     typeName: "특근 신청서",
     plant: currentProfile?.plant || "삼랑진공장",
     department: currentProfile?.assignedProcess || "압출동 관리",
-    drafter: currentProfile?.name || "방상국",
-    drafterTitle: currentProfile?.title || "선임",
+    drafter: currentProfile?.name || "권태형",
+    drafterTitle: currentProfile?.title || (currentProfile?.name === "권태형" ? "대표이사" : "선임"),
     leadName: "설유철", // Default Step 2 (책임)
     directorName: "이명재", // Step 3 (이사)
     ceoName: currentProfile?.name === "최미영" ? "최미영" : "권태형", // Step 4 (대표/전무)

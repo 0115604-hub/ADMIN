@@ -179,16 +179,16 @@ export const INITIAL_APPROVAL_DOCS = [
     title: "9월 1주차 주말 압출 2호기 및 가공 3호기 특근 승인의 건",
     plant: "삼랑진공장",
     department: "생산1팀 (압출)",
-    drafter: "방상국",
-    drafterTitle: "선임",
+    drafter: "설유철",
+    drafterTitle: "책임",
     createdAt: "2026-09-03 09:30",
     content: "현대 NX4a 및 JA 차종 긴급 납품 물량 대응을 위해 주말 특근(08:00~17:00, 총 6명)을 신청하오니 재가하여 주시기 바랍니다.",
     amount: "₩1,248,000",
     status: "IN_PROGRESS",
     currentStep: 2,
     steps: [
-      { role: "담당", name: "방상국", title: "선임", status: "APPROVED", date: "2026-09-03 09:30", comment: "기안 상신" },
-      { role: "책임", name: "설유철", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "담당", name: "설유철", title: "책임", status: "APPROVED", date: "2026-09-03 09:30", comment: "기안 상신" },
+      { role: "책임", name: "이창엽", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
     ],
@@ -206,7 +206,7 @@ export const INITIAL_APPROVAL_DOCS = [
     drafter: "양인나",
     drafterTitle: "선임",
     createdAt: "2026-09-02 14:20",
-    content: "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 일시: 2026년 9월 5일 (금) 1일간\n- 업무 대행자: 방상국 선임",
+    content: "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 일시: 2026년 9월 5일 (금) 1일간\n- 업무 대행자: 유동길 선임",
     amount: "-",
     status: "IN_PROGRESS",
     currentStep: 2,
@@ -875,7 +875,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
         const KNOWN_MANAGERS = [
           "이명재", "설유철", "윤경수", "김동욱", "송원호", "진태경",
-          "안태식", "표성준", "하원식", "김유성", "권태형", "방상국"
+          "안태식", "표성준", "하원식", "김유성", "권태형", "최미영"
         ];
 
         if (compRep.items && compRep.items.length > 0) {

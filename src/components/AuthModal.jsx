@@ -140,13 +140,14 @@ export const AuthModal = () => {
   const [selectedScheduleDate, setSelectedScheduleDate] = useState(""); // "" or "YYYY-MM-DD" for schedule calendar filter
   const ISSUES_PER_PAGE = 5;
   const [issueModalPage, setIssueModalPage] = useState(1);
+  const [isIssueDetailMode, setIsIssueDetailMode] = useState(true); // 🌟 Detail mode (정리된 내용) vs Edit mode toggle
 
   // New Issue Form State (사진 첨부 및 사내공지/회의일정 만료일자 및 회의시간, 조치결과, 조치사진, 상태 지원)
   const [newIssueForm, setNewIssueForm] = useState({
     category: "오픈이슈",
     plant: "삼랑진공장",
-    author: "방상국",
-    authorTitle: "선임",
+    author: "권태형",
+    authorTitle: "대표이사",
     startDate: "",
     expireDate: "",
     meetingTime: "14:00",
@@ -171,7 +172,7 @@ export const AuthModal = () => {
 
   // Reply Form State for Meeting Schedule & Issue Comments (회신란)
   const [replyForm, setReplyForm] = useState({
-    author: "방상국",
+    author: "설유철",
     attendanceStatus: "참석",
     content: ""
   });
@@ -761,16 +762,18 @@ export const AuthModal = () => {
     }));
   };
 
-  // Open Edit Urgent Issue Modal (기존 품질경보/공지/회의 상세 조회 및 조치/수정)
+  // Open Edit Urgent Issue Modal (기존 품질경보/공지/회의/오픈이슈 상세 조회 및 조치/수정)
   const handleOpenEditIssue = (issue, e) => {
     if (e) e.stopPropagation();
+    const sanitizedAuthor = issue.author === "방상국" ? "권태형" : (issue.author || "권태형");
+    const sanitizedTitle = issue.author === "방상국" ? "대표이사" : (issue.authorTitle || "대표이사");
     setEditingIssue(issue);
     setNewIssueForm({
       id: issue.id,
       category: issue.category || "오픈이슈",
       plant: issue.plant || "삼랑진공장",
-      author: issue.author || "방상국",
-      authorTitle: issue.authorTitle || "선임",
+      author: sanitizedAuthor,
+      authorTitle: sanitizedTitle,
       startDate: issue.startDate || issue.createdDate || todayDateStr,
       expireDate: issue.expireDate || issue.targetDate || todayDateStr,
       meetingTime: issue.meetingTime || "14:00",
@@ -779,16 +782,17 @@ export const AuthModal = () => {
       content: issue.content || "",
       images: issue.images ? [...issue.images] : [],
       actionResult: issue.actionResult || "",
-      actionAuthor: issue.actionAuthor || "설유철",
+      actionAuthor: issue.actionAuthor === "방상국" ? "설유철" : (issue.actionAuthor || "설유철"),
       actionImages: issue.actionImages ? [...issue.actionImages] : [],
       isResolved: issue.isResolved || false,
       replies: issue.replies ? [...issue.replies] : []
     });
     setActionOpinionForm({
       actionDate: todayDateStr,
-      author: "설유철",
+      author: currentProfile?.name || "설유철",
       content: ""
     });
+    setIsIssueDetailMode(true); // 🌟 Detail view mode enabled so organized summary is displayed
     setIsIssueModalOpen(true);
   };
 
@@ -880,8 +884,8 @@ export const AuthModal = () => {
     setNewIssueForm({
       category: "오픈이슈",
       plant: "삼랑진공장",
-      author: "방상국",
-      authorTitle: "선임",
+      author: "권태형",
+      authorTitle: "대표이사",
       startDate: todayDateStr,
       expireDate: todayDateStr,
       meetingTime: "14:00",
@@ -1327,11 +1331,12 @@ export const AuthModal = () => {
                   type="button"
                   onClick={() => {
                     setEditingIssue(null);
+                    setIsIssueDetailMode(false); // New registration mode (shows form)
                     setNewIssueForm({
                       category: "품질경보",
                       plant: "삼랑진공장",
-                      author: "방상국",
-                      authorTitle: "선임",
+                      author: currentProfile?.name || "권태형",
+                      authorTitle: currentProfile?.title || (currentProfile?.name === "권태형" ? "대표이사" : "선임"),
                       expireDate: todayDateStr,
                       meetingTime: "14:00",
                       title: "",
@@ -2942,7 +2947,290 @@ export const AuthModal = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveNewIssue} className="space-y-3.5 text-xs">
+            {/* 🌟 1. 상세 보기 모드: 오픈이슈 및 공지/회의/품질경보 정리된 내용만 깔끔하게 표시 */}
+            {editingIssue && isIssueDetailMode ? (
+              <div className="space-y-3.5 text-xs">
+                {/* 1) 상단 등록 정보 & 일정 요약 바 */}
+                <div className="p-3 rounded-2xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                      <span className="font-bold text-slate-500 dark:text-slate-400">등록자:</span>
+                      <strong className="font-black text-slate-900 dark:text-white">
+                        {editingIssue.author || "권태형"} {editingIssue.authorTitle || ""}
+                      </strong>
+                      <span className="text-slate-400 dark:text-slate-500">•</span>
+                      <span className="font-mono text-slate-600 dark:text-slate-300">
+                        {editingIssue.createdAt || editingIssue.date || todayDateStr}
+                      </span>
+                    </div>
+                    {(editingIssue.startDate || editingIssue.expireDate) && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-blue-900 dark:text-blue-200 font-mono font-bold">
+                        <span>🚩 일정: {editingIssue.startDate || "착수"} ~ {editingIssue.expireDate || "마감"}</span>
+                        {editingIssue.expireDate && (
+                          <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
+                            editingIssue.expireDate >= todayDateStr
+                              ? "bg-blue-600 text-white"
+                              : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                          }`}>
+                            {editingIssue.expireDate >= todayDateStr
+                              ? `D-${Math.max(0, Math.ceil((new Date(editingIssue.expireDate) - new Date(todayDateStr)) / (1000 * 60 * 60 * 24)))}`
+                              : "기한경과"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Status Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const toggled = !editingIssue.isResolved;
+                      setNewIssueForm((prev) => ({ ...prev, isResolved: toggled }));
+                      const updated = { ...editingIssue, isResolved: toggled };
+                      setEditingIssue(updated);
+                      setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
+                      await saveUrgentIssue(updated);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0 ${
+                      editingIssue.isResolved
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-amber-500 text-slate-950 hover:bg-amber-600"
+                    }`}
+                    title="클릭 시 조치완료 / 진행중 상태 즉시 전환"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>{editingIssue.isResolved ? "조치완료 ✓" : "진행중 (완료처리 ➜)"}</span>
+                  </button>
+                </div>
+
+                {/* 2) 제목 & 상세 전달 내용 (정리된 본문 카드) */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0"></div>
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug break-words">
+                      {editingIssue.title || "제목 없음"}
+                    </h4>
+                  </div>
+                  <div className="text-xs sm:text-[13px] font-medium text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                    {editingIssue.content || "상세 전달 내용이 없습니다."}
+                  </div>
+
+                  {/* 조치 결과 내용 (있을 시) */}
+                  {editingIssue.actionResult && (
+                    <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 space-y-1">
+                      <div className="flex items-center justify-between text-[11px] font-black text-emerald-800 dark:text-emerald-300">
+                        <span className="flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>조치 완료 결과</span>
+                        </span>
+                        {editingIssue.actionAuthor && (
+                          <span className="font-medium text-slate-500 dark:text-slate-400">
+                            {editingIssue.actionAuthor} • {editingIssue.actionAt}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-medium leading-relaxed">
+                        {editingIssue.actionResult}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 첨부 사진 갤러리 */}
+                  {((editingIssue.images && editingIssue.images.length > 0) || (editingIssue.actionImages && editingIssue.actionImages.length > 0)) && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <label className="font-bold text-[11px] text-slate-500 dark:text-slate-400 block mb-1.5">
+                        📸 현장 첨부 사진 ({((editingIssue.images?.length || 0) + (editingIssue.actionImages?.length || 0))}장)
+                      </label>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {editingIssue.images?.map((img, idx) => (
+                          <img
+                            key={`img_${idx}`}
+                            src={img.dataUrl}
+                            alt={`첨부사진_${idx + 1}`}
+                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진_${idx + 1}` })}
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-2 border-slate-200 dark:border-slate-700 cursor-pointer hover:scale-105 transition-all shadow-xs"
+                            title="클릭하여 원본 보기"
+                          />
+                        ))}
+                        {editingIssue.actionImages?.map((img, idx) => (
+                          <img
+                            key={`act_${idx}`}
+                            src={img.dataUrl}
+                            alt={`조치사진_${idx + 1}`}
+                            onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `조치사진_${idx + 1}` })}
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-2 border-emerald-300 dark:border-emerald-700 cursor-pointer hover:scale-105 transition-all shadow-xs"
+                            title="클릭하여 원본 보기"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3) 💬 일자별 조치 의견 & 진행 일지 (오픈이슈/회의일정/사내공지) */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/70 via-indigo-50/30 to-slate-50 dark:from-blue-950/40 dark:via-indigo-950/20 dark:to-slate-900 border-2 border-blue-200 dark:border-blue-900/80 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <span className="font-black text-xs sm:text-sm text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-blue-600" />
+                      <span>조치 일자별 의견 및 진행 일지 ({editingIssue.replies?.length || 0}건)</span>
+                    </span>
+                    <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-semibold">
+                      * 작업자 누구나 의견을 등록할 수 있습니다.
+                    </span>
+                  </div>
+
+                  {/* Opinions List Display */}
+                  {editingIssue.replies && editingIssue.replies.length > 0 ? (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {editingIssue.replies.map((rep) => (
+                        <div
+                          key={rep.id}
+                          className="p-2.5 rounded-xl bg-white dark:bg-slate-900/90 border border-blue-200/80 dark:border-blue-900/80 flex items-center justify-between gap-2 shadow-2xs"
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-blue-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                              <Calendar className="w-2.5 h-2.5" />
+                              <span>{rep.actionDate || rep.createdAt?.slice(0, 10)}</span>
+                            </span>
+                            <strong className="text-slate-900 dark:text-white font-bold text-xs shrink-0">
+                              {rep.author} {rep.authorTitle || ""}
+                            </strong>
+                            <span className="text-slate-700 dark:text-slate-200 text-xs break-words font-medium">
+                              {rep.content}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[9.5px] text-slate-400 font-mono">
+                              {rep.createdAt?.slice(11, 16) || ""}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => handleModalDeleteOpinion(rep.id, e)}
+                              className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                              title="의견 삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center text-xs font-semibold text-slate-400 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-dashed border-blue-200 dark:border-blue-900">
+                      등록된 조치 의견이 없습니다. 아래에서 새로운 의견을 남겨주세요.
+                    </div>
+                  )}
+
+                  {/* Quick Opinion Input Box */}
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-800 space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="font-bold text-[10.5px] text-slate-600 dark:text-slate-400 block mb-1">
+                          📅 조치일자
+                        </label>
+                        <input
+                          type="date"
+                          value={actionOpinionForm.actionDate || todayDateStr}
+                          onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, actionDate: e.target.value })}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold text-xs text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-bold text-[10.5px] text-slate-600 dark:text-slate-400 block mb-1">
+                          👤 작성자
+                        </label>
+                        <select
+                          value={actionOpinionForm.author}
+                          onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, author: e.target.value })}
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                        >
+                          {allWorkers.map((w) => (
+                            <option key={w.id} value={w.name}>
+                              {w.plantName} • {w.name} {w.title || ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="조치 의견 및 진행 상황을 입력하세요 (엔터 시 추가)"
+                        value={actionOpinionForm.content}
+                        onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleModalAddOpinion(e);
+                          }
+                        }}
+                        className="flex-1 px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleModalAddOpinion}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ 의견 등록</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4) 하단 액션 버튼 바 */}
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsIssueDetailMode(false)}
+                      className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                      title="제목, 본문, 일정, 사진 등 내용 수정 모드로 전환"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>✏️ 내용 수정</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => handleOpenDeleteModal(editingIssue, e)}
+                      className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 border border-rose-200 dark:border-rose-900/60"
+                      title="항목 삭제 (관리자 권한 필요)"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>삭제</span>
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsIssueModalOpen(false);
+                      setEditingIssue(null);
+                    }}
+                    className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-md active:scale-95 cursor-pointer transition-all"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* 🌟 2. 신규 등록 및 수정 모드 폼 */
+              <form onSubmit={handleSaveNewIssue} className="space-y-3.5 text-xs">
+                {/* Switch back to detail mode button if editing existing issue */}
+                {editingIssue && (
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setIsIssueDetailMode(true)}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>← 정리된 상세 보기로 돌아가기</span>
+                    </button>
+                  </div>
+                )}
               {/* 1. 구분 (4대 분류: 품질경보 • 회의일정 • 사내공지 • 오픈이슈) */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
@@ -3890,6 +4178,7 @@ export const AuthModal = () => {
                 </div>
               </div>
             </form>
+          )}
           </div>
         </div>
       )}
