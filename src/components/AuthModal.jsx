@@ -139,6 +139,7 @@ export const AuthModal = () => {
   const [ledgerCategoryTab, setLedgerCategoryTab] = useState("all"); // "all" | "open_issue" | "notice" | "meeting"
   const [selectedScheduleDate, setSelectedScheduleDate] = useState(""); // "" or "YYYY-MM-DD" for schedule calendar filter
   const ISSUES_PER_PAGE = 5;
+  const [issueModalPage, setIssueModalPage] = useState(1);
 
   // New Issue Form State (사진 첨부 및 사내공지/회의일정 만료일자 및 회의시간, 조치결과, 조치사진, 상태 지원)
   const [newIssueForm, setNewIssueForm] = useState({
@@ -1083,7 +1084,7 @@ export const AuthModal = () => {
                 </div>
               </div>
 
-              {/* Right: [대장] [등록] & Fold/Unfold */}
+              {/* Right: [목록] [등록] & Fold/Unfold */}
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
                 <button
                   type="button"
@@ -1094,10 +1095,10 @@ export const AuthModal = () => {
                     setIssueModalPage(1);
                   }}
                   className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
-                  title="오픈이슈 관리대장 전체 리스트 보기"
+                  title="오픈이슈 목록 전체 보기"
                 >
                   <ListOrdered className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-                  <span>대장</span>
+                  <span>목록</span>
                 </button>
 
                 <button
@@ -1197,7 +1198,7 @@ export const AuthModal = () => {
             {/* Empty State when no active issues */}
             {activeIssues.length === 0 && (
               <div className="p-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-slate-900/40">
-                ✨ 현재 미결된 오픈이슈 및 공지사항이 없습니다. (상단 [대장] 버튼으로 전체 이력 조회 가능)
+                ✨ 현재 미결된 오픈이슈 및 공지사항이 없습니다. (상단 [목록] 버튼으로 전체 이력 조회 가능)
               </div>
             )}
 
