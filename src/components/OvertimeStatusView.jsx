@@ -373,6 +373,32 @@ export const OvertimeStatusView = () => {
     setHasUnsavedChanges(true);
   };
 
+  // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
+  const handleSetAllFilteredWorkersRegular = () => {
+    if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
+    const updatedMatrix = [...smartData.attendanceMatrix];
+
+    filteredAttendanceWorkers.forEach((worker) => {
+      const idx = worker.originalMatrixIndex;
+      if (updatedMatrix[idx]) {
+        const prevDaily = updatedMatrix[idx].daily || {};
+        updatedMatrix[idx] = {
+          ...updatedMatrix[idx],
+          daily: { ...prevDaily, [selectedDay]: "🟢" }
+        };
+      }
+    });
+
+    const newLedger = {
+      ...smartData,
+      attendanceMatrix: updatedMatrix
+    };
+
+    setSmartData(newLedger);
+    setHasUnsavedChanges(true);
+    triggerToast(`🟢 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명 전원 9월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+  };
+
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
   const handleOpenRegistrationReportModal = () => {
     const d = selectedDay;
@@ -1180,7 +1206,7 @@ export const OvertimeStatusView = () => {
           {/* Interactive Worker Attendance Table (2-Column Side-by-Side Grid) */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/60 dark:bg-slate-900/60">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Zap className="w-4 h-4 text-cyan-500" />
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
                   작업자별 9월 {selectedDay}일 근태 선택 테이블 (2열 병렬)
@@ -1189,9 +1215,17 @@ export const OvertimeStatusView = () => {
                   (조회 {filteredAttendanceWorkers.length}명)
                 </span>
               </div>
-              <span className="text-[11px] font-bold text-slate-400">
-                근태 선택 후 상단의 [등록] 버튼을 누르면 보고서 확인 팝업창이 열립니다.
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleSetAllFilteredWorkersRegular}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-emerald-500 ring-2 ring-emerald-400/20"
+                  title="조회된 모든 작업자의 오늘 근태를 '정시(🟢)'로 일괄 선택합니다"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span>🟢 정시 전체선택</span>
+                </button>
+              </div>
             </div>
 
             {filteredAttendanceWorkers.length === 0 ? (
