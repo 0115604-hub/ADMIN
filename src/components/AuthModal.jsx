@@ -1241,30 +1241,23 @@ export const AuthModal = () => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 📢 ⭐ 오픈이슈(Open Issue) 실시간 라이브 보드 */}
+          {/* 📢 ⭐ 실시간 공지 & 오픈이슈 실시간 라이브 보드 */}
           {/* ========================================================================= */}
           <div className="mb-3.5 sm:mb-5 rounded-2xl border-2 border-rose-300/80 dark:border-rose-900/80 bg-rose-50/40 dark:bg-rose-950/20 shadow-md overflow-hidden transition-all min-w-0">
             {/* Panel Top Bar: Metrics & Actions */}
-            <div className="p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/80 via-purple-50/60 to-emerald-50/60 dark:from-rose-950/70 dark:via-purple-950/50 dark:to-emerald-950/50">
-              {/* Left: Open Issue Title & Live Counts */}
-              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-sm shrink-0">
-                  <Pin className="w-4 h-4 sm:w-5 sm:h-5" />
+            <div className="p-2 sm:p-2.5 px-2.5 sm:px-3 flex items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/80 via-purple-50/60 to-emerald-50/60 dark:from-rose-950/70 dark:via-purple-950/50 dark:to-emerald-950/50">
+              {/* Left: Title & Icon */}
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <div className="p-1.5 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 text-white shadow-2xs shrink-0">
+                  <Pin className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h3 className="font-black text-xs sm:text-base md:text-lg text-slate-900 dark:text-white tracking-tight">
-                      오픈이슈(Open Issue) 현황
-                    </h3>
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
-                    삼랑진 {samrangjinActiveCount}건 • 한림 {hanlimActiveCount}건 진행중
-                  </p>
-                </div>
+                <h3 className="font-black text-xs sm:text-sm md:text-base text-slate-900 dark:text-white tracking-tight truncate">
+                  실시간 공지 & 오픈이슈 현황
+                </h3>
               </div>
 
-              {/* Right: [목록] [등록] & Fold/Unfold */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+              {/* Right: [목록] [등록] (60% 사이즈) & Fold/Unfold */}
+              <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
                 <button
                   type="button"
                   onClick={() => {
@@ -1273,10 +1266,10 @@ export const AuthModal = () => {
                     setIssueFilterTab("all");
                     setIssueModalPage(1);
                   }}
-                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
+                  className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[10.5px] sm:text-xs font-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center gap-0.5 sm:gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
                   title="오픈이슈 목록 전체 보기"
                 >
-                  <ListOrdered className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <ListOrdered className="w-3 h-3 text-slate-600 dark:text-slate-300" />
                   <span>목록</span>
                 </button>
 
@@ -1300,10 +1293,10 @@ export const AuthModal = () => {
                     });
                     setIsIssueModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                  className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[10.5px] sm:text-xs font-black bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-0.5 sm:gap-1 active:scale-95 cursor-pointer shadow-2xs"
                   title="신규 오픈이슈/품질경보/공지/회의 등록"
                 >
-                  <Plus className="w-3.5 h-3.5 text-white" />
+                  <Plus className="w-3 h-3 text-white" />
                   <span>등록</span>
                 </button>
 
@@ -1312,10 +1305,10 @@ export const AuthModal = () => {
                   <button
                     type="button"
                     onClick={() => setIsIssueExpanded((prev) => !prev)}
-                    className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer shrink-0"
+                    className="p-1 rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer shrink-0"
                     title={isIssueExpanded ? "패널 접기" : "패널 펼치기"}
                   >
-                    {isIssueExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isIssueExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
                 )}
               </div>
