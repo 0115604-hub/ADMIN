@@ -4,6 +4,7 @@ import { Sidebar, ADMIN_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
 import { VehicleSalesView } from "./components/VehicleSalesView";
+import { HanulTaxInvoiceView } from "./components/HanulTaxInvoiceView";
 import { MaterialPurchaseView } from "./components/MaterialPurchaseView";
 import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
 import { ClosingLedgerView } from "./components/ClosingLedgerView";
@@ -263,6 +264,9 @@ export const App = () => {
                   {activeTab === "vehicle_sales" && (
                     <VehicleSalesView />
                   )}
+                  {activeTab === "hanul_tax_invoice" && (
+                    <HanulTaxInvoiceView />
+                  )}
                   {activeTab === "extrusion_downtime" && (
                     <ExtrusionDowntimeView />
                   )}
@@ -294,6 +298,10 @@ export const App = () => {
 
                   {activeTab === "vehicle_sales" && (
                     <VehicleSalesView />
+                  )}
+
+                  {activeTab === "hanul_tax_invoice" && (
+                    <HanulTaxInvoiceView />
                   )}
 
                   {activeTab === "material_purchases" && (
