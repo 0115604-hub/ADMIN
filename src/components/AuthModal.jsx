@@ -56,7 +56,7 @@ import {
   subscribeAnnualLeaves,
   getUserLeaveStatus
 } from "../services/annualLeaveService";
-import { getKSTDateString } from "../utils/dateUtils";
+import { getKSTDateString, getKSTTimeInfo } from "../utils/dateUtils";
 import {
   getLocalUrgentIssues,
   subscribeUrgentIssues,
@@ -265,15 +265,61 @@ export const AuthModal = () => {
 
   const todayDateStr = useMemo(() => getKSTDateString(), []);
 
-  // ⭐ Helper: 사내공지 / 회의일정 지정 날짜 경과 여부 확인 (경과 시 접속화면 자동 숨김/삭제)
+  // 🕒 실시간 KST 현재 시:분 (HH:mm) 추적 (회의 시작시간 경과 즉시 첫화면 패널 자동 삭제 및 대장 보존)
+  const [currentKstTimeStr, setCurrentKstTimeStr] = useState(() => {
+    const info = getKSTTimeInfo();
+    return `${String(info.hour).padStart(2, "0")}:${String(info.minute).padStart(2, "0")}`;
+  });
+
+  useEffect(() => {
+    const updateTime = () => {
+      const info = getKSTTimeInfo();
+      const timeStr = `${String(info.hour).padStart(2, "0")}:${String(info.minute).padStart(2, "0")}`;
+      setCurrentKstTimeStr(timeStr);
+    };
+    const timer = setInterval(updateTime, 10000); // 10초마다 실시간 체크
+    return () => clearInterval(timer);
+  }, []);
+
+  // Helper: "9:30" -> "09:30" 시간 정규화
+  const normalizeMeetingTime = (timeStr) => {
+    if (!timeStr) return "";
+    const cleaned = String(timeStr).trim();
+    const parts = cleaned.split(":");
+    if (parts.length >= 2) {
+      const h = parts[0].padStart(2, "0");
+      const m = parts[1].padStart(2, "0");
+      return `${h}:${m}`;
+    }
+    return cleaned;
+  };
+
+  // ⭐ Helper: 사내공지 / 회의일정 지정 날짜 및 회의 시작시간 경과 여부 확인 (경과 시 접속화면 자동 숨김/삭제, 대장에만 보존)
   const isItemExpired = (item) => {
     if (!item) return false;
-    const isNoticeOrMeeting =
+
+    // 1. 회의일정: 시작 날짜 및 시작시간(meetingTime) 경과 시 첫화면 패널에서 삭제(대장 보존)
+    const isMeeting = item.category === "회의일정" || (item.category && item.category.includes("회의"));
+    if (isMeeting) {
+      const mDate = item.expireDate || item.targetDate || "";
+      if (!mDate) return false;
+      if (mDate < todayDateStr) return true;
+      if (mDate === todayDateStr) {
+        const mTime = normalizeMeetingTime(item.meetingTime);
+        if (mTime) {
+          return currentKstTimeStr >= mTime;
+        }
+        return false;
+      }
+      return false;
+    }
+
+    // 2. 사내공지 / 공지사항 / 공유사항: 만료일자(자정) 경과 시 삭제(대장 보존)
+    const isNotice =
       item.category === "공지사항" ||
       item.category === "사내공지" ||
-      item.category === "공유사항" ||
-      item.category === "회의일정";
-    if (isNoticeOrMeeting) {
+      item.category === "공유사항";
+    if (isNotice) {
       const exp = item.expireDate || item.targetDate;
       if (exp && exp < todayDateStr) {
         return true;
@@ -282,29 +328,32 @@ export const AuthModal = () => {
     return false;
   };
 
-  // ⭐ 사내공지 및 회의일정 지정 날짜 경과 시 자동으로 접속화면 및 DB에서 삭제 정리
+  // ⭐ 사내공지 및 회의일정 지정 날짜 / 회의 시작시간 경과 시 자동으로 접속화면 및 DB에서 소프트 삭제 정리 (대장 보존)
   useEffect(() => {
     if (!urgentIssues || urgentIssues.length === 0) return;
     const expiredList = urgentIssues.filter((i) => !i.isDeleted && isItemExpired(i));
     if (expiredList.length > 0) {
       expiredList.forEach((item) => {
-        deleteUrgentIssue(item.id, "시스템 (날짜 경과 자동 정리)").catch(() => {});
+        const reason = (item.category === "회의일정" || item.category?.includes("회의"))
+          ? `시스템 (회의 시작시간 ${item.meetingTime || ""} 경과 자동 정리)`
+          : "시스템 (공지 만료일자 경과 자동 정리)";
+        deleteUrgentIssue(item.id, reason).catch(() => {});
       });
     }
-  }, [urgentIssues, todayDateStr]);
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   // Filter categorized issues: 미결(Unresolved), 종결(Closed/Resolved), 전체(All) (우선순위: 품질경보(등록순) -> 회의일정(다가오는날짜순) -> 공지사항(다가오는날짜순))
   const unresolvedIssues = useMemo(() => {
     return sortIssuesByCustomPriority(
       urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i))
     );
-  }, [urgentIssues, todayDateStr]);
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   const closedIssues = useMemo(() => {
     return sortIssuesByCustomPriority(
       urgentIssues.filter((i) => !i.isDeleted && i.isResolved && !isItemExpired(i))
     );
-  }, [urgentIssues, todayDateStr]);
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   const deletedIssues = useMemo(() => {
     return urgentIssues.filter((i) => i.isDeleted);
@@ -315,7 +364,7 @@ export const AuthModal = () => {
     return sortIssuesByCustomPriority(
       urgentIssues.filter((i) => !i.isDeleted && !isItemExpired(i))
     );
-  }, [urgentIssues, todayDateStr]);
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   const qualityIssuesCount = useMemo(() => {
     return activeIssues.filter(
@@ -353,7 +402,7 @@ export const AuthModal = () => {
     if (issueFilterTab === "closed") return closedIssues;
     if (issueFilterTab === "deleted") return urgentIssues.filter((i) => i.isDeleted || isItemExpired(i));
     return sortIssuesByCustomPriority(urgentIssues); // [전체]: 삭제 및 만료된 과거 모든 이력 보존
-  }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues, todayDateStr]);
+  }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues, todayDateStr, currentKstTimeStr]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
   const samrangjinLeaveCount = useMemo(() => {
@@ -1232,7 +1281,7 @@ export const AuthModal = () => {
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
-                        className={`px-1.5 sm:px-2.5 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[42px] rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1.5 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
+                        className={`p-1 sm:p-1.5 min-h-[42px] sm:min-h-[44px] rounded-xl border transition-all flex items-center justify-between gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isMyeongjae
                             ? `bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-black border-2 border-amber-400 shadow-md ${
                                 isLeaveToday ? "ring-2 ring-rose-500 animate-pulse" : ""
@@ -1246,43 +1295,45 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-amber-400 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        <div className="flex items-center min-w-0 flex-1 overflow-hidden pr-0.5">
-                          <span className={`text-xs sm:text-[13px] font-black truncate min-w-0 flex-1 tracking-tight ${
+                        {/* 좌측: 작업자 이름 */}
+                        <div className="flex items-center min-w-0 shrink-0 pl-1">
+                          <span className={`text-xs sm:text-[13px] font-black truncate tracking-tight ${
                             isMyeongjae ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" : "text-slate-950 dark:text-white font-black"
                           }`}>
                             {worker.name}
                           </span>
                         </div>
 
-                        <span className={`shrink-0 px-1 sm:px-1.5 py-0.5 rounded leading-none text-center flex flex-col justify-center items-center tracking-tighter sm:tracking-normal ${
+                        {/* 우측: 빈 공간 100% 가득 채우는 상태 박스 (풀필 인셋 블록) */}
+                        <div className={`flex-1 h-full min-h-[32px] sm:min-h-[34px] rounded-lg flex flex-col justify-center items-center text-center px-1 leading-none shadow-inner ${
                           isLeaveToday
-                            ? "text-white bg-rose-600 font-black shadow-xs animate-pulse ring-1 ring-rose-400"
+                            ? "text-white bg-rose-600 font-black shadow-xs ring-1 ring-rose-400"
                             : hasLeave
                             ? "text-white bg-blue-600 font-black shadow-2xs"
                             : isMyeongjae
                             ? "text-amber-950 bg-amber-200 font-black shadow-2xs"
                             : isPartner
-                            ? "text-purple-600 dark:text-purple-400"
-                            : "text-slate-400 dark:text-slate-400"
+                            ? "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800"
+                            : "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/70"
                         }`}>
                           {hasLeave ? (
                             leaveStatus.line2 ? (
-                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[6.5px] sm:text-[7.5px] font-black">
+                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[7.5px] sm:text-[8.5px] font-black">
                                 <span className="whitespace-nowrap">{leaveStatus.line1}</span>
                                 <span className="whitespace-nowrap opacity-95">{leaveStatus.line2}</span>
                               </span>
                             ) : (
-                              <span className="text-[7.5px] sm:text-[9.5px] font-bold whitespace-nowrap">
+                              <span className="text-[8px] sm:text-[9.5px] font-black whitespace-nowrap">
                                 <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
                                 <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
                               </span>
                             )
                           ) : isPartner ? (
-                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">협력</span>
+                            <span className="text-[8px] sm:text-[9.5px] font-bold">협력</span>
                           ) : (
-                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
+                            <span className="text-[8px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
                           )}
-                        </span>
+                        </div>
                       </button>
                     );
                   })}
@@ -1326,7 +1377,7 @@ export const AuthModal = () => {
                         key={worker.id}
                         onClick={() => handleUserClick(worker)}
                         title={hasLeave ? `${worker.name} (${worker.title || ""}): ${leaveStatus.fullLabel}` : `${worker.name} (${worker.title || ""})`}
-                        className={`px-1.5 sm:px-2.5 py-1.5 sm:py-2 min-h-[38px] sm:min-h-[42px] rounded-lg sm:rounded-xl border transition-all flex items-center justify-between gap-0.5 sm:gap-1.5 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
+                        className={`p-1 sm:p-1.5 min-h-[42px] sm:min-h-[44px] rounded-xl border transition-all flex items-center justify-between gap-1 group cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 overflow-hidden ${
                           isDongwook
                             ? `bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black border-2 border-emerald-400 shadow-md ${
                                 isLeaveToday ? "ring-2 ring-rose-500 animate-pulse" : ""
@@ -1340,43 +1391,45 @@ export const AuthModal = () => {
                             : "bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 hover:border-emerald-400 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        <div className="flex items-center min-w-0 flex-1 overflow-hidden pr-0.5">
-                          <span className={`text-xs sm:text-[13px] font-black truncate min-w-0 flex-1 tracking-tight ${
+                        {/* 좌측: 작업자 이름 */}
+                        <div className="flex items-center min-w-0 shrink-0 pl-1">
+                          <span className={`text-xs sm:text-[13px] font-black truncate tracking-tight ${
                             isDongwook ? "text-white font-black drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]" : "text-slate-950 dark:text-white font-black"
                           }`}>
                             {worker.name}
                           </span>
                         </div>
 
-                        <span className={`shrink-0 px-1 sm:px-1.5 py-0.5 rounded leading-none text-center flex flex-col justify-center items-center tracking-tighter sm:tracking-normal ${
+                        {/* 우측: 빈 공간 100% 가득 채우는 상태 박스 (풀필 인셋 블록) */}
+                        <div className={`flex-1 h-full min-h-[32px] sm:min-h-[34px] rounded-lg flex flex-col justify-center items-center text-center px-1 leading-none shadow-inner ${
                           isLeaveToday
-                            ? "text-white bg-rose-600 font-black shadow-xs animate-pulse ring-1 ring-rose-400"
+                            ? "text-white bg-rose-600 font-black shadow-xs ring-1 ring-rose-400"
                             : hasLeave
                             ? "text-white bg-blue-600 font-black shadow-2xs"
                             : isDongwook
                             ? "text-emerald-950 bg-emerald-200 font-black shadow-2xs"
                             : isPartner
-                            ? "text-purple-600 dark:text-purple-400"
-                            : "text-slate-400 dark:text-slate-400"
+                            ? "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800"
+                            : "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700/70"
                         }`}>
                           {hasLeave ? (
                             leaveStatus.line2 ? (
-                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[6.5px] sm:text-[7.5px] font-black">
+                              <span className="flex flex-col items-center justify-center leading-[1.05] text-[7.5px] sm:text-[8.5px] font-black">
                                 <span className="whitespace-nowrap">{leaveStatus.line1}</span>
                                 <span className="whitespace-nowrap opacity-95">{leaveStatus.line2}</span>
                               </span>
                             ) : (
-                              <span className="text-[7.5px] sm:text-[9.5px] font-bold whitespace-nowrap">
+                              <span className="text-[8px] sm:text-[9.5px] font-black whitespace-nowrap">
                                 <span className="hidden sm:inline">{leaveStatus.displayBadge}</span>
                                 <span className="sm:hidden">{leaveStatus.mobileBadge || leaveStatus.displayBadge}</span>
                               </span>
                             )
                           ) : isPartner ? (
-                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">협력</span>
+                            <span className="text-[8px] sm:text-[9.5px] font-bold">협력</span>
                           ) : (
-                            <span className="text-[7.5px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
+                            <span className="text-[8px] sm:text-[9.5px] font-bold">{worker.title || "선임"}</span>
                           )}
-                        </span>
+                        </div>
                       </button>
                     );
                   })}
