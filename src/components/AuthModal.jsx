@@ -146,8 +146,8 @@ export const AuthModal = () => {
   const [newIssueForm, setNewIssueForm] = useState({
     category: "오픈이슈",
     plant: "삼랑진공장",
-    author: "권태형",
-    authorTitle: "대표이사",
+    author: "",
+    authorTitle: "",
     startDate: "",
     expireDate: "",
     meetingTime: "14:00",
@@ -156,7 +156,7 @@ export const AuthModal = () => {
     content: "",
     images: [],
     actionResult: "",
-    actionAuthor: "설유철",
+    actionAuthor: "",
     actionImages: [],
     isResolved: false
   });
@@ -166,13 +166,13 @@ export const AuthModal = () => {
     isOpen: false,
     issue: null,
     actionResult: "",
-    actionAuthor: "설유철",
+    actionAuthor: "",
     actionImages: []
   });
 
   // Reply Form State for Meeting Schedule & Issue Comments (회신란)
   const [replyForm, setReplyForm] = useState({
-    author: "설유철",
+    author: "",
     attendanceStatus: "참석",
     content: ""
   });
@@ -181,7 +181,7 @@ export const AuthModal = () => {
   // Action Opinion Form State for Open Issue (오픈이슈 조치등록날짜 + 의견 실시간 추가란)
   const [actionOpinionForm, setActionOpinionForm] = useState({
     actionDate: "",
-    author: "설유철",
+    author: "",
     content: ""
   });
 
@@ -765,8 +765,8 @@ export const AuthModal = () => {
   // Open Edit Urgent Issue Modal (기존 품질경보/공지/회의/오픈이슈 상세 조회 및 조치/수정)
   const handleOpenEditIssue = (issue, e) => {
     if (e) e.stopPropagation();
-    const sanitizedAuthor = issue.author === "방상국" ? "권태형" : (issue.author || "권태형");
-    const sanitizedTitle = issue.author === "방상국" ? "대표이사" : (issue.authorTitle || "대표이사");
+    const sanitizedAuthor = issue.author === "방상국" ? "" : (issue.author || "");
+    const sanitizedTitle = issue.author === "방상국" ? "" : (issue.authorTitle || "");
     setEditingIssue(issue);
     setNewIssueForm({
       id: issue.id,
@@ -782,14 +782,14 @@ export const AuthModal = () => {
       content: issue.content || "",
       images: issue.images ? [...issue.images] : [],
       actionResult: issue.actionResult || "",
-      actionAuthor: issue.actionAuthor === "방상국" ? "설유철" : (issue.actionAuthor || "설유철"),
+      actionAuthor: issue.actionAuthor === "방상국" ? "" : (issue.actionAuthor || ""),
       actionImages: issue.actionImages ? [...issue.actionImages] : [],
       isResolved: issue.isResolved || false,
       replies: issue.replies ? [...issue.replies] : []
     });
     setActionOpinionForm({
       actionDate: todayDateStr,
-      author: currentProfile?.name || "설유철",
+      author: currentProfile?.name || "",
       content: ""
     });
     setIsIssueDetailMode(true); // 🌟 Detail view mode enabled so organized summary is displayed
@@ -824,6 +824,10 @@ export const AuthModal = () => {
   // Submit New or Edited Urgent Issue
   const handleSaveNewIssue = async (e) => {
     if (e) e.preventDefault();
+    if (!newIssueForm.author || !newIssueForm.author.trim()) {
+      alert("작성자를 직접 선택해 주세요.");
+      return;
+    }
     if (!newIssueForm.title.trim()) {
       alert("이슈 제목을 입력해 주세요.");
       return;
@@ -860,6 +864,11 @@ export const AuthModal = () => {
       ? newIssueForm.isResolved
       : (hasAction ? true : Boolean(editingIssue?.isResolved));
 
+    if (hasAction && (!newIssueForm.actionAuthor || !newIssueForm.actionAuthor.trim())) {
+      alert("조치자(또는 작성자)를 직접 선택해 주세요.");
+      return;
+    }
+
     await saveUrgentIssue({
       ...newIssueForm,
       id: editingIssue ? editingIssue.id : undefined,
@@ -874,7 +883,7 @@ export const AuthModal = () => {
       images: newIssueForm.images || [],
       actionImages: newIssueForm.actionImages || [],
       actionResult: newIssueForm.actionResult || "",
-      actionAuthor: hasAction ? (newIssueForm.actionAuthor || "설유철") : (editingIssue?.actionAuthor || ""),
+      actionAuthor: hasAction ? (newIssueForm.actionAuthor || "") : (editingIssue?.actionAuthor || ""),
       actionAt: hasAction ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
       isResolved: finalIsResolved,
       createdAt: editingIssue ? editingIssue.createdAt : undefined,
@@ -884,8 +893,8 @@ export const AuthModal = () => {
     setNewIssueForm({
       category: "오픈이슈",
       plant: "삼랑진공장",
-      author: "권태형",
-      authorTitle: "대표이사",
+      author: "",
+      authorTitle: "",
       startDate: todayDateStr,
       expireDate: todayDateStr,
       meetingTime: "14:00",
@@ -894,14 +903,14 @@ export const AuthModal = () => {
       content: "",
       images: [],
       actionResult: "",
-      actionAuthor: "설유철",
+      actionAuthor: "",
       actionImages: [],
       isResolved: false,
       replies: []
     });
     setActionOpinionForm({
       actionDate: "",
-      author: "설유철",
+      author: "",
       content: ""
     });
     setEditingIssue(null);
@@ -912,6 +921,10 @@ export const AuthModal = () => {
   const handleModalAddReply = async (e) => {
     if (e) e.preventDefault();
     if (!editingIssue?.id) return;
+    if (!replyForm.author || !replyForm.author.trim()) {
+      alert("회신 작성자를 직접 선택해 주세요.");
+      return;
+    }
     if (!replyForm.content.trim()) {
       alert("회신 내용을 입력해 주세요.");
       return;
@@ -965,12 +978,16 @@ export const AuthModal = () => {
   // 💬 🌟 오픈이슈 전용 조치등록날짜 + 의견 실시간 추가 핸들러
   const handleModalAddOpinion = async (e) => {
     if (e) e.preventDefault();
+    if (!actionOpinionForm.author || !actionOpinionForm.author.trim()) {
+      alert("작성자를 직접 선택해 주세요.");
+      return;
+    }
     if (!actionOpinionForm.content.trim()) {
       alert("조치 의견 또는 진행 내용을 입력해 주세요.");
       return;
     }
     const targetDate = actionOpinionForm.actionDate || todayDateStr;
-    const authorName = actionOpinionForm.author || "설유철";
+    const authorName = actionOpinionForm.author;
     const authorObj = allWorkers.find((w) => w.name === authorName);
     const content = actionOpinionForm.content.trim();
 
@@ -1066,7 +1083,7 @@ export const AuthModal = () => {
       isOpen: true,
       issue,
       actionResult: issue.actionResult || "",
-      actionAuthor: issue.actionAuthor || "설유철",
+      actionAuthor: issue.actionAuthor || currentProfile?.name || "",
       actionImages: issue.actionImages || []
     });
   };
@@ -1075,6 +1092,10 @@ export const AuthModal = () => {
   const handleSaveActionResult = async (e) => {
     e.preventDefault();
     if (!actionModalData.issue) return;
+    if (!actionModalData.actionAuthor || !actionModalData.actionAuthor.trim()) {
+      alert("조치자(또는 작성자)를 직접 선택해 주세요.");
+      return;
+    }
     if (!actionModalData.actionResult.trim()) {
       alert("조치결과 내용을 입력해 주세요.");
       return;
@@ -1097,7 +1118,7 @@ export const AuthModal = () => {
       isOpen: false,
       issue: null,
       actionResult: "",
-      actionAuthor: "설유철",
+      actionAuthor: "",
       actionImages: []
     });
   };
@@ -1106,6 +1127,10 @@ export const AuthModal = () => {
   const handleAddReply = async (issueId, e) => {
     if (e) e.preventDefault();
     if (!issueId) return;
+    if (!replyForm.author || !replyForm.author.trim()) {
+      alert("회신 작성자를 직접 선택해 주세요.");
+      return;
+    }
     if (!replyForm.content.trim()) {
       alert("회신 내용을 입력해 주세요.");
       return;
@@ -1329,29 +1354,48 @@ export const AuthModal = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const targetCategory =
+                      openIssueCategoryFilter === "meeting"
+                        ? "회의일정"
+                        : openIssueCategoryFilter === "notice"
+                        ? "공지사항"
+                        : openIssueCategoryFilter === "quality_alert"
+                        ? "품질경보"
+                        : "오픈이슈";
+
                     setEditingIssue(null);
-                    setIsIssueDetailMode(false); // New registration mode (shows form)
+                    setIsIssueDetailMode(false); // 🌟 신규 등록 폼 모드로 열기
                     setNewIssueForm({
-                      category: "품질경보",
+                      category: targetCategory,
                       plant: "삼랑진공장",
-                      author: currentProfile?.name || "권태형",
-                      authorTitle: currentProfile?.title || (currentProfile?.name === "권태형" ? "대표이사" : "선임"),
+                      author: "", // 🌟 직접 선택하도록 초기화
+                      authorTitle: "",
+                      startDate: todayDateStr,
                       expireDate: todayDateStr,
                       meetingTime: "14:00",
+                      progress: 0,
                       title: "",
                       content: "",
                       images: [],
                       actionResult: "",
                       actionAuthor: "",
-                      actionImages: []
+                      actionImages: [],
+                      isResolved: false,
+                      replies: []
+                    });
+                    setActionOpinionForm({
+                      actionDate: todayDateStr,
+                      author: "",
+                      content: ""
                     });
                     setIsIssueModalOpen(true);
                   }}
-                  className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[10.5px] sm:text-xs font-black bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-0.5 sm:gap-1 active:scale-95 cursor-pointer shadow-2xs"
-                  title="신규 오픈이슈/품질경보/공지/회의 등록"
+                  className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-md"
+                  title="신규 오픈이슈/공지/회의/품질경보 등록"
                 >
-                  <Plus className="w-3 h-3 text-white" />
+                  <Plus className="w-3.5 h-3.5 text-white" />
                   <span>등록</span>
                 </button>
 
@@ -3138,18 +3182,38 @@ export const AuthModal = () => {
                       </div>
                       <div>
                         <label className="font-bold text-[10.5px] text-slate-600 dark:text-slate-400 block mb-1">
-                          👤 작성자
+                          👤 작성자 (직접 선택)
                         </label>
                         <select
-                          value={actionOpinionForm.author}
+                          value={actionOpinionForm.author || ""}
                           onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, author: e.target.value })}
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                          className={`w-full px-2.5 py-1.5 rounded-lg border-2 text-xs font-bold transition-all ${
+                            !actionOpinionForm.author
+                              ? "border-blue-400 bg-blue-50/60 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 ring-1 ring-blue-400/40"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                          }`}
                         >
-                          {allWorkers.map((w) => (
-                            <option key={w.id} value={w.name}>
-                              {w.plantName} • {w.name} {w.title || ""}
-                            </option>
-                          ))}
+                          <option value="">-- 작성자 선택 --</option>
+                          <optgroup label="👑 본사 임원진">
+                            {allWorkers.filter(w => w.plantName === "본사").map((w) => (
+                              <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="🏢 삼랑진공장">
+                            {allWorkers.filter(w => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                              <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="🏢 한림공장">
+                            {allWorkers.filter(w => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                              <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="🤝 협력업체">
+                            {allWorkers.filter(w => w.isPartner).map((w) => (
+                              <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                            ))}
+                          </optgroup>
                         </select>
                       </div>
                     </div>
@@ -3313,10 +3377,11 @@ export const AuthModal = () => {
 
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    작성자
+                    작성자 (직접 선택)
                   </label>
                   <select
-                    value={newIssueForm.author}
+                    value={newIssueForm.author || ""}
+                    required
                     onChange={(e) => {
                       const found = allWorkers.find((w) => w.name === e.target.value);
                       setNewIssueForm({
@@ -3326,13 +3391,33 @@ export const AuthModal = () => {
                         plant: found?.plantName === "본사" && newIssueForm.plant === "삼랑진공장" ? "본사" : newIssueForm.plant
                       });
                     }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    className={`w-full px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all ${
+                      !newIssueForm.author
+                        ? "border-blue-400 bg-blue-50/60 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 ring-1 ring-blue-400/40"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    }`}
                   >
-                    {allWorkers.map((w) => (
-                      <option key={w.id} value={w.name}>
-                        {w.plantName} • {w.name} {w.title || ""}
-                      </option>
-                    ))}
+                    <option value="">-- 작성자 직접 선택 (필수) --</option>
+                    <optgroup label="👑 본사 임원진">
+                      {allWorkers.filter(w => w.plantName === "본사").map((w) => (
+                        <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🏢 삼랑진공장">
+                      {allWorkers.filter(w => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                        <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🏢 한림공장">
+                      {allWorkers.filter(w => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                        <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🤝 협력업체">
+                      {allWorkers.filter(w => w.isPartner).map((w) => (
+                        <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -3577,18 +3662,38 @@ export const AuthModal = () => {
                         </div>
                         <div>
                           <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
-                            👤 작성자 (작업자)
+                            👤 작성자 (직접 선택)
                           </label>
                           <select
-                            value={actionOpinionForm.author}
+                            value={actionOpinionForm.author || ""}
                             onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, author: e.target.value })}
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+                            className={`w-full px-2.5 py-1.5 rounded-xl border-2 text-xs font-bold transition-all ${
+                              !actionOpinionForm.author
+                                ? "border-blue-400 bg-blue-50/60 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 ring-1 ring-blue-400/40"
+                                : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white cursor-pointer"
+                            }`}
                           >
-                            {allWorkers.map((w) => (
-                              <option key={w.id} value={w.name}>
-                                {w.plantName} • {w.name} {w.title || ""}
-                              </option>
-                            ))}
+                            <option value="">-- 작성자 직접 선택 (필수) --</option>
+                            <optgroup label="👑 본사 임원진">
+                              {allWorkers.filter(w => w.plantName === "본사").map((w) => (
+                                <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="🏢 삼랑진공장">
+                              {allWorkers.filter(w => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                                <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="🏢 한림공장">
+                              {allWorkers.filter(w => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                                <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="🤝 협력업체">
+                              {allWorkers.filter(w => w.isPartner).map((w) => (
+                                <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                              ))}
+                            </optgroup>
                           </select>
                         </div>
                       </div>
@@ -3884,18 +3989,38 @@ export const AuthModal = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                        {newIssueForm.category === "회의일정" ? "보고자 / 작성자" : "조치자"}
+                        {newIssueForm.category === "회의일정" ? "보고자 / 작성자" : "조치자"} (직접 선택)
                       </label>
                       <select
-                        value={newIssueForm.actionAuthor || "설유철"}
+                        value={newIssueForm.actionAuthor || ""}
                         onChange={(e) => setNewIssueForm({ ...newIssueForm, actionAuthor: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                        className={`w-full px-3 py-2 rounded-xl border-2 text-xs font-bold transition-all ${
+                          !newIssueForm.actionAuthor
+                            ? "border-blue-400 bg-blue-50/60 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 ring-1 ring-blue-400/40"
+                            : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                        }`}
                       >
-                        {allWorkers.map((w) => (
-                          <option key={w.id} value={w.name}>
-                            {w.plantName} • {w.name} {w.title || ""}
-                          </option>
-                        ))}
+                        <option value="">-- {newIssueForm.category === "회의일정" ? "작성자 / 보고자" : "조치자"} 직접 선택 --</option>
+                        <optgroup label="👑 본사 임원진">
+                          {allWorkers.filter(w => w.plantName === "본사").map((w) => (
+                            <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="🏢 삼랑진공장">
+                          {allWorkers.filter(w => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                            <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="🏢 한림공장">
+                          {allWorkers.filter(w => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                            <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="🤝 협력업체">
+                          {allWorkers.filter(w => w.isPartner).map((w) => (
+                            <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                          ))}
+                        </optgroup>
                       </select>
                     </div>
 
@@ -4087,15 +4212,31 @@ export const AuthModal = () => {
                   {/* Add Reply Input */}
                   <div className="pt-1 flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
                     <select
-                      value={replyForm.author}
+                      value={replyForm.author || ""}
                       onChange={(e) => setReplyForm({ ...replyForm, author: e.target.value })}
                       className="px-2 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white shrink-0"
                     >
-                      {allWorkers.map((w) => (
-                        <option key={w.id} value={w.name}>
-                          {w.name} {w.title || ""}
-                        </option>
-                      ))}
+                      <option value="">-- 작성자 선택 --</option>
+                      <optgroup label="👑 본사 임원진">
+                        {allWorkers.filter(w => w.plantName === "본사").map((w) => (
+                          <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="🏢 삼랑진공장">
+                        {allWorkers.filter(w => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                          <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="🏢 한림공장">
+                        {allWorkers.filter(w => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                          <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="🤝 협력업체">
+                        {allWorkers.filter(w => w.isPartner).map((w) => (
+                          <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                        ))}
+                      </optgroup>
                     </select>
                     {newIssueForm.category === "회의일정" && (
                       <select
@@ -4159,8 +4300,10 @@ export const AuthModal = () => {
                     className={`px-6 py-2.5 rounded-xl text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
                       newIssueForm.category === "회의일정"
                         ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
-                        : newIssueForm.category === "공지사항"
+                        : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
                         ? "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-emerald-500/25"
+                        : newIssueForm.category === "오픈이슈"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25"
                         : "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 shadow-rose-500/25"
                     }`}
                   >
@@ -4170,8 +4313,10 @@ export const AuthModal = () => {
                         ? "저장 및 처리 완료"
                         : newIssueForm.category === "회의일정"
                         ? "회의일정 등록"
-                        : newIssueForm.category === "공지사항"
+                        : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
                         ? "사내공지 등록"
+                        : newIssueForm.category === "오픈이슈"
+                        ? "오픈이슈 등록"
                         : "품질경보 등록"}
                     </span>
                   </button>
@@ -4191,7 +4336,7 @@ export const AuthModal = () => {
         const isMeetingAction = actionModalData.issue.category === "회의일정";
         return (
           <div
-            onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
+            onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "", actionImages: [] })}
             className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
           >
             <div
@@ -4216,7 +4361,7 @@ export const AuthModal = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철", actionImages: [] })}
+                  onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "", actionImages: [] })}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
                 >
                   ✕
@@ -4248,18 +4393,39 @@ export const AuthModal = () => {
                 {/* 조치자 / 작성자 선택 */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    {isMeetingAction ? "작성자 / 보고자" : "조치자"}
+                    {isMeetingAction ? "작성자 / 보고자" : "조치자"} (직접 선택)
                   </label>
                   <select
-                    value={actionModalData.actionAuthor}
+                    value={actionModalData.actionAuthor || ""}
+                    required
                     onChange={(e) => setActionModalData({ ...actionModalData, actionAuthor: e.target.value })}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                    className={`w-full px-3 py-2.5 rounded-xl border-2 text-xs font-bold transition-all ${
+                      !actionModalData.actionAuthor
+                        ? "border-blue-400 bg-blue-50/60 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 ring-1 ring-blue-400/40"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    }`}
                   >
-                    {allWorkers.map((w) => (
-                      <option key={w.id} value={w.name}>
-                        {w.plantName} • {w.name} {w.title || ""}
-                      </option>
-                    ))}
+                    <option value="">-- {isMeetingAction ? "작성자 / 보고자" : "조치자"} 직접 선택 (필수) --</option>
+                    <optgroup label="👑 본사 임원진">
+                      {allWorkers.filter(w => w.plantName === "본사").map((w) => (
+                        <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🏢 삼랑진공장">
+                      {allWorkers.filter(w => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
+                        <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🏢 한림공장">
+                      {allWorkers.filter(w => w.plantName === "한림공장" && !w.isPartner).map((w) => (
+                        <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🤝 협력업체">
+                      {allWorkers.filter(w => w.isPartner).map((w) => (
+                        <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -4400,7 +4566,7 @@ export const AuthModal = () => {
                 <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
-                    onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "설유철" })}
+                    onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "", actionImages: [] })}
                     className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
                   >
                     취소
