@@ -537,8 +537,8 @@ export const AuthModal = () => {
     return days;
   }, [allOpenIssues, todayDateStr]);
 
-  // 📅 오픈이슈 등록 모달용 14일 인터랙티브 타임라인 캘린더 생성기
-  const getOpenIssueFormCalendarDays = (startDateStr, targetDateStr) => {
+  // 📅 오픈이슈 등록 모달용 14일 인터랙티브 타임라인 캘린더 생성기 (의견갯수 및 의견등록표시 포함)
+  const getOpenIssueFormCalendarDays = (startDateStr, targetDateStr, replies = []) => {
     const days = [];
     const start = startDateStr ? new Date(startDateStr) : new Date();
     
@@ -562,6 +562,14 @@ export const AuthModal = () => {
         ? (dateStr >= startDateStr && dateStr <= targetDateStr)
         : false;
 
+      // 해당 일자에 등록된 의견/조치 필터링
+      const matchedReplies = (replies || []).filter((r) => {
+        const rDate = r.actionDate || r.createdAt?.slice(0, 10);
+        return rDate === dateStr;
+      });
+      const opinionCount = matchedReplies.length;
+      const hasOpinions = opinionCount > 0;
+
       days.push({
         dateStr,
         dayName,
@@ -570,7 +578,10 @@ export const AuthModal = () => {
         isStart,
         isTarget,
         isInRange,
-        dayIndex: d.getDay()
+        dayIndex: d.getDay(),
+        opinionCount,
+        hasOpinions,
+        replies: matchedReplies
       });
     }
     return days;
@@ -1441,34 +1452,13 @@ export const AuthModal = () => {
                           </h4>
                         </div>
 
-                        {/* 우측: 진행상황 그래프(진도율 %) + 맨 오른쪽 의견횟수 배지 */}
-                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto sm:ml-0">
-                          {/* 진행상황 그래프 */}
-                          <div className="flex items-center gap-1.5">
-                            <span className={`text-[11px] font-mono font-black ${
-                              progressVal === 100
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : progressVal >= 50
-                                ? "text-blue-600 dark:text-blue-400"
-                                : "text-slate-600 dark:text-slate-300"
-                            }`}>
-                              {progressVal}%
+                        {/* 우측: 맨 오른쪽 의견횟수 배지 */}
+                        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+                          {item.isResolved && (
+                            <span className="px-2 py-0.5 rounded-lg text-[10.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 shadow-2xs">
+                              조치완료 ✓
                             </span>
-                            <div className="w-16 sm:w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 shadow-inner">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  progressVal === 100
-                                    ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                                    : progressVal >= 50
-                                    ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-400"
-                                    : "bg-gradient-to-r from-blue-500 to-indigo-500"
-                                }`}
-                                style={{ width: `${Math.max(progressVal > 0 ? 8 : 0, progressVal)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-
-                          {/* 맨 오른쪽 의견횟수 배지 */}
+                          )}
                           <span className="px-2.5 py-1 rounded-xl text-[10.5px] font-black bg-blue-100 hover:bg-blue-200 dark:bg-blue-950/80 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-800 flex items-center gap-1 shadow-2xs shrink-0 transition-colors">
                             <MessageSquare className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                             <span>의견 {repliesCount}건</span>
@@ -2825,14 +2815,8 @@ export const AuthModal = () => {
                       {newIssueForm.plant}
                     </span>
                     {newIssueForm.category === "오픈이슈" && (
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 ${
-                        (newIssueForm.progress || 0) === 100
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
-                          : (newIssueForm.progress || 0) >= 50
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300"
-                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
-                      }`}>
-                        진도율 {newIssueForm.progress || 0}%
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300">
+                        💬 의견 {(newIssueForm.replies?.length || 0)}건
                       </span>
                     )}
                     {editingIssue && (
@@ -2973,9 +2957,9 @@ export const AuthModal = () => {
                 </div>
               </div>
 
-              {/* 3. ⭐ 카테고리별 특화 영역 (오픈이슈: 날짜지정 & 진도율 & 달력형 그래프 / 회의일정 / 사내공지 / 품질경보) */}
+              {/* 3. ⭐ 카테고리별 특화 영역 (오픈이슈: 날짜지정 & 달력형 일자별 의견 관리 / 회의일정 / 사내공지 / 품질경보) */}
               {newIssueForm.category === "오픈이슈" ? (
-                /* 🌟 오픈이슈 전용: 날짜지정 + 진도율 슬라이더 + 달력형식 그래프 */
+                /* 🌟 오픈이슈 전용: 날짜지정 + 달력형식 일자별 의견 현황 */
                 <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-slate-900 border-2 border-blue-300 dark:border-blue-800 space-y-3 shadow-sm">
                   {/* Header & Metrics */}
                   <div className="flex items-center justify-between flex-wrap gap-1.5 pb-2 border-b border-blue-200/70 dark:border-blue-900/60">
@@ -2984,7 +2968,7 @@ export const AuthModal = () => {
                         <Pin className="w-3.5 h-3.5" />
                       </div>
                       <span className="font-black text-xs text-blue-950 dark:text-blue-200">
-                        오픈이슈 조치 일정 및 진도율 계획
+                        오픈이슈 조치 일정 및 일자별 의견 관리
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -2997,7 +2981,7 @@ export const AuthModal = () => {
                     </div>
                   </div>
 
-                  {/* 1) 시작일자 & 조치 목표일자 */}
+                  {/* 1) 시작일자 & 조치 목표일자 (작업자가 직접 지정) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     <div>
                       <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
@@ -3013,36 +2997,9 @@ export const AuthModal = () => {
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300">
-                          🎯 조치 목표/마감 일자
-                        </label>
-                        {/* Quick Presets */}
-                        <div className="flex items-center gap-0.5">
-                          {[
-                            { label: "오늘", days: 0 },
-                            { label: "+3일", days: 3 },
-                            { label: "+7일", days: 7 },
-                            { label: "+14일", days: 14 }
-                          ].map((p) => (
-                            <button
-                              key={p.label}
-                              type="button"
-                              onClick={() => {
-                                const base = new Date(newIssueForm.startDate || todayDateStr);
-                                base.setDate(base.getDate() + p.days);
-                                const y = base.getFullYear();
-                                const m = String(base.getMonth() + 1).padStart(2, "0");
-                                const d = String(base.getDate()).padStart(2, "0");
-                                setNewIssueForm({ ...newIssueForm, expireDate: `${y}-${m}-${d}` });
-                              }}
-                              className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 transition-colors cursor-pointer"
-                            >
-                              {p.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
+                        🎯 조치 목표/마감 일자 (직접 지정)
+                      </label>
                       <input
                         type="date"
                         required
@@ -3053,99 +3010,26 @@ export const AuthModal = () => {
                     </div>
                   </div>
 
-                  {/* 2) 진도율 (Progress Rate %) 슬라이더 & 퀵 버튼 */}
-                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-900 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="font-extrabold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                        <span className="text-blue-600">📊</span>
-                        <span>조치 진도율 (Progress Rate)</span>
-                      </label>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-black shadow-xs ${
-                        (newIssueForm.progress || 0) === 100
-                          ? "bg-emerald-600 text-white"
-                          : (newIssueForm.progress || 0) >= 50
-                          ? "bg-blue-600 text-white"
-                          : (newIssueForm.progress || 0) > 0
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                      }`}>
-                        {(newIssueForm.progress || 0)}% {
-                          (newIssueForm.progress || 0) === 100 ? "✓ 조치완료" :
-                          (newIssueForm.progress || 0) >= 75 ? "마무리단계" :
-                          (newIssueForm.progress || 0) >= 50 ? "중간진행" :
-                          (newIssueForm.progress || 0) > 0 ? "진행중" : "대기"
-                        }
-                      </span>
-                    </div>
-
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={newIssueForm.progress || 0}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setNewIssueForm({
-                          ...newIssueForm,
-                          progress: val,
-                          isResolved: val === 100
-                        });
-                      }}
-                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                    />
-
-                    <div className="grid grid-cols-5 gap-1 pt-0.5">
-                      {[0, 25, 50, 75, 100].map((rate) => (
-                        <button
-                          key={rate}
-                          type="button"
-                          onClick={() => setNewIssueForm({
-                            ...newIssueForm,
-                            progress: rate,
-                            isResolved: rate === 100
-                          })}
-                          className={`py-0.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
-                            (newIssueForm.progress || 0) === rate
-                              ? "bg-blue-600 text-white shadow-xs scale-102"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
-                          }`}
-                        >
-                          {rate}%
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 3) 📅 달력 형식의 타임라인 & 진도율 그래프 (Calendar Progress Chart) */}
-                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-900 space-y-1.5">
+                  {/* 2) 📅 달력 형식의 타임라인 & 일자별 의견 현황 (의견갯수 및 등록표시) */}
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-900 space-y-1.5">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                        <span>달력형 타임라인 & 진도율 그래프</span>
+                        <span>달력형 타임라인 & 일자별 의견 현황</span>
                       </span>
                       <span className="text-[9.5px] text-slate-400">
-                        * 날짜 클릭 시 목표일 자동 지정
+                        * 날짜 클릭 시 목표일 지정 및 해당 일자 의견 등록으로 지정
                       </span>
-                    </div>
-
-                    {/* Progress Fill Bar */}
-                    <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          (newIssueForm.progress || 0) === 100
-                            ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                            : (newIssueForm.progress || 0) >= 50
-                            ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-400"
-                            : "bg-gradient-to-r from-blue-500 to-indigo-500"
-                        }`}
-                        style={{ width: `${Math.max(4, newIssueForm.progress || 0)}%` }}
-                      ></div>
                     </div>
 
                     {/* 14-Day Grid */}
-                    <div className="grid grid-cols-7 gap-1 pt-1">
-                      {getOpenIssueFormCalendarDays(newIssueForm.startDate || todayDateStr, newIssueForm.expireDate || todayDateStr).map((day) => {
+                    <div className="grid grid-cols-7 gap-1 sm:gap-1.5 pt-1">
+                      {getOpenIssueFormCalendarDays(
+                        newIssueForm.startDate || todayDateStr,
+                        newIssueForm.expireDate || todayDateStr,
+                        newIssueForm.replies || []
+                      ).map((day) => {
+                        const isSelectedForAction = actionOpinionForm.actionDate === day.dateStr;
                         return (
                           <button
                             key={day.dateStr}
@@ -3154,40 +3038,59 @@ export const AuthModal = () => {
                               setNewIssueForm({ ...newIssueForm, expireDate: day.dateStr });
                               setActionOpinionForm((prev) => ({ ...prev, actionDate: day.dateStr }));
                             }}
-                            className={`p-1 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between min-h-[50px] relative ${
-                              day.isTarget
+                            className={`p-1 sm:p-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between min-h-[58px] sm:min-h-[64px] relative group ${
+                              isSelectedForAction || day.isTarget
                                 ? "bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-400/60 font-black scale-102"
+                                : day.hasOpinions
+                                ? "bg-blue-50/90 dark:bg-blue-950/70 border-blue-400 dark:border-blue-600 text-blue-950 dark:text-blue-100 font-bold ring-1 ring-blue-400/40"
                                 : day.isStart
                                 ? "bg-indigo-100 dark:bg-indigo-950 border-indigo-500 text-indigo-900 dark:text-indigo-200 font-black"
                                 : day.isInRange
-                                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-200 font-bold"
+                                ? "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-200 font-medium"
                                 : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100"
                             }`}
+                            title={`일자: ${day.dateStr} (의견 ${day.opinionCount}건) - 클릭 시 목표일 지정 및 의견 등록`}
                           >
-                            <div className="text-[9.5px] font-mono leading-tight">
+                            {/* 날짜 */}
+                            <div className="text-[9.5px] sm:text-[10px] font-mono leading-tight">
                               <span className={day.dayIndex === 0 ? "text-rose-500 font-bold" : day.dayIndex === 6 ? "text-blue-500 font-bold" : ""}>
                                 {day.monthDay}
                               </span>
                               <span className="block text-[8px] opacity-75">({day.dayName})</span>
                             </div>
 
-                            <div className="mt-0.5">
+                            {/* 상태 태그 */}
+                            <div className="my-0.5">
                               {day.isTarget ? (
-                                <span className="px-1 py-0.2 rounded text-[8px] font-black bg-white text-blue-700 shadow-2xs">
+                                <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-white text-blue-700 shadow-2xs">
                                   🎯목표
                                 </span>
                               ) : day.isStart ? (
-                                <span className="px-1 py-0.2 rounded text-[8px] font-black bg-indigo-600 text-white shadow-2xs">
+                                <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-indigo-600 text-white shadow-2xs">
                                   🚩시작
                                 </span>
                               ) : day.isToday ? (
-                                <span className="px-1 py-0.2 rounded text-[8px] font-black bg-amber-500 text-slate-950 shadow-2xs animate-pulse">
+                                <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-amber-500 text-slate-950 shadow-2xs animate-pulse">
                                   오늘
                                 </span>
-                              ) : day.isInRange ? (
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                              ) : null}
+                            </div>
+
+                            {/* 💬 의견갯수 & 의견등록표시 */}
+                            <div className="w-full flex items-center justify-center">
+                              {day.hasOpinions ? (
+                                <span className={`px-1 py-0.5 rounded-md text-[8px] sm:text-[8.5px] font-black flex items-center justify-center gap-0.5 shadow-2xs ${
+                                  isSelectedForAction || day.isTarget
+                                    ? "bg-cyan-300 text-slate-900"
+                                    : "bg-blue-600 text-white animate-pulse"
+                                }`}>
+                                  <MessageSquare className="w-2.5 h-2.5 shrink-0" />
+                                  <span>{day.opinionCount}건</span>
+                                </span>
                               ) : (
-                                <span className="text-[8px] text-slate-300 dark:text-slate-600">-</span>
+                                <span className="text-[7.5px] text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  +의견
+                                </span>
                               )}
                             </div>
                           </button>
