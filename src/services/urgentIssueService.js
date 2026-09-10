@@ -200,11 +200,13 @@ export const saveUrgentIssue = async (issueData) => {
     console.warn("Firestore save urgent issue fallback to local:", e);
   }
 
-  // Trigger real-time Telegram notification for new alert / issue
+  // Trigger real-time Telegram notification for new alert / issue (오픈이슈는 즉시 발송 제외, 익일 07:30 모닝브리핑에 포함)
   if (existingIdx < 0 && !fullItem.isDeleted) {
-    sendQualityAlertTelegram(fullItem).catch((err) => {
-      console.warn("Telegram alert error:", err);
-    });
+    if (fullItem.category !== "오픈이슈" && fullItem.category !== "open_issue") {
+      sendQualityAlertTelegram(fullItem).catch((err) => {
+        console.warn("Telegram alert error:", err);
+      });
+    }
   }
 
   return fullItem;

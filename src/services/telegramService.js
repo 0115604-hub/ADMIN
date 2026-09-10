@@ -406,6 +406,12 @@ export const formatKoreanCurrency = (amount) => {
  * 1. 품질경보 / 사내공지 / 회의일정 등록 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
  */
 export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) => {
+  // 🌟 오픈이슈는 즉시 발송하지 않고 익일 07:30 모닝브리핑에 포함
+  if (issueItem?.category === "오픈이슈" || issueItem?.category === "open_issue") {
+    console.log("[Telegram] 오픈이슈는 즉시 알림 발송 대상이 아니며 익일 모닝브리핑에 포함됩니다.");
+    return { success: true, skipped: true, reason: "오픈이슈는 모닝브리핑 발송 대상입니다." };
+  }
+
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || config.chatId || "-4186792536";
   const plant = issueItem?.plant || "삼랑진공장";
@@ -913,8 +919,27 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       workLogLines = lines.join("\n") + more;
     }
 
-    // 4. 회의 & 사내공지 (다가올 회의 및 유효한 사내공지)
+    // 4. 진행중인 오픈이슈 (미해결 & 미삭제)
     const allUrgent = getLocalUrgentIssues();
+    const activeOpenIssues = allUrgent.filter(
+      (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue")
+    );
+    let openIssueLines = "• 진행중인 오픈이슈 없음";
+    if (activeOpenIssues.length > 0) {
+      const oLines = activeOpenIssues.map((o) => {
+        const d = o.expireDate || o.targetDate || "";
+        const dText = d ? `(~${d.slice(5)}) ` : "";
+        const replyCount = o.replies?.length || 0;
+        const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
+        return `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+      });
+      openIssueLines = oLines.slice(0, 5).join("\n");
+      if (oLines.length > 5) {
+        openIssueLines += `\n• 외 ${oLines.length - 5}건`;
+      }
+    }
+
+    // 5. 회의 & 사내공지 (다가올 회의 및 유효한 사내공지)
     const upcomingMeetings = allUrgent.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
     const activeNotices = allUrgent.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
 
@@ -955,7 +980,10 @@ ${approvalDocLines}
 📝 <b>[3] 전일 업무일지 미결 ${pendingLogs.length > 0 ? `(${pendingLogs.length}건)` : ""}</b>
 ${workLogLines}
 
-📅 <b>[4] 회의 & 사내공지</b>
+📌 <b>[4] 진행중인 오픈이슈 ${activeOpenIssues.length > 0 ? `(${activeOpenIssues.length}건)` : ""}</b>
+${openIssueLines}
+
+📅 <b>[5] 회의 & 사내공지</b>
 ${noticeMeetingLines}
 ━━━━━━━━━━━━━━━━━━━━━
 ※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.
