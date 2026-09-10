@@ -323,8 +323,8 @@ export const TelegramView = () => {
     });
   }, [commonSchedules, todayDateStr]);
 
-  const totalSales = currentMonthData?.salesSummary?.totalSales || 1756104735;
-  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1248400884.5;
+  const totalSales = currentMonthData?.salesSummary?.totalSales ?? 965489801;
+  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.purchaseSummary?.totalPurchase || 978009146.46;
 
   const prevMonthKey = useMemo(() => {
     if (!selectedMonth) return "2026-08";
@@ -339,12 +339,12 @@ export const TelegramView = () => {
     return allMonthlyData?.[prevMonthKey] || null;
   }, [allMonthlyData, prevMonthKey]);
 
-  const prevSales = prevMonthData?.salesSummary?.totalSales || 1714856000;
-  const prevPurchases = prevMonthData?.purchaseSummary?.ledgerBenchmark || prevMonthData?.jajaeSummary?.totalAmount || 1264841000;
+  const prevSales = prevMonthData?.salesSummary?.totalSales || 2090811613;
+  const prevPurchases = prevMonthData?.purchaseSummary?.ledgerBenchmark || prevMonthData?.jajaeSummary?.totalAmount || prevMonthData?.purchaseSummary?.totalPurchase || 1342582214.5;
 
-  const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "102.4";
-  const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "98.7";
-  const costRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "71.1";
+  const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "46.2";
+  const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "72.8";
+  const costRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "101.3";
 
   const uncompletedCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
@@ -360,7 +360,7 @@ export const TelegramView = () => {
     const salesAchTxt = `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`;
     const purchAchTxt = `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`;
 
-    return `<b>⬛ [오륙] 매출 & 일정공유</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(totalSales).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(totalPurchases).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 사내 공통일정</b>\n${commonSchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
+    return `<b>⬛ [오륙] 매출 & 일정공유</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n<b>[1] 당월 매입 / 매출 결산 현황</b>\n• <b>매출액:</b> ₩${Number(Math.round(totalSales)).toLocaleString()}원\n• <b>매입액:</b> ₩${Number(Math.round(totalPurchases)).toLocaleString()}원\n• <b>매출대비 원가율:</b> ${costRatio}%\n\n<b>[2] 전월 실적 대비 달성율</b> (${prevMonthKey?.split("-")[1] || "8"}월 실적 대비)\n• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>\n• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>\n\n<b>[3] 사내 공통일정</b>\n${commonSchedsText}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>`;
   };
 
   // Load custom management template if exists, else load default text
@@ -376,7 +376,14 @@ export const TelegramView = () => {
         .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
         .replace(/경영정보공유/g, "")
         .replace(/경영정보/g, "");
-      sanitized = injectCommonSchedulesIntoPnLTemplate(sanitized, commonSchedsText, dateFormatted);
+      const livePnL = {
+        salesAmount: Math.round(totalSales),
+        purchaseAmount: Math.round(totalPurchases),
+        costRatio,
+        salesAchievementRate: `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
+        purchaseAchievementRate: `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`
+      };
+      sanitized = injectCommonSchedulesIntoPnLTemplate(sanitized, commonSchedsText, dateFormatted, livePnL);
       setEditableManagementText(sanitized);
     } else {
       setEditableManagementText(generateDefaultManagementText());

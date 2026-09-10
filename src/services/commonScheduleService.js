@@ -565,21 +565,54 @@ export const formatCommonSchedulesForTelegram = (scheds, todayStr = getKSTDateSt
   }).join("\n");
 };
 
-export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText, dateFormatted = "") => {
+export const injectCommonSchedulesIntoPnLTemplate = (templateText, schedulesText, dateFormatted = "", livePnLData = null) => {
   if (!templateText) return templateText;
 
   let text = templateText;
 
-  // Header Title replacements
+  // Header Title & legacy phrase replacements
+  text = text.replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]");
   text = text.replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유");
   text = text.replace(/일일아침손익결산/g, "매출 & 일정공유");
   text = text.replace(/손익결산\s*브리핑/g, "매출 & 일정공유");
+  text = text.replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정");
   text = text.replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정");
+  text = text.replace(/경영정보공유/g, "");
+  text = text.replace(/경영정보/g, "");
 
   if (dateFormatted) {
     text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
   }
 
+  // ⭐ Dynamically update Sections [1] and [2] with Live Financial Figures
+  if (livePnLData) {
+    const salesStr = `₩${Number(livePnLData.salesAmount || 0).toLocaleString()}원`;
+    const purchaseStr = `₩${Number(livePnLData.purchaseAmount || 0).toLocaleString()}원`;
+    const costRatioStr = `${livePnLData.costRatio || "0"}%`;
+    const salesAchStr = livePnLData.salesAchievementRate || "-";
+    const purchAchStr = livePnLData.purchaseAchievementRate || "-";
+
+    // 1. Placeholder replacements
+    text = text.replace(/\{salesAmount\}/g, salesStr);
+    text = text.replace(/\{purchaseAmount\}/g, purchaseStr);
+    text = text.replace(/\{costRatio\}/g, costRatioStr);
+    text = text.replace(/\{salesAchievementRate\}/g, salesAchStr);
+    text = text.replace(/\{purchaseAchievementRate\}/g, purchAchStr);
+
+    // 2. Section [1] live updates
+    const section1Regex = /(<b>\[1\][^<]*?<\/b>[\s\S]*?•\s*<b>매출액:<\/b>\s*)([^\n]+)(\n[\s\S]*?•\s*<b>매입액:<\/b>\s*)([^\n]+)(\n[\s\S]*?•\s*<b>매출대비 원가율:<\/b>\s*)([^\n]+)/i;
+    if (section1Regex.test(text)) {
+      text = text.replace(section1Regex, `$1${salesStr}$3${purchaseStr}$5${costRatioStr}`);
+    }
+
+    // 3. Section [2] live updates
+    const section2Regex = /(<b>\[2\][^<]*?<\/b>[^\n]*\n[\s\S]*?•\s*<b>전월대비 매출 달성율:<\/b>\s*<b>)([^<]+)(<\/b>\n[\s\S]*?•\s*<b>전월대비 매입 달성율:<\/b>\s*<b>)([^<]+)(<\/b>)/i;
+    if (section2Regex.test(text)) {
+      text = text.replace(section2Regex, `$1${salesAchStr}$3${purchAchStr}$5`);
+    }
+  }
+
+  // Section [3] schedule replacement
   if (text.includes("{commonSchedules}")) {
     return text.replace(/\{commonSchedules\}/g, schedulesText);
   }

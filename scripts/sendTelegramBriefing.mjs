@@ -509,7 +509,41 @@ ${noticeMeetingLines}
       console.log(`[경영총괄 손익브리핑] Lock acquired. Generating PnL briefing for ${todayStr}...`);
 
       try {
-        // 2-1. 태형&미영 일정 조회 (등록일부터 종료일까지 노출, 지난 일정 자동 삭제)
+        // 2-1. 당월 & 전월 실시간 손익 데이터 조회 (Firestore system_store/monthly_master)
+        let totalSales = 965489801;
+        let totalPurchases = 978009146;
+        let prevSales = 2090811613;
+        let prevPurchases = 1342582215;
+
+        try {
+          const mSnap = await getDoc(doc(db, "system_store", "monthly_master"));
+          if (mSnap.exists()) {
+            const masterData = mSnap.data();
+            const store = masterData.store || {};
+            const curMonth = store["2026-09"] || {};
+            const prevMonth = store["2026-08"] || {};
+
+            if (curMonth.salesSummary?.totalSales) totalSales = curMonth.salesSummary.totalSales;
+            if (curMonth.purchaseSummary?.ledgerBenchmark || curMonth.jajaeSummary?.totalAmount || curMonth.purchaseSummary?.totalPurchase) {
+              totalPurchases = curMonth.purchaseSummary?.ledgerBenchmark || curMonth.jajaeSummary?.totalAmount || curMonth.purchaseSummary?.totalPurchase;
+            }
+            if (prevMonth.salesSummary?.totalSales) prevSales = prevMonth.salesSummary.totalSales;
+            if (prevMonth.purchaseSummary?.ledgerBenchmark || prevMonth.jajaeSummary?.totalAmount || prevMonth.purchaseSummary?.totalPurchase) {
+              prevPurchases = prevMonth.purchaseSummary?.ledgerBenchmark || prevMonth.jajaeSummary?.totalAmount || prevMonth.purchaseSummary?.totalPurchase;
+            }
+          }
+        } catch (mErr) {
+          console.warn("Could not fetch live monthly_master data for PnL briefing:", mErr.message);
+        }
+
+        const costRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "101.3";
+        const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "46.2";
+        const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "72.8";
+
+        const salesAchTxt = `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`;
+        const purchAchTxt = `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`;
+
+        // 2-2. 사내 공통일정 조회 (등록일부터 종료일까지 노출, 지난 일정 자동 삭제)
         let commonSchedules = "";
         try {
           const snap = await getDocs(collection(db, "company_common_schedules"));
@@ -552,7 +586,7 @@ ${noticeMeetingLines}
                 case "세미나": return { emoji: "🎓", badge: "세미나" };
                 case "교육": return { emoji: "📚", badge: "교육 / 역량" };
                 case "기타":
-                default: return { emoji: "💍", badge: target || "특별한 일정" };
+                default: return { emoji: "💍", badge: target || "공통 일정" };
               }
             };
 
@@ -563,12 +597,13 @@ ${noticeMeetingLines}
               const timeStr = s.time && s.time !== "종일" ? ` [⏰ ${s.time}]` : "";
               const sFormatted = startDate.slice(5).replace("-", ".");
               const eFormatted = endDate.slice(5).replace("-", ".");
+              const commentsCount = Array.isArray(s.comments) && s.comments.length > 0 ? ` (의견 ${s.comments.length}건)` : "";
               if (startDate !== endDate) {
-                return `• ${cat.emoji} [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
+                return `• ${cat.emoji} [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
               } else if (startDate === todayStr) {
-                return `• ${cat.emoji} [오늘]${timeStr} <b>${s.title}</b> (${cat.badge})`;
+                return `• ${cat.emoji} [오늘]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
               } else {
-                return `• ${cat.emoji} [${sFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})`;
+                return `• ${cat.emoji} [${sFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
               }
             }).join("\n");
           }
@@ -577,24 +612,24 @@ ${noticeMeetingLines}
         }
 
         if (!commonSchedules) {
-          commonSchedules = "• 등록된 태형&미영 일정이 없습니다. ✨";
+          commonSchedules = "• 등록된 사내 공통일정이 없습니다. ✨";
         }
 
         const savedPnLTemplate = customTemplates["management_pnl"]?.text;
         const defaultPnLMessage = `
-<b>⬛ [오륙] 일일 아침 손익결산 브리핑</b>
+<b>⬛ [오륙] 매출 & 일정공유</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
 <b>[1] 당월 매입 / 매출 결산 현황</b>
-• <b>매출액:</b> ₩1,756,104,735원
-• <b>매입액:</b> ₩1,248,400,885원
-• <b>매출대비 원가율:</b> 71.1%
+• <b>매출액:</b> ₩${Number(Math.round(totalSales)).toLocaleString()}원
+• <b>매입액:</b> ₩${Number(Math.round(totalPurchases)).toLocaleString()}원
+• <b>매출대비 원가율:</b> ${costRatio}%
 
-<b>[2] 전월 실적 대비 달성율</b>
-• <b>전월대비 매출 달성율:</b> <b>102.4%</b>
-• <b>전월대비 매입 달성율:</b> <b>98.7%</b>
+<b>[2] 전월 실적 대비 달성율</b> (08월 실적 대비)
+• <b>전월대비 매출 달성율:</b> <b>${salesAchTxt}</b>
+• <b>전월대비 매입 달성율:</b> <b>${purchAchTxt}</b>
 
-<b>[3] 태형이랑 & 미영이랑</b>
+<b>[3] 사내 공통일정</b>
 ${commonSchedules}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
@@ -602,10 +637,44 @@ ${commonSchedules}
 
         let pnlMessage = defaultPnLMessage;
         if (savedPnLTemplate) {
-          let text = savedPnLTemplate;
+          let text = savedPnLTemplate
+            .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
+            .replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유")
+            .replace(/일일아침손익결산/g, "매출 & 일정공유")
+            .replace(/손익결산\s*브리핑/g, "매출 & 일정공유")
+            .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
+            .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
+            .replace(/경영정보공유/g, "")
+            .replace(/경영정보/g, "");
+
           if (dateFormatted) {
             text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
           }
+
+          const salesStr = `₩${Number(Math.round(totalSales)).toLocaleString()}원`;
+          const purchaseStr = `₩${Number(Math.round(totalPurchases)).toLocaleString()}원`;
+          const costRatioStr = `${costRatio}%`;
+
+          // 1. Placeholder replacements
+          text = text.replace(/\{salesAmount\}/g, salesStr);
+          text = text.replace(/\{purchaseAmount\}/g, purchaseStr);
+          text = text.replace(/\{costRatio\}/g, costRatioStr);
+          text = text.replace(/\{salesAchievementRate\}/g, salesAchTxt);
+          text = text.replace(/\{purchaseAchievementRate\}/g, purchAchTxt);
+
+          // 2. Section [1] live regex updates
+          const section1Regex = /(<b>\[1\][^<]*?<\/b>[\s\S]*?•\s*<b>매출액:<\/b>\s*)([^\n]+)(\n[\s\S]*?•\s*<b>매입액:<\/b>\s*)([^\n]+)(\n[\s\S]*?•\s*<b>매출대비 원가율:<\/b>\s*)([^\n]+)/i;
+          if (section1Regex.test(text)) {
+            text = text.replace(section1Regex, `$1${salesStr}$3${purchaseStr}$5${costRatioStr}`);
+          }
+
+          // 3. Section [2] live regex updates
+          const section2Regex = /(<b>\[2\][^<]*?<\/b>[^\n]*\n[\s\S]*?•\s*<b>전월대비 매출 달성율:<\/b>\s*<b>)([^<]+)(<\/b>\n[\s\S]*?•\s*<b>전월대비 매입 달성율:<\/b>\s*<b>)([^<]+)(<\/b>)/i;
+          if (section2Regex.test(text)) {
+            text = text.replace(section2Regex, `$1${salesAchTxt}$3${purchAchTxt}$5`);
+          }
+
+          // 4. Section [3] schedule replacement
           if (text.includes("{commonSchedules}")) {
             pnlMessage = text.replace(/\{commonSchedules\}/g, commonSchedules);
           } else if (text.includes("${commonSchedules}")) {
@@ -613,9 +682,9 @@ ${commonSchedules}
           } else {
             const section3Regex = /(<b>\[3\][^<]*?<\/b>|\[3\][^\n]*\n)([\s\S]*?)(?=(━━━━━━━━━━━━━━━━━━━━━|<a\s+href|$))/i;
             if (section3Regex.test(text)) {
-              pnlMessage = text.replace(section3Regex, `$1\n${commonSchedules}\n`);
+              pnlMessage = text.replace(section3Regex, `<b>[3] 사내 공통일정</b>\n${commonSchedules}\n`);
             } else {
-              pnlMessage = `${text}\n\n<b>[3] 태형이랑 & 미영이랑</b>\n${commonSchedules}`;
+              pnlMessage = `${text}\n\n<b>[3] 사내 공통일정</b>\n${commonSchedules}`;
             }
           }
         }
