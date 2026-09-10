@@ -292,6 +292,7 @@ export const MonthProvider = ({ children }) => {
         currentMonthData,
         allMonthlyData,
         changeMonth,
+        setSelectedMonth: changeMonth,
         resetToCurrentMonth,
         uploadMonthlyData
       }}

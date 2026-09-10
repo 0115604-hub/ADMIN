@@ -38,7 +38,15 @@ import {
 
 export const HanulTaxInvoiceView = () => {
   const { formatAmount } = useCurrency();
-  const { selectedMonth, availableMonths, setSelectedMonth } = useMonth();
+  const { selectedMonth, availableMonths = [], changeMonth, setSelectedMonth } = useMonth();
+
+  const handleSelectMonth = (m) => {
+    if (typeof changeMonth === "function") {
+      changeMonth(m);
+    } else if (typeof setSelectedMonth === "function") {
+      setSelectedMonth(m);
+    }
+  };
 
   const [monthData, setMonthData] = useState(() => getHanulMonthData(selectedMonth));
   const [isSaved, setIsSaved] = useState(false);
@@ -448,7 +456,7 @@ export const HanulTaxInvoiceView = () => {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setSelectedMonth(m)}
+                  onClick={() => handleSelectMonth(m)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     isSelected
                       ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-105"
@@ -463,7 +471,7 @@ export const HanulTaxInvoiceView = () => {
             {/* Dropdown for other months */}
             <select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              onChange={(e) => handleSelectMonth(e.target.value)}
               className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 px-2 py-1 cursor-pointer focus:outline-none"
               title="전체 월 선택"
             >
