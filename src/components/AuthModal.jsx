@@ -134,8 +134,10 @@ export const AuthModal = () => {
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
   const [issueViewMode, setIssueViewMode] = useState("auto"); // "auto" (>=2 is summary) | "summary" | "detailed"
   const [detailIssueModal, setDetailIssueModal] = useState(null); // Fallback / Action modal ref
-  const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "unresolved" | "closed"
+  const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "unresolved" | "closed" | "deleted"
   const [openIssueCategoryFilter, setOpenIssueCategoryFilter] = useState("all"); // "all" | "quality" | "notice" | "meeting"
+  const [ledgerCategoryTab, setLedgerCategoryTab] = useState("all"); // "all" | "open_issue" | "notice" | "meeting"
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState(""); // "" or "YYYY-MM-DD" for schedule calendar filter
   const ISSUES_PER_PAGE = 5;
 
   // New Issue Form State (사진 첨부 및 사내공지/회의일정 만료일자 및 회의시간, 조치결과, 조치사진, 상태 지원)
@@ -439,12 +441,100 @@ export const AuthModal = () => {
 
   const unresolvedActiveIssues = unresolvedIssues;
 
+  // Category-specific collections across all records (active + archived/deleted)
+  const allOpenIssues = useMemo(() => {
+    return urgentIssues.filter(
+      (i) =>
+        i.category === "품질경보" ||
+        i.category === "오픈이슈" ||
+        (!i.category?.includes("공지") &&
+          !i.category?.includes("공유") &&
+          i.category !== "회의일정")
+    );
+  }, [urgentIssues]);
+
+  const allNotices = useMemo(() => {
+    return urgentIssues.filter(
+      (i) =>
+        i.category === "공지사항" ||
+        i.category === "사내공지" ||
+        i.category === "공유사항"
+    );
+  }, [urgentIssues]);
+
+  const allMeetings = useMemo(() => {
+    return urgentIssues.filter((i) => i.category === "회의일정");
+  }, [urgentIssues]);
+
+  // 📅 오픈이슈 전용 7일간 일정표 (Schedule Calendar) 계산
+  const openIssueScheduleDays = useMemo(() => {
+    const days = [];
+    const baseDate = new Date();
+    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+
+    // -2일 전부터 +4일 후까지 7일간 생성
+    for (let offset = -2; offset <= 4; offset++) {
+      const d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + offset);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const dayName = dayNames[d.getDay()];
+      const isToday = dateStr === todayDateStr;
+
+      const matchedIssues = allOpenIssues.filter((it) => {
+        const itemDate = it.expireDate || it.targetDate || it.createdAt?.slice(0, 10);
+        return itemDate === dateStr;
+      });
+
+      const unres = matchedIssues.filter((it) => !it.isResolved && !it.isDeleted).length;
+      const res = matchedIssues.filter((it) => it.isResolved && !it.isDeleted).length;
+
+      days.push({
+        dateStr,
+        dayName,
+        label: `${mm}-${dd}(${dayName})`,
+        isToday,
+        items: matchedIssues,
+        unresolvedCount: unres,
+        resolvedCount: res,
+        totalCount: matchedIssues.length
+      });
+    }
+    return days;
+  }, [allOpenIssues, todayDateStr]);
+
   const filteredIssues = useMemo(() => {
-    if (issueFilterTab === "unresolved") return unresolvedIssues;
-    if (issueFilterTab === "closed") return closedIssues;
-    if (issueFilterTab === "deleted") return urgentIssues.filter((i) => i.isDeleted || isItemExpired(i));
-    return sortIssuesByCustomPriority(urgentIssues); // [전체]: 삭제 및 만료된 과거 모든 이력 보존
-  }, [urgentIssues, issueFilterTab, unresolvedIssues, closedIssues, todayDateStr, currentKstTimeStr]);
+    let base = urgentIssues;
+
+    // 1. 대장 모달 카테고리 탭 필터링
+    if (ledgerCategoryTab === "open_issue") {
+      base = allOpenIssues;
+      if (selectedScheduleDate) {
+        base = base.filter((i) => {
+          const itemDate = i.expireDate || i.targetDate || i.createdAt?.slice(0, 10);
+          return itemDate === selectedScheduleDate;
+        });
+      }
+    } else if (ledgerCategoryTab === "notice") {
+      base = allNotices;
+    } else if (ledgerCategoryTab === "meeting") {
+      base = allMeetings;
+    }
+
+    // 2. 상태 탭 필터링
+    if (issueFilterTab === "unresolved") {
+      return sortIssuesByCustomPriority(base.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i)));
+    }
+    if (issueFilterTab === "closed") {
+      return sortIssuesByCustomPriority(base.filter((i) => !i.isDeleted && i.isResolved && !isItemExpired(i)));
+    }
+    if (issueFilterTab === "deleted") {
+      return base.filter((i) => i.isDeleted || isItemExpired(i));
+    }
+    return sortIssuesByCustomPriority(base); // [전체]: 삭제 및 만료된 과거 모든 이력 보존
+  }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, issueFilterTab, allOpenIssues, allNotices, allMeetings, unresolvedIssues, closedIssues, todayDateStr, currentKstTimeStr]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
   const samrangjinLeaveCount = useMemo(() => {
@@ -1070,12 +1160,12 @@ export const AuthModal = () => {
                   onClick={() => setOpenIssueCategoryFilter("quality")}
                   className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
                     openIssueCategoryFilter === "quality"
-                      ? "bg-rose-600 text-white shadow-xs"
+                      ? "bg-gradient-to-r from-orange-600 to-rose-600 text-white shadow-xs"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <span>🚨 긴급품질</span>
-                  <span>({qualityIssuesCount})</span>
+                  <Flame className="w-3.5 h-3.5 text-orange-500" />
+                  <span>오픈이슈 ({qualityIssuesCount})</span>
                 </button>
                 <button
                   type="button"
@@ -1146,8 +1236,9 @@ export const AuthModal = () => {
                               📢 사내공지
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs animate-pulse">
-                              🔴 긴급품질
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-orange-500 via-rose-600 to-red-600 text-white shrink-0 shadow-2xs flex items-center gap-1">
+                              <Flame className="w-3 h-3 fill-amber-300 text-amber-300 animate-pulse" />
+                              <span>오픈이슈</span>
                             </span>
                           )}
                           <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
@@ -1165,7 +1256,7 @@ export const AuthModal = () => {
                                 ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
                                 : isNotice
                                 ? `📅 만료: ~${item.expireDate.slice(5)}`
-                                : `📅 ${item.expireDate.slice(5)}`}
+                                : `📅 목표: ${item.expireDate.slice(5)}`}
                             </span>
                           )}
                           {item.author && (
@@ -1175,24 +1266,26 @@ export const AuthModal = () => {
                           )}
                         </div>
 
-                        {/* 우측 조치 버튼 & 사진 수 */}
+                        {/* 우측 조치 버튼 & 사진 수 (회의일정인 경우 삭제 처리) */}
                         <div className="flex items-center gap-1.5 ml-auto shrink-0">
-                          {imgCount > 0 && (
+                          {!isMeeting && imgCount > 0 && (
                             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1">
                               <Camera className="w-3 h-3 text-rose-500" />
                               <span>{imgCount}</span>
                             </span>
                           )}
-                          <button
-                            type="button"
-                            className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 transition-all ${
-                              item.isResolved
-                                ? "bg-emerald-600 text-white"
-                                : "bg-rose-600 text-white hover:bg-rose-500 group-hover:shadow-md"
-                            }`}
-                          >
-                            <span>{item.isResolved ? "조치완료 ✓" : "조치입력 ➜"}</span>
-                          </button>
+                          {!isMeeting && (
+                            <button
+                              type="button"
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 transition-all ${
+                                item.isResolved
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-rose-600 text-white hover:bg-rose-500 group-hover:shadow-md"
+                              }`}
+                            >
+                              <span>{item.isResolved ? "조치완료 ✓" : "조치입력 ➜"}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -1648,7 +1741,161 @@ export const AuthModal = () => {
                 </div>
               )}
 
-              {/* 2. Filter Tabs: [전체] [⏳ 진행중] [✓ 종결대장] [신규등록] */}
+              {/* 🌟 1.5 Modal Category Tabs: [전체] [🔥 오픈이슈] [📢 사내공지] [📅 회의일정] */}
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerCategoryTab("all");
+                    setSelectedScheduleDate("");
+                    setIssueModalPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
+                    ledgerCategoryTab === "all"
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>전체</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
+                    {urgentIssues.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerCategoryTab("open_issue");
+                    setIssueModalPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
+                    ledgerCategoryTab === "open_issue"
+                      ? "bg-gradient-to-r from-orange-600 to-rose-600 text-white shadow-md ring-1 ring-orange-400/40"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Flame className="w-3.5 h-3.5 text-orange-500" />
+                  <span>오픈이슈</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-orange-100 dark:bg-orange-950 text-orange-900 dark:text-orange-200">
+                    {allOpenIssues.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerCategoryTab("notice");
+                    setSelectedScheduleDate("");
+                    setIssueModalPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
+                    ledgerCategoryTab === "notice"
+                      ? "bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400/40"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>📢 사내공지</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
+                    {allNotices.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLedgerCategoryTab("meeting");
+                    setSelectedScheduleDate("");
+                    setIssueModalPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
+                    ledgerCategoryTab === "meeting"
+                      ? "bg-purple-600 text-white shadow-md ring-1 ring-purple-400/40"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>📅 회의일정</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200">
+                    {allMeetings.length}
+                  </span>
+                </button>
+              </div>
+
+              {/* 📅 🌟 [오픈이슈 전용 일정표] - 오픈이슈 탭에서만 일정표 노출 */}
+              {ledgerCategoryTab === "open_issue" && (
+                <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-orange-950/40 via-slate-900 to-rose-950/30 border-2 border-orange-500/40 shadow-xs space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-orange-500" />
+                      <strong className="text-xs sm:text-sm font-black text-orange-300">
+                        오픈이슈 조치/목표 일정표 (Schedule Timeline)
+                      </strong>
+                    </div>
+                    {selectedScheduleDate ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedScheduleDate("")}
+                        className="text-[11px] font-bold text-orange-400 hover:text-orange-200 underline cursor-pointer"
+                      >
+                        {selectedScheduleDate} 필터 해제 (전체 보기) ✕
+                      </button>
+                    ) : (
+                      <span className="text-[10.5px] text-slate-400">
+                        * 날짜 클릭 시 해당 일자 오픈이슈만 필터링됩니다.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 7-Days Schedule Strip */}
+                  <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-xs">
+                    {openIssueScheduleDays.map((day) => {
+                      const isSelected = selectedScheduleDate === day.dateStr;
+                      return (
+                        <button
+                          key={day.dateStr}
+                          type="button"
+                          onClick={() => {
+                            setSelectedScheduleDate((prev) => (prev === day.dateStr ? "" : day.dateStr));
+                            setIssueModalPage(1);
+                          }}
+                          className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-between min-h-[54px] ${
+                            isSelected
+                              ? "bg-orange-600 text-white border-orange-400 ring-2 ring-orange-400/50 shadow-md scale-105"
+                              : day.isToday
+                              ? "bg-orange-950/60 border-orange-500/80 text-orange-200 ring-1 ring-orange-500/30 font-black"
+                              : day.totalCount > 0
+                              ? "bg-slate-800 border-slate-700 hover:border-orange-400/60 text-slate-200"
+                              : "bg-slate-800/40 border-slate-700/50 text-slate-500 opacity-60 hover:opacity-100"
+                          }`}
+                        >
+                          <div className="text-[9.5px] sm:text-[10px] font-mono leading-tight">
+                            {day.isToday ? "오늘" : `${day.dateStr.slice(5)}`}
+                            <span className="block text-[8.5px] opacity-75">({day.dayName})</span>
+                          </div>
+                          <div className="mt-1">
+                            {day.unresolvedCount > 0 ? (
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-black ${
+                                isSelected ? "bg-white text-rose-600" : "bg-rose-600 text-white"
+                              }`}>
+                                미결 {day.unresolvedCount}
+                              </span>
+                            ) : day.resolvedCount > 0 ? (
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-black ${
+                                isSelected ? "bg-white text-emerald-600" : "bg-emerald-600/80 text-white"
+                              }`}>
+                                ✓ {day.resolvedCount}
+                              </span>
+                            ) : (
+                              <span className="text-[9px] text-slate-500">-</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Status Filter Tabs: [전체] [⏳ 진행중] [✓ 종결대장] [신규등록] */}
               <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner flex-wrap">
                   {/* 1. [전체] */}
@@ -1666,7 +1913,7 @@ export const AuthModal = () => {
                   >
                     <span>전체</span>
                     <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                      {urgentIssues.length}
+                      {filteredIssues.length}
                     </span>
                   </button>
 
@@ -1684,9 +1931,6 @@ export const AuthModal = () => {
                     }`}
                   >
                     <span>진행중</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200">
-                      {unresolvedIssues.length}
-                    </span>
                   </button>
 
                   {/* 3. [종결대장] */}
@@ -1703,9 +1947,6 @@ export const AuthModal = () => {
                     }`}
                   >
                     <span>종결대장</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200">
-                      {closedIssues.length}
-                    </span>
                   </button>
 
                   {/* 4. [삭제/만료] */}
@@ -1722,9 +1963,6 @@ export const AuthModal = () => {
                     }`}
                   >
                     <span>삭제/만료</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200">
-                      {urgentIssues.filter((i) => i.isDeleted || isItemExpired(i)).length}
-                    </span>
                   </button>
                 </div>
 
@@ -1760,9 +1998,9 @@ export const AuthModal = () => {
                               ? "bg-purple-600"
                               : isItemNotice
                               ? "bg-emerald-600"
-                              : "bg-rose-600"
+                              : "bg-gradient-to-r from-orange-600 to-rose-600"
                           }`}>
-                            {isItemDeleted ? "🗑️ 삭제됨" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "사내공지" : "품질경보"}
+                            {isItemDeleted ? "🗑️ 삭제됨" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "🔥 오픈이슈"}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                             {item.plant}
@@ -1773,13 +2011,13 @@ export const AuthModal = () => {
                                 ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
                                 : isItemNotice
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                                : "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200 border border-orange-200"
                             }`}>
                               {isItemMeeting
                                 ? `📅 회의: ${item.expireDate}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
                                 : isItemNotice
                                 ? `📅 만료: ~${item.expireDate}`
-                                : `📅 ${item.expireDate}`}
+                                : `📅 목표: ${item.expireDate}`}
                             </span>
                           )}
                           <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
@@ -2022,9 +2260,9 @@ export const AuthModal = () => {
                                 ? "bg-purple-600"
                                 : isItNotice
                                 ? "bg-emerald-600"
-                                : "bg-rose-600"
+                                : "bg-gradient-to-r from-orange-600 to-rose-600"
                             }`}>
-                              {isItDeleted ? "삭제" : isItMeeting ? "회의" : isItNotice ? "공지" : "경보"}
+                              {isItDeleted ? "삭제" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
                             </span>
 
                             {/* Factory Badge */}
@@ -2047,7 +2285,7 @@ export const AuthModal = () => {
                                   ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
                                   : isItNotice
                                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                  : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                                  : "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200 border border-orange-200"
                               }`}>
                                 {it.expireDate.slice(5)}{isItMeeting && it.meetingTime ? ` ${it.meetingTime}` : ""}
                               </span>
@@ -2309,12 +2547,13 @@ export const AuthModal = () => {
                     type="button"
                     onClick={() => setNewIssueForm({ ...newIssueForm, category: "품질경보" })}
                     className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
-                      newIssueForm.category === "품질경보"
-                        ? "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-1 ring-rose-500/30"
+                      newIssueForm.category === "품질경보" || newIssueForm.category === "오픈이슈"
+                        ? "bg-gradient-to-r from-orange-50 to-rose-50 dark:from-orange-950/70 dark:to-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-1 ring-rose-500/30"
                         : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                     }`}
                   >
-                    <span>🚨 품질경보</span>
+                    <Flame className="w-3.5 h-3.5 text-orange-500" />
+                    <span>오픈이슈</span>
                   </button>
                   <button
                     type="button"
@@ -2384,67 +2623,86 @@ export const AuthModal = () => {
                 </div>
               </div>
 
-              {/* 3. 회의 진행 일시 / 공지 만료일자 */}
-              {(newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" || newIssueForm.category === "회의일정") && (
-                <div className={`p-3 rounded-2xl border transition-all ${
-                  newIssueForm.category === "회의일정"
-                    ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/30"
-                    : "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
-                }`}>
-                  {newIssueForm.category === "회의일정" ? (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <label className="font-black text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5 shrink-0">
-                        <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                        <span>회의 진행 일시</span>
-                      </label>
-                      <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
-                        <input
-                          type="date"
-                          required
-                          value={newIssueForm.expireDate || todayDateStr}
-                          onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs text-center cursor-pointer"
-                        />
-                        <select
-                          value={newIssueForm.meetingTime || "14:00"}
-                          onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingTime: e.target.value })}
-                          className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-purple-700 dark:text-purple-300 shadow-xs text-center cursor-pointer"
-                        >
-                          {[
-                            "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
-                            "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-                            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-                            "15:00", "15:30", "16:00", "16:30", "17:00"
-                          ].map((t) => (
-                            <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold">
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>공지 게시 만료일자</span>
-                        </label>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                          * 만료일 경과 시 첫 화면에서 자동 정리됩니다.
-                        </p>
-                      </div>
+              {/* 3. 회의 진행 일시 / 공지 만료일자 / 오픈이슈 조치목표일 */}
+              <div className={`p-3 rounded-2xl border transition-all ${
+                newIssueForm.category === "회의일정"
+                  ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/30"
+                  : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
+                  ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
+                  : "bg-orange-50/80 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800 ring-1 ring-orange-400/30"
+              }`}>
+                {newIssueForm.category === "회의일정" ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <label className="font-black text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5 shrink-0">
+                      <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                      <span>회의 진행 일시</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                       <input
                         type="date"
                         required
                         value={newIssueForm.expireDate || todayDateStr}
                         onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                        className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs text-center cursor-pointer"
                       />
+                      <select
+                        value={newIssueForm.meetingTime || "14:00"}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingTime: e.target.value })}
+                        className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-purple-700 dark:text-purple-300 shadow-xs text-center cursor-pointer"
+                      >
+                        {[
+                          "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
+                          "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+                          "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+                          "15:00", "15:30", "16:00", "16:30", "17:00"
+                        ].map((t) => (
+                          <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold">
+                            {t}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                ) : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>공지 게시 만료일자</span>
+                      </label>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                        * 만료일 경과 시 첫 화면에서 자동 정리됩니다.
+                      </p>
+                    </div>
+                    <input
+                      type="date"
+                      required
+                      value={newIssueForm.expireDate || todayDateStr}
+                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                      className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-orange-600" />
+                        <span>오픈이슈 조치 목표/마감 일자</span>
+                      </label>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                        * 오픈이슈 일정표(타임라인)에 반영되는 조치 목표 일자입니다.
+                      </p>
+                    </div>
+                    <input
+                      type="date"
+                      required
+                      value={newIssueForm.expireDate || todayDateStr}
+                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                      className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* 4. 제목 & 내용 */}
               <div className="space-y-2">
