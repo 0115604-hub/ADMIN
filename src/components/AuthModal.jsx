@@ -3080,12 +3080,14 @@ export const AuthModal = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
-                        총 {calcDaysBetween(newIssueForm.startDate || todayDateStr, newIssueForm.expireDate || todayDateStr)}일간
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 ${calcDDay(newIssueForm.expireDate || todayDateStr).color}`}>
-                        {calcDDay(newIssueForm.expireDate || todayDateStr).label}
-                      </span>
+                      <button
+                        type="submit"
+                        className="px-3.5 py-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                        title="오픈이슈 등록 및 저장"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>등록</span>
+                      </button>
                     </div>
                   </div>
 
