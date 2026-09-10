@@ -198,7 +198,7 @@ export const formatRelativeAccessTime = (timestampStr) => {
 
 /**
  * Returns { mondayStr: 'YYYY-MM-DD', sundayStr: 'YYYY-MM-DD', mondayDate: Date, sundayDate: Date }
- * for the given reference date (defaults to today or 2026-09-11 in KST).
+ * dynamically calculated for the given reference date (defaults to current real-time KST date).
  */
 export const getThisWeekDateRange = (refDate = new Date()) => {
   try {
@@ -208,9 +208,9 @@ export const getThisWeekDateRange = (refDate = new Date()) => {
     }
     const kstDateStr = getKSTDateString(d);
     const [yStr, mStr, dStr] = kstDateStr.split('-');
-    const year = parseInt(yStr, 10) || 2026;
-    const month = (parseInt(mStr, 10) || 9) - 1;
-    const day = parseInt(dStr, 10) || 11;
+    const year = parseInt(yStr, 10);
+    const month = parseInt(mStr, 10) - 1;
+    const day = parseInt(dStr, 10);
 
     const curr = new Date(year, month, day);
     const dayOfWeek = curr.getDay(); // 0 is Sun, 1 is Mon ... 6 is Sat
@@ -236,23 +236,28 @@ export const getThisWeekDateRange = (refDate = new Date()) => {
       sundayDate: sunday
     };
   } catch (e) {
-    return { mondayStr: '2026-09-07', sundayStr: '2026-09-13' };
+    const today = getKSTDateString(new Date());
+    return { mondayStr: today, sundayStr: today, mondayDate: new Date(), sundayDate: new Date() };
   }
 };
 
 /**
- * Checks if a given date string, number, or Date is in the current week (Monday ~ Sunday).
+ * Checks if a given date string, number, or Date is in the active current week (Monday ~ Sunday)
+ * of the logged-in session / current real-time date.
  */
 export const isThisWeek = (dateInput, refDate = new Date()) => {
   if (!dateInput) return false;
   try {
+    const kstNow = getKSTDateString(refDate);
+    const [curYear, curMonth] = kstNow.split('-');
+
     let targetStr = '';
     if (typeof dateInput === 'number') {
-      targetStr = `2026-09-${String(dateInput).padStart(2, '0')}`;
+      targetStr = `${curYear}-${curMonth}-${String(dateInput).padStart(2, '0')}`;
     } else if (typeof dateInput === 'string') {
       const match = dateInput.match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
       if (match) {
-        const y = match[1] || '2026';
+        const y = match[1] || curYear;
         const m = match[2].padStart(2, '0');
         const d = match[3].padStart(2, '0');
         targetStr = `${y}-${m}-${d}`;
@@ -261,11 +266,11 @@ export const isThisWeek = (dateInput, refDate = new Date()) => {
         if (monthDayMatch) {
           const m = monthDayMatch[1].padStart(2, '0');
           const d = monthDayMatch[2].padStart(2, '0');
-          targetStr = `2026-${m}-${d}`;
+          targetStr = `${curYear}-${m}-${d}`;
         } else {
-          const idDateMatch = dateInput.match(/2026(\d{2})(\d{2})/);
+          const idDateMatch = dateInput.match(/(\d{4})(\d{2})(\d{2})/);
           if (idDateMatch) {
-            targetStr = `2026-${idDateMatch[1]}-${idDateMatch[2]}`;
+            targetStr = `${idDateMatch[1]}-${idDateMatch[2]}-${idDateMatch[3]}`;
           }
         }
       }

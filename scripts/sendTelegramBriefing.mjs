@@ -89,13 +89,18 @@ function getKSTTimeInfo(date = new Date()) {
 function isThisWeek(dateInput, refDate = new Date()) {
   if (!dateInput) return false;
   try {
+    const kstDateStr = getKSTDateString(refDate);
+    const [yStr, mStr, dStr] = kstDateStr.split("-");
+    const curYear = yStr;
+    const curMonth = mStr;
+
     let targetStr = "";
     if (typeof dateInput === "number") {
-      targetStr = `2026-09-${String(dateInput).padStart(2, "0")}`;
+      targetStr = `${curYear}-${curMonth}-${String(dateInput).padStart(2, "0")}`;
     } else if (typeof dateInput === "string") {
       const match = dateInput.match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
       if (match) {
-        const y = match[1] || "2026";
+        const y = match[1] || curYear;
         const m = match[2].padStart(2, "0");
         const d = match[3].padStart(2, "0");
         targetStr = `${y}-${m}-${d}`;
@@ -104,11 +109,11 @@ function isThisWeek(dateInput, refDate = new Date()) {
         if (monthDayMatch) {
           const m = monthDayMatch[1].padStart(2, "0");
           const d = monthDayMatch[2].padStart(2, "0");
-          targetStr = `2026-${m}-${d}`;
+          targetStr = `${curYear}-${m}-${d}`;
         } else {
-          const idDateMatch = dateInput.match(/2026(\d{2})(\d{2})/);
+          const idDateMatch = dateInput.match(/(\d{4})(\d{2})(\d{2})/);
           if (idDateMatch) {
-            targetStr = `2026-${idDateMatch[1]}-${idDateMatch[2]}`;
+            targetStr = `${idDateMatch[1]}-${idDateMatch[2]}-${idDateMatch[3]}`;
           }
         }
       }
@@ -117,9 +122,7 @@ function isThisWeek(dateInput, refDate = new Date()) {
     }
 
     if (!targetStr) return false;
-    const kstDateStr = getKSTDateString(refDate);
-    const [yStr, mStr, dStr] = kstDateStr.split("-");
-    const curr = new Date(parseInt(yStr, 10) || 2026, (parseInt(mStr, 10) || 9) - 1, parseInt(dStr, 10) || 11);
+    const curr = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, parseInt(dStr, 10));
     const dayOfWeek = curr.getDay();
     const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(curr);

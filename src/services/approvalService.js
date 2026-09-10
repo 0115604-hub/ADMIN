@@ -836,10 +836,12 @@ export const syncPlantOvertimeToApprovalBox = async ({
       hour12: false
     }).replace(/\. /g, "-").replace(/\./g, "");
 
-    // ⭐ 이번주 특근보고서만 결재함 연동 제한 (Strict Current-Week Overtime Approval Synthesis Filter)
+    const currentApprovalDocs = getLocalApprovalDocs();
+
+    // ⭐ 이번주 특근보고서만 결재함 연동 제한 (실제 로그인/사용 중인 현재 주간 기준 동적 연동)
     const isTargetThisWeek = isThisWeek(workDateStr);
     if (!isTargetThisWeek) {
-      // If workDate is outside the current week, remove any existing pending overtime approval documents for this date/plant and do not sync
+      // If workDate is outside the current active week, remove any existing pending overtime approval documents for this date/plant and do not sync
       for (const targetPlant of targetPlants) {
         const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
         const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
@@ -849,8 +851,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
           (
             d.id === canonicalDocId ||
             (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-            (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-            (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+            (d.workDate && d.workDate === workDateStr) ||
+            (d.title && d.title.includes(workDateStr))
           )
         );
         for (const d of outOfWeekDocs) {
@@ -862,7 +864,6 @@ export const syncPlantOvertimeToApprovalBox = async ({
       return [];
     }
 
-    const currentApprovalDocs = getLocalApprovalDocs();
     const syncedDocs = [];
 
     for (const targetPlant of targetPlants) {
