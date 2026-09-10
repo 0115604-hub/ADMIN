@@ -4,6 +4,7 @@ import {
   Calculator,
   Receipt,
   Car,
+  Coins,
   DollarSign,
   TrendingUp,
   Building2,
@@ -37,8 +38,9 @@ import {
 } from "../services/hanulTaxInvoiceService";
 
 export const HanulTaxInvoiceView = () => {
-  const { formatAmount } = useCurrency();
-  const { selectedMonth, availableMonths = [], changeMonth, setSelectedMonth } = useMonth();
+  const { formatAmount } = useCurrency() || {};
+  const { selectedMonth = "2026-09", availableMonths = [], changeMonth, setSelectedMonth } = useMonth() || {};
+  const activeMonth = selectedMonth || "2026-09";
 
   const handleSelectMonth = (m) => {
     if (typeof changeMonth === "function") {
@@ -48,7 +50,7 @@ export const HanulTaxInvoiceView = () => {
     }
   };
 
-  const [monthData, setMonthData] = useState(() => getHanulMonthData(selectedMonth));
+  const [monthData, setMonthData] = useState(() => getHanulMonthData(activeMonth));
   const [isSaved, setIsSaved] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingRowId, setEditingRowId] = useState(null);
@@ -65,19 +67,19 @@ export const HanulTaxInvoiceView = () => {
     memo: ""
   });
 
-  // Load and subscribe data on selectedMonth changes
+  // Load and subscribe data on activeMonth changes
   useEffect(() => {
-    const data = getHanulMonthData(selectedMonth);
+    const data = getHanulMonthData(activeMonth);
     setMonthData(data);
 
     const unsubscribe = subscribeHanulStore((store) => {
-      if (store && store[selectedMonth]) {
-        setMonthData(store[selectedMonth]);
+      if (store && store[activeMonth]) {
+        setMonthData(store[activeMonth]);
       }
     });
 
     return () => unsubscribe();
-  }, [selectedMonth]);
+  }, [activeMonth]);
 
   // Derived Values
   const salesItems = monthData?.salesItems || [];
@@ -86,7 +88,7 @@ export const HanulTaxInvoiceView = () => {
     invoiceAmount: 0,
     vatAmount: 0,
     totalInvoiceAmount: 0,
-    issueDate: `${selectedMonth}-30`,
+    issueDate: `${activeMonth}-30`,
     status: "발행완료",
     memo: ""
   };
@@ -135,8 +137,8 @@ export const HanulTaxInvoiceView = () => {
   const salesInvoiceDiff = currentInvoiceAmount - totalSalesAmount;
 
   // Month Title
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const monthParts = (activeMonth || "2026-09").split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   // Handler: Update Invoice Input directly
   const handleInvoiceAmountChange = (e) => {
@@ -155,7 +157,7 @@ export const HanulTaxInvoiceView = () => {
       }
     };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     triggerSavedFeedback();
   };
 
@@ -169,7 +171,7 @@ export const HanulTaxInvoiceView = () => {
       }
     };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     triggerSavedFeedback();
   };
 
@@ -189,7 +191,7 @@ export const HanulTaxInvoiceView = () => {
       }
     };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     triggerSavedFeedback();
   };
 
@@ -209,7 +211,7 @@ export const HanulTaxInvoiceView = () => {
       }
     };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     triggerSavedFeedback();
   };
 
@@ -259,7 +261,7 @@ export const HanulTaxInvoiceView = () => {
 
     const updated = { ...monthData, salesItems: updatedSales };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     triggerSavedFeedback();
   };
 
@@ -269,7 +271,7 @@ export const HanulTaxInvoiceView = () => {
     const updatedSales = salesItems.filter((item) => item.id !== id);
     const updated = { ...monthData, salesItems: updatedSales };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     triggerSavedFeedback();
   };
 
@@ -286,7 +288,7 @@ export const HanulTaxInvoiceView = () => {
     const amount = q * p;
 
     const newItem = {
-      id: `9bqc_${selectedMonth}_${Date.now()}`,
+      id: `9bqc_${activeMonth}_${Date.now()}`,
       vehicle: "9BQC",
       partName: newItemForm.partName.trim(),
       partNumber: newItemForm.partNumber.trim() || "-",
@@ -303,7 +305,7 @@ export const HanulTaxInvoiceView = () => {
     const updatedSales = [...salesItems, newItem];
     const updated = { ...monthData, salesItems: updatedSales };
     setMonthData(updated);
-    saveHanulMonthData(selectedMonth, updated);
+    saveHanulMonthData(activeMonth, updated);
     setNewSalesModal(false);
     setNewItemForm({
       partName: "",
@@ -319,25 +321,25 @@ export const HanulTaxInvoiceView = () => {
 
   // Reset to Month Defaults
   const handleResetDefaults = () => {
-    if (!confirm(`${selectedMonth} 한울 세금계산서 및 9BQC 데이터를 초기 기본 데이터로 재설정하시겠습니까?`)) return;
-    const defaultSales = getDefault9BQCSales(selectedMonth);
-    const defaultPurchases = getDefaultHanulPurchases(selectedMonth);
+    if (!confirm(`${activeMonth} 한울 세금계산서 및 9BQC 데이터를 초기 기본 데이터로 재설정하시겠습니까?`)) return;
+    const defaultSales = getDefault9BQCSales(activeMonth);
+    const defaultPurchases = getDefaultHanulPurchases(activeMonth);
     const defaultTotal = defaultSales.reduce((acc, cur) => acc + (cur.amount || 0), 0);
 
     const resetData = {
-      yearMonth: selectedMonth,
+      yearMonth: activeMonth,
       invoiceConfig: {
         invoiceAmount: defaultTotal,
         vatAmount: Math.round(defaultTotal * 0.1),
         totalInvoiceAmount: Math.round(defaultTotal * 1.1),
-        issueDate: `${selectedMonth}-30`,
+        issueDate: `${activeMonth}-30`,
         invoiceType: "전자세금계산서 (영세율/과세)",
         status: "발행완료",
         vendorName: "한울",
         vendorBizNo: "615-81-78901",
         buyerName: "(주)오륙",
         buyerBizNo: "615-81-12345",
-        memo: `${selectedMonth} 한울 9BQC 매입매출 세금계산서 발행 및 정산`
+        memo: `${activeMonth} 한울 9BQC 매입매출 세금계산서 발행 및 정산`
       },
       salesItems: defaultSales,
       purchaseItems: defaultPurchases,
@@ -345,13 +347,13 @@ export const HanulTaxInvoiceView = () => {
     };
 
     setMonthData(resetData);
-    saveHanulMonthData(selectedMonth, resetData);
+    saveHanulMonthData(activeMonth, resetData);
     triggerSavedFeedback();
   };
 
   // Export CSV
   const handleExportCSV = () => {
-    const filename = `${selectedMonth}_한울세금계산서_9BQC매입매출정산.csv`;
+    const filename = `${activeMonth}_한울세금계산서_9BQC매입매출정산.csv`;
     const rows = [
       ["[한울 세금계산서 및 9BQC 매입매출 정산서]"],
       [`기준월: ${monthTitle}`, `발행처: 한울`, `공급받는자: (주)오륙`, `발행일자: ${invoiceConfig.issueDate}`],
@@ -450,7 +452,7 @@ export const HanulTaxInvoiceView = () => {
               <span className="hidden sm:inline">월선택:</span>
             </div>
             {availableMonths.slice(0, 5).map((m) => {
-              const isSelected = selectedMonth === m;
+              const isSelected = activeMonth === m;
               const label = `${m.split("-")[1]}월`;
               return (
                 <button
@@ -470,7 +472,7 @@ export const HanulTaxInvoiceView = () => {
 
             {/* Dropdown for other months */}
             <select
-              value={selectedMonth}
+              value={activeMonth}
               onChange={(e) => handleSelectMonth(e.target.value)}
               className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 px-2 py-1 cursor-pointer focus:outline-none"
               title="전체 월 선택"
@@ -912,7 +914,7 @@ export const HanulTaxInvoiceView = () => {
               <div className="flex items-center justify-between gap-1.5">
                 <input
                   type="date"
-                  value={invoiceConfig.issueDate || `${selectedMonth}-30`}
+                  value={invoiceConfig.issueDate || `${activeMonth}-30`}
                   onChange={(e) => handleInvoiceMetaChange("issueDate", e.target.value)}
                   className="px-2 py-1 rounded-lg bg-white/20 border border-white/20 text-white font-mono font-bold text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 w-full"
                 />
