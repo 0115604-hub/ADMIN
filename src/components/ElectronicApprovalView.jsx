@@ -716,13 +716,13 @@ export const ElectronicApprovalView = () => {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
-                  <th className="py-3 px-3 w-28 whitespace-nowrap">문서번호</th>
-                  <th className="py-3 px-2.5 w-24 whitespace-nowrap">양식구분</th>
+                  <th className="hidden sm:table-cell py-3 px-3 w-28 whitespace-nowrap">문서번호</th>
+                  <th className="hidden sm:table-cell py-3 px-2.5 w-24 whitespace-nowrap">양식구분</th>
                   <th className="py-3 px-2 w-20 whitespace-nowrap">공장</th>
-                  <th className="py-3 px-3 min-w-[220px]">문서 제목</th>
+                  <th className="py-3 px-3 min-w-[200px]">문서 제목</th>
                   <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안자(담당)</th>
-                  <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안일시</th>
-                  <th className="py-3 px-2.5 w-24 whitespace-nowrap">소요금액</th>
+                  <th className="hidden md:table-cell py-3 px-2.5 w-28 whitespace-nowrap">기안일시</th>
+                  <th className="hidden sm:table-cell py-3 px-2.5 w-24 whitespace-nowrap">소요금액</th>
                   <th className="py-3 px-3 w-48 text-center whitespace-nowrap">결재선 (담당/책임/이사/대표)</th>
                   <th className="py-3 px-2.5 w-24 text-center whitespace-nowrap">문서상태</th>
                   <th className="py-3 px-3 w-28 text-center whitespace-nowrap">관리</th>
@@ -743,13 +743,13 @@ export const ElectronicApprovalView = () => {
                         isPending ? "bg-rose-50/20 dark:bg-rose-950/10" : isHold ? "bg-amber-50/20 dark:bg-amber-950/10" : ""
                       }`}
                     >
-                      {/* 1. 문서번호 */}
-                      <td className="py-2.5 px-3 font-mono text-[11px] font-bold text-slate-500 whitespace-nowrap">
+                      {/* 1. 문서번호 (모바일 숨김) */}
+                      <td className="hidden sm:table-cell py-2.5 px-3 font-mono text-[11px] font-bold text-slate-500 whitespace-nowrap">
                         {doc.docNumber}
                       </td>
 
-                      {/* 2. 양식구분 */}
-                      <td className="py-2.5 px-2.5 whitespace-nowrap">
+                      {/* 2. 양식구분 (모바일 숨김) */}
+                      <td className="hidden sm:table-cell py-2.5 px-2.5 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black ${
                           doc.type === "OVERTIME"
                             ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
@@ -768,10 +768,12 @@ export const ElectronicApprovalView = () => {
                         {doc.plant === "삼랑진공장" ? "삼랑진" : "한림"}
                       </td>
 
-                      {/* 4. 문서 제목 */}
+                      {/* 4. 문서 제목 (특근보고서 간결 표기: 특근보고서결재(**공장)) */}
                       <td className="py-2.5 px-3 font-black text-slate-900 dark:text-white max-w-[340px] truncate">
                         <span className="hover:underline text-slate-900 dark:text-white">
-                          {doc.title}
+                          {doc.type === "OVERTIME" || (doc.title && doc.title.includes("특근"))
+                            ? `특근보고서결재(${doc.plant || "삼랑진공장"})`
+                            : doc.title}
                         </span>
                       </td>
 
@@ -780,13 +782,13 @@ export const ElectronicApprovalView = () => {
                         {doc.drafter} <span className="text-slate-400 font-normal">{doc.drafterTitle}</span>
                       </td>
 
-                      {/* 6. 기안일시 */}
-                      <td className="py-2.5 px-2.5 whitespace-nowrap font-mono text-slate-500 text-[10.5px]">
+                      {/* 6. 기안일시 (모바일 숨김) */}
+                      <td className="hidden md:table-cell py-2.5 px-2.5 whitespace-nowrap font-mono text-slate-500 text-[10.5px]">
                         {doc.createdAt?.slice(5)}
                       </td>
 
-                      {/* 7. 소요금액 */}
-                      <td className="py-2.5 px-2.5 whitespace-nowrap font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400">
+                      {/* 7. 소요금액 (모바일 숨김) */}
+                      <td className="hidden sm:table-cell py-2.5 px-2.5 whitespace-nowrap font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400">
                         {doc.amount || "-"}
                       </td>
 
@@ -909,7 +911,9 @@ export const ElectronicApprovalView = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    (주)오륙 전자결재 기안문서
+                    {selectedDoc.type === "OVERTIME" || (selectedDoc.title && selectedDoc.title.includes("특근"))
+                      ? `특근보고서결재(${selectedDoc.plant || "삼랑진공장"})`
+                      : (selectedDoc.title || "(주)오륙 전자결재 기안문서")}
                   </h3>
                   <span className="text-xs text-slate-400 font-mono">
                     문서번호: {selectedDoc.docNumber}
@@ -1017,49 +1021,69 @@ export const ElectronicApprovalView = () => {
               </div>
             </div>
 
-            {/* Document Info Table */}
-            <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-xs">
-              <table className="w-full">
-                <tbody>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400">
-                      기안 부서/공장
-                    </td>
-                    <td className="p-2.5 font-bold text-slate-900 dark:text-white">
-                      {selectedDoc.plant} • {selectedDoc.department}
-                    </td>
-                    <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400">
-                      기안자(담당)
-                    </td>
-                    <td className="p-2.5 font-bold text-slate-900 dark:text-white">
-                      {selectedDoc.drafter} {selectedDoc.drafterTitle}
-                    </td>
-                  </tr>
-                  <tr className="border-b border-slate-200 dark:border-slate-700">
-                    <td className="p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400">
-                      기안 일시
-                    </td>
-                    <td className="p-2.5 font-medium text-slate-900 dark:text-white font-mono">
-                      {selectedDoc.createdAt}
-                    </td>
-                    <td className="p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400">
-                      소요 금액
-                    </td>
-                    <td className="p-2.5 font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                      {selectedDoc.amount || "-"}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400">
-                      문서 제목
-                    </td>
-                    <td colSpan={3} className="p-2.5 font-black text-slate-900 dark:text-white text-sm">
-                      [{selectedDoc.typeName}] {selectedDoc.title}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            {/* Document Info Table (간결한 기안부서, 기안일시, 문서제목 표기) */}
+            {(() => {
+              const isOvertimeDoc =
+                selectedDoc.type === "OVERTIME" ||
+                (selectedDoc.typeName && selectedDoc.typeName.includes("특근")) ||
+                (selectedDoc.title && selectedDoc.title.includes("특근"));
+              const cleanTitle = isOvertimeDoc
+                ? `특근보고서결재(${selectedDoc.plant || "삼랑진공장"})`
+                : selectedDoc.title;
+
+              const cleanDept = selectedDoc.department
+                ? `${selectedDoc.plant} • ${selectedDoc.department.replace(/\s*\([^)]*\)/g, "")}`
+                : selectedDoc.plant;
+
+              const cleanDate = selectedDoc.createdAt
+                ? selectedDoc.createdAt.replace(/\. /g, "-").replace(/\./g, "")
+                : "-";
+
+              return (
+                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-xs">
+                  <table className="w-full">
+                    <tbody>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          기안 부서
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-900 dark:text-white">
+                          {cleanDept}
+                        </td>
+                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          기안자(담당)
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {selectedDoc.drafter} {selectedDoc.drafterTitle}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          기안 일시
+                        </td>
+                        <td className="p-2.5 font-medium text-slate-900 dark:text-white font-mono">
+                          {cleanDate}
+                        </td>
+                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          소요 금액
+                        </td>
+                        <td className="p-2.5 font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
+                          {selectedDoc.amount || "-"}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                          문서 제목
+                        </td>
+                        <td colSpan={3} className="p-2.5 font-black text-slate-900 dark:text-white text-sm">
+                          {cleanTitle}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
 
             {/* Document Content Body */}
             <div className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2">
