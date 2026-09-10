@@ -5,117 +5,83 @@ import initialMultiMonthData from "../data/multiMonthMasterData.json";
 const STORAGE_KEY = "oryuk_hanul_tax_invoice_store_v1";
 const FIRESTORE_PATH = ["system_store", "hanul_tax_invoice_master"];
 
-// Default 9BQC items extractor from multi-month master data
+export const STANDARD_6_9BQC_TEMPLATES = [
+  {
+    partName: "9BQC RR LH(PRI)",
+    partNumber: "42933958",
+    itemCode: "G1102-2756-00",
+    defaultPrice: 11028,
+    monthlyQty: { "2026-09": 3660, "2026-08": 16560, "2026-07": 21480 }
+  },
+  {
+    partName: "9BQC RR RH(PRI)",
+    partNumber: "42933959",
+    itemCode: "G1102-2757-00",
+    defaultPrice: 11028,
+    monthlyQty: { "2026-09": 3660, "2026-08": 16560, "2026-07": 21420 }
+  },
+  {
+    partName: "9BQC FRT LH",
+    partNumber: "42933952",
+    itemCode: "G1102-2752-00",
+    defaultPrice: 2858,
+    monthlyQty: { "2026-09": 4800, "2026-08": 17800, "2026-07": 21400 }
+  },
+  {
+    partName: "9BQC FRT RH",
+    partNumber: "42933953",
+    itemCode: "G1102-2753-00",
+    defaultPrice: 2858,
+    monthlyQty: { "2026-09": 4800, "2026-08": 17800, "2026-07": 21200 }
+  },
+  {
+    partName: "9BQC RR LH(TNI)",
+    partNumber: "42933956",
+    itemCode: "G1102-2754-00",
+    defaultPrice: 10598,
+    monthlyQty: { "2026-09": 120, "2026-08": 720, "2026-07": 780 }
+  },
+  {
+    partName: "9BQC RR RH(TNI)",
+    partNumber: "42933957",
+    itemCode: "G1102-2755-00",
+    defaultPrice: 10598,
+    monthlyQty: { "2026-09": 120, "2026-08": 780, "2026-07": 780 }
+  }
+];
+
+// Default 9BQC 6 items extractor
 export const getDefault9BQCSales = (yearMonth = "2026-09") => {
   const monthData = initialMultiMonthData[yearMonth] || initialMultiMonthData["2026-09"] || initialMultiMonthData["2026-07"];
   const bqcGroup = monthData?.vehicleSales?.find(
     (v) => v.vehicleGroup === "9BQC" || v.vehicleGroup?.includes("9BQC")
   );
 
-  if (bqcGroup && Array.isArray(bqcGroup.details) && bqcGroup.details.length > 0) {
-    return bqcGroup.details.map((d, idx) => ({
+  return STANDARD_6_9BQC_TEMPLATES.map((tmpl, idx) => {
+    const matched = bqcGroup?.details?.find(
+      (d) => d.partName === tmpl.partName || (d.partNumber && d.partNumber === tmpl.partNumber)
+    );
+    const qty = matched && matched.qty !== undefined ? Number(matched.qty) : (tmpl.monthlyQty[yearMonth] ?? 1000);
+    const unitPrice = matched && matched.unitPrice !== undefined ? Number(matched.unitPrice) : tmpl.defaultPrice;
+    const amount = qty * unitPrice;
+    const taxAmount = Math.round(amount * 0.1);
+    const totalAmount = Math.round(amount * 1.1);
+
+    return {
       id: `9bqc_${yearMonth}_${idx + 1}`,
       vehicle: "9BQC",
-      partName: d.partName || "9BQC 부품",
-      partNumber: d.partNumber || "-",
-      itemCode: d.itemCode || "-",
-      process: d.process || "내수상품매출",
-      qty: Number(d.qty) || 0,
-      unitPrice: Number(d.unitPrice) || 0,
-      amount: Number(d.amount) || (Number(d.qty) * Number(d.unitPrice)) || 0,
-      taxAmount: Math.round(((Number(d.amount) || (Number(d.qty) * Number(d.unitPrice)) || 0) * 0.1)),
-      totalAmount: Math.round(((Number(d.amount) || (Number(d.qty) * Number(d.unitPrice)) || 0) * 1.1)),
-      memo: d.memo || ""
-    }));
-  }
-
-  // Standard fallback 9BQC part list
-  return [
-    {
-      id: `9bqc_${yearMonth}_1`,
-      vehicle: "9BQC",
-      partName: "9BQC RR LH(PRI)",
-      partNumber: "42933958",
-      itemCode: "G1102-2756-00",
+      partName: tmpl.partName,
+      partNumber: tmpl.partNumber,
+      itemCode: tmpl.itemCode,
       process: "내수상품매출",
-      qty: 3660,
-      unitPrice: 11028,
-      amount: 40362480,
-      taxAmount: 4036248,
-      totalAmount: 44398728,
+      qty,
+      unitPrice,
+      amount,
+      taxAmount,
+      totalAmount,
       memo: "한울 임가공"
-    },
-    {
-      id: `9bqc_${yearMonth}_2`,
-      vehicle: "9BQC",
-      partName: "9BQC RR RH(PRI)",
-      partNumber: "42933959",
-      itemCode: "G1102-2757-00",
-      process: "내수상품매출",
-      qty: 3660,
-      unitPrice: 11028,
-      amount: 40362480,
-      taxAmount: 4036248,
-      totalAmount: 44398728,
-      memo: "한울 임가공"
-    },
-    {
-      id: `9bqc_${yearMonth}_3`,
-      vehicle: "9BQC",
-      partName: "9BQC FRT LH",
-      partNumber: "42933952",
-      itemCode: "G1102-2752-00",
-      process: "내수상품매출",
-      qty: 4800,
-      unitPrice: 2858,
-      amount: 13718400,
-      taxAmount: 1371840,
-      totalAmount: 15090240,
-      memo: "한울 임가공"
-    },
-    {
-      id: `9bqc_${yearMonth}_4`,
-      vehicle: "9BQC",
-      partName: "9BQC FRT RH",
-      partNumber: "42933953",
-      itemCode: "G1102-2753-00",
-      process: "내수상품매출",
-      qty: 4800,
-      unitPrice: 2858,
-      amount: 13718400,
-      taxAmount: 1371840,
-      totalAmount: 15090240,
-      memo: "한울 임가공"
-    },
-    {
-      id: `9bqc_${yearMonth}_5`,
-      vehicle: "9BQC",
-      partName: "9BQC RR LH(TNI)",
-      partNumber: "42933956",
-      itemCode: "G1102-2754-00",
-      process: "내수상품매출",
-      qty: 120,
-      unitPrice: 10598,
-      amount: 1271760,
-      taxAmount: 127176,
-      totalAmount: 1398936,
-      memo: "한울 임가공"
-    },
-    {
-      id: `9bqc_${yearMonth}_6`,
-      vehicle: "9BQC",
-      partName: "9BQC RR RH(TNI)",
-      partNumber: "42933957",
-      itemCode: "G1102-2755-00",
-      process: "내수상품매출",
-      qty: 120,
-      unitPrice: 10598,
-      amount: 1271760,
-      taxAmount: 127176,
-      totalAmount: 1398936,
-      memo: "한울 임가공"
-    }
-  ];
+    };
+  });
 };
 
 // Default Hanul purchase / outsourcing settlement items
