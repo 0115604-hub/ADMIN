@@ -5,7 +5,6 @@ import {
   Car,
   Coins,
   DollarSign,
-  Building2,
   Calendar,
   RotateCcw,
   Download,
@@ -23,7 +22,6 @@ import {
   saveHanulMonthData,
   subscribeHanulStore,
   getDefault9BQCSales,
-  getDefaultHanulPurchases,
   STANDARD_8_9BQC_TEMPLATES
 } from "../services/hanulTaxInvoiceService";
 
@@ -45,7 +43,6 @@ export const HanulTaxInvoiceView = () => {
     const defaults = getDefault9BQCSales(month);
     const existing = rawMonthData?.salesItems || [];
     
-    // Map across all 8 standard templates
     const mergedSales = defaults.map((defItem) => {
       const match = existing.find(
         (e) => e.partName === defItem.partName || (e.partNumber && e.partNumber === defItem.partNumber)
@@ -101,7 +98,6 @@ export const HanulTaxInvoiceView = () => {
       : getDefault9BQCSales(activeMonth);
   }, [monthData, activeMonth]);
 
-  const purchaseItems = monthData?.purchaseItems || [];
   const invoiceConfig = monthData?.invoiceConfig || {
     invoiceAmount: 0,
     vatAmount: 0,
@@ -132,19 +128,6 @@ export const HanulTaxInvoiceView = () => {
   const avgSalesUnitPrice = useMemo(() => {
     return totalSalesQty > 0 ? Math.round(totalSalesAmount / totalSalesQty) : 0;
   }, [totalSalesAmount, totalSalesQty]);
-
-  // Hanul Purchase Totals
-  const totalPurchaseSupply = useMemo(() => {
-    return purchaseItems.reduce((acc, cur) => acc + (Number(cur.supplyAmt) || 0), 0);
-  }, [purchaseItems]);
-
-  const totalPurchaseTax = useMemo(() => {
-    return purchaseItems.reduce((acc, cur) => acc + (Number(cur.taxAmt) || 0), 0);
-  }, [purchaseItems]);
-
-  const totalPurchaseGross = useMemo(() => {
-    return purchaseItems.reduce((acc, cur) => acc + (Number(cur.totalAmt) || 0), 0);
-  }, [purchaseItems]);
 
   // Invoice Amounts
   const currentInvoiceAmount = Number(invoiceConfig.invoiceAmount) || 0;
@@ -273,7 +256,6 @@ export const HanulTaxInvoiceView = () => {
   const handleResetDefaults = () => {
     if (!confirm(`${activeMonth} 9BQC 8가지 항목 단가와 세금계산서 데이터를 초기 기본 데이터로 재설정하시겠습니까?`)) return;
     const defaultSales = getDefault9BQCSales(activeMonth);
-    const defaultPurchases = getDefaultHanulPurchases(activeMonth);
     const defaultTotal = defaultSales.reduce((acc, cur) => acc + (cur.amount || 0), 0);
 
     const resetData = {
@@ -292,7 +274,7 @@ export const HanulTaxInvoiceView = () => {
         memo: `${activeMonth} 한울 9BQC 8개 품목 매입매출 세금계산서 정산`
       },
       salesItems: defaultSales,
-      purchaseItems: defaultPurchases,
+      purchaseItems: [],
       updatedAt: new Date().toISOString()
     };
 
@@ -323,21 +305,7 @@ export const HanulTaxInvoiceView = () => {
         item.taxAmount,
         item.totalAmount
       ]),
-      ["총계", "-", "-", "-", "-", totalSalesQty, "-", totalSalesAmount, totalSalesTax, totalSalesGross],
-      [],
-      ["[한울 매입 및 외주 정산]"],
-      ["No", "구분", "항목/내역", "거래처", "공급가액(원)", "세액(원)", "합계금액(원)", "상태"],
-      ...purchaseItems.map((item, idx) => [
-        idx + 1,
-        item.category,
-        `"${item.item}"`,
-        item.vendor,
-        item.supplyAmt,
-        item.taxAmt,
-        item.totalAmt,
-        item.status
-      ]),
-      ["총계", "-", "-", "-", totalPurchaseSupply, totalPurchaseTax, totalPurchaseGross, "-"]
+      ["총계", "-", "-", "-", "-", totalSalesQty, "-", totalSalesAmount, totalSalesTax, totalSalesGross]
     ];
 
     const csvContent = "\uFEFF" + rows.map((e) => e.join(",")).join("\n");
@@ -365,14 +333,14 @@ export const HanulTaxInvoiceView = () => {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                한울 세금계산서 및 9BQC 8가지 항목 매출단가합계
+                한울 세금계산서 및 9BQC 8가지 항목 매출단가 관리
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/60">
                 {monthTitle} 정산
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              패널 하나에 9BQC <strong>8가지 항목의 단가 + 수량 + 합계금액</strong>을 8줄로 요약하고, 아래 표에서 동일한 형식으로 <strong>단가를 재수정</strong>합니다.
+              <strong>합계금액요약</strong> → <strong>세금계산서 발행패널</strong> → <strong>단가재수정 및 실시간 자동계산 패널</strong> 순서로 배치되어 있습니다.
             </p>
           </div>
         </div>
@@ -447,27 +415,27 @@ export const HanulTaxInvoiceView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 1. [제일 위] 패널 하나에 8줄 요약: 9BQC 8가지 항목 단가 + 수량 + 합계금액 요약 패널 */}
+      {/* 🌟 1. [제일 위] 1순위: 합계금액요약 패널 (Summary Cards) */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white p-4 sm:p-5 rounded-3xl border border-indigo-500/30 shadow-xl relative overflow-hidden space-y-4">
+      <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-blue-950 text-white p-4 sm:p-5 rounded-3xl border border-indigo-500/30 shadow-xl relative overflow-hidden">
         {/* Ambient background glow */}
         <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative z-10 space-y-4">
-          {/* Top Header Bar */}
+        <div className="relative z-10 space-y-3.5">
+          {/* Header Bar */}
           <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-white/10">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
               <h3 className="text-xs sm:text-sm font-black text-blue-100 flex items-center gap-2">
-                <span>📊 {monthTitle} 9BQC 8가지 항목 매출단가합계 요약</span>
+                <span>📊 {monthTitle} 9BQC 합계금액요약</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/30 text-blue-200 border border-blue-400/30">
-                  8개 전 품목 집계
+                  8개 품목 실시간 합산
                 </span>
               </h3>
             </div>
             <div className="text-[11px] text-slate-300 font-medium flex items-center gap-3">
-              <span>총 수량: <strong className="text-white font-mono">{totalSalesQty.toLocaleString()} EA</strong></span>
+              <span>총 매출수량: <strong className="text-white font-mono">{totalSalesQty.toLocaleString()} EA</strong></span>
               <span>•</span>
               <span>평균단가: <strong className="text-white font-mono">₩{avgSalesUnitPrice.toLocaleString()}</strong></span>
             </div>
@@ -476,7 +444,7 @@ export const HanulTaxInvoiceView = () => {
           {/* 4 Grand Metric Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
             {/* 1) 9BQC 공급가액 합계 */}
-            <div className="bg-white/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/15">
+            <div className="bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/15">
               <span className="text-[11px] font-bold text-blue-200 block">🚗 9BQC 매출 공급가액 합계</span>
               <div className="text-lg sm:text-2xl font-black text-white font-mono mt-1 tracking-tight truncate">
                 ₩ {totalSalesAmount.toLocaleString()}
@@ -487,7 +455,7 @@ export const HanulTaxInvoiceView = () => {
             </div>
 
             {/* 2) 부가세 (10%) */}
-            <div className="bg-white/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/15">
+            <div className="bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/15">
               <span className="text-[11px] font-bold text-amber-200 block">📑 부가세 (VAT 10%)</span>
               <div className="text-lg sm:text-2xl font-black text-amber-300 font-mono mt-1 tracking-tight truncate">
                 ₩ {totalSalesTax.toLocaleString()}
@@ -498,7 +466,7 @@ export const HanulTaxInvoiceView = () => {
             </div>
 
             {/* 3) 총 합계액 */}
-            <div className="bg-white/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/15">
+            <div className="bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/15">
               <span className="text-[11px] font-bold text-emerald-300 block">💎 9BQC 총 합계액 (공급가+세액)</span>
               <div className="text-lg sm:text-2xl font-black text-emerald-300 font-mono mt-1 tracking-tight truncate">
                 ₩ {totalSalesGross.toLocaleString()}
@@ -509,111 +477,141 @@ export const HanulTaxInvoiceView = () => {
             </div>
 
             {/* 4) 총 매출수량 */}
-            <div className="bg-white/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-white/15">
+            <div className="bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/15">
               <span className="text-[11px] font-bold text-purple-200 block">📦 9BQC 총 매출수량</span>
               <div className="text-lg sm:text-2xl font-black text-purple-200 font-mono mt-1 tracking-tight truncate">
                 {totalSalesQty.toLocaleString()} <span className="text-xs font-normal text-white/70">EA</span>
               </div>
               <span className="text-[10px] text-purple-200/70 mt-0.5 block truncate">
-                8개 전 품목 총합
+                8개 전 품목 합산 수량
               </span>
-            </div>
-          </div>
-
-          {/* 🌟 패널 하나에 들어간 8줄 요약 테이블 */}
-          <div className="bg-black/25 backdrop-blur-md rounded-2xl border border-white/15 overflow-hidden">
-            <div className="p-3 bg-white/5 border-b border-white/10 flex items-center justify-between">
-              <span className="text-xs font-black text-blue-200 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-                <span>9BQC 8가지 품목별 단가 · 수량 · 합계금액 요약 (8줄)</span>
-              </span>
-              <span className="text-[10.5px] text-slate-300 font-mono">
-                총 8개 품목
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-200">
-                <thead className="bg-white/10 text-[11px] font-black uppercase text-blue-200 border-b border-white/10">
-                  <tr>
-                    <th className="py-2.5 px-3 text-center w-10">No</th>
-                    <th className="py-2.5 px-3 font-bold text-white min-w-[180px]">품명 / 부품명</th>
-                    <th className="py-2.5 px-3 font-mono text-slate-300">품번 (Part No)</th>
-                    <th className="py-2.5 px-3 text-right font-black text-blue-300 min-w-[90px]">수량 (EA)</th>
-                    <th className="py-2.5 px-3 text-right font-black text-indigo-300 min-w-[100px]">단가 (₩)</th>
-                    <th className="py-2.5 px-3 text-right font-black text-white min-w-[120px]">합계금액 (공급가액)</th>
-                    <th className="py-2.5 px-3 text-right font-mono text-amber-200/90 min-w-[90px]">세액 (10%)</th>
-                    <th className="py-2.5 px-3 text-right font-black text-emerald-300 min-w-[110px]">총 합계액</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5 font-medium">
-                  {salesItems.map((item, idx) => (
-                    <tr
-                      key={item.id || idx}
-                      className="hover:bg-white/10 transition-colors"
-                    >
-                      <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-xs">
-                        {idx + 1}
-                      </td>
-                      <td className="py-2.5 px-3 font-black text-white">
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-500/30 text-blue-200 border border-blue-400/30">
-                            9BQC
-                          </span>
-                          <span className="truncate">{item.partName}</span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-slate-300 text-xs">
-                        {item.partNumber || "-"}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-blue-200">
-                        {(Number(item.qty) || 0).toLocaleString()} <span className="text-[10px] text-white/50 font-normal">EA</span>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-indigo-200">
-                        ₩{(Number(item.unitPrice) || 0).toLocaleString()}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-white">
-                        ₩{(Number(item.amount) || 0).toLocaleString()}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-amber-300/90">
-                        ₩{(Number(item.taxAmount) || Math.round(Number(item.amount) * 0.1)).toLocaleString()}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-300">
-                        ₩{(Number(item.totalAmount) || Math.round(Number(item.amount) * 1.1)).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-white/15 font-black text-white border-t border-white/20 text-xs">
-                  <tr>
-                    <td colSpan="3" className="py-3 px-3 text-center tracking-wider">
-                      8개 항목 합계 총계 (Total)
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-blue-200 font-black">
-                      {totalSalesQty.toLocaleString()} EA
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-indigo-200">
-                      평균 ₩{avgSalesUnitPrice.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-white text-sm font-black">
-                      ₩ {totalSalesAmount.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-amber-300">
-                      ₩ {totalSalesTax.toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-emerald-300 text-sm font-black">
-                      ₩ {totalSalesGross.toLocaleString()}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
             </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 2. [그 아래] 동일한 형식의 8가지 항목 단가 재수정 패널 */}
+      {/* 🌟 2. [그다음] 2순위: 세금계산서 발행패널 */}
+      {/* ========================================================================= */}
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-3xl border border-blue-700/40 shadow-xl relative overflow-hidden">
+        {/* Background ambient glow */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 space-y-4">
+          {/* Header Title & One-Click Sync */}
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-white/10">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-blue-500/30 border border-blue-400/30 text-blue-300">
+                <Receipt className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-black text-base text-blue-100 tracking-wide flex items-center gap-2">
+                  <span>✍️ {monthTitle} 한울 세금계산서 발행패널</span>
+                </h3>
+                <p className="text-xs text-blue-200/70">
+                  수기로 실제 세금계산서 발행 공급가액을 입력하면 부가세(10%)와 총액이 자동 계산되며, 9BQC 8개 품목 매출합계와의 차액이 표시됩니다.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Sync Button */}
+            <button
+              type="button"
+              onClick={handleApplySalesToInvoice}
+              className="px-3.5 py-1.5 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-black border border-blue-400/40 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-md"
+              title="9BQC 8개 품목 매출 합계액(공급가액)을 세금계산서 발행금액으로 즉시 동기화"
+            >
+              <Coins className="w-3.5 h-3.5" />
+              <span>9BQC 매출합계액 그대로 적용 (₩{totalSalesAmount.toLocaleString()})</span>
+            </button>
+          </div>
+
+          {/* Interactive Input & Summary Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-center">
+            {/* 1) 수기 발행 공급가액 입력란 (5 Cols) */}
+            <div className="lg:col-span-5 bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/20 space-y-1.5">
+              <label className="text-xs font-bold text-blue-200 block flex items-center justify-between">
+                <span>📝 세금계산서 발행 공급가액 (수기 입력)</span>
+                <span className="text-[10.5px] text-white/60">숫자 입력 시 부가세 자동 계산</span>
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-white/70 font-bold text-base">₩</span>
+                <input
+                  type="text"
+                  value={currentInvoiceAmount ? currentInvoiceAmount.toLocaleString() : ""}
+                  onChange={handleInvoiceAmountChange}
+                  placeholder="0"
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white text-slate-900 font-mono font-black text-lg sm:text-xl text-right shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* 2) VAT & Total Summary (4 Cols) */}
+            <div className="lg:col-span-4 grid grid-cols-2 gap-2.5">
+              {/* VAT (10%) */}
+              <div className="bg-white/10 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-white/15">
+                <span className="text-[11px] font-bold text-blue-200 block">부가세 (VAT 10%)</span>
+                <div className="font-mono font-black text-base sm:text-lg text-amber-300 mt-1 truncate">
+                  ₩ {currentVatAmount.toLocaleString()}
+                </div>
+              </div>
+
+              {/* Total Issued (Gross) */}
+              <div className="bg-white/10 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-white/15">
+                <span className="text-[11px] font-bold text-emerald-300 block">총 세금계산서 합계액</span>
+                <div className="font-mono font-black text-base sm:text-lg text-white mt-1 truncate">
+                  ₩ {currentTotalInvoice.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* 3) Issue Date, Status & Reconciliation Badge (3 Cols) */}
+            <div className="lg:col-span-3 bg-white/10 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-white/15 flex flex-col justify-between space-y-2">
+              <div className="flex items-center justify-between gap-1.5">
+                <input
+                  type="date"
+                  value={invoiceConfig.issueDate || `${activeMonth}-30`}
+                  onChange={(e) => handleInvoiceMetaChange("issueDate", e.target.value)}
+                  className="px-2 py-1 rounded-lg bg-white/20 border border-white/20 text-white font-mono font-bold text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 w-full"
+                />
+                <select
+                  value={invoiceConfig.status || "발행완료"}
+                  onChange={(e) => handleInvoiceMetaChange("status", e.target.value)}
+                  className={`px-2 py-1 rounded-lg font-black text-xs cursor-pointer focus:outline-none border shrink-0 ${
+                    invoiceConfig.status === "발행완료"
+                      ? "bg-emerald-500/80 border-emerald-400 text-white"
+                      : invoiceConfig.status === "발행대기"
+                      ? "bg-amber-500/80 border-amber-400 text-slate-950 font-black"
+                      : "bg-blue-500/80 border-blue-400 text-white"
+                  }`}
+                >
+                  <option value="발행완료" className="bg-slate-900 text-white font-bold">✓ 발행완료</option>
+                  <option value="발행대기" className="bg-slate-900 text-amber-300 font-bold">⏳ 발행대기</option>
+                  <option value="작성중" className="bg-slate-900 text-blue-300 font-bold">📝 작성중</option>
+                </select>
+              </div>
+
+              {/* Difference Badge */}
+              <div className="pt-1 border-t border-white/10 flex items-center justify-between">
+                <span className="text-[10.5px] font-bold text-white/60">매출대비 차액:</span>
+                <span className={`text-xs font-black font-mono px-2 py-0.5 rounded-md ${
+                  salesInvoiceDiff === 0
+                    ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
+                    : salesInvoiceDiff > 0
+                    ? "bg-blue-500/30 text-blue-200 border border-blue-500/40"
+                    : "bg-rose-500/30 text-rose-300 border border-rose-500/40"
+                }`}>
+                  {salesInvoiceDiff === 0 ? "✓ 0원 (일치)" : `${salesInvoiceDiff > 0 ? "+" : ""}${salesInvoiceDiff.toLocaleString()}원`}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 🌟 3. [그다음] 3순위: 단가재수정 및 실시간 자동계산 패널 (8줄 테이블) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Table Top Header */}
@@ -624,13 +622,13 @@ export const HanulTaxInvoiceView = () => {
             </div>
             <div>
               <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <span>9BQC 8가지 항목 단가 재수정 및 실시간 자동계산</span>
+                <span>9BQC 8가지 항목 단가재수정 및 실시간 자동계산 패널</span>
                 <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 font-mono">
-                  (8줄 동일 형식)
+                  (8개 품목)
                 </span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                동일한 형식으로 구성된 아래 8줄 표에서 <strong className="text-indigo-600 dark:text-indigo-400">단가(₩ ✏️)</strong>를 입력·재수정하면, 수량과 곱해져서 <strong>합계금액</strong>과 상단 요약이 즉시 연동됩니다.
+                아래 8줄 표에서 <strong className="text-indigo-600 dark:text-indigo-400">단가(₩ ✏️)</strong>를 입력·재수정하면, 수량과 곱해져서 <strong>합계금액</strong> 및 상단 합계금액요약과 세금계산서 차액이 실시간으로 연동됩니다.
               </p>
             </div>
           </div>
@@ -810,236 +808,6 @@ export const HanulTaxInvoiceView = () => {
                   ₩ {totalSalesGross.toLocaleString()}
                 </td>
                 <td></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 🌟 3. [그다음] "수기 세금계산서 발행금액" 입력 패널 */}
-      {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-3xl border border-blue-700/40 shadow-xl relative overflow-hidden">
-        {/* Background ambient glow */}
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 space-y-4">
-          {/* Header Title & One-Click Sync */}
-          <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-white/10">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-500/30 border border-blue-400/30 text-blue-300">
-                <Receipt className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-black text-base text-blue-100 tracking-wide flex items-center gap-2">
-                  <span>✍️ {monthTitle} 한울 세금계산서 수기 발행금액 입력</span>
-                </h3>
-                <p className="text-xs text-blue-200/70">
-                  수기로 실제 세금계산서 발행 공급가액을 입력하면 부가세(10%)와 총액이 자동 계산되며, 9BQC 8개 품목 매출합계와의 차액이 표시됩니다.
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Sync Button */}
-            <button
-              type="button"
-              onClick={handleApplySalesToInvoice}
-              className="px-3.5 py-1.5 rounded-xl bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-black border border-blue-400/40 transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-md"
-              title="9BQC 8개 품목 매출 합계액(공급가액)을 세금계산서 발행금액으로 즉시 동기화"
-            >
-              <Coins className="w-3.5 h-3.5" />
-              <span>9BQC 매출합계액 그대로 적용 (₩{totalSalesAmount.toLocaleString()})</span>
-            </button>
-          </div>
-
-          {/* Interactive Input & Summary Cards */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-center">
-            {/* 1) 수기 발행 공급가액 입력란 (5 Cols) */}
-            <div className="lg:col-span-5 bg-white/10 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/20 space-y-1.5">
-              <label className="text-xs font-bold text-blue-200 block flex items-center justify-between">
-                <span>📝 세금계산서 발행 공급가액 (수기 입력)</span>
-                <span className="text-[10.5px] text-white/60">숫자 입력 시 부가세 자동 계산</span>
-              </label>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-white/70 font-bold text-base">₩</span>
-                <input
-                  type="text"
-                  value={currentInvoiceAmount ? currentInvoiceAmount.toLocaleString() : ""}
-                  onChange={handleInvoiceAmountChange}
-                  placeholder="0"
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white text-slate-900 font-mono font-black text-lg sm:text-xl text-right shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-                />
-              </div>
-            </div>
-
-            {/* 2) VAT & Total Summary (4 Cols) */}
-            <div className="lg:col-span-4 grid grid-cols-2 gap-2.5">
-              {/* VAT (10%) */}
-              <div className="bg-white/10 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-white/15">
-                <span className="text-[11px] font-bold text-blue-200 block">부가세 (VAT 10%)</span>
-                <div className="font-mono font-black text-base sm:text-lg text-amber-300 mt-1 truncate">
-                  ₩ {currentVatAmount.toLocaleString()}
-                </div>
-              </div>
-
-              {/* Total Issued (Gross) */}
-              <div className="bg-white/10 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-white/15">
-                <span className="text-[11px] font-bold text-emerald-300 block">총 세금계산서 합계액</span>
-                <div className="font-mono font-black text-base sm:text-lg text-white mt-1 truncate">
-                  ₩ {currentTotalInvoice.toLocaleString()}
-                </div>
-              </div>
-            </div>
-
-            {/* 3) Issue Date, Status & Reconciliation Badge (3 Cols) */}
-            <div className="lg:col-span-3 bg-white/10 backdrop-blur-md p-3 sm:p-3.5 rounded-2xl border border-white/15 flex flex-col justify-between space-y-2">
-              <div className="flex items-center justify-between gap-1.5">
-                <input
-                  type="date"
-                  value={invoiceConfig.issueDate || `${activeMonth}-30`}
-                  onChange={(e) => handleInvoiceMetaChange("issueDate", e.target.value)}
-                  className="px-2 py-1 rounded-lg bg-white/20 border border-white/20 text-white font-mono font-bold text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-400 w-full"
-                />
-                <select
-                  value={invoiceConfig.status || "발행완료"}
-                  onChange={(e) => handleInvoiceMetaChange("status", e.target.value)}
-                  className={`px-2 py-1 rounded-lg font-black text-xs cursor-pointer focus:outline-none border shrink-0 ${
-                    invoiceConfig.status === "발행완료"
-                      ? "bg-emerald-500/80 border-emerald-400 text-white"
-                      : invoiceConfig.status === "발행대기"
-                      ? "bg-amber-500/80 border-amber-400 text-slate-950 font-black"
-                      : "bg-blue-500/80 border-blue-400 text-white"
-                  }`}
-                >
-                  <option value="발행완료" className="bg-slate-900 text-white font-bold">✓ 발행완료</option>
-                  <option value="발행대기" className="bg-slate-900 text-amber-300 font-bold">⏳ 발행대기</option>
-                  <option value="작성중" className="bg-slate-900 text-blue-300 font-bold">📝 작성중</option>
-                </select>
-              </div>
-
-              {/* Difference Badge */}
-              <div className="pt-1 border-t border-white/10 flex items-center justify-between">
-                <span className="text-[10.5px] font-bold text-white/60">매출대비 차액:</span>
-                <span className={`text-xs font-black font-mono px-2 py-0.5 rounded-md ${
-                  salesInvoiceDiff === 0
-                    ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40"
-                    : salesInvoiceDiff > 0
-                    ? "bg-blue-500/30 text-blue-200 border border-blue-500/40"
-                    : "bg-rose-500/30 text-rose-300 border border-rose-500/40"
-                }`}>
-                  {salesInvoiceDiff === 0 ? "✓ 0원 (일치)" : `${salesInvoiceDiff > 0 ? "+" : ""}${salesInvoiceDiff.toLocaleString()}원`}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. 한울 외주 매입 및 전기세 정산 내역 테이블 */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400">
-              <Building2 className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                <span>한울 외주 매입 및 전기세 차감 정산 내역</span>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                  ({purchaseItems.length}건)
-                </span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                한울에 지급할 9BQC 임가공비 및 공장 유틸리티(전기요금) 정산 공제 내역입니다.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800">
-              <tr>
-                <th className="py-3 px-4 text-center w-12">No</th>
-                <th className="py-3 px-3 font-bold text-slate-600 dark:text-slate-300">계정과목</th>
-                <th className="py-3 px-3 font-bold text-slate-900 dark:text-white min-w-[200px]">정산 항목 / 내역</th>
-                <th className="py-3 px-3 font-bold text-slate-600 dark:text-slate-300">협력사</th>
-                <th className="py-3 px-3 text-right font-black text-slate-900 dark:text-white">공급가액 (원)</th>
-                <th className="py-3 px-3 text-right font-mono text-slate-500 dark:text-slate-400">세액 (원)</th>
-                <th className="py-3 px-3 text-right font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/20">
-                  합계금액 (원)
-                </th>
-                <th className="py-3 px-3 text-center">정산상태</th>
-                <th className="py-3 px-3">비고</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-              {purchaseItems.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="py-8 text-center text-slate-400">
-                    등록된 매입 정산 내역이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                purchaseItems.map((item, idx) => (
-                  <tr key={item.id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 text-center text-slate-400 font-mono text-[11px]">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
-                        item.category === "임가공비"
-                          ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-                      }`}>
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
-                      {item.item}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-slate-700 dark:text-slate-300">
-                      {item.vendor || "한울"}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white">
-                      ₩ {(Number(item.supplyAmt) || 0).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono text-slate-500 dark:text-slate-400">
-                      ₩ {(Number(item.taxAmt) || 0).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-right font-mono font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/20 dark:bg-emerald-950/10">
-                      ₩ {(Number(item.totalAmt) || 0).toLocaleString()}
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                        {item.status || "정산완료"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-slate-500 text-[11px]">
-                      {item.memo || "-"}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            <tfoot className="bg-slate-100/90 dark:bg-slate-800 font-black text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-700 text-xs">
-              <tr>
-                <td colSpan="4" className="py-3.5 px-4 text-center">
-                  한울 매입 정산 총계 (Total Purchase)
-                </td>
-                <td className="py-3.5 px-3 text-right font-mono text-slate-950 dark:text-white">
-                  ₩ {totalPurchaseSupply.toLocaleString()}
-                </td>
-                <td className="py-3.5 px-3 text-right font-mono text-slate-600 dark:text-slate-300">
-                  ₩ {totalPurchaseTax.toLocaleString()}
-                </td>
-                <td className="py-3.5 px-3 text-right font-mono text-emerald-900 dark:text-emerald-200 bg-emerald-100/50 dark:bg-emerald-950/40 text-sm">
-                  ₩ {totalPurchaseGross.toLocaleString()}
-                </td>
-                <td colSpan="2"></td>
               </tr>
             </tfoot>
           </table>
