@@ -13,9 +13,10 @@ import {
   sendApprovalHoldTelegram,
   sendApprovalRejectTelegram
 } from "./telegramService";
+import { isThisWeek, getThisWeekDateRange } from "../utils/dateUtils";
 
 const COLLECTION_NAME = "approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v6_kwon_sign";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v7_clean";
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -48,80 +49,79 @@ export const normalizeApprovalDoc = (d) => {
       };
     }
     if (st.role === "대표") {
-      const isApproved = st.status === "APPROVED";
-      let ceoName = st.name;
-      if (!ceoName || ceoName === "대표이사" || ceoName === "대표" || (isApproved && ceoName !== "최미영")) {
-        ceoName = "권태형";
-      }
       return {
         ...st,
-        name: ceoName,
-        title: ceoName === "최미영" ? "전무" : "대표이사"
+        name: st.name === "최미영" ? "최미영" : "대표이사",
+        title: st.name === "최미영" ? "전무" : "대표"
       };
     }
     return st;
   });
 
-  // Check if every single step (from Step 1 to Step 4) is actually APPROVED
-  const isTrulyAllApproved = fixedSteps.length === 4 && fixedSteps.every((st) => st.status === "APPROVED");
-  let normalizedStatus = d.status || "IN_PROGRESS";
-  if (normalizedStatus === "APPROVED" && !isTrulyAllApproved) {
-    normalizedStatus = "IN_PROGRESS";
+  // Calculate true approval step status
+  const approvedCount = fixedSteps.filter((st) => st.status === "APPROVED").length;
+  let computedStatus = d.status || "IN_PROGRESS";
+  let computedStep = d.currentStep || (approvedCount + 1);
+
+  if (approvedCount === fixedSteps.length && fixedSteps.length > 0) {
+    computedStatus = "APPROVED";
+    computedStep = fixedSteps.length;
+  } else if (fixedSteps.some((st) => st.status === "REJECTED")) {
+    computedStatus = "REJECTED";
+  } else if (fixedSteps.some((st) => st.status === "HOLD")) {
+    computedStatus = "HOLD";
+  } else if (approvedCount < fixedSteps.length && computedStatus === "APPROVED") {
+    // If marked approved but not all steps are done, revert to IN_PROGRESS
+    computedStatus = "IN_PROGRESS";
+    computedStep = Math.max(1, approvedCount + 1);
   }
 
-  let fixedContent = d.content || "";
-  if (d.id === "appr_ot_samrangjin_20260905" || ((d.title || "").includes("9월 5일") && (d.title || "").includes("삼랑진공장"))) {
-    fixedContent = `■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 9명 (82 M/H) | 총 노무비: ₩1,230,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (7명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 양인나, 이상기\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동`;
-  }
-
-  return { ...d, steps: fixedSteps, status: normalizedStatus, content: fixedContent };
+  return {
+    ...d,
+    currentStep: computedStep,
+    status: computedStatus,
+    steps: fixedSteps
+  };
 };
 
-// Generate Auto Approval Steps (담당: 전작업자, 책임: 책임 직급, 이사: 이명재 이사, 대표: 권태형 대표이사 / 최미영 전무)
-export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, selectedLeadName, selectedCeoName) => {
-  const now = new Date();
-  const nowStr = now.toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).replace(/\. /g, "-").replace(/\./g, "");
+// Helper to construct automatic 4-step approval line
+export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, department, leadName = null, ceoName = "대표이사") => {
+  let step2Name = leadName;
+  let step2Title = "책임";
 
-  let leadName = selectedLeadName;
-  if (!leadName) {
+  if (!step2Name) {
     if (plant === "한림공장") {
-      leadName = "김동욱";
+      step2Name = "김동욱";
     } else {
-      if (process?.includes("품질")) {
-        leadName = "이창엽";
-      } else if (process?.includes("설비")) {
-        leadName = "전재율";
-      } else if (process?.includes("가공")) {
-        leadName = "윤경수";
-      } else {
-        leadName = "설유철";
-      }
+      if (department?.includes("품질")) step2Name = "이창엽";
+      else if (department?.includes("설비")) step2Name = "전재율";
+      else if (department?.includes("가공")) step2Name = "윤경수";
+      else step2Name = "설유철";
     }
   }
 
-  const ceoName = selectedCeoName || "권태형";
   const ceoTitle = ceoName === "최미영" ? "전무" : "대표이사";
 
   return [
     {
       role: "담당",
-      name: drafterName || "작업자",
+      name: drafterName || "기안자",
       title: drafterTitle || "선임",
       status: "APPROVED",
-      date: nowStr,
+      date: new Date().toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).replace(/\. /g, "-").replace(/\./g, ""),
       comment: "기안 상신"
     },
     {
       role: "책임",
-      name: leadName || (plant === "한림공장" ? "김동욱" : "설유철"),
-      title: "책임",
+      name: step2Name,
+      title: step2Title,
       status: "PENDING",
       date: "",
       comment: ""
@@ -136,7 +136,7 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
     },
     {
       role: "대표",
-      name: ceoName,
+      name: ceoName === "최미영" ? "최미영" : "대표이사",
       title: ceoTitle,
       status: "WAITING",
       date: "",
@@ -145,13 +145,13 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, process, 
   ];
 };
 
-// Initial sample approval documents (All with 이명재 이사)
+// Initial sample approval documents (All historical seed items APPROVED)
 export const INITIAL_APPROVAL_DOCS = [
   {
     id: "appr_ot_samrangjin_20260905",
     docNumber: "ORYUK-2026-0905-SAM",
     type: "OVERTIME",
-    typeName: "특근보고서 (취합)",
+    typeName: "특근보고서 (결재완료)",
     title: "[삼랑진공장] 9월 5일(토) 특근보고서 취합 ((주)오륙, 유성)",
     plant: "삼랑진공장",
     department: "생산총괄 ((주)오륙 + 유성)",
@@ -160,13 +160,13 @@ export const INITIAL_APPROVAL_DOCS = [
     createdAt: "2026-09-05 18:00",
     content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 9명 (82 M/H) | 총 노무비: ₩1,230,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (7명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 양인나, 이상기\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
     amount: "₩1,230,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
+    status: "APPROVED",
+    currentStep: 4,
     steps: [
       { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-05 18:00", comment: "특근 취합 기안 상신" },
-      { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "책임", name: "윤경수", title: "책임", status: "APPROVED", date: "2026-09-06 09:00", comment: "인원 확인 완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-06 11:30", comment: "공수 검토 승인" },
+      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-06 17:00", comment: "최종 승인 완료" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -175,7 +175,7 @@ export const INITIAL_APPROVAL_DOCS = [
     id: "appr_20260903_001",
     docNumber: "ORYUK-2026-0901",
     type: "OVERTIME",
-    typeName: "특근 신청서",
+    typeName: "특근 신청서 (결재완료)",
     title: "9월 1주차 주말 압출 2호기 및 가공 3호기 특근 승인의 건",
     plant: "삼랑진공장",
     department: "생산1팀 (압출)",
@@ -184,13 +184,13 @@ export const INITIAL_APPROVAL_DOCS = [
     createdAt: "2026-09-03 09:30",
     content: "현대 NX4a 및 JA 차종 긴급 납품 물량 대응을 위해 주말 특근(08:00~17:00, 총 6명)을 신청하오니 재가하여 주시기 바랍니다.",
     amount: "₩1,248,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
+    status: "APPROVED",
+    currentStep: 4,
     steps: [
       { role: "담당", name: "설유철", title: "책임", status: "APPROVED", date: "2026-09-03 09:30", comment: "기안 상신" },
-      { role: "책임", name: "이창엽", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "책임", name: "이창엽", title: "책임", status: "APPROVED", date: "2026-09-03 11:00", comment: "계획 확인" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-03 14:20", comment: "승인" },
+      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-03 17:00", comment: "재가" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -199,7 +199,7 @@ export const INITIAL_APPROVAL_DOCS = [
     id: "appr_20260903_002",
     docNumber: "ORYUK-2026-0902",
     type: "LEAVE",
-    typeName: "연차/휴가 신청서",
+    typeName: "연차/휴가 신청서 (결재완료)",
     title: "정기 연차 휴가 신청의 건 (양인나)",
     plant: "삼랑진공장",
     department: "가공동 관리",
@@ -208,13 +208,13 @@ export const INITIAL_APPROVAL_DOCS = [
     createdAt: "2026-09-02 14:20",
     content: "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 일시: 2026년 9월 5일 (금) 1일간\n- 업무 대행자: 유동길 선임",
     amount: "-",
-    status: "IN_PROGRESS",
-    currentStep: 2,
+    status: "APPROVED",
+    currentStep: 4,
     steps: [
       { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-02 14:20", comment: "신청 완료" },
-      { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "책임", name: "윤경수", title: "책임", status: "APPROVED", date: "2026-09-02 15:10", comment: "업무대행 확인" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-02 17:00", comment: "승인" },
+      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-03 09:00", comment: "재가" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -223,22 +223,22 @@ export const INITIAL_APPROVAL_DOCS = [
     id: "appr_20260903_003",
     docNumber: "ORYUK-2026-0903",
     type: "EXPENSE",
-    typeName: "설비부품 구매 품의서",
+    typeName: "설비부품 구매 품의서 (결재완료)",
     title: "한림공장 CHANNEL 밴딩기 유압 실린더 패킹 교체 구매 건",
     plant: "한림공장",
     department: "가공동 관리",
-    drafter: "우창용",
+    drafter: "오상민",
     drafterTitle: "선임",
     createdAt: "2026-09-03 10:15",
     content: "CHANNEL 밴딩 1호기 압력 저하 예방을 위한 유압 실린더 패킹 및 오일 필터 정기 교체 자재 구매 품의입니다.\n- 공급처: 삼우유압\n- 납기: 2026-09-05",
     amount: "₩480,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
+    status: "APPROVED",
+    currentStep: 4,
     steps: [
-      { role: "담당", name: "우창용", title: "선임", status: "APPROVED", date: "2026-09-03 10:15", comment: "긴급 품의" },
-      { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-03 10:15", comment: "긴급 품의" },
+      { role: "책임", name: "김동욱", title: "책임", status: "APPROVED", date: "2026-09-03 11:30", comment: "부품 견적 확인" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-03 14:00", comment: "예산 집행 승인" },
+      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-03 16:30", comment: "재가" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -320,13 +320,30 @@ export const INITIAL_APPROVAL_DOCS = [
 // Helper: Read local storage with normalization
 export const getLocalApprovalDocs = () => {
   try {
-    const data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    let data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!data) {
+      const v6 = localStorage.getItem("oryuk_approval_documents_v6_kwon_sign");
+      if (v6) data = v6;
+    }
     if (!data) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_APPROVAL_DOCS));
       return INITIAL_APPROVAL_DOCS;
     }
     const parsed = JSON.parse(data);
-    return parsed.map(normalizeApprovalDoc);
+    const normalized = parsed.map(normalizeApprovalDoc).map((d) => {
+      // Auto-migrate legacy seed items to APPROVED
+      if (d.id && (d.id.startsWith("appr_20260903_") || d.id === "appr_ot_samrangjin_20260905")) {
+        return {
+          ...d,
+          status: "APPROVED",
+          currentStep: 4,
+          steps: (d.steps || []).map((s) => ({ ...s, status: "APPROVED" }))
+        };
+      }
+      return d;
+    });
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+    return normalized;
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
     return INITIAL_APPROVAL_DOCS;
@@ -364,7 +381,7 @@ export const subscribeApprovalDocs = (onUpdate) => {
             }
           });
 
-          // ⭐ Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
+          // ⭐ Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date & Current Week Filter
           const seenOtKeys = new Set();
           const cleanList = [];
           for (const item of list) {
@@ -372,6 +389,14 @@ export const subscribeApprovalDocs = (onUpdate) => {
               const dateMatch = (item.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) || (item.docNumber || "").match(/09\d{2}/) || (item.id || "").match(/2026\d{4}/);
               const dateKey = dateMatch ? dateMatch[0] : item.createdAt?.slice(0, 10) || item.id;
               const otKey = `${item.plant || "전사"}_${dateKey}`;
+
+              // If an overtime report is outside the current week and still IN_PROGRESS, remove from Firestore
+              if (!isThisWeek(dateKey) && item.status === "IN_PROGRESS" && item.id.startsWith("appr_ot_")) {
+                try {
+                  deleteDoc(doc(db, COLLECTION_NAME, item.id));
+                } catch (e) {}
+                continue;
+              }
 
               if (seenOtKeys.has(otKey)) {
                 // If a non-canonical duplicate is found, clean it from Firestore
@@ -811,6 +836,32 @@ export const syncPlantOvertimeToApprovalBox = async ({
       hour12: false
     }).replace(/\. /g, "-").replace(/\./g, "");
 
+    // ⭐ 이번주 특근보고서만 결재함 연동 제한 (Strict Current-Week Overtime Approval Synthesis Filter)
+    const isTargetThisWeek = isThisWeek(workDateStr);
+    if (!isTargetThisWeek) {
+      // If workDate is outside the current week, remove any existing pending overtime approval documents for this date/plant and do not sync
+      for (const targetPlant of targetPlants) {
+        const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
+        const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+        const outOfWeekDocs = currentApprovalDocs.filter(d =>
+          d.type === "OVERTIME" &&
+          d.plant === targetPlant &&
+          (
+            d.id === canonicalDocId ||
+            (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
+            (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+            (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+          )
+        );
+        for (const d of outOfWeekDocs) {
+          if (d.status === "IN_PROGRESS") {
+            await deleteApprovalDocument(d.id);
+          }
+        }
+      }
+      return [];
+    }
+
     const currentApprovalDocs = getLocalApprovalDocs();
     const syncedDocs = [];
 
@@ -942,7 +993,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       }
 
       const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
-      const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "우창용";
+      const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "오상민";
       const drafterTitle = "선임";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 

@@ -301,7 +301,7 @@ const SAMRANGJIN_OVERTIME = {
 const HANLIM_OVERTIME = {
   plant: "한림공장",
   date: "2026-08-29 (토)",
-  author: "우창용 선임",
+  author: "오상민 선임",
   headcount: 12,
   manHours: 96,
   cost: 1440000,
@@ -309,7 +309,7 @@ const HANLIM_OVERTIME = {
   monthManHours: 384,
   monthCumulativeCost: 5760000,
   approval: [
-    { role: "담당", name: "우창용" },
+    { role: "담당", name: "오상민" },
     { role: "책임", name: "김동욱" },
     { role: "이사", name: "이명재" },
     { role: "대표", name: "권태형" }

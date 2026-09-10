@@ -196,3 +196,89 @@ export const formatRelativeAccessTime = (timestampStr) => {
   }
 };
 
+/**
+ * Returns { mondayStr: 'YYYY-MM-DD', sundayStr: 'YYYY-MM-DD', mondayDate: Date, sundayDate: Date }
+ * for the given reference date (defaults to today or 2026-09-11 in KST).
+ */
+export const getThisWeekDateRange = (refDate = new Date()) => {
+  try {
+    let d = typeof refDate === 'string' || typeof refDate === 'number' ? new Date(refDate) : refDate;
+    if (!d || isNaN(d.getTime())) {
+      d = new Date();
+    }
+    const kstDateStr = getKSTDateString(d);
+    const [yStr, mStr, dStr] = kstDateStr.split('-');
+    const year = parseInt(yStr, 10) || 2026;
+    const month = (parseInt(mStr, 10) || 9) - 1;
+    const day = parseInt(dStr, 10) || 11;
+
+    const curr = new Date(year, month, day);
+    const dayOfWeek = curr.getDay(); // 0 is Sun, 1 is Mon ... 6 is Sat
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    const monday = new Date(curr);
+    monday.setDate(curr.getDate() + distanceToMonday);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const formatYMD = (dt) => {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const dayNum = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dayNum}`;
+    };
+
+    return {
+      mondayStr: formatYMD(monday),
+      sundayStr: formatYMD(sunday),
+      mondayDate: monday,
+      sundayDate: sunday
+    };
+  } catch (e) {
+    return { mondayStr: '2026-09-07', sundayStr: '2026-09-13' };
+  }
+};
+
+/**
+ * Checks if a given date string, number, or Date is in the current week (Monday ~ Sunday).
+ */
+export const isThisWeek = (dateInput, refDate = new Date()) => {
+  if (!dateInput) return false;
+  try {
+    let targetStr = '';
+    if (typeof dateInput === 'number') {
+      targetStr = `2026-09-${String(dateInput).padStart(2, '0')}`;
+    } else if (typeof dateInput === 'string') {
+      const match = dateInput.match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+      if (match) {
+        const y = match[1] || '2026';
+        const m = match[2].padStart(2, '0');
+        const d = match[3].padStart(2, '0');
+        targetStr = `${y}-${m}-${d}`;
+      } else {
+        const monthDayMatch = dateInput.match(/(\d{1,2})월\s*(\d{1,2})일/);
+        if (monthDayMatch) {
+          const m = monthDayMatch[1].padStart(2, '0');
+          const d = monthDayMatch[2].padStart(2, '0');
+          targetStr = `2026-${m}-${d}`;
+        } else {
+          const idDateMatch = dateInput.match(/2026(\d{2})(\d{2})/);
+          if (idDateMatch) {
+            targetStr = `2026-${idDateMatch[1]}-${idDateMatch[2]}`;
+          }
+        }
+      }
+    } else if (dateInput instanceof Date) {
+      targetStr = getKSTDateString(dateInput);
+    }
+
+    if (!targetStr) return false;
+    const { mondayStr, sundayStr } = getThisWeekDateRange(refDate);
+    return targetStr >= mondayStr && targetStr <= sundayStr;
+  } catch (e) {
+    return false;
+  }
+};
+
+

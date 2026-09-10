@@ -11,10 +11,12 @@ import {
   getKSTFormattedString,
   getKSTTimeString,
   getKSTTimeInfo,
-  getKoreanTodayDateStr
+  getKoreanTodayDateStr,
+  isThisWeek,
+  getThisWeekDateRange
 } from "../utils/dateUtils";
 
-export { getKSTDateString, getKSTFormattedString, getKSTTimeString, getKSTTimeInfo, getKoreanTodayDateStr };
+export { getKSTDateString, getKSTFormattedString, getKSTTimeString, getKSTTimeInfo, getKoreanTodayDateStr, isThisWeek, getThisWeekDateRange };
 
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config_v4";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
@@ -908,9 +910,15 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       ? hanLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
       : "전원 정상 출근";
 
-    // 2. 전일 전자결재 미결 (특근보고서, 품의서 등)
+    // 2. 전일 전자결재 미결 (특근보고서는 이번주 작성분만 연동)
     const approvalDocs = getLocalApprovalDocs();
-    const pendingDocs = approvalDocs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
+    const pendingDocs = approvalDocs.filter((d) => {
+      if (d.status !== "IN_PROGRESS" && d.status !== "HOLD") return false;
+      if (d.type === "OVERTIME") {
+        return isThisWeek(d.workDate || d.createdAt || d.id || d.title);
+      }
+      return true;
+    });
     let approvalDocLines = "• 없음 (전건 결재완료)";
     if (pendingDocs.length > 0) {
       const lines = pendingDocs.slice(0, 5).map((d) => {

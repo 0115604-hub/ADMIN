@@ -49,7 +49,8 @@ import {
 } from "../services/telegramService";
 import {
   getKSTDateString,
-  getKSTFormattedString
+  getKSTFormattedString,
+  isThisWeek
 } from "../utils/dateUtils";
 import {
   getLocalCommonSchedules,
@@ -166,11 +167,17 @@ export const TelegramView = () => {
     return han.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ");
   }, [morningLeaves]);
 
-  // Live approvals
+  // Live approvals (특근보고서는 이번주 작성분만 연동)
   const morningApprovalDocs = useMemo(() => {
     const docs = getLocalApprovalDocs();
-    return docs.filter((d) => d.status === "IN_PROGRESS" || d.status === "HOLD");
-  }, []);
+    return docs.filter((d) => {
+      if (d.status !== "IN_PROGRESS" && d.status !== "HOLD") return false;
+      if (d.type === "OVERTIME") {
+        return isThisWeek(d.workDate || d.createdAt || d.id || d.title, todayDateStr);
+      }
+      return true;
+    });
+  }, [todayDateStr]);
 
   const morningApprovalDocLines = useMemo(() => {
     if (morningApprovalDocs.length === 0) return "• 없음 (전건 결재완료)";

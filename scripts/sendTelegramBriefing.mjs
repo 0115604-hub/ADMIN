@@ -86,6 +86,53 @@ function getKSTTimeInfo(date = new Date()) {
   return { year, month, day, hour, minute, second, dateStr, totalSeconds };
 }
 
+function isThisWeek(dateInput, refDate = new Date()) {
+  if (!dateInput) return false;
+  try {
+    let targetStr = "";
+    if (typeof dateInput === "number") {
+      targetStr = `2026-09-${String(dateInput).padStart(2, "0")}`;
+    } else if (typeof dateInput === "string") {
+      const match = dateInput.match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+      if (match) {
+        const y = match[1] || "2026";
+        const m = match[2].padStart(2, "0");
+        const d = match[3].padStart(2, "0");
+        targetStr = `${y}-${m}-${d}`;
+      } else {
+        const monthDayMatch = dateInput.match(/(\d{1,2})월\s*(\d{1,2})일/);
+        if (monthDayMatch) {
+          const m = monthDayMatch[1].padStart(2, "0");
+          const d = monthDayMatch[2].padStart(2, "0");
+          targetStr = `2026-${m}-${d}`;
+        } else {
+          const idDateMatch = dateInput.match(/2026(\d{2})(\d{2})/);
+          if (idDateMatch) {
+            targetStr = `2026-${idDateMatch[1]}-${idDateMatch[2]}`;
+          }
+        }
+      }
+    } else if (dateInput instanceof Date) {
+      targetStr = getKSTDateString(dateInput);
+    }
+
+    if (!targetStr) return false;
+    const kstDateStr = getKSTDateString(refDate);
+    const [yStr, mStr, dStr] = kstDateStr.split("-");
+    const curr = new Date(parseInt(yStr, 10) || 2026, (parseInt(mStr, 10) || 9) - 1, parseInt(dStr, 10) || 11);
+    const dayOfWeek = curr.getDay();
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(curr);
+    monday.setDate(curr.getDate() + distanceToMonday);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const formatYMD = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    return targetStr >= formatYMD(monday) && targetStr <= formatYMD(sunday);
+  } catch (e) {
+    return false;
+  }
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function getConfig() {
@@ -303,13 +350,18 @@ export async function runAllBriefings(force = false) {
           ? hanLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
           : "전원 정상 출근";
 
-        // 1-2. 미결재 현황
+        // 1-2. 미결재 현황 (특근보고서는 이번주 작성분만 연동)
         let pendingDocs = [];
         try {
           const snap = await getDocs(collection(db, "approval_documents"));
           snap.forEach((docSnap) => {
             const d = docSnap.data();
             if (d.status === "IN_PROGRESS" || d.status === "HOLD") {
+              if (d.type === "OVERTIME") {
+                if (!isThisWeek(d.workDate || d.createdAt || d.id || d.title, todayStr)) {
+                  return;
+                }
+              }
               pendingDocs.push(d);
             }
           });

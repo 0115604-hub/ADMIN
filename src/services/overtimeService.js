@@ -95,11 +95,11 @@ export const INITIAL_OVERTIME_REPORTS = [
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
-    author: "우창용 선임",
+    author: "오상민 선임",
     authorTitle: "선임",
     updatedAt: "2026-09-08T17:00:00.000Z",
     approval: [
-      { role: "담당", name: "우창용", title: "선임", status: "완료" },
+      { role: "담당", name: "오상민", title: "선임", status: "완료" },
       { role: "책임", name: "김동욱", title: "책임", status: "완료" },
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
       { role: "대표", name: "권태형", title: "대표", status: "완료" }

@@ -56,8 +56,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "한울": {
     company: "한울",
     plant: "한림공장",
-    author: "우창용 선임",
-    drafter: "우창용",
+    author: "오상민 선임",
+    drafter: "오상민",
     drafterRole: "선임",
     lead: "김동욱",
     leadRole: "책임",
@@ -82,7 +82,7 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "전체": {
     company: "5개사 통합",
     plant: "삼랑진/한림공장",
-    author: "양인나 / 우창용 선임",
+    author: "양인나 / 오상민 선임",
     drafter: "양인나",
     drafterRole: "선임",
     lead: "윤경수 / 김동욱",

@@ -880,7 +880,7 @@ export const OvertimeStatusView = () => {
         plant: "한림공장",
         companies: "(주)조영산업, 한울, 부림텍",
         dateFormatted: (day === 5 ? "2026-09-06 (일)" : `2026-09-${String(day).padStart(2, "0")} (토)`),
-        author: (day === 5 ? "한울 협력업체" : "우창용 선임"),
+        author: (day === 5 ? "한울 협력업체" : "오상민 선임"),
         headcount: halWorkers.length || (day === 5 ? 2 : 4),
         manHours: halHours || (day === 5 ? 16 : 32),
         cost: halCost || (day === 5 ? 240000 : 480000),
