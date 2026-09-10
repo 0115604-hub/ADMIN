@@ -2022,10 +2022,10 @@ export const AuthModal = () => {
             /* ========================================================================= */
             <form onSubmit={handlePinSubmit} className="space-y-3.5 animate-fadeIn">
               {/* ========================================================================= */}
-              {/* ⚡ ⭐ 상단 초슬림 완벽 1줄 바: [좌측] 관리자근무 + [우측] 회사별 근태 (줄바꿈 없는 1라인) */}
+              {/* ⚡ ⭐ 상단 초슬림 완벽 1줄 바: [좌측] 관리자 + [우측] 회사별 (텍스트 라벨 삭제) */}
               {/* ========================================================================= */}
               <div className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs flex items-center justify-between gap-2 text-xs overflow-x-auto whitespace-nowrap scrollbar-none">
-                {/* [왼쪽] 관리자근무 (1줄 인라인) */}
+                {/* [왼쪽] 관리자근무 (텍스트 라벨 삭제, 아이콘+뱃지만 표시) */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="relative flex h-2 w-2 shrink-0">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
@@ -2035,9 +2035,7 @@ export const AuthModal = () => {
                       managerLeaves.length > 0 ? "bg-rose-500" : "bg-emerald-500"
                     }`}></span>
                   </span>
-                  <span className="text-[11px] font-black text-slate-800 dark:text-slate-200 shrink-0">
-                    ⚡ 관리자:
-                  </span>
+                  <span className="text-amber-500 dark:text-amber-400 text-xs shrink-0">⚡</span>
 
                   {managerLeaves.length > 0 ? (
                     <div className="flex items-center gap-1 shrink-0">
@@ -2059,7 +2057,7 @@ export const AuthModal = () => {
                   ) : (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/80 text-[10.5px] font-bold text-emerald-700 dark:text-emerald-300 shrink-0">
                       <span>✓</span>
-                      <span>전원 정상근무</span>
+                      <span>전원 정상</span>
                     </span>
                   )}
                 </div>
@@ -2067,12 +2065,9 @@ export const AuthModal = () => {
                 {/* 중앙 구분선 */}
                 <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-0.5"></div>
 
-                {/* [오른쪽] 회사별 근태 (결근/조퇴 발생 시에만 표시) */}
+                {/* [오른쪽] 회사별 근태 (텍스트 라벨 삭제, 아이콘+뱃지만 표시) */}
                 <div className="flex items-center gap-1 shrink-0">
-                  <span className="text-[11px] font-black text-slate-800 dark:text-slate-200 flex items-center gap-0.5 shrink-0">
-                    <span className="text-blue-600 dark:text-blue-400 text-xs">🏢</span>
-                    <span>회사별:</span>
-                  </span>
+                  <span className="text-blue-600 dark:text-blue-400 text-xs shrink-0">🏢</span>
 
                   {companyAttendanceStats.some((s) => s.absentCount > 0 || s.earlyLeaveCount > 0) ? (
                     <div className="flex items-center gap-1 shrink-0">
