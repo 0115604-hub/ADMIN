@@ -16,7 +16,7 @@ import { db } from "../firebase";
 // 한림공장: (주)조영산업, 한울, 부림텍
 export const PLANT_COMPANIES = {
   "삼랑진공장": ["(주)오륙", "유성"],
-  "한림공장": ["(주)조영산업", "한울", "부림텍"]
+  "한림공장": ["한울", "부림텍"]
 };
 
 export const getPlantForCompany = (companyName) => {
@@ -45,17 +45,16 @@ export const INITIAL_OVERTIME_REPORTS = [
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
       { role: "대표", name: "권태형", title: "대표", status: "완료" }
     ],
-    totalWorkers: 67,
-    totalHours: 536,
-    cost: 8040000,
+    totalWorkers: 7,
+    totalHours: 56,
+    cost: 840000,
     items: [
       { id: 1, category: "관리부", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수, 이창엽, 전재율", hours: 8, count: 5 },
-      { id: 2, category: "가공동", workContent: "NX4/NX4a 가공 및 생산 라인 가동", names: "손선희, 이영숙, 양인순, 박순복 외 32명", hours: 8, count: 36 },
-      { id: 3, category: "압출동", workContent: "압출 1/2/3호기 생산 및 코팅 라인", names: "이상은, 지미, 이수루, 코팅준 외 22명", hours: 8, count: 26 }
+      { id: 2, category: "가공동", workContent: "NX4/NX4a 가공 및 생산 라인 가동", names: "양인나, 이상기", hours: 8, count: 2 }
     ],
     reasons: [
       "1. 9월 8일(화) 삼랑진공장 (주)오륙 정규 생산 라인 가동",
-      "2. 총 67명 출근/투입 (총 투입공수: 536 M/H, 노무비: ₩8,040,000)"
+      "2. 총 7명 출근/투입 (총 투입공수: 56 M/H, 노무비: ₩840,000)"
     ]
   },
   {
@@ -67,54 +66,24 @@ export const INITIAL_OVERTIME_REPORTS = [
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
-    author: "김유성 반장",
-    authorTitle: "반장",
+    author: "유동길 선임",
+    authorTitle: "선임",
     updatedAt: "2026-09-08T17:00:00.000Z",
     approval: [
-      { role: "담당", name: "김유성", title: "반장", status: "완료" },
+      { role: "담당", name: "유동길", title: "선임", status: "완료" },
       { role: "책임", name: "설유철", title: "책임", status: "완료" },
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "유성대표", title: "대표", status: "완료" }
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
     ],
-    totalWorkers: 5,
-    totalHours: 40,
-    cost: 600000,
+    totalWorkers: 2,
+    totalHours: 16,
+    cost: 240000,
     items: [
-      { id: 1, category: "압출동", workContent: "유성 압출 1라인 및 후가공", names: "김유성, 정재한, 알렉스, 크리스, 라몬", hours: 8, count: 5 }
+      { id: 1, category: "압출동", workContent: "유성 압출 1라인 및 후가공", names: "유동길, 조인주", hours: 8, count: 2 }
     ],
     reasons: [
       "1. 9월 8일(화) 삼랑진공장 유성 압출 라인 정상 가동",
-      "2. 총 5명 투입 (총 공수: 40 M/H, 노무비: ₩600,000)"
-    ]
-  },
-  {
-    id: "report_joyoung_2026_09_08",
-    plant: "한림공장",
-    company: "(주)조영산업",
-    companies: ["(주)조영산업"],
-    title: "9월 8일(화) 한림공장 (주)조영산업 근태보고서",
-    reportType: "근태보고서",
-    workDate: "2026-09-08",
-    workDateFormatted: "2026-09-08 (화)",
-    author: "송원호 담당",
-    authorTitle: "담당",
-    updatedAt: "2026-09-08T17:00:00.000Z",
-    approval: [
-      { role: "담당", name: "송원호", title: "담당", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "조영대표", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 3,
-    totalHours: 24,
-    cost: 360000,
-    items: [
-      { id: 1, category: "관리부", workContent: "한림 4대 공용 관리 및 출하", names: "송원호, 진태경", hours: 8, count: 2 },
-      { id: 2, category: "압출동", workContent: "한림 압출 가동", names: "남기범", hours: 8, count: 1 }
-    ],
-    reasons: [
-      "1. 9월 8일(화) 한림공장 (주)조영산업 정상 근무",
-      "2. 총 3명 투입 (공수: 24 M/H, 노무비: ₩360,000)"
+      "2. 총 2명 투입 (총 공수: 16 M/H, 노무비: ₩240,000)"
     ]
   },
   {
@@ -126,24 +95,24 @@ export const INITIAL_OVERTIME_REPORTS = [
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
-    author: "안태식 담당",
-    authorTitle: "담당",
+    author: "우창용 선임",
+    authorTitle: "선임",
     updatedAt: "2026-09-08T17:00:00.000Z",
     approval: [
-      { role: "담당", name: "안태식", title: "담당", status: "완료" },
+      { role: "담당", name: "우창용", title: "선임", status: "완료" },
       { role: "책임", name: "김동욱", title: "책임", status: "완료" },
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "한울대표", title: "대표", status: "완료" }
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
     ],
-    totalWorkers: 5,
-    totalHours: 40,
-    cost: 600000,
+    totalWorkers: 2,
+    totalHours: 16,
+    cost: 240000,
     items: [
-      { id: 1, category: "가공동", workContent: "NX4/NX4a/HR G-RUN 가공", names: "정대현, 최민성, 강태양, 이승준, 신현수", hours: 8, count: 5 }
+      { id: 1, category: "가공동", workContent: "NX4/NX4a/HR G-RUN 가공", names: "우창용, 오상민", hours: 8, count: 2 }
     ],
     reasons: [
       "1. 9월 8일(화) 한림공장 한울 가공동 가동",
-      "2. 총 5명 투입 (공수: 40 M/H, 노무비: ₩600,000)"
+      "2. 총 2명 투입 (공수: 16 M/H, 노무비: ₩240,000)"
     ]
   },
   {
@@ -155,25 +124,24 @@ export const INITIAL_OVERTIME_REPORTS = [
     reportType: "근태보고서",
     workDate: "2026-09-08",
     workDateFormatted: "2026-09-08 (화)",
-    author: "표성준 담당",
-    authorTitle: "담당",
+    author: "김동욱 책임",
+    authorTitle: "책임",
     updatedAt: "2026-09-08T17:00:00.000Z",
     approval: [
-      { role: "담당", name: "표성준", title: "담당", status: "완료" },
+      { role: "담당", name: "김동욱", title: "책임", status: "완료" },
       { role: "책임", name: "김동욱", title: "책임", status: "완료" },
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "부림대표", title: "대표", status: "완료" }
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
     ],
-    totalWorkers: 7,
-    totalHours: 56,
-    cost: 840000,
+    totalWorkers: 1,
+    totalHours: 8,
+    cost: 120000,
     items: [
-      { id: 1, category: "압출동", workContent: "NX4/HR/JA G-RUN 압출", names: "곽준호, 민동혁, 노승환, 천태진, 석진우", hours: 8, count: 5 },
-      { id: 2, category: "관리부", workContent: "4대 공용 관리 및 출하", names: "표성준, 하원식", hours: 8, count: 2 }
+      { id: 1, category: "관리부", workContent: "한림 총괄 관리 및 출하", names: "김동욱", hours: 8, count: 1 }
     ],
     reasons: [
       "1. 9월 8일(화) 한림공장 부림텍 정상 가동",
-      "2. 총 7명 투입 (공수: 56 M/H, 노무비: ₩840,000)"
+      "2. 총 1명 투입 (공수: 8 M/H, 노무비: ₩120,000)"
     ]
   },
   {
@@ -194,24 +162,16 @@ export const INITIAL_OVERTIME_REPORTS = [
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
       { role: "대표", name: "권태형", title: "대표", status: "완료" }
     ],
-    totalWorkers: 38,
-    totalHours: 362,
-    cost: 5430000,
+    totalWorkers: 7,
+    totalHours: 62,
+    cost: 930000,
     items: [
-      { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수", hours: 8, count: 3 },
-      { id: 2, category: "NX4", workContent: "NX4 조인트 및 후가공 생산", names: "손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미", hours: 10, count: 11 },
-      { id: 3, category: "NX4a", workContent: "NX4a 후가공 및 검사", names: "양인순, 박순복, 김상아, 김윤자, 김현희", hours: 10, count: 5 },
-      { id: 4, category: "PU 찬넬", workContent: "PU 찬넬 조립 1라인", names: "이창엽", hours: 8, count: 1 },
-      { id: 5, category: "PU 찬넬", workContent: "PU 찬넬 가공 2라인", names: "전재율, 양인나", hours: 8, count: 2 },
-      { id: 6, category: "압출", workContent: "PCM#1/3 및 TPE 압출 가동", names: "이상은, 지미, 이수루", hours: 12, count: 3 },
-      { id: 7, category: "8톤 코팅", workContent: "8톤 코팅 라인 긴급 가동", names: "코팅준", hours: 8, count: 1 },
-      { id: 8, category: "DT HOOD", workContent: "DT HOOD 조인트 및 코팅 납품 대응", names: "쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스", hours: 10, count: 7 },
-      { id: 9, category: "JK1", workContent: "JK1 조인트 후가공", names: "포티퐁, 린, 넷플림", hours: 8, count: 3 },
-      { id: 10, category: "CE1", workContent: "CE1 후가공 검사", names: "제인, 그레이스", hours: 8, count: 2 }
+      { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수, 이창엽, 전재율", hours: 8, count: 5 },
+      { id: 2, category: "가공동", workContent: "NX4/NX4a 후가공 및 검사", names: "양인나, 이상기", hours: 10, count: 2 }
     ],
     reasons: [
       "1. 9월 5일(토) 삼랑진공장 (주)오륙 토요 특근 긴급 납품 수량 대응",
-      "2. 총 38명 투입 (공수: 362 M/H, 총 노무비: ₩5,430,000)"
+      "2. 총 7명 투입 (공수: 62 M/H, 총 노무비: ₩930,000)"
     ]
   },
   {
@@ -223,14 +183,14 @@ export const INITIAL_OVERTIME_REPORTS = [
     reportType: "특근보고서",
     workDate: "2026-09-05",
     workDateFormatted: "2026-09-05 (토)",
-    author: "김유성 반장",
-    authorTitle: "반장",
+    author: "유동길 선임",
+    authorTitle: "선임",
     updatedAt: "2026-09-05T18:00:00.000Z",
     approval: [
-      { role: "담당", name: "김유성", title: "반장", status: "완료" },
+      { role: "담당", name: "유동길", title: "선임", status: "완료" },
       { role: "책임", name: "설유철", title: "책임", status: "완료" },
       { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "유성대표", title: "대표", status: "완료" }
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
     ],
     totalWorkers: 2,
     totalHours: 20,

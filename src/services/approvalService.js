@@ -71,7 +71,7 @@ export const normalizeApprovalDoc = (d) => {
 
   let fixedContent = d.content || "";
   if (d.id === "appr_ot_samrangjin_20260905" || ((d.title || "").includes("9월 5일") && (d.title || "").includes("삼랑진공장"))) {
-    fixedContent = `■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (38명)\n  - 관리자: 이명재, 설유철, 윤경수\n  - 작업자: 손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 양인순, 박순복, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동`;
+    fixedContent = `■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 9명 (82 M/H) | 총 노무비: ₩1,230,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (7명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 양인나, 이상기\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동`;
   }
 
   return { ...d, steps: fixedSteps, status: normalizedStatus, content: fixedContent };
@@ -158,8 +158,8 @@ export const INITIAL_APPROVAL_DOCS = [
     drafter: "양인나",
     drafterTitle: "선임",
     createdAt: "2026-09-05 18:00",
-    content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 40명 (382 M/H) | 총 노무비: ₩5,730,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (38명)\n  - 관리자: 이명재, 설유철, 윤경수\n  - 작업자: 손선희, 이영숙, 수베트, 치찬, 콩지, 케넷, 버나드, 돈돈, 알라딘, 롤란도, 김순미, 양인순, 박순복, 김상아, 김윤자, 김현희, 이창엽, 전재율, 양인나, 이상은, 지미, 이수루, 코팅준, 쏘달, 롬나차이, 마리오, 제랄드, 팔라, 누리, 데란스, 포티퐁, 린, 넷플림, 제인, 그레이스\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
-    amount: "₩5,730,000",
+    content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 9명 (82 M/H) | 총 노무비: ₩1,230,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (7명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 양인나, 이상기\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
+    amount: "₩1,230,000",
     status: "IN_PROGRESS",
     currentStep: 2,
     steps: [
@@ -737,8 +737,12 @@ export const deleteApprovalDocument = async (id) => {
 // 한림공장: (주)조영산업, 한울, 부림텍 취합 ➔ 결재함 자동 등록
 const PLANT_COMPANIES_MAP = {
   "삼랑진공장": ["(주)오륙", "유성"],
-  "한림공장": ["(주)조영산업", "한울", "부림텍"]
+  "한림공장": ["한울", "부림텍"]
 };
+
+const SAMRANGJIN_REAL_WORKERS = ["이명재", "설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"];
+const HANLIM_REAL_WORKERS = ["김동욱", "우창용", "오상민"];
+const ALL_REAL_WORKERS = [...SAMRANGJIN_REAL_WORKERS, ...HANLIM_REAL_WORKERS, "권태형", "최미영"];
 
 export const syncPlantOvertimeToApprovalBox = async ({
   plant = null,
@@ -753,7 +757,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
     let targetPlants = [];
     if (plant === "삼랑진공장" || company === "(주)오륙" || company === "유성") {
       targetPlants = ["삼랑진공장"];
-    } else if (plant === "한림공장" || company === "(주)조영산업" || company === "한울" || company === "부림텍") {
+    } else if (plant === "한림공장" || company === "한울" || company === "부림텍") {
       targetPlants = ["한림공장"];
     } else {
       targetPlants = ["삼랑진공장", "한림공장"];
@@ -874,8 +878,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         let workersList = [];
 
         const KNOWN_MANAGERS = [
-          "이명재", "설유철", "윤경수", "김동욱", "송원호", "진태경",
-          "안태식", "표성준", "하원식", "김유성", "권태형", "최미영"
+          "이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "권태형", "최미영"
         ];
 
         if (compRep.items && compRep.items.length > 0) {
@@ -890,10 +893,12 @@ export const syncPlantOvertimeToApprovalBox = async ({
             }
 
             namesFromItem.forEach(name => {
-              if (isManagerCategory || KNOWN_MANAGERS.includes(name)) {
-                managersList.push(name);
+              const cleanName = name.trim();
+              if (!ALL_REAL_WORKERS.includes(cleanName)) return; // Filter out dummy workers!
+              if (isManagerCategory || KNOWN_MANAGERS.includes(cleanName)) {
+                managersList.push(cleanName);
               } else {
-                workersList.push(name);
+                workersList.push(cleanName);
               }
             });
           });
@@ -906,13 +911,13 @@ export const syncPlantOvertimeToApprovalBox = async ({
           participatingCompanies.push(comp);
           companySummaries.push({
             company: comp,
-            workerCount,
+            workerCount: (uniqueManagers.length + uniqueWorkers.length) || workerCount,
             workerHours,
             workerCost,
             managers: uniqueManagers,
             workers: uniqueWorkers
           });
-          totalPlantWorkers += workerCount;
+          totalPlantWorkers += ((uniqueManagers.length + uniqueWorkers.length) || workerCount);
           totalPlantHours += workerHours;
           totalPlantCost += workerCost;
         }
@@ -937,15 +942,15 @@ export const syncPlantOvertimeToApprovalBox = async ({
       }
 
       const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
-      const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "송원호";
-      const drafterTitle = targetPlant === "삼랑진공장" ? "선임" : "담당";
+      const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "우창용";
+      const drafterTitle = "선임";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
       const titleCompList = participatingCompanies.length > 0 ? participatingCompanies : targetCompanies;
       const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
         ? "생산총괄 ((주)오륙 + 유성)"
-        : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
+        : "생산총괄 (한울 + 부림텍)";
 
       // ⭐ 세부투입현황: 회사별로 관리자 / 작업자 분리 표시
       const breakdownText = companySummaries.map(cs => {
