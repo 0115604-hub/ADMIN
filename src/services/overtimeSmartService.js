@@ -590,19 +590,43 @@ export const ensureAllCompaniesPresent = (data) => {
     return {
       ...w,
       no: idx + 1,
+      company: w.company || "(주)오륙",
       dept: normalizeDept(w.dept),
+      line: w.line || normalizeDept(w.dept),
+      name: (w.name || "").trim(),
+      position: w.position || "작업원",
       daily: cleanedDaily
     };
   });
-  let master = (data.masterWorkers || []).map((w, idx) => ({
-    ...w,
-    no: idx + 1,
-    dept: normalizeDept(w.dept)
-  }));
+
+  let master = (data.masterWorkers && Array.isArray(data.masterWorkers) && data.masterWorkers.length === matrix.length)
+    ? data.masterWorkers.map((w, idx) => ({
+        ...w,
+        no: idx + 1,
+        company: w.company || matrix[idx]?.company || "(주)오륙",
+        dept: normalizeDept(w.dept || matrix[idx]?.dept),
+        line: w.line || matrix[idx]?.line || normalizeDept(w.dept),
+        name: (w.name || matrix[idx]?.name || "").trim(),
+        position: w.position || matrix[idx]?.position || "작업원",
+        employmentType: w.employmentType || "정규직",
+        status: w.status || "재직",
+        note: w.note || ""
+      }))
+    : matrix.map((w, idx) => ({
+        no: idx + 1,
+        company: w.company,
+        dept: normalizeDept(w.dept),
+        line: w.line || normalizeDept(w.dept),
+        name: w.name,
+        position: w.position || "작업원",
+        employmentType: w.employmentType || "정규직",
+        status: w.status || "재직",
+        note: w.note || ""
+      }));
 
   const existingCompanies = new Set(matrix.map((w) => w.company));
 
-  // Check if any company from INITIAL_SMART_OVERTIME_DATA (like '유성') is missing
+  // Check if any company from INITIAL_SMART_OVERTIME_DATA (like '유성') is completely missing
   COMPANIES.forEach((comp) => {
     if (!existingCompanies.has(comp)) {
       const initialWorkersForComp = INITIAL_SMART_OVERTIME_DATA.masterWorkers.filter((w) => w.company === comp);
@@ -642,6 +666,11 @@ export const saveSmartOvertimeData = async (data) => {
     const normalizedData = ensureAllCompaniesPresent(data);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
 
+    // Dispatch custom event for immediate same-page multi-component updates
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: normalizedData }));
+    }
+
     if (db) {
       const ref = doc(db, "smart_overtime_ledger", FIRESTORE_DOC_ID);
       await setDoc(
@@ -665,9 +694,22 @@ export const saveSmartOvertimeData = async (data) => {
 
 export const subscribeSmartOvertimeData = (callback) => {
   try {
+    const handleCustom = (e) => {
+      if (e && e.detail) {
+        callback(e.detail);
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("oryuk_smart_overtime_updated", handleCustom);
+    }
+
     if (!db) {
       callback(getLocalSmartOvertimeData());
-      return () => {};
+      return () => {
+        if (typeof window !== "undefined") {
+          window.removeEventListener("oryuk_smart_overtime_updated", handleCustom);
+        }
+      };
     }
 
     const ref = doc(db, "smart_overtime_ledger", FIRESTORE_DOC_ID);
@@ -690,7 +732,12 @@ export const subscribeSmartOvertimeData = (callback) => {
         callback(getLocalSmartOvertimeData());
       }
     );
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("oryuk_smart_overtime_updated", handleCustom);
+      }
+    };
   } catch (err) {
     console.error("Failed to subscribe smart overtime data:", err);
     callback(getLocalSmartOvertimeData());

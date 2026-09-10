@@ -580,9 +580,9 @@ export const OvertimeStatusView = () => {
     }
   };
 
-  // Quick Add Worker for a specific Company (from Company Popup)
+  // Quick Add Worker for a specific Company (from Company Popup & Personnel Management Modal)
   const handleQuickAddCompanyWorker = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!quickNewWorkerName.trim()) {
       alert("근로자 성명을 입력해주세요.");
       return;
@@ -593,13 +593,22 @@ export const OvertimeStatusView = () => {
     const name = quickNewWorkerName.trim();
     const position = quickNewWorkerPos || "작업원";
 
-    // Create empty daily attendance
+    // Build standard 30-day attendance record for September 2026
     const emptyDaily = {};
     for (let d = 1; d <= 30; d++) {
-      emptyDaily[d] = (d === 6 || d === 13 || d === 20 || d === 27) ? "-" : "🟢";
+      const isWk = (d === 5 || d === 6 || d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27);
+      if (isWk) {
+        emptyDaily[d] = "-";
+      } else if (d <= 8) {
+        emptyDaily[d] = "🟢";
+      } else {
+        emptyDaily[d] = "";
+      }
     }
 
-    const nextNo = (smartData.masterWorkers?.length || 0) + 1;
+    const currentMatrix = smartData.attendanceMatrix || [];
+    const nextNo = currentMatrix.length + 1;
+
     const newWorkerObj = {
       no: nextNo,
       company,
@@ -622,30 +631,74 @@ export const OvertimeStatusView = () => {
       daily: emptyDaily
     };
 
+    const updatedMatrix = [...currentMatrix, newMatrixRow].map((w, idx) => ({ ...w, no: idx + 1 }));
+    const updatedMaster = updatedMatrix.map((w, idx) => ({
+      no: idx + 1,
+      company: w.company,
+      dept: normalizeDept(w.dept),
+      line: w.line || normalizeDept(w.dept),
+      name: w.name,
+      position: w.position || "작업원",
+      employmentType: w.employmentType || "정규직",
+      status: w.status || "재직",
+      note: w.note || ""
+    }));
+
     const updatedData = {
       ...smartData,
-      masterWorkers: [...(smartData.masterWorkers || []), newWorkerObj],
-      attendanceMatrix: [...(smartData.attendanceMatrix || []), newMatrixRow]
+      masterWorkers: updatedMaster,
+      attendanceMatrix: updatedMatrix
     };
 
+    setSmartData(updatedData);
     await handleSaveLedger(updatedData);
     setQuickNewWorkerName("");
     setQuickNewWorkerLine("");
     setPopupShowAddWorker(false);
-    triggerToast(`🎉 [${company}] ${name} 신규 근로자 등록 완료 (${dept})`);
+    triggerToast(`🎉 [${company}] ${name} (${dept}) 신규 근로자 등록 완료!`);
   };
 
-  // Quick Delete Worker (from Company Popup)
-  const handleQuickDeleteWorker = async (workerIndexInMatrix, workerName, companyName) => {
-    if (!window.confirm(`정말로 [${companyName}] ${workerName} 근로자를 삭제하시겠습니까?\n(해당 작업자의 모든 9월 근태 내역이 삭제됩니다)`)) {
+  // Quick Delete Worker (from Company Popup & Personnel Management Modal)
+  const handleQuickDeleteWorker = async (workerIndexInMatrix, workerName, companyName, dept, line) => {
+    if (!window.confirm(`정말로 [${companyName}] ${workerName} (${dept || ""}) 근로자를 삭제하시겠습니까?\n(해당 작업자의 모든 9월 근태 내역이 삭제됩니다)`)) {
       return;
     }
 
-    const updatedMatrix = smartData.attendanceMatrix.filter((_, idx) => idx !== workerIndexInMatrix);
-    const updatedMaster = (smartData.masterWorkers || []).filter((w) => !(w.company === companyName && w.name === workerName));
+    const currentMatrix = [...(smartData.attendanceMatrix || [])];
+    let updatedMatrix;
+    if (
+      typeof workerIndexInMatrix === "number" &&
+      workerIndexInMatrix >= 0 &&
+      workerIndexInMatrix < currentMatrix.length &&
+      currentMatrix[workerIndexInMatrix]?.name === workerName &&
+      currentMatrix[workerIndexInMatrix]?.company === companyName
+    ) {
+      updatedMatrix = currentMatrix.filter((_, idx) => idx !== workerIndexInMatrix);
+    } else {
+      let removed = false;
+      updatedMatrix = currentMatrix.filter((w) => {
+        if (!removed && w.company === companyName && w.name === workerName) {
+          if (!dept || normalizeDept(w.dept) === normalizeDept(dept)) {
+            removed = true;
+            return false;
+          }
+        }
+        return true;
+      });
+    }
 
     const reindexedMatrix = updatedMatrix.map((w, idx) => ({ ...w, no: idx + 1 }));
-    const reindexedMaster = updatedMaster.map((w, idx) => ({ ...w, no: idx + 1 }));
+    const reindexedMaster = reindexedMatrix.map((w, idx) => ({
+      no: idx + 1,
+      company: w.company,
+      dept: normalizeDept(w.dept),
+      line: w.line || normalizeDept(w.dept),
+      name: w.name,
+      position: w.position || "작업원",
+      employmentType: w.employmentType || "정규직",
+      status: w.status || "재직",
+      note: w.note || ""
+    }));
 
     const updatedData = {
       ...smartData,
@@ -653,6 +706,7 @@ export const OvertimeStatusView = () => {
       attendanceMatrix: reindexedMatrix
     };
 
+    setSmartData(updatedData);
     await handleSaveLedger(updatedData);
     triggerToast(`🗑️ [${companyName}] ${workerName} 근로자 삭제 완료`);
   };
@@ -2566,11 +2620,11 @@ export const OvertimeStatusView = () => {
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
                   />
                 </div>
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-2">
                   <select
                     value={quickNewWorkerDept}
                     onChange={(e) => setQuickNewWorkerDept(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
                     {DEPARTMENTS.map((d) => (
                       <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
@@ -2586,13 +2640,34 @@ export const OvertimeStatusView = () => {
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
                   />
                 </div>
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-2">
+                  <select
+                    value={quickNewWorkerPos}
+                    onChange={(e) => setQuickNewWorkerPos(e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    <option value="작업원" className="bg-slate-900 text-white">작업원</option>
+                    <option value="반장/조장" className="bg-slate-900 text-white">반장/조장</option>
+                    <option value="조장" className="bg-slate-900 text-white">조장</option>
+                    <option value="반장" className="bg-slate-900 text-white">반장</option>
+                    <option value="담당" className="bg-slate-900 text-white">담당</option>
+                    <option value="선임" className="bg-slate-900 text-white">선임</option>
+                    <option value="책임" className="bg-slate-900 text-white">책임</option>
+                    <option value="주임" className="bg-slate-900 text-white">주임</option>
+                    <option value="대리" className="bg-slate-900 text-white">대리</option>
+                    <option value="과장" className="bg-slate-900 text-white">과장</option>
+                    <option value="차장" className="bg-slate-900 text-white">차장</option>
+                    <option value="부장" className="bg-slate-900 text-white">부장</option>
+                    <option value="이사" className="bg-slate-900 text-white">이사</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
                   <button
                     type="submit"
                     className="w-full py-1.5 px-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md shadow-purple-900/40 flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>근로자 추가</span>
+                    <span>추가</span>
                   </button>
                 </div>
               </form>
@@ -2636,7 +2711,7 @@ export const OvertimeStatusView = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
                       {manageCompanyWorkers.map((worker, idx) => (
-                        <tr key={worker.originalMatrixIndex} className="hover:bg-slate-800/60 transition-colors">
+                        <tr key={`${worker.company}_${worker.name}_${worker.originalMatrixIndex}_${idx}`} className="hover:bg-slate-800/60 transition-colors">
                           <td className="py-1.5 px-2.5 text-center font-mono text-slate-500 text-[11px]">
                             {idx + 1}
                           </td>
@@ -2657,7 +2732,7 @@ export const OvertimeStatusView = () => {
                           <td className="py-1.5 px-2.5 text-center">
                             <button
                               type="button"
-                              onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company)}
+                              onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company, worker.dept, worker.line)}
                               className="px-2 py-0.5 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-[10.5px] transition-all cursor-pointer flex items-center gap-1 mx-auto active:scale-95"
                               title="근로자 삭제"
                             >
