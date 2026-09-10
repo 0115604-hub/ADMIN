@@ -399,6 +399,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
       const t = String(typeName || "").trim();
       const r = String(reason || "").trim();
 
+      // Top line is strictly one of the standard schedule types from the menu:
       let line1 = "";
       let line2 = "";
 
@@ -418,27 +419,54 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         }
       } else if (t.includes("오전반차") || t === "반차(오전)") {
         line1 = "오전반차";
+        if (r && r !== t && !r.includes("오전")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("오후반차") || t === "반차(오후)") {
         line1 = "오후반차";
+        if (r && r !== t && !r.includes("오후")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("특근")) {
-        line1 = "특근";
+        line1 = "특근(휴일)";
+        if (r && r !== t && !r.includes("특근")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("출장") || t.includes("교육")) {
-        line1 = "출장";
-        if (r && r !== t) {
+        line1 = "출장/교육";
+        if (r && r !== t && !r.includes("출장") && !r.includes("교육")) {
           line2 = r.length > 6 ? r.slice(0, 6) : r;
         }
       } else if (t.includes("외출")) {
         line1 = "외출";
+        if (r && r !== t && !r.includes("외출")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("RNA") || t.includes("회의")) {
-        line1 = "회의";
+        line1 = "RNA 회의";
+        if (r && r !== t && !r.includes("회의") && !r.includes("RNA")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("할일")) {
         line1 = "할일";
+        if (r && r !== t && !r.includes("할일")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("업체방문")) {
-        line1 = "방문";
+        line1 = "업체방문";
+        if (r && r !== t && !r.includes("방문")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else if (t.includes("연차")) {
-        line1 = "연차";
+        line1 = "연차(하루)";
+        if (r && r !== t && !r.includes("연차") && !r.includes("개인 사유") && !r.includes("개인사유")) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       } else {
         line1 = t || "일정";
+        if (r && r !== t) {
+          line2 = r.length > 6 ? r.slice(0, 6) : r;
+        }
       }
 
       if (!line2 && r && r !== t) {
