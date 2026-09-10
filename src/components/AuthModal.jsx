@@ -2024,7 +2024,7 @@ export const AuthModal = () => {
               {/* ========================================================================= */}
               {/* ⚡ ⭐ 상단 초슬림 완벽 1줄 바: [좌측] 관리자 + [우측] 회사별 (텍스트 라벨 삭제) */}
               {/* ========================================================================= */}
-              <div className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs flex items-center justify-between gap-2 text-xs overflow-x-auto whitespace-nowrap scrollbar-none">
+              <div className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs flex items-center justify-center gap-2 sm:gap-2.5 text-xs overflow-x-auto whitespace-nowrap scrollbar-none">
                 {/* [왼쪽] 관리자근무 (텍스트 라벨 삭제, 아이콘+뱃지만 표시) */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="relative flex h-2 w-2 shrink-0">
