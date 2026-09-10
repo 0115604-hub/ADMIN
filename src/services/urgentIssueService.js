@@ -45,32 +45,27 @@ export const saveLocalUrgentIssues = (issues) => {
   }
 };
 
-// Helper: Category Priority and Smart Sorting for Quality Alert / Meeting / Notice
+// Helper: Category Priority and Smart Sorting
 // 1위: 품질경보 (최신 등록일시 내림차순)
 // 2위: 회의일정 (다가오는 날짜 오름차순 + 시간 오름차순 + 최신등록 내림차순)
-// 3위: 공지사항/사내공지/공유사항 (다가오는 만료/공지일 오름차순 + 최신등록 내림차순)
+// 3위: 오픈이슈/품질이슈 (최신 등록/목표일 내림차순)
+// 4위: 공지사항/사내공지/공유사항 (다가오는 만료/공지일 오름차순 + 최신등록 내림차순)
 export const sortIssuesByCustomPriority = (list = []) => {
   if (!Array.isArray(list) || list.length === 0) return [];
 
   const getCategoryPriority = (item) => {
     const cat = item?.category || "";
-    if (
-      cat === "품질경보" ||
-      (!cat.includes("공지") && !cat.includes("공유") && cat !== "회의일정")
-    ) {
-      return 1;
-    }
-    if (cat === "회의일정") {
-      return 2;
-    }
-    return 3;
+    if (cat === "품질경보") return 1;
+    if (cat === "회의일정") return 2;
+    if (cat === "오픈이슈" || cat === "품질이슈") return 3;
+    return 4; // 공지사항, 사내공지, 공유사항
   };
 
   return [...list].sort((a, b) => {
     const prioA = getCategoryPriority(a);
     const prioB = getCategoryPriority(b);
 
-    // 1. 카테고리 우선순위: 품질경보(1) -> 회의일정(2) -> 공지사항(3)
+    // 1. 카테고리 우선순위: 품질경보(1) -> 회의일정(2) -> 오픈이슈(3) -> 공지사항(4)
     if (prioA !== prioB) {
       return prioA - prioB;
     }
@@ -101,8 +96,18 @@ export const sortIssuesByCustomPriority = (list = []) => {
       return (b.createdAt || "").localeCompare(a.createdAt || "");
     }
 
-    // [3위: 공지사항] -> 다가오는 날짜순 (오름차순: 만료/목표일 가까운 순) + 최신등록순
+    // [3위: 오픈이슈] -> 최신 등록일 / 목표일 내림차순
     if (prioA === 3) {
+      const timeA = a.createdAt || a.expireDate || "";
+      const timeB = b.createdAt || b.expireDate || "";
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    }
+
+    // [4위: 공지사항] -> 다가오는 날짜순 (오름차순: 만료/목표일 가까운 순) + 최신등록순
+    if (prioA === 4) {
       const dateA = a.expireDate || a.targetDate || "9999-99-99";
       const dateB = b.expireDate || b.targetDate || "9999-99-99";
       if (dateA !== dateB) {
