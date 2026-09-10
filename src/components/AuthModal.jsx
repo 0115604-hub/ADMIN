@@ -1193,9 +1193,14 @@ export const AuthModal = () => {
     }
   };
 
-  // All workers list for author dropdown
+  // All workers list for author dropdown (👑 본사 권태형 대표이사, 최미영 전무 포함)
   const allWorkers = useMemo(() => {
     const list = [];
+    // 👑 1. 본사 최고 관리자 (권태형 대표이사, 최미영 전무)
+    ADMIN_USERS.forEach((a) => {
+      list.push({ ...a, plantName: "본사" });
+    });
+    // 🏢 2. 삼랑진공장, 한림공장 작업자
     PLANTS.forEach((p) => {
       p.workers.forEach((w) => {
         list.push({ ...w, plantName: p.name });
@@ -2927,7 +2932,7 @@ export const AuthModal = () => {
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    공장
+                    공장 / 구분
                   </label>
                   <select
                     value={newIssueForm.plant}
@@ -2936,6 +2941,7 @@ export const AuthModal = () => {
                   >
                     <option value="삼랑진공장">삼랑진공장</option>
                     <option value="한림공장">한림공장</option>
+                    <option value="본사">본사</option>
                     <option value="화승 R&A">화승 R&A</option>
                     <option value="전체">전체</option>
                   </select>
@@ -2943,7 +2949,7 @@ export const AuthModal = () => {
 
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    작성자 (전작업자)
+                    작성자
                   </label>
                   <select
                     value={newIssueForm.author}
@@ -2952,7 +2958,8 @@ export const AuthModal = () => {
                       setNewIssueForm({
                         ...newIssueForm,
                         author: e.target.value,
-                        authorTitle: found?.title || "선임"
+                        authorTitle: found?.title || "선임",
+                        plant: found?.plantName === "본사" && newIssueForm.plant === "삼랑진공장" ? "본사" : newIssueForm.plant
                       });
                     }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
