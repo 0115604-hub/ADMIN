@@ -2024,9 +2024,9 @@ export const AuthModal = () => {
               {/* ========================================================================= */}
               {/* ⚡ ⭐ 상단 초슬림 완벽 1줄 바: [좌측] 관리자 + [우측] 회사별 (텍스트 라벨 삭제) */}
               {/* ========================================================================= */}
-              <div className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs flex items-center justify-center gap-2 sm:gap-2.5 text-xs overflow-x-auto whitespace-nowrap scrollbar-none">
-                {/* [왼쪽] 관리자근무 (텍스트 라벨 삭제, 아이콘+뱃지만 표시) */}
-                <div className="flex items-center gap-1.5 shrink-0">
+              <div className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-xs flex items-center text-xs overflow-x-auto whitespace-nowrap scrollbar-none">
+                {/* [왼쪽] 관리자근무 (좌측 정렬 원래대로) */}
+                <div className="flex-1 flex items-center justify-start gap-1.5 min-w-0 shrink-0">
                   <span className="relative flex h-2 w-2 shrink-0">
                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
                       managerLeaves.length > 0 ? "bg-rose-400" : "bg-emerald-400"
@@ -2063,10 +2063,10 @@ export const AuthModal = () => {
                 </div>
 
                 {/* 중앙 구분선 */}
-                <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-0.5"></div>
+                <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 shrink-0 mx-2"></div>
 
-                {/* [오른쪽] 회사별 근태 (텍스트 라벨 삭제, 아이콘+뱃지만 표시) */}
-                <div className="flex items-center gap-1 shrink-0">
+                {/* [오른쪽] 회사별 근태 (중앙 구분선쪽에 붙여서 정렬) */}
+                <div className="flex-1 flex items-center justify-start gap-1 min-w-0 shrink-0">
                   <span className="text-blue-600 dark:text-blue-400 text-xs shrink-0">🏢</span>
 
                   {companyAttendanceStats.some((s) => s.absentCount > 0 || s.earlyLeaveCount > 0) ? (
