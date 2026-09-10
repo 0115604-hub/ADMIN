@@ -134,8 +134,8 @@ export const AuthModal = () => {
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
   const [issueViewMode, setIssueViewMode] = useState("auto"); // "auto" (>=2 is summary) | "summary" | "detailed"
   const [detailIssueModal, setDetailIssueModal] = useState(null); // Fallback / Action modal ref
-  const [issueModalPage, setIssueModalPage] = useState(1);
   const [issueFilterTab, setIssueFilterTab] = useState("all"); // "all" | "unresolved" | "closed"
+  const [openIssueCategoryFilter, setOpenIssueCategoryFilter] = useState("all"); // "all" | "quality" | "notice" | "meeting"
   const ISSUES_PER_PAGE = 5;
 
   // New Issue Form State (사진 첨부 및 사내공지/회의일정 만료일자 및 회의시간, 조치결과, 조치사진, 상태 지원)
@@ -387,6 +387,48 @@ export const AuthModal = () => {
 
   const meetingIssuesCount = useMemo(() => {
     return activeIssues.filter((i) => i.category === "회의일정").length;
+  }, [activeIssues]);
+
+  // ⭐ 오픈이슈 필터링 적용된 노출 목록
+  const displayedActiveIssues = useMemo(() => {
+    if (openIssueCategoryFilter === "all") return activeIssues;
+    if (openIssueCategoryFilter === "quality") {
+      return activeIssues.filter(
+        (i) =>
+          i.category === "품질경보" ||
+          (!i.category?.includes("공지") &&
+            !i.category?.includes("공유") &&
+            i.category !== "회의일정")
+      );
+    }
+    if (openIssueCategoryFilter === "notice") {
+      return activeIssues.filter(
+        (i) =>
+          i.category === "공지사항" ||
+          i.category === "사내공지" ||
+          i.category === "공유사항"
+      );
+    }
+    if (openIssueCategoryFilter === "meeting") {
+      return activeIssues.filter((i) => i.category === "회의일정");
+    }
+    return activeIssues;
+  }, [activeIssues, openIssueCategoryFilter]);
+
+  const samrangjinActiveCount = useMemo(() => {
+    return activeIssues.filter((i) => i.plant === "삼랑진공장").length;
+  }, [activeIssues]);
+
+  const hanlimActiveCount = useMemo(() => {
+    return activeIssues.filter((i) => i.plant === "한림공장").length;
+  }, [activeIssues]);
+
+  const urgentUnresolvedCount = useMemo(() => {
+    return activeIssues.filter((i) => !i.isResolved).length;
+  }, [activeIssues]);
+
+  const resolvedActiveCount = useMemo(() => {
+    return activeIssues.filter((i) => i.isResolved).length;
   }, [activeIssues]);
 
   const isIssueSummaryMode = useMemo(() => {
@@ -910,12 +952,12 @@ export const AuthModal = () => {
           </div>
 
           {/* ========================================================================= */}
-          {/* 📢 ⭐ [요청사항 반영] 품질경보 • 공지사항 • 회의일정 대형 고시인성 패널 */}
+          {/* 📢 ⭐ 오픈이슈(Open Issue) 실시간 라이브 보드 */}
           {/* ========================================================================= */}
-          <div className="mb-3.5 sm:mb-5 rounded-2xl border-2 border-rose-300/80 dark:border-rose-900/80 bg-rose-50/50 dark:bg-rose-950/30 shadow-md overflow-hidden transition-all min-w-0">
-            {/* Panel Top Bar: Clean Single Line Title & Actions */}
-            <div className="p-2 sm:p-3 flex items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/70 via-purple-50/50 to-emerald-50/50 dark:from-rose-950/60 dark:via-purple-950/40 dark:to-emerald-950/40">
-              {/* Left: Clean Single-Line Title */}
+          <div className="mb-3.5 sm:mb-5 rounded-2xl border-2 border-rose-300/80 dark:border-rose-900/80 bg-rose-50/40 dark:bg-rose-950/20 shadow-md overflow-hidden transition-all min-w-0">
+            {/* Panel Top Bar: Metrics & Actions */}
+            <div className="p-2.5 sm:p-3 flex flex-wrap items-center justify-between gap-2 border-b-2 border-rose-200/80 dark:border-rose-900/60 bg-gradient-to-r from-rose-100/80 via-purple-50/60 to-emerald-50/60 dark:from-rose-950/70 dark:via-purple-950/50 dark:to-emerald-950/50">
+              {/* Left: Open Issue Title & Live Counts */}
               <div
                 onClick={() => {
                   setIsListModalOpen(true);
@@ -923,15 +965,32 @@ export const AuthModal = () => {
                   setIssueFilterTab("all");
                   setIssueModalPage(1);
                 }}
-                className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
-                title="탭하여 품질경보·공지 관리대장 전체 팝업 열기"
+                className="flex items-center gap-2 sm:gap-2.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
+                title="탭하여 오픈이슈 관리대장 전체 팝업 열기"
               >
-                <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-rose-500 to-rose-600 text-white shadow-sm shrink-0">
-                  <Megaphone className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-sm shrink-0 animate-pulse">
+                  <Flame className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h3 className="font-black text-xs sm:text-base md:text-lg text-slate-900 dark:text-white tracking-tight truncate">
-                  품질경보 • 공지사항 • 회의일정
-                </h3>
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="font-black text-xs sm:text-base md:text-lg text-slate-900 dark:text-white tracking-tight">
+                      오픈이슈(Open Issue) 현황
+                    </h3>
+                    {urgentUnresolvedCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs animate-pulse">
+                        긴급/미결 {urgentUnresolvedCount}건
+                      </span>
+                    )}
+                    {resolvedActiveCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        조치완료 {resolvedActiveCount}건
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">
+                    삼랑진 {samrangjinActiveCount}건 • 한림 {hanlimActiveCount}건 진행중
+                  </p>
+                </div>
               </div>
 
               {/* Right: [대장] [등록] & Fold/Unfold */}
@@ -944,8 +1003,8 @@ export const AuthModal = () => {
                     setIssueFilterTab("all");
                     setIssueModalPage(1);
                   }}
-                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer"
-                  title="품질경보·공지 관리대장 전체 리스트 보기"
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all cursor-pointer active:scale-95"
+                  title="오픈이슈 관리대장 전체 리스트 보기"
                 >
                   <ListOrdered className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                   <span>대장</span>
@@ -971,10 +1030,10 @@ export const AuthModal = () => {
                     });
                     setIsIssueModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
-                  title="신규 품질경보, 사내공지, 회의일정 등록"
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-xs"
+                  title="신규 오픈이슈/품질경보/공지/회의 등록"
                 >
-                  <Plus className="w-3.5 h-3.5 text-rose-400 dark:text-rose-600" />
+                  <Plus className="w-3.5 h-3.5 text-white" />
                   <span>등록</span>
                 </button>
 
@@ -992,245 +1051,180 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Empty State when no active issues */}
-            {activeIssues.length === 0 && (
-              <div className="p-3 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-slate-900/40">
-                진행 중인 품질경보 및 공지사항이 없습니다. (상단 [대장] 버튼으로 전체 이력 조회 가능)
+            {/* Category Filter Pills */}
+            {isIssueExpanded && activeIssues.length > 0 && (
+              <div className="px-2.5 sm:px-3 pt-2 pb-1.5 flex items-center gap-1.5 overflow-x-auto text-xs bg-white/70 dark:bg-slate-900/50 border-b border-rose-100 dark:border-rose-950">
+                <button
+                  type="button"
+                  onClick={() => setOpenIssueCategoryFilter("all")}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 ${
+                    openIssueCategoryFilter === "all"
+                      ? "bg-rose-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  전체 ({activeIssues.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenIssueCategoryFilter("quality")}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    openIssueCategoryFilter === "quality"
+                      ? "bg-rose-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>🚨 긴급품질</span>
+                  <span>({qualityIssuesCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenIssueCategoryFilter("notice")}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    openIssueCategoryFilter === "notice"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>📢 사내공지</span>
+                  <span>({noticeIssuesCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpenIssueCategoryFilter("meeting")}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    openIssueCategoryFilter === "meeting"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <span>📅 회의일정</span>
+                  <span>({meetingIssuesCount})</span>
+                </button>
               </div>
             )}
 
-            {/* Panel Body: 2건 이상 시 드래그/스크롤 없이 모든 건수를 요약해서 한눈에 표시 */}
-            {isIssueExpanded && activeIssues.length > 0 && (
+            {/* Empty State when no active issues */}
+            {activeIssues.length === 0 && (
+              <div className="p-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-slate-900/40">
+                ✨ 현재 미결된 오픈이슈 및 공지사항이 없습니다. (상단 [대장] 버튼으로 전체 이력 조회 가능)
+              </div>
+            )}
+
+            {/* Issue Cards List */}
+            {isIssueExpanded && displayedActiveIssues.length > 0 && (
               <div className="p-2 sm:p-3 space-y-2">
-                {isIssueSummaryMode ? (
-                  /* ========================================================================= */
-                  /* 🌟 [요약 모드] 깔끔하고 직관적인 카드 (탭하여 팝업창에서 모든 조치/수정 해결) */
-                  /* ========================================================================= */
-                  <div className="space-y-2 sm:space-y-2.5">
-                    {activeIssues.map((item) => {
-                      const isMeeting = item.category === "회의일정";
-                      const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
+                {displayedActiveIssues.map((item) => {
+                  const isMeeting = item.category === "회의일정";
+                  const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
+                  const imgCount = (item.images?.length || 0) + (item.actionImages?.length || 0);
 
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => handleOpenEditIssue(item)}
-                          className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-1.5 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
-                            item.isResolved
-                              ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
-                              : isMeeting
-                              ? "bg-purple-50/50 dark:bg-purple-950/25 border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-400/20"
-                              : isNotice
-                              ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/20"
-                              : "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
-                          }`}
-                          title="탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"
-                        >
-                          {/* 1단: 상단 배지 (좌측: 카테고리/공장/일시 • 우측: 상세보기 화살표) */}
-                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60">
-                            {/* 좌측 배지 */}
-                            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                              {isMeeting ? (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
-                                  회의
-                                </span>
-                              ) : isNotice ? (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
-                                  공지
-                                </span>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
-                                  경보
-                                </span>
-                              )}
-                              <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
-                                item.plant === "한림공장"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                  : item.plant === "삼랑진공장"
-                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
-                                  : item.plant === "화승 R&A"
-                                  ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
-                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                              }`}>
-                                {item.plant}
-                              </span>
-                              {item.expireDate && (
-                                <span className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono ${
-                                  isMeeting
-                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                                    : isNotice
-                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                    : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
-                                }`}>
-                                  {isMeeting
-                                    ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
-                                    : isNotice
-                                    ? `📅 만료: ~${item.expireDate.slice(5)}`
-                                    : `📅 ${item.expireDate.slice(5)}`}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* 우측 탭 안내 화살표 */}
-                            <div className="flex items-center gap-1 shrink-0 ml-auto text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
-                              <span className="text-[10.5px] font-bold hidden sm:inline">상세보기</span>
-                              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                            </div>
-                          </div>
-
-                          {/* 2단: 전체 너비 제목 및 내용 */}
-                          <div className="min-w-0">
-                            <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words group-hover:underline ${
-                              isMeeting
-                                ? "text-purple-800 dark:text-purple-300"
-                                : !isNotice
-                                ? "text-rose-700 dark:text-rose-300"
-                                : "text-slate-900 dark:text-white"
-                            }`}>
-                              {item.title || item.content}
-                            </h4>
-                            {item.title && item.content && (
-                              <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 mt-0.5 break-words">
-                                {item.content}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* 3단: 조치/회의 결과 (등록된 경우만 깔끔하게 노출) */}
-                          {item.actionResult && (
-                            <div className="text-[11px] sm:text-xs pt-0.5 break-words">
-                              <span className={`font-extrabold ${isMeeting ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                                └ {isMeeting ? "회의결과" : "조치결과"}: {item.actionResult}
-                              </span>
-                            </div>
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleOpenEditIssue(item)}
+                      className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
+                        item.isResolved
+                          ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
+                          : isMeeting
+                          ? "bg-purple-50/50 dark:bg-purple-950/25 border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-400/20"
+                          : isNotice
+                          ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/20"
+                          : "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
+                      }`}
+                      title="탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"
+                    >
+                      {/* 1단: 상태 배지 + 공장 + 일시 + 사진 + 조치버튼 */}
+                      <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
+                        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                          {isMeeting ? (
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
+                              📅 회의일정
+                            </span>
+                          ) : isNotice ? (
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
+                              📢 사내공지
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs animate-pulse">
+                              🔴 긴급품질
+                            </span>
+                          )}
+                          <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
+                            item.plant === "한림공장"
+                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                              : item.plant === "삼랑진공장"
+                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
+                              : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
+                          }`}>
+                            {item.plant}
+                          </span>
+                          {item.expireDate && (
+                            <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              {isMeeting
+                                ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
+                                : isNotice
+                                ? `📅 만료: ~${item.expireDate.slice(5)}`
+                                : `📅 ${item.expireDate.slice(5)}`}
+                            </span>
+                          )}
+                          {item.author && (
+                            <span className="text-[10.5px] text-slate-400 hidden sm:inline font-medium">
+                              등록: {item.author} {item.authorTitle || ""}
+                            </span>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* ========================================================================= */
-                  /* 🌟 [상세 모드] 크고 시원한 카드 (탭하여 팝업창에서 모든 조치/수정 해결) */
-                  /* ========================================================================= */
-                  <div className="space-y-2 sm:space-y-3">
-                    {activeIssues.map((item) => {
-                      const isMeeting = item.category === "회의일정";
-                      const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
 
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => handleOpenEditIssue(item)}
-                          className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col justify-center gap-2 shadow-sm cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
-                            item.isResolved
-                              ? "bg-white dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
-                              : isMeeting
-                              ? "bg-white dark:bg-slate-900 border-purple-300 dark:border-purple-800/90 ring-2 ring-purple-400/20"
-                              : isNotice
-                              ? "bg-white dark:bg-slate-900 border-emerald-300 dark:border-emerald-800/90 ring-2 ring-emerald-400/20"
-                              : "bg-white dark:bg-slate-900 border-rose-300 dark:border-rose-900/90 ring-2 ring-rose-400/20"
-                          }`}
-                          title="탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"
-                        >
-                          {/* 1번째 줄: [품질경보/사내공지/회의일정] [공장] [일시] */}
-                          <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
-                              {isMeeting ? (
-                                <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-purple-600 text-white shrink-0 shadow-xs tracking-wide">
-                                  회의일정
-                                </span>
-                              ) : isNotice ? (
-                                <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-emerald-600 text-white shrink-0 shadow-xs tracking-wide">
-                                  사내공지
-                                </span>
-                              ) : (
-                                <span className="px-2.5 py-1 rounded-lg text-xs sm:text-sm font-black bg-rose-600 text-white shrink-0 shadow-xs tracking-wide">
-                                  품질경보
-                                </span>
-                              )}
-                              <span className={`px-2 py-0.8 rounded-lg text-xs sm:text-sm font-black shrink-0 ${
-                                item.plant === "한림공장"
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                  : item.plant === "삼랑진공장"
-                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200"
-                                  : item.plant === "화승 R&A"
-                                  ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200"
-                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                              }`}>
-                                {item.plant}
-                              </span>
-                              {item.expireDate && (
-                                <span className={`px-2 py-0.8 rounded-lg text-xs sm:text-sm font-bold shrink-0 font-mono ${
-                                  isMeeting
-                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                                    : isNotice
-                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                    : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
-                                }`}>
-                                  {isMeeting
-                                    ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
-                                    : isNotice
-                                    ? `📅 만료: ~${item.expireDate.slice(5)}`
-                                    : `📅 ${item.expireDate.slice(5)}`}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* 우측 상세보기 안내 */}
-                            <div className="flex items-center gap-1 text-slate-400 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors shrink-0">
-                              <span className="text-xs font-bold hidden sm:inline">상세보기</span>
-                              <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                            </div>
-                          </div>
-
-                          {/* 2번째 줄: 텍스트 크기를 키워서 꽉 차게 전달내용/제목/본문 표시 */}
-                          <div className="py-1 min-w-0">
-                            {item.title ? (
-                              <div>
-                                <h4 className={`text-sm sm:text-base md:text-lg font-black leading-snug break-words group-hover:underline ${
-                                  isMeeting
-                                    ? "text-purple-700 dark:text-purple-300"
-                                    : !isNotice
-                                    ? "text-rose-600 dark:text-rose-400"
-                                    : "text-slate-900 dark:text-white"
-                                }`}>
-                                  {item.title}
-                                </h4>
-                                <p className="text-xs sm:text-sm md:text-base font-bold text-slate-700 dark:text-slate-300 leading-relaxed break-words mt-1">
-                                  {item.content}
-                                </p>
-                              </div>
-                            ) : (
-                              <p className={`text-sm sm:text-base md:text-lg font-black leading-snug break-words group-hover:underline ${
-                                isMeeting
-                                  ? "text-purple-700 dark:text-purple-300"
-                                  : !isNotice
-                                  ? "text-rose-600 dark:text-rose-400"
-                                  : "text-slate-900 dark:text-white"
-                              }`}>
-                                {item.content}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* 3번째 줄: └ 조치/회의결과: [내용] (등록된 경우만 깔끔하게 노출) */}
-                          {item.actionResult && (
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50/90 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 flex items-center justify-between gap-2">
-                              <div className="min-w-0 break-words text-xs sm:text-sm">
-                                <span className={`font-black mr-1.5 ${isMeeting ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                                  └ {isMeeting ? "회의결과:" : "조치결과:"}
-                                </span>
-                                <span className="font-extrabold text-slate-800 dark:text-slate-100">
-                                  {item.actionResult}
-                                </span>
-                              </div>
-                            </div>
+                        {/* 우측 조치 버튼 & 사진 수 */}
+                        <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                          {imgCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                              <Camera className="w-3 h-3 text-rose-500" />
+                              <span>{imgCount}</span>
+                            </span>
                           )}
+                          <button
+                            type="button"
+                            className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 transition-all ${
+                              item.isResolved
+                                ? "bg-emerald-600 text-white"
+                                : "bg-rose-600 text-white hover:bg-rose-500 group-hover:shadow-md"
+                            }`}
+                          >
+                            <span>{item.isResolved ? "조치완료 ✓" : "조치입력 ➜"}</span>
+                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </div>
+
+                      {/* 2단: 전체 너비 제목 및 내용 */}
+                      <div className="min-w-0">
+                        <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words group-hover:underline ${
+                          isMeeting
+                            ? "text-purple-800 dark:text-purple-300"
+                            : !isNotice
+                            ? "text-rose-700 dark:text-rose-300"
+                            : "text-slate-900 dark:text-white"
+                        }`}>
+                          {item.title || item.content}
+                        </h4>
+                        {item.title && item.content && (
+                          <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 mt-0.5 break-words">
+                            {item.content}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* 3단: 조치/회의 결과 (등록된 경우만 노출) */}
+                      {item.actionResult && (
+                        <div className="text-[11px] sm:text-xs pt-0.5 break-words">
+                          <span className={`font-extrabold ${isMeeting ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                            └ {isMeeting ? "회의결과" : "조치결과"}: {item.actionResult}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
