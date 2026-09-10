@@ -29,6 +29,12 @@ import {
   STANDARD_8_9BQC_TEMPLATES
 } from "../services/hanulTaxInvoiceService";
 
+// 🌟 FRT & RR 대상 품목 인덱스 정의
+// FRT 대상: 3번(idx 2: FRT LH), 4번(idx 3: FRT RH)
+const FRT_INDICES = [2, 3];
+// RR 대상: 1번(idx 0: RR LH PRI), 2번(idx 1: RR RH PRI), 5번(idx 4: RR LH TNI), 6번(idx 5: RR RH TNI), 7번(idx 6: Glass run RR), 8번(idx 7: Glass run FR)
+const RR_INDICES = [0, 1, 4, 5, 6, 7];
+
 export const HanulTaxInvoiceView = () => {
   const { formatAmount } = useCurrency() || {};
   const { selectedMonth = "2026-09", availableMonths = [], changeMonth, setSelectedMonth } = useMonth() || {};
@@ -99,7 +105,7 @@ export const HanulTaxInvoiceView = () => {
     return () => unsubscribe();
   }, [activeMonth]);
 
-  // 🌟 1. 기준 원본 데이터 (상단 요약패널 전용 - 아래에서 단가를 수정해도 변경되지 않음)
+  // 🌟 1. 기준 원본 데이터 (상단 요약패널 전용 - 단가를 수정해도 변경되지 않음)
   const baselineSalesItems = useMemo(() => {
     return getDefault9BQCSales(activeMonth);
   }, [activeMonth]);
@@ -180,6 +186,62 @@ export const HanulTaxInvoiceView = () => {
     setTimeout(() => setIsSaved(false), 2000);
   };
 
+  // 🌟 Current FRT & RR Unit Price Values
+  const frtUnitPrice = salesItems[2]?.unitPrice !== undefined ? Number(salesItems[2].unitPrice) : 2858;
+  const rrUnitPrice = salesItems[0]?.unitPrice !== undefined ? Number(salesItems[0].unitPrice) : 11028;
+
+  // 🌟 3. FRT 단가 입력 핸들러 (3번 FRT LH, 4번 FRT RH에 일괄 적용)
+  const handleFrtPriceChange = (valStr) => {
+    const cleanStr = String(valStr).replace(/[^0-9]/g, "");
+    const numVal = cleanStr === "" ? 0 : Math.max(0, Number(cleanStr));
+
+    const updatedSales = salesItems.map((item, idx) => {
+      if (FRT_INDICES.includes(idx)) {
+        const q = Number(item.qty) || 0;
+        const amt = q * numVal;
+        return {
+          ...item,
+          unitPrice: numVal,
+          amount: amt,
+          taxAmount: Math.round(amt * 0.1),
+          totalAmount: Math.round(amt * 1.1)
+        };
+      }
+      return item;
+    });
+
+    const updated = { ...monthData, salesItems: updatedSales };
+    setMonthData(updated);
+    saveHanulMonthData(activeMonth, updated);
+    triggerSavedFeedback();
+  };
+
+  // 🌟 4. RR 단가 입력 핸들러 (1, 2, 5, 6, 7, 8번에 일괄 적용)
+  const handleRrPriceChange = (valStr) => {
+    const cleanStr = String(valStr).replace(/[^0-9]/g, "");
+    const numVal = cleanStr === "" ? 0 : Math.max(0, Number(cleanStr));
+
+    const updatedSales = salesItems.map((item, idx) => {
+      if (RR_INDICES.includes(idx)) {
+        const q = Number(item.qty) || 0;
+        const amt = q * numVal;
+        return {
+          ...item,
+          unitPrice: numVal,
+          amount: amt,
+          taxAmount: Math.round(amt * 0.1),
+          totalAmount: Math.round(amt * 1.1)
+        };
+      }
+      return item;
+    });
+
+    const updated = { ...monthData, salesItems: updatedSales };
+    setMonthData(updated);
+    saveHanulMonthData(activeMonth, updated);
+    triggerSavedFeedback();
+  };
+
   // Ratio calculation algorithm: FRT 35%~45% & RR 6종 0.1~0.15 (10%~15% each)
   const calculateDistributedSales = useCallback((targetAmt, currentSales, frtPercent) => {
     if (!targetAmt || targetAmt <= 0) return currentSales;
@@ -236,59 +298,6 @@ export const HanulTaxInvoiceView = () => {
 
     return recomputed;
   }, []);
-
-  // 🌟 3. 단가 및 금액 수정 시 1-2번, 3-4번, 5-6번 자동 동기화
-  const handleUpdateSalesRow = (id, field, value) => {
-    const targetIdx = salesItems.findIndex((item) => item.id === id);
-    if (targetIdx === -1) return;
-
-    const numVal = Math.max(0, Number(value) || 0);
-
-    // 자동 동기화 페어 설정: 1(0) <-> 2(1), 3(2) <-> 4(3), 5(4) <-> 6(5)
-    let pairedIdx = -1;
-    if (targetIdx === 0) pairedIdx = 1;
-    else if (targetIdx === 1) pairedIdx = 0;
-    else if (targetIdx === 2) pairedIdx = 3;
-    else if (targetIdx === 3) pairedIdx = 2;
-    else if (targetIdx === 4) pairedIdx = 5;
-    else if (targetIdx === 5) pairedIdx = 4;
-
-    const updatedSales = salesItems.map((item, idx) => {
-      if (idx === targetIdx || idx === pairedIdx) {
-        const updatedItem = { ...item };
-        const q = Number(item.qty) || 0;
-
-        if (field === "unitPrice") {
-          updatedItem.unitPrice = numVal;
-          updatedItem.amount = q * numVal;
-          updatedItem.taxAmount = Math.round(q * numVal * 0.1);
-          updatedItem.totalAmount = Math.round(q * numVal * 1.1);
-        } else if (field === "amount") {
-          if (idx === targetIdx) {
-            updatedItem.amount = numVal;
-            if (q > 0) {
-              updatedItem.unitPrice = Math.round(numVal / q);
-            }
-          } else if (idx === pairedIdx) {
-            const targetQty = Number(salesItems[targetIdx]?.qty) || 1;
-            const computedUnitPrice = targetQty > 0 ? Math.round(numVal / targetQty) : numVal;
-            updatedItem.unitPrice = computedUnitPrice;
-            updatedItem.amount = q * computedUnitPrice;
-          }
-          updatedItem.taxAmount = Math.round(updatedItem.amount * 0.1);
-          updatedItem.totalAmount = Math.round(updatedItem.amount * 1.1);
-        }
-
-        return updatedItem;
-      }
-      return item;
-    });
-
-    const updated = { ...monthData, salesItems: updatedSales };
-    setMonthData(updated);
-    saveHanulMonthData(activeMonth, updated);
-    triggerSavedFeedback();
-  };
 
   // Handler: Apply Auto-Distribution across 8 items based on invoice amount
   const handleApplyAutoDistribution = (targetAmt = currentInvoiceAmount, ratio = frtRatioPercent) => {
@@ -361,14 +370,6 @@ export const HanulTaxInvoiceView = () => {
     triggerSavedFeedback();
   };
 
-  // Handler: Reset Single Item Price to Default
-  const handleResetSinglePrice = (id) => {
-    const targetIdx = salesItems.findIndex((item) => item.id === id);
-    if (targetIdx === -1) return;
-    const defaultTemplate = STANDARD_8_9BQC_TEMPLATES[targetIdx] || STANDARD_8_9BQC_TEMPLATES[0];
-    handleUpdateSalesRow(id, "unitPrice", defaultTemplate.defaultPrice);
-  };
-
   // Reset to Month Defaults (8 items)
   const handleResetDefaults = () => {
     if (!confirm(`${activeMonth} 9BQC 8가지 항목 단가와 세금계산서 데이터를 초기 기본 데이터로 재설정하시겠습니까?`)) return;
@@ -412,7 +413,7 @@ export const HanulTaxInvoiceView = () => {
       ["No", "구분", "품명 / 부품명", "수량(EA)", "기준단가(원)", "공급가액(원)", "비중(%)", "세액(10%)", "총 합계액(원)"],
       ...baselineSalesItems.map((item, idx) => {
         const itemRatio = baselineTotalAmount > 0 ? ((item.amount / baselineTotalAmount) * 100).toFixed(1) : "0.0";
-        const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
+        const isFrt = FRT_INDICES.includes(idx);
         return [
           idx + 1,
           isFrt ? "FRT" : "RR",
@@ -428,10 +429,10 @@ export const HanulTaxInvoiceView = () => {
       ["기준총계", "-", "-", baselineTotalQty, "-", baselineTotalAmount, "100.0%", baselineTotalTax, baselineTotalGross],
       [],
       ["[9BQC 8가지 항목 재수정 단가 및 정산 현황]"],
-      ["No", "구분", "품명 / 부품명", "수량(EA)", "재수정단가(원)", "수정공급가액(원)", "비중(%)", "세액(10%)", "총 합계액(원)"],
+      ["No", "구분", "품명 / 부품명", "수량(EA)", "적용단가(원)", "수정공급가액(원)", "비중(%)", "세액(10%)", "총 합계액(원)"],
       ...salesItems.map((item, idx) => {
         const itemRatio = totalSalesAmount > 0 ? ((item.amount / totalSalesAmount) * 100).toFixed(1) : "0.0";
-        const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
+        const isFrt = FRT_INDICES.includes(idx);
         return [
           idx + 1,
           isFrt ? "FRT" : "RR",
@@ -571,7 +572,7 @@ export const HanulTaxInvoiceView = () => {
                 </thead>
                 <tbody className="divide-y divide-white/5 font-medium text-xs">
                   {baselineSalesItems.map((item, idx) => {
-                    const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
+                    const isFrt = FRT_INDICES.includes(idx);
                     const itemRatio = baselineTotalAmount > 0 ? ((item.amount / baselineTotalAmount) * 100).toFixed(1) : "0.0";
 
                     return (
@@ -754,21 +755,21 @@ export const HanulTaxInvoiceView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 3. [단가재수정 및 실시간 자동계산 패널] 1-2번/3-4번/5-6번 자동 동기화 */}
+      {/* 🌟 3. [단가재수정 및 실시간 자동계산 패널] FRT & RR 2개 탭 일괄 단가 입력 */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Table Top Header */}
         <div className="p-3 sm:p-3.5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/50 dark:bg-slate-800/30">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-indigo-600 text-white shadow-xs">
-              <Edit3 className="w-3.5 h-3.5" />
+              <Calculator className="w-3.5 h-3.5" />
             </div>
             <div>
               <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>9BQC 8가지 항목 단가재수정 및 실시간 자동계산 패널</span>
+                <span>9BQC 8가지 항목 FRT / RR 일괄 단가입력 및 실시간 자동계산</span>
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                ✏️ 1번 수정 시 2번 동일단가, 3번 수정 시 4번 동일단가, 5번 수정 시 6번 동일단가가 자동 삽입됩니다.
+                ⚡ 아래 FRT 탭 입력 시 3·4번 품목 일괄 적용, RR 탭 입력 시 1·2·5·6·7·8번 품목에 일괄 적용됩니다.
               </p>
             </div>
           </div>
@@ -786,7 +787,96 @@ export const HanulTaxInvoiceView = () => {
           </div>
         </div>
 
-        {/* 8 Items Editable Table (간격 축소 컴팩트 뷰, 품번 삭제, 수량 고정) */}
+        {/* 🌟 2개 탭: FRT & RR 일괄 단가 입력 패널 (User Sketch 구현) */}
+        <div className="p-3.5 sm:p-4 bg-gradient-to-r from-blue-50/60 via-indigo-50/50 to-purple-50/60 dark:from-slate-800/60 dark:via-slate-850 dark:to-slate-900/80 border-b border-slate-200/80 dark:border-slate-750">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            {/* 1) FRT 단가 입력란 (3, 4번 적용) */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-400/90 dark:border-blue-500/70 shadow-sm hover:shadow-md transition-all space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs shadow-xs tracking-wider">
+                    FRT
+                  </span>
+                  <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                    FRT 단가 입력
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+                  🎯 3·4번 품목 일괄 적용
+                </span>
+              </div>
+
+              {/* [ FRT : 000 원 ] Input Box */}
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/90 p-2 sm:p-2.5 rounded-lg border border-blue-200 dark:border-slate-700">
+                <span className="font-black text-blue-800 dark:text-blue-300 text-base sm:text-lg whitespace-nowrap pl-1 tracking-wide">
+                  FRT :
+                </span>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={frtUnitPrice > 0 ? frtUnitPrice.toLocaleString() : ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleFrtPriceChange(e.target.value)}
+                    placeholder="0"
+                    className="w-full pr-8 pl-2 py-1.5 text-right rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono font-black text-base sm:text-lg text-blue-900 dark:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 font-black text-slate-700 dark:text-slate-300 text-xs sm:text-sm pointer-events-none">
+                    원
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between px-0.5">
+                <span>적용 대상: <strong className="text-slate-700 dark:text-slate-200">3. FRT LH</strong>, <strong className="text-slate-700 dark:text-slate-200">4. FRT RH</strong></span>
+                <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">₩{frtUnitPrice.toLocaleString()} 원</span>
+              </div>
+            </div>
+
+            {/* 2) RR 단가 입력란 (1, 2, 5, 6, 7, 8번 적용) */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-800 border-2 border-purple-400/90 dark:border-purple-500/70 shadow-sm hover:shadow-md transition-all space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white font-black text-xs shadow-xs tracking-wider">
+                    RR
+                  </span>
+                  <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                    RR 단가 입력
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/80 px-2 py-0.5 rounded-full border border-purple-200 dark:border-purple-800">
+                  🎯 1·2·5·6·7·8번 품목 일괄 적용
+                </span>
+              </div>
+
+              {/* [ RR : 000 원 ] Input Box */}
+              <div className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-900/90 p-2 sm:p-2.5 rounded-lg border border-purple-200 dark:border-slate-700">
+                <span className="font-black text-purple-800 dark:text-purple-300 text-base sm:text-lg whitespace-nowrap pl-1 tracking-wide">
+                  RR :
+                </span>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={rrUnitPrice > 0 ? rrUnitPrice.toLocaleString() : ""}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => handleRrPriceChange(e.target.value)}
+                    placeholder="0"
+                    className="w-full pr-8 pl-2 py-1.5 text-right rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-mono font-black text-base sm:text-lg text-purple-900 dark:text-purple-200 focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-inner"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 font-black text-slate-700 dark:text-slate-300 text-xs sm:text-sm pointer-events-none">
+                    원
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between px-0.5">
+                <span>적용 대상: <strong className="text-slate-700 dark:text-slate-200">1·2·5·6번 RR</strong> + <strong className="text-slate-700 dark:text-slate-200">7·8번 Glass run</strong></span>
+                <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">₩{rrUnitPrice.toLocaleString()} 원</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 8 Items Read-Only Table (기존 행별 단가/금액 수기수정창 삭제 -> 깔끔한 실시간 계산 뷰) */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
             <thead className="bg-slate-100/90 dark:bg-slate-800 text-[10.5px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 border-b border-slate-200/80 dark:border-slate-700">
@@ -802,14 +892,14 @@ export const HanulTaxInvoiceView = () => {
                   </div>
                 </th>
 
-                {/* 🌟 2) 단가 재수정 (Primary Target - 1-2, 3-4, 5-6 연동) */}
-                <th className="py-2.5 px-2 text-right font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 min-w-[125px]">
-                  단가 재수정 (₩) ✏️
+                {/* 2) 적용단가 */}
+                <th className="py-2.5 px-2.5 text-right font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 min-w-[120px]">
+                  적용 단가 (₩)
                 </th>
 
                 {/* 3) 합계금액 */}
-                <th className="py-2.5 px-2.5 text-right font-black text-slate-900 dark:text-white bg-slate-200/60 dark:bg-slate-700/60 min-w-[125px]">
-                  합계금액 (단가×수량)
+                <th className="py-2.5 px-2.5 text-right font-black text-slate-900 dark:text-white bg-slate-200/60 dark:bg-slate-700/60 min-w-[130px]">
+                  공급가액 (단가×수량)
                 </th>
 
                 {/* 4) 매출 비중 (%) */}
@@ -817,30 +907,22 @@ export const HanulTaxInvoiceView = () => {
                   비중 (%)
                 </th>
 
-                {/* 부가세 10% */}
+                {/* 5) 부가세 10% */}
                 <th className="py-2.5 px-2 text-right font-mono text-slate-500 dark:text-slate-400 min-w-[90px]">
                   세액 (10%)
                 </th>
 
-                {/* 총액 */}
-                <th className="py-2.5 px-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200 min-w-[105px]">
+                {/* 6) 총액 */}
+                <th className="py-2.5 px-2.5 text-right font-mono font-bold text-slate-800 dark:text-slate-200 min-w-[110px]">
                   총 합계액 (1.1)
                 </th>
-
-                <th className="py-2.5 px-2 text-center w-12">초기화</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium text-xs">
               {salesItems.map((item, idx) => {
-                const defaultTmpl = STANDARD_8_9BQC_TEMPLATES[idx] || {};
-                const isModifiedPrice = item.unitPrice !== defaultTmpl.defaultPrice;
-                const isFrt = item.partName.includes("FRT") && !item.partName.includes("Glass run");
+                const isFrt = FRT_INDICES.includes(idx);
                 const itemRatio = totalSalesAmount > 0 ? ((item.amount / totalSalesAmount) * 100).toFixed(1) : "0.0";
-
-                // Linked pair hint
-                const isPairLinked = idx <= 5;
-                const pairNum = idx === 0 || idx === 1 ? "1·2번 연동" : idx === 2 || idx === 3 ? "3·4번 연동" : idx === 4 || idx === 5 ? "5·6번 연동" : "";
 
                 return (
                   <tr
@@ -848,12 +930,12 @@ export const HanulTaxInvoiceView = () => {
                     className="hover:bg-indigo-50/20 dark:hover:bg-slate-800/50 transition-colors"
                   >
                     {/* No */}
-                    <td className="py-1.5 px-2.5 text-center text-slate-400 font-mono text-[11px]">
+                    <td className="py-2 px-2.5 text-center text-slate-400 font-mono text-[11px]">
                       {idx + 1}
                     </td>
 
                     {/* Part Name with Group Badge */}
-                    <td className="py-1.5 px-2.5 font-black text-slate-900 dark:text-white">
+                    <td className="py-2 px-2.5 font-black text-slate-900 dark:text-white">
                       <div className="flex items-center gap-1.5">
                         <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
                           isFrt
@@ -863,87 +945,56 @@ export const HanulTaxInvoiceView = () => {
                           {isFrt ? "FRT" : "RR"}
                         </span>
                         <span className="truncate">{item.partName}</span>
-                        {isPairLinked && (
-                          <span className="text-[9px] text-indigo-500 dark:text-indigo-400 font-medium hidden lg:inline">
-                            ({pairNum})
-                          </span>
-                        )}
                       </div>
                     </td>
 
-                    {/* 1) 수량 (고정 텍스트 뱃지 - 수정 불가) */}
-                    <td className="py-1.5 px-2 text-right bg-slate-50/60 dark:bg-slate-800/40">
+                    {/* 1) 수량 (고정 텍스트 뱃지) */}
+                    <td className="py-2 px-2 text-right bg-slate-50/60 dark:bg-slate-800/40">
                       <div className="flex items-center justify-end gap-1 font-mono font-black text-slate-800 dark:text-slate-200 text-xs">
                         <span>{(Number(item.qty) || 0).toLocaleString()}</span>
                         <span className="text-[9.5px] text-slate-400 font-normal">EA</span>
                       </div>
                     </td>
 
-                    {/* 🌟 2) 단가 재수정 (탭 시 전체선택 및 1-2, 3-4, 5-6 자동 연동) */}
-                    <td className="py-1.5 px-2 text-right bg-indigo-50/60 dark:bg-indigo-950/30">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className="text-[11px] text-indigo-500 font-black">₩</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.unitPrice}
-                          onFocus={(e) => e.target.select()}
-                          onChange={(e) => handleUpdateSalesRow(item.id, "unitPrice", e.target.value)}
-                          className={`w-24 px-2 py-1 text-right rounded-lg border font-mono font-black text-xs shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
-                            isModifiedPrice
-                              ? "border-amber-400 bg-amber-50/70 dark:bg-amber-950/40 text-amber-950 dark:text-amber-200 ring-1 ring-amber-300"
-                              : "border-indigo-300 dark:border-indigo-800 bg-white dark:bg-slate-900 text-indigo-950 dark:text-indigo-200"
-                          }`}
-                        />
+                    {/* 2) 적용 단가 (FRT / RR 입력 연동 결과 표시) */}
+                    <td className="py-2 px-2.5 text-right bg-indigo-50/40 dark:bg-indigo-950/20">
+                      <div className="flex items-center justify-end gap-1 font-mono font-black text-xs">
+                        <span className={`px-1.5 py-0.5 rounded text-[11px] ${
+                          isFrt
+                            ? "bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-200 border border-blue-200 dark:border-blue-800"
+                            : "bg-purple-50 text-purple-900 dark:bg-purple-950/60 dark:text-purple-200 border border-purple-200 dark:border-purple-800"
+                        }`}>
+                          ₩ {(Number(item.unitPrice) || 0).toLocaleString()}
+                        </span>
                       </div>
                     </td>
 
-                    {/* 3) 합계금액 (단가×수량) */}
-                    <td className="py-1.5 px-2.5 text-right bg-slate-100/60 dark:bg-slate-800/40">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className="text-[11px] text-slate-400 font-bold">₩</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.amount}
-                          onFocus={(e) => e.target.select()}
-                          onChange={(e) => handleUpdateSalesRow(item.id, "amount", e.target.value)}
-                          className="w-28 px-2 py-1 text-right rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono font-black text-slate-950 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs shadow-2xs"
-                        />
-                      </div>
+                    {/* 3) 공급가액 (단가×수량) */}
+                    <td className="py-2 px-2.5 text-right bg-slate-100/40 dark:bg-slate-800/30">
+                      <span className="font-mono font-black text-slate-950 dark:text-white text-xs">
+                        ₩ {(Number(item.amount) || 0).toLocaleString()}
+                      </span>
                     </td>
 
                     {/* 4) 매출 비중 (%) */}
-                    <td className="py-1.5 px-2 text-center">
+                    <td className="py-2 px-2 text-center">
                       <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black font-mono ${
                         isFrt
                           ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/60"
-                          : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/60"
+                          : "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/60"
                       }`}>
                         {itemRatio}%
                       </span>
                     </td>
 
-                    {/* 부가세 (10%) */}
-                    <td className="py-1.5 px-2 text-right font-mono text-slate-500 dark:text-slate-400 text-[11px]">
+                    {/* 5) 부가세 (10%) */}
+                    <td className="py-2 px-2 text-right font-mono text-slate-500 dark:text-slate-400 text-[11px]">
                       ₩ {(Number(item.taxAmount) || Math.round(Number(item.amount) * 0.1)).toLocaleString()}
                     </td>
 
-                    {/* 총액 (1.1) */}
-                    <td className="py-1.5 px-2.5 text-right font-mono font-black text-slate-800 dark:text-slate-200 text-xs">
+                    {/* 6) 총액 (1.1) */}
+                    <td className="py-2 px-2.5 text-right font-mono font-black text-slate-800 dark:text-slate-200 text-xs">
                       ₩ {(Number(item.totalAmount) || Math.round(Number(item.amount) * 1.1)).toLocaleString()}
-                    </td>
-
-                    {/* Reset button */}
-                    <td className="py-1.5 px-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleResetSinglePrice(item.id)}
-                        className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                        title={`기본 단가(₩${(defaultTmpl.defaultPrice || 0).toLocaleString()})로 복원`}
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                      </button>
                     </td>
                   </tr>
                 );
@@ -959,7 +1010,7 @@ export const HanulTaxInvoiceView = () => {
                 <td className="py-2.5 px-2 text-right font-mono text-slate-900 dark:text-slate-100 bg-slate-200/60 dark:bg-slate-800 text-xs">
                   {totalSalesQty.toLocaleString()} <span className="text-[9.5px] font-normal text-slate-500">EA</span>
                 </td>
-                <td className="py-2.5 px-2 text-right font-mono text-indigo-900 dark:text-indigo-200 bg-indigo-100/60 dark:bg-indigo-950/50 text-xs">
+                <td className="py-2.5 px-2.5 text-right font-mono text-indigo-900 dark:text-indigo-200 bg-indigo-100/60 dark:bg-indigo-950/50 text-xs">
                   평균 ₩{avgSalesUnitPrice.toLocaleString()}
                 </td>
                 <td className="py-2.5 px-2.5 text-right font-mono text-slate-950 dark:text-white bg-slate-200/80 dark:bg-slate-700/80 text-xs sm:text-sm font-black">
@@ -974,7 +1025,6 @@ export const HanulTaxInvoiceView = () => {
                 <td className="py-2.5 px-2.5 text-right font-mono text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-black">
                   ₩ {totalSalesGross.toLocaleString()}
                 </td>
-                <td></td>
               </tr>
             </tfoot>
           </table>
