@@ -225,7 +225,8 @@ export const addIssueReply = async (issueId, replyData) => {
     author: replyData.author || "작업자",
     authorTitle: replyData.authorTitle || "선임",
     plant: replyData.plant || target.plant || "삼랑진공장",
-    attendanceStatus: replyData.attendanceStatus || "참석",
+    attendanceStatus: replyData.attendanceStatus || "확인",
+    actionDate: replyData.actionDate || replyData.date || nowStr.slice(0, 10),
     content: replyData.content ? replyData.content.trim() : "확인했습니다.",
     createdAt: nowStr
   };

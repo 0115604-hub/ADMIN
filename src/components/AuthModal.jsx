@@ -177,6 +177,13 @@ export const AuthModal = () => {
   });
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
+  // Action Opinion Form State for Open Issue (오픈이슈 조치등록날짜 + 의견 실시간 추가란)
+  const [actionOpinionForm, setActionOpinionForm] = useState({
+    actionDate: "",
+    author: "설유철",
+    content: ""
+  });
+
   // Lightbox & Image Processing State
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
   const [isProcessingIssueImages, setIsProcessingIssueImages] = useState(false);
@@ -731,6 +738,11 @@ export const AuthModal = () => {
       isResolved: issue.isResolved || false,
       replies: issue.replies ? [...issue.replies] : []
     });
+    setActionOpinionForm({
+      actionDate: todayDateStr,
+      author: "설유철",
+      content: ""
+    });
     setIsIssueModalOpen(true);
   };
 
@@ -816,7 +828,7 @@ export const AuthModal = () => {
       actionAt: hasAction ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
       isResolved: finalIsResolved,
       createdAt: editingIssue ? editingIssue.createdAt : undefined,
-      replies: editingIssue ? (editingIssue.replies || []) : []
+      replies: newIssueForm.replies || (editingIssue ? (editingIssue.replies || []) : [])
     });
 
     setNewIssueForm({
@@ -834,13 +846,19 @@ export const AuthModal = () => {
       actionResult: "",
       actionAuthor: "설유철",
       actionImages: [],
-      isResolved: false
+      isResolved: false,
+      replies: []
+    });
+    setActionOpinionForm({
+      actionDate: "",
+      author: "설유철",
+      content: ""
     });
     setEditingIssue(null);
     setIsIssueModalOpen(false);
   };
 
-  // Add Reply from within Modal
+  // Add Reply from within Modal (회의일정/공지사항/품질경보)
   const handleModalAddReply = async (e) => {
     if (e) e.preventDefault();
     if (!editingIssue?.id) return;
@@ -877,8 +895,8 @@ export const AuthModal = () => {
 
   const handleModalDeleteReply = async (replyId, e) => {
     if (e) e.stopPropagation();
-    if (!editingIssue?.id) return;
     if (!confirm("해당 회신을 삭제하시겠습니까?")) return;
+    if (!editingIssue?.id) return;
     try {
       const updated = await deleteIssueReply(editingIssue.id, replyId);
       if (updated) {
@@ -891,6 +909,95 @@ export const AuthModal = () => {
       }
     } catch (err) {
       console.error("Delete reply error:", err);
+    }
+  };
+
+  // 💬 🌟 오픈이슈 전용 조치등록날짜 + 의견 실시간 추가 핸들러
+  const handleModalAddOpinion = async (e) => {
+    if (e) e.preventDefault();
+    if (!actionOpinionForm.content.trim()) {
+      alert("조치 의견 또는 진행 내용을 입력해 주세요.");
+      return;
+    }
+    const targetDate = actionOpinionForm.actionDate || todayDateStr;
+    const authorName = actionOpinionForm.author || "설유철";
+    const authorObj = allWorkers.find((w) => w.name === authorName);
+    const content = actionOpinionForm.content.trim();
+
+    if (editingIssue?.id) {
+      try {
+        const updated = await addIssueReply(editingIssue.id, {
+          author: authorName,
+          authorTitle: authorObj?.title || "선임",
+          plant: authorObj?.plantName || editingIssue.plant || "삼랑진공장",
+          attendanceStatus: "확인",
+          actionDate: targetDate,
+          content: content
+        });
+        if (updated) {
+          setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
+          setEditingIssue(updated);
+          setNewIssueForm((prev) => ({
+            ...prev,
+            replies: updated.replies || []
+          }));
+          setActionOpinionForm((prev) => ({ ...prev, content: "" }));
+        }
+      } catch (err) {
+        console.error("Add opinion error:", err);
+        alert("의견 등록 중 오류가 발생했습니다.");
+      }
+    } else {
+      const nowStr = new Date().toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false
+      }).replace(/\. /g, "-").replace(/\./g, "");
+
+      const newOp = {
+        id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        author: authorName,
+        authorTitle: authorObj?.title || "선임",
+        plant: authorObj?.plantName || newIssueForm.plant || "삼랑진공장",
+        attendanceStatus: "확인",
+        actionDate: targetDate,
+        content: content,
+        createdAt: nowStr
+      };
+
+      setNewIssueForm((prev) => ({
+        ...prev,
+        replies: [...(prev.replies || []), newOp]
+      }));
+      setActionOpinionForm((prev) => ({ ...prev, content: "" }));
+    }
+  };
+
+  const handleModalDeleteOpinion = async (opId, e) => {
+    if (e) e.stopPropagation();
+    if (!confirm("해당 의견을 삭제하시겠습니까?")) return;
+    if (editingIssue?.id) {
+      try {
+        const updated = await deleteIssueReply(editingIssue.id, opId);
+        if (updated) {
+          setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
+          setEditingIssue(updated);
+          setNewIssueForm((prev) => ({
+            ...prev,
+            replies: updated.replies || []
+          }));
+        }
+      } catch (err) {
+        console.error("Delete opinion error:", err);
+      }
+    } else {
+      setNewIssueForm((prev) => ({
+        ...prev,
+        replies: (prev.replies || []).filter((r) => r.id !== opId)
+      }));
     }
   };
 
@@ -1367,7 +1474,9 @@ export const AuthModal = () => {
                           </span>
                           {item.expireDate && (
                             <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                              {isMeeting
+                              {item.category === "품질경보"
+                                ? `🚨 등록일: ${item.expireDate.slice(5)}`
+                                : isMeeting
                                 ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
                                 : isNotice
                                 ? `📅 만료: ~${item.expireDate.slice(5)}`
@@ -2141,26 +2250,32 @@ export const AuthModal = () => {
                           <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${
                             isItemDeleted
                               ? "bg-slate-700"
+                              : item.category === "품질경보"
+                              ? "bg-rose-600"
                               : isItemMeeting
                               ? "bg-purple-600"
                               : isItemNotice
                               ? "bg-emerald-600"
                               : "bg-gradient-to-r from-blue-600 to-indigo-600"
                           }`}>
-                            {isItemDeleted ? "🗑️ 삭제됨" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "📌 오픈이슈"}
+                            {isItemDeleted ? "🗑️ 삭제됨" : item.category === "품질경보" ? "🚨 품질경보" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "📌 오픈이슈"}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                             {item.plant}
                           </span>
                           {item.expireDate && (
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                              isItemMeeting
+                              item.category === "품질경보"
+                                ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-200"
+                                : isItemMeeting
                                 ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
                                 : isItemNotice
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                : "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200 border border-orange-200"
+                                : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-200"
                             }`}>
-                              {isItemMeeting
+                              {item.category === "품질경보"
+                                ? `🚨 등록일: ${item.expireDate}`
+                                : isItemMeeting
                                 ? `📅 회의: ${item.expireDate}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
                                 : isItemNotice
                                 ? `📅 만료: ~${item.expireDate}`
@@ -2234,13 +2349,17 @@ export const AuthModal = () => {
                         </div>
                       )}
 
-                      {/* Replies / Responses for Meeting or Notice */}
+                      {/* Replies / Responses for Meeting, Notice or Open Issue */}
                       {item.replies && item.replies.length > 0 && (
                         <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1.5">
                           <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
                             <span className="flex items-center gap-1">
-                              <span>💬 회신 및 참석 현황</span>
-                              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 font-bold">
+                              <span>
+                                {item.category === "오픈이슈" || item.category === "품질이슈"
+                                  ? "💬 조치 일자별 의견 / 진행 일지"
+                                  : "💬 회신 및 참석 현황"}
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 font-bold">
                                 {item.replies.length}건
                               </span>
                             </span>
@@ -2252,13 +2371,19 @@ export const AuthModal = () => {
                                 className="p-2 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 text-[11px] flex items-center justify-between gap-2"
                               >
                                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                  <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
-                                    rep.attendanceStatus === "참석"
-                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                                      : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                                  }`}>
-                                    {rep.attendanceStatus || "확인"}
-                                  </span>
+                                  {rep.actionDate ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 font-mono">
+                                      📅 {rep.actionDate}
+                                    </span>
+                                  ) : (
+                                    <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
+                                      rep.attendanceStatus === "참석"
+                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                    }`}>
+                                      {rep.attendanceStatus || "확인"}
+                                    </span>
+                                  )}
                                   <strong className="text-slate-800 dark:text-slate-200 shrink-0 font-bold">
                                     {rep.author}
                                   </strong>
@@ -2403,13 +2528,15 @@ export const AuthModal = () => {
                             <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black text-white shrink-0 shadow-2xs ${
                               isItDeleted
                                 ? "bg-slate-600"
+                                : it.category === "품질경보"
+                                ? "bg-rose-600"
                                 : isItMeeting
                                 ? "bg-purple-600"
                                 : isItNotice
                                 ? "bg-emerald-600"
                                 : "bg-gradient-to-r from-blue-600 to-indigo-600"
                             }`}>
-                              {isItDeleted ? "삭제" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
+                              {isItDeleted ? "삭제" : it.category === "품질경보" ? "경보" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
                             </span>
 
                             {/* Factory Badge */}
@@ -2428,13 +2555,15 @@ export const AuthModal = () => {
                             {/* Date Badge */}
                             {it.expireDate && (
                               <span className={`px-1 py-0.2 rounded text-[9px] font-bold font-mono shrink-0 ${
-                                isItMeeting
+                                it.category === "품질경보"
+                                  ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-200"
+                                  : isItMeeting
                                   ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
                                   : isItNotice
                                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                  : "bg-orange-100 text-orange-900 dark:bg-orange-950 dark:text-orange-200 border border-orange-200"
+                                  : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-200"
                               }`}>
-                                {it.expireDate.slice(5)}{isItMeeting && it.meetingTime ? ` ${it.meetingTime}` : ""}
+                                {it.category === "품질경보" ? `등록: ${it.expireDate.slice(5)}` : `${it.expireDate.slice(5)}${isItMeeting && it.meetingTime ? ` ${it.meetingTime}` : ""}`}
                               </span>
                             )}
 
@@ -2982,7 +3111,10 @@ export const AuthModal = () => {
                           <button
                             key={day.dateStr}
                             type="button"
-                            onClick={() => setNewIssueForm({ ...newIssueForm, expireDate: day.dateStr })}
+                            onClick={() => {
+                              setNewIssueForm({ ...newIssueForm, expireDate: day.dateStr });
+                              setActionOpinionForm((prev) => ({ ...prev, actionDate: day.dateStr }));
+                            }}
                             className={`p-1 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between min-h-[50px] relative ${
                               day.isTarget
                                 ? "bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-400/60 font-black scale-102"
@@ -3022,6 +3154,114 @@ export const AuthModal = () => {
                           </button>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  {/* 4) 💬 🌟 조치등록날짜 선택 및 의견 실시간 추가란 */}
+                  <div className="p-3 rounded-2xl bg-white/95 dark:bg-slate-900/95 border-2 border-blue-300 dark:border-blue-800/80 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <span className="font-black text-xs text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-blue-600" />
+                        <span>조치 일자별 의견 및 진행 일지 ({newIssueForm.replies?.length || 0}건)</span>
+                      </span>
+                      <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-semibold">
+                        * 날짜 지정 후 의견을 계속 추가할 수 있습니다.
+                      </span>
+                    </div>
+
+                    {/* Opinions List Display */}
+                    {newIssueForm.replies && newIssueForm.replies.length > 0 && (
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                        {newIssueForm.replies.map((rep) => (
+                          <div
+                            key={rep.id}
+                            className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/80 flex items-center justify-between gap-2 shadow-2xs"
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-blue-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                                <Calendar className="w-2.5 h-2.5" />
+                                <span>{rep.actionDate || rep.createdAt?.slice(0, 10)}</span>
+                              </span>
+                              <strong className="text-slate-900 dark:text-white font-bold text-xs shrink-0">
+                                {rep.author} {rep.authorTitle || ""}
+                              </strong>
+                              <span className="text-slate-700 dark:text-slate-200 text-xs break-words">
+                                {rep.content}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-[9.5px] text-slate-400 font-mono">
+                                {rep.createdAt?.slice(11, 16) || ""}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleModalDeleteOpinion(rep.id, e)}
+                                className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                                title="의견 삭제"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Opinion Add Input Box */}
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
+                            📅 조치등록날짜
+                          </label>
+                          <input
+                            type="date"
+                            value={actionOpinionForm.actionDate || todayDateStr}
+                            onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, actionDate: e.target.value })}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-blue-900 dark:text-blue-200 shadow-xs cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
+                            👤 작성자 (작업자)
+                          </label>
+                          <select
+                            value={actionOpinionForm.author}
+                            onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, author: e.target.value })}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs font-bold text-slate-900 dark:text-white cursor-pointer"
+                          >
+                            {allWorkers.map((w) => (
+                              <option key={w.id} value={w.name}>
+                                {w.plantName} • {w.name} {w.title || ""}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="조치 의견 및 진행 상황을 입력하세요 (엔터 시 추가)"
+                          value={actionOpinionForm.content}
+                          onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleModalAddOpinion(e);
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleModalAddOpinion}
+                          className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 transition-all"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ 추가</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3091,10 +3331,10 @@ export const AuthModal = () => {
                       <div>
                         <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                          <span>품질경보 조치 목표/마감 일자</span>
+                          <span>품질경보 등록일</span>
                         </label>
                         <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                          * 긴급 품질 이슈 발생 시 빠른 전파 및 조치를 위해 등록합니다.
+                          * 품질경보가 발행/등록된 일자입니다.
                         </p>
                       </div>
                       <input
@@ -3435,8 +3675,8 @@ export const AuthModal = () => {
                 </div>
               </div>
 
-              {/* 7. 💬 회신 및 참석 현황 (기존 항목 수정 시 노출) */}
-              {editingIssue && (
+              {/* 7. 💬 회신 및 참석 현황 (기존 항목 수정 시 노출 - 오픈이슈 제외) */}
+              {editingIssue && newIssueForm.category !== "오픈이슈" && (
                 <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
