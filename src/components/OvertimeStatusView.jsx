@@ -41,7 +41,9 @@ import {
   Sun,
   Moon,
   Zap,
-  CheckSquare
+  CheckSquare,
+  PauseCircle,
+  Stamp
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
@@ -76,7 +78,13 @@ import {
   PLANT_COMPANIES,
   getPlantForCompany
 } from "../services/overtimeService";
-import { syncPlantOvertimeToApprovalBox } from "../services/approvalService";
+import {
+  syncPlantOvertimeToApprovalBox,
+  getLocalApprovalDocs,
+  subscribeApprovalDocs,
+  approveDocumentStep,
+  checkApprovalPermission
+} from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 import { getKSTDateString } from "../utils/dateUtils";
 
@@ -258,6 +266,117 @@ export const getCleanReportReason = (reasonStr, report) => {
   return res;
 };
 
+// ⭐ 전자결재함 연동: 실시간 결재 상태 및 결재 단계(담당/책임/이사/대표) 자동 매칭
+export const getLiveApprovalForReport = (report, approvalDocs = []) => {
+  if (!report) {
+    return {
+      status: "IN_PROGRESS",
+      statusLabel: "결재진행중",
+      currentStep: 2,
+      steps: [
+        { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "", comment: "기안" },
+        { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+        { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+        { role: "대표", name: "권태형", title: "대표", status: "WAITING", date: "" }
+      ],
+      approvalDoc: null
+    };
+  }
+
+  const workDateStr = report.workDate || "";
+  const plantName = report.plant || getPlantForCompany(report.company || "");
+  const plantKey = plantName === "삼랑진공장" ? "samrangjin" : "hanlim";
+  const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+
+  // 1. Try finding canonical plant-level synthesis approval doc
+  let matchedDoc = (approvalDocs || []).find((d) => d.id === canonicalDocId);
+
+  // 2. Try matching by type, plant, and workDate
+  if (!matchedDoc && workDateStr) {
+    matchedDoc = (approvalDocs || []).find(
+      (d) =>
+        d.type === "OVERTIME" &&
+        (d.plant === plantName || d.company === report.company) &&
+        (d.workDate === workDateStr ||
+          (d.id && d.id.includes(workDateStr.replace(/-/g, ""))) ||
+          (d.title && d.title.includes(workDateStr)) ||
+          (d.docNumber && d.docNumber.includes(workDateStr.replace(/-/g, "").slice(4))))
+    );
+  }
+
+  // 3. Try matching by day number in title
+  if (!matchedDoc) {
+    const dayMatch =
+      (report.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) ||
+      (report.workDateFormatted || "").match(/(\d{1,2})월\s*(\d{1,2})일/);
+    if (dayMatch) {
+      matchedDoc = (approvalDocs || []).find(
+        (d) =>
+          d.type === "OVERTIME" &&
+          (d.plant === plantName || (d.title && d.title.includes(plantName))) &&
+          d.title &&
+          d.title.includes(dayMatch[0])
+      );
+    }
+  }
+
+  if (matchedDoc && Array.isArray(matchedDoc.steps) && matchedDoc.steps.length > 0) {
+    const isApproved = matchedDoc.status === "APPROVED";
+    const isHold = matchedDoc.status === "HOLD";
+    const isRejected = matchedDoc.status === "REJECTED";
+    const pendingStep = matchedDoc.steps.find((s) => s.status === "PENDING");
+
+    let statusLabel = "결재진행중";
+    if (isApproved) statusLabel = "결재완료";
+    else if (isHold) statusLabel = "보류중";
+    else if (isRejected) statusLabel = "반려됨";
+    else if (pendingStep) statusLabel = `결재진행중 (${pendingStep.role} ${pendingStep.name} 대기)`;
+
+    return {
+      status: matchedDoc.status || "IN_PROGRESS",
+      statusLabel,
+      currentStep: matchedDoc.currentStep || 2,
+      steps: matchedDoc.steps,
+      approvalDoc: matchedDoc
+    };
+  }
+
+  // Fallback: Check report's own approval steps or normalize
+  const reportSteps =
+    report.approval && report.approval.length === 4
+      ? report.approval
+      : [
+          { role: "담당", name: report.author?.split(" ")[0] || "양인나", title: report.authorTitle || "선임", status: "APPROVED", date: report.updatedAt?.slice(0, 10) || "", comment: "기안" },
+          { role: "책임", name: plantName === "한림공장" ? "김동욱" : "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+          { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+          { role: "대표", name: "권태형", title: "대표", status: "WAITING", date: "" }
+        ];
+
+  const approvedCount = reportSteps.filter((s) => s.status === "APPROVED").length;
+  const isApproved = report.status === "APPROVED" || approvedCount === 4;
+
+  const normalizedSteps = reportSteps.map((s, idx) => {
+    if (isApproved) return { ...s, status: "APPROVED" };
+    if (idx === 0) return { ...s, status: "APPROVED" };
+    if (s.status === "APPROVED") return { ...s, status: "APPROVED" };
+    if (s.status === "HOLD") return { ...s, status: "HOLD" };
+    if (s.status === "REJECTED") return { ...s, status: "REJECTED" };
+    if (idx === 1 || s.status === "PENDING") return { ...s, status: "PENDING" };
+    return { ...s, status: "WAITING" };
+  });
+
+  const pendingStep = normalizedSteps.find((s) => s.status === "PENDING");
+  let statusLabel = isApproved ? "결재완료" : `결재진행중 (${pendingStep ? `${pendingStep.role} ${pendingStep.name}` : "책임"} 대기)`;
+
+  return {
+    status: isApproved ? "APPROVED" : "IN_PROGRESS",
+    statusLabel,
+    currentStep: isApproved ? 4 : 2,
+    steps: normalizedSteps,
+    approvalDoc: null
+  };
+};
+
 export const OvertimeStatusView = () => {
   const { currentProfile, isAdmin } = useAuth();
 
@@ -303,10 +422,10 @@ export const OvertimeStatusView = () => {
   const [reportModalAuthorTitle, setReportModalAuthorTitle] = useState("선임");
   const [reportModalNotes, setReportModalNotes] = useState("");
   const [reportApprovalSteps, setReportApprovalSteps] = useState([
-    { role: "담당", name: "양인나", title: "선임", status: "완료" },
-    { role: "책임", name: "윤경수", title: "책임", status: "완료" },
-    { role: "이사", name: "이명재", title: "이사", status: "완료" },
-    { role: "대표", name: "권태형", title: "대표", status: "완료" }
+    { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "", comment: "기안" },
+    { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+    { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+    { role: "대표", name: "권태형", title: "대표", status: "WAITING", date: "" }
   ]);
 
   // ⭐ Company Today Status Popup State (업체이름 패널 클릭 시 열리는 오늘자 현황 초간결 팝업)
@@ -321,6 +440,7 @@ export const OvertimeStatusView = () => {
 
   // Legacy overtime reports state (특근보고서 관리)
   const [legacyReports, setLegacyReports] = useState(() => getLocalOvertimeReports());
+  const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
   const [selectedLegacyReport, setSelectedLegacyReport] = useState(null);
   const [isLegacyModalOpen, setIsLegacyModalOpen] = useState(false);
   const [selectedWeekendDay, setSelectedWeekendDay] = useState(12); // Default to upcoming weekend: 9월 12일 (토)
@@ -349,9 +469,16 @@ export const OvertimeStatusView = () => {
       }
     });
 
+    const unsubApproval = subscribeApprovalDocs((docs) => {
+      if (Array.isArray(docs)) {
+        setApprovalDocs(docs);
+      }
+    });
+
     return () => {
       unsubSmart();
       unsubLegacy();
+      unsubApproval();
     };
   }, []);
 
@@ -445,12 +572,12 @@ export const OvertimeStatusView = () => {
     setReportModalAuthor(compMeta.author || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
-    // ⭐ 해당 회사 관리자들로 결재란 자동 구성
+    // ⭐ 해당 회사 관리자들로 결재란 자동 구성 (담당: 승인, 책임: 결재대기, 이사/대표: 대기)
     setReportApprovalSteps([
-      { role: "담당", name: compMeta.drafter, title: compMeta.drafterRole || "선임", status: "완료" },
-      { role: "책임", name: compMeta.lead, title: compMeta.leadRole || "책임", status: "완료" },
-      { role: "이사", name: compMeta.director, title: compMeta.directorRole || "이사", status: "완료" },
-      { role: "대표", name: compMeta.ceo, title: compMeta.ceoRole || "대표", status: "완료" }
+      { role: "담당", name: compMeta.drafter, title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "기안" },
+      { role: "책임", name: compMeta.lead, title: compMeta.leadRole || "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: compMeta.director, title: compMeta.directorRole || "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: compMeta.ceo, title: compMeta.ceoRole || "대표", status: "WAITING", date: "" }
     ]);
 
     setReportModalNotes(
@@ -520,6 +647,7 @@ export const OvertimeStatusView = () => {
         author: reportModalAuthor || "작성자",
         authorTitle: reportModalAuthorTitle || "선임",
         updatedAt: new Date().toISOString(),
+        status: "IN_PROGRESS",
         approval: reportApprovalSteps,
         totalWorkers: items.length,
         totalHours: totalHours,
@@ -2057,6 +2185,13 @@ export const OvertimeStatusView = () => {
                   const reportCategory = isWeekend ? "특근보고서" : "근태보고서";
                   const reportSummary = getCleanReportSummary(report);
 
+                  // ⭐ 실시간 전자결재 상태 및 결재선 연동
+                  const liveApproval = getLiveApprovalForReport(report, approvalDocs);
+                  const isApproved = liveApproval.status === "APPROVED";
+                  const isHold = liveApproval.status === "HOLD";
+                  const isRejected = liveApproval.status === "REJECTED";
+                  const pendingStep = liveApproval.steps.find((s) => s.status === "PENDING");
+
                   const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
                   const totalManHours = report.totalHours || (workersCount * 8);
                   const cost = report.cost || (totalManHours * 15000);
@@ -2090,7 +2225,7 @@ export const OvertimeStatusView = () => {
                           : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
                       }`}
                     >
-                      {/* Left: No, Category Badge, Company Badge, Date (월/일), Summary Note */}
+                      {/* Left: No, Category Badge, Company Badge, Date (월/일), Approval Badge, Summary Note */}
                       <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
                         <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
                           #{idx + 1}
@@ -2116,6 +2251,84 @@ export const OvertimeStatusView = () => {
                         <span className="px-2 py-0.5 rounded-md bg-slate-900 text-cyan-300 border border-slate-800 font-mono text-[11px] font-bold shrink-0">
                           📅 {formatShortMonthDay(report.workDate || report.workDateFormatted || report.title)}
                         </span>
+
+                        {/* Electronic Approval Live Status Badge */}
+                        <span
+                          className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
+                            isApproved
+                              ? "bg-emerald-950 text-emerald-300 border-emerald-700 shadow-xs"
+                              : isHold
+                              ? "bg-amber-950 text-amber-300 border-amber-700 shadow-xs animate-pulse"
+                              : isRejected
+                              ? "bg-rose-950 text-rose-300 border-rose-700 shadow-xs"
+                              : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80 shadow-xs"
+                          }`}
+                          title={
+                            isApproved
+                              ? "전자결재 최종 승인 완료"
+                              : isHold
+                              ? "전자결재 보류 중"
+                              : isRejected
+                              ? "전자결재 반려됨"
+                              : `전자결재 진행 중 (${pendingStep ? `${pendingStep.role} ${pendingStep.name} 결재 대기` : "책임 결재 대기"})`
+                          }
+                        >
+                          {isApproved ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              <span>결재완료</span>
+                            </>
+                          ) : isHold ? (
+                            <>
+                              <PauseCircle className="w-3 h-3 text-amber-400" />
+                              <span>보류중</span>
+                            </>
+                          ) : isRejected ? (
+                            <>
+                              <X className="w-3 h-3 text-rose-400" />
+                              <span>반려됨</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-3 h-3 text-yellow-400 animate-pulse" />
+                              <span>결재진행중 ({pendingStep ? `${pendingStep.role}` : "책임"}대기)</span>
+                            </>
+                          )}
+                        </span>
+
+                        {/* Mini 4-Step Approver Seals */}
+                        <div className="hidden lg:flex items-center gap-0.5 shrink-0 bg-slate-900/90 px-1 py-0.5 rounded-md border border-slate-800">
+                          {liveApproval.steps.map((st, sIdx) => {
+                            const isStepDone = st.status === "APPROVED";
+                            const isStepPending = st.status === "PENDING";
+                            const isStepHold = st.status === "HOLD";
+                            const isStepReject = st.status === "REJECTED";
+
+                            return (
+                              <span
+                                key={sIdx}
+                                title={`[${st.role}] ${st.name} : ${isStepDone ? "승인완료" : isStepPending ? "결재대기" : isStepHold ? "보류" : isStepReject ? "반려" : "대기"}`}
+                                className={`w-4.5 h-4.5 rounded text-[8.5px] font-black flex items-center justify-center border ${
+                                  isStepDone
+                                    ? (st.role === "대표" || st.name === "권태형")
+                                      ? "bg-amber-500 text-slate-950 border-amber-600 font-black"
+                                      : sIdx === 0
+                                      ? "bg-blue-600 text-white border-blue-700"
+                                      : "bg-emerald-600 text-white border-emerald-700"
+                                    : isStepPending
+                                    ? "bg-rose-950 text-rose-300 border-rose-500 animate-pulse font-bold"
+                                    : isStepHold
+                                    ? "bg-amber-950 text-amber-300 border-amber-600"
+                                    : isStepReject
+                                    ? "bg-slate-800 text-slate-400 border-slate-700"
+                                    : "bg-slate-900 text-slate-600 border-slate-800"
+                                }`}
+                              >
+                                {isStepDone ? (st.role === "대표" ? "✍️" : sIdx === 0 ? "기" : "인") : isStepPending ? "대" : st.role?.slice(0, 1)}
+                              </span>
+                            );
+                          })}
+                        </div>
 
                         {/* Summary Note / Work Description (중복 없는 깔끔한 내용 요약) */}
                         <span className={`font-bold text-xs sm:text-sm truncate transition-colors ${
@@ -2844,6 +3057,9 @@ export const OvertimeStatusView = () => {
             const rawTitle = selectedLegacyReport.title || "";
             const repType = isWk ? "특근실시보고서" : "근태보고서";
 
+            // ⭐ 실시간 전자결재 상태 및 결재선 연동
+            const liveApproval = getLiveApprovalForReport(selectedLegacyReport, approvalDocs);
+
             let cleanTitle = rawTitle;
             if (isWk) {
               cleanTitle = cleanTitle
@@ -2911,51 +3127,92 @@ export const OvertimeStatusView = () => {
                   </div>
                 </div>
 
-                {/* 4 Approval Blocks */}
+                {/* 4 Approval Blocks (실제 전자결재함과 실시간 100% 동기화) */}
                 <div className="shrink-0 space-y-1">
                   <div className="flex items-center justify-between px-1">
                     <span className="text-[10.5px] font-black text-purple-300 flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
                       <span>결재선</span>
                     </span>
-                    <span className="text-[9.5px] text-emerald-400 font-bold">결재 완료</span>
+                    <span className={`text-[10px] font-black ${
+                      liveApproval.status === "APPROVED"
+                        ? "text-emerald-400"
+                        : liveApproval.status === "HOLD"
+                        ? "text-amber-400 animate-pulse"
+                        : liveApproval.status === "REJECTED"
+                        ? "text-rose-400"
+                        : "text-yellow-400 animate-pulse"
+                    }`}>
+                      {liveApproval.status === "APPROVED"
+                        ? "🟢 결재 완료 (4/4)"
+                        : liveApproval.status === "HOLD"
+                        ? "⏸️ 결재 보류"
+                        : liveApproval.status === "REJECTED"
+                        ? "🔴 반려됨"
+                        : `🟡 결재 진행중 (${liveApproval.steps.find(s => s.status === "PENDING")?.role || "책임"} 결재대기)`}
+                    </span>
                   </div>
-                  <div className="border border-slate-700 rounded-xl overflow-hidden bg-white text-slate-900 shadow-md">
+                  <div className="border-2 border-slate-700 rounded-xl overflow-hidden bg-white text-slate-900 shadow-md">
                     <div className="grid grid-cols-4 divide-x divide-slate-300 text-center font-bold text-[11px] bg-slate-100 text-slate-800">
-                      {(selectedLegacyReport.approval || [
-                        { role: "담당", name: "양인나" },
-                        { role: "책임", name: "윤경수" },
-                        { role: "이사", name: "이명재" },
-                        { role: "대표", name: "권태형" }
-                      ]).map((st, sIdx) => (
+                      {liveApproval.steps.map((st, sIdx) => (
                         <div key={sIdx} className="py-1 px-2 font-black">
                           {st.role}
                         </div>
                       ))}
                     </div>
                     <div className="grid grid-cols-4 divide-x divide-slate-300 text-center text-xs h-15 items-center bg-white">
-                      {(selectedLegacyReport.approval || [
-                        { role: "담당", name: "양인나", status: "완료" },
-                        { role: "책임", name: "윤경수", status: "완료" },
-                        { role: "이사", name: "이명재", status: "완료" },
-                        { role: "대표", name: "권태형", status: "완료" }
-                      ]).map((st, sIdx) => (
-                        <div key={sIdx} className="p-1 flex flex-col items-center justify-center space-y-0.5 relative h-full">
-                          {st.role === "대표" || st.name === "권태형" ? (
-                            <div className="w-15 h-11 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
-                              <img
-                                src={KWON_SIGNATURE_BLACK}
-                                alt="권태형 대표이사 친필 서명"
-                                className="w-full h-full object-contain filter drop-shadow-xs"
-                              />
-                            </div>
-                          ) : (
-                            <div className={`w-10 h-10 rounded-full border-2 ${sIdx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-5deg] select-none bg-white`}>
-                              <span className="text-[7px] font-bold">오륙</span>
-                              <span className="text-[10px] font-black">{st.name?.slice(0, 3)}</span>
-                              <span className="text-[7px]">{sIdx === 0 ? "기안" : "승인"}</span>
-                            </div>
-                          )}
+                      {liveApproval.steps.map((st, sIdx) => {
+                        const isApprovedStep = st.status === "APPROVED";
+                        const isPendingStep = st.status === "PENDING";
+                        const isHoldStep = st.status === "HOLD";
+                        const isRejectedStep = st.status === "REJECTED";
+
+                        return (
+                          <div key={sIdx} className="p-1 flex flex-col items-center justify-center space-y-0.5 relative h-full bg-white">
+                            {isApprovedStep ? (
+                              st.role === "대표" || st.name === "권태형" ? (
+                                <div className="w-15 h-11 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
+                                  <img
+                                    src={KWON_SIGNATURE_BLACK}
+                                    alt="권태형 대표이사 친필 서명"
+                                    className="w-full h-full object-contain filter drop-shadow-xs"
+                                  />
+                                </div>
+                              ) : (
+                                <div className={`w-10 h-10 rounded-full border-2 ${sIdx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-5deg] select-none bg-white animate-scaleUp`}>
+                                  <span className="text-[7px] font-bold">오륙</span>
+                                  <span className="text-[10px] font-black">{st.name?.slice(0, 3)}</span>
+                                  <span className="text-[7px]">{sIdx === 0 ? "기안" : "승인"}</span>
+                                </div>
+                              )
+                            ) : isHoldStep ? (
+                              <div className="w-10 h-10 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg] bg-white">
+                                <span>보류</span>
+                                <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
+                              </div>
+                            ) : isRejectedStep ? (
+                              <div className="w-10 h-10 rounded-full border-2 border-slate-700 text-slate-700 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-6deg] bg-white">
+                                <span>반려</span>
+                                <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
+                              </div>
+                            ) : isPendingStep ? (
+                              <span className="text-[10.5px] font-black text-rose-600 animate-pulse">
+                                결재대기
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 font-bold">
+                                - (대기)
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* 날짜 행 */}
+                    <div className="grid grid-cols-4 divide-x divide-slate-300 text-center text-[9.5px] bg-slate-50 text-slate-600 font-mono py-0.5 border-t border-slate-200">
+                      {liveApproval.steps.map((st, sIdx) => (
+                        <div key={sIdx} className="truncate px-0.5">
+                          {st.date ? st.date.split(" ")[0].slice(5) : "-"}
                         </div>
                       ))}
                     </div>
@@ -3075,7 +3332,7 @@ export const OvertimeStatusView = () => {
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
+            <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0 gap-2">
               <button
                 type="button"
                 onClick={() => handleDeleteReport(selectedLegacyReport.id)}
@@ -3085,7 +3342,33 @@ export const OvertimeStatusView = () => {
                 <span>보고서 삭제</span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* 1-Click Approval Action if User Has Authority */}
+                {liveApproval.approvalDoc && (() => {
+                  const perm = checkApprovalPermission(liveApproval.approvalDoc, currentProfile, isAdmin);
+                  if (perm.canApprove) {
+                    return (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!window.confirm(`[${perm.stepRole} ${perm.approverName}] 전자결재 승인을 진행하시겠습니까?`)) return;
+                          try {
+                            await approveDocumentStep(liveApproval.approvalDoc.id, perm.stepIndex, perm.approverName, "승인");
+                            triggerToast(`✅ [${perm.stepRole} ${perm.approverName}] 결재 승인이 완료되었습니다.`);
+                          } catch (err) {
+                            alert("결재 승인 오류: " + err.message);
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs cursor-pointer shadow-md shadow-emerald-900/40 active:scale-95 transition-all flex items-center gap-1.5 animate-pulse"
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>⚡ {perm.approverName} ({perm.stepRole}) 즉시 승인</span>
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
+
                 <button
                   type="button"
                   onClick={() => window.print()}
