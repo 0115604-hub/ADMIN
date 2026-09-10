@@ -1455,8 +1455,8 @@ export const AuthModal = () => {
                             : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        {/* 좌측: 이름 구역 (38%) */}
-                        <div className={`w-[38%] sm:w-[38%] flex items-center justify-center px-1 text-center shrink-0 ${
+                        {/* 좌측: 이름 구역 (39%) */}
+                        <div className={`w-[39%] sm:w-[38%] flex items-center justify-center px-0.5 sm:px-1 text-center shrink-0 ${
                           isMyeongjae
                             ? "bg-amber-800"
                             : isLeaveToday
@@ -1467,7 +1467,11 @@ export const AuthModal = () => {
                             ? "bg-purple-50 dark:bg-purple-950/50"
                             : "bg-slate-100 dark:bg-slate-800"
                         }`}>
-                          <span className={`text-xs sm:text-[13px] font-black truncate tracking-tight ${
+                          <span className={`font-black whitespace-nowrap leading-none ${
+                            hasLeave
+                              ? "text-[10px] sm:text-[12.5px] tracking-tighter"
+                              : "text-xs sm:text-[13px] tracking-tight"
+                          } ${
                             isMyeongjae
                               ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
                               : isLeaveToday || hasLeave
@@ -1478,8 +1482,8 @@ export const AuthModal = () => {
                           </span>
                         </div>
 
-                        {/* 우측: 상태 구역 (62% - 여백 없이 맞닿는 분할 플레이트) */}
-                        <div className={`w-[62%] sm:w-[62%] flex flex-col justify-center items-center text-center px-1.5 py-0.5 leading-tight ${
+                        {/* 우측: 상태 구역 (61% - 여백 없이 맞닿는 분할 플레이트) */}
+                        <div className={`w-[61%] sm:w-[62%] flex flex-col justify-center items-center text-center px-1 sm:px-1.5 py-0.5 leading-tight ${
                           isMyeongjae
                             ? hasLeave
                               ? "bg-rose-600 text-white border-l-2 border-amber-400"
@@ -1567,8 +1571,8 @@ export const AuthModal = () => {
                             : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
                         }`}
                       >
-                        {/* 좌측: 이름 구역 (38%) */}
-                        <div className={`w-[38%] sm:w-[38%] flex items-center justify-center px-1 text-center shrink-0 ${
+                        {/* 좌측: 이름 구역 (39%) */}
+                        <div className={`w-[39%] sm:w-[38%] flex items-center justify-center px-0.5 sm:px-1 text-center shrink-0 ${
                           isDongwook
                             ? "bg-emerald-800"
                             : isLeaveToday
@@ -1579,7 +1583,11 @@ export const AuthModal = () => {
                             ? "bg-purple-50 dark:bg-purple-950/50"
                             : "bg-slate-100 dark:bg-slate-800"
                         }`}>
-                          <span className={`text-xs sm:text-[13px] font-black truncate tracking-tight ${
+                          <span className={`font-black whitespace-nowrap leading-none ${
+                            hasLeave
+                              ? "text-[10px] sm:text-[12.5px] tracking-tighter"
+                              : "text-xs sm:text-[13px] tracking-tight"
+                          } ${
                             isDongwook
                               ? "text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
                               : isLeaveToday || hasLeave
@@ -1590,8 +1598,8 @@ export const AuthModal = () => {
                           </span>
                         </div>
 
-                        {/* 우측: 상태 구역 (62% - 여백 없이 맞닿는 분할 플레이트) */}
-                        <div className={`w-[62%] sm:w-[62%] flex flex-col justify-center items-center text-center px-1.5 py-0.5 leading-tight ${
+                        {/* 우측: 상태 구역 (61% - 여백 없이 맞닿는 분할 플레이트) */}
+                        <div className={`w-[61%] sm:w-[62%] flex flex-col justify-center items-center text-center px-1 sm:px-1.5 py-0.5 leading-tight ${
                           isDongwook
                             ? hasLeave
                               ? "bg-rose-600 text-white border-l-2 border-emerald-400"
