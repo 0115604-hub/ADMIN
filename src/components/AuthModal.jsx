@@ -143,12 +143,14 @@ export const AuthModal = () => {
 
   // New Issue Form State (사진 첨부 및 사내공지/회의일정 만료일자 및 회의시간, 조치결과, 조치사진, 상태 지원)
   const [newIssueForm, setNewIssueForm] = useState({
-    category: "품질경보",
+    category: "오픈이슈",
     plant: "삼랑진공장",
     author: "방상국",
     authorTitle: "선임",
+    startDate: "",
     expireDate: "",
     meetingTime: "14:00",
+    progress: 0,
     title: "",
     content: "",
     images: [],
@@ -506,6 +508,63 @@ export const AuthModal = () => {
     return days;
   }, [allOpenIssues, todayDateStr]);
 
+  // 📅 오픈이슈 등록 모달용 14일 인터랙티브 타임라인 캘린더 생성기
+  const getOpenIssueFormCalendarDays = (startDateStr, targetDateStr) => {
+    const days = [];
+    const start = startDateStr ? new Date(startDateStr) : new Date();
+    
+    // 기준일: startDate에서 -1일 전부터 14일간 표시
+    const base = new Date(start);
+    base.setDate(base.getDate() - 1);
+    const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      const dayName = dayNames[d.getDay()];
+      const isToday = dateStr === todayDateStr;
+      const isStart = dateStr === startDateStr;
+      const isTarget = dateStr === targetDateStr;
+      const isInRange = (startDateStr && targetDateStr)
+        ? (dateStr >= startDateStr && dateStr <= targetDateStr)
+        : false;
+
+      days.push({
+        dateStr,
+        dayName,
+        monthDay: `${Number(mm)}/${Number(dd)}`,
+        isToday,
+        isStart,
+        isTarget,
+        isInRange,
+        dayIndex: d.getDay()
+      });
+    }
+    return days;
+  };
+
+  const calcDaysBetween = (d1, d2) => {
+    if (!d1 || !d2) return 1;
+    const t1 = new Date(d1).getTime();
+    const t2 = new Date(d2).getTime();
+    const diff = Math.round((t2 - t1) / (1000 * 60 * 60 * 24));
+    return Math.max(1, diff + 1);
+  };
+
+  const calcDDay = (targetDateStr) => {
+    if (!targetDateStr) return { label: "-", color: "text-slate-500" };
+    const target = new Date(targetDateStr);
+    const today = new Date(todayDateStr);
+    const diff = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return { label: "D-Day (오늘 마감)", color: "text-rose-600 font-black animate-pulse" };
+    if (diff > 0) return { label: `D-${diff}일 남음`, color: "text-blue-600 font-black" };
+    return { label: `D+${Math.abs(diff)}일 경과`, color: "text-slate-500 font-bold" };
+  };
+
   const filteredIssues = useMemo(() => {
     let base = urgentIssues;
 
@@ -631,12 +690,14 @@ export const AuthModal = () => {
     setEditingIssue(issue);
     setNewIssueForm({
       id: issue.id,
-      category: issue.category || "품질경보",
+      category: issue.category || "오픈이슈",
       plant: issue.plant || "삼랑진공장",
       author: issue.author || "방상국",
       authorTitle: issue.authorTitle || "선임",
+      startDate: issue.startDate || issue.createdDate || todayDateStr,
       expireDate: issue.expireDate || issue.targetDate || todayDateStr,
       meetingTime: issue.meetingTime || "14:00",
+      progress: issue.progress !== undefined ? Number(issue.progress) : (issue.isResolved ? 100 : 0),
       title: issue.title || "",
       content: issue.content || "",
       images: issue.images ? [...issue.images] : [],
@@ -716,10 +777,14 @@ export const AuthModal = () => {
     await saveUrgentIssue({
       ...newIssueForm,
       id: editingIssue ? editingIssue.id : undefined,
-      category: newIssueForm.category || "품질경보",
+      category: newIssueForm.category || "오픈이슈",
+      startDate: newIssueForm.startDate || todayDateStr,
       expireDate: effectiveExpireDate,
       targetDate: effectiveExpireDate,
       meetingTime: effectiveMeetingTime,
+      progress: newIssueForm.category === "오픈이슈"
+        ? (newIssueForm.progress !== undefined ? Number(newIssueForm.progress) : (finalIsResolved ? 100 : 0))
+        : (newIssueForm.progress || 0),
       images: newIssueForm.images || [],
       actionImages: newIssueForm.actionImages || [],
       actionResult: newIssueForm.actionResult || "",
@@ -731,12 +796,14 @@ export const AuthModal = () => {
     });
 
     setNewIssueForm({
-      category: "품질경보",
+      category: "오픈이슈",
       plant: "삼랑진공장",
       author: "방상국",
       authorTitle: "선임",
+      startDate: todayDateStr,
       expireDate: todayDateStr,
       meetingTime: "14:00",
+      progress: 0,
       title: "",
       content: "",
       images: [],
@@ -1218,7 +1285,11 @@ export const AuthModal = () => {
                       {/* 1단: 상태 배지 + 공장 + 일시 + 사진 + 조치버튼 */}
                       <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
                         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                          {isMeeting ? (
+                          {item.category === "품질경보" ? (
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
+                              🚨 품질경보
+                            </span>
+                          ) : isMeeting ? (
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
                               📅 회의일정
                             </span>
@@ -1230,6 +1301,17 @@ export const AuthModal = () => {
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs flex items-center gap-1">
                               <Pin className="w-3 h-3 text-cyan-300" />
                               <span>오픈이슈</span>
+                            </span>
+                          )}
+                          {item.category === "오픈이슈" && (
+                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 ${
+                              (item.progress || 0) === 100
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
+                                : (item.progress || 0) >= 50
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300"
+                                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
+                            }`}>
+                              진도 {item.progress || 0}%
                             </span>
                           )}
                           <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
@@ -2472,12 +2554,16 @@ export const AuthModal = () => {
                     ? "bg-purple-600"
                     : newIssueForm.category === "공지사항"
                     ? "bg-emerald-600"
+                    : newIssueForm.category === "오픈이슈"
+                    ? "bg-gradient-to-tr from-blue-600 to-indigo-600"
                     : "bg-rose-600"
                 }`}>
                   {newIssueForm.category === "회의일정" ? (
                     <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : newIssueForm.category === "공지사항" ? (
                     <Megaphone className="w-4 h-4 sm:w-5 sm:h-5" />
+                  ) : newIssueForm.category === "오픈이슈" ? (
+                    <Pin className="w-4 h-4 sm:w-5 sm:h-5" />
                   ) : (
                     <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
                   )}
@@ -2489,13 +2575,26 @@ export const AuthModal = () => {
                         ? "bg-purple-600"
                         : newIssueForm.category === "공지사항"
                         ? "bg-emerald-600"
+                        : newIssueForm.category === "오픈이슈"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600"
                         : "bg-rose-600"
                     }`}>
-                      {newIssueForm.category}
+                      {newIssueForm.category === "공지사항" ? "사내공지" : newIssueForm.category}
                     </span>
                     <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {newIssueForm.plant}
                     </span>
+                    {newIssueForm.category === "오픈이슈" && (
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 ${
+                        (newIssueForm.progress || 0) === 100
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
+                          : (newIssueForm.progress || 0) >= 50
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300"
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200"
+                      }`}>
+                        진도율 {newIssueForm.progress || 0}%
+                      </span>
+                    )}
                     {editingIssue && (
                       <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black shrink-0 ${
                         newIssueForm.isResolved
@@ -2508,8 +2607,8 @@ export const AuthModal = () => {
                   </div>
                   <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white mt-0.5 truncate">
                     {editingIssue
-                      ? `${newIssueForm.plant} ${newIssueForm.category} 상세 및 처리`
-                      : `신규 ${newIssueForm.category} 등록`}
+                      ? `${newIssueForm.plant} ${newIssueForm.category === "공지사항" ? "사내공지" : newIssueForm.category} 상세 및 처리`
+                      : `신규 ${newIssueForm.category === "공지사항" ? "사내공지" : newIssueForm.category} 등록`}
                   </h3>
                 </div>
               </div>
@@ -2528,35 +2627,26 @@ export const AuthModal = () => {
             </div>
 
             <form onSubmit={handleSaveNewIssue} className="space-y-3.5 text-xs">
-              {/* 1. 구분 (3대 분류) */}
+              {/* 1. 구분 (4대 분류: 품질경보 • 회의일정 • 사내공지 • 오픈이슈) */}
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  구분 (3대 분류)
+                  구분 (4대 분류)
                 </label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {/* 1) 품질경보 */}
                   <button
                     type="button"
                     onClick={() => setNewIssueForm({ ...newIssueForm, category: "품질경보" })}
                     className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
-                      newIssueForm.category === "품질경보" || newIssueForm.category === "오픈이슈"
-                        ? "bg-blue-50 dark:bg-blue-950/70 border-blue-500 text-blue-700 dark:text-blue-300 shadow-xs ring-1 ring-blue-500/30"
+                      newIssueForm.category === "품질경보"
+                        ? "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-1 ring-rose-500/30"
                         : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
                     }`}
                   >
-                    <Pin className="w-3.5 h-3.5 text-blue-500" />
-                    <span>오픈이슈</span>
+                    <span>🚨 품질경보</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "공지사항" })}
-                    className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
-                      newIssueForm.category === "공지사항"
-                        ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/30"
-                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
-                    }`}
-                  >
-                    <span>📢 사내공지</span>
-                  </button>
+
+                  {/* 2) 회의일정 */}
                   <button
                     type="button"
                     onClick={() => setNewIssueForm({ ...newIssueForm, category: "회의일정" })}
@@ -2567,6 +2657,33 @@ export const AuthModal = () => {
                     }`}
                   >
                     <span>📅 회의일정</span>
+                  </button>
+
+                  {/* 3) 사내공지 */}
+                  <button
+                    type="button"
+                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "공지사항" })}
+                    className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
+                      newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
+                        ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/30"
+                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <span>📢 사내공지</span>
+                  </button>
+
+                  {/* 4) 오픈이슈 */}
+                  <button
+                    type="button"
+                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "오픈이슈" })}
+                    className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
+                      newIssueForm.category === "오픈이슈"
+                        ? "bg-blue-50 dark:bg-blue-950/70 border-blue-500 text-blue-700 dark:text-blue-300 shadow-xs ring-1 ring-blue-500/30"
+                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <Pin className="w-3.5 h-3.5 text-blue-500" />
+                    <span>오픈이슈</span>
                   </button>
                 </div>
               </div>
@@ -2614,86 +2731,309 @@ export const AuthModal = () => {
                 </div>
               </div>
 
-              {/* 3. 회의 진행 일시 / 공지 만료일자 / 오픈이슈 조치목표일 */}
-              <div className={`p-3 rounded-2xl border transition-all ${
-                newIssueForm.category === "회의일정"
-                  ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/30"
-                  : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
-                  ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
-                  : "bg-orange-50/80 dark:bg-orange-950/40 border-orange-300 dark:border-orange-800 ring-1 ring-orange-400/30"
-              }`}>
-                {newIssueForm.category === "회의일정" ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="font-black text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5 shrink-0">
-                      <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                      <span>회의 진행 일시</span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+              {/* 3. ⭐ 카테고리별 특화 영역 (오픈이슈: 날짜지정 & 진도율 & 달력형 그래프 / 회의일정 / 사내공지 / 품질경보) */}
+              {newIssueForm.category === "오픈이슈" ? (
+                /* 🌟 오픈이슈 전용: 날짜지정 + 진도율 슬라이더 + 달력형식 그래프 */
+                <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-br from-blue-50/90 via-indigo-50/40 to-slate-50 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-slate-900 border-2 border-blue-300 dark:border-blue-800 space-y-3 shadow-sm">
+                  {/* Header & Metrics */}
+                  <div className="flex items-center justify-between flex-wrap gap-1.5 pb-2 border-b border-blue-200/70 dark:border-blue-900/60">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 rounded-lg bg-blue-600 text-white shadow-2xs">
+                        <Pin className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="font-black text-xs text-blue-950 dark:text-blue-200">
+                        오픈이슈 조치 일정 및 진도율 계획
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-black bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700">
+                        총 {calcDaysBetween(newIssueForm.startDate || todayDateStr, newIssueForm.expireDate || todayDateStr)}일간
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 ${calcDDay(newIssueForm.expireDate || todayDateStr).color}`}>
+                        {calcDDay(newIssueForm.expireDate || todayDateStr).label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 1) 시작일자 & 조치 목표일자 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
+                        🚩 착수/시작 일자
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={newIssueForm.startDate || todayDateStr}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, startDate: e.target.value })}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300">
+                          🎯 조치 목표/마감 일자
+                        </label>
+                        {/* Quick Presets */}
+                        <div className="flex items-center gap-0.5">
+                          {[
+                            { label: "오늘", days: 0 },
+                            { label: "+3일", days: 3 },
+                            { label: "+7일", days: 7 },
+                            { label: "+14일", days: 14 }
+                          ].map((p) => (
+                            <button
+                              key={p.label}
+                              type="button"
+                              onClick={() => {
+                                const base = new Date(newIssueForm.startDate || todayDateStr);
+                                base.setDate(base.getDate() + p.days);
+                                const y = base.getFullYear();
+                                const m = String(base.getMonth() + 1).padStart(2, "0");
+                                const d = String(base.getDate()).padStart(2, "0");
+                                setNewIssueForm({ ...newIssueForm, expireDate: `${y}-${m}-${d}` });
+                              }}
+                              className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-800 dark:text-blue-200 transition-colors cursor-pointer"
+                            >
+                              {p.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <input
                         type="date"
                         required
                         value={newIssueForm.expireDate || todayDateStr}
                         onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs text-center cursor-pointer"
+                        className="w-full px-3 py-1.5 rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-blue-700 dark:text-blue-300 shadow-xs cursor-pointer ring-1 ring-blue-400/30"
                       />
-                      <select
-                        value={newIssueForm.meetingTime || "14:00"}
-                        onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingTime: e.target.value })}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-purple-700 dark:text-purple-300 shadow-xs text-center cursor-pointer"
-                      >
-                        {[
-                          "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
-                          "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-                          "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-                          "15:00", "15:30", "16:00", "16:30", "17:00"
-                        ].map((t) => (
-                          <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold">
-                            {t}
-                          </option>
-                        ))}
-                      </select>
                     </div>
                   </div>
-                ) : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>공지 게시 만료일자</span>
+
+                  {/* 2) 진도율 (Progress Rate %) 슬라이더 & 퀵 버튼 */}
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-900 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="font-extrabold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <span className="text-blue-600">📊</span>
+                        <span>조치 진도율 (Progress Rate)</span>
                       </label>
-                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                        * 만료일 경과 시 첫 화면에서 자동 정리됩니다.
-                      </p>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-black shadow-xs ${
+                        (newIssueForm.progress || 0) === 100
+                          ? "bg-emerald-600 text-white"
+                          : (newIssueForm.progress || 0) >= 50
+                          ? "bg-blue-600 text-white"
+                          : (newIssueForm.progress || 0) > 0
+                          ? "bg-indigo-600 text-white"
+                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                      }`}>
+                        {(newIssueForm.progress || 0)}% {
+                          (newIssueForm.progress || 0) === 100 ? "✓ 조치완료" :
+                          (newIssueForm.progress || 0) >= 75 ? "마무리단계" :
+                          (newIssueForm.progress || 0) >= 50 ? "중간진행" :
+                          (newIssueForm.progress || 0) > 0 ? "진행중" : "대기"
+                        }
+                      </span>
                     </div>
+
                     <input
-                      type="date"
-                      required
-                      value={newIssueForm.expireDate || todayDateStr}
-                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                      className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={newIssueForm.progress || 0}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setNewIssueForm({
+                          ...newIssueForm,
+                          progress: val,
+                          isResolved: val === 100
+                        });
+                      }}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     />
+
+                    <div className="grid grid-cols-5 gap-1 pt-0.5">
+                      {[0, 25, 50, 75, 100].map((rate) => (
+                        <button
+                          key={rate}
+                          type="button"
+                          onClick={() => setNewIssueForm({
+                            ...newIssueForm,
+                            progress: rate,
+                            isResolved: rate === 100
+                          })}
+                          className={`py-0.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                            (newIssueForm.progress || 0) === rate
+                              ? "bg-blue-600 text-white shadow-xs scale-102"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                          }`}
+                        >
+                          {rate}%
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-orange-600" />
-                        <span>오픈이슈 조치 목표/마감 일자</span>
+
+                  {/* 3) 📅 달력 형식의 타임라인 & 진도율 그래프 (Calendar Progress Chart) */}
+                  <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-900 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                        <span>달력형 타임라인 & 진도율 그래프</span>
+                      </span>
+                      <span className="text-[9.5px] text-slate-400">
+                        * 날짜 클릭 시 목표일 자동 지정
+                      </span>
+                    </div>
+
+                    {/* Progress Fill Bar */}
+                    <div className="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden p-0.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          (newIssueForm.progress || 0) === 100
+                            ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                            : (newIssueForm.progress || 0) >= 50
+                            ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-400"
+                            : "bg-gradient-to-r from-blue-500 to-indigo-500"
+                        }`}
+                        style={{ width: `${Math.max(4, newIssueForm.progress || 0)}%` }}
+                      ></div>
+                    </div>
+
+                    {/* 14-Day Grid */}
+                    <div className="grid grid-cols-7 gap-1 pt-1">
+                      {getOpenIssueFormCalendarDays(newIssueForm.startDate || todayDateStr, newIssueForm.expireDate || todayDateStr).map((day) => {
+                        return (
+                          <button
+                            key={day.dateStr}
+                            type="button"
+                            onClick={() => setNewIssueForm({ ...newIssueForm, expireDate: day.dateStr })}
+                            className={`p-1 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between min-h-[50px] relative ${
+                              day.isTarget
+                                ? "bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-400/60 font-black scale-102"
+                                : day.isStart
+                                ? "bg-indigo-100 dark:bg-indigo-950 border-indigo-500 text-indigo-900 dark:text-indigo-200 font-black"
+                                : day.isInRange
+                                ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-200 font-bold"
+                                : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100"
+                            }`}
+                          >
+                            <div className="text-[9.5px] font-mono leading-tight">
+                              <span className={day.dayIndex === 0 ? "text-rose-500 font-bold" : day.dayIndex === 6 ? "text-blue-500 font-bold" : ""}>
+                                {day.monthDay}
+                              </span>
+                              <span className="block text-[8px] opacity-75">({day.dayName})</span>
+                            </div>
+
+                            <div className="mt-0.5">
+                              {day.isTarget ? (
+                                <span className="px-1 py-0.2 rounded text-[8px] font-black bg-white text-blue-700 shadow-2xs">
+                                  🎯목표
+                                </span>
+                              ) : day.isStart ? (
+                                <span className="px-1 py-0.2 rounded text-[8px] font-black bg-indigo-600 text-white shadow-2xs">
+                                  🚩시작
+                                </span>
+                              ) : day.isToday ? (
+                                <span className="px-1 py-0.2 rounded text-[8px] font-black bg-amber-500 text-slate-950 shadow-2xs animate-pulse">
+                                  오늘
+                                </span>
+                              ) : day.isInRange ? (
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                              ) : (
+                                <span className="text-[8px] text-slate-300 dark:text-slate-600">-</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* 🌟 기타 카테고리 (회의일정 / 사내공지 / 품질경보) */
+                <div className={`p-3 rounded-2xl border transition-all ${
+                  newIssueForm.category === "회의일정"
+                    ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/30"
+                    : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
+                    ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
+                    : "bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-1 ring-rose-400/30"
+                }`}>
+                  {newIssueForm.category === "회의일정" ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="font-black text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5 shrink-0">
+                        <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                        <span>회의 진행 일시</span>
                       </label>
-                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                        * 오픈이슈 일정표(타임라인)에 반영되는 조치 목표 일자입니다.
-                      </p>
+                      <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                        <input
+                          type="date"
+                          required
+                          value={newIssueForm.expireDate || todayDateStr}
+                          onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs text-center cursor-pointer"
+                        />
+                        <select
+                          value={newIssueForm.meetingTime || "14:00"}
+                          onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingTime: e.target.value })}
+                          className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-purple-700 dark:text-purple-300 shadow-xs text-center cursor-pointer"
+                        >
+                          {[
+                            "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
+                            "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+                            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+                            "15:00", "15:30", "16:00", "16:30", "17:00"
+                          ].map((t) => (
+                            <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold">
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <input
-                      type="date"
-                      required
-                      value={newIssueForm.expireDate || todayDateStr}
-                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                      className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
-                    />
-                  </div>
-                )}
-              </div>
+                  ) : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Megaphone className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>공지 게시 만료일자</span>
+                        </label>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                          * 만료일 경과 시 첫 화면에서 자동 정리됩니다.
+                        </p>
+                      </div>
+                      <input
+                        type="date"
+                        required
+                        value={newIssueForm.expireDate || todayDateStr}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                      />
+                    </div>
+                  ) : (
+                    /* 품질경보 */
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>품질경보 조치 목표/마감 일자</span>
+                        </label>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                          * 긴급 품질 이슈 발생 시 빠른 전파 및 조치를 위해 등록합니다.
+                        </p>
+                      </div>
+                      <input
+                        type="date"
+                        required
+                        value={newIssueForm.expireDate || todayDateStr}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                        className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* 4. 제목 & 내용 */}
               <div className="space-y-2">
