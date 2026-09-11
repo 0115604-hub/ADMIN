@@ -307,7 +307,7 @@ export const TelegramView = () => {
     } else {
       setEditableUnifiedText(generateDefaultUnifiedText());
     }
-  }, [currentUnifiedTemplateKey, savedTemplates, morningLeaveSummary, morningApprovalSummary, morningUrgentSummary]);
+  }, [currentUnifiedTemplateKey, savedTemplates, morningLeaveSamStr, morningLeaveHanStr, morningApprovalDocLines, morningWorkLogLines, morningOpenIssueLines, morningNoticeMeetings]);
 
   // ----------------------------------------------------
   // 2. 경영총괄 실시간 데이터 (Management Room Live Data)

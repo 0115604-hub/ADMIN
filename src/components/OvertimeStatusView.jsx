@@ -2729,7 +2729,7 @@ export const OvertimeStatusView = () => {
       {/* ⭐ MODAL: 업체별 오늘자 현황 팝업 (초간결 3열 부서/성명/오늘근태 NO SCROLLING) */}
       {popupCompanyData && (
         <div
-          onClick={() => setPopupCompanyData(null)}
+          onClick={() => setSelectedCompanyPopup(null)}
           className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
         >
           <div
