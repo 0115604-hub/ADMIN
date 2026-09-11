@@ -154,8 +154,8 @@ export const subscribeUrgentIssues = (onUpdate) => {
         const list = [];
         snapshot.forEach((d) => {
           const data = d.data();
-          if (data && (data.isDeleted === true || data.deleted === true)) return;
-          const item = { id: d.id, ...data };
+          if (!data || data.isDeleted === true || data.deleted === true || data.isDeleted === "true" || data.deleted === "true") return;
+          const item = { ...data, id: d.id, _docId: d.id, customId: data.id };
           list.push(sanitizeUrgentIssueItem(item));
         });
         const sorted = sortIssuesByCustomPriority(list);
@@ -300,16 +300,57 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
   if (!strId) return getLocalUrgentIssues();
 
   try {
+    // 1. Remove immediately from local storage
     const current = getLocalUrgentIssues();
-    const updated = current.filter((i) => String(i.id) !== strId);
+    const updated = current.filter(
+      (i) =>
+        String(i.id) !== strId &&
+        String(i._docId) !== strId &&
+        String(i.customId) !== strId
+    );
     const sorted = sortIssuesByCustomPriority(updated);
     saveLocalUrgentIssues(sorted);
 
-    // Delete from Firestore
+    // 2. Perform exhaustive deletion from Firestore
     try {
       await deleteDoc(doc(db, COLLECTION_NAME, strId));
     } catch (e) {
-      console.warn("Firestore deleteDoc fallback to local:", e);
+      console.warn("Direct doc deleteDoc fallback:", e);
+    }
+
+    // 3. Scan collection to mark isDeleted (so snapshot listener ignores it forever) AND deleteDoc
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      const deleteOps = [];
+      snap.forEach((d) => {
+        const data = d.data() || {};
+        if (
+          d.id === strId ||
+          String(data.id) === strId ||
+          String(data.customId) === strId ||
+          String(data._docId) === strId
+        ) {
+          const markDeleted = setDoc(
+            doc(db, COLLECTION_NAME, d.id),
+            {
+              ...data,
+              isDeleted: true,
+              deleted: true,
+              deletedAt: new Date().toISOString(),
+              deletedBy: deleterName || "관리자"
+            },
+            { merge: true }
+          ).catch(() => {});
+
+          const hardDelete = deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
+          deleteOps.push(markDeleted, hardDelete);
+        }
+      });
+      if (deleteOps.length > 0) {
+        await Promise.all(deleteOps);
+      }
+    } catch (scanErr) {
+      console.warn("Firestore scan delete error:", scanErr);
     }
 
     return sorted;

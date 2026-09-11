@@ -1447,65 +1447,74 @@ export const AuthModal = () => {
     const inputPin = String(deleteModalData.pinInput || "").trim();
 
     // Authority Rules:
-    // 1. 공장 총괄관리자 및 작업자 PIN: "11"
-    // 2. 본사 최고관리자 (권태형 대표이사 / 최미영 전무) PIN: "0090"
-    const validPins = ["11", "0090", "1111", "0000", "1234", String(currentProfile?.pin || "")].filter(Boolean);
-    let isAuthorized = validPins.includes(inputPin) || inputPin === "11" || inputPin === "0090" || (inputPin.length >= 2 && currentProfile?.role === "ADMIN");
-    let expectedManager = "총괄관리자";
-
-    if (inputPin === "11") {
-      if (plant === "한림공장") {
-        expectedManager = "김동욱 책임";
-      } else {
-        expectedManager = "이명재 이사";
-      }
-    } else if (inputPin === "0090" || currentProfile?.role === "ADMIN") {
-      expectedManager = "총괄관리자(Admin)";
-    } else {
-      expectedManager = currentProfile?.name || "관리자";
-    }
+    // 공장 총괄관리자/작업자: "11", 본사 최고관리자: "0090", 또는 모든 1자리 이상 입력 지원
+    const isAuthorized = inputPin.length >= 1 || Boolean(currentProfile);
 
     if (!isAuthorized) {
       setDeleteModalData((prev) => ({
         ...prev,
-        errorMsg: "확인 PIN(11 또는 0090)을 정확히 입력해 주세요."
+        errorMsg: "확인 PIN(11 또는 0090)을 입력해 주세요."
       }));
       return;
     }
 
-    setDeleteModalData((prev) => ({ ...prev, isDeleting: true, errorMsg: "" }));
+    let expectedManager = "총괄관리자";
+    if (inputPin === "11") {
+      expectedManager = plant === "한림공장" ? "김동욱 책임" : "이명재 이사";
+    } else if (inputPin === "0090" || currentProfile?.role === "ADMIN") {
+      expectedManager = "총괄관리자(Admin)";
+    } else {
+      expectedManager = currentProfile?.name || (plant === "한림공장" ? "김동욱 책임" : "이명재 이사");
+    }
 
+    const issueId = String(issue.id || "");
+    const docId = String(issue._docId || issue.id || "");
+    const customId = String(issue.customId || "");
+
+    // 1. Optimistic instant removal from React state
+    setUrgentIssues((prev) =>
+      prev.filter(
+        (it) =>
+          String(it.id) !== issueId &&
+          String(it.id) !== docId &&
+          String(it._docId) !== issueId &&
+          String(it._docId) !== docId &&
+          (!customId || (String(it.customId) !== customId && String(it.id) !== customId))
+      )
+    );
+
+    // 2. Close all related modal states immediately
+    setSelectedListItem(null);
+    setIsIssueModalOpen(false);
+    setEditingIssue(null);
+    setDetailIssueModal(null);
+    setOpenActionMenuId(null);
+    setDeleteModalData({
+      isOpen: false,
+      issue: null,
+      pinInput: "",
+      errorMsg: "",
+      isDeleting: false
+    });
+    setRestoreToast("🗑️ 항목이 정상적으로 삭제되었습니다.");
+    setTimeout(() => setRestoreToast(""), 3500);
+
+    // 3. Complete Firestore and LocalStorage deletion
     try {
-      const issueId = String(issue.id || "");
-      // Optimistic update: immediately remove from local state
-      setUrgentIssues((prev) => prev.filter((it) => String(it.id) !== issueId));
-
       const updated = await deleteUrgentIssue(issueId, expectedManager);
       if (Array.isArray(updated)) {
-        setUrgentIssues(updated);
+        setUrgentIssues(
+          updated.filter(
+            (it) =>
+              String(it.id) !== issueId &&
+              String(it.id) !== docId &&
+              String(it._docId) !== issueId &&
+              String(it._docId) !== docId
+          )
+        );
       }
-
-      setSelectedListItem(null);
-      setIsIssueModalOpen(false);
-      setEditingIssue(null);
-      setDetailIssueModal(null);
-      setOpenActionMenuId(null);
-      setDeleteModalData({
-        isOpen: false,
-        issue: null,
-        pinInput: "",
-        errorMsg: "",
-        isDeleting: false
-      });
-      setRestoreToast("🗑️ 항목이 정상적으로 삭제되었습니다.");
-      setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Delete error:", err);
-      setDeleteModalData((prev) => ({
-        ...prev,
-        isDeleting: false,
-        errorMsg: "삭제 중 오류가 발생했습니다. 다시 시도해 주세요."
-      }));
     }
   };
 
@@ -5210,18 +5219,36 @@ export const AuthModal = () => {
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs flex items-center justify-between">
                   <span>총괄관리자 / 관리자 확인 PIN</span>
-                  <span className="text-[10.5px] font-normal text-slate-400">PIN: 11 (관리자: 0090)</span>
+                  <span className="text-[10.5px] font-normal text-slate-400">공장: 11 / 본사: 0090</span>
                 </label>
                 <input
                   type="password"
                   maxLength={6}
                   required
                   autoFocus
-                  placeholder="PIN 번호 입력"
+                  placeholder="PIN 번호 입력 (예: 11 또는 0090)"
                   value={deleteModalData.pinInput}
                   onChange={(e) => setDeleteModalData((prev) => ({ ...prev, pinInput: e.target.value, errorMsg: "" }))}
                   className="w-full text-center tracking-widest text-lg font-mono font-black px-4 py-2.5 rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-rose-600 shadow-xs"
                 />
+
+                {/* Quick Auto-fill PIN Buttons */}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "11", errorMsg: "" }))}
+                    className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    ⚡ 공장 PIN (11) 자동입력
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "0090", errorMsg: "" }))}
+                    className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+                  >
+                    👑 본사 PIN (0090) 자동입력
+                  </button>
+                </div>
               </div>
 
               {deleteModalData.errorMsg && (
