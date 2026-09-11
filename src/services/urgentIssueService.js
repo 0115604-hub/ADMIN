@@ -52,7 +52,7 @@ export const getLocalUrgentIssues = () => {
     }
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(sanitizeUrgentIssueItem);
+    return parsed.map(sanitizeUrgentIssueItem).filter((i) => !i.isDeleted);
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
     return [];
@@ -62,7 +62,8 @@ export const getLocalUrgentIssues = () => {
 // Helper: Save local storage
 export const saveLocalUrgentIssues = (issues) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(issues));
+    const valid = (Array.isArray(issues) ? issues : []).filter((i) => !i.isDeleted);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(valid));
   } catch (e) {
     console.error("Local storage write error for urgent issues:", e);
   }
@@ -152,7 +153,9 @@ export const subscribeUrgentIssues = (onUpdate) => {
       (snapshot) => {
         const list = [];
         snapshot.forEach((d) => {
-          const item = { id: d.id, ...d.data() };
+          const data = d.data();
+          if (data && (data.isDeleted === true || data.deleted === true)) return;
+          const item = { id: d.id, ...data };
           list.push(sanitizeUrgentIssueItem(item));
         });
         const sorted = sortIssuesByCustomPriority(list);
