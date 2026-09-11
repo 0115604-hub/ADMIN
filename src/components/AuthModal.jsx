@@ -1793,9 +1793,14 @@ export const AuthModal = () => {
                     return (
                       <div
                         key={item.id}
-                        onClick={() => handleOpenEditIssue(item)}
+                        onClick={(e) => {
+                          setLedgerCategoryTab("open_issue");
+                          setSelectedListItem(item);
+                          setIssueModalPage(1);
+                          setIsListModalOpen(true);
+                        }}
                         className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-600 active:scale-[0.99] group bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 dark:from-blue-950/40 dark:via-indigo-950/20 dark:to-slate-900 border-blue-200/90 dark:border-blue-900/60"
-                        title="클릭하여 오픈이슈 상세/진도율 및 의견 추가"
+                        title="탭하여 오픈이슈 목록(대장)으로 이동"
                       >
                         {/* 좌측: [📌 오픈이슈] + [공장] + [목표일(있을 시)] + 제목/내용 */}
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -1854,15 +1859,18 @@ export const AuthModal = () => {
                     <div
                       key={item.id}
                       onClick={(e) => {
-                        if (isMeeting) {
-                          setLedgerCategoryTab("meeting");
-                          setSelectedListItem(null);
-                          setIssueFilterTab("all");
-                          setIssueModalPage(1);
-                          setIsListModalOpen(true);
-                        } else {
-                          handleOpenEditIssue(item, e);
-                        }
+                        const catTab =
+                          item.category === "품질경보"
+                            ? "quality_alert"
+                            : isMeeting
+                            ? "meeting"
+                            : isNotice
+                            ? "notice"
+                            : "open_issue";
+                        setLedgerCategoryTab(catTab);
+                        setSelectedListItem(item);
+                        setIssueModalPage(1);
+                        setIsListModalOpen(true);
                       }}
                       className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                         item.isResolved
@@ -1873,7 +1881,7 @@ export const AuthModal = () => {
                           ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/20"
                           : "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
                       }`}
-                      title={isMeeting ? "탭하여 회의일정 전체 목록(대장) 열기" : "탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"}
+                      title="탭하여 목록(대장)으로 이동"
                     >
                       {/* 1단: 상태 배지 + 공장 + 일시 + 사진 + 조치버튼 */}
                       <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
