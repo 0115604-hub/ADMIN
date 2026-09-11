@@ -140,6 +140,7 @@ export const AuthModal = () => {
   const [isListModalOpen, setIsListModalOpen] = useState(false); // List Modal Open State
   const [openedEditFromListModal, setOpenedEditFromListModal] = useState(false); // Track if edit form was opened from list modal
   const [selectedListItem, setSelectedListItem] = useState(null); // Selected Item for Details & Restore
+  const [openActionMenuId, setOpenActionMenuId] = useState(null); // Row-specific action menu toggle (회의결과입력, 내용수정 등)
   const [restoreToast, setRestoreToast] = useState("");
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
   const [issueViewMode, setIssueViewMode] = useState("auto"); // "auto" (>=2 is summary) | "summary" | "detailed"
@@ -2913,7 +2914,7 @@ export const AuthModal = () => {
                             handleOpenEditIssue(it, null, false, true);
                             setIsListModalOpen(false);
                           }}
-                          className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                          className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-1.5 cursor-pointer ${
                             isCurrent
                               ? "bg-blue-50/95 dark:bg-blue-950/80 border-blue-500 ring-2 ring-blue-500/30 shadow-md scale-[1.005]"
                               : isItDeleted
@@ -2922,161 +2923,226 @@ export const AuthModal = () => {
                               ? "bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60 hover:bg-amber-100/50"
                               : "bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-200/80 dark:border-emerald-900/50 hover:bg-emerald-100/40"
                           }`}
-                          title="클릭하여 상세 조회 및 수정"
+                          title="클릭하여 상세 조회"
                         >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {/* Item Number */}
-                            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
-                              isCurrent
-                                ? "bg-blue-600 text-white shadow-xs"
-                                : isItDeleted
-                                ? "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono"
-                                : isItUnresolved
-                                ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                                : "bg-emerald-600 text-white shadow-xs"
-                            }`}>
-                              {itemNum}
-                            </span>
-
-                            {/* Category Badge */}
-                            <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black text-white shrink-0 shadow-2xs ${
-                              isItDeleted
-                                ? "bg-slate-600"
-                                : it.category === "품질경보"
-                                ? "bg-rose-600"
-                                : isItMeeting
-                                ? "bg-purple-600"
-                                : isItNotice
-                                ? "bg-emerald-600"
-                                : "bg-gradient-to-r from-blue-600 to-indigo-600"
-                            }`}>
-                              {isItDeleted ? "삭제" : it.category === "품질경보" ? "경보" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
-                            </span>
-
-                            {/* Factory Badge */}
-                            <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black shrink-0 ${
-                              it.plant === "한림공장"
-                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                                : it.plant === "삼랑진공장"
-                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                                : it.plant === "화승 R&A"
-                                ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                                : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                            }`}>
-                              {it.plant === "화승 R&A" ? "화승 R&A" : it.plant?.replace("공장", "") || "전체"}
-                            </span>
-
-                            {/* Date Badge */}
-                            {it.expireDate && (
-                              <span className={`px-1 py-0.2 rounded text-[9px] font-bold font-mono shrink-0 ${
-                                it.category === "품질경보"
-                                  ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-200"
-                                  : isItMeeting
-                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                                  : isItNotice
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                                  : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-200"
+                          {/* Row Top: Left Info & Right (상태 뱃지 + 수정 뱃지) */}
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              {/* Item Number */}
+                              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                isCurrent
+                                  ? "bg-blue-600 text-white shadow-xs"
+                                  : isItDeleted
+                                  ? "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono"
+                                  : isItUnresolved
+                                  ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                                  : "bg-emerald-600 text-white shadow-xs"
                               }`}>
-                                {it.category === "품질경보" ? `등록: ${it.expireDate.slice(5)}` : `${it.expireDate.slice(5)}${isItMeeting && it.meetingTime ? ` ${it.meetingTime}` : ""}`}
+                                {itemNum}
                               </span>
-                            )}
 
-                            {/* Content Snippet */}
-                            <span className={`text-xs truncate flex-1 ${
-                              isCurrent
-                                ? "font-black text-blue-950 dark:text-blue-100"
-                                : isItDeleted
-                                ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
-                                : isItUnresolved
-                                ? "font-black text-amber-950 dark:text-amber-200"
-                                : "font-bold text-slate-800 dark:text-slate-200"
-                            }`}>
-                              {it.title ? `${it.title} - ${it.content}` : it.content}
-                            </span>
-
-                            {/* Photo count indicator */}
-                            {totalImgCount > 0 && (
-                              <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 shrink-0 font-bold hidden sm:inline-flex">
-                                <Camera className="w-2.5 h-2.5 text-rose-500" />
-                                <span>{totalImgCount}</span>
+                              {/* Category Badge */}
+                              <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black text-white shrink-0 shadow-2xs ${
+                                isItDeleted
+                                  ? "bg-slate-600"
+                                  : it.category === "품질경보"
+                                  ? "bg-rose-600"
+                                  : isItMeeting
+                                  ? "bg-purple-600"
+                                  : isItNotice
+                                  ? "bg-emerald-600"
+                                  : "bg-gradient-to-r from-blue-600 to-indigo-600"
+                              }`}>
+                                {isItDeleted ? "삭제" : it.category === "품질경보" ? "경보" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
                               </span>
-                            )}
 
-                            {/* Author / Deleter info */}
-                            <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
-                              {isItDeleted && it.deletedBy ? `삭제: ${it.deletedBy}` : `${it.author} • ${it.createdAt?.slice(5) || ""}`}
-                            </span>
-                          </div>
+                              {/* Factory Badge */}
+                              <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black shrink-0 ${
+                                it.plant === "한림공장"
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                  : it.plant === "삼랑진공장"
+                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                  : it.plant === "화승 R&A"
+                                  ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                              }`}>
+                                {it.plant === "화승 R&A" ? "화승 R&A" : it.plant?.replace("공장", "") || "전체"}
+                              </span>
 
-                          {/* Status & Action Buttons */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* Status Badge */}
-                            {isItDeleted ? (
-                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                                삭제종결
-                              </span>
-                            ) : isItResolved ? (
-                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
-                                {isItMeeting ? "회의종결" : "조치완료"}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
-                                {isItMeeting ? "회의예정" : "조치대기"}
-                              </span>
-                            )}
+                              {/* Date Badge */}
+                              {it.expireDate && (
+                                <span className={`px-1 py-0.2 rounded text-[9px] font-bold font-mono shrink-0 ${
+                                  it.category === "품질경보"
+                                    ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-200"
+                                    : isItMeeting
+                                    ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
+                                    : isItNotice
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
+                                    : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-200"
+                                }`}>
+                                  {it.category === "품질경보" ? `등록: ${it.expireDate.slice(5)}` : `${it.expireDate.slice(5)}${isItMeeting && it.meetingTime ? ` ${it.meetingTime}` : ""}`}
+                                </span>
+                              )}
 
-                            {/* Action / Meeting Result Button */}
-                            {!isItDeleted && (
+                              {/* Content Snippet */}
+                              <span className={`text-xs truncate flex-1 ${
+                                isCurrent
+                                  ? "font-black text-blue-950 dark:text-blue-100"
+                                  : isItDeleted
+                                  ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
+                                  : isItUnresolved
+                                  ? "font-black text-amber-950 dark:text-amber-200"
+                                  : "font-bold text-slate-800 dark:text-slate-200"
+                              }`}>
+                                {it.title ? `${it.title} - ${it.content}` : it.content}
+                              </span>
+
+                              {/* Photo count indicator */}
+                              {totalImgCount > 0 && (
+                                <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 shrink-0 font-bold hidden sm:inline-flex">
+                                  <Camera className="w-2.5 h-2.5 text-rose-500" />
+                                  <span>{totalImgCount}</span>
+                                </span>
+                              )}
+
+                              {/* Author / Deleter info */}
+                              <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
+                                {isItDeleted && it.deletedBy ? `삭제: ${it.deletedBy}` : `${it.author} • ${it.createdAt?.slice(5) || ""}`}
+                              </span>
+                            </div>
+
+                            {/* Right: Only Status Badge & Edit Badge */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {/* 1) Status Badge (삭제종결 / 회의종결(조치완료) / 회의예정(조치대기)) */}
+                              {isItDeleted ? (
+                                <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                                  삭제종결
+                                </span>
+                              ) : isItResolved ? (
+                                <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                                  {isItMeeting ? "회의종결" : "조치완료"}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
+                                  {isItMeeting ? "회의예정" : "조치대기"}
+                                </span>
+                              )}
+
+                              {/* 2) Edit Badge (Click to reveal 회의결과입력 / 내용수정 / 복구 버튼) */}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleOpenActionModal(it, e);
-                                  setIsListModalOpen(false);
+                                  setOpenActionMenuId((prev) => (prev === it.id ? null : it.id));
                                 }}
-                                className={`px-2 py-1 rounded-lg text-[10.5px] font-black shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5 border text-white ${
-                                  isItMeeting
-                                    ? "bg-purple-600 hover:bg-purple-700 border-purple-700"
-                                    : "bg-emerald-600 hover:bg-emerald-700 border-emerald-700"
+                                className={`px-2 py-1 rounded-lg text-[10.5px] font-black shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5 border ${
+                                  openActionMenuId === it.id
+                                    ? "bg-amber-500 text-slate-950 border-amber-600 shadow-amber-500/25 ring-2 ring-amber-400/40"
+                                    : "bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
                                 }`}
-                                title={isItMeeting ? "회의 결과 입력" : "조치 결과 입력"}
+                                title="수정 및 결과 입력 메뉴 열기"
                               >
-                                <CheckCircle2 className="w-3 h-3" />
-                                <span>{isItMeeting ? "결과" : "조치"}</span>
+                                <Edit3 className="w-3 h-3" />
+                                <span>수정</span>
+                                {openActionMenuId === it.id ? (
+                                  <ChevronUp className="w-3 h-3 text-slate-900" />
+                                ) : (
+                                  <ChevronDown className="w-3 h-3 opacity-60" />
+                                )}
                               </button>
-                            )}
+                            </div>
+                          </div>
 
-                            {/* Edit Button */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenEditIssue(it, e, true, true);
-                                setIsListModalOpen(false);
-                              }}
-                              className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[10.5px] font-black shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5 border border-amber-300 dark:border-amber-700"
-                              title="내용 수정"
+                          {/* Row Bottom: Expanded Action Bar (회의결과입력, 내용수정, 복구 등) */}
+                          {openActionMenuId === it.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 pt-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5 flex-wrap animate-fadeIn bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200/80 dark:border-amber-900/50 shadow-2xs"
                             >
-                              <Edit3 className="w-3 h-3" />
-                              <span>수정</span>
-                            </button>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {/* 1. 회의결과입력 / 조치결과입력 버튼 */}
+                                {!isItDeleted && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenActionModal(it, e);
+                                      setIsListModalOpen(false);
+                                      setOpenActionMenuId(null);
+                                    }}
+                                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
+                                      isItMeeting
+                                        ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
+                                        : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
+                                    }`}
+                                    title={isItMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
+                                  </button>
+                                )}
 
-                            {/* 🌟 Restore Button right on list row */}
-                            {isItDeleted && (
+                                {/* 2. 내용수정 버튼 */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEditIssue(it, e, true, true);
+                                    setIsListModalOpen(false);
+                                    setOpenActionMenuId(null);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                  title="제목, 내용, 일정, 첨부사진 등 내용 수정"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <span>내용수정</span>
+                                </button>
+
+                                {/* 3. 첫화면 복구 / 복구 취소 버튼 */}
+                                {isItDeleted ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRestoreIssue(it.id, e);
+                                      setOpenActionMenuId(null);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer animate-pulse"
+                                    title="첫 화면으로 복구"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    <span>첫화면 복구</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancelRestore(it, e);
+                                      setOpenActionMenuId(null);
+                                    }}
+                                    className="px-2 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-[11px] active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                    title="첫 화면에서 내리고 관리목록으로 보관"
+                                  >
+                                    <RotateCcw className="w-3 h-3 text-blue-500" />
+                                    <span>복구 취소</span>
+                                  </button>
+                                )}
+                              </div>
+
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleRestoreIssue(it.id, e);
+                                  setOpenActionMenuId(null);
                                 }}
-                                className="px-2 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10.5px] font-black shadow-xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5"
-                                title="첫화면으로 복구"
+                                className="px-2 py-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer transition-colors"
+                                title="메뉴 닫기"
                               >
-                                <RotateCcw className="w-3 h-3" />
-                                <span>복구</span>
+                                ✕
                               </button>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })
