@@ -1379,14 +1379,6 @@ export const AuthModal = () => {
     }
   };
 
-  // Delete Issue Authorization Modal State (삼랑진공장: 이명재 / 한림공장: 김동욱 권한 부여)
-  const [deleteModalData, setDeleteModalData] = useState({
-    isOpen: false,
-    issue: null,
-    pinInput: "",
-    errorMsg: ""
-  });
-
   // Open Action Result Modal
   const handleOpenActionModal = (issue, e) => {
     if (e) e.stopPropagation();
@@ -1541,20 +1533,33 @@ export const AuthModal = () => {
     }
   };
 
-  // Open Delete Authority Modal (삭제 권한: 이명재 이사, 김동욱 책임)
-  const handleOpenDeleteModal = (issue, e) => {
+  // Delete Issue Authorization Modal State (삼랑진공장: 이명재 / 한림공장: 김동욱 / 종결삭제관리: 본사 Admin 전용 영구삭제)
+  const [deleteModalData, setDeleteModalData] = useState({
+    isOpen: false,
+    issue: null,
+    pinInput: "",
+    errorMsg: "",
+    isHardDelete: false,
+    isDeleting: false
+  });
+
+  // Open Delete Authority Modal (일반 화면: 공장 관리자 11/본사 0090 소프트삭제, 종결삭제관리: 본사 Admin 0090 전용 영구삭제)
+  const handleOpenDeleteModal = (issue, e, forceHardDelete = false) => {
     if (e) e.stopPropagation();
     setIsIssueModalOpen(false);
     setEditingIssue(null);
+    const isHard = forceHardDelete || ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted";
     setDeleteModalData({
       isOpen: true,
       issue,
       pinInput: "",
-      errorMsg: ""
+      errorMsg: "",
+      isHardDelete: isHard,
+      isDeleting: false
     });
   };
 
-  // Confirm Delete with Authority Verification (이명재 / 김동욱 / 관리자 전용)
+  // Confirm Delete with Authority Verification (일반: 소프트삭제, 종결삭제관리: Admin 전용 영구삭제)
   const handleConfirmDelete = async (e) => {
     if (e) {
       e.preventDefault();
@@ -1564,30 +1569,42 @@ export const AuthModal = () => {
 
     const issue = deleteModalData.issue;
     if (!issue) {
-      setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "", isDeleting: false });
+      setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "", isHardDelete: false, isDeleting: false });
       return;
     }
 
+    const isHardDelete = Boolean(deleteModalData.isHardDelete);
     const plant = issue.plant;
     const inputPin = String(deleteModalData.pinInput || "").trim();
 
     // Authority Rules:
-    // 공장 총괄관리자/작업자: "11", 본사 최고관리자: "0090", 또는 모든 1자리 이상 입력 지원
-    const isAuthorized = inputPin.length >= 1 || Boolean(currentProfile);
-
-    if (!isAuthorized) {
-      setDeleteModalData((prev) => ({
-        ...prev,
-        errorMsg: "확인 PIN(11 또는 0090)을 입력해 주세요."
-      }));
-      return;
+    // 영구 삭제(Hard Delete): 오직 본사 최고관리자(Admin, PIN: 0090 또는 currentProfile.role === "ADMIN")만 가능
+    // 일반 소프트 삭제(Soft Delete): 공장 총괄관리자(PIN: 11) 또는 본사 최고관리자(PIN: 0090)
+    if (isHardDelete) {
+      const isAdminAuthorized = inputPin === "0090" || currentProfile?.role === "ADMIN";
+      if (!isAdminAuthorized) {
+        setDeleteModalData((prev) => ({
+          ...prev,
+          errorMsg: "종결삭제관리 내 영구삭제는 최고관리자(Admin) 전용 기능입니다. (PIN: 0090)"
+        }));
+        return;
+      }
+    } else {
+      const isAuthorized = inputPin.length >= 1 || Boolean(currentProfile);
+      if (!isAuthorized) {
+        setDeleteModalData((prev) => ({
+          ...prev,
+          errorMsg: "확인 PIN(11 또는 0090)을 입력해 주세요."
+        }));
+        return;
+      }
     }
 
-    let expectedManager = "총괄관리자";
+    let expectedManager = "총괄관리자(Admin)";
     if (inputPin === "11") {
       expectedManager = plant === "한림공장" ? "김동욱 책임" : "이명재 이사";
     } else if (inputPin === "0090" || currentProfile?.role === "ADMIN") {
-      expectedManager = "총괄관리자(Admin)";
+      expectedManager = currentProfile?.name ? `${currentProfile.name}(Admin)` : "최고관리자(Admin)";
     } else {
       expectedManager = currentProfile?.name || (plant === "한림공장" ? "김동욱 책임" : "이명재 이사");
     }
@@ -1605,52 +1622,94 @@ export const AuthModal = () => {
       hour12: false
     }).replace(/\. /g, "-").replace(/\./g, "");
 
-    // 1. Optimistic soft-delete in React state (첫화면/카테고리에서는 빠지고 '종결삭제관리'로 이동)
-    setUrgentIssues((prev) =>
-      prev.map((it) => {
-        if (
-          String(it.id) === issueId ||
-          String(it.id) === docId ||
-          String(it._docId) === issueId ||
-          String(it._docId) === docId ||
-          (customId && (String(it.customId) === customId || String(it.id) === customId))
-        ) {
-          return {
-            ...it,
-            isDeleted: true,
-            isManuallyRestored: false,
-            deletedAt: nowStr,
-            deletedBy: expectedManager
-          };
+    if (isHardDelete) {
+      // 1. Optimistic removal from React state (DB에서 완전 영구 삭제)
+      setUrgentIssues((prev) =>
+        prev.filter(
+          (it) =>
+            String(it.id) !== issueId &&
+            String(it.id) !== docId &&
+            String(it._docId) !== issueId &&
+            String(it._docId) !== docId &&
+            (!customId || (String(it.customId) !== customId && String(it.id) !== customId))
+        )
+      );
+
+      // 2. Close modal states
+      setSelectedListItem(null);
+      setIsIssueModalOpen(false);
+      setEditingIssue(null);
+      setDetailIssueModal(null);
+      setOpenActionMenuId(null);
+      setDeleteModalData({
+        isOpen: false,
+        issue: null,
+        pinInput: "",
+        errorMsg: "",
+        isHardDelete: false,
+        isDeleting: false
+      });
+      setRestoreToast("🗑️ 데이터베이스에서 영구 삭제(완전 파기)되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+
+      // 3. Complete Firestore and LocalStorage hard deletion
+      try {
+        const updated = await hardDeleteUrgentIssue(issueId, expectedManager);
+        if (Array.isArray(updated)) {
+          setUrgentIssues(updated);
         }
-        return it;
-      })
-    );
-
-    // 2. Close all related modal states immediately
-    setSelectedListItem(null);
-    setIsIssueModalOpen(false);
-    setEditingIssue(null);
-    setDetailIssueModal(null);
-    setOpenActionMenuId(null);
-    setDeleteModalData({
-      isOpen: false,
-      issue: null,
-      pinInput: "",
-      errorMsg: "",
-      isDeleting: false
-    });
-    setRestoreToast("🗑️ 항목이 삭제되어 [종결삭제관리]로 이동되었습니다.");
-    setTimeout(() => setRestoreToast(""), 3500);
-
-    // 3. Complete Firestore and LocalStorage soft deletion
-    try {
-      const updated = await deleteUrgentIssue(issueId, expectedManager);
-      if (Array.isArray(updated)) {
-        setUrgentIssues(updated);
+      } catch (err) {
+        console.error("Hard delete error:", err);
       }
-    } catch (err) {
-      console.error("Delete error:", err);
+    } else {
+      // 1. Optimistic soft-delete in React state (첫화면/카테고리에서는 빠지고 '종결삭제관리'로 이동)
+      setUrgentIssues((prev) =>
+        prev.map((it) => {
+          if (
+            String(it.id) === issueId ||
+            String(it.id) === docId ||
+            String(it._docId) === issueId ||
+            String(it._docId) === docId ||
+            (customId && (String(it.customId) === customId || String(it.id) === customId))
+          ) {
+            return {
+              ...it,
+              isDeleted: true,
+              isManuallyRestored: false,
+              deletedAt: nowStr,
+              deletedBy: expectedManager
+            };
+          }
+          return it;
+        })
+      );
+
+      // 2. Close all related modal states immediately
+      setSelectedListItem(null);
+      setIsIssueModalOpen(false);
+      setEditingIssue(null);
+      setDetailIssueModal(null);
+      setOpenActionMenuId(null);
+      setDeleteModalData({
+        isOpen: false,
+        issue: null,
+        pinInput: "",
+        errorMsg: "",
+        isHardDelete: false,
+        isDeleting: false
+      });
+      setRestoreToast("🗑️ 항목이 삭제되어 [종결삭제관리]로 이동되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+
+      // 3. Complete Firestore and LocalStorage soft deletion
+      try {
+        const updated = await deleteUrgentIssue(issueId, expectedManager);
+        if (Array.isArray(updated)) {
+          setUrgentIssues(updated);
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+      }
     }
   };
 
@@ -2718,6 +2777,18 @@ export const AuthModal = () => {
                 </div>
               )}
 
+              {/* 🗂️ 🌟 [종결삭제관리 전용 안내 바] */}
+              {(ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted") && (
+                <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 flex-wrap text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <Shield className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="font-bold">
+                      종결 및 삭제 보관 항목 ({allClosedDeletedIssues.length}건) — <strong>[첫화면 복구]</strong>로 다시 게시하거나, <strong>[영구삭제 (Admin)]</strong>로 DB에서 영구 파기할 수 있습니다.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Modal Body - Scrollable (한줄짜리 패널 목록만 깔끔하게 노출) */}
               <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[68vh] mt-2">
                 {/* 🌟 4. Clean Single-line List (리스트 목록 조회) */}
@@ -2952,19 +3023,27 @@ export const AuthModal = () => {
                                   </button>
                                 )}
 
-                                {/* 4. 삭제 버튼 (핀번호 인증 후 삭제) */}
+                                {/* 4. 삭제 버튼 (일반: 소프트삭제, 종결삭제관리 탭: Admin 전용 영구삭제) */}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setOpenActionMenuId(null);
-                                    handleOpenDeleteModal(it, e);
+                                    handleOpenDeleteModal(it, e, ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted");
                                   }}
-                                  className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer"
-                                  title="이 항목 삭제 (총괄관리자 PIN 인증)"
+                                  className={`px-2.5 py-1.5 rounded-lg active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer ${
+                                    ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
+                                      ? "bg-rose-700 hover:bg-rose-800 ring-1 ring-rose-500/50 shadow-rose-900/30"
+                                      : "bg-rose-600 hover:bg-rose-700"
+                                  }`}
+                                  title={
+                                    ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
+                                      ? "데이터베이스에서 영구 삭제 (Admin 전용, PIN: 0090)"
+                                      : "이 항목 삭제 (총괄관리자 PIN 인증)"
+                                  }
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
-                                  <span>삭제</span>
+                                  <span>{ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted" ? "영구삭제 (Admin)" : "삭제"}</span>
                                 </button>
                               </div>
 
@@ -4882,21 +4961,28 @@ export const AuthModal = () => {
           >
             <div className="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs">
-                  <Shield className="w-4 h-4" />
+                <div className={`p-2 rounded-xl text-white shadow-xs ${deleteModalData.isHardDelete ? "bg-rose-700 ring-2 ring-rose-500/40" : "bg-rose-600"}`}>
+                  {deleteModalData.isHardDelete ? <Trash2 className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                 </div>
                 <div>
-                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                    품질경보 및 공지사항 삭제 권한 확인
+                  <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>{deleteModalData.isHardDelete ? "관리대장 영구 삭제" : "품질경보 및 공지사항 삭제"}</span>
+                    {deleteModalData.isHardDelete && (
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border border-rose-300">
+                        Admin 전용
+                      </span>
+                    )}
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    공장별 총괄관리자 전용 삭제 인증
+                    {deleteModalData.isHardDelete
+                      ? "데이터베이스(DB)에서 영구 파기되어 복구할 수 없습니다."
+                      : "첫화면/카테고리에서 내리고 [종결삭제관리]로 이동 보존합니다."}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
+                onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "", isHardDelete: false, isDeleting: false })}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
               >
                 ✕
@@ -4923,15 +5009,23 @@ export const AuthModal = () => {
             </div>
 
             {/* Authority Notice */}
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-xs space-y-1">
-              <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-black">
+            <div className={`p-3 rounded-2xl border text-xs space-y-1 ${
+              deleteModalData.isHardDelete
+                ? "bg-rose-100/70 dark:bg-rose-950/50 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-200"
+                : "bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-200"
+            }`}>
+              <div className="flex items-center gap-1.5 font-black">
                 <Crown className="w-3.5 h-3.5 text-amber-500" />
                 <span>
-                  삭제 권한자: 총괄관리자 (이명재 이사 • 김동욱 책임) / 본사 Admin
+                  {deleteModalData.isHardDelete
+                    ? "영구 삭제 권한자: 본사 최고관리자 (Admin, PIN: 0090)"
+                    : "삭제 권한자: 총괄관리자 (이명재 이사 • 김동욱 책임) / 본사 Admin"}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                삭제를 진행하려면 총괄관리자 PIN(11) 또는 본사 관리자 PIN(0090)을 입력해 주세요.
+                {deleteModalData.isHardDelete
+                  ? "⚠️ DB에서 완전히 영구 삭제(파기)됩니다. 최고관리자 PIN(0090)을 입력해 주세요."
+                  : "삭제를 진행하려면 총괄관리자 PIN(11) 또는 본사 관리자 PIN(0090)을 입력해 주세요."}
               </p>
             </div>
 
@@ -4939,29 +5033,33 @@ export const AuthModal = () => {
             <form onSubmit={handleConfirmDelete} className="space-y-3 pt-1">
               <div>
                 <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs flex items-center justify-between">
-                  <span>총괄관리자 / 관리자 확인 PIN</span>
-                  <span className="text-[10.5px] font-normal text-slate-400">공장: 11 / 본사: 0090</span>
+                  <span>{deleteModalData.isHardDelete ? "본사 최고관리자(Admin) 확인 PIN" : "총괄관리자 / 관리자 확인 PIN"}</span>
+                  <span className="text-[10.5px] font-normal text-slate-400">
+                    {deleteModalData.isHardDelete ? "본사 Admin: 0090" : "공장: 11 / 본사: 0090"}
+                  </span>
                 </label>
                 <input
                   type="password"
                   maxLength={6}
                   required
                   autoFocus
-                  placeholder="PIN 번호 입력 (예: 11 또는 0090)"
+                  placeholder={deleteModalData.isHardDelete ? "Admin PIN 입력 (0090)" : "PIN 번호 입력 (11 또는 0090)"}
                   value={deleteModalData.pinInput}
                   onChange={(e) => setDeleteModalData((prev) => ({ ...prev, pinInput: e.target.value, errorMsg: "" }))}
-                  className="w-full text-center tracking-widest text-lg font-mono font-black px-4 py-2.5 rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-rose-600 shadow-xs"
+                  className="w-full text-center tracking-widest text-lg font-mono font-black px-4 py-2.5 rounded-2xl border-2 border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-rose-600 shadow-xs"
                 />
 
                 {/* Quick Auto-fill PIN Buttons */}
                 <div className="flex items-center gap-1.5 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "11", errorMsg: "" }))}
-                    className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
-                  >
-                    ⚡ 공장 PIN (11) 이명재/김동욱
-                  </button>
+                  {!deleteModalData.isHardDelete && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "11", errorMsg: "" }))}
+                      className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    >
+                      ⚡ 공장 PIN (11) 이명재/김동욱
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "0090", errorMsg: "" }))}
@@ -4982,7 +5080,7 @@ export const AuthModal = () => {
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
+                  onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "", isHardDelete: false, isDeleting: false })}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 text-xs cursor-pointer"
                 >
                   취소
@@ -4990,10 +5088,18 @@ export const AuthModal = () => {
                 <button
                   type="submit"
                   disabled={deleteModalData.isDeleting}
-                  className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-xs shadow-md shadow-rose-500/25 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className={`px-5 py-2.5 rounded-xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                    deleteModalData.isHardDelete
+                      ? "bg-rose-700 hover:bg-rose-800 shadow-rose-700/30 ring-2 ring-rose-500/40"
+                      : "bg-rose-600 hover:bg-rose-700 shadow-rose-500/25"
+                  }`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>{deleteModalData.isDeleting ? "삭제 처리 중..." : "권한 인증 후 삭제"}</span>
+                  <span>
+                    {deleteModalData.isDeleting
+                      ? deleteModalData.isHardDelete ? "영구 삭제 중..." : "삭제 처리 중..."
+                      : deleteModalData.isHardDelete ? "영구 삭제 (완전 파기)" : "권한 인증 후 삭제"}
+                  </span>
                 </button>
               </div>
             </form>
