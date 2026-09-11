@@ -126,7 +126,7 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
 };
 
 export const AuthModal = () => {
-  const { loginWithProfile } = useAuth();
+  const { currentProfile, loginWithProfile } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
   const [pin, setPin] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -877,6 +877,7 @@ export const AuthModal = () => {
     if (e) e.stopPropagation();
     if (fromList) {
       setOpenedEditFromListModal(true);
+      setIsListModalOpen(false);
     }
     const defaultAuthor = issue.author === "방상국" ? "" : (issue.author || currentProfile?.name || "권태형");
     const defaultTitle = issue.author === "방상국" ? "" : (issue.authorTitle || "대표이사");
@@ -913,6 +914,10 @@ export const AuthModal = () => {
   const handleCloseIssueModal = () => {
     setIsIssueModalOpen(false);
     setEditingIssue(null);
+    if (openedEditFromListModal) {
+      setIsListModalOpen(true);
+      setOpenedEditFromListModal(false);
+    }
   };
 
   // Action Images upload for Unified Issue Modal
@@ -1063,6 +1068,10 @@ export const AuthModal = () => {
     });
     setEditingIssue(null);
     setIsIssueModalOpen(false);
+    if (openedEditFromListModal) {
+      setIsListModalOpen(true);
+      setOpenedEditFromListModal(false);
+    }
 
     setRestoreToast("✅ 수정 내용이 성공적으로 저장되었습니다.");
     setTimeout(() => setRestoreToast(""), 3500);
@@ -1309,7 +1318,7 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    handleOpenEditIssue(item, e, true, false);
+    handleOpenEditIssue(item, e, true, true);
     setTimeout(() => setOpenActionMenuId(null), 100);
   };
 
@@ -2962,7 +2971,7 @@ export const AuthModal = () => {
                           key={it.id || idx}
                           onClick={() => {
                             if (openActionMenuId === it.id) return;
-                            handleOpenEditIssue(it, null, false, false);
+                            handleOpenEditIssue(it, null, false, true);
                           }}
                           className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-1.5 cursor-pointer ${
                             isCurrent
