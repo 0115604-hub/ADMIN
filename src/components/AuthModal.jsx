@@ -423,44 +423,42 @@ export const AuthModal = () => {
     return urgentIssues.filter((i) => i.isDeleted);
   }, [urgentIssues]);
 
-  // ⭐ [요청사항 반영] 첫 화면 노출: 1위 품질경보(등록순) -> 2위 회의일정(다가오는 날짜순) -> 3위 공지사항(다가오는 날짜순)
+  // ⭐ [요청사항 반영] 첫 화면 노출: 품질경보 / 회의일정 / 사내공지 / 오픈이슈 중 미종결(!i.isResolved) 건만 노출
   const activeIssues = useMemo(() => {
     return sortIssuesByCustomPriority(
-      urgentIssues.filter((i) => !i.isDeleted && !isItemExpired(i))
+      urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i))
     );
   }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
-  // ⭐ [요청사항 반영] 첫 화면 배지 숫자: 종결되지 않은(미결) 개수만 집계
+  // ⭐ [요청사항 반영] 첫 화면 배지 숫자: 미종결 개수 집계
   const qualityAlertCount = useMemo(() => {
-    return activeIssues.filter((i) => !i.isResolved && i.category === "품질경보").length;
+    return activeIssues.filter((i) => i.category === "품질경보").length;
   }, [activeIssues]);
 
   const meetingIssuesCount = useMemo(() => {
     return activeIssues.filter(
-      (i) => !i.isResolved && (i.category === "회의일정" || i.category?.includes("회의"))
+      (i) => i.category === "회의일정" || i.category?.includes("회의")
     ).length;
   }, [activeIssues]);
 
   const noticeIssuesCount = useMemo(() => {
     return activeIssues.filter(
       (i) =>
-        !i.isResolved &&
-        (i.category === "공지사항" ||
-          i.category === "사내공지" ||
-          i.category === "공유사항")
+        i.category === "공지사항" ||
+        i.category === "사내공지" ||
+        i.category === "공유사항"
     ).length;
   }, [activeIssues]);
 
   const qualityIssueCount = useMemo(() => {
     return activeIssues.filter(
       (i) =>
-        !i.isResolved &&
-        (i.category === "품질이슈" ||
-          i.category === "오픈이슈" ||
-          (i.category !== "품질경보" &&
-            !i.category?.includes("공지") &&
-            !i.category?.includes("공유") &&
-            !i.category?.includes("회의")))
+        i.category === "품질이슈" ||
+        i.category === "오픈이슈" ||
+        (i.category !== "품질경보" &&
+          !i.category?.includes("공지") &&
+          !i.category?.includes("공유") &&
+          !i.category?.includes("회의"))
     ).length;
   }, [activeIssues]);
 
