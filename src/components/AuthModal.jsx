@@ -1588,18 +1588,21 @@ export const AuthModal = () => {
                   <span>🚨 품질경보 ({qualityAlertCount})</span>
                 </button>
 
-                {/* 3) 회의일정 */}
+                {/* 3) 회의일정 - 탭 시 회의일정 전체 관리대장 목록 모달 팝업 */}
                 <button
                   type="button"
-                  onClick={() => setOpenIssueCategoryFilter("meeting")}
-                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
-                    openIssueCategoryFilter === "meeting"
-                      ? "bg-purple-600 text-white shadow-xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
+                  onClick={() => {
+                    setLedgerCategoryTab("meeting");
+                    setSelectedListItem(null);
+                    setIssueFilterTab("all");
+                    setIssueModalPage(1);
+                    setIsListModalOpen(true);
+                  }}
+                  className="px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs active:scale-95"
+                  title="회의일정 전체 관리대장 목록 열기"
                 >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>회의일정 ({meetingIssuesCount})</span>
+                  <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                  <span>회의일정 ({allMeetings.length}) ↗</span>
                 </button>
 
                 {/* 4) 사내공지 */}
@@ -1723,8 +1726,19 @@ export const AuthModal = () => {
                               🚨 품질경보
                             </span>
                           ) : isMeeting ? (
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
-                              📅 회의일정
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLedgerCategoryTab("meeting");
+                                setSelectedListItem(null);
+                                setIssueFilterTab("all");
+                                setIssueModalPage(1);
+                                setIsListModalOpen(true);
+                              }}
+                              className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs cursor-pointer hover:bg-purple-700 active:scale-95 transition-all"
+                              title="탭하여 회의일정 전체 관리대장 목록 열기"
+                            >
+                              📅 회의일정 ↗
                             </span>
                           ) : isNotice ? (
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
@@ -1763,35 +1777,33 @@ export const AuthModal = () => {
                           )}
                         </div>
 
-                        {/* 우측 조치 버튼 & 사진 수 */}
+                        {/* 우측 조치 버튼 & 사진 수 (회의일정은 삭제하여 깔끔하게 유지) */}
                         <div className="flex items-center gap-1.5 ml-auto shrink-0">
-                          {imgCount > 0 && (
+                          {!isMeeting && imgCount > 0 && (
                             <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1">
                               <Camera className="w-3 h-3 text-rose-500" />
                               <span>{imgCount}</span>
                             </span>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenActionModal(item, e);
-                            }}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
-                              item.isResolved
-                                ? "bg-emerald-600 text-white"
-                                : isMeeting
-                                ? "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/25"
-                                : "bg-rose-600 text-white hover:bg-rose-500 group-hover:shadow-md"
-                            }`}
-                            title={isMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
-                          >
-                            <span>
-                              {item.isResolved
-                                ? (isMeeting ? "회의종결 ✓" : "조치완료 ✓")
-                                : (isMeeting ? "회의결과 ➜" : "조치입력 ➜")}
-                            </span>
-                          </button>
+                          {!isMeeting && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenActionModal(item, e);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                                item.isResolved
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-rose-600 text-white hover:bg-rose-500 group-hover:shadow-md"
+                              }`}
+                              title="조치 결과 입력"
+                            >
+                              <span>
+                                {item.isResolved ? "조치완료 ✓" : "조치입력 ➜"}
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -1813,11 +1825,11 @@ export const AuthModal = () => {
                         )}
                       </div>
 
-                      {/* 3단: 조치/회의 결과 (등록된 경우만 노출) */}
-                      {item.actionResult && (
+                      {/* 3단: 조치 결과 (품질경보/공지사항만 노출, 회의일정은 깔끔하게 삭제) */}
+                      {!isMeeting && item.actionResult && (
                         <div className="text-[11px] sm:text-xs pt-0.5 break-words">
-                          <span className={`font-extrabold ${isMeeting ? "text-purple-600 dark:text-purple-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                            └ {isMeeting ? "회의결과" : "조치결과"}: {item.actionResult}
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                            └ 조치결과: {item.actionResult}
                           </span>
                         </div>
                       )}
