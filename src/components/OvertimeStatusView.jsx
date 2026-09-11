@@ -1141,9 +1141,9 @@ export const OvertimeStatusView = () => {
         </div>
 
         {/* ========================================================================= */}
-        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 조영산업, 한울, 부림텍, 유성) */}
+        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 조영산업, 한울, 부림텍, 유성) - 모바일 숨김 처리 */}
         {/* ========================================================================= */}
-        <div className="pt-2">
+        <div className="hidden md:block pt-2">
           <div className="flex items-center justify-between pb-2">
             <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-cyan-400" />
