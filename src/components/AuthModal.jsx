@@ -1866,7 +1866,7 @@ export const AuthModal = () => {
                           )}
                         </div>
 
-                        {/* 우측 조치 버튼 & 사진 수 & 의견 수 & 삭제 버튼 */}
+                        {/* 우측 사진 수 & 의견 수 & 삭제 버튼 */}
                         <div className="flex items-center gap-1.5 ml-auto shrink-0">
                           {isOpenIssue && repliesCount > 0 && (
                             <span className="px-2 py-0.5 rounded-lg text-[10.5px] font-black bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
@@ -1879,29 +1879,6 @@ export const AuthModal = () => {
                               <Camera className="w-3 h-3 text-rose-500" />
                               <span>{imgCount}</span>
                             </span>
-                          )}
-                          {!isMeeting && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenActionModal(item, e);
-                              }}
-                              className={`px-2.5 py-1 rounded-lg text-xs font-black shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
-                                item.isResolved
-                                  ? "bg-emerald-600 text-white"
-                                  : isQualityAlert
-                                  ? "bg-rose-600 text-white hover:bg-rose-500 group-hover:shadow-md"
-                                  : isOpenIssue
-                                  ? "bg-blue-600 text-white hover:bg-blue-500 group-hover:shadow-md"
-                                  : "bg-emerald-600 text-white hover:bg-emerald-500 group-hover:shadow-md"
-                              }`}
-                              title="조치 결과 입력"
-                            >
-                              <span>
-                                {item.isResolved ? "조치완료 ✓" : "조치입력 ➜"}
-                              </span>
-                            </button>
                           )}
                           <button
                             type="button"
@@ -4806,15 +4783,11 @@ export const AuthModal = () => {
               <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-black">
                 <Crown className="w-3.5 h-3.5 text-amber-500" />
                 <span>
-                  {deleteModalData.issue.plant === "한림공장"
-                    ? "한림공장 삭제 권한자: 김동욱 책임"
-                    : deleteModalData.issue.plant === "삼랑진공장"
-                    ? "삼랑진공장 삭제 권한자: 이명재 이사"
-                    : "삭제 권한자: 총괄관리자 (이명재 이사 / 김동욱 책임)"}
+                  삭제 권한자: 총괄관리자 (이명재 이사 • 김동욱 책임) / 본사 Admin
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                삭제를 진행하려면 해당 총괄관리자의 확인 PIN을 입력해 주세요.
+                삭제를 진행하려면 총괄관리자 PIN(11) 또는 본사 관리자 PIN(0090)을 입력해 주세요.
               </p>
             </div>
 
@@ -4843,14 +4816,14 @@ export const AuthModal = () => {
                     onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "11", errorMsg: "" }))}
                     className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
                   >
-                    ⚡ 공장 PIN (11) 자동입력
+                    ⚡ 공장 PIN (11) 이명재/김동욱
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "0090", errorMsg: "" }))}
                     className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
                   >
-                    👑 본사 PIN (0090) 자동입력
+                    👑 본사 PIN (0090) 최고관리자
                   </button>
                 </div>
               </div>
