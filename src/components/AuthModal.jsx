@@ -426,32 +426,37 @@ export const AuthModal = () => {
     );
   }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
+  // ⭐ [요청사항 반영] 첫 화면 배지 숫자: 종결되지 않은(미결) 개수만 집계
   const qualityAlertCount = useMemo(() => {
-    return activeIssues.filter((i) => i.category === "품질경보").length;
+    return activeIssues.filter((i) => !i.isResolved && i.category === "품질경보").length;
   }, [activeIssues]);
 
   const meetingIssuesCount = useMemo(() => {
-    return activeIssues.filter((i) => i.category === "회의일정").length;
+    return activeIssues.filter(
+      (i) => !i.isResolved && (i.category === "회의일정" || i.category?.includes("회의"))
+    ).length;
   }, [activeIssues]);
 
   const noticeIssuesCount = useMemo(() => {
     return activeIssues.filter(
       (i) =>
-        i.category === "공지사항" ||
-        i.category === "사내공지" ||
-        i.category === "공유사항"
+        !i.isResolved &&
+        (i.category === "공지사항" ||
+          i.category === "사내공지" ||
+          i.category === "공유사항")
     ).length;
   }, [activeIssues]);
 
   const qualityIssueCount = useMemo(() => {
     return activeIssues.filter(
       (i) =>
-        i.category === "품질이슈" ||
-        i.category === "오픈이슈" ||
-        (i.category !== "품질경보" &&
-          !i.category?.includes("공지") &&
-          !i.category?.includes("공유") &&
-          i.category !== "회의일정")
+        !i.isResolved &&
+        (i.category === "품질이슈" ||
+          i.category === "오픈이슈" ||
+          (i.category !== "품질경보" &&
+            !i.category?.includes("공지") &&
+            !i.category?.includes("공유") &&
+            !i.category?.includes("회의")))
     ).length;
   }, [activeIssues]);
 
@@ -1717,27 +1722,14 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Category Filter Pills */}
+            {/* Category Filter Pills (전체 뱃지 삭제, 4개 카테고리 미결 개수만 노출) */}
             {isIssueExpanded && activeIssues.length > 0 && (
               <div className="px-3 sm:px-4 py-2 flex items-center gap-1.5 overflow-x-auto border-b border-rose-100 dark:border-rose-900/30 text-[11px] scrollbar-none">
-                {/* 1) 전체 */}
+                {/* 1) 품질경보 */}
                 <button
                   type="button"
-                  onClick={() => setOpenIssueCategoryFilter("all")}
-                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 ${
-                    openIssueCategoryFilter === "all"
-                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  전체 ({activeIssues.length})
-                </button>
-
-                {/* 2) 품질경보 */}
-                <button
-                  type="button"
-                  onClick={() => setOpenIssueCategoryFilter("quality_alert")}
-                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                  onClick={() => setOpenIssueCategoryFilter((prev) => (prev === "quality_alert" ? "all" : "quality_alert"))}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
                     openIssueCategoryFilter === "quality_alert"
                       ? "bg-rose-600 text-white shadow-xs"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1746,28 +1738,25 @@ export const AuthModal = () => {
                   <span>🚨 품질경보 ({qualityAlertCount})</span>
                 </button>
 
-                {/* 3) 회의일정 - 탭 시 회의일정 전체 관리대장 목록 모달 팝업 */}
+                {/* 2) 회의일정 */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setLedgerCategoryTab("meeting");
-                    setSelectedListItem(null);
-                    setIssueFilterTab("all");
-                    setIssueModalPage(1);
-                    setIsListModalOpen(true);
-                  }}
-                  className="px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shadow-2xs active:scale-95"
-                  title="회의일정 전체 관리대장 목록 열기"
+                  onClick={() => setOpenIssueCategoryFilter((prev) => (prev === "meeting" ? "all" : "meeting"))}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
+                    openIssueCategoryFilter === "meeting"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
                 >
-                  <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                  <span>회의일정 ({allMeetings.length})</span>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>회의일정 ({meetingIssuesCount})</span>
                 </button>
 
-                {/* 4) 사내공지 */}
+                {/* 3) 사내공지 */}
                 <button
                   type="button"
-                  onClick={() => setOpenIssueCategoryFilter("notice")}
-                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                  onClick={() => setOpenIssueCategoryFilter((prev) => (prev === "notice" ? "all" : "notice"))}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
                     openIssueCategoryFilter === "notice"
                       ? "bg-emerald-600 text-white shadow-xs"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1776,11 +1765,11 @@ export const AuthModal = () => {
                   <span>📢 사내공지 ({noticeIssuesCount})</span>
                 </button>
 
-                {/* 5) 오픈이슈 */}
+                {/* 4) 오픈이슈 */}
                 <button
                   type="button"
-                  onClick={() => setOpenIssueCategoryFilter("open_issue")}
-                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                  onClick={() => setOpenIssueCategoryFilter((prev) => (prev === "open_issue" || prev === "quality_issue" || prev === "quality" ? "all" : "open_issue"))}
+                  className={`px-2.5 py-1 rounded-lg font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
                     openIssueCategoryFilter === "open_issue" || openIssueCategoryFilter === "quality_issue" || openIssueCategoryFilter === "quality"
                       ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -2523,33 +2512,13 @@ export const AuthModal = () => {
                 </div>
               )}
 
-              {/* 🌟 1.5 Modal Category Tabs: [전체] [🚨 품질경보] [📅 회의일정] [📢 사내공지] [📌 오픈이슈] */}
+              {/* 🌟 1.5 Modal Category Tabs (전체 뱃지 삭제, 4개 카테고리별 목록상 총합 노출) */}
               <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto shrink-0">
-                {/* 1) 전체 */}
+                {/* 1) 품질경보 */}
                 <button
                   type="button"
                   onClick={() => {
-                    setLedgerCategoryTab("all");
-                    setSelectedScheduleDate("");
-                    setIssueModalPage(1);
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
-                    ledgerCategoryTab === "all"
-                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-                >
-                  <span>전체</span>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                    {urgentIssues.length}
-                  </span>
-                </button>
-
-                {/* 2) 품질경보 */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLedgerCategoryTab("quality_alert");
+                    setLedgerCategoryTab((prev) => (prev === "quality_alert" ? "all" : "quality_alert"));
                     setSelectedScheduleDate("");
                     setIssueModalPage(1);
                   }}
@@ -2565,11 +2534,11 @@ export const AuthModal = () => {
                   </span>
                 </button>
 
-                {/* 3) 회의일정 */}
+                {/* 2) 회의일정 */}
                 <button
                   type="button"
                   onClick={() => {
-                    setLedgerCategoryTab("meeting");
+                    setLedgerCategoryTab((prev) => (prev === "meeting" ? "all" : "meeting"));
                     setSelectedScheduleDate("");
                     setIssueModalPage(1);
                   }}
@@ -2579,17 +2548,18 @@ export const AuthModal = () => {
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <span>📅 회의일정</span>
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>회의일정</span>
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200">
                     {allMeetings.length}
                   </span>
                 </button>
 
-                {/* 4) 사내공지 */}
+                {/* 3) 사내공지 */}
                 <button
                   type="button"
                   onClick={() => {
-                    setLedgerCategoryTab("notice");
+                    setLedgerCategoryTab((prev) => (prev === "notice" ? "all" : "notice"));
                     setSelectedScheduleDate("");
                     setIssueModalPage(1);
                   }}
@@ -2605,11 +2575,11 @@ export const AuthModal = () => {
                   </span>
                 </button>
 
-                {/* 5) 오픈이슈 */}
+                {/* 4) 오픈이슈 */}
                 <button
                   type="button"
                   onClick={() => {
-                    setLedgerCategoryTab("open_issue");
+                    setLedgerCategoryTab((prev) => (prev === "open_issue" || prev === "quality_issue" ? "all" : "open_issue"));
                     setIssueModalPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shrink-0 flex items-center gap-1 active:scale-95 ${
