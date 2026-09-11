@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Building2,
   KeyRound,
@@ -2355,7 +2356,7 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {/* 🌟 0. 품질경보 • 공지사항 • 회의일정 관리대장 (리스트 목록 조회 & 복구 모달) */}
       {/* ========================================================================= */}
-      {isListModalOpen && (() => {
+      {isListModalOpen && typeof document !== "undefined" && createPortal((() => {
         const totalIssuePages = Math.max(1, Math.ceil(filteredIssues.length / ISSUES_PER_PAGE));
         const validIssuePage = Math.min(Math.max(1, issueModalPage), totalIssuePages);
         const paginatedIssues = filteredIssues.slice(
@@ -2365,7 +2366,7 @@ export const AuthModal = () => {
 
         return (
           <div
-            className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+            className="fixed inset-0 z-[70] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setIsListModalOpen(false);
@@ -3268,19 +3269,19 @@ export const AuthModal = () => {
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
       {/* ========================================================================= */}
       {/* 🌟 1. 품질경보 / 사내공지 / 회의일정 통합 상세·조치·수정·삭제 팝업 모달 */}
       {/* ========================================================================= */}
-      {isIssueModalOpen && (
+      {isIssueModalOpen && typeof document !== "undefined" && createPortal(
         <div
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               handleCloseIssueModal();
             }
           }}
-          className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[80] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -4760,14 +4761,15 @@ export const AuthModal = () => {
             </form>
           )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* ========================================================================= */}
       {/* 🌟 2. 조치결과 / 회의결과 입력·수정 전용 팝업 모달 */}
       {/* ========================================================================= */}
-      {actionModalData.isOpen && actionModalData.issue && (() => {
+      {actionModalData.isOpen && actionModalData.issue && typeof document !== "undefined" && createPortal((() => {
         const isMeetingAction = actionModalData.issue.category === "회의일정";
         return (
           <div
@@ -4776,7 +4778,7 @@ export const AuthModal = () => {
                 handleCloseActionModal();
               }
             }}
-            className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+            className="fixed inset-0 z-[80] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -5026,19 +5028,19 @@ export const AuthModal = () => {
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
       {/* ========================================================================= */}
       {/* 🌟 3. 공장 품질경보 및 공지사항 삭제 전용 권한 확인 모달 (이명재 / 김동욱 권한 검증) */}
       {/* ========================================================================= */}
-      {deleteModalData.isOpen && deleteModalData.issue && (
+      {deleteModalData.isOpen && deleteModalData.issue && typeof document !== "undefined" && createPortal(
         <div
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" });
             }
           }}
-          className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -5147,20 +5149,21 @@ export const AuthModal = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* 🌟 4. 텔레그램 연동 관리자(Admin) 권한 인증 모달 */}
       {/* ========================================================================= */}
-      {telegramAdminPinModal.isOpen && (
+      {telegramAdminPinModal.isOpen && typeof document !== "undefined" && createPortal(
         <div
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setTelegramAdminPinModal({ isOpen: false, pinInput: "", errorMsg: "" });
             }
           }}
-          className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -5249,20 +5252,21 @@ export const AuthModal = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* 🌟 5. 텔레그램 봇 실시간 알림 설정 모달 */}
       {/* ========================================================================= */}
-      {isTelegramModalOpen && (
+      {isTelegramModalOpen && typeof document !== "undefined" && createPortal(
         <div
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setIsTelegramModalOpen(false);
             }
           }}
-          className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[90] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -5392,13 +5396,14 @@ export const AuthModal = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ========================================================================= */}
       {/* 🌟 Lightbox / High-Res Image Preview Modal */}
       {/* ========================================================================= */}
-      {previewImageModal && (
+      {previewImageModal && typeof document !== "undefined" && createPortal(
         <div
           className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn cursor-pointer"
           onClick={() => setPreviewImageModal(null)}
@@ -5442,7 +5447,8 @@ export const AuthModal = () => {
               />
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
