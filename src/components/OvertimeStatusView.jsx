@@ -1431,7 +1431,7 @@ export const OvertimeStatusView = () => {
                             <tr className="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px]">
                               <th className="py-1.5 px-1.5 text-center w-8 text-slate-500 font-mono">No</th>
                               <th className="py-1.5 px-1.5 w-16">업체</th>
-                              <th className="py-1.5 px-1.5 w-14">부서</th>
+                              <th className="hidden sm:table-cell py-1.5 px-1.5 w-14">부서</th>
                               <th className="py-1.5 px-1.5 w-16">성명</th>
                               <th className="py-1.5 px-1.5 text-center">9월 {selectedDay}일 근태 선택</th>
                               <th className="py-1.5 px-1.5 text-center w-12">잔업</th>
@@ -1445,6 +1445,7 @@ export const OvertimeStatusView = () => {
                               const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
                               const ot = weekdayOt + weekendOt;
                               const companyTheme = COMPANY_THEMES[worker.company] || COMPANY_THEMES["(주)오륙"];
+                              const cleanWorkerName = worker.name ? worker.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
 
                               return (
                                 <tr
@@ -1463,21 +1464,16 @@ export const OvertimeStatusView = () => {
                                     </span>
                                   </td>
 
-                                  {/* 부서 */}
-                                  <td className="py-1 px-1.5">
+                                  {/* 부서 (모바일 숨김) */}
+                                  <td className="hidden sm:table-cell py-1 px-1.5">
                                     <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px] whitespace-nowrap">
                                       {worker.dept}
                                     </span>
                                   </td>
 
-                                  {/* 성명 */}
+                                  {/* 성명 (이름만 표시) */}
                                   <td className="py-1 px-1.5 font-black text-xs text-slate-900 dark:text-white whitespace-nowrap">
-                                    {worker.name}
-                                    {worker.position && (
-                                      <span className="ml-1 text-[9.5px] text-slate-400 font-normal">
-                                        ({worker.position})
-                                      </span>
-                                    )}
+                                    {cleanWorkerName}
                                   </td>
 
                                   {/* 근태 선택 버튼 7개 (정시, 19시, 21시, 22시, 야간, 연차, 결근) */}
@@ -1954,7 +1950,7 @@ export const OvertimeStatusView = () => {
                       <tr>
                         <th className="p-2 text-center w-10 sticky left-0 bg-slate-900 z-30 font-mono">No.</th>
                         <th className="p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
-                        <th className="p-2 w-20">부서</th>
+                        <th className="hidden sm:table-cell p-2 w-20">부서</th>
                         <th className="p-2 w-20 sticky left-28 bg-slate-900 z-30">성명</th>
                         {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
                           <th key={d} className={`p-1 text-center w-7 ${(d === 6 || d === 13 || d === 20 || d === 27) ? "bg-rose-950/80 text-rose-300" : (d === 5 || d === 12 || d === 19 || d === 26) ? "bg-blue-950/80 text-blue-300" : ""}`}>
@@ -1970,12 +1966,13 @@ export const OvertimeStatusView = () => {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {filteredMatrixList.map((w, idx) => {
                         const totals = calculateWorkerMonthlyTotals(w);
+                        const cleanWorkerName = w.name ? w.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
                         return (
                           <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                             <td className="p-1.5 text-center font-mono text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10">{idx + 1}</td>
                             <td className="p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
-                            <td className="p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
-                            <td className="p-1.5 font-black sticky left-28 bg-white dark:bg-slate-900 z-10">{w.name}</td>
+                            <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
+                            <td className="p-1.5 font-black sticky left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
                             {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => {
                               const val = w.daily ? w.daily[d] : "";
                               return (
@@ -2832,7 +2829,7 @@ export const OvertimeStatusView = () => {
                             <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800">
                               <tr>
                                 <th className="py-1 px-1.5 text-center w-7 text-slate-500 font-mono">No</th>
-                                <th className="py-1 px-1.5 w-14">부서</th>
+                                <th className="hidden sm:table-cell py-1 px-1.5 w-14">부서</th>
                                 <th className="py-1 px-1.5 w-16">성명</th>
                                 <th className="py-1 px-1.5 text-center">오늘근태</th>
                               </tr>
@@ -2841,17 +2838,18 @@ export const OvertimeStatusView = () => {
                               {colWorkers.map((worker, rowIdx) => {
                                 const globalNo = colIdx * perCol + rowIdx + 1;
                                 const currentVal = worker.daily ? worker.daily[selectedDay] : "";
+                                const cleanWorkerName = worker.name ? worker.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
 
                                 return (
                                   <tr key={worker.originalMatrixIndex || globalNo} className="hover:bg-slate-800/60 transition-colors">
                                     <td className="py-1 px-1.5 text-center font-mono text-slate-500 text-[10.5px]">
                                       {globalNo}
                                     </td>
-                                    <td className="py-1 px-1.5">
+                                    <td className="hidden sm:table-cell py-1 px-1.5">
                                       <span className="font-bold text-slate-300 text-[11px] whitespace-nowrap">{worker.dept}</span>
                                     </td>
                                     <td className="py-1 px-1.5 font-black text-white text-xs whitespace-nowrap">
-                                      {worker.name}
+                                      {cleanWorkerName}
                                     </td>
                                     <td className="py-1 px-1.5 text-center whitespace-nowrap">
                                       {renderBadge(currentVal)}
