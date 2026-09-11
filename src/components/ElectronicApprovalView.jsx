@@ -901,127 +901,9 @@ export const ElectronicApprovalView = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 animate-scaleUp my-6 cursor-default"
+            className="bg-slate-900 text-white rounded-3xl max-w-xl w-full p-4 sm:p-6 border border-slate-800 shadow-2xl space-y-4 animate-scaleUp my-4 cursor-default"
           >
-            {/* Header Dialog Controls */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-                  <Stamp className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    {selectedDoc.type === "OVERTIME" || (selectedDoc.title && selectedDoc.title.includes("특근"))
-                      ? `특근보고서결재(${selectedDoc.plant || "삼랑진공장"})`
-                      : (selectedDoc.title || "(주)오륙 전자결재 기안문서")}
-                  </h3>
-                  <span className="text-xs text-slate-400 font-mono">
-                    문서번호: {selectedDoc.docNumber}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-xs flex items-center gap-1 hover:bg-slate-100"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>인쇄</span>
-                </button>
-                {isAdmin && (
-                  <button
-                    type="button"
-                    onClick={(e) => handleDelete(selectedDoc.id, e)}
-                    className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800 transition-all"
-                    title="결재 문서 삭제 (ADMIN 전용)"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>삭제</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedDoc(null);
-                    setActionType("APPROVE");
-                  }}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-black text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Official 4-Step Approval Seal Box */}
-            <div className="flex justify-end">
-              <div className="border-2 border-slate-900 dark:border-slate-500 rounded-xl overflow-hidden text-xs bg-white shadow-sm">
-                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-500 font-bold bg-slate-100 text-slate-900">
-                  <div className="p-1 w-10 flex items-center justify-center bg-slate-200 font-black text-[11px]">
-                    결<br />재
-                  </div>
-                  {selectedDoc.steps.map((st, idx) => (
-                    <div key={idx} className="p-1 w-16 text-[11px] font-black">
-                      {st.role}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-500 h-16 bg-white">
-                  <div className="w-10 bg-slate-50"></div>
-                  {selectedDoc.steps.map((st, idx) => (
-                    <div key={idx} className="w-16 flex flex-col items-center justify-center p-1 relative bg-white">
-                      {st.status === "APPROVED" ? (
-                        st.name === "권태형" || (st.role === "대표" && st.name !== "최미영") ? (
-                          /* 🌟 권태형 대표이사 실제 자필 친필 서명 (투명 배경) */
-                          <div className="w-16 h-13 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
-                            <img
-                              src={KWON_SIGNATURE_BLACK}
-                              alt="권태형 대표이사 친필 서명"
-                              className="w-full h-full object-contain filter drop-shadow-xs"
-                            />
-                          </div>
-                        ) : (
-                          <div className={`w-11 h-11 rounded-full border-2 ${idx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-6deg] shadow-xs select-none animate-scaleUp bg-white`}>
-                            <span className="text-[7.5px] font-bold">오륙</span>
-                            <span className="text-[10.5px] font-black">{st.name?.slice(0, 3)}</span>
-                            <span className="text-[7.5px]">{idx === 0 ? "기안" : "승인"}</span>
-                          </div>
-                        )
-                      ) : st.status === "HOLD" ? (
-                        <div className="w-11 h-11 rounded-full border-2 border-amber-600 text-amber-600 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-4deg] bg-white">
-                          <span>보류</span>
-                          <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
-                        </div>
-                      ) : st.status === "REJECTED" ? (
-                        <div className="w-11 h-11 rounded-full border-2 border-slate-700 text-slate-700 flex flex-col items-center justify-center font-black text-[9px] transform rotate-[-6deg] bg-white">
-                          <span>반려</span>
-                          <span className="text-[7px]">{st.name?.slice(0, 3)}</span>
-                        </div>
-                      ) : st.status === "PENDING" ? (
-                        <span className="text-[10.5px] font-black text-rose-600 animate-pulse">
-                          결재대기
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400">-</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-5 text-center divide-x divide-slate-900 dark:divide-slate-500 text-[9px] bg-slate-50 text-slate-600 font-mono">
-                  <div className="w-10">날짜</div>
-                  {selectedDoc.steps.map((st, idx) => (
-                    <div key={idx} className="w-16 p-0.5 truncate">
-                      {st.date ? st.date.split(" ")[0].slice(5) : "-"}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Document Info Table (간결한 기안부서, 기안일시, 문서제목 표기) */}
+            {/* 1. Header: Clean Title + Status Badge + Actions (Print / Delete / Close) */}
             {(() => {
               const isOvertimeDoc =
                 selectedDoc.type === "OVERTIME" ||
@@ -1036,61 +918,195 @@ export const ElectronicApprovalView = () => {
                 : selectedDoc.plant;
 
               const cleanDate = selectedDoc.createdAt
-                ? selectedDoc.createdAt.replace(/\. /g, "-").replace(/\./g, "")
+                ? selectedDoc.createdAt.replace(/\. /g, "-").replace(/\./g, "").slice(0, 10)
                 : "-";
 
+              const isApproved = selectedDoc.status === "APPROVED";
+              const isHold = selectedDoc.status === "HOLD";
+              const isRejected = selectedDoc.status === "REJECTED";
+              const pendingStep = selectedDoc.steps.find((s) => s.status === "PENDING");
+
               return (
-                <div className="border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden text-xs">
-                  <table className="w-full">
-                    <tbody>
-                      <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          기안 부서
-                        </td>
-                        <td className="p-2.5 font-bold text-slate-900 dark:text-white">
-                          {cleanDept}
-                        </td>
-                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          기안자(담당)
-                        </td>
-                        <td className="p-2.5 font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                          {selectedDoc.drafter} {selectedDoc.drafterTitle}
-                        </td>
-                      </tr>
-                      <tr className="border-b border-slate-200 dark:border-slate-700">
-                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          기안 일시
-                        </td>
-                        <td className="p-2.5 font-medium text-slate-900 dark:text-white font-mono">
-                          {cleanDate}
-                        </td>
-                        <td className="w-24 p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          소요 금액
-                        </td>
-                        <td className="p-2.5 font-black text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
-                          {selectedDoc.amount || "-"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-2.5 bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                          문서 제목
-                        </td>
-                        <td colSpan={3} className="p-2.5 font-black text-slate-900 dark:text-white text-sm">
+                <>
+                  <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-800">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
                           {cleanTitle}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                        </h2>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black border flex items-center gap-1 shadow-xs shrink-0 ${
+                          isApproved
+                            ? "bg-emerald-950 text-emerald-300 border-emerald-700"
+                            : isHold
+                            ? "bg-amber-950 text-amber-300 border-amber-700 animate-pulse"
+                            : isRejected
+                            ? "bg-rose-950 text-rose-300 border-rose-700"
+                            : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            isApproved ? "bg-emerald-400" : isHold ? "bg-amber-400" : isRejected ? "bg-rose-400" : "bg-yellow-400 animate-pulse"
+                          }`}></span>
+                          <span>
+                            {isApproved
+                              ? "결재완료 (4/4)"
+                              : isHold
+                              ? "보류중"
+                              : isRejected
+                              ? "반려됨"
+                              : `결재진행중 (${pendingStep ? `${pendingStep.role} 대기` : "책임 대기"})`}
+                          </span>
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono text-slate-500 block">
+                        문서번호: {selectedDoc.docNumber}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                        title="인쇄"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">인쇄</span>
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(selectedDoc.id, e)}
+                          className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs flex items-center gap-1 border border-rose-800/80 transition-all cursor-pointer"
+                          title="문서 삭제 (ADMIN 전용)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">삭제</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedDoc(null);
+                          setActionType("APPROVE");
+                        }}
+                        className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer text-xs font-black"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. Compact 1-Line Meta Chips Bar (기안부서, 기안자, 기안일시, 소요금액) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-bold block">기안 부서</span>
+                      <span className="font-bold text-cyan-300 text-[11.5px] truncate block">{cleanDept}</span>
+                    </div>
+                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-bold block">기안자(담당)</span>
+                      <span className="font-bold text-slate-200 text-[11.5px] truncate block">{selectedDoc.drafter} {selectedDoc.drafterTitle}</span>
+                    </div>
+                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-bold block">기안 일시</span>
+                      <span className="font-mono font-bold text-slate-300 text-[11.5px] truncate block">{cleanDate}</span>
+                    </div>
+                    <div className="bg-slate-950/90 border border-slate-800 p-2 rounded-xl text-center">
+                      <span className="text-[10px] text-slate-500 font-bold block">소요 금액</span>
+                      <span className="font-mono font-black text-rose-400 text-[11.5px] truncate block">{selectedDoc.amount || "-"}</span>
+                    </div>
+                  </div>
+
+                  {/* 3. Streamlined 4-Step Approval Seal Line */}
+                  <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between text-[11px] font-black px-1">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                        <span>전자결재 승인선</span>
+                      </span>
+                      <span className={`text-[10px] font-bold ${isApproved ? "text-emerald-400" : "text-yellow-400"}`}>
+                        {isApproved ? "최종 재가 완료" : "결재 진행중"}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                      {selectedDoc.steps.map((st, idx) => {
+                        const isStepApproved = st.status === "APPROVED";
+                        const isStepPending = st.status === "PENDING";
+                        const isStepHold = st.status === "HOLD";
+                        const isStepRejected = st.status === "REJECTED";
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-2 rounded-xl border flex flex-col items-center justify-between space-y-1 min-h-[90px] ${
+                              isStepApproved
+                                ? "bg-slate-900 border-slate-700/80 shadow-xs"
+                                : isStepPending
+                                ? "bg-rose-950/20 border-rose-600/70 ring-1 ring-rose-500/30"
+                                : "bg-slate-900/60 border-slate-800/80"
+                            }`}
+                          >
+                            <span className="text-[10px] font-bold text-slate-400">
+                              {idx + 1}. {st.role}
+                            </span>
+
+                            {isStepApproved ? (
+                              st.name === "권태형" || (st.role === "대표" && st.name !== "최미영") ? (
+                                <div className="w-14 h-9 flex items-center justify-center p-0.5 relative select-none animate-scaleUp">
+                                  <img
+                                    src={KWON_SIGNATURE_BLACK}
+                                    alt="권태형 대표이사 친필 서명"
+                                    className="w-full h-full object-contain filter invert drop-shadow-xs"
+                                  />
+                                </div>
+                              ) : (
+                                <div className={`w-9 h-9 rounded-full border-2 ${idx === 0 ? "border-blue-400 text-blue-400" : "border-rose-400 text-rose-400"} flex flex-col items-center justify-center font-black leading-none bg-slate-950 animate-scaleUp`}>
+                                  <span className="text-[6.5px]">오륙</span>
+                                  <span className="text-[9px]">{st.name?.slice(0, 3)}</span>
+                                  <span className="text-[6.5px]">{idx === 0 ? "기안" : "승인"}</span>
+                                </div>
+                              )
+                            ) : isStepHold ? (
+                              <div className="w-9 h-9 rounded-full border-2 border-amber-500 text-amber-400 flex flex-col items-center justify-center font-black text-[8px] bg-slate-950">
+                                <span>보류</span>
+                                <span className="text-[6.5px]">{st.name?.slice(0, 3)}</span>
+                              </div>
+                            ) : isStepRejected ? (
+                              <div className="w-9 h-9 rounded-full border-2 border-slate-600 text-slate-400 flex flex-col items-center justify-center font-black text-[8px] bg-slate-950">
+                                <span>반려</span>
+                                <span className="text-[6.5px]">{st.name?.slice(0, 3)}</span>
+                              </div>
+                            ) : isStepPending ? (
+                              <div className="h-9 flex items-center justify-center">
+                                <span className="px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-600 text-[10px] font-black animate-pulse">
+                                  결재대기
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="h-9 flex items-center justify-center">
+                                <span className="text-[10px] text-slate-500 font-bold">- (대기)</span>
+                              </div>
+                            )}
+
+                            <span className="text-[9.5px] text-slate-400 font-mono">
+                              {st.date ? st.date.split(" ")[0].slice(5) : st.name || "-"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               );
             })()}
 
-            {/* Document Content Body */}
-            <div className="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2">
-              <span className="text-[11px] font-black text-slate-500 block">
-                [ 기안 상세 내용 ]
+            {/* 4. Document Content Body */}
+            <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+              <span className="text-[11px] font-black text-slate-400 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                <span>기안 내용</span>
               </span>
-              <p className="text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-medium leading-relaxed whitespace-pre-wrap">
+              <p className="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed whitespace-pre-wrap">
                 {selectedDoc.content}
               </p>
             </div>
