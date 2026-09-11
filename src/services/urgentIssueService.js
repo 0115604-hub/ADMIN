@@ -293,15 +293,18 @@ const activeDeletes = new Set();
 // Delete an urgent issue (영구 삭제 - Firestore 및 로컬 스토리지에서 완전 제거)
 export const deleteUrgentIssue = async (id, deleterName = "") => {
   activeDeletes.delete(id);
+  const strId = String(id || "");
+  if (!strId) return getLocalUrgentIssues();
+
   try {
     const current = getLocalUrgentIssues();
-    const updated = current.filter((i) => i.id !== id);
+    const updated = current.filter((i) => String(i.id) !== strId);
     const sorted = sortIssuesByCustomPriority(updated);
     saveLocalUrgentIssues(sorted);
 
     // Delete from Firestore
     try {
-      await deleteDoc(doc(db, COLLECTION_NAME, id));
+      await deleteDoc(doc(db, COLLECTION_NAME, strId));
     } catch (e) {
       console.warn("Firestore deleteDoc fallback to local:", e);
     }
@@ -309,7 +312,7 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
     return sorted;
   } catch (err) {
     console.error("deleteUrgentIssue error:", err);
-    return getLocalUrgentIssues().filter((i) => i.id !== id);
+    return getLocalUrgentIssues().filter((i) => String(i.id) !== strId);
   }
 };
 
