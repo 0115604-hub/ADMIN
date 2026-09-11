@@ -1737,8 +1737,7 @@ export const AuthModal = () => {
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>회의일정 ({meetingIssuesCount})</span>
+                  <span>📅 회의일정 ({meetingIssuesCount})</span>
                 </button>
 
                 {/* 3) 사내공지 */}
@@ -1764,8 +1763,7 @@ export const AuthModal = () => {
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <Pin className="w-3.5 h-3.5 text-blue-400" />
-                  <span>오픈이슈 ({qualityIssueCount})</span>
+                  <span>📌 오픈이슈 ({qualityIssueCount})</span>
                 </button>
               </div>
             )}
@@ -1891,19 +1889,16 @@ export const AuthModal = () => {
                               🚨 품질경보
                             </span>
                           ) : isMeeting ? (
-                            <span
-                              className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs flex items-center gap-1"
-                            >
-                              <span>📅 회의일정</span>
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
+                              📅 회의일정
                             </span>
                           ) : isNotice ? (
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
                               📢 사내공지
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs flex items-center gap-1">
-                              <Pin className="w-3 h-3 text-cyan-300" />
-                              <span>오픈이슈</span>
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs">
+                              📌 오픈이슈
                             </span>
                           )}
                           <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
@@ -2545,8 +2540,7 @@ export const AuthModal = () => {
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>회의일정</span>
+                  <span>📅 회의일정</span>
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200">
                     {allMeetings.length}
                   </span>
@@ -2585,8 +2579,7 @@ export const AuthModal = () => {
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
-                  <Pin className="w-3.5 h-3.5 text-blue-400" />
-                  <span>오픈이슈</span>
+                  <span>📌 오픈이슈</span>
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200">
                     {allQualityIssues.length}
                   </span>
@@ -2675,18 +2668,19 @@ export const AuthModal = () => {
                   const item = urgentIssues.find((it) => it.id === selectedListItem.id) || selectedListItem;
                   const isItemDeleted = Boolean(item.isDeleted);
                   const isItemResolved = Boolean(item.isResolved);
+                  const isItemQualityAlert = item.category === "품질경보";
                   const isItemMeeting = item.category === "회의일정";
-                  const isItemNotice = item.category === "공지사항" || item.category === "공유사항";
+                  const isItemNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
+                  const isItemOpenIssue = item.category === "오픈이슈" || item.category === "품질이슈" || (!isItemQualityAlert && !isItemMeeting && !isItemNotice);
 
                   return (
                     <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50/80 dark:from-blue-950/60 dark:via-indigo-950/40 dark:to-slate-900/70 border-2 border-blue-400/80 dark:border-blue-600 shadow-md space-y-2.5 animate-fadeIn">
                       {/* Selected Item Header */}
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white ${
-                            isItemDeleted
-                              ? "bg-slate-700"
-                              : item.category === "품질경보"
+                          {/* 4대 구분 뱃지 */}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 shadow-xs ${
+                            isItemQualityAlert
                               ? "bg-rose-600"
                               : isItemMeeting
                               ? "bg-purple-600"
@@ -2694,14 +2688,28 @@ export const AuthModal = () => {
                               ? "bg-emerald-600"
                               : "bg-gradient-to-r from-blue-600 to-indigo-600"
                           }`}>
-                            {isItemDeleted ? "📁 종결" : item.category === "품질경보" ? "🚨 품질경보" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "📌 오픈이슈"}
+                            {isItemQualityAlert ? "🚨 품질경보" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "📌 오픈이슈"}
                           </span>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                          {/* 상태 뱃지 */}
+                          {isItemDeleted ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-slate-700 text-slate-200 border border-slate-600 shrink-0">
+                              종결
+                            </span>
+                          ) : isItemResolved ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 shrink-0">
+                              {isItemMeeting ? "회의종결" : "조치완료"}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse shrink-0">
+                              {isItemMeeting ? "회의예정" : "조치대기"}
+                            </span>
+                          )}
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 shrink-0">
                             {item.plant}
                           </span>
                           {item.expireDate && (
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                              item.category === "품질경보"
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono shrink-0 ${
+                              isItemQualityAlert
                                 ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-200"
                                 : isItemMeeting
                                 ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
@@ -2709,7 +2717,7 @@ export const AuthModal = () => {
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
                                 : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-200"
                             }`}>
-                              {item.category === "품질경보"
+                              {isItemQualityAlert
                                 ? `🚨 등록일: ${item.expireDate}`
                                 : isItemMeeting
                                 ? `📅 회의: ${item.expireDate}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
@@ -2931,6 +2939,8 @@ export const AuthModal = () => {
                       const isCurrent = selectedListItem?.id === it.id;
                       const isItMeeting = it.category === "회의일정";
                       const isItNotice = it.category === "공지사항" || it.category === "사내공지" || it.category === "공유사항";
+                      const isItQualityAlert = it.category === "품질경보";
+                      const isItOpenIssue = it.category === "오픈이슈" || it.category === "품질이슈" || (!isItQualityAlert && !isItMeeting && !isItNotice);
                       const isItDeleted = Boolean(it.isDeleted);
                       const isItResolved = Boolean(it.isResolved);
                       const isItUnresolved = !isItDeleted && !isItResolved;
@@ -2971,11 +2981,9 @@ export const AuthModal = () => {
                                 {itemNum}
                               </span>
 
-                              {/* Category Badge */}
-                              <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black text-white shrink-0 shadow-2xs ${
-                                isItDeleted
-                                  ? "bg-slate-600"
-                                  : it.category === "품질경보"
+                              {/* Category Badge (4대 구분: 품질경보 • 회의일정 • 사내공지 • 오픈이슈) */}
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 shadow-2xs ${
+                                isItQualityAlert
                                   ? "bg-rose-600"
                                   : isItMeeting
                                   ? "bg-purple-600"
@@ -2983,7 +2991,7 @@ export const AuthModal = () => {
                                   ? "bg-emerald-600"
                                   : "bg-gradient-to-r from-blue-600 to-indigo-600"
                               }`}>
-                                {isItDeleted ? "종결" : it.category === "품질경보" ? "경보" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
+                                {isItQualityAlert ? "🚨 품질경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
                               </span>
 
                               {/* Factory Badge */}
@@ -3309,13 +3317,19 @@ export const AuthModal = () => {
                     <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black text-white shrink-0 ${
                       newIssueForm.category === "회의일정"
                         ? "bg-purple-600"
-                        : newIssueForm.category === "공지사항"
+                        : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
                         ? "bg-emerald-600"
                         : newIssueForm.category === "오픈이슈"
                         ? "bg-gradient-to-r from-blue-600 to-indigo-600"
                         : "bg-rose-600"
                     }`}>
-                      {newIssueForm.category === "공지사항" ? "사내공지" : newIssueForm.category}
+                      {newIssueForm.category === "회의일정"
+                        ? "📅 회의일정"
+                        : (newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지")
+                        ? "📢 사내공지"
+                        : newIssueForm.category === "오픈이슈"
+                        ? "📌 오픈이슈"
+                        : "🚨 품질경보"}
                     </span>
                     <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                       {newIssueForm.plant}
@@ -4810,11 +4824,21 @@ export const AuthModal = () => {
                   <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                     actionModalData.issue.category === "회의일정"
                       ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                      : actionModalData.issue.category === "공지사항"
+                      : actionModalData.issue.category === "공지사항" || actionModalData.issue.category === "사내공지"
                       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      : actionModalData.issue.category === "오픈이슈"
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
                       : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                   }`}>
-                    {actionModalData.issue.plant} • {actionModalData.issue.category || "품질경보"}
+                    {actionModalData.issue.plant} • {
+                      actionModalData.issue.category === "회의일정"
+                        ? "📅 회의일정"
+                        : (actionModalData.issue.category === "공지사항" || actionModalData.issue.category === "사내공지")
+                        ? "📢 사내공지"
+                        : actionModalData.issue.category === "오픈이슈"
+                        ? "📌 오픈이슈"
+                        : "🚨 품질경보"
+                    }
                   </span>
                   <strong className="text-slate-900 dark:text-white font-black truncate">
                     {actionModalData.issue.title}
