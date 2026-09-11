@@ -345,7 +345,19 @@ export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
 // Restore an issue (복구 지원)
 export const restoreUrgentIssue = async (id) => {
   const current = getLocalUrgentIssues();
-  const target = current.find((i) => i.id === id);
+  let target = current.find((i) => i.id === id);
+  if (!target) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      snap.forEach((d) => {
+        if (d.id === id) {
+          target = sanitizeUrgentIssueItem({ id: d.id, ...d.data() });
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore restore fetch fallback:", e);
+    }
+  }
   if (!target) return current;
 
   // If restoring an item whose date was in the past, update expireDate/targetDate to today
@@ -354,17 +366,44 @@ export const restoreUrgentIssue = async (id) => {
     (target.expireDate && target.expireDate < todayStr) ||
     (target.targetDate && target.targetDate < todayStr);
 
+  const newExpireDate = isPast ? todayStr : (target.expireDate || target.targetDate || todayStr);
+
+  // If meeting was in the past or expired today, bump meetingTime to future time so it does not immediately expire
+  let newMeetingTime = target.meetingTime || "18:00";
+  if (target.category === "회의일정" || target.category?.includes("회의")) {
+    const kstNow = new Date();
+    const utc = kstNow.getTime() + (kstNow.getTimezoneOffset() * 60000);
+    const kstDate = new Date(utc + (9 * 3600000));
+    const curH = kstDate.getHours();
+    const curM = kstDate.getMinutes();
+    const curTimeStr = `${String(curH).padStart(2, "0")}:${String(curM).padStart(2, "0")}`;
+    if (!newMeetingTime || (newExpireDate <= todayStr && newMeetingTime <= curTimeStr)) {
+      const nextH = Math.min(23, curH + 2);
+      newMeetingTime = `${String(nextH).padStart(2, "0")}:00`;
+    }
+  }
+
   const restoredItem = {
     ...target,
+    id,
     isDeleted: false,
     isResolved: false,
-    expireDate: isPast ? todayStr : (target.expireDate || ""),
-    targetDate: isPast ? todayStr : (target.targetDate || ""),
+    expireDate: newExpireDate,
+    targetDate: newExpireDate,
+    meetingTime: newMeetingTime,
     deletedAt: "",
     deletedBy: ""
   };
 
-  const updated = current.map((i) => (i.id === id ? restoredItem : i));
+  const existingIdx = current.findIndex((i) => i.id === id);
+  let updated;
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = restoredItem;
+  } else {
+    updated = [restoredItem, ...current];
+  }
+
   const sorted = sortIssuesByCustomPriority(updated);
   saveLocalUrgentIssues(sorted);
 
