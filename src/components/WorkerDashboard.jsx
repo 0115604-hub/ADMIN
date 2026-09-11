@@ -361,7 +361,7 @@ export const JAEYUL_CATEGORY_EQUIPMENT_MAP = {
 };
 
 export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
-  const { currentProfile, isOperator, isAdmin } = useAuth();
+  const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const { selectedMonth, currentMonthData, uploadMonthlyData, availableMonths, changeMonth, currentYearMonth, isCurrentMonth, allMonthlyData } = useMonth();
   const { formatAmount } = useCurrency();
 
@@ -693,6 +693,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     issues: "",
     images: [] // 📷 첨부된 현장 작업 사진 목록 (최대 5장)
   });
+
+  useEffect(() => {
+    if (currentProfile) {
+      setFormData((prev) => ({
+        ...prev,
+        plant: currentProfile.plant || "삼랑진공장",
+        writer: currentProfile.name || "작업자",
+        process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (currentProfile.assignedProcess || "가공동 관리"),
+        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : (currentProfile.assignedProcess?.includes("압출") ? "9BQC 압출 1호기" : "가공 라인")
+      }));
+    }
+  }, [currentProfile?.id, currentProfile?.name, isInjoo, isQualityWorker, isExtrusionWorker]);
 
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
@@ -4553,9 +4565,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
                       <span>오늘의 설비보전일지 작성</span>
                     </h3>
-                    <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
-                      {workerPlant} • {workerFullName} {officialTitle} [설비보전]
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
+                        {workerPlant} • {workerFullName} {officialTitle} [설비보전]
+                      </span>
+                      <button
+                        type="button"
+                        onClick={logout}
+                        className="text-[10.5px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800"
+                        title="작업자가 다른 경우 클릭하여 즉시 변경하세요"
+                      >
+                        본인이 아니신가요? 작업자 변경
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -4886,11 +4908,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                   <div>
                     <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white flex items-center gap-2">
-                      <span>압출동 업무일지 작성</span>
+                      <span>{isInjoo ? "경리업무일지" : isQualityWorker ? "품질관리일지" : isExtrusionWorker ? "압출동 업무일지" : "가공동 업무일지"} 작성</span>
                     </h3>
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-                      {workerPlant} • {workerFullName} {officialTitle} [압출동 관리]
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                        {workerPlant} • {workerFullName} {officialTitle} [{assignedProcess}]
+                      </span>
+                      <button
+                        type="button"
+                        onClick={logout}
+                        className="text-[10.5px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer bg-rose-50 dark:bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800"
+                        title="작업자가 다른 경우 클릭하여 즉시 변경하세요"
+                      >
+                        본인이 아니신가요? 작업자 변경
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <button

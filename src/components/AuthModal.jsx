@@ -130,6 +130,7 @@ export const AuthModal = () => {
   const { currentProfile, loginWithProfile } = useAuth();
   const [selectedUser, setSelectedUser] = useState(null);
   const [pin, setPin] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [annualLeaves, setAnnualLeaves] = useState(() => getAnnualLeaves());
@@ -818,6 +819,7 @@ export const AuthModal = () => {
   const handleUserClick = (user) => {
     setSelectedUser(user);
     setPin("");
+    setRememberMe(false);
     setErrorMsg("");
   };
 
@@ -834,7 +836,7 @@ export const AuthModal = () => {
     setErrorMsg("");
     setLoading(true);
     try {
-      loginWithProfile(selectedUser.id, pin);
+      loginWithProfile(selectedUser.id, pin, rememberMe);
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
@@ -2342,27 +2344,38 @@ export const AuthModal = () => {
                   </div>
                 </div>
 
-                {/* 2. 중앙: 이름과 작업자변경 사이의 PIN 번호 입력창 + 접속 버튼 */}
-                <div className="flex-1 w-full sm:max-w-xs flex items-center gap-1.5">
-                  <div className="relative flex-1">
-                    <input
-                      id="worker-pin-input"
-                      type="password"
-                      autoFocus
-                      placeholder={selectedUser.role === "ADMIN" ? "관리자 PIN" : "PIN 번호 입력"}
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value)}
-                      className="w-full px-3.5 py-2 sm:py-2.5 rounded-xl border-2 border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-base font-black text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
-                    />
+                {/* 2. 중앙: 이름과 작업자변경 사이의 PIN 번호 입력창 + 접속 버튼 + 자동로그인 옵션 */}
+                <div className="flex-1 w-full sm:max-w-xs flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5 w-full">
+                    <div className="relative flex-1">
+                      <input
+                        id="worker-pin-input"
+                        type="password"
+                        autoFocus
+                        placeholder={selectedUser.role === "ADMIN" ? "관리자 PIN" : "PIN 번호 입력"}
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value)}
+                        className="w-full px-3.5 py-2 sm:py-2.5 rounded-xl border-2 border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-base font-black text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
+                    >
+                      <span>접속</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-1 cursor-pointer shrink-0"
-                  >
-                    <span>접속</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[10.5px] font-medium text-slate-500 dark:text-slate-400 select-none px-1">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                    />
+                    <span>로그인 상태 유지 (개인폰 전용 / 공용기기 해제)</span>
+                  </label>
                 </div>
 
                 {/* 3. 우측: 작업자 변경 버튼 */}

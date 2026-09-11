@@ -20,7 +20,7 @@ export const Header = ({
   onOpenNewModal,
   onOpenExcelModal
 }) => {
-  const { isOperator, isAdmin, logout } = useAuth();
+  const { isOperator, isAdmin, currentProfile, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
 
   const formatMonthShort = (ym) => {
@@ -60,10 +60,15 @@ export const Header = ({
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs p-1 shrink-0">
               <OryukLogo className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <h2 className="text-sm sm:text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
-              <span className="sm:hidden">(주)오륙</span>
-              <span className="hidden sm:inline">(주)오륙 생산관리현황</span>
-            </h2>
+            <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 truncate">
+              <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
+                <span className="hidden sm:inline">(주)오륙 </span>
+                <span className="text-blue-600 dark:text-blue-400">{currentProfile?.name || "작업자"}</span>
+                <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium ml-1">
+                  ({currentProfile?.plant ? currentProfile.plant.replace("공장", "") : "현장"} • {currentProfile?.title || "선임"})
+                </span>
+              </h2>
+            </div>
           </div>
         ) : (
           /* Admin Title Header */
@@ -141,14 +146,14 @@ export const Header = ({
           )}
         </div>
 
-        {/* Logout Button (High-Visibility Rose Badge on Mobile & PC) */}
+        {/* Logout / Switch User Button */}
         <button
           onClick={logout}
-          title="사용자 전환 / 로그아웃"
+          title="다른 작업자로 변경하거나 로그아웃합니다"
           className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl bg-rose-50 hover:bg-rose-100 active:bg-rose-200 dark:bg-rose-950/70 dark:hover:bg-rose-900/90 text-rose-700 dark:text-rose-300 border border-rose-300/80 dark:border-rose-800 text-[11px] sm:text-xs font-black transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer shrink-0"
         >
           <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-          <span className="font-black">로그아웃</span>
+          <span className="font-black">{isAdmin ? "로그아웃" : "작업자 변경"}</span>
         </button>
       </div>
     </header>

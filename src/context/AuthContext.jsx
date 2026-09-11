@@ -81,12 +81,46 @@ export const AuthProvider = ({ children }) => {
 
   // Sync / Migrate saved sessions to latest worker plant & title definitions
   useEffect(() => {
-    const savedProfile = localStorage.getItem("admin_user_profile");
+    let savedProfile = null;
+
+    // 1. Check sessionStorage first (active browser session)
+    try {
+      const sessionRaw = sessionStorage.getItem("admin_user_profile");
+      if (sessionRaw) {
+        savedProfile = JSON.parse(sessionRaw);
+      }
+    } catch (e) {
+      console.warn("SessionStorage parse error:", e);
+    }
+
+    // 2. If not in sessionStorage, check localStorage ONLY if rememberMe was explicitly enabled & valid
+    if (!savedProfile) {
+      try {
+        const localRaw = localStorage.getItem("admin_user_profile");
+        if (localRaw) {
+          const parsedLocal = JSON.parse(localRaw);
+          if (parsedLocal && parsedLocal.rememberMe && parsedLocal.expiresAt) {
+            if (Date.now() < parsedLocal.expiresAt) {
+              savedProfile = parsedLocal.profile || parsedLocal;
+            } else {
+              localStorage.removeItem("admin_user_profile");
+            }
+          } else {
+            // Legacy format or no rememberMe -> clear to prevent unintended auto-login on shared factory devices
+            localStorage.removeItem("admin_user_profile");
+          }
+        }
+      } catch (e) {
+        console.warn("LocalStorage parse error:", e);
+        localStorage.removeItem("admin_user_profile");
+      }
+    }
+
     if (savedProfile) {
       try {
-        const parsed = JSON.parse(savedProfile);
+        const targetId = savedProfile.id || savedProfile.name;
         const matched = ALL_DESIGNATED_USERS.find(
-          (u) => u.id === parsed.id || u.name === parsed.name
+          (u) => u.id === targetId || u.name === targetId || u.id === savedProfile.id || u.name === savedProfile.name
         );
         if (matched) {
           const refreshed = {
@@ -95,9 +129,9 @@ export const AuthProvider = ({ children }) => {
             roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name} ${matched.title}`
           };
           setCurrentProfile(refreshed);
-          localStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
+          sessionStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
         } else {
-          setCurrentProfile(parsed);
+          setCurrentProfile(savedProfile);
         }
       } catch (e) {
         console.error(e);
@@ -107,19 +141,6 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setCurrentUser(user);
-        if (!currentProfile) {
-          const fallback = {
-            id: user.uid,
-            name: "ADMIN",
-            title: "관리자",
-            displayName: "ADMIN",
-            role: "ADMIN",
-            roleLabel: "ADMIN",
-            plant: "본사",
-            avatar: "A"
-          };
-          setCurrentProfile(fallback);
-        }
       }
       setLoading(false);
     });
@@ -127,7 +148,7 @@ export const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  const loginWithProfile = (userId, inputPin) => {
+  const loginWithProfile = (userId, inputPin, rememberMe = false) => {
     const target = ALL_DESIGNATED_USERS.find((u) => u.id === userId);
     if (!target) {
       throw new Error("존재하지 않는 사용자입니다.");
@@ -143,7 +164,25 @@ export const AuthProvider = ({ children }) => {
     };
 
     setCurrentProfile(profileToSave);
-    localStorage.setItem("admin_user_profile", JSON.stringify(profileToSave));
+
+    // Store in sessionStorage for current tab/window session
+    try {
+      sessionStorage.setItem("admin_user_profile", JSON.stringify(profileToSave));
+    } catch (e) {}
+
+    // If rememberMe is true (personal device), store in localStorage with 24-hour expiration
+    try {
+      if (rememberMe) {
+        const persistentData = {
+          rememberMe: true,
+          profile: profileToSave,
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+        };
+        localStorage.setItem("admin_user_profile", JSON.stringify(persistentData));
+      } else {
+        localStorage.removeItem("admin_user_profile");
+      }
+    } catch (e) {}
 
     // Record login access log
     recordUserAccess(profileToSave).catch((err) => console.warn("Access log recording error:", err));
@@ -159,7 +198,10 @@ export const AuthProvider = ({ children }) => {
     }
     setCurrentUser(null);
     setCurrentProfile(null);
-    localStorage.removeItem("admin_user_profile");
+    try {
+      sessionStorage.removeItem("admin_user_profile");
+      localStorage.removeItem("admin_user_profile");
+    } catch (e) {}
   };
 
   const isOperator = currentProfile?.role === "OPERATOR";
