@@ -3591,7 +3591,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* Work Log Detail View Modal (상세내용 확인 & 코멘트 입력 & 전자결재 모달) */}
       {selectedLogDetail && (
         <div
-          onClick={() => setSelectedLogDetail(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedLogDetail(null);
+          }}
           className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -3967,7 +3969,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {selectedWorkerForLogs && (
         <div
-          onClick={() => setSelectedWorkerForLogs(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedWorkerForLogs(null);
+          }}
           className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -4089,7 +4093,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ⭐ [업로드 직후 자동 팝업] 라인별 엑셀 파일 매칭 공유 리포트 모달 */}
       {lineMatchShareModal && (
         <div
-          onClick={() => setLineMatchShareModal(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setLineMatchShareModal(null);
+          }}
           className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -4186,7 +4192,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* Write Work Log & Upload Modal */}
       {isModalOpen && (
         <div
-          onClick={() => setIsModalOpen(false)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsModalOpen(false);
+          }}
           className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
         >
           {isInjoo ? (
@@ -4554,7 +4562,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             /* ========================================================================= */
             /* ⭐ [설비보전 전용: 전재율 책임] 설비보전일지 작성 모달 (동적 항목 추가 지원) */
             /* ========================================================================= */
-            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border-2 border-blue-500/40 dark:border-blue-600/40 shadow-2xl space-y-4 my-6 animate-scaleUp">
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 border-2 border-blue-500/40 dark:border-blue-600/40 shadow-2xl space-y-4 my-6 animate-scaleUp cursor-default"
+            >
               {/* Header */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
@@ -5693,7 +5704,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {commonScheduleModalOpen && (
         <div
-          onClick={() => setCommonScheduleModalOpen(false)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCommonScheduleModalOpen(false);
+          }}
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
@@ -6088,7 +6101,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {dailyPnLModalOpen && (
         <div
-          onClick={() => setDailyPnLModalOpen(false)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDailyPnLModalOpen(false);
+          }}
           className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-4 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
@@ -6346,11 +6361,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {scheduleDetailModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto"
-          onClick={() => setScheduleDetailModal(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto cursor-pointer"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setScheduleDetailModal(null);
+          }}
         >
           <div
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 border-blue-500/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto"
+            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 border-blue-500/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -6644,11 +6661,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {qualityPopupItem && (
         <div
-          className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn"
-          onClick={() => setQualityPopupItem(null)}
+          className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fadeIn cursor-pointer"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setQualityPopupItem(null);
+          }}
         >
           <div
-            className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -6888,11 +6907,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 {/* ========================================================================= */}
       {previewImageModal && (
         <div
-          className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn"
-          onClick={() => setPreviewImageModal(null)}
+          className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn cursor-pointer"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreviewImageModal(null);
+          }}
         >
           <div
-            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-800"
+            className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-800 cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -6938,7 +6959,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* ========================================================================= */}
       {selectedCommonScheduleForComments && (
         <div
-          onClick={() => setSelectedCommonScheduleForComments(null)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedCommonScheduleForComments(null);
+          }}
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
         >
           <div
