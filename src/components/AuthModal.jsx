@@ -514,20 +514,21 @@ export const AuthModal = () => {
 
   const unresolvedActiveIssues = unresolvedIssues;
 
-  // Category-specific collections across all records (active + archived/deleted)
+  // Category-specific collections across all active records
   const allQualityAlerts = useMemo(() => {
-    return urgentIssues.filter((i) => i.category === "품질경보");
+    return urgentIssues.filter((i) => !i.isDeleted && i.category === "품질경보");
   }, [urgentIssues]);
 
   const allQualityIssues = useMemo(() => {
     return urgentIssues.filter(
       (i) =>
-        i.category === "품질이슈" ||
-        i.category === "오픈이슈" ||
-        (i.category !== "품질경보" &&
-          !i.category?.includes("공지") &&
-          !i.category?.includes("공유") &&
-          i.category !== "회의일정")
+        !i.isDeleted &&
+        (i.category === "품질이슈" ||
+          i.category === "오픈이슈" ||
+          (i.category !== "품질경보" &&
+            !i.category?.includes("공지") &&
+            !i.category?.includes("공유") &&
+            i.category !== "회의일정"))
     );
   }, [urgentIssues]);
 
@@ -536,14 +537,15 @@ export const AuthModal = () => {
   const allNotices = useMemo(() => {
     return urgentIssues.filter(
       (i) =>
-        i.category === "공지사항" ||
-        i.category === "사내공지" ||
-        i.category === "공유사항"
+        !i.isDeleted &&
+        (i.category === "공지사항" ||
+          i.category === "사내공지" ||
+          i.category === "공유사항")
     );
   }, [urgentIssues]);
 
   const allMeetings = useMemo(() => {
-    return urgentIssues.filter((i) => i.category === "회의일정");
+    return urgentIssues.filter((i) => !i.isDeleted && i.category === "회의일정");
   }, [urgentIssues]);
 
   // 📅 오픈이슈 전용 7일간 일정표 (Schedule Calendar) 계산
@@ -683,7 +685,8 @@ export const AuthModal = () => {
     if (issueFilterTab === "deleted") {
       return base.filter((i) => i.isDeleted || isItemExpired(i));
     }
-    return sortIssuesByCustomPriority(base); // [전체]: 삭제 및 만료된 과거 모든 이력 보존
+    // [전체]: 활성 및 종결된 모든 관리 대장 이력 (삭제된 내역은 '삭제/만료' 탭에서 관리)
+    return sortIssuesByCustomPriority(base.filter((i) => !i.isDeleted));
   }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, issueFilterTab, allOpenIssues, allNotices, allMeetings, unresolvedIssues, closedIssues, todayDateStr, currentKstTimeStr]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
@@ -1435,15 +1438,19 @@ export const AuthModal = () => {
     if (deleteModalData.isDeleting) return;
 
     const issue = deleteModalData.issue;
-    if (!issue) return;
+    if (!issue) {
+      setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "", isDeleting: false });
+      return;
+    }
 
     const plant = issue.plant;
     const inputPin = deleteModalData.pinInput.trim();
 
     // Authority Rules:
-    // 이명재 이사 (PIN: 11) or 김동욱 책임 (PIN: 11) or ADMIN (PIN: 0090)
+    // 1. 공장 총괄관리자 및 작업자 PIN: "11"
+    // 2. 본사 최고관리자 (권태형 대표이사 / 최미영 전무) PIN: "0090"
     let isAuthorized = (inputPin === "11" || inputPin === "0090");
-    let expectedManager = "이명재 이사";
+    let expectedManager = "총괄관리자";
 
     if (inputPin === "11") {
       if (plant === "한림공장") {
@@ -1466,15 +1473,15 @@ export const AuthModal = () => {
     setDeleteModalData((prev) => ({ ...prev, isDeleting: true, errorMsg: "" }));
 
     try {
-      let updated;
-      if (issue.isDeleted) {
-        updated = await hardDeleteUrgentIssue(issue.id, expectedManager);
-      } else {
-        updated = await deleteUrgentIssue(issue.id, expectedManager);
-      }
+      const issueId = issue.id;
+      // Optimistic update: immediately remove from local state
+      setUrgentIssues((prev) => prev.filter((it) => it.id !== issueId));
+
+      const updated = await deleteUrgentIssue(issueId, expectedManager);
       if (Array.isArray(updated)) {
         setUrgentIssues(updated);
       }
+
       setSelectedListItem(null);
       setIsIssueModalOpen(false);
       setEditingIssue(null);
@@ -1487,7 +1494,7 @@ export const AuthModal = () => {
         errorMsg: "",
         isDeleting: false
       });
-      setRestoreToast("🗑️ 항목이 정상적으로 삭제(종결) 처리되었습니다.");
+      setRestoreToast("🗑️ 항목이 정상적으로 삭제되었습니다.");
       setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Delete error:", err);

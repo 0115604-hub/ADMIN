@@ -290,13 +290,36 @@ export const deleteIssueReply = async (issueId, replyId) => {
 // In-flight deletion lock to prevent duplicate Telegram messages and race conditions
 const activeDeletes = new Set();
 
-// Delete an urgent issue (Soft Delete: remains in registry/대장 with isDeleted: true)
+// Delete an urgent issue (영구 삭제 - Firestore 및 로컬 스토리지에서 완전 제거)
 export const deleteUrgentIssue = async (id, deleterName = "") => {
-  if (activeDeletes.has(id)) {
-    return getLocalUrgentIssues();
-  }
-  activeDeletes.add(id);
+  activeDeletes.delete(id);
+  try {
+    const current = getLocalUrgentIssues();
+    const updated = current.filter((i) => i.id !== id);
+    const sorted = sortIssuesByCustomPriority(updated);
+    saveLocalUrgentIssues(sorted);
 
+    // Delete from Firestore
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn("Firestore deleteDoc fallback to local:", e);
+    }
+
+    return sorted;
+  } catch (err) {
+    console.error("deleteUrgentIssue error:", err);
+    return getLocalUrgentIssues().filter((i) => i.id !== id);
+  }
+};
+
+// Hard Delete (영구 삭제 - 동일하게 완전 제거)
+export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
+  return deleteUrgentIssue(id, deleterName);
+};
+
+// Cancel Restore / Soft Archive (복구 취소 - 첫화면에서 내리고 관리대장에 보존)
+export const cancelRestoreUrgentIssue = async (id, cancellerName = "복구 취소 (사용자)") => {
   try {
     const current = getLocalUrgentIssues();
     let target = current.find((i) => i.id === id);
@@ -309,12 +332,10 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
           }
         });
       } catch (e) {
-        console.warn("Firestore delete fetch fallback:", e);
+        console.warn("Firestore cancel restore fetch fallback:", e);
       }
     }
-    if (!target) {
-      target = { id };
-    }
+    if (!target) return current;
 
     const nowStr = new Date().toLocaleString("ko-KR", {
       year: "numeric",
@@ -325,62 +346,32 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       hour12: false
     }).replace(/\. /g, "-").replace(/\./g, "");
 
-    // Soft delete: Mark isDeleted: true so it is preserved in 대장
-    const deletedItem = {
+    const archivedItem = {
       ...target,
       isDeleted: true,
       isManuallyRestored: false,
       deletedAt: nowStr,
-      deletedBy: deleterName || "관리자"
+      deletedBy: cancellerName || "관리자"
     };
 
     const exists = current.some((i) => i.id === id);
     const updated = exists
-      ? current.map((i) => (i.id === id ? deletedItem : i))
-      : [deletedItem, ...current];
-    const sorted = sortIssuesByCustomPriority(updated);
-    saveLocalUrgentIssues(sorted);
-
-    // Save soft-deleted record to Firestore
-    try {
-      await setDoc(doc(db, COLLECTION_NAME, id), deletedItem);
-    } catch (e) {
-      console.warn("Firestore soft delete fallback to local:", e);
-    }
-
-    return sorted;
-  } finally {
-    setTimeout(() => {
-      activeDeletes.delete(id);
-    }, 1500);
-  }
-};
-
-// Hard Delete (영구 삭제 - Firestore 및 로컬에서 영구 제거)
-export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
-  activeDeletes.delete(id);
-  try {
-    const current = getLocalUrgentIssues();
-    const updated = current.filter((i) => i.id !== id);
+      ? current.map((i) => (i.id === id ? archivedItem : i))
+      : [archivedItem, ...current];
     const sorted = sortIssuesByCustomPriority(updated);
     saveLocalUrgentIssues(sorted);
 
     try {
-      await deleteDoc(doc(db, COLLECTION_NAME, id));
+      await setDoc(doc(db, COLLECTION_NAME, id), archivedItem);
     } catch (e) {
-      console.warn("Firestore hard delete error:", e);
+      console.warn("Firestore cancel restore fallback to local:", e);
     }
 
     return sorted;
   } catch (err) {
-    console.error("hardDeleteUrgentIssue error:", err);
+    console.error("cancelRestoreUrgentIssue error:", err);
     return getLocalUrgentIssues();
   }
-};
-
-// Cancel Restore (복구 취소 - 첫화면에서 내리고 대장/삭제 상태로 되돌리기)
-export const cancelRestoreUrgentIssue = async (id, cancellerName = "복구 취소 (사용자)") => {
-  return deleteUrgentIssue(id, cancellerName);
 };
 
 // Restore an issue (복구 지원)
