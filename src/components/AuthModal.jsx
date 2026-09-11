@@ -342,6 +342,110 @@ export const AuthModal = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const allWorkers = useMemo(() => {
+    const list = [];
+    ADMIN_USERS.forEach((u) => list.push({ ...u, plantName: "본사" }));
+    if (PLANTS[0]?.workers) {
+      PLANTS[0].workers.forEach((w) => list.push({ ...w, plantName: "삼랑진공장" }));
+    }
+    if (PLANTS[1]?.workers) {
+      PLANTS[1].workers.forEach((w) => list.push({ ...w, plantName: "한림공장" }));
+    }
+    return list;
+  }, []);
+
+  // Category Draft Generator (각 뱃지별 독립적인 입력 폼 상태 보관)
+  const createEmptyCategoryDraft = (catName, currentPlant = "삼랑진공장", author = "", authorTitle = "") => ({
+    category: catName,
+    plant: currentPlant,
+    author: author,
+    authorTitle: authorTitle,
+    startDate: todayDateStr,
+    expireDate: todayDateStr,
+    meetingTime: "14:00",
+    progress: 0,
+    title: "",
+    content: "",
+    images: [],
+    actionResult: "",
+    actionAuthor: "",
+    actionImages: [],
+    isResolved: false,
+    replies: []
+  });
+
+  const [categoryDrafts, setCategoryDrafts] = useState(() => ({
+    "품질경보": createEmptyCategoryDraft("품질경보"),
+    "회의일정": createEmptyCategoryDraft("회의일정"),
+    "공지사항": createEmptyCategoryDraft("공지사항"),
+    "오픈이슈": createEmptyCategoryDraft("오픈이슈")
+  }));
+
+  // ⭐ 뱃지(카테고리) 전환 시 현재 입력 내용을 해당 뱃지에 보존하고, 전환 대상 뱃지의 고유 내용을 로드 (비어있는 뱃지는 빈 상태 유지)
+  const handleSwitchCategory = (targetCategory) => {
+    let normalizedTarget = targetCategory;
+    if (normalizedTarget === "사내공지" || normalizedTarget === "공유사항") normalizedTarget = "공지사항";
+
+    let currentCat = newIssueForm.category || "오픈이슈";
+    if (currentCat === "사내공지" || currentCat === "공유사항") currentCat = "공지사항";
+
+    if (currentCat === normalizedTarget) return;
+
+    // 1. 현재 작성/수정 중인 폼 데이터를 현재 카테고리 드래프트에 저장
+    const updatedDrafts = {
+      ...categoryDrafts,
+      [currentCat]: {
+        ...newIssueForm,
+        category: currentCat
+      }
+    };
+
+    // 2. 대상 카테고리 드래프트가 없으면 빈 템플릿 생성
+    const targetDraft = updatedDrafts[normalizedTarget] || createEmptyCategoryDraft(
+      normalizedTarget,
+      newIssueForm.plant || "삼랑진공장",
+      newIssueForm.author || "",
+      newIssueForm.authorTitle || ""
+    );
+
+    updatedDrafts[normalizedTarget] = targetDraft;
+
+    setCategoryDrafts(updatedDrafts);
+    setNewIssueForm({
+      ...targetDraft,
+      category: normalizedTarget
+    });
+  };
+
+  // ⭐ 신규 등록 모달 열기 (모든 뱃지 깨끗이 비운 상태로 시작)
+  const handleOpenNewIssue = (preferredCategory = "오픈이슈") => {
+    let targetCategory = preferredCategory;
+    if (targetCategory === "meeting") targetCategory = "회의일정";
+    else if (targetCategory === "notice") targetCategory = "공지사항";
+    else if (targetCategory === "quality_alert" || targetCategory === "qualityAlert") targetCategory = "품질경보";
+    else if (targetCategory === "open_issue" || targetCategory === "quality_issue" || targetCategory === "quality") targetCategory = "오픈이슈";
+    else if (targetCategory === "사내공지" || targetCategory === "공유사항") targetCategory = "공지사항";
+
+    setEditingIssue(null);
+    setIsIssueDetailMode(false);
+
+    const freshDrafts = {
+      "품질경보": createEmptyCategoryDraft("품질경보", "삼랑진공장", "", ""),
+      "회의일정": createEmptyCategoryDraft("회의일정", "삼랑진공장", "", ""),
+      "공지사항": createEmptyCategoryDraft("공지사항", "삼랑진공장", "", ""),
+      "오픈이슈": createEmptyCategoryDraft("오픈이슈", "삼랑진공장", "", "")
+    };
+
+    setCategoryDrafts(freshDrafts);
+    setNewIssueForm(freshDrafts[targetCategory] || freshDrafts["오픈이슈"]);
+    setActionOpinionForm({
+      actionDate: todayDateStr,
+      author: "",
+      content: ""
+    });
+    setIsIssueModalOpen(true);
+  };
+
   // Helper: "9:30" -> "09:30" 시간 정규화
   const normalizeMeetingTime = (timeStr) => {
     if (!timeStr) return "";
@@ -904,9 +1008,16 @@ export const AuthModal = () => {
     const defaultAuthor = issue.author === "방상국" ? "" : (issue.author || currentProfile?.name || "권태형");
     const defaultTitle = issue.author === "방상국" ? "" : (issue.authorTitle || "대표이사");
     setEditingIssue(issue);
-    setNewIssueForm({
+
+    let cat = issue.category || "오픈이슈";
+    if (cat === "공지사항" || cat === "사내공지" || cat === "공유사항") cat = "공지사항";
+    else if (cat === "회의일정" || cat.includes("회의")) cat = "회의일정";
+    else if (cat === "품질경보") cat = "품질경보";
+    else cat = "오픈이슈";
+
+    const issueData = {
       id: issue.id,
-      category: issue.category || "오픈이슈",
+      category: cat,
       plant: issue.plant || "삼랑진공장",
       author: defaultAuthor,
       authorTitle: defaultTitle,
@@ -922,7 +1033,18 @@ export const AuthModal = () => {
       actionImages: issue.actionImages ? [...issue.actionImages] : [],
       isResolved: issue.isResolved || false,
       replies: issue.replies ? [...issue.replies] : []
-    });
+    };
+
+    // 해당 항목의 카테고리에만 기존 내용이 채워지고, 다른 뱃지들은 비어있도록 초기화
+    const initialDrafts = {
+      "품질경보": cat === "품질경보" ? { ...issueData, category: "품질경보" } : createEmptyCategoryDraft("품질경보", issue.plant || "삼랑진공장", defaultAuthor, defaultTitle),
+      "회의일정": cat === "회의일정" ? { ...issueData, category: "회의일정" } : createEmptyCategoryDraft("회의일정", issue.plant || "삼랑진공장", defaultAuthor, defaultTitle),
+      "공지사항": (cat === "공지사항" || cat === "사내공지") ? { ...issueData, category: "공지사항" } : createEmptyCategoryDraft("공지사항", issue.plant || "삼랑진공장", defaultAuthor, defaultTitle),
+      "오픈이슈": cat === "오픈이슈" ? { ...issueData, category: "오픈이슈" } : createEmptyCategoryDraft("오픈이슈", issue.plant || "삼랑진공장", defaultAuthor, defaultTitle)
+    };
+
+    setCategoryDrafts(initialDrafts);
+    setNewIssueForm(initialDrafts[cat]);
     setActionOpinionForm({
       actionDate: todayDateStr,
       author: currentProfile?.name || "",
@@ -1065,24 +1187,14 @@ export const AuthModal = () => {
       setDetailIssueModal(saved);
     }
 
-    setNewIssueForm({
-      category: "오픈이슈",
-      plant: "삼랑진공장",
-      author: "",
-      authorTitle: "",
-      startDate: todayDateStr,
-      expireDate: todayDateStr,
-      meetingTime: "14:00",
-      progress: 0,
-      title: "",
-      content: "",
-      images: [],
-      actionResult: "",
-      actionAuthor: "",
-      actionImages: [],
-      isResolved: false,
-      replies: []
-    });
+    const freshDrafts = {
+      "품질경보": createEmptyCategoryDraft("품질경보"),
+      "회의일정": createEmptyCategoryDraft("회의일정"),
+      "공지사항": createEmptyCategoryDraft("공지사항"),
+      "오픈이슈": createEmptyCategoryDraft("오픈이슈")
+    };
+    setCategoryDrafts(freshDrafts);
+    setNewIssueForm(freshDrafts["오픈이슈"]);
     setActionOpinionForm({
       actionDate: "",
       author: "",
@@ -1568,22 +1680,6 @@ export const AuthModal = () => {
     }
   };
 
-  // All workers list for author dropdown (👑 본사 권태형 대표이사, 최미영 전무 포함)
-  const allWorkers = useMemo(() => {
-    const list = [];
-    // 👑 1. 본사 최고 관리자 (권태형 대표이사, 최미영 전무)
-    ADMIN_USERS.forEach((a) => {
-      list.push({ ...a, plantName: "본사" });
-    });
-    // 🏢 2. 삼랑진공장, 한림공장 작업자
-    PLANTS.forEach((p) => {
-      p.workers.forEach((w) => {
-        list.push({ ...w, plantName: p.name });
-      });
-    });
-    return list;
-  }, []);
-
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
       {/* Background Ambient Glow Orbs */}
@@ -1665,32 +1761,7 @@ export const AuthModal = () => {
                         ? "품질경보"
                         : "오픈이슈";
 
-                    setEditingIssue(null);
-                    setIsIssueDetailMode(false); // 🌟 신규 등록 폼 모드로 열기
-                    setNewIssueForm({
-                      category: targetCategory,
-                      plant: "삼랑진공장",
-                      author: "", // 🌟 직접 선택하도록 초기화
-                      authorTitle: "",
-                      startDate: todayDateStr,
-                      expireDate: todayDateStr,
-                      meetingTime: "14:00",
-                      progress: 0,
-                      title: "",
-                      content: "",
-                      images: [],
-                      actionResult: "",
-                      actionAuthor: "",
-                      actionImages: [],
-                      isResolved: false,
-                      replies: []
-                    });
-                    setActionOpinionForm({
-                      actionDate: todayDateStr,
-                      author: "",
-                      content: ""
-                    });
-                    setIsIssueModalOpen(true);
+                    handleOpenNewIssue(targetCategory);
                   }}
                   className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white transition-all flex items-center gap-1 active:scale-95 cursor-pointer shadow-md"
                   title="신규 오픈이슈/공지/회의/품질경보 등록"
@@ -2922,7 +2993,17 @@ export const AuthModal = () => {
               <div className="pt-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setIsIssueModalOpen(true)}
+                  onClick={() => {
+                    const targetCat =
+                      ledgerCategoryTab === "meeting"
+                        ? "회의일정"
+                        : ledgerCategoryTab === "notice"
+                        ? "공지사항"
+                        : ledgerCategoryTab === "quality_alert"
+                        ? "품질경보"
+                        : "오픈이슈";
+                    handleOpenNewIssue(targetCat);
+                  }}
                   className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-xs font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -3412,7 +3493,7 @@ export const AuthModal = () => {
                   {/* 1) 품질경보 */}
                   <button
                     type="button"
-                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "품질경보" })}
+                    onClick={() => handleSwitchCategory("품질경보")}
                     className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
                       newIssueForm.category === "품질경보"
                         ? "bg-rose-50 dark:bg-rose-950/70 border-rose-500 text-rose-700 dark:text-rose-300 shadow-xs ring-1 ring-rose-500/30"
@@ -3425,7 +3506,7 @@ export const AuthModal = () => {
                   {/* 2) 회의일정 */}
                   <button
                     type="button"
-                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "회의일정" })}
+                    onClick={() => handleSwitchCategory("회의일정")}
                     className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
                       newIssueForm.category === "회의일정"
                         ? "bg-purple-50 dark:bg-purple-950/70 border-purple-500 text-purple-700 dark:text-purple-300 shadow-xs ring-1 ring-purple-500/30"
@@ -3438,7 +3519,7 @@ export const AuthModal = () => {
                   {/* 3) 사내공지 */}
                   <button
                     type="button"
-                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "공지사항" })}
+                    onClick={() => handleSwitchCategory("공지사항")}
                     className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
                       newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
                         ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/30"
@@ -3451,7 +3532,7 @@ export const AuthModal = () => {
                   {/* 4) 오픈이슈 */}
                   <button
                     type="button"
-                    onClick={() => setNewIssueForm({ ...newIssueForm, category: "오픈이슈" })}
+                    onClick={() => handleSwitchCategory("오픈이슈")}
                     className={`py-2 px-1 rounded-xl border-2 flex items-center justify-center gap-1 transition-all cursor-pointer text-xs font-black ${
                       newIssueForm.category === "오픈이슈"
                         ? "bg-blue-50 dark:bg-blue-950/70 border-blue-500 text-blue-700 dark:text-blue-300 shadow-xs ring-1 ring-blue-500/30"
