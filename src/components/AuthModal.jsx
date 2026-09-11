@@ -1300,7 +1300,7 @@ export const AuthModal = () => {
       e.stopPropagation();
     }
     handleOpenActionModal(item, e);
-    setOpenActionMenuId(null);
+    setTimeout(() => setOpenActionMenuId(null), 100);
   };
 
   const handleExecuteEditContent = (item, e) => {
@@ -1309,7 +1309,7 @@ export const AuthModal = () => {
       e.stopPropagation();
     }
     handleOpenEditIssue(item, e, true, false);
-    setOpenActionMenuId(null);
+    setTimeout(() => setOpenActionMenuId(null), 100);
   };
 
   const handleExecuteRestore = async (item, e) => {
@@ -1317,8 +1317,8 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    setOpenActionMenuId(null);
     await handleRestoreIssue(item.id, e);
+    setTimeout(() => setOpenActionMenuId(null), 100);
   };
 
   const handleExecuteCancelRestore = async (item, e) => {
@@ -1326,8 +1326,8 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    setOpenActionMenuId(null);
     await handleCancelRestore(item, e);
+    setTimeout(() => setOpenActionMenuId(null), 100);
   };
 
   // Add Reply to Meeting Schedule or Issue (회신란)
@@ -2366,9 +2366,11 @@ export const AuthModal = () => {
         return (
           <div
             className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
-            onClick={() => {
-              setIsListModalOpen(false);
-              setSelectedListItem(null);
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsListModalOpen(false);
+                setSelectedListItem(null);
+              }
             }}
           >
             <div
@@ -3273,7 +3275,11 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {isIssueModalOpen && (
         <div
-          onClick={handleCloseIssueModal}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleCloseIssueModal();
+            }
+          }}
           className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
@@ -4765,7 +4771,11 @@ export const AuthModal = () => {
         const isMeetingAction = actionModalData.issue.category === "회의일정";
         return (
           <div
-            onClick={handleCloseActionModal}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                handleCloseActionModal();
+              }
+            }}
             className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
           >
             <div
@@ -5023,7 +5033,11 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {deleteModalData.isOpen && deleteModalData.issue && (
         <div
-          onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" });
+            }
+          }}
           className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
@@ -5141,7 +5155,11 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {telegramAdminPinModal.isOpen && (
         <div
-          onClick={() => setTelegramAdminPinModal({ isOpen: false, pinInput: "", errorMsg: "" })}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setTelegramAdminPinModal({ isOpen: false, pinInput: "", errorMsg: "" });
+            }
+          }}
           className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn cursor-pointer"
         >
           <div
@@ -5239,7 +5257,11 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {isTelegramModalOpen && (
         <div
-          onClick={() => setIsTelegramModalOpen(false)}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsTelegramModalOpen(false);
+            }
+          }}
           className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
