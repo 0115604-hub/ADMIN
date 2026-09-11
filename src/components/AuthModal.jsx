@@ -991,7 +991,14 @@ export const AuthModal = () => {
       newIssueForm.actionAuthor = authorName;
     }
 
-    const isManuallyRestored = Boolean(editingIssue?.isManuallyRestored || (effectiveExpireDate >= todayDateStr));
+    const isManuallyRestored = Boolean(
+      editingIssue?.isManuallyRestored ||
+      effectiveExpireDate >= todayDateStr ||
+      (editingIssue?.isDeleted && effectiveExpireDate >= todayDateStr)
+    );
+
+    const shouldReactivate = editingIssue ? (effectiveExpireDate >= todayDateStr || isManuallyRestored) : true;
+    const finalIsDeleted = shouldReactivate ? false : Boolean(editingIssue?.isDeleted);
 
     const saved = await saveUrgentIssue({
       ...newIssueForm,
@@ -1014,7 +1021,7 @@ export const AuthModal = () => {
       actionAuthor: hasAction ? (newIssueForm.actionAuthor || authorName) : (editingIssue?.actionAuthor || ""),
       actionAt: hasAction ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
       isResolved: finalIsResolved,
-      isDeleted: editingIssue ? Boolean(editingIssue.isDeleted) : false,
+      isDeleted: finalIsDeleted,
       isManuallyRestored: isManuallyRestored,
       createdAt: editingIssue ? editingIssue.createdAt : undefined,
       replies: newIssueForm.replies || (editingIssue ? (editingIssue.replies || []) : [])
@@ -1300,6 +1307,47 @@ export const AuthModal = () => {
       setIsListModalOpen(true);
       setOpenedEditFromListModal(false);
     }
+  };
+
+  // ⭐ 4대 리스트 대장 항목 전용 액션 즉시 실행 핸들러 (이벤트 버블링 완전 차단 및 안전 모달 전환)
+  const handleExecuteMeetingResult = (item, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setOpenedEditFromListModal(true);
+    handleOpenActionModal(item, e);
+    setIsListModalOpen(false);
+    setOpenActionMenuId(null);
+  };
+
+  const handleExecuteEditContent = (item, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setOpenedEditFromListModal(true);
+    handleOpenEditIssue(item, e, true, true);
+    setIsListModalOpen(false);
+    setOpenActionMenuId(null);
+  };
+
+  const handleExecuteRestore = async (item, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setOpenActionMenuId(null);
+    await handleRestoreIssue(item.id, e);
+  };
+
+  const handleExecuteCancelRestore = async (item, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setOpenActionMenuId(null);
+    await handleCancelRestore(item, e);
   };
 
   // Add Reply to Meeting Schedule or Issue (회신란)
@@ -2830,10 +2878,7 @@ export const AuthModal = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              handleOpenEditIssue(item, e, true, true);
-                              setIsListModalOpen(false);
-                            }}
+                            onClick={(e) => handleExecuteEditContent(item, e)}
                             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
                             title="이 항목 내용 수정"
                           >
@@ -2841,29 +2886,24 @@ export const AuthModal = () => {
                             <span>내용 수정</span>
                           </button>
 
-                          {!isItemDeleted && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                handleOpenActionModal(item, e);
-                                setIsListModalOpen(false);
-                              }}
-                              className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 text-white ${
-                                isItemMeeting
-                                  ? "bg-purple-600 hover:bg-purple-700"
-                                  : "bg-emerald-600 hover:bg-emerald-700"
-                              }`}
-                              title={isItemMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{isItemMeeting ? "회의결과 입력" : "조치결과 입력"}</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => handleExecuteMeetingResult(item, e)}
+                            className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 text-white ${
+                              isItemMeeting
+                                ? "bg-purple-600 hover:bg-purple-700"
+                                : "bg-emerald-600 hover:bg-emerald-700"
+                            }`}
+                            title={isItemMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>{isItemMeeting ? "회의결과 입력" : "조치결과 입력"}</span>
+                          </button>
 
                           {isItemDeleted ? (
                             <button
                               type="button"
-                              onClick={(e) => handleRestoreIssue(item.id, e)}
+                              onClick={(e) => handleExecuteRestore(item, e)}
                               className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md shadow-blue-600/30 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 animate-pulse"
                               title="이 항목을 첫화면으로 복구"
                             >
@@ -2874,7 +2914,7 @@ export const AuthModal = () => {
                             <>
                               <button
                                 type="button"
-                                onClick={(e) => handleCancelRestore(item, e)}
+                                onClick={(e) => handleExecuteCancelRestore(item, e)}
                                 className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-slate-300 dark:border-slate-700"
                                 title="첫화면 복구 취소 (관리목록으로 내리기)"
                               >
@@ -2939,6 +2979,7 @@ export const AuthModal = () => {
                         <div
                           key={it.id || idx}
                           onClick={() => {
+                            if (openActionMenuId === it.id) return;
                             handleOpenEditIssue(it, null, false, true);
                             setIsListModalOpen(false);
                           }}
@@ -3088,16 +3129,10 @@ export const AuthModal = () => {
                               className="mt-1 pt-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5 flex-wrap animate-fadeIn bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200/80 dark:border-amber-900/50 shadow-2xs"
                             >
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                {/* 1. 회의결과입력 / 조치결과입력 버튼 (종결 항목도 가능) */}
+                                {/* 1. 회의결과입력 / 조치결과입력 버튼 (종결 항목도 즉시 실행) */}
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenedEditFromListModal(true);
-                                    handleOpenActionModal(it, e);
-                                    setIsListModalOpen(false);
-                                    setOpenActionMenuId(null);
-                                  }}
+                                  onClick={(e) => handleExecuteMeetingResult(it, e)}
                                   className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
                                     isItMeeting
                                       ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
@@ -3109,16 +3144,10 @@ export const AuthModal = () => {
                                   <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
                                 </button>
 
-                                {/* 2. 내용수정 버튼 (종결 항목도 가능) */}
+                                {/* 2. 내용수정 버튼 (종결 항목도 즉시 실행) */}
                                 <button
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenedEditFromListModal(true);
-                                    handleOpenEditIssue(it, e, true, true);
-                                    setIsListModalOpen(false);
-                                    setOpenActionMenuId(null);
-                                  }}
+                                  onClick={(e) => handleExecuteEditContent(it, e)}
                                   className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                                   title="제목, 내용, 일정, 첨부사진 등 내용 수정"
                                 >
@@ -3130,11 +3159,7 @@ export const AuthModal = () => {
                                 {isItDeleted ? (
                                   <button
                                     type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRestoreIssue(it.id, e);
-                                      setOpenActionMenuId(null);
-                                    }}
+                                    onClick={(e) => handleExecuteRestore(it, e)}
                                     className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer animate-pulse"
                                     title="첫 화면으로 복구"
                                   >
@@ -3144,11 +3169,7 @@ export const AuthModal = () => {
                                 ) : (
                                   <button
                                     type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelRestore(it, e);
-                                      setOpenActionMenuId(null);
-                                    }}
+                                    onClick={(e) => handleExecuteCancelRestore(it, e)}
                                     className="px-2 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-[11px] active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
                                     title="첫 화면에서 내리고 관리목록으로 보관"
                                   >
@@ -3654,7 +3675,10 @@ export const AuthModal = () => {
                     {newIssueForm.category !== "오픈이슈" && (
                       <button
                         type="button"
-                        onClick={() => handleOpenActionModal(editingIssue)}
+                        onClick={() => {
+                          handleOpenActionModal(editingIssue);
+                          setIsIssueModalOpen(false);
+                        }}
                         className={`px-3.5 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs text-white ${
                           newIssueForm.category === "회의일정"
                             ? "bg-purple-600 hover:bg-purple-700"
@@ -4763,7 +4787,7 @@ export const AuthModal = () => {
         const isMeetingAction = actionModalData.issue.category === "회의일정";
         return (
           <div
-            onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "", actionImages: [] })}
+            onClick={handleCloseActionModal}
             className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
           >
             <div
@@ -4788,7 +4812,7 @@ export const AuthModal = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "", actionImages: [] })}
+                  onClick={handleCloseActionModal}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer"
                 >
                   ✕
@@ -4993,7 +5017,7 @@ export const AuthModal = () => {
                 <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
-                    onClick={() => setActionModalData({ isOpen: false, issue: null, actionResult: "", actionAuthor: "", actionImages: [] })}
+                    onClick={handleCloseActionModal}
                     className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
                   >
                     취소

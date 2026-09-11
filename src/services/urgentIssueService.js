@@ -457,7 +457,9 @@ export const updateUrgentIssueActionResult = async (id, actionResult, actionAuth
     actionAuthor: actionAuthor || target.actionAuthor || "작업자",
     actionImages: actionImages && actionImages.length > 0 ? actionImages : (target.actionImages || []),
     actionAt: trimmed ? nowStr : "",
-    isResolved: Boolean(trimmed)
+    isResolved: Boolean(trimmed),
+    isDeleted: false,
+    isManuallyRestored: true
   };
 
   const saved = await saveUrgentIssue(updatedTarget);
