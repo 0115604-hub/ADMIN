@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LogOut,
   Calendar,
@@ -10,6 +10,11 @@ import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { OryukLogo } from "./OryukLogo";
 import { TelegramLogo } from "./TelegramLogo";
+import {
+  getLocalTelegramConfig,
+  subscribeTelegramConfig,
+  toggleTelegramEnabled
+} from "../services/telegramService";
 
 export const Header = ({
   title,
@@ -22,6 +27,14 @@ export const Header = ({
 }) => {
   const { isOperator, isAdmin, currentProfile, logout } = useAuth();
   const { selectedMonth, availableMonths, changeMonth, currentYearMonth, isCurrentMonth } = useMonth();
+  const [telegramConfig, setTelegramConfig] = useState(() => getLocalTelegramConfig());
+
+  useEffect(() => {
+    const unsub = subscribeTelegramConfig((cfg) => {
+      if (cfg) setTelegramConfig(cfg);
+    });
+    return () => unsub();
+  }, []);
 
   const formatMonthShort = (ym) => {
     const parts = ym.split("-");
@@ -92,7 +105,7 @@ export const Header = ({
 
       {/* Center / Right: Action Buttons, Month Switcher & Logout */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-        {/* ⭐ [요청반영] Admin Top: 등록 탭 및 오른쪽 텔레그램 연동 탭 */}
+        {/* ⭐ [요청반영] Admin Top: 등록 탭, 텔레그램 연동 중단/재시작 토글 및 오른쪽 텔레그램 연동 탭 */}
         {isAdmin && (
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {onOpenNewModal && (
@@ -105,6 +118,34 @@ export const Header = ({
                 <span className="font-extrabold hidden sm:inline">등록</span>
               </button>
             )}
+
+            {/* ⭐ [요청반영] 텔레그램 연동 중단 / 재시작 토글 버튼 (수정 중 불필요한 발송 방지) */}
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await toggleTelegramEnabled();
+                setTelegramConfig(res);
+              }}
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl text-xs font-black transition-all shadow-2xs active:scale-95 cursor-pointer border shrink-0 ${
+                telegramConfig?.enabled !== false
+                  ? "bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
+                  : "bg-amber-500 hover:bg-amber-600 text-white border-amber-400 shadow-md animate-pulse"
+              }`}
+              title={
+                telegramConfig?.enabled !== false
+                  ? "텔레그램 실시간 연동 중입니다. 클릭 시 수정/정비 중 불필요한 발송을 방지하기 위해 연동을 일시 중단합니다."
+                  : "현재 텔레그램 연동이 중단되어 있습니다. 클릭 시 정상 발송으로 재시작합니다."
+              }
+            >
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  telegramConfig?.enabled !== false ? "bg-emerald-500 animate-pulse" : "bg-white"
+                }`}
+              />
+              <span className="font-extrabold">
+                {telegramConfig?.enabled !== false ? "연동중 | 중단" : "중단됨 | 재시작"}
+              </span>
+            </button>
 
             {setActiveTab && (
               <button

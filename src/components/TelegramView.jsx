@@ -33,13 +33,17 @@ import {
   Eye,
   Copy,
   BookmarkCheck,
-  Save
+  Save,
+  Pause,
+  Play
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import {
   getLocalTelegramConfig,
   saveTelegramConfig,
+  setTelegramEnabled,
+  toggleTelegramEnabled,
   subscribeTelegramConfig,
   testTelegramConnection,
   sendTelegramMessage,
@@ -537,7 +541,7 @@ export const TelegramView = () => {
                   텔레그램 발송 관리
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                  변경내용 영구 적용 지원
+                  실시간 연동 제어
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -546,17 +550,66 @@ export const TelegramView = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black ${
-              telegramConfig.enabled
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
-                : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${telegramConfig.enabled ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-              {telegramConfig.enabled ? "텔레그램 연동 가동 중" : "알림 연동 꺼짐"}
-            </span>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* ⭐ [요청반영] 텔레그램 연동 중단 / 재시작 버튼 */}
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await toggleTelegramEnabled();
+                setTelegramConfig(res);
+              }}
+              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-2xl font-black text-xs sm:text-sm transition-all shadow-md active:scale-95 cursor-pointer border ${
+                telegramConfig.enabled !== false
+                  ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:border-rose-400"
+                  : "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-emerald-600/30 animate-pulse"
+              }`}
+              title={
+                telegramConfig.enabled !== false
+                  ? "수정/테스트 작업 중 불필요한 알림 발송을 방지하기 위해 텔레그램 연동을 일시 중단합니다."
+                  : "현재 중단되어 있는 텔레그램 연동을 다시 켜서 실시간 알림을 정상 발송합니다."
+              }
+            >
+              {telegramConfig.enabled !== false ? (
+                <>
+                  <Pause className="w-4 h-4 text-rose-600 dark:text-rose-400 fill-rose-600 dark:fill-rose-400" />
+                  <span>텔레그램 연동 일시중단</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 text-white fill-white" />
+                  <span>텔레그램 연동 재시작 (가동)</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
+
+        {/* ⚠️ 연동 중단 시 알림 배너 */}
+        {telegramConfig.enabled === false && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/50 text-amber-900 dark:text-amber-200 flex items-start sm:items-center justify-between gap-3 text-xs animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-xl bg-amber-500 text-white font-black shrink-0 text-sm">⏸️</span>
+              <div>
+                <p className="font-black text-xs sm:text-sm">
+                  텔레그램 실시간 발송이 일시 중단(PAUSED)되어 있습니다.
+                </p>
+                <p className="text-[11px] opacity-90 mt-0.5">
+                  데이터 등록/수정/삭제 중 불필요한 단톡방 알림이 발송되지 않습니다. 수정을 마친 후 위의 <strong>[텔레그램 연동 재시작]</strong> 버튼을 누르면 정상 발송됩니다.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await setTelegramEnabled(true);
+                setTelegramConfig(res);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shrink-0 cursor-pointer shadow-xs active:scale-95"
+            >
+              즉시 재시작
+            </button>
+          </div>
+        )}
 
         {/* 🌟 3대 메인 탭: [📢 오륙통합방] & [👑 경영총괄] & [⚙️ 텔레그램 연동 설정] */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-1.5 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80">

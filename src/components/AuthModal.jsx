@@ -49,7 +49,9 @@ import {
   Save,
   Edit3,
   LayoutList,
-  History
+  History,
+  Pause,
+  Play
 } from "lucide-react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
@@ -83,6 +85,8 @@ import { TelegramLogo } from "./TelegramLogo";
 import {
   getLocalTelegramConfig,
   saveTelegramConfig,
+  setTelegramEnabled,
+  toggleTelegramEnabled,
   subscribeTelegramConfig,
   testTelegramConnection,
   sendDailyClosingBriefingTelegram
@@ -5083,21 +5087,43 @@ export const AuthModal = () => {
 
             {/* Form */}
             <form onSubmit={handleSaveTelegramConfig} className="space-y-3.5">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70">
-                <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                  실시간 알림 사용 상태
-                </span>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={telegramConfig.enabled}
-                    onChange={(e) => setTelegramConfig({ ...telegramConfig, enabled: e.target.checked })}
-                    className="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 border-slate-300"
-                  />
-                  <span className="text-xs font-bold text-sky-600 dark:text-sky-400">
-                    {telegramConfig.enabled ? "켜짐(ON)" : "꺼짐(OFF)"}
+              {/* 실시간 알림 중단 / 재시작 전용 제어 박스 */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${telegramConfig.enabled !== false ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+                    <span>실시간 연동 상태: {telegramConfig.enabled !== false ? "정상 가동 중" : "발송 일시 중단됨"}</span>
                   </span>
-                </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await toggleTelegramEnabled();
+                      setTelegramConfig(res);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs transition-all shadow-xs cursor-pointer ${
+                      telegramConfig.enabled !== false
+                        ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-700"
+                        : "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30 animate-pulse"
+                    }`}
+                  >
+                    {telegramConfig.enabled !== false ? (
+                      <>
+                        <Pause className="w-3.5 h-3.5 fill-rose-600 dark:fill-rose-400" />
+                        <span>연동 일시중단</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-white" />
+                        <span>연동 재시작 (ON)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {telegramConfig.enabled !== false
+                    ? "🟢 현재 모든 실시간 알림이 단톡방에 정상 발송됩니다. 수정/점검 중 발송을 막으려면 [연동 일시중단]을 누르세요."
+                    : "⏸️ 텔레그램 발송이 일시 중단되어 데이터 등록/수정/삭제 중 불필요한 알림이 발송되지 않습니다."}
+                </p>
               </div>
 
               <div className="space-y-1">

@@ -85,6 +85,24 @@ export const saveTelegramConfig = async (config) => {
   return cachedConfig;
 };
 
+export const setTelegramEnabled = async (enabled) => {
+  const current = getLocalTelegramConfig();
+  const updated = {
+    ...current,
+    enabled: Boolean(enabled)
+  };
+  return await saveTelegramConfig(updated);
+};
+
+export const toggleTelegramEnabled = async () => {
+  const current = getLocalTelegramConfig();
+  const updated = {
+    ...current,
+    enabled: !current.enabled
+  };
+  return await saveTelegramConfig(updated);
+};
+
 export const subscribeTelegramConfig = (onUpdate) => {
   try {
     const docRef = doc(db, CONFIG_DOC_PATH[0], CONFIG_DOC_PATH[1]);
@@ -237,9 +255,13 @@ export const subscribeTelegramCustomTemplates = (onUpdate) => {
  */
 export const sendTelegramMessage = async (text, customConfig = null) => {
   const config = customConfig || getLocalTelegramConfig();
-  if (!config.enabled || !config.botToken || !config.chatId) {
+  if (config.enabled === false) {
+    console.log("[Telegram] 연동이 일시 중단 상태이므로 발송을 건너뜁니다.");
+    return { success: false, skipped: true, reason: "PAUSED" };
+  }
+  if (!config.botToken || !config.chatId) {
     console.log("Telegram notification skipped: Bot token or chat ID not configured.");
-    return { success: false, reason: "NOT_CONFIGURED" };
+    return { success: false, skipped: true, reason: "NOT_CONFIGURED" };
   }
 
   const sanitizedText = sanitizeTelegramMessageText(text);
@@ -266,12 +288,34 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
     if (timeoutId) clearTimeout(timeoutId);
 
     const data = await response.json();
-    if (!response.ok || !data.ok) {
-      console.error("Telegram API Error:", data);
-      return { success: false, error: data.description || "API_ERROR", data };
+    if (response.ok && data.ok) {
+      return { success: true, messageId: data.result?.message_id };
     }
 
-    return { success: true, messageId: data.result?.message_id };
+    // ⭐ Fallback: If Telegram failed due to HTML parse error, strip HTML and retry as plain text
+    console.warn("Telegram HTML parse failed, retrying with plain text fallback. Error:", data);
+    const plainText = sanitizedText
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "");
+
+    const fallbackRes = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: plainText,
+        disable_web_page_preview: true
+      })
+    });
+
+    const fallbackData = await fallbackRes.json();
+    if (fallbackRes.ok && fallbackData.ok) {
+      return { success: true, messageId: fallbackData.result?.message_id, fallback: true };
+    }
+
+    console.error("Telegram API Error after fallback:", fallbackData);
+    return { success: false, error: fallbackData.description || data.description || "API_ERROR", data: fallbackData };
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
     console.error("Telegram Network Error:", error);
@@ -284,8 +328,11 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
  */
 export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig = null) => {
   const config = customConfig || getLocalTelegramConfig();
-  if (!config.enabled || !config.botToken || !config.chatId) {
-    return { success: false, reason: "NOT_CONFIGURED" };
+  if (config.enabled === false) {
+    return { success: false, skipped: true, reason: "PAUSED" };
+  }
+  if (!config.botToken || !config.chatId) {
+    return { success: false, skipped: true, reason: "NOT_CONFIGURED" };
   }
 
   const sanitizedCaption = sanitizeTelegramMessageText(caption);
@@ -316,16 +363,38 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
     if (timeoutId) clearTimeout(timeoutId);
 
     const data = await response.json();
-    if (!response.ok || !data.ok) {
-      console.warn("Telegram sendPhoto failed, fallback to text message:", data);
-      return { success: false, error: data.description || "API_ERROR", data };
+    if (response.ok && data.ok) {
+      return { success: true, messageId: data.result?.message_id };
     }
 
-    return { success: true, messageId: data.result?.message_id };
+    // ⭐ Fallback: retry without parse_mode
+    console.warn("Telegram sendPhoto with HTML failed, retrying without parse_mode:", data);
+    const plainCaption = sanitizedCaption
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "");
+
+    const fallbackFormData = new FormData();
+    fallbackFormData.append("chat_id", chatId);
+    if (plainCaption) {
+      fallbackFormData.append("caption", plainCaption);
+    }
+    fallbackFormData.append("photo", resBlob, "photo.jpg");
+
+    const fallbackRes = await fetch(endpoint, {
+      method: "POST",
+      body: fallbackFormData
+    });
+    const fallbackData = await fallbackRes.json();
+    if (fallbackRes.ok && fallbackData.ok) {
+      return { success: true, messageId: fallbackData.result?.message_id, fallback: true };
+    }
+
+    return await sendTelegramMessage(sanitizedCaption, customConfig);
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
-    console.warn("Telegram sendPhoto Network Error:", error);
-    return { success: false, error: error.message };
+    console.warn("Telegram sendPhoto Network Error, fallback:", error);
+    return await sendTelegramMessage(sanitizedCaption, customConfig);
   }
 };
 
@@ -334,8 +403,11 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
  */
 export const sendTelegramMediaGroup = async (images = [], caption = "", customConfig = null) => {
   const config = customConfig || getLocalTelegramConfig();
-  if (!config.enabled || !config.botToken || !config.chatId) {
-    return { success: false, reason: "NOT_CONFIGURED" };
+  if (config.enabled === false) {
+    return { success: false, skipped: true, reason: "PAUSED" };
+  }
+  if (!config.botToken || !config.chatId) {
+    return { success: false, skipped: true, reason: "NOT_CONFIGURED" };
   }
 
   const validImages = (images || []).filter((img) => img && img.dataUrl).slice(0, 3);
@@ -388,12 +460,12 @@ export const sendTelegramMediaGroup = async (images = [], caption = "", customCo
     if (timeoutId) clearTimeout(timeoutId);
 
     const data = await response.json();
-    if (!response.ok || !data.ok) {
-      console.warn("sendMediaGroup failed, fallback to single photo send:", data);
-      return await sendTelegramPhoto(validImages[0].dataUrl, caption, customConfig);
+    if (response.ok && data.ok) {
+      return { success: true, results: data.result };
     }
 
-    return { success: true, results: data.result };
+    console.warn("sendMediaGroup failed, fallback to single photo send:", data);
+    return await sendTelegramPhoto(validImages[0].dataUrl, caption, customConfig);
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
     console.warn("Telegram sendMediaGroup Error, fallback:", error);
