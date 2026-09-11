@@ -1706,7 +1706,17 @@ export const AuthModal = () => {
                   return (
                     <div
                       key={item.id}
-                      onClick={(e) => handleOpenEditIssue(item, e)}
+                      onClick={(e) => {
+                        if (isMeeting) {
+                          setLedgerCategoryTab("meeting");
+                          setSelectedListItem(null);
+                          setIssueFilterTab("all");
+                          setIssueModalPage(1);
+                          setIsListModalOpen(true);
+                        } else {
+                          handleOpenEditIssue(item, e);
+                        }
+                      }}
                       className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                         item.isResolved
                           ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
@@ -1716,7 +1726,7 @@ export const AuthModal = () => {
                           ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/20"
                           : "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
                       }`}
-                      title={isMeeting ? "탭하여 회의일정 상세 내용 확인, 회의결과 입력 및 수정" : "탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"}
+                      title={isMeeting ? "탭하여 회의일정 전체 목록(대장) 열기" : "탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"}
                     >
                       {/* 1단: 상태 배지 + 공장 + 일시 + 사진 + 조치버튼 */}
                       <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
@@ -1727,18 +1737,9 @@ export const AuthModal = () => {
                             </span>
                           ) : isMeeting ? (
                             <span
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLedgerCategoryTab("meeting");
-                                setSelectedListItem(null);
-                                setIssueFilterTab("all");
-                                setIssueModalPage(1);
-                                setIsListModalOpen(true);
-                              }}
-                              className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs cursor-pointer hover:bg-purple-700 active:scale-95 transition-all"
-                              title="탭하여 회의일정 전체 관리대장 목록 열기"
+                              className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs flex items-center gap-1"
                             >
-                              📅 회의일정 ↗
+                              <span>📅 회의일정 ↗</span>
                             </span>
                           ) : isNotice ? (
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
