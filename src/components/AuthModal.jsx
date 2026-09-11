@@ -1014,7 +1014,7 @@ export const AuthModal = () => {
       actionAuthor: hasAction ? (newIssueForm.actionAuthor || authorName) : (editingIssue?.actionAuthor || ""),
       actionAt: hasAction ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
       isResolved: finalIsResolved,
-      isDeleted: false,
+      isDeleted: editingIssue ? Boolean(editingIssue.isDeleted) : false,
       isManuallyRestored: isManuallyRestored,
       createdAt: editingIssue ? editingIssue.createdAt : undefined,
       replies: newIssueForm.replies || (editingIssue ? (editingIssue.replies || []) : [])
@@ -1263,6 +1263,12 @@ export const AuthModal = () => {
       setUrgentIssues((prev) =>
         prev.map((it) => (it.id === actionModalData.issue.id ? updated : it))
       );
+      if (selectedListItem && selectedListItem.id === actionModalData.issue.id) {
+        setSelectedListItem(updated);
+      }
+      if (editingIssue && editingIssue.id === actionModalData.issue.id) {
+        setEditingIssue(updated);
+      }
     }
 
     setActionModalData({
@@ -1272,6 +1278,28 @@ export const AuthModal = () => {
       actionAuthor: "",
       actionImages: []
     });
+
+    if (openedEditFromListModal) {
+      setIsListModalOpen(true);
+      setOpenedEditFromListModal(false);
+      setRestoreToast("✅ 회의/조치 결과가 성공적으로 저장되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+    }
+  };
+
+  // Close Action Modal with return to list modal if needed
+  const handleCloseActionModal = () => {
+    setActionModalData({
+      isOpen: false,
+      issue: null,
+      actionResult: "",
+      actionAuthor: "",
+      actionImages: []
+    });
+    if (openedEditFromListModal) {
+      setIsListModalOpen(true);
+      setOpenedEditFromListModal(false);
+    }
   };
 
   // Add Reply to Meeting Schedule or Issue (회신란)
@@ -1779,7 +1807,7 @@ export const AuthModal = () => {
                             <span
                               className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs flex items-center gap-1"
                             >
-                              <span>📅 회의일정 ↗</span>
+                              <span>📅 회의일정</span>
                             </span>
                           ) : isNotice ? (
                             <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
@@ -2655,7 +2683,7 @@ export const AuthModal = () => {
                               ? "bg-emerald-600"
                               : "bg-gradient-to-r from-blue-600 to-indigo-600"
                           }`}>
-                            {isItemDeleted ? "🗑️ 삭제됨" : item.category === "품질경보" ? "🚨 품질경보" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "📌 오픈이슈"}
+                            {isItemDeleted ? "📁 종결" : item.category === "품질경보" ? "🚨 품질경보" : isItemMeeting ? "📅 회의일정" : isItemNotice ? "📢 사내공지" : "📌 오픈이슈"}
                           </span>
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                             {item.plant}
@@ -2953,7 +2981,7 @@ export const AuthModal = () => {
                                   ? "bg-emerald-600"
                                   : "bg-gradient-to-r from-blue-600 to-indigo-600"
                               }`}>
-                                {isItDeleted ? "삭제" : it.category === "품질경보" ? "경보" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
+                                {isItDeleted ? "종결" : it.category === "품질경보" ? "경보" : isItMeeting ? "회의" : isItNotice ? "공지" : "오픈이슈"}
                               </span>
 
                               {/* Factory Badge */}
@@ -3007,16 +3035,16 @@ export const AuthModal = () => {
 
                               {/* Author / Deleter info */}
                               <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
-                                {isItDeleted && it.deletedBy ? `삭제: ${it.deletedBy}` : `${it.author} • ${it.createdAt?.slice(5) || ""}`}
+                                {isItDeleted && it.deletedBy ? `종결: ${it.deletedBy}` : `${it.author} • ${it.createdAt?.slice(5) || ""}`}
                               </span>
                             </div>
 
                             {/* Right: Only Status Badge & Edit Badge */}
                             <div className="flex items-center gap-1.5 shrink-0">
-                              {/* 1) Status Badge (삭제종결 / 회의종결(조치완료) / 회의예정(조치대기)) */}
+                              {/* 1) Status Badge (종결 / 회의종결(조치완료) / 회의예정(조치대기)) */}
                               {isItDeleted ? (
                                 <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                                  삭제종결
+                                  종결
                                 </span>
                               ) : isItResolved ? (
                                 <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
@@ -3060,33 +3088,33 @@ export const AuthModal = () => {
                               className="mt-1 pt-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5 flex-wrap animate-fadeIn bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200/80 dark:border-amber-900/50 shadow-2xs"
                             >
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                {/* 1. 회의결과입력 / 조치결과입력 버튼 */}
-                                {!isItDeleted && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleOpenActionModal(it, e);
-                                      setIsListModalOpen(false);
-                                      setOpenActionMenuId(null);
-                                    }}
-                                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
-                                      isItMeeting
-                                        ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
-                                        : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
-                                    }`}
-                                    title={isItMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
-                                  >
-                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                    <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
-                                  </button>
-                                )}
-
-                                {/* 2. 내용수정 버튼 */}
+                                {/* 1. 회의결과입력 / 조치결과입력 버튼 (종결 항목도 가능) */}
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setOpenedEditFromListModal(true);
+                                    handleOpenActionModal(it, e);
+                                    setIsListModalOpen(false);
+                                    setOpenActionMenuId(null);
+                                  }}
+                                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
+                                    isItMeeting
+                                      ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
+                                      : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
+                                  }`}
+                                  title={isItMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
+                                </button>
+
+                                {/* 2. 내용수정 버튼 (종결 항목도 가능) */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenedEditFromListModal(true);
                                     handleOpenEditIssue(it, e, true, true);
                                     setIsListModalOpen(false);
                                     setOpenActionMenuId(null);
