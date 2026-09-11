@@ -311,14 +311,14 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
     const sorted = sortIssuesByCustomPriority(updated);
     saveLocalUrgentIssues(sorted);
 
-    // 2. Perform exhaustive deletion from Firestore
+    // 2. Perform direct hard-delete from Firestore
     try {
       await deleteDoc(doc(db, COLLECTION_NAME, strId));
     } catch (e) {
       console.warn("Direct doc deleteDoc fallback:", e);
     }
 
-    // 3. Scan collection to mark isDeleted (so snapshot listener ignores it forever) AND deleteDoc
+    // 3. Scan collection and hard-delete all matching docs
     try {
       const snap = await getDocs(collection(db, COLLECTION_NAME));
       const deleteOps = [];
@@ -328,22 +328,12 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
           d.id === strId ||
           String(data.id) === strId ||
           String(data.customId) === strId ||
-          String(data._docId) === strId
+          String(data._docId) === strId ||
+          data.isDeleted === true ||
+          data.deleted === true
         ) {
-          const markDeleted = setDoc(
-            doc(db, COLLECTION_NAME, d.id),
-            {
-              ...data,
-              isDeleted: true,
-              deleted: true,
-              deletedAt: new Date().toISOString(),
-              deletedBy: deleterName || "관리자"
-            },
-            { merge: true }
-          ).catch(() => {});
-
           const hardDelete = deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
-          deleteOps.push(markDeleted, hardDelete);
+          deleteOps.push(hardDelete);
         }
       });
       if (deleteOps.length > 0) {
