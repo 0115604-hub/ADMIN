@@ -625,23 +625,25 @@ export const AuthModal = () => {
 
   const unresolvedActiveIssues = unresolvedIssues;
 
-  // Category-specific collections across all active records
+  // Category-specific collections across active unresolved records (종결/삭제된 항목은 각 카테고리에서 빠지고 '종결삭제관리'로만 이동)
   const allQualityAlerts = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && i.category === "품질경보");
-  }, [urgentIssues]);
+    return urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i) && i.category === "품질경보");
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   const allQualityIssues = useMemo(() => {
     return urgentIssues.filter(
       (i) =>
         !i.isDeleted &&
+        !i.isResolved &&
+        !isItemExpired(i) &&
         (i.category === "품질이슈" ||
           i.category === "오픈이슈" ||
           (i.category !== "품질경보" &&
             !i.category?.includes("공지") &&
             !i.category?.includes("공유") &&
-            i.category !== "회의일정"))
+            !i.category?.includes("회의")))
     );
-  }, [urgentIssues]);
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   const allOpenIssues = allQualityIssues;
 
@@ -649,20 +651,28 @@ export const AuthModal = () => {
     return urgentIssues.filter(
       (i) =>
         !i.isDeleted &&
+        !i.isResolved &&
+        !isItemExpired(i) &&
         (i.category === "공지사항" ||
           i.category === "사내공지" ||
           i.category === "공유사항")
     );
-  }, [urgentIssues]);
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   const allMeetings = useMemo(() => {
-    return urgentIssues.filter((i) => !i.isDeleted && i.category === "회의일정");
-  }, [urgentIssues]);
+    return urgentIssues.filter(
+      (i) =>
+        !i.isDeleted &&
+        !i.isResolved &&
+        !isItemExpired(i) &&
+        (i.category === "회의일정" || i.category?.includes("회의"))
+    );
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
-  // 🗂️ 종결 및 삭제/만료 관리 대상 (종결 isResolved=true 또는 삭제/만료 isDeleted=true인 모든 건)
+  // 🗂️ 종결 및 삭제/만료 관리 대상 (품질경보, 회의일정, 사내공지, 오픈이슈에서 종결 isResolved=true 또는 삭제/만료 isDeleted=true 또는 isItemExpired(i)=true인 모든 건)
   const allClosedDeletedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => Boolean(i.isDeleted) || Boolean(i.isResolved));
-  }, [urgentIssues]);
+    return urgentIssues.filter((i) => Boolean(i.isDeleted) || Boolean(i.isResolved) || isItemExpired(i));
+  }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   // 📅 오픈이슈 전용 7일간 일정표 (Schedule Calendar) 계산
   const openIssueScheduleDays = useMemo(() => {
@@ -772,7 +782,7 @@ export const AuthModal = () => {
   };
 
   const filteredIssues = useMemo(() => {
-    let base = urgentIssues.filter((i) => !i.isDeleted);
+    let base = urgentIssues.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i));
 
     // 대장 모달 카테고리 탭 필터링 (품질경보 -> 회의일정 -> 오픈이슈 -> 사내공지 -> 종결삭제관리)
     if (ledgerCategoryTab === "quality_alert") {
@@ -794,7 +804,7 @@ export const AuthModal = () => {
     }
 
     return sortIssuesByCustomPriority(base);
-  }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, allOpenIssues, allNotices, allMeetings, allQualityAlerts, allQualityIssues, allClosedDeletedIssues]);
+  }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, allOpenIssues, allNotices, allMeetings, allQualityAlerts, allQualityIssues, allClosedDeletedIssues, todayDateStr, currentKstTimeStr]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
   const samrangjinLeaveCount = useMemo(() => {
@@ -2705,13 +2715,17 @@ export const AuthModal = () => {
                     <div className="py-10 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-1">
                       <div className="text-lg">📭</div>
                       <p>
-                        {issueFilterTab === "unresolved"
-                          ? "현재 진행중(조치대기) 상태인 항목이 없습니다."
-                          : issueFilterTab === "closed"
-                          ? "종결(조치완료)된 내역이 없습니다."
-                          : issueFilterTab === "deleted"
-                          ? "삭제 또는 기간만료된 내역이 없습니다."
-                          : "등록된 관리대장 이력이 없습니다."}
+                        {ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
+                          ? "종결 또는 삭제/만료된 내역이 없습니다."
+                          : ledgerCategoryTab === "quality_alert"
+                          ? "현재 진행중인 품질경보 내역이 없습니다."
+                          : ledgerCategoryTab === "meeting"
+                          ? "현재 예정된 회의일정 내역이 없습니다."
+                          : ledgerCategoryTab === "open_issue" || ledgerCategoryTab === "quality_issue"
+                          ? "현재 진행중인 오픈이슈 내역이 없습니다."
+                          : ledgerCategoryTab === "notice"
+                          ? "현재 게시중인 사내공지 내역이 없습니다."
+                          : "등록된 미결 관리대장 이력이 없습니다."}
                       </p>
                     </div>
                   ) : (
