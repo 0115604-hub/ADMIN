@@ -42,7 +42,7 @@ export const sanitizeUrgentIssueItem = (item) => {
   return updated;
 };
 
-// Helper: Read local storage
+// Helper: Read local storage (종결삭제관리 조회를 위해 isDeleted 항목도 함께 보존)
 export const getLocalUrgentIssues = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -52,17 +52,17 @@ export const getLocalUrgentIssues = () => {
     }
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) return [];
-    return parsed.map(sanitizeUrgentIssueItem).filter((i) => !i.isDeleted);
+    return parsed.map(sanitizeUrgentIssueItem);
   } catch (e) {
     console.error("Local storage read error for urgent issues:", e);
     return [];
   }
 };
 
-// Helper: Save local storage
+// Helper: Save local storage (종결삭제관리 조회를 위해 isDeleted 항목도 함께 저장)
 export const saveLocalUrgentIssues = (issues) => {
   try {
-    const valid = (Array.isArray(issues) ? issues : []).filter((i) => !i.isDeleted);
+    const valid = Array.isArray(issues) ? issues : [];
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(valid));
   } catch (e) {
     console.error("Local storage write error for urgent issues:", e);
@@ -144,7 +144,7 @@ export const sortIssuesByCustomPriority = (list = []) => {
   });
 };
 
-// Real-time Cloud Synchronization
+// Real-time Cloud Synchronization (종결/삭제된 항목도 실시간 동기화하여 '종결삭제관리'에서 확인 및 복구 가능)
 export const subscribeUrgentIssues = (onUpdate) => {
   try {
     const colRef = collection(db, COLLECTION_NAME);
@@ -154,8 +154,9 @@ export const subscribeUrgentIssues = (onUpdate) => {
         const list = [];
         snapshot.forEach((d) => {
           const data = d.data();
-          if (!data || data.isDeleted === true || data.deleted === true || data.isDeleted === "true" || data.deleted === "true") return;
-          const item = { ...data, id: d.id, _docId: d.id, customId: data.id };
+          if (!data) return;
+          const isDel = Boolean(data.isDeleted === true || data.deleted === true || data.isDeleted === "true" || data.deleted === "true");
+          const item = { ...data, id: d.id, _docId: d.id, customId: data.id, isDeleted: isDel };
           list.push(sanitizeUrgentIssueItem(item));
         });
         const sorted = sortIssuesByCustomPriority(list);
@@ -293,14 +294,95 @@ export const deleteIssueReply = async (issueId, replyId) => {
 // In-flight deletion lock to prevent duplicate Telegram messages and race conditions
 const activeDeletes = new Set();
 
-// Delete an urgent issue (영구 삭제 - Firestore 및 로컬 스토리지에서 완전 제거)
+// Delete an urgent issue (소프트 삭제 - 첫화면/카테고리에서는 내리고 '종결삭제관리'로 보존 및 이동)
 export const deleteUrgentIssue = async (id, deleterName = "") => {
+  const strId = String(id || "");
+  if (!strId) return getLocalUrgentIssues();
+
+  try {
+    const current = getLocalUrgentIssues();
+    let target = current.find(
+      (i) =>
+        String(i.id) === strId ||
+        String(i._docId) === strId ||
+        String(i.customId) === strId
+    );
+
+    if (!target) {
+      try {
+        const snap = await getDocs(collection(db, COLLECTION_NAME));
+        snap.forEach((d) => {
+          const data = d.data() || {};
+          if (
+            d.id === strId ||
+            String(data.id) === strId ||
+            String(data.customId) === strId ||
+            String(data._docId) === strId
+          ) {
+            target = sanitizeUrgentIssueItem({ ...data, id: d.id, _docId: d.id });
+          }
+        });
+      } catch (e) {
+        console.warn("Firestore soft delete fetch fallback:", e);
+      }
+    }
+
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    const archivedItem = {
+      ...(target || { id: strId }),
+      id: target?.id || strId,
+      isDeleted: true,
+      isManuallyRestored: false,
+      deletedAt: nowStr,
+      deletedBy: deleterName || "관리자"
+    };
+
+    // 1. Update in local storage (종결삭제관리에 보존)
+    const exists = current.some((i) => String(i.id) === strId || String(i._docId) === strId);
+    const updated = exists
+      ? current.map((i) => (String(i.id) === strId || String(i._docId) === strId ? archivedItem : i))
+      : [archivedItem, ...current];
+    const sorted = sortIssuesByCustomPriority(updated);
+    saveLocalUrgentIssues(sorted);
+
+    // 2. Update in Firestore with setDoc
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, target?.id || strId), archivedItem);
+    } catch (e) {
+      console.warn("Firestore soft delete error fallback to local:", e);
+    }
+
+    // 3. Send Telegram Notification (Only once per item deletion)
+    if (!activeDeletes.has(strId)) {
+      activeDeletes.add(strId);
+      setTimeout(() => activeDeletes.delete(strId), 10000);
+      sendQualityDeleteTelegram(archivedItem, deleterName).catch((err) => {
+        console.warn("Telegram delete alert error:", err);
+      });
+    }
+
+    return sorted;
+  } catch (err) {
+    console.error("deleteUrgentIssue error:", err);
+    return getLocalUrgentIssues();
+  }
+};
+
+// Hard Delete (영구 삭제 - DB에서 완전히 제거)
+export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
   activeDeletes.delete(id);
   const strId = String(id || "");
   if (!strId) return getLocalUrgentIssues();
 
   try {
-    // 1. Remove immediately from local storage
     const current = getLocalUrgentIssues();
     const updated = current.filter(
       (i) =>
@@ -311,48 +393,17 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
     const sorted = sortIssuesByCustomPriority(updated);
     saveLocalUrgentIssues(sorted);
 
-    // 2. Perform direct hard-delete from Firestore
     try {
       await deleteDoc(doc(db, COLLECTION_NAME, strId));
     } catch (e) {
       console.warn("Direct doc deleteDoc fallback:", e);
     }
 
-    // 3. Scan collection and hard-delete all matching docs
-    try {
-      const snap = await getDocs(collection(db, COLLECTION_NAME));
-      const deleteOps = [];
-      snap.forEach((d) => {
-        const data = d.data() || {};
-        if (
-          d.id === strId ||
-          String(data.id) === strId ||
-          String(data.customId) === strId ||
-          String(data._docId) === strId ||
-          data.isDeleted === true ||
-          data.deleted === true
-        ) {
-          const hardDelete = deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
-          deleteOps.push(hardDelete);
-        }
-      });
-      if (deleteOps.length > 0) {
-        await Promise.all(deleteOps);
-      }
-    } catch (scanErr) {
-      console.warn("Firestore scan delete error:", scanErr);
-    }
-
     return sorted;
   } catch (err) {
-    console.error("deleteUrgentIssue error:", err);
+    console.error("hardDeleteUrgentIssue error:", err);
     return getLocalUrgentIssues().filter((i) => String(i.id) !== strId);
   }
-};
-
-// Hard Delete (영구 삭제 - 동일하게 완전 제거)
-export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
-  return deleteUrgentIssue(id, deleterName);
 };
 
 // Cancel Restore / Soft Archive (복구 취소 - 첫화면에서 내리고 관리대장에 보존)

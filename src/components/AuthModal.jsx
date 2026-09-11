@@ -1596,16 +1596,35 @@ export const AuthModal = () => {
     const docId = String(issue._docId || issue.id || "");
     const customId = String(issue.customId || "");
 
-    // 1. Optimistic instant removal from React state
+    const nowStr = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    }).replace(/\. /g, "-").replace(/\./g, "");
+
+    // 1. Optimistic soft-delete in React state (첫화면/카테고리에서는 빠지고 '종결삭제관리'로 이동)
     setUrgentIssues((prev) =>
-      prev.filter(
-        (it) =>
-          String(it.id) !== issueId &&
-          String(it.id) !== docId &&
-          String(it._docId) !== issueId &&
-          String(it._docId) !== docId &&
-          (!customId || (String(it.customId) !== customId && String(it.id) !== customId))
-      )
+      prev.map((it) => {
+        if (
+          String(it.id) === issueId ||
+          String(it.id) === docId ||
+          String(it._docId) === issueId ||
+          String(it._docId) === docId ||
+          (customId && (String(it.customId) === customId || String(it.id) === customId))
+        ) {
+          return {
+            ...it,
+            isDeleted: true,
+            isManuallyRestored: false,
+            deletedAt: nowStr,
+            deletedBy: expectedManager
+          };
+        }
+        return it;
+      })
     );
 
     // 2. Close all related modal states immediately
@@ -1621,22 +1640,14 @@ export const AuthModal = () => {
       errorMsg: "",
       isDeleting: false
     });
-    setRestoreToast("🗑️ 항목이 정상적으로 삭제되었습니다.");
+    setRestoreToast("🗑️ 항목이 삭제되어 [종결삭제관리]로 이동되었습니다.");
     setTimeout(() => setRestoreToast(""), 3500);
 
-    // 3. Complete Firestore and LocalStorage deletion
+    // 3. Complete Firestore and LocalStorage soft deletion
     try {
       const updated = await deleteUrgentIssue(issueId, expectedManager);
       if (Array.isArray(updated)) {
-        setUrgentIssues(
-          updated.filter(
-            (it) =>
-              String(it.id) !== issueId &&
-              String(it.id) !== docId &&
-              String(it._docId) !== issueId &&
-              String(it._docId) !== docId
-          )
-        );
+        setUrgentIssues(updated);
       }
     } catch (err) {
       console.error("Delete error:", err);
