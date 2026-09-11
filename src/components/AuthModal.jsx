@@ -908,14 +908,10 @@ export const AuthModal = () => {
     setIsIssueModalOpen(true);
   };
 
-  // Close Issue Modal with seamless return to list modal if triggered from list modal
+  // Close Issue Modal with clean overlay stacking
   const handleCloseIssueModal = () => {
     setIsIssueModalOpen(false);
     setEditingIssue(null);
-    if (openedEditFromListModal) {
-      setIsListModalOpen(true);
-      setOpenedEditFromListModal(false);
-    }
   };
 
   // Action Images upload for Unified Issue Modal
@@ -1067,12 +1063,8 @@ export const AuthModal = () => {
     setEditingIssue(null);
     setIsIssueModalOpen(false);
 
-    if (openedEditFromListModal) {
-      setIsListModalOpen(true);
-      setOpenedEditFromListModal(false);
-      setRestoreToast("✅ 수정 내용이 성공적으로 저장되었습니다.");
-      setTimeout(() => setRestoreToast(""), 3500);
-    }
+    setRestoreToast("✅ 수정 내용이 성공적으로 저장되었습니다.");
+    setTimeout(() => setRestoreToast(""), 3500);
   };
 
   // Add Reply from within Modal (회의일정/공지사항/품질경보)
@@ -1286,15 +1278,11 @@ export const AuthModal = () => {
       actionImages: []
     });
 
-    if (openedEditFromListModal) {
-      setIsListModalOpen(true);
-      setOpenedEditFromListModal(false);
-      setRestoreToast("✅ 회의/조치 결과가 성공적으로 저장되었습니다.");
-      setTimeout(() => setRestoreToast(""), 3500);
-    }
+    setRestoreToast("✅ 회의/조치 결과가 성공적으로 저장되었습니다.");
+    setTimeout(() => setRestoreToast(""), 3500);
   };
 
-  // Close Action Modal with return to list modal if needed
+  // Close Action Modal with clean overlay stacking
   const handleCloseActionModal = () => {
     setActionModalData({
       isOpen: false,
@@ -1303,21 +1291,15 @@ export const AuthModal = () => {
       actionAuthor: "",
       actionImages: []
     });
-    if (openedEditFromListModal) {
-      setIsListModalOpen(true);
-      setOpenedEditFromListModal(false);
-    }
   };
 
-  // ⭐ 4대 리스트 대장 항목 전용 액션 즉시 실행 핸들러 (이벤트 버블링 완전 차단 및 안전 모달 전환)
+  // ⭐ 4대 리스트 대장 항목 전용 액션 즉시 실행 핸들러 (이벤트 버블링 완전 차단 및 상위 레이어 모달 스택 오픈)
   const handleExecuteMeetingResult = (item, e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
-    setOpenedEditFromListModal(true);
     handleOpenActionModal(item, e);
-    setIsListModalOpen(false);
     setOpenActionMenuId(null);
   };
 
@@ -1326,9 +1308,7 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    setOpenedEditFromListModal(true);
-    handleOpenEditIssue(item, e, true, true);
-    setIsListModalOpen(false);
+    handleOpenEditIssue(item, e, true, false);
     setOpenActionMenuId(null);
   };
 
@@ -1718,7 +1698,7 @@ export const AuthModal = () => {
                   title="회의일정 전체 관리대장 목록 열기"
                 >
                   <Calendar className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                  <span>회의일정 ({allMeetings.length}) ↗</span>
+                  <span>회의일정 ({allMeetings.length})</span>
                 </button>
 
                 {/* 4) 사내공지 */}
@@ -2385,7 +2365,7 @@ export const AuthModal = () => {
 
         return (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+            className="fixed inset-0 z-[55] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
             onClick={() => {
               setIsListModalOpen(false);
               setSelectedListItem(null);
@@ -2925,7 +2905,6 @@ export const AuthModal = () => {
                                 type="button"
                                 onClick={(e) => {
                                   handleOpenDeleteModal(item, e);
-                                  setIsListModalOpen(false);
                                 }}
                                 className="px-2.5 py-1.5 rounded-xl bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/60 dark:text-slate-300 dark:hover:text-rose-300 font-bold text-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
                                 title="항목 삭제 (관리자 승인 필요)"
@@ -2980,8 +2959,7 @@ export const AuthModal = () => {
                           key={it.id || idx}
                           onClick={() => {
                             if (openActionMenuId === it.id) return;
-                            handleOpenEditIssue(it, null, false, true);
-                            setIsListModalOpen(false);
+                            handleOpenEditIssue(it, null, false, false);
                           }}
                           className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-1.5 cursor-pointer ${
                             isCurrent
@@ -3296,7 +3274,7 @@ export const AuthModal = () => {
       {isIssueModalOpen && (
         <div
           onClick={handleCloseIssueModal}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -4788,7 +4766,7 @@ export const AuthModal = () => {
         return (
           <div
             onClick={handleCloseActionModal}
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+            className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -5046,7 +5024,7 @@ export const AuthModal = () => {
       {deleteModalData.isOpen && deleteModalData.issue && (
         <div
           onClick={() => setDeleteModalData({ isOpen: false, issue: null, pinInput: "", errorMsg: "" })}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -5164,7 +5142,7 @@ export const AuthModal = () => {
       {telegramAdminPinModal.isOpen && (
         <div
           onClick={() => setTelegramAdminPinModal({ isOpen: false, pinInput: "", errorMsg: "" })}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -5262,7 +5240,7 @@ export const AuthModal = () => {
       {isTelegramModalOpen && (
         <div
           onClick={() => setIsTelegramModalOpen(false)}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
+          className="fixed inset-0 z-[65] bg-slate-950/80 backdrop-blur-md overflow-y-auto p-3 sm:p-4 py-6 sm:py-10 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
