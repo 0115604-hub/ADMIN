@@ -1429,13 +1429,13 @@ export const OvertimeStatusView = () => {
                         <table className="w-full text-left text-xs border-collapse">
                           <thead>
                             <tr className="bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px]">
-                              <th className="py-1.5 px-1.5 text-center w-8 text-slate-500 font-mono">No</th>
-                              <th className="py-1.5 px-1.5 w-16">업체</th>
+                              <th className="py-1.5 px-1 text-center w-7 sm:w-8 text-slate-500 font-mono">No</th>
+                              <th className="hidden sm:table-cell py-1.5 px-1.5 w-16">업체</th>
                               <th className="hidden sm:table-cell py-1.5 px-1.5 w-14">부서</th>
-                              <th className="py-1.5 px-1.5 w-16">성명</th>
-                              <th className="py-1.5 px-1.5 text-center">9월 {selectedDay}일 근태 선택</th>
-                              <th className="py-1.5 px-1.5 text-center w-12">잔업</th>
-                              <th className="py-1.5 px-1 text-center w-7"></th>
+                              <th className="py-1.5 px-1 sm:px-1.5 w-14 sm:w-16">성명</th>
+                              <th className="py-1.5 px-0.5 sm:px-1.5 text-center">9월 {selectedDay}일 근태 선택</th>
+                              <th className="py-1.5 px-1 text-center w-10 sm:w-12">잔업</th>
+                              <th className="py-1.5 px-0.5 text-center w-6 sm:w-7"></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900/40 text-xs">
@@ -1453,12 +1453,12 @@ export const OvertimeStatusView = () => {
                                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                                 >
                                   {/* No */}
-                                  <td className="py-1 px-1.5 text-center font-mono text-slate-400 text-[11px]">
+                                  <td className="py-1 px-1 text-center font-mono text-slate-400 text-[10.5px] sm:text-[11px]">
                                     {worker.no}
                                   </td>
 
-                                  {/* 소속 업체 */}
-                                  <td className="py-1 px-1.5">
+                                  {/* 소속 업체 (모바일 숨김) */}
+                                  <td className="hidden sm:table-cell py-1 px-1.5">
                                     <span className={`inline-block px-1.5 py-0.5 rounded text-[10.5px] font-black border ${companyTheme.badge} whitespace-nowrap`}>
                                       {worker.company}
                                     </span>
@@ -1472,19 +1472,19 @@ export const OvertimeStatusView = () => {
                                   </td>
 
                                   {/* 성명 (이름만 표시) */}
-                                  <td className="py-1 px-1.5 font-black text-xs text-slate-900 dark:text-white whitespace-nowrap">
+                                  <td className="py-1 px-1 sm:px-1.5 font-black text-xs text-slate-900 dark:text-white whitespace-nowrap">
                                     {cleanWorkerName}
                                   </td>
 
                                   {/* 근태 선택 버튼 7개 (정시, 19시, 21시, 22시, 야간, 연차, 결근) */}
-                                  <td className="py-1 px-1 text-center whitespace-nowrap">
-                                    <div className="flex items-center justify-center gap-1">
+                                  <td className="py-1 px-0.5 sm:px-1 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                                       {/* 정시 */}
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
                                         title="정시 출근 (8시간)"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "🟢" || currentVal === "정시" || currentVal === "17"
                                             ? "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1498,7 +1498,7 @@ export const OvertimeStatusView = () => {
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
                                         title="19시 잔업 (+2시간)"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "19" || currentVal === "19시"
                                             ? "bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1512,7 +1512,7 @@ export const OvertimeStatusView = () => {
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
                                         title="21시 잔업 (+4시간)"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "21" || currentVal === "21시"
                                             ? "bg-orange-600 text-white font-black shadow-xs ring-1 ring-orange-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1526,7 +1526,7 @@ export const OvertimeStatusView = () => {
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
                                         title="22시 잔업 (+5시간)"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "22" || currentVal === "22시"
                                             ? "bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1540,7 +1540,7 @@ export const OvertimeStatusView = () => {
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "야간")}
                                         title="야간 근무 (8시간)"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "야간"
                                             ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1554,7 +1554,7 @@ export const OvertimeStatusView = () => {
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "연차")}
                                         title="연차 휴가"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "연차"
                                             ? "bg-sky-600 text-white font-black shadow-xs ring-1 ring-sky-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1568,7 +1568,7 @@ export const OvertimeStatusView = () => {
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "결근")}
                                         title="결근"
-                                        className={`px-1.5 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                                        className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           currentVal === "결근"
                                             ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -1580,8 +1580,8 @@ export const OvertimeStatusView = () => {
                                   </td>
 
                                   {/* 잔업 */}
-                                  <td className="py-1 px-1.5 text-center">
-                                    <span className={`font-mono font-bold text-[11px] px-1 py-0.5 rounded ${
+                                  <td className="py-1 px-1 sm:px-1.5 text-center">
+                                    <span className={`font-mono font-bold text-[10.5px] sm:text-[11px] px-1 py-0.5 rounded ${
                                       ot > 0
                                         ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-black"
                                         : "text-slate-400"
@@ -1949,9 +1949,9 @@ export const OvertimeStatusView = () => {
                     <thead className="sticky top-0 bg-slate-900 text-white z-20">
                       <tr>
                         <th className="p-2 text-center w-10 sticky left-0 bg-slate-900 z-30 font-mono">No.</th>
-                        <th className="p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
+                        <th className="hidden sm:table-cell p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
                         <th className="hidden sm:table-cell p-2 w-20">부서</th>
-                        <th className="p-2 w-20 sticky left-28 bg-slate-900 z-30">성명</th>
+                        <th className="p-2 w-20 sticky left-10 sm:left-28 bg-slate-900 z-30">성명</th>
                         {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
                           <th key={d} className={`p-1 text-center w-7 ${(d === 6 || d === 13 || d === 20 || d === 27) ? "bg-rose-950/80 text-rose-300" : (d === 5 || d === 12 || d === 19 || d === 26) ? "bg-blue-950/80 text-blue-300" : ""}`}>
                             {d}
@@ -1970,9 +1970,9 @@ export const OvertimeStatusView = () => {
                         return (
                           <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                             <td className="p-1.5 text-center font-mono text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10">{idx + 1}</td>
-                            <td className="p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
+                            <td className="hidden sm:table-cell p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
                             <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
-                            <td className="p-1.5 font-black sticky left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
+                            <td className="p-1.5 font-black sticky left-10 sm:left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
                             {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => {
                               const val = w.daily ? w.daily[d] : "";
                               return (
