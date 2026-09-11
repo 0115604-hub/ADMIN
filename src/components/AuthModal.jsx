@@ -137,6 +137,7 @@ export const AuthModal = () => {
   const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
   const [editingIssue, setEditingIssue] = useState(null); // Currently editing issue item (수정 모드)
   const [isListModalOpen, setIsListModalOpen] = useState(false); // List Modal Open State
+  const [openedEditFromListModal, setOpenedEditFromListModal] = useState(false); // Track if edit form was opened from list modal
   const [selectedListItem, setSelectedListItem] = useState(null); // Selected Item for Details & Restore
   const [restoreToast, setRestoreToast] = useState("");
   const [isIssueExpanded, setIsIssueExpanded] = useState(true);
@@ -866,23 +867,26 @@ export const AuthModal = () => {
   };
 
   // Open Edit Urgent Issue Modal (기존 품질경보/공지/회의/오픈이슈 상세 조회 및 조치/수정)
-  const handleOpenEditIssue = (issue, e, directEditMode = false) => {
+  const handleOpenEditIssue = (issue, e, directEditMode = false, fromList = false) => {
     if (e) e.stopPropagation();
-    const sanitizedAuthor = issue.author === "방상국" ? "" : (issue.author || "");
-    const sanitizedTitle = issue.author === "방상국" ? "" : (issue.authorTitle || "");
+    if (fromList) {
+      setOpenedEditFromListModal(true);
+    }
+    const defaultAuthor = issue.author === "방상국" ? "" : (issue.author || currentProfile?.name || "권태형");
+    const defaultTitle = issue.author === "방상국" ? "" : (issue.authorTitle || "대표이사");
     setEditingIssue(issue);
     setNewIssueForm({
       id: issue.id,
       category: issue.category || "오픈이슈",
       plant: issue.plant || "삼랑진공장",
-      author: sanitizedAuthor,
-      authorTitle: sanitizedTitle,
+      author: defaultAuthor,
+      authorTitle: defaultTitle,
       startDate: issue.startDate || issue.createdDate || todayDateStr,
       expireDate: issue.expireDate || issue.targetDate || todayDateStr,
       meetingTime: issue.meetingTime || "14:00",
       progress: issue.progress !== undefined ? Number(issue.progress) : (issue.isResolved ? 100 : 0),
-      title: issue.title || "",
-      content: issue.content || "",
+      title: issue.title || issue.content || "",
+      content: issue.content || issue.title || "",
       images: issue.images ? [...issue.images] : [],
       actionResult: issue.actionResult || "",
       actionAuthor: issue.actionAuthor === "방상국" ? "" : (issue.actionAuthor || ""),
@@ -897,6 +901,16 @@ export const AuthModal = () => {
     });
     setIsIssueDetailMode(!directEditMode); // 🌟 directEditMode = true면 바로 수정폼으로 진입
     setIsIssueModalOpen(true);
+  };
+
+  // Close Issue Modal with seamless return to list modal if triggered from list modal
+  const handleCloseIssueModal = () => {
+    setIsIssueModalOpen(false);
+    setEditingIssue(null);
+    if (openedEditFromListModal) {
+      setIsListModalOpen(true);
+      setOpenedEditFromListModal(false);
+    }
   };
 
   // Action Images upload for Unified Issue Modal
@@ -927,18 +941,19 @@ export const AuthModal = () => {
   // Submit New or Edited Urgent Issue
   const handleSaveNewIssue = async (e) => {
     if (e) e.preventDefault();
-    if (!newIssueForm.author || !newIssueForm.author.trim()) {
-      alert("작성자를 직접 선택해 주세요.");
+
+    const authorName = newIssueForm.author?.trim() || editingIssue?.author || currentProfile?.name || "권태형";
+    const authorObj = allWorkers.find((w) => w.name === authorName);
+    const authorTitle = newIssueForm.authorTitle || authorObj?.title || editingIssue?.authorTitle || "선임";
+
+    const rawTitle = newIssueForm.title?.trim() || "";
+    const rawContent = newIssueForm.content?.trim() || "";
+    if (!rawTitle && !rawContent) {
+      alert("제목 또는 상세 전달 내용을 입력해 주세요.");
       return;
     }
-    if (!newIssueForm.title.trim()) {
-      alert("이슈 제목을 입력해 주세요.");
-      return;
-    }
-    if (!newIssueForm.content.trim()) {
-      alert("상세 전달 내용을 입력해 주세요.");
-      return;
-    }
+    const finalTitle = rawTitle || rawContent;
+    const finalContent = rawContent || rawTitle;
 
     const isNoticeOrMeeting =
       newIssueForm.category === "공지사항" ||
@@ -968,14 +983,17 @@ export const AuthModal = () => {
       : (hasAction ? true : Boolean(editingIssue?.isResolved));
 
     if (hasAction && (!newIssueForm.actionAuthor || !newIssueForm.actionAuthor.trim())) {
-      alert("조치자(또는 작성자)를 직접 선택해 주세요.");
-      return;
+      newIssueForm.actionAuthor = authorName;
     }
 
     const saved = await saveUrgentIssue({
       ...newIssueForm,
       id: editingIssue ? editingIssue.id : undefined,
       category: newIssueForm.category || "오픈이슈",
+      author: authorName,
+      authorTitle: authorTitle,
+      title: finalTitle,
+      content: finalContent,
       startDate: newIssueForm.startDate || todayDateStr,
       expireDate: effectiveExpireDate,
       targetDate: effectiveExpireDate,
@@ -986,7 +1004,7 @@ export const AuthModal = () => {
       images: newIssueForm.images || [],
       actionImages: newIssueForm.actionImages || [],
       actionResult: newIssueForm.actionResult || "",
-      actionAuthor: hasAction ? (newIssueForm.actionAuthor || "") : (editingIssue?.actionAuthor || ""),
+      actionAuthor: hasAction ? (newIssueForm.actionAuthor || authorName) : (editingIssue?.actionAuthor || ""),
       actionAt: hasAction ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
       isResolved: finalIsResolved,
       createdAt: editingIssue ? editingIssue.createdAt : undefined,
@@ -1003,9 +1021,8 @@ export const AuthModal = () => {
         }
         return sortIssuesByCustomPriority([saved, ...prev]);
       });
-      if (selectedListItem && selectedListItem.id === saved.id) {
-        setSelectedListItem(saved);
-      }
+      setSelectedListItem(saved);
+      setDetailIssueModal(saved);
     }
 
     setNewIssueForm({
@@ -1033,6 +1050,13 @@ export const AuthModal = () => {
     });
     setEditingIssue(null);
     setIsIssueModalOpen(false);
+
+    if (openedEditFromListModal) {
+      setIsListModalOpen(true);
+      setOpenedEditFromListModal(false);
+      setRestoreToast("✅ 수정 내용이 성공적으로 저장되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+    }
   };
 
   // Add Reply from within Modal (회의일정/공지사항/품질경보)
@@ -1380,6 +1404,8 @@ export const AuthModal = () => {
           setDetailIssueModal(restored);
         }
       }
+      setIssueFilterTab("all");
+      setIsIssueExpanded(true);
       setRestoreToast("✅ 해당 항목이 첫화면으로 정상 복구되었습니다.");
       setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
@@ -1680,7 +1706,17 @@ export const AuthModal = () => {
                   return (
                     <div
                       key={item.id}
-                      onClick={() => handleOpenEditIssue(item)}
+                      onClick={(e) => {
+                        if (isMeeting) {
+                          setLedgerCategoryTab("meeting");
+                          setSelectedListItem(item);
+                          setIssueFilterTab("all");
+                          setIssueModalPage(1);
+                          setIsListModalOpen(true);
+                        } else {
+                          handleOpenEditIssue(item, e);
+                        }
+                      }}
                       className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 active:scale-[0.99] group ${
                         item.isResolved
                           ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
@@ -1690,7 +1726,7 @@ export const AuthModal = () => {
                           ? "bg-emerald-50/50 dark:bg-emerald-950/25 border-emerald-300 dark:border-emerald-800/80 ring-1 ring-emerald-400/20"
                           : "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
                       }`}
-                      title="탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"
+                      title={isMeeting ? "탭하여 회의일정 목록 및 상세 내용 확인" : "탭하여 상세 내용 확인, 사진 조회, 조치/회의결과 입력 및 수정"}
                     >
                       {/* 1단: 상태 배지 + 공장 + 일시 + 사진 + 조치버튼 */}
                       <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
@@ -2718,7 +2754,7 @@ export const AuthModal = () => {
                           <button
                             type="button"
                             onClick={(e) => {
-                              handleOpenEditIssue(item, e, true);
+                              handleOpenEditIssue(item, e, true, true);
                               setIsListModalOpen(false);
                             }}
                             className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
@@ -2927,7 +2963,7 @@ export const AuthModal = () => {
                             <button
                               type="button"
                               onClick={(e) => {
-                                handleOpenEditIssue(it, e, true);
+                                handleOpenEditIssue(it, e, true, true);
                                 setIsListModalOpen(false);
                               }}
                               className="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[10.5px] font-black shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5 border border-amber-300 dark:border-amber-700"
@@ -3051,10 +3087,7 @@ export const AuthModal = () => {
       {/* ========================================================================= */}
       {isIssueModalOpen && (
         <div
-          onClick={() => {
-            setIsIssueModalOpen(false);
-            setEditingIssue(null);
-          }}
+          onClick={handleCloseIssueModal}
           className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md overflow-y-auto p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start sm:items-center animate-fadeIn cursor-pointer"
         >
           <div
@@ -3124,10 +3157,7 @@ export const AuthModal = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  setIsIssueModalOpen(false);
-                  setEditingIssue(null);
-                }}
+                onClick={handleCloseIssueModal}
                 className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 title="닫기"
               >
@@ -3414,10 +3444,7 @@ export const AuthModal = () => {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsIssueModalOpen(false);
-                      setEditingIssue(null);
-                    }}
+                    onClick={handleCloseIssueModal}
                     className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-md active:scale-95 cursor-pointer transition-all"
                   >
                     닫기
@@ -4431,10 +4458,7 @@ export const AuthModal = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsIssueModalOpen(false);
-                      setEditingIssue(null);
-                    }}
+                    onClick={handleCloseIssueModal}
                     className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-xs"
                   >
                     취소

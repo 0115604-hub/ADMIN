@@ -344,6 +344,7 @@ export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
 
 // Restore an issue (복구 지원)
 export const restoreUrgentIssue = async (id) => {
+  activeDeletes.delete(id);
   const current = getLocalUrgentIssues();
   let target = current.find((i) => i.id === id);
   if (!target) {
