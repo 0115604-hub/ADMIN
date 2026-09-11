@@ -299,8 +299,22 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
 
   try {
     const current = getLocalUrgentIssues();
-    const target = current.find((i) => i.id === id);
-    if (!target) return current;
+    let target = current.find((i) => i.id === id);
+    if (!target) {
+      try {
+        const snap = await getDocs(collection(db, COLLECTION_NAME));
+        snap.forEach((d) => {
+          if (d.id === id) {
+            target = sanitizeUrgentIssueItem({ id: d.id, ...d.data() });
+          }
+        });
+      } catch (e) {
+        console.warn("Firestore delete fetch fallback:", e);
+      }
+    }
+    if (!target) {
+      target = { id };
+    }
 
     const nowStr = new Date().toLocaleString("ko-KR", {
       year: "numeric",
@@ -320,7 +334,10 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       deletedBy: deleterName || "관리자"
     };
 
-    const updated = current.map((i) => (i.id === id ? deletedItem : i));
+    const exists = current.some((i) => i.id === id);
+    const updated = exists
+      ? current.map((i) => (i.id === id ? deletedItem : i))
+      : [deletedItem, ...current];
     const sorted = sortIssuesByCustomPriority(updated);
     saveLocalUrgentIssues(sorted);
 
@@ -335,13 +352,30 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
   } finally {
     setTimeout(() => {
       activeDeletes.delete(id);
-    }, 3000);
+    }, 1500);
   }
 };
 
-// Hard Delete (영구 삭제 - 동일 동작)
+// Hard Delete (영구 삭제 - Firestore 및 로컬에서 영구 제거)
 export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
-  return deleteUrgentIssue(id, deleterName);
+  activeDeletes.delete(id);
+  try {
+    const current = getLocalUrgentIssues();
+    const updated = current.filter((i) => i.id !== id);
+    const sorted = sortIssuesByCustomPriority(updated);
+    saveLocalUrgentIssues(sorted);
+
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, id));
+    } catch (e) {
+      console.warn("Firestore hard delete error:", e);
+    }
+
+    return sorted;
+  } catch (err) {
+    console.error("hardDeleteUrgentIssue error:", err);
+    return getLocalUrgentIssues();
+  }
 };
 
 // Cancel Restore (복구 취소 - 첫화면에서 내리고 대장/삭제 상태로 되돌리기)

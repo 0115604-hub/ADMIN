@@ -70,6 +70,7 @@ import {
   subscribeUrgentIssues,
   saveUrgentIssue,
   deleteUrgentIssue,
+  hardDeleteUrgentIssue,
   restoreUrgentIssue,
   cancelRestoreUrgentIssue,
   updateUrgentIssueActionResult,
@@ -1425,9 +1426,12 @@ export const AuthModal = () => {
     });
   };
 
-  // Confirm Delete with Authority Verification (이명재 / 김동욱 전용)
+  // Confirm Delete with Authority Verification (이명재 / 김동욱 / 관리자 전용)
   const handleConfirmDelete = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (deleteModalData.isDeleting) return;
 
     const issue = deleteModalData.issue;
@@ -1454,7 +1458,7 @@ export const AuthModal = () => {
     if (!isAuthorized) {
       setDeleteModalData((prev) => ({
         ...prev,
-        errorMsg: "삭제 권한이 없습니다. (이명재 이사 또는 김동욱 책임의 확인 PIN 번호가 일치하지 않습니다.)"
+        errorMsg: "삭제 권한이 없습니다. (총괄관리자 PIN '11' 또는 관리자 PIN '0090'을 입력해 주세요.)"
       }));
       return;
     }
@@ -1462,15 +1466,20 @@ export const AuthModal = () => {
     setDeleteModalData((prev) => ({ ...prev, isDeleting: true, errorMsg: "" }));
 
     try {
-      const updated = await deleteUrgentIssue(issue.id, expectedManager);
-      setUrgentIssues(updated);
-      if (selectedListItem && selectedListItem.id === issue.id) {
-        const delItem = updated.find((i) => i.id === issue.id);
-        setSelectedListItem(delItem || null);
+      let updated;
+      if (issue.isDeleted) {
+        updated = await hardDeleteUrgentIssue(issue.id, expectedManager);
+      } else {
+        updated = await deleteUrgentIssue(issue.id, expectedManager);
       }
-      if (detailIssueModal && detailIssueModal.id === issue.id) {
-        setDetailIssueModal(null);
+      if (Array.isArray(updated)) {
+        setUrgentIssues(updated);
       }
+      setSelectedListItem(null);
+      setIsIssueModalOpen(false);
+      setEditingIssue(null);
+      setDetailIssueModal(null);
+      setOpenActionMenuId(null);
       setDeleteModalData({
         isOpen: false,
         issue: null,
@@ -1478,6 +1487,8 @@ export const AuthModal = () => {
         errorMsg: "",
         isDeleting: false
       });
+      setRestoreToast("🗑️ 항목이 정상적으로 삭제(종결) 처리되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
     } catch (err) {
       console.error("Delete error:", err);
       setDeleteModalData((prev) => ({
@@ -3200,6 +3211,21 @@ export const AuthModal = () => {
                                     <span>복구 취소</span>
                                   </button>
                                 )}
+
+                                {/* 4. 삭제 버튼 (핀번호 인증 후 삭제) */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenActionMenuId(null);
+                                    handleOpenDeleteModal(it, e);
+                                  }}
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                                  title="이 항목 삭제 (총괄관리자 PIN 인증)"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>삭제</span>
+                                </button>
                               </div>
 
                               <button
@@ -5150,8 +5176,9 @@ export const AuthModal = () => {
             {/* PIN Input Form */}
             <form onSubmit={handleConfirmDelete} className="space-y-3 pt-1">
               <div>
-                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs">
-                  총괄관리자 확인 PIN (2자리)
+                <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs flex items-center justify-between">
+                  <span>총괄관리자 / 관리자 확인 PIN</span>
+                  <span className="text-[10.5px] font-normal text-slate-400">PIN: 11 (관리자: 0090)</span>
                 </label>
                 <input
                   type="password"
@@ -5160,7 +5187,7 @@ export const AuthModal = () => {
                   autoFocus
                   placeholder="PIN 번호 입력"
                   value={deleteModalData.pinInput}
-                  onChange={(e) => setDeleteModalData({ ...deleteModalData, pinInput: e.target.value, errorMsg: "" })}
+                  onChange={(e) => setDeleteModalData((prev) => ({ ...prev, pinInput: e.target.value, errorMsg: "" }))}
                   className="w-full text-center tracking-widest text-lg font-mono font-black px-4 py-2.5 rounded-2xl border-2 border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-rose-600 shadow-xs"
                 />
               </div>
