@@ -70,6 +70,7 @@ import {
   saveUrgentIssue,
   deleteUrgentIssue,
   restoreUrgentIssue,
+  cancelRestoreUrgentIssue,
   updateUrgentIssueActionResult,
   addIssueReply,
   deleteIssueReply,
@@ -330,6 +331,9 @@ export const AuthModal = () => {
   const isItemExpired = (item) => {
     if (!item) return false;
 
+    // ⭐ 사용자가 직접 복구한 항목은 당일 첫 화면에서 자동 만료/삭제되지 않도록 영구 유지
+    if (item.isManuallyRestored) return false;
+
     // 1. 회의일정: 시작 날짜 및 시작시간(meetingTime) 경과 시 첫화면 패널에서 삭제(대장 보존)
     const isMeeting = item.category === "회의일정" || (item.category && item.category.includes("회의"));
     if (isMeeting) {
@@ -363,7 +367,7 @@ export const AuthModal = () => {
   // ⭐ 사내공지 및 회의일정 지정 날짜 / 회의 시작시간 경과 시 자동으로 접속화면 및 DB에서 소프트 삭제 정리 (대장 보존)
   useEffect(() => {
     if (!urgentIssues || urgentIssues.length === 0) return;
-    const expiredList = urgentIssues.filter((i) => !i.isDeleted && isItemExpired(i));
+    const expiredList = urgentIssues.filter((i) => !i.isDeleted && !i.isManuallyRestored && isItemExpired(i));
     if (expiredList.length > 0) {
       expiredList.forEach((item) => {
         const reason = (item.category === "회의일정" || item.category?.includes("회의"))
@@ -986,6 +990,8 @@ export const AuthModal = () => {
       newIssueForm.actionAuthor = authorName;
     }
 
+    const isManuallyRestored = Boolean(editingIssue?.isManuallyRestored || (effectiveExpireDate >= todayDateStr));
+
     const saved = await saveUrgentIssue({
       ...newIssueForm,
       id: editingIssue ? editingIssue.id : undefined,
@@ -1007,6 +1013,8 @@ export const AuthModal = () => {
       actionAuthor: hasAction ? (newIssueForm.actionAuthor || authorName) : (editingIssue?.actionAuthor || ""),
       actionAt: hasAction ? (editingIssue?.actionAt || nowTimeStr) : (editingIssue?.actionAt || ""),
       isResolved: finalIsResolved,
+      isDeleted: false,
+      isManuallyRestored: isManuallyRestored,
       createdAt: editingIssue ? editingIssue.createdAt : undefined,
       replies: newIssueForm.replies || (editingIssue ? (editingIssue.replies || []) : [])
     });
@@ -1411,6 +1419,37 @@ export const AuthModal = () => {
     } catch (err) {
       console.error("Restore error:", err);
       alert("복구 처리 중 오류가 발생했습니다.");
+    }
+  };
+
+  // Cancel Restore (복구 취소 - 첫화면에서 내리고 관리목록으로 이동)
+  const handleCancelRestore = async (issue, e) => {
+    if (e) e.stopPropagation();
+    if (!issue?.id) return;
+    if (!confirm("해당 항목의 복구를 취소하고 첫 화면에서 내리시겠습니까?\n(관리목록/대장에는 보관되며 언제든 다시 복구할 수 있습니다.)")) {
+      return;
+    }
+
+    try {
+      const updated = await cancelRestoreUrgentIssue(issue.id, "복구 취소 (사용자)");
+      if (Array.isArray(updated)) {
+        setUrgentIssues(updated);
+        const delItem = updated.find((i) => i.id === issue.id);
+        if (delItem) {
+          setSelectedListItem(delItem);
+        }
+      }
+      setIsIssueModalOpen(false);
+      setEditingIssue(null);
+      if (openedEditFromListModal) {
+        setIsListModalOpen(true);
+        setOpenedEditFromListModal(false);
+      }
+      setRestoreToast("↩️ 첫화면 복구가 취소되어 관리목록으로 이동되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+    } catch (err) {
+      console.error("Cancel restore error:", err);
+      alert("복구 취소 처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -2803,18 +2842,29 @@ export const AuthModal = () => {
                               <span>🔄 첫화면으로 복구</span>
                             </button>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                handleOpenDeleteModal(item, e);
-                                setIsListModalOpen(false);
-                              }}
-                              className="px-2.5 py-1.5 rounded-xl bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/60 dark:text-slate-300 dark:hover:text-rose-300 font-bold text-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
-                              title="항목 삭제 (관리자 승인 필요)"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>삭제</span>
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCancelRestore(item, e)}
+                                className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-slate-300 dark:border-slate-700"
+                                title="첫화면 복구 취소 (관리목록으로 내리기)"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>↩️ 복구 취소</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  handleOpenDeleteModal(item, e);
+                                  setIsListModalOpen(false);
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl bg-slate-200 hover:bg-rose-100 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/60 dark:text-slate-300 dark:hover:text-rose-300 font-bold text-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                                title="항목 삭제 (관리자 승인 필요)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>삭제</span>
+                              </button>
+                            </>
                           )}
                         </div>
 
@@ -3520,6 +3570,18 @@ export const AuthModal = () => {
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>{newIssueForm.category === "회의일정" ? "회의결과 입력" : "조치결과 입력"}</span>
+                      </button>
+                    )}
+
+                    {!editingIssue?.isDeleted && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleCancelRestore(editingIssue, e)}
+                        className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs border border-slate-300 dark:border-slate-700"
+                        title="첫 화면에서 내리고 관리목록(대장)으로 보관합니다"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>↩️ 복구 취소</span>
                       </button>
                     )}
 
@@ -4533,7 +4595,18 @@ export const AuthModal = () => {
 
               {/* 8. 하단 버튼 바 (삭제 / 취소 / 저장완료) */}
               <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
-                <div>
+                <div className="flex items-center gap-2">
+                  {editingIssue && !editingIssue.isDeleted && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleCancelRestore(editingIssue, e)}
+                      className="px-3 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold flex items-center gap-1 text-xs cursor-pointer active:scale-95 transition-all"
+                      title="첫 화면에서 내리고 관리목록으로 되돌리기"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      <span>↩️ 복구 취소</span>
+                    </button>
+                  )}
                   {editingIssue ? (
                     <button
                       type="button"

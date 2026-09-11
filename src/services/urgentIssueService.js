@@ -200,6 +200,7 @@ export const saveUrgentIssue = async (issueData) => {
     replies: issueData.replies || [],
     isResolved: issueData.isResolved !== undefined ? issueData.isResolved : (Boolean(issueData.actionResult && issueData.actionResult.trim())),
     isDeleted: issueData.isDeleted === true,
+    isManuallyRestored: issueData.isManuallyRestored !== undefined ? issueData.isManuallyRestored : false,
     deletedAt: issueData.deletedAt || "",
     deletedBy: issueData.deletedBy || "",
     createdAt: issueData.createdAt || nowStr
@@ -314,6 +315,7 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
     const deletedItem = {
       ...target,
       isDeleted: true,
+      isManuallyRestored: false,
       deletedAt: nowStr,
       deletedBy: deleterName || "관리자"
     };
@@ -340,6 +342,11 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
 // Hard Delete (영구 삭제 - 동일 동작)
 export const hardDeleteUrgentIssue = async (id, deleterName = "") => {
   return deleteUrgentIssue(id, deleterName);
+};
+
+// Cancel Restore (복구 취소 - 첫화면에서 내리고 대장/삭제 상태로 되돌리기)
+export const cancelRestoreUrgentIssue = async (id, cancellerName = "복구 취소 (사용자)") => {
+  return deleteUrgentIssue(id, cancellerName);
 };
 
 // Restore an issue (복구 지원)
@@ -384,11 +391,22 @@ export const restoreUrgentIssue = async (id) => {
     }
   }
 
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
   const restoredItem = {
     ...target,
     id,
     isDeleted: false,
     isResolved: false,
+    isManuallyRestored: true,
+    restoredAt: nowStr,
     expireDate: newExpireDate,
     targetDate: newExpireDate,
     meetingTime: newMeetingTime,
