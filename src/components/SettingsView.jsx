@@ -22,7 +22,8 @@ import {
   saveTelegramConfig,
   subscribeTelegramConfig,
   testTelegramConnection,
-  sendDailyLeaveBriefingTelegram
+  sendDailyLeaveBriefingTelegram,
+  sendDailyClosingBriefingTelegram
 } from "../services/telegramService";
 
 export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
@@ -71,6 +72,8 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
 
   const [sendingBriefing, setSendingBriefing] = useState(false);
   const [briefingToast, setBriefingToast] = useState(false);
+  const [sendingClosingBriefing, setSendingClosingBriefing] = useState(false);
+  const [closingBriefingToast, setClosingBriefingToast] = useState(false);
 
   const handleSendDailyLeaveBriefing = async () => {
     setSendingBriefing(true);
@@ -86,6 +89,23 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
       alert("오류 발생: " + err.message);
     } finally {
       setSendingBriefing(false);
+    }
+  };
+
+  const handleSendDailyClosingBriefing = async () => {
+    setSendingClosingBriefing(true);
+    try {
+      const res = await sendDailyClosingBriefingTelegram(null, null, true);
+      if (res.success) {
+        setClosingBriefingToast(true);
+        setTimeout(() => setClosingBriefingToast(false), 3000);
+      } else {
+        alert("전송 실패: " + (res.error || "설정을 확인해주세요."));
+      }
+    } catch (err) {
+      alert("오류 발생: " + err.message);
+    } finally {
+      setSendingClosingBriefing(false);
     }
   };
 
@@ -251,12 +271,28 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 <span>🌅</span>
                 <span>{sendingBriefing ? "전송 중..." : "07:30 모닝브리핑 발송"}</span>
               </button>
+
+              <button
+                type="button"
+                disabled={sendingClosingBriefing}
+                onClick={handleSendDailyClosingBriefing}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                title="매일 오후 17:00(월~토)에 자동 전송되는 금일 일일마감브리핑(품질경보+회의결과+사내공지+오픈이슈)을 지금 즉시 전송합니다"
+              >
+                <span>📢</span>
+                <span>{sendingClosingBriefing ? "전송 중..." : "17:00 마감브리핑 발송"}</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-2">
               {briefingToast && (
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> 모닝 브리핑 전송됨!
+                </span>
+              )}
+              {closingBriefingToast && (
+                <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                  <Check className="w-3.5 h-3.5" /> 마감 브리핑 전송됨!
                 </span>
               )}
               {savedConfigToast && (

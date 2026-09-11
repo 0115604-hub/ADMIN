@@ -83,7 +83,8 @@ import {
   getLocalTelegramConfig,
   saveTelegramConfig,
   subscribeTelegramConfig,
-  testTelegramConnection
+  testTelegramConnection,
+  sendDailyClosingBriefingTelegram
 } from "../services/telegramService";
 
 // Client-side instant image compression
@@ -212,6 +213,8 @@ export const AuthModal = () => {
   });
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [testingTelegramPnL, setTestingTelegramPnL] = useState(false);
+  const [sendingClosingBriefing, setSendingClosingBriefing] = useState(false);
+  const [closingBriefingToast, setClosingBriefingToast] = useState(false);
   const [telegramTestResult, setTelegramTestResult] = useState(null);
   const [telegramSavedToast, setTelegramSavedToast] = useState(false);
 
@@ -269,6 +272,23 @@ export const AuthModal = () => {
       setTelegramTestResult({ success: false, error: err.message });
     } finally {
       setTestingTelegram(false);
+    }
+  };
+
+  const handleSendDailyClosingBriefing = async () => {
+    setSendingClosingBriefing(true);
+    try {
+      const res = await sendDailyClosingBriefingTelegram(null, null, true);
+      if (res.success) {
+        setClosingBriefingToast(true);
+        setTimeout(() => setClosingBriefingToast(false), 3000);
+      } else {
+        alert("마감브리핑 전송 실패: " + (res.error || "설정을 확인해주세요."));
+      }
+    } catch (err) {
+      alert("오류 발생: " + err.message);
+    } finally {
+      setSendingClosingBriefing(false);
     }
   };
 
@@ -5346,7 +5366,7 @@ export const AuthModal = () => {
               <div className="space-y-1">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                   <span>📢 일반 알림 채널 ID (오륙 통합방)</span>
-                  <span className="text-[10px] text-sky-600 dark:text-sky-400 font-bold">모닝브리핑/품질경보</span>
+                  <span className="text-[10px] text-sky-600 dark:text-sky-400 font-bold">모닝/마감브리핑/품질경보</span>
                 </label>
                 <input
                   type="text"
@@ -5355,6 +5375,32 @@ export const AuthModal = () => {
                   onChange={(e) => setTelegramConfig({ ...telegramConfig, chatId: e.target.value })}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
                 />
+              </div>
+
+              {/* 브리핑 발송 옵션 */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    🌅 07:30 모닝브리핑 자동 발송 (월~토)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={telegramConfig.sendDailyBriefing !== false}
+                    onChange={(e) => setTelegramConfig({ ...telegramConfig, sendDailyBriefing: e.target.checked })}
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400"
+                  />
+                </label>
+                <label className="flex items-center justify-between cursor-pointer pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    📢 17:00 일일마감브리핑 자동 발송 (월~토)
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={telegramConfig.sendDailyClosingBriefing !== false}
+                    onChange={(e) => setTelegramConfig({ ...telegramConfig, sendDailyClosingBriefing: e.target.checked })}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                </label>
               </div>
 
               {/* Test Status Feedback */}
@@ -5376,7 +5422,7 @@ export const AuthModal = () => {
 
               {/* Action Buttons */}
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
                     disabled={testingTelegram}
@@ -5385,11 +5431,27 @@ export const AuthModal = () => {
                     title="오륙 통합방으로 테스트 발송"
                   >
                     <TelegramLogo className="w-3.5 h-3.5" />
-                    <span>{testingTelegram ? "발송 중..." : "연결 테스트 발송"}</span>
+                    <span>{testingTelegram ? "발송 중..." : "연결 테스트"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={sendingClosingBriefing}
+                    onClick={handleSendDailyClosingBriefing}
+                    className="flex items-center gap-1 px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    title="17:00 마감브리핑(품질경보+회의일정+사내공지+오픈이슈) 즉시 테스트 발송"
+                  >
+                    <span>📢</span>
+                    <span>{sendingClosingBriefing ? "전송 중..." : "17:00 마감브리핑 발송"}</span>
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {closingBriefingToast && (
+                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> 마감브리핑 발송됨!
+                    </span>
+                  )}
                   {telegramSavedToast && (
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                       <Check className="w-3.5 h-3.5" /> 저장됨!

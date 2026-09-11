@@ -28,14 +28,15 @@ const TELEGRAM_TEMPLATES_KEY = "oryuk_telegram_templates_v1";
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 / 사내공지 / 회의일정 / 전자결재 / 07:30 일반 모닝브리핑)
+  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 / 사내공지 / 회의일정 / 전자결재 / 07:30 일반 모닝브리핑 / 17:00 일일마감브리핑)
   pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (대표·임원 전용 07:30 손익결산 P&L 브리핑)
   ceoChatId: "290615483", // 권태형 대표님 1:1 개인톡
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: true,
   sendDailyLeaveBriefing: true, // 07:30 모닝브리핑 (오륙 통합방)
-  sendDailyPnLBriefing: true // 07:30 손익결산 브리핑 (경영총괄)
+  sendDailyPnLBriefing: true, // 07:30 손익결산 브리핑 (경영총괄)
+  sendDailyClosingBriefing: true // 17:00 일일마감브리핑 (오륙 통합방, 월~토)
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -792,8 +793,8 @@ export const acquireBriefingLock = async (briefingType, todayStr, clientId = nul
       const snap = await transaction.get(lockDocRef);
       const data = snap.exists() ? snap.data() : {};
 
-      const dateField = briefingType === "general" ? "lastSentDate" : "lastPnLSentDate";
-      const lockField = briefingType === "general" ? "generalLock" : "pnlLock";
+      const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
+      const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
 
       // 1. If already successfully completed today, do not acquire
       if (data[dateField] === todayStr) {
@@ -837,9 +838,9 @@ export const acquireBriefingLock = async (briefingType, todayStr, clientId = nul
 export const completeBriefingLock = async (briefingType, todayStr, isSuccess, errorMsg = null, clientId = null) => {
   const id = clientId || getClientInstanceId();
   const lockDocRef = doc(db, BRIEFING_DOC_PATH[0], BRIEFING_DOC_PATH[1]);
-  const dateField = briefingType === "general" ? "lastSentDate" : "lastPnLSentDate";
-  const lockField = briefingType === "general" ? "generalLock" : "pnlLock";
-  const sentAtField = briefingType === "general" ? "sentAt" : "pnlSentAt";
+  const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
+  const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
+  const sentAtField = briefingType === "general" ? "sentAt" : briefingType === "closing" ? "closingSentAt" : "pnlSentAt";
 
   try {
     if (isSuccess) {
@@ -1281,6 +1282,245 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 };
 
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
+
+/**
+ * 12. 매일 오후 17:00 일일마감브리핑 (월~토) ➜ 오륙 통합방
+ * 내용: 금일 품질경보, 회의일정, 사내공지, 오픈이슈 변경/조치/종결 현황
+ */
+export const formatDailyClosingBriefing = (todayStr = null) => {
+  const targetDate = todayStr || getKSTDateString();
+  const dateFormatted = `${getKSTFormattedString(targetDate).split(" ")[0]}`;
+  const allUrgent = getLocalUrgentIssues();
+
+  // 1. 품질경보 현황 (금일 등록, 금일 조치완료, 또는 현재 미조치 상태)
+  const qualityAlerts = allUrgent.filter((i) => {
+    if (i.category !== "품질경보") return false;
+    const isTodayCreated = i.createdAt?.startsWith(targetDate) || i.startDate === targetDate || i.expireDate === targetDate;
+    const isTodayAction = i.actionAt?.startsWith(targetDate);
+    const isUnresolvedActive = !i.isDeleted && !i.isResolved;
+    return isTodayCreated || isTodayAction || isUnresolvedActive;
+  });
+
+  let qualityLines = " • 금일 신규 등록 및 조치 사항 없음 (정상 가동)";
+  if (qualityAlerts.length > 0) {
+    qualityLines = qualityAlerts.map((q) => {
+      const plant = q.plant ? q.plant.replace("공장", "") : "삼랑진";
+      const title = q.title || q.content || "품질경보";
+      const isRes = Boolean(q.isResolved);
+      const actionTimeStr = q.actionAt ? (q.actionAt.length > 10 ? ` (${q.actionAt.slice(11, 16) || q.actionAt.slice(5)})` : ` (${q.actionAt})`) : "";
+      const statusText = isRes ? `✅ 조치완료${actionTimeStr}` : `⏳ 조치대기`;
+      
+      let resLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
+      if (isRes && q.actionResult) {
+        resLine += `\n   - 조치내용: ${q.actionResult}`;
+      }
+      if (isRes && (q.actionAuthor || q.author)) {
+        resLine += `\n   - 조치자: ${q.actionAuthor || q.author}`;
+      } else if (!isRes && q.author) {
+        resLine += `\n   - 등록자: ${q.author}`;
+      }
+      return resLine;
+    }).join("\n");
+  }
+
+  // 2. 회의일정 및 결과 (금일 회의 또는 금일 결과가 입력된 회의)
+  const meetings = allUrgent.filter((i) => {
+    if (i.category !== "회의일정") return false;
+    const meetingDate = i.expireDate || i.targetDate || i.createdAt?.slice(0, 10);
+    const isTodayMeeting = meetingDate === targetDate;
+    const isTodayAction = i.actionAt?.startsWith(targetDate);
+    return isTodayMeeting || isTodayAction;
+  });
+
+  let meetingLines = " • 금일 등록된 회의일정 없음";
+  if (meetings.length > 0) {
+    meetingLines = meetings.map((m) => {
+      const plant = m.plant ? m.plant.replace("공장", "") : "삼랑진";
+      const timeStr = m.meetingTime ? `${m.meetingTime} ` : "";
+      const title = m.title || m.content || "회의";
+      const isClosed = Boolean(m.isResolved || m.actionResult);
+      const statusText = isClosed ? "✅ 회의종결" : "⏳ 회의예정";
+      const replyCount = Array.isArray(m.replies) ? m.replies.length : 0;
+      const attText = replyCount > 0 ? ` (참석 ${replyCount}명)` : "";
+
+      let mLine = ` • [${plant}] ${timeStr}${title}\n   - 결과: ${statusText}`;
+      if (m.actionResult) {
+        mLine += `\n   - 결정사항: ${m.actionResult}`;
+      }
+      mLine += `\n   - 보고자: ${m.actionAuthor || m.author || "관리자"}${attText}`;
+      return mLine;
+    }).join("\n");
+  }
+
+  // 3. 사내공지 및 공유사항 (현재 활성 공지)
+  const notices = allUrgent.filter((i) => {
+    const isNotice = i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항";
+    if (!isNotice) return false;
+    if (i.isDeleted) return false;
+    if (i.expireDate && i.expireDate < targetDate) return false;
+    return true;
+  });
+
+  let noticeLines = " • 금일 신규 사내공지 없음";
+  if (notices.length > 0) {
+    noticeLines = notices.map((n) => {
+      const plant = n.plant === "본사" || !n.plant ? "공통" : n.plant.replace("공장", "");
+      const title = n.title || n.content;
+      let nLine = ` • [${plant}] ${title}`;
+      if (n.content && n.content !== n.title) {
+        nLine += `\n   - 내용: ${n.content}`;
+      }
+      nLine += `\n   - 등록: ${n.author || "본사"}`;
+      return nLine;
+    }).join("\n");
+  }
+
+  // 4. 오픈이슈 진행 현황 (현재 진행중이거나 금일 완료된 이슈)
+  const openIssues = allUrgent.filter((i) => {
+    const isOpen = i.category === "오픈이슈" || i.category === "open_issue" || i.category === "품질이슈";
+    if (!isOpen) return false;
+    if (i.isDeleted) return false;
+    return true;
+  });
+
+  let openIssueLines = " • 특이 오픈이슈 없음";
+  if (openIssues.length > 0) {
+    openIssueLines = openIssues.map((o) => {
+      const plant = o.plant ? o.plant.replace("공장", "") : "삼랑진";
+      const title = o.title || o.content || "오픈이슈";
+      const isRes = Boolean(o.isResolved);
+      const progress = o.progress !== undefined ? Number(o.progress) : (isRes ? 100 : 0);
+      const statusText = isRes ? "✅ 조치완료" : `⏳ 진행중 (진척도 ${progress}%)`;
+
+      let oLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
+
+      // Check for today's reply or latest reply
+      const todayReplies = (o.replies || []).filter((r) => r.actionDate === targetDate || r.createdAt?.startsWith(targetDate));
+      if (todayReplies.length > 0) {
+        const latestToday = todayReplies[todayReplies.length - 1];
+        oLine += `\n   - 금일 조치의견: ${latestToday.content} (${latestToday.author})`;
+      } else if (o.replies && o.replies.length > 0) {
+        const latestRep = o.replies[o.replies.length - 1];
+        oLine += `\n   - 최근 조치의견: ${latestRep.content} (${latestRep.author})`;
+      } else if (o.actionResult) {
+        oLine += `\n   - 조치내용: ${o.actionResult}`;
+      }
+      oLine += `\n   - 작성자: ${o.author || "관리자"}`;
+      return oLine;
+    }).join("\n");
+  }
+
+  const defaultMessage = `
+[오륙] 📢 일일마감브리핑 (17:00)
+━━━━━━━━━━━━━━━━━━━━
+📅 ${dateFormatted} 일일 업무 마감 현황
+━━━━━━━━━━━━━━━━━━━━
+
+🚨 [1] 품질경보 현황 (총 ${qualityAlerts.length}건)
+${qualityLines}
+
+📅 [2] 회의일정 및 결과 (총 ${meetings.length}건)
+${meetingLines}
+
+📢 [3] 사내공지 및 공유사항 (총 ${notices.length}건)
+${noticeLines}
+
+📌 [4] 오픈이슈 진행 현황 (총 ${openIssues.length}건)
+${openIssueLines}
+
+━━━━━━━━━━━━━━━━━━━━
+🏢 오륙(주) 스마트 생산관리시스템
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+
+  const savedTemplate = getLocalTelegramTemplates()["daily_closing_briefing"]?.text;
+  return savedTemplate || defaultMessage;
+};
+
+/**
+ * 13. 매일 오후 17:00 일일마감브리핑 발송 함수 (오륙 통합방)
+ */
+export const sendDailyClosingBriefingTelegram = async (targetDateStr = null, targetChatId = null, force = false) => {
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
+  const todayStr = targetDateStr || getKSTDateString();
+  const clientId = getClientInstanceId();
+
+  // 1. Acquire Distributed Atomic Lock
+  if (!force) {
+    const lockResult = await acquireBriefingLock("closing", todayStr, clientId, false);
+    if (!lockResult.acquired) {
+      console.log(`[오륙통합방 마감브리핑] Skipping send: ${lockResult.reason}`);
+      localStorage.setItem("oryuk_last_closing_briefing_sent", todayStr);
+      return { success: false, skipped: true, reason: lockResult.reason };
+    }
+  }
+
+  try {
+    const message = formatDailyClosingBriefing(todayStr);
+
+    const sendResult = await sendTelegramMessage(message, {
+      ...config,
+      chatId: destChatId
+    });
+
+    if (sendResult.success) {
+      localStorage.setItem("oryuk_last_closing_briefing_sent", todayStr);
+      await completeBriefingLock("closing", todayStr, true, null, clientId);
+    } else {
+      await completeBriefingLock("closing", todayStr, false, sendResult.error || "SEND_FAILED", clientId);
+    }
+
+    return sendResult;
+  } catch (err) {
+    console.error("[오륙통합방 마감브리핑] Send error:", err);
+    await completeBriefingLock("closing", todayStr, false, err.message, clientId);
+    return { success: false, error: err.message };
+  }
+};
+
+let isCheckingClosingBriefing = false;
+
+/**
+ * Check and Auto-Send Daily 17:00 PM Closing Briefing (Mon-Sat, 17:00 ~ 17:15 KST)
+ */
+export const checkAndAutoSendDailyClosingBriefing = async () => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled || config.sendDailyClosingBriefing === false) {
+    return { skipped: true, reason: "DISABLED_IN_CONFIG" };
+  }
+
+  const { dateStr: todayStr, totalMinutes } = getKSTTimeInfo();
+  const dateObj = new Date();
+  const dayOfWeek = dateObj.getDay();
+
+  // Skip Sunday (0)
+  if (dayOfWeek === 0) {
+    return { skipped: true, reason: "SUNDAY_SKIPPED" };
+  }
+
+  // Client auto-trigger window: 17:00 PM ~ 17:15 PM KST (1020 ~ 1035 minutes)
+  if (totalMinutes < 1020 || totalMinutes > 1035) {
+    return { skipped: true, reason: "OUTSIDE_17_00_WINDOW" };
+  }
+
+  if (isCheckingClosingBriefing) {
+    return { skipped: true, reason: "CHECK_ALREADY_IN_PROGRESS" };
+  }
+
+  const lastLocalClosing = localStorage.getItem("oryuk_last_closing_briefing_sent");
+  if (lastLocalClosing === todayStr) {
+    return { skipped: true, reason: "ALREADY_PROCESSED_LOCALLY_TODAY" };
+  }
+
+  isCheckingClosingBriefing = true;
+  try {
+    console.log(`[17:00 Daily Closing Briefing] Auto-sending closing summary for ${todayStr}...`);
+    return await sendDailyClosingBriefingTelegram(todayStr);
+  } finally {
+    isCheckingClosingBriefing = false;
+  }
+};
 
 /**
  * 11. 태형&미영 신규 일정 등록 즉시 경영방 알림 발송 (둘만의 특별하고 소중한 일정 안내)

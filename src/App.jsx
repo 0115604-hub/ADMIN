@@ -31,6 +31,7 @@ import {
 } from "./services/dbService";
 import {
   checkAndAutoSendDailyMorningBriefing,
+  checkAndAutoSendDailyClosingBriefing,
   subscribeTelegramConfig
 } from "./services/telegramService";
 import { pushModalHistory, closeAllModals } from "./utils/modalHistory";
@@ -144,8 +145,9 @@ export const App = () => {
 
   useEffect(() => {
     loadData();
-    // Daily 07:30 AM Morning Briefing Check
+    // Daily 07:30 AM Morning & 17:00 PM Closing Briefing Checks
     checkAndAutoSendDailyMorningBriefing();
+    checkAndAutoSendDailyClosingBriefing();
 
     // Ensure real-time sync of Telegram notification configuration
     const unsubTelegram = subscribeTelegramConfig();
@@ -153,13 +155,15 @@ export const App = () => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         checkAndAutoSendDailyMorningBriefing();
+        checkAndAutoSendDailyClosingBriefing();
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // High-precision adaptive interval (10 seconds) for zero-latency 07:30 dispatch
+    // High-precision adaptive interval (10 seconds) for zero-latency dispatch
     const timer = setInterval(() => {
       checkAndAutoSendDailyMorningBriefing();
+      checkAndAutoSendDailyClosingBriefing();
     }, 10000);
 
     return () => {

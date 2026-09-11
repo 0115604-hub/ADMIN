@@ -22,7 +22,8 @@ const DEFAULT_CONFIG = {
   chatId: "-4186792536", // '오륙 통합방'
   pnlChatId: "-1003939516875", // '경영총괄'
   sendDailyLeaveBriefing: true,
-  sendDailyPnLBriefing: true
+  sendDailyPnLBriefing: true,
+  sendDailyClosingBriefing: true
 };
 
 // KST Time & Date Utilities for Node.js
@@ -177,8 +178,8 @@ async function acquireBriefingLock(briefingType, todayStr, force = false) {
       const snap = await transaction.get(lockDocRef);
       const data = snap.exists() ? snap.data() : {};
 
-      const dateField = briefingType === "general" ? "lastSentDate" : "lastPnLSentDate";
-      const lockField = briefingType === "general" ? "generalLock" : "pnlLock";
+      const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
+      const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
 
       // 1. If already completed today, skip
       if (data[dateField] === todayStr) {
@@ -220,9 +221,9 @@ async function acquireBriefingLock(briefingType, todayStr, force = false) {
  */
 async function completeBriefingLock(briefingType, todayStr, isSuccess, errorMsg = null) {
   const lockDocRef = doc(db, "system_config", "daily_briefing");
-  const dateField = briefingType === "general" ? "lastSentDate" : "lastPnLSentDate";
-  const lockField = briefingType === "general" ? "generalLock" : "pnlLock";
-  const sentAtField = briefingType === "general" ? "sentAt" : "pnlSentAt";
+  const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
+  const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
+  const sentAtField = briefingType === "general" ? "sentAt" : briefingType === "closing" ? "closingSentAt" : "pnlSentAt";
 
   try {
     if (isSuccess) {
@@ -284,26 +285,37 @@ async function sendTelegramMessage(token, chatId, text) {
 }
 
 /**
- * Align exact execution to 07:30:00 KST
- * If the runner starts before 07:30 (e.g. 07:25 ~ 07:29:59), wait until 07:30:00 KST.
+ * Align exact execution to 07:30:00 KST or 17:00:00 KST
  */
-async function alignToExact0730() {
+async function alignToExactSchedule() {
   const info = getKSTTimeInfo();
-  const targetSeconds = 7 * 3600 + 30 * 60; // 07:30:00 KST (27000 seconds)
 
-  if (info.totalSeconds < targetSeconds) {
-    const diffMs = (targetSeconds - info.totalSeconds) * 1000;
-    if (diffMs <= 360000) { // If within 6 minutes, wait
-      console.log(`[Runner Pre-Warm] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:30:00 KST...`);
+  // 1. Morning window pre-warm (around 07:30 KST)
+  const targetMorning = 7 * 3600 + 30 * 60; // 07:30:00 KST (27000 seconds)
+  if (info.hour === 7 && info.totalSeconds < targetMorning) {
+    const diffMs = (targetMorning - info.totalSeconds) * 1000;
+    if (diffMs <= 360000) { // within 6 minutes
+      console.log(`[Runner Pre-Warm 07:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:30:00 KST...`);
       await sleep(diffMs);
       console.log("[Runner Trigger] 07:30:00 KST reached! Dispatching immediately...");
+    }
+  }
+
+  // 2. Evening window pre-warm (around 17:00 KST)
+  const targetClosing = 17 * 3600; // 17:00:00 KST (61200 seconds)
+  if (info.hour === 16 && info.totalSeconds < targetClosing) {
+    const diffMs = (targetClosing - info.totalSeconds) * 1000;
+    if (diffMs <= 360000) { // within 6 minutes
+      console.log(`[Runner Pre-Warm 17:00] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 17:00:00 KST...`);
+      await sleep(diffMs);
+      console.log("[Runner Trigger] 17:00:00 KST reached! Dispatching immediately...");
     }
   }
 }
 
 export async function runAllBriefings(force = false) {
   console.log("=== Starting Scheduled Briefings Dispatcher ===");
-  await alignToExact0730();
+  await alignToExactSchedule();
 
   const config = await getConfig();
   if (!config.enabled) {
@@ -314,9 +326,18 @@ export async function runAllBriefings(force = false) {
   const todayStr = getKSTDateString();
   const dateFormatted = `${getKSTFormattedString().split(" ")[0]} 07:30`;
   const customTemplates = await getCustomTemplates();
+  const timeInfo = getKSTTimeInfo();
+  const curHour = timeInfo.hour;
+
+  const isExplicitMorning = process.argv.includes("--morning");
+  const isExplicitClosing = process.argv.includes("--closing");
+  const isTimeForMorning = isExplicitMorning || (curHour >= 6 && curHour <= 10);
+  const isTimeForClosing = isExplicitClosing || (curHour >= 16 && curHour <= 21);
 
   // -------------------------------------------------------------
   // 1. 07:30 통합 모닝 브리핑 (오륙 통합방: -4186792536)
+  // -------------------------------------------------------------
+  if (config.sendDailyLeaveBriefing && (isTimeForMorning || force)) {
   // -------------------------------------------------------------
   if (config.sendDailyLeaveBriefing) {
     const lockRes = await acquireBriefingLock("general", todayStr, force);
@@ -706,7 +727,199 @@ ${commonSchedules}
     }
   }
 
+  // -------------------------------------------------------------
+  // 3. 17:00 일일마감브리핑 (월~토) (오륙 통합방: -4186792536)
+  // -------------------------------------------------------------
+  const dayOfWeek = new Date().getDay(); // 0: Sunday, 1-6: Mon-Sat
+  const isEligibleClosingDay = dayOfWeek !== 0 || force;
+
+  if (config.sendDailyClosingBriefing !== false && isEligibleClosingDay && (isTimeForClosing || force)) {
+    await runClosingBriefing(todayStr, config, customTemplates, force);
+  }
+
   console.log("=== Scheduled Briefings Dispatch Finished ===");
+}
+
+/**
+ * 17:00 일일마감브리핑 실행 함수 (옵션 1: 표준 분과별 종합 보고형)
+ */
+async function runClosingBriefing(todayStr, config, customTemplates, force = false) {
+  const destChatId = config.chatId || "-4186792536";
+  const dateFormatted = `${getKSTFormattedString().split(" ")[0]}`;
+
+  const lockRes = await acquireBriefingLock("closing", todayStr, force);
+  if (!lockRes.acquired) {
+    console.log(`[오륙통합방 17:00 마감브리핑] Skipping send: ${lockRes.reason}`);
+    return;
+  }
+
+  console.log(`[오륙통합방 17:00 마감브리핑] Lock acquired. Generating closing briefing for ${todayStr}...`);
+
+  try {
+    // 1. Fetch urgent issues from Firestore
+    let allUrgent = [];
+    try {
+      const snap = await getDocs(collection(db, "urgent_issues"));
+      allUrgent = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn("Error fetching urgent issues for closing briefing:", e.message);
+    }
+
+    // 1-1. 품질경보 현황 (금일 등록, 금일 조치완료, 또는 미조치)
+    const qualityAlerts = allUrgent.filter((i) => {
+      if (i.category !== "품질경보") return false;
+      const isTodayCreated = i.createdAt?.startsWith(todayStr) || i.startDate === todayStr || i.expireDate === todayStr;
+      const isTodayAction = i.actionAt?.startsWith(todayStr);
+      const isUnresolvedActive = !i.isDeleted && !i.isResolved;
+      return isTodayCreated || isTodayAction || isUnresolvedActive;
+    });
+
+    let qualityLines = " • 금일 신규 등록 및 조치 사항 없음 (정상 가동)";
+    if (qualityAlerts.length > 0) {
+      qualityLines = qualityAlerts.map((q) => {
+        const plant = q.plant ? q.plant.replace("공장", "") : "삼랑진";
+        const title = q.title || q.content || "품질경보";
+        const isRes = Boolean(q.isResolved);
+        const actionTimeStr = q.actionAt ? (q.actionAt.length > 10 ? ` (${q.actionAt.slice(11, 16) || q.actionAt.slice(5)})` : ` (${q.actionAt})`) : "";
+        const statusText = isRes ? `✅ 조치완료${actionTimeStr}` : `⏳ 조치대기`;
+
+        let resLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
+        if (isRes && q.actionResult) {
+          resLine += `\n   - 조치내용: ${q.actionResult}`;
+        }
+        if (isRes && (q.actionAuthor || q.author)) {
+          resLine += `\n   - 조치자: ${q.actionAuthor || q.author}`;
+        } else if (!isRes && q.author) {
+          resLine += `\n   - 등록자: ${q.author}`;
+        }
+        return resLine;
+      }).join("\n");
+    }
+
+    // 1-2. 회의일정 및 결과 (금일 회의 또는 금일 결과가 입력된 회의)
+    const meetings = allUrgent.filter((i) => {
+      if (i.category !== "회의일정") return false;
+      const meetingDate = i.expireDate || i.targetDate || i.createdAt?.slice(0, 10);
+      const isTodayMeeting = meetingDate === todayStr;
+      const isTodayAction = i.actionAt?.startsWith(todayStr);
+      return isTodayMeeting || isTodayAction;
+    });
+
+    let meetingLines = " • 금일 등록된 회의일정 없음";
+    if (meetings.length > 0) {
+      meetingLines = meetings.map((m) => {
+        const plant = m.plant ? m.plant.replace("공장", "") : "삼랑진";
+        const timeStr = m.meetingTime ? `${m.meetingTime} ` : "";
+        const title = m.title || m.content || "회의";
+        const isClosed = Boolean(m.isResolved || m.actionResult);
+        const statusText = isClosed ? "✅ 회의종결" : "⏳ 회의예정";
+        const replyCount = Array.isArray(m.replies) ? m.replies.length : 0;
+        const attText = replyCount > 0 ? ` (참석 ${replyCount}명)` : "";
+
+        let mLine = ` • [${plant}] ${timeStr}${title}\n   - 결과: ${statusText}`;
+        if (m.actionResult) {
+          mLine += `\n   - 결정사항: ${m.actionResult}`;
+        }
+        mLine += `\n   - 보고자: ${m.actionAuthor || m.author || "관리자"}${attText}`;
+        return mLine;
+      }).join("\n");
+    }
+
+    // 1-3. 사내공지 및 공유사항 (현재 활성 공지)
+    const notices = allUrgent.filter((i) => {
+      const isNotice = i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항";
+      if (!isNotice) return false;
+      if (i.isDeleted) return false;
+      if (i.expireDate && i.expireDate < todayStr) return false;
+      return true;
+    });
+
+    let noticeLines = " • 금일 신규 사내공지 없음";
+    if (notices.length > 0) {
+      noticeLines = notices.map((n) => {
+        const plant = n.plant === "본사" || !n.plant ? "공통" : n.plant.replace("공장", "");
+        const title = n.title || n.content;
+        let nLine = ` • [${plant}] ${title}`;
+        if (n.content && n.content !== n.title) {
+          nLine += `\n   - 내용: ${n.content}`;
+        }
+        nLine += `\n   - 등록: ${n.author || "본사"}`;
+        return nLine;
+      }).join("\n");
+    }
+
+    // 1-4. 오픈이슈 진행 현황 (진행중이거나 금일 조치 완료)
+    const openIssues = allUrgent.filter((i) => {
+      const isOpen = i.category === "오픈이슈" || i.category === "open_issue" || i.category === "품질이슈";
+      if (!isOpen) return false;
+      if (i.isDeleted) return false;
+      return true;
+    });
+
+    let openIssueLines = " • 특이 오픈이슈 없음";
+    if (openIssues.length > 0) {
+      openIssueLines = openIssues.map((o) => {
+        const plant = o.plant ? o.plant.replace("공장", "") : "삼랑진";
+        const title = o.title || o.content || "오픈이슈";
+        const isRes = Boolean(o.isResolved);
+        const progress = o.progress !== undefined ? Number(o.progress) : (isRes ? 100 : 0);
+        const statusText = isRes ? "✅ 조치완료" : `⏳ 진행중 (진척도 ${progress}%)`;
+
+        let oLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
+
+        const todayReplies = (o.replies || []).filter((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
+        if (todayReplies.length > 0) {
+          const latestToday = todayReplies[todayReplies.length - 1];
+          oLine += `\n   - 금일 조치의견: ${latestToday.content} (${latestToday.author})`;
+        } else if (o.replies && o.replies.length > 0) {
+          const latestRep = o.replies[o.replies.length - 1];
+          oLine += `\n   - 최근 조치의견: ${latestRep.content} (${latestRep.author})`;
+        } else if (o.actionResult) {
+          oLine += `\n   - 조치내용: ${o.actionResult}`;
+        }
+        oLine += `\n   - 작성자: ${o.author || "관리자"}`;
+        return oLine;
+      }).join("\n");
+    }
+
+    const defaultClosingMessage = `
+[오륙] 📢 일일마감브리핑 (17:00)
+━━━━━━━━━━━━━━━━━━━━
+📅 ${dateFormatted} 일일 업무 마감 현황
+━━━━━━━━━━━━━━━━━━━━
+
+🚨 [1] 품질경보 현황 (총 ${qualityAlerts.length}건)
+${qualityLines}
+
+📅 [2] 회의일정 및 결과 (총 ${meetings.length}건)
+${meetingLines}
+
+📢 [3] 사내공지 및 공유사항 (총 ${notices.length}건)
+${noticeLines}
+
+📌 [4] 오픈이슈 진행 현황 (총 ${openIssues.length}건)
+${openIssueLines}
+
+━━━━━━━━━━━━━━━━━━━━
+🏢 오륙(주) 스마트 생산관리시스템
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+
+    const savedTemplate = customTemplates["daily_closing_briefing"]?.text;
+    const closingMessage = savedTemplate || defaultClosingMessage;
+
+    const res = await sendTelegramMessage(config.botToken, destChatId, closingMessage);
+    console.log("[오륙통합방 17:00 마감브리핑] Send Result:", res);
+
+    if (res.ok) {
+      await completeBriefingLock("closing", todayStr, true);
+    } else {
+      await completeBriefingLock("closing", todayStr, false, res.error || "TELEGRAM_SEND_FAILED");
+    }
+  } catch (err) {
+    console.error("[오륙통합방 17:00 마감브리핑] Error occurred:", err.message);
+    await completeBriefingLock("closing", todayStr, false, err.message);
+  }
 }
 
 // CLI Runner
