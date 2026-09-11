@@ -22,6 +22,7 @@ import {
   X
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
+import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
 import {
   getHanulMonthData,
@@ -57,6 +58,19 @@ export const HanulTaxInvoiceView = () => {
 
   // 🌟 정리본 팝업 모달 상태
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+
+  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
+  useEffect(() => {
+    const unsub = subscribeCloseAllModals(() => {
+      setIsSummaryModalOpen(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleOpenSummaryModal = () => {
+    pushModalHistory("hanul_summary_modal");
+    setIsSummaryModalOpen(true);
+  };
 
   const handleSelectMonth = (m) => {
     setLocalMonth(m);
@@ -596,7 +610,7 @@ export const HanulTaxInvoiceView = () => {
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setIsSummaryModalOpen(true)}
+              onClick={handleOpenSummaryModal}
               className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-black text-xs hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs hover:scale-105 active:scale-95"
               title="8개 품목 단가 및 매출 정리본 팝업 보기"
             >

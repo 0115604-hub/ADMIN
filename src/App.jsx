@@ -33,6 +33,7 @@ import {
   checkAndAutoSendDailyMorningBriefing,
   subscribeTelegramConfig
 } from "./services/telegramService";
+import { pushModalHistory, closeAllModals } from "./utils/modalHistory";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
@@ -61,8 +62,45 @@ export const App = () => {
       if (resetToCurrentMonth) {
         resetToCurrentMonth();
       }
+      try {
+        window.history.replaceState({ screen: "worker_dashboard", isBase: true }, "");
+      } catch (e) {}
     }
   }, [currentProfile?.id]);
+
+  // 🌟 Global Browser & App Back Button (모바일/PC 인터넷앱 뒤로가기 누를 시 팝업 닫기 + 로그인후 첫화면 이동)
+  useEffect(() => {
+    const handlePopState = () => {
+      // 1. App 자체 모달 및 모바일 메뉴 닫기
+      setModalOpen(false);
+      setExcelModalOpen(false);
+      setMobileMenuOpen(false);
+      setEditingItem(null);
+
+      // 2. 전체 컴포넌트에 팝업창 닫기 이벤트 전송
+      closeAllModals();
+
+      // 3. 로그인 후 첫화면(worker_dashboard)으로 복귀
+      setActiveTab("worker_dashboard");
+
+      // 4. Base 히스토리 유지
+      try {
+        window.history.replaceState({ screen: "worker_dashboard", isBase: true }, "");
+      } catch (e) {}
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // 탭 이동 시 히스토리 스택 푸시
+  useEffect(() => {
+    if (activeTab !== "worker_dashboard") {
+      try {
+        window.history.pushState({ screen: activeTab, isTab: true }, "");
+      } catch (e) {}
+    }
+  }, [activeTab]);
 
   // Scroll to top on active tab change
   useEffect(() => {
@@ -229,12 +267,19 @@ export const App = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onBackToSummary={() => setActiveTab("worker_dashboard")}
-          onOpenMobileMenu={() => setMobileMenuOpen(true)}
+          onOpenMobileMenu={() => {
+            pushModalHistory("mobile_menu");
+            setMobileMenuOpen(true);
+          }}
           onOpenNewModal={() => {
+            pushModalHistory("transaction_modal");
             setEditingItem(null);
             setModalOpen(true);
           }}
-          onOpenExcelModal={() => setExcelModalOpen(true)}
+          onOpenExcelModal={() => {
+            pushModalHistory("excel_modal");
+            setExcelModalOpen(true);
+          }}
           onRefresh={() => loadData(true)}
           isRefreshing={isRefreshing}
         />
@@ -316,15 +361,20 @@ export const App = () => {
                     <PurchaseExpenseView
                       transactions={transactions}
                       onEdit={(item) => {
+                        pushModalHistory("transaction_edit_modal");
                         setEditingItem(item);
                         setModalOpen(true);
                       }}
                       onDelete={handleDeleteTransaction}
                       onOpenNewModal={() => {
+                        pushModalHistory("transaction_new_modal");
                         setEditingItem(null);
                         setModalOpen(true);
                       }}
-                      onOpenExcelModal={() => setExcelModalOpen(true)}
+                      onOpenExcelModal={() => {
+                        pushModalHistory("excel_modal");
+                        setExcelModalOpen(true);
+                      }}
                       onClearAll={handleClearAllTransactions}
                     />
                   )}

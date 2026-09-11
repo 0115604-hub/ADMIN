@@ -163,6 +163,7 @@ import {
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
 import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
+import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -502,6 +503,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [overtimeReports]);
 
   const handleOpenWorkerLogs = (worker) => {
+    pushModalHistory("worker_access_logs");
     const freshLogs = getLocalAccessLogs();
     setAccessLogs(freshLogs);
     setSelectedWorkerForLogs(worker);
@@ -538,6 +540,38 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     });
     return () => unsub();
   }, []);
+
+  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
+  useEffect(() => {
+    const unsub = subscribeCloseAllModals(() => {
+      setIsModalOpen(false);
+      setSelectedLogDetail(null);
+      setSelectedWorkerForLogs(null);
+      setQualityPopupItem(null);
+      setPreviewImageModal(null);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleOpenWorkLogModal = () => {
+    pushModalHistory("worklog_write");
+    setIsModalOpen(true);
+  };
+
+  const handleOpenLogDetail = (log) => {
+    pushModalHistory("worklog_detail");
+    setSelectedLogDetail(log);
+  };
+
+  const handleOpenQualityPopup = (it) => {
+    pushModalHistory("quality_popup");
+    setQualityPopupItem(it);
+  };
+
+  const handleOpenPreviewImage = (img) => {
+    pushModalHistory("image_preview");
+    setPreviewImageModal(img);
+  };
 
   // ESC to close quality popup
   useEffect(() => {
@@ -2943,10 +2977,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               return (
                 <div
                   key={it.id}
-                  onClick={() => setQualityPopupItem(it)}
+                  onClick={() => handleOpenQualityPopup(it)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setQualityPopupItem(it)}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleOpenQualityPopup(it)}
                   className={`p-3 rounded-2xl border transition-all cursor-pointer select-none ${
                     isGood
                       ? "border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-400"
@@ -3266,7 +3300,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   return (
                     <tr
                       key={log.id}
-                      onClick={() => setSelectedLogDetail(log)}
+                      onClick={() => handleOpenLogDetail(log)}
                       className="hover:bg-blue-50/70 dark:hover:bg-blue-950/30 cursor-pointer transition-colors h-8 sm:h-8.5 group text-[11px]"
                       title="클릭하여 상세내용 확인 및 결재 진행"
                     >
@@ -3443,7 +3477,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenWorkLogModal}
             className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />

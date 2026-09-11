@@ -87,6 +87,7 @@ import {
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 import { getKSTDateString } from "../utils/dateUtils";
+import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // ⭐ Precise Date & Weekend Helpers (2026년 9월 캘린더 기준)
 export const isWeekendByDate = (dateStrOrDay) => {
@@ -380,6 +381,39 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
 export const OvertimeStatusView = () => {
   const { currentProfile, isAdmin } = useAuth();
 
+  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
+  useEffect(() => {
+    const unsub = subscribeCloseAllModals(() => {
+      setIsReportModalOpen(false);
+      setSelectedCompanyPopup(null);
+      setSelectedCompanyManageWorkers(null);
+      setIsLegacyModalOpen(false);
+      setSelectedLegacyReport(null);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleOpenReportModal = () => {
+    pushModalHistory("overtime_report_write");
+    setIsReportModalOpen(true);
+  };
+
+  const handleOpenCompanyPopup = (compName) => {
+    pushModalHistory("company_status_popup");
+    setSelectedCompanyPopup(compName);
+  };
+
+  const handleOpenManageWorkers = (compName) => {
+    pushModalHistory("manage_workers_modal");
+    setSelectedCompanyManageWorkers(compName);
+  };
+
+  const handleOpenLegacyReport = (report) => {
+    pushModalHistory("overtime_report_detail");
+    setSelectedLegacyReport(report);
+    setIsLegacyModalOpen(true);
+  };
+
   // Smart Overtime Ledger State (5개사 통합 잔업 스마트 대장)
   const [smartData, setSmartData] = useState(() => getLocalSmartOvertimeData());
   const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' default
@@ -584,7 +618,7 @@ export const OvertimeStatusView = () => {
       `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
     );
 
-    setIsReportModalOpen(true);
+    handleOpenReportModal();
   };
 
   // ⭐ USER ACTION: [ 💾 팝업 내 최종 저장 및 보고서 등록 ]
@@ -1143,7 +1177,7 @@ export const OvertimeStatusView = () => {
                 <div
                   key={compName}
                   onClick={() => {
-                    setSelectedCompanyPopup(compName);
+                    handleOpenCompanyPopup(compName);
                     setPopupShowAddWorker(false);
                     setQuickNewWorkerDept("가공동");
                   }}
@@ -1183,7 +1217,7 @@ export const OvertimeStatusView = () => {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedCompanyManageWorkers(compName);
+                        handleOpenManageWorkers(compName);
                         setQuickNewWorkerName("");
                         setQuickNewWorkerLine("");
                         setManageWorkerSearch("");
@@ -1199,7 +1233,7 @@ export const OvertimeStatusView = () => {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedCompanyPopup(compName);
+                        handleOpenCompanyPopup(compName);
                       }}
                       className="w-full flex items-center justify-center gap-1 py-1 px-1.5 rounded-xl bg-slate-800/90 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700/80 hover:border-cyan-500 font-bold text-[11px] transition-all cursor-pointer shadow-xs active:scale-95"
                       title="오늘자 근태 현황 상세 보기"
@@ -2216,8 +2250,7 @@ export const OvertimeStatusView = () => {
                     <div
                       key={report.id || idx}
                       onClick={() => {
-                        setSelectedLegacyReport(report);
-                        setIsLegacyModalOpen(true);
+                        handleOpenLegacyReport(report);
                       }}
                       className={`px-3 py-2 sm:py-2.5 rounded-xl transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-2.5 group cursor-pointer ${
                         isWeekend
@@ -2363,8 +2396,7 @@ export const OvertimeStatusView = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedLegacyReport(report);
-                              setIsLegacyModalOpen(true);
+                              handleOpenLegacyReport(report);
                             }}
                             className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
                             title="보고서 상세 및 결재 확인"

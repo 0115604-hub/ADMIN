@@ -43,6 +43,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useMonth } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 import * as XLSX from "xlsx";
 import {
   subscribeQualityRecords,
@@ -64,6 +65,20 @@ export const DailyQualityView = () => {
   const { selectedMonth, changeMonth, availableMonths } = useMonth();
   const { formatAmount } = useCurrency();
   const fileInputRef = useRef(null);
+
+  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
+  useEffect(() => {
+    const unsub = subscribeCloseAllModals(() => {
+      setIsDirectInputModalOpen(false);
+      setPopupItem(null);
+    });
+    return () => unsub();
+  }, []);
+
+  const handleOpenPopupItem = (it) => {
+    pushModalHistory("quality_item_popup");
+    setPopupItem(it);
+  };
 
   // ⭐ Direct Quality Input Modal State (이창엽 선임 전용 일일 실적 직접 입력 & 수정)
   const [isDirectInputModalOpen, setIsDirectInputModalOpen] = useState(false);
@@ -120,6 +135,7 @@ export const DailyQualityView = () => {
 
   // Open Direct Input Modal
   const handleOpenDirectInputModal = (targetDate = null) => {
+    pushModalHistory("quality_direct_input");
     const dateToUse = targetDate || directInputDate || new Date().toISOString().split("T")[0];
     setDirectInputDate(dateToUse);
     loadDateRecordsIntoDirectForm(dateToUse);
@@ -850,10 +866,10 @@ export const DailyQualityView = () => {
               return (
                 <div
                   key={it.id}
-                  onClick={() => setPopupItem(it)}
+                  onClick={() => handleOpenPopupItem(it)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setPopupItem(it)}
+                  onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleOpenPopupItem(it)}
                   className={`p-4 rounded-2xl sm:rounded-3xl border ${theme.border} ${theme.bg} transition-all duration-200 cursor-pointer select-none hover:shadow-lg hover:border-emerald-400 dark:hover:border-emerald-600 hover:-translate-y-0.5 active:translate-y-0 shadow-xs flex flex-col justify-between space-y-3`}
                 >
                   {/* Header: Item Title & Status Badge */}
@@ -1193,7 +1209,7 @@ export const DailyQualityView = () => {
                   return (
                     <div
                       key={it.id}
-                      onClick={() => setPopupItem(it)}
+                      onClick={() => handleOpenPopupItem(it)}
                       className={`p-2 rounded-xl border cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-2xs ${themeStyle}`}
                       title={`${it.name} 상세 일자별 정리본 보기`}
                     >

@@ -49,6 +49,7 @@ import {
   syncPlantOvertimeToApprovalBox
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
+import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -112,6 +113,32 @@ export const ElectronicApprovalView = () => {
   const [holdReason, setHoldReason] = useState("");
   const [actionType, setActionType] = useState("APPROVE"); // APPROVE, HOLD, REJECT
   const [previewImageModal, setPreviewImageModal] = useState(null); // { url, name }
+
+  // 🌟 Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
+  useEffect(() => {
+    const unsub = subscribeCloseAllModals(() => {
+      setSelectedDoc(null);
+      setIsDraftModalOpen(false);
+      setPreviewImageModal(null);
+      setActionType("APPROVE");
+    });
+    return () => unsub();
+  }, []);
+
+  const handleOpenDocModal = (doc) => {
+    pushModalHistory("approval_doc_detail");
+    setSelectedDoc(doc);
+  };
+
+  const handleOpenDraftModal = () => {
+    pushModalHistory("approval_draft");
+    setIsDraftModalOpen(true);
+  };
+
+  const handleOpenImagePreview = (img) => {
+    pushModalHistory("approval_img_preview");
+    setPreviewImageModal(img);
+  };
 
   // Draft Images State
   const fileInputRef = useRef(null);
@@ -540,7 +567,7 @@ export const ElectronicApprovalView = () => {
 
           <button
             type="button"
-            onClick={() => setIsDraftModalOpen(true)}
+            onClick={handleOpenDraftModal}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -738,7 +765,7 @@ export const ElectronicApprovalView = () => {
                   return (
                     <tr
                       key={doc.id}
-                      onClick={() => setSelectedDoc(doc)}
+                      onClick={() => handleOpenDocModal(doc)}
                       className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors ${
                         isPending ? "bg-rose-50/20 dark:bg-rose-950/10" : isHold ? "bg-amber-50/20 dark:bg-amber-950/10" : ""
                       }`}
@@ -860,7 +887,7 @@ export const ElectronicApprovalView = () => {
                         <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
-                            onClick={() => setSelectedDoc(doc)}
+                            onClick={() => handleOpenDocModal(doc)}
                             className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all shadow-xs"
                             title="상세 열람 및 결재"
                           >
@@ -1126,7 +1153,7 @@ export const ElectronicApprovalView = () => {
                   {selectedDoc.images.map((img, idx) => (
                     <div
                       key={img.id || idx}
-                      onClick={() => setPreviewImageModal({ url: img.dataUrl, name: img.name || `첨부사진_${idx + 1}` })}
+                      onClick={() => handleOpenImagePreview({ url: img.dataUrl, name: img.name || `첨부사진_${idx + 1}` })}
                       className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-500 bg-white dark:bg-slate-900 transition-all shadow-xs flex flex-col"
                     >
                       <div className="relative aspect-video sm:aspect-square w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
