@@ -661,9 +661,9 @@ export const AuthModal = () => {
   };
 
   const filteredIssues = useMemo(() => {
-    let base = urgentIssues;
+    let base = urgentIssues.filter((i) => !i.isDeleted);
 
-    // 1. 대장 모달 카테고리 탭 필터링
+    // 대장 모달 카테고리 탭 필터링
     if (ledgerCategoryTab === "quality_alert") {
       base = allQualityAlerts;
     } else if (ledgerCategoryTab === "meeting") {
@@ -680,19 +680,8 @@ export const AuthModal = () => {
       }
     }
 
-    // 2. 상태 탭 필터링
-    if (issueFilterTab === "unresolved") {
-      return sortIssuesByCustomPriority(base.filter((i) => !i.isDeleted && !i.isResolved && !isItemExpired(i)));
-    }
-    if (issueFilterTab === "closed") {
-      return sortIssuesByCustomPriority(base.filter((i) => !i.isDeleted && i.isResolved && !isItemExpired(i)));
-    }
-    if (issueFilterTab === "deleted") {
-      return base.filter((i) => i.isDeleted || isItemExpired(i));
-    }
-    // [전체]: 활성 및 종결된 모든 관리 대장 이력 (삭제된 내역은 '삭제/만료' 탭에서 관리)
-    return sortIssuesByCustomPriority(base.filter((i) => !i.isDeleted));
-  }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, issueFilterTab, allOpenIssues, allNotices, allMeetings, unresolvedIssues, closedIssues, todayDateStr, currentKstTimeStr]);
+    return sortIssuesByCustomPriority(base);
+  }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, allOpenIssues, allNotices, allMeetings, allQualityAlerts, allQualityIssues]);
 
   // Count workers with active schedule registration for each plant (excluding '할일')
   const samrangjinLeaveCount = useMemo(() => {
@@ -2671,89 +2660,8 @@ export const AuthModal = () => {
                 </div>
               )}
 
-              {/* 2. Status Filter Tabs: [전체] [⏳ 진행중] [✓ 종결대장] [신규등록] */}
-              <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner flex-wrap">
-                  {/* 1. [전체] */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIssueFilterTab("all");
-                      setIssueModalPage(1);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                      issueFilterTab === "all"
-                        ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>전체</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
-                      {filteredIssues.length}
-                    </span>
-                  </button>
-
-                  {/* 2. [진행중] */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIssueFilterTab("unresolved");
-                      setIssueModalPage(1);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                      issueFilterTab === "unresolved"
-                        ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>진행중</span>
-                  </button>
-
-                  {/* 3. [종결대장] */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIssueFilterTab("closed");
-                      setIssueModalPage(1);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                      issueFilterTab === "closed"
-                        ? "bg-emerald-600 text-white shadow-xs"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>종결대장</span>
-                  </button>
-
-                  {/* 4. [삭제/만료] */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIssueFilterTab("deleted");
-                      setIssueModalPage(1);
-                    }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
-                      issueFilterTab === "deleted"
-                        ? "bg-rose-600 text-white shadow-xs"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                    }`}
-                  >
-                    <span>삭제/만료</span>
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsIssueModalOpen(true)}
-                  className="px-2.5 py-1 rounded-lg text-xs font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 border border-rose-200 dark:border-rose-900/60 transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ 신규 등록</span>
-                </button>
-              </div>
-
               {/* Modal Body - Scrollable */}
-              <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[64vh]">
+              <div className="space-y-3 overflow-y-auto pr-1 flex-1 max-h-[68vh] mt-2">
                 {/* 🌟 3. Selected Item Preview & Restore Box (선택 시에만 나타나는 상단 복구 카드) */}
                 {selectedListItem && (() => {
                   const item = urgentIssues.find((it) => it.id === selectedListItem.id) || selectedListItem;
