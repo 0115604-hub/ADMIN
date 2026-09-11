@@ -338,8 +338,6 @@ export async function runAllBriefings(force = false) {
   // 1. 07:30 통합 모닝 브리핑 (오륙 통합방: -4186792536)
   // -------------------------------------------------------------
   if (config.sendDailyLeaveBriefing && (isTimeForMorning || force)) {
-  // -------------------------------------------------------------
-  if (config.sendDailyLeaveBriefing) {
     const lockRes = await acquireBriefingLock("general", todayStr, force);
     if (!lockRes.acquired) {
       console.log(`[오륙통합방 모닝브리핑] Skipping send: ${lockRes.reason}`);
