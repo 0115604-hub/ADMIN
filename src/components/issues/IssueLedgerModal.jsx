@@ -553,7 +553,7 @@ export const IssueLedgerModal = ({
                             }`}
                             title={
                               ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
-                                ? "데이터베이스에서 영구 삭제 (Admin 전용, PIN: 0090)"
+                                ? "데이터베이스에서 영구 삭제 (Admin 전용)"
                                 : "이 항목 삭제 (총괄관리자 PIN 인증)"
                             }
                           >

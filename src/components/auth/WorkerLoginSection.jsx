@@ -405,7 +405,7 @@ export const WorkerLoginSection = ({
                     inputMode="numeric"
                     autoComplete="current-password"
                     autoFocus
-                    placeholder={selectedUser.role === "ADMIN" ? "관리자 PIN (0090)" : "PIN 번호 입력 (11)"}
+                    placeholder={selectedUser.role === "ADMIN" ? "관리자 PIN 입력" : "PIN 번호 입력"}
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
                     className="w-full px-3.5 py-2 sm:py-2.5 rounded-xl border-2 border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-base font-black text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"

@@ -96,56 +96,35 @@ export const DeleteAuthModal = ({
             <Crown className="w-3.5 h-3.5 text-amber-500" />
             <span>
               {isHardDelete
-                ? "영구 삭제 권한자: 본사 최고관리자 (Admin, PIN: 0090)"
-                : "삭제 권한자: 총괄관리자 (이명재 이사 • 김동욱 책임) / 본사 Admin"}
+                ? "영구 삭제 권한: 본사 최고관리자(Admin) 전용"
+                : "삭제 권한: 총괄관리자 (이명재 이사 • 김동욱 책임) / 본사 Admin"}
             </span>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
             {isHardDelete
-              ? "⚠️ DB에서 완전히 영구 삭제(파기)됩니다. 최고관리자 PIN(0090)을 입력해 주세요."
-              : "삭제를 진행하려면 총괄관리자 PIN(11) 또는 본사 관리자 PIN(0090)을 입력해 주세요."}
+              ? "⚠️ DB에서 완전히 영구 삭제(파기)됩니다. 최고관리자 확인 PIN을 입력해 주세요."
+              : "삭제를 진행하려면 총괄관리자 또는 본사 관리자 확인 PIN을 입력해 주세요."}
           </p>
         </div>
 
         {/* PIN Input Form */}
         <form onSubmit={onConfirmDelete} className="space-y-3 pt-1">
           <div>
-            <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs flex items-center justify-between">
+            <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1.5 text-xs">
               <span>{isHardDelete ? "본사 최고관리자(Admin) 확인 PIN" : "총괄관리자 / 관리자 확인 PIN"}</span>
-              <span className="text-[10.5px] font-normal text-slate-400">
-                {isHardDelete ? "본사 Admin: 0090" : "공장: 11 / 본사: 0090"}
-              </span>
             </label>
             <input
               type="password"
               maxLength={6}
               required
               autoFocus
-              placeholder={isHardDelete ? "Admin PIN 입력 (0090)" : "PIN 번호 입력 (11 또는 0090)"}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="보안 PIN 번호 입력"
               value={pinInput}
               onChange={(e) => setDeleteModalData((prev) => ({ ...prev, pinInput: e.target.value, errorMsg: "" }))}
               className="w-full text-center tracking-widest text-lg font-mono font-black px-4 py-2.5 rounded-2xl border-2 border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-rose-600 shadow-xs"
             />
-
-            {/* Quick Auto-fill PIN Buttons */}
-            <div className="flex items-center gap-1.5 mt-2">
-              {!isHardDelete && (
-                <button
-                  type="button"
-                  onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "11", errorMsg: "" }))}
-                  className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
-                >
-                  ⚡ 공장 PIN (11) 이명재/김동욱
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setDeleteModalData((prev) => ({ ...prev, pinInput: "0090", errorMsg: "" }))}
-                className="flex-1 py-1.5 px-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold transition-all border border-slate-200 dark:border-slate-700 cursor-pointer"
-              >
-                👑 본사 PIN (0090) 최고관리자
-              </button>
-            </div>
           </div>
 
           {errorMsg && (

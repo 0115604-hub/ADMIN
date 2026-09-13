@@ -650,7 +650,7 @@ export const AuthModal = () => {
       if (!isAdminAuthorized) {
         setDeleteModalData((prev) => ({
           ...prev,
-          errorMsg: "종결삭제관리 내 영구삭제는 최고관리자(Admin) 전용 기능입니다. (PIN: 0090)"
+          errorMsg: "종결삭제관리 내 영구삭제는 최고관리자(Admin) 전용 기능입니다. 관리자 확인 PIN을 다시 확인해 주세요."
         }));
         return;
       }
@@ -659,14 +659,14 @@ export const AuthModal = () => {
       if (!isAuthorized) {
         setDeleteModalData((prev) => ({
           ...prev,
-          errorMsg: "확인 PIN(11 또는 0090)을 입력해 주세요."
+          errorMsg: "확인 PIN 번호를 입력해 주세요."
         }));
         return;
       }
       if (inputPin !== "11" && inputPin !== "0090" && !currentProfile) {
         setDeleteModalData((prev) => ({
           ...prev,
-          errorMsg: "PIN 번호가 일치하지 않습니다. (공장 PIN: 11 / 본사 Admin: 0090)"
+          errorMsg: "PIN 번호가 일치하지 않습니다. 관리자 PIN을 다시 확인해 주세요."
         }));
         return;
       }
