@@ -441,77 +441,89 @@ export const IssueLedgerModal = ({
                         className="mt-1 pt-1.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-1.5 flex-wrap animate-fadeIn bg-amber-50/70 dark:bg-amber-950/30 p-2 rounded-xl border border-amber-200/80 dark:border-amber-900/50 shadow-2xs"
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {/* 1. 회의결과입력 / 조치결과입력 */}
-                          <button
-                            type="button"
-                            onClick={(e) => onExecuteMeetingResult(it, e)}
-                            className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
-                              isItMeeting
-                                ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
-                                : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
-                            }`}
-                            title={isItMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
-                          </button>
+                          {ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted" || isItDeleted ? (
+                            <>
+                              {/* 1. 내용수정 */}
+                              <button
+                                type="button"
+                                onClick={(e) => onExecuteEditContent(it, e)}
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                title="제목, 내용, 일정, 첨부사진 등 내용 수정"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>내용수정</span>
+                              </button>
 
-                          {/* 2. 내용수정 */}
-                          <button
-                            type="button"
-                            onClick={(e) => onExecuteEditContent(it, e)}
-                            className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
-                            title="제목, 내용, 일정, 첨부사진 등 내용 수정"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>내용수정</span>
-                          </button>
+                              {/* 2. 재등록 */}
+                              <button
+                                type="button"
+                                onClick={(e) => onExecuteRestore(it, e)}
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                title="첫 화면(실시간 이슈보드)에 재등록"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>재등록</span>
+                              </button>
 
-                          {/* 3. 첫화면 복구 / 복구 취소 */}
-                          {isItDeleted ? (
-                            <button
-                              type="button"
-                              onClick={(e) => onExecuteRestore(it, e)}
-                              className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer animate-pulse"
-                              title="첫 화면으로 복구"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5" />
-                              <span>첫화면 복구</span>
-                            </button>
+                              {/* 3. 영구삭제 */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenuId(null);
+                                  onOpenDeleteModal(it, e, true);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 ring-1 ring-rose-500/50 shadow-rose-900/30 text-white font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                title="데이터베이스에서 영구 삭제 (Admin 전용)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>영구삭제</span>
+                              </button>
+                            </>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={(e) => onExecuteCancelRestore(it, e)}
-                              className="px-2 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-[11px] active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
-                              title="첫 화면에서 내리고 관리목록으로 보관"
-                            >
-                              <RotateCcw className="w-3 h-3 text-blue-500" />
-                              <span>복구 취소</span>
-                            </button>
-                          )}
+                            <>
+                              {/* 1. 회의결과입력 / 조치결과입력 */}
+                              <button
+                                type="button"
+                                onClick={(e) => onExecuteMeetingResult(it, e)}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
+                                  isItMeeting
+                                    ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
+                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
+                                }`}
+                                title={isItMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
+                              </button>
 
-                          {/* 4. 삭제 버튼 */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenActionMenuId(null);
-                              onOpenDeleteModal(it, e, ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted");
-                            }}
-                            className={`px-2.5 py-1.5 rounded-lg active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer ${
-                              ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
-                                ? "bg-rose-700 hover:bg-rose-800 ring-1 ring-rose-500/50 shadow-rose-900/30"
-                                : "bg-rose-600 hover:bg-rose-700"
-                            }`}
-                            title={
-                              ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted"
-                                ? "데이터베이스에서 영구 삭제 (Admin 전용)"
-                                : "이 항목 삭제 (총괄관리자 PIN 인증)"
-                            }
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>{ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted" ? "영구삭제 (Admin)" : "삭제"}</span>
-                          </button>
+                              {/* 2. 내용수정 */}
+                              <button
+                                type="button"
+                                onClick={(e) => onExecuteEditContent(it, e)}
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[11px] shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                                title="제목, 내용, 일정, 첨부사진 등 내용 수정"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>내용수정</span>
+                              </button>
+
+                              {/* 3. 삭제 버튼 */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenActionMenuId(null);
+                                  onOpenDeleteModal(it, e, false);
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                                title="이 항목 삭제 (종결/삭제 관리로 이동)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>삭제</span>
+                              </button>
+                            </>
+                          )}
                         </div>
 
                         <button

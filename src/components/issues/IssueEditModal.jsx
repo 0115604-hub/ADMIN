@@ -497,28 +497,6 @@ export const IssueEditModal = ({
                     <span>{newIssueForm.category === "회의일정" ? "회의결과 입력" : "조치결과 입력"}</span>
                   </button>
                 )}
-
-                {!editingIssue?.isDeleted && (
-                  <button
-                    type="button"
-                    onClick={(e) => onCancelRestore(editingIssue, e)}
-                    className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs border border-slate-300 dark:border-slate-700"
-                    title="첫 화면에서 내리고 관리목록(대장)으로 보관합니다"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>↩️ 복구 취소</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={(e) => onOpenDeleteModal(editingIssue, e)}
-                  className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 border border-rose-200 dark:border-rose-900/60"
-                  title="항목 삭제 (관리자 권한 필요)"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                  <span>삭제</span>
-                </button>
               </div>
 
               <button
@@ -1509,65 +1487,39 @@ export const IssueEditModal = ({
 
             {/* 8. 하단 버튼 바 */}
             <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                {editingIssue && !editingIssue.isDeleted && (
-                  <button
-                    type="button"
-                    onClick={(e) => onCancelRestore(editingIssue, e)}
-                    className="px-3 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold flex items-center gap-1 text-xs cursor-pointer active:scale-95 transition-all"
-                    title="첫 화면에서 내리고 관리목록으로 되돌리기"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span>↩️ 복구 취소</span>
-                  </button>
-                )}
-                {editingIssue ? (
-                  <button
-                    type="button"
-                    onClick={(e) => onOpenDeleteModal(editingIssue, e)}
-                    className="px-3 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/80 font-bold flex items-center gap-1 text-xs cursor-pointer active:scale-95 transition-all"
-                    title="이 항목 삭제 (총괄관리자 권한 필요)"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>삭제</span>
-                  </button>
-                ) : <div />}
-              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-xs transition-all active:scale-95"
+              >
+                닫기
+              </button>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-xs"
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  className={`px-6 py-2.5 rounded-xl text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
-                    newIssueForm.category === "회의일정"
-                      ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
-                      : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
-                      ? "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-emerald-500/25"
-                      : newIssueForm.category === "오픈이슈"
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25"
-                      : "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 shadow-rose-500/25"
-                  }`}
-                >
-                  <Save className="w-4 h-4" />
-                  <span>
-                    {editingIssue
-                      ? "저장 및 처리 완료"
-                      : newIssueForm.category === "회의일정"
-                      ? "회의일정 등록"
-                      : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
-                      ? "사내공지 등록"
-                      : newIssueForm.category === "오픈이슈"
-                      ? "오픈이슈 등록"
-                      : "품질경보 등록"}
-                  </span>
-                </button>
-              </div>
+              <button
+                type="submit"
+                className={`px-6 py-2.5 rounded-xl text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer text-xs ${
+                  newIssueForm.category === "회의일정"
+                    ? "bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 shadow-purple-500/25"
+                    : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
+                    ? "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 shadow-emerald-500/25"
+                    : newIssueForm.category === "오픈이슈"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25"
+                    : "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 shadow-rose-500/25"
+                }`}
+              >
+                <Save className="w-4 h-4" />
+                <span>
+                  {editingIssue
+                    ? "내용수정"
+                    : newIssueForm.category === "회의일정"
+                    ? "회의일정 등록"
+                    : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
+                    ? "사내공지 등록"
+                    : newIssueForm.category === "오픈이슈"
+                    ? "오픈이슈 등록"
+                    : "품질경보 등록"}
+                </span>
+              </button>
             </div>
           </form>
         )}
