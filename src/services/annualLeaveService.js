@@ -12,35 +12,8 @@ import { getKSTDateString } from "../utils/dateUtils.js";
 const COLLECTION_NAME = "annual_leaves";
 const LOCAL_STORAGE_KEY = "oryuk_annual_leaves_v1";
 
-// Initial sample data for demonstration
-export const INITIAL_ANNUAL_LEAVES = [
-  {
-    id: "leave_demo_1",
-    userId: "sam_yc",
-    userName: "설유철",
-    plant: "삼랑진공장",
-    title: "책임",
-    startDate: "2026-09-01",
-    endDate: "2026-09-01",
-    leaveType: "연차",
-    daysCount: 1,
-    reason: "개인 사유 (정기 연차)",
-    createdAt: "2026-08-30 09:30"
-  },
-  {
-    id: "leave_demo_2",
-    userId: "hal_cy",
-    userName: "우창용",
-    plant: "한림공장",
-    title: "선임",
-    startDate: "2026-09-05",
-    endDate: "2026-09-05",
-    leaveType: "연차",
-    daysCount: 1,
-    reason: "가족 행사",
-    createdAt: "2026-08-31 11:20"
-  }
-];
+// Initial sample data for demonstration (Empty by default)
+export const INITIAL_ANNUAL_LEAVES = [];
 
 // Helper: Read local storage
 export const getLocalAnnualLeaves = () => {
