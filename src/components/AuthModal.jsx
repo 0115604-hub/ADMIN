@@ -545,9 +545,14 @@ export const AuthModal = () => {
     }
 
     const itemToSave = {
+      ...(editingIssue || {}),
       ...newIssueForm,
       id: editingIssue?.id || `issue_${Date.now()}`,
-      createdAt: editingIssue?.createdAt || undefined
+      createdAt: editingIssue?.createdAt || undefined,
+      isDeleted: editingIssue ? Boolean(editingIssue.isDeleted) : false,
+      deletedBy: editingIssue?.deletedBy || "",
+      deletedAt: editingIssue?.deletedAt || "",
+      isManuallyRestored: editingIssue?.isManuallyRestored !== undefined ? editingIssue.isManuallyRestored : false
     };
 
     const saved = await saveUrgentIssue(itemToSave);

@@ -156,10 +156,25 @@ export const RealtimeIssueBoard = ({
         </div>
       )}
 
-      {/* Empty State when no active issues */}
+      {/* Empty State when no active issues overall */}
       {activeIssues.length === 0 && (
         <div className="p-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-slate-900/40">
           ✨ 현재 미결된 오픈이슈 및 공지사항이 없습니다. (상단 [목록] 버튼으로 전체 이력 조회 가능)
+        </div>
+      )}
+
+      {/* Empty State when selected category filter has 0 items */}
+      {isIssueExpanded && activeIssues.length > 0 && displayedActiveIssues.length === 0 && (
+        <div className="p-4 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white/40 dark:bg-slate-900/40">
+          {openIssueCategoryFilter === "open_issue" || openIssueCategoryFilter === "quality_issue" || openIssueCategoryFilter === "quality"
+            ? "✨ 현재 진행중인 오픈이슈가 없습니다."
+            : openIssueCategoryFilter === "quality_alert"
+            ? "✨ 현재 진행중인 품질경보가 없습니다."
+            : openIssueCategoryFilter === "meeting"
+            ? "✨ 현재 예정된 회의일정이 없습니다."
+            : openIssueCategoryFilter === "notice"
+            ? "✨ 현재 게시중인 사내공지가 없습니다."
+            : "✨ 현재 표시할 항목이 없습니다."}
         </div>
       )}
 
