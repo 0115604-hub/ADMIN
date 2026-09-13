@@ -282,24 +282,6 @@ export const IssueEditModal = ({
                     {editingIssue.actionResult}
                   </div>
                 </div>
-              ) : newIssueForm.category !== "오픈이슈" ? (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700">
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    {newIssueForm.category === "회의일정" ? "📝 아직 등록된 회의 결과가 없습니다." : "⏳ 아직 등록된 조치 결과가 없습니다."}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onOpenActionModal(editingIssue)}
-                    className={`px-3 py-1.5 rounded-xl text-white font-black text-xs shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer ${
-                      newIssueForm.category === "회의일정"
-                        ? "bg-purple-600 hover:bg-purple-700"
-                        : "bg-emerald-600 hover:bg-emerald-700"
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{newIssueForm.category === "회의일정" ? "회의결과 입력" : "조치결과 입력"}</span>
-                  </button>
-                </div>
               ) : null}
 
               {/* 첨부 사진 갤러리 */}
@@ -479,24 +461,6 @@ export const IssueEditModal = ({
                   <span>✏️ 내용 수정</span>
                 </button>
 
-                {newIssueForm.category !== "오픈이슈" && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onOpenActionModal(editingIssue);
-                      onClose();
-                    }}
-                    className={`px-3.5 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-xs text-white ${
-                      newIssueForm.category === "회의일정"
-                        ? "bg-purple-600 hover:bg-purple-700"
-                        : "bg-emerald-600 hover:bg-emerald-700"
-                    }`}
-                    title={newIssueForm.category === "회의일정" ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{newIssueForm.category === "회의일정" ? "회의결과 입력" : "조치결과 입력"}</span>
-                  </button>
-                )}
               </div>
 
               <button

@@ -397,9 +397,17 @@ export const IssueLedgerModal = ({
                       {/* 3. 우측: 삭제 뱃지 + 수정 버튼 (shrink-0으로 제목과 절대 겹치지 않음) */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isItDeleted ? (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenDeleteModal(it, e, true);
+                            }}
+                            className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 dark:bg-rose-950/80 dark:hover:bg-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0 cursor-pointer transition-all shadow-2xs"
+                            title="삭제 프로세스 바로 진행 (영구삭제)"
+                          >
                             삭제
-                          </span>
+                          </button>
                         ) : isItResolved ? (
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 shrink-0">
                             {isItMeeting ? "회의종결" : "조치완료"}
