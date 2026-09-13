@@ -41,7 +41,7 @@ export const Header = ({
     return `${parts[0]}년 ${parts[1]}월`;
   };
 
-  const showBackButton = isOperator && activeTab && activeTab !== "worker_dashboard";
+  const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard");
 
   return (
     <header className="h-14 sm:h-15 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-2xs max-w-full min-w-0">

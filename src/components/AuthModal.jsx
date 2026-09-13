@@ -32,6 +32,7 @@ import {
   sendDailyClosingBriefingTelegram
 } from "../services/telegramService";
 import { compressImage } from "../utils/imageCompressor";
+import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // Modularized Components
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
@@ -155,6 +156,21 @@ export const AuthModal = () => {
   useEffect(() => {
     const unsub = subscribeUrgentIssues((issues) => {
       setUrgentIssues(issues);
+    });
+    return () => unsub();
+  }, []);
+
+  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기 및 선택 초기화)
+  useEffect(() => {
+    const unsub = subscribeCloseAllModals(() => {
+      setIsIssueModalOpen(false);
+      setIsListModalOpen(false);
+      setActionModalData((prev) => ({ ...prev, isOpen: false }));
+      setDeleteModalData((prev) => ({ ...prev, isOpen: false }));
+      setIsTelegramModalOpen(false);
+      setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false }));
+      setPreviewImageModal(null);
+      setSelectedUser(null);
     });
     return () => unsub();
   }, []);

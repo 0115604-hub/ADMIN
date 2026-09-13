@@ -3,9 +3,12 @@ import { useEffect } from "react";
 
 export const CLOSE_ALL_MODALS_EVENT = "app:closeAllModals";
 
+let activeModalCount = 0;
+
 // Push a modal history state onto browser history stack
 export const pushModalHistory = (modalName = "modal") => {
   try {
+    activeModalCount++;
     if (typeof window !== "undefined" && window.history) {
       window.history.pushState(
         { modalOpen: true, modalName, timestamp: Date.now() },
@@ -19,6 +22,8 @@ export const pushModalHistory = (modalName = "modal") => {
 
 // Dispatch event to close all modals across the app
 export const closeAllModals = () => {
+  const hadModals = activeModalCount > 0;
+  activeModalCount = 0;
   try {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(CLOSE_ALL_MODALS_EVENT));
@@ -26,6 +31,17 @@ export const closeAllModals = () => {
   } catch (e) {
     console.warn("closeAllModals error:", e);
   }
+  return hadModals;
+};
+
+// Check if any modal is currently recorded as open
+export const hasOpenModals = () => {
+  return activeModalCount > 0 || (typeof window !== "undefined" && Boolean(window.history?.state?.modalOpen));
+};
+
+// Decrement modal counter when closed normally by close button
+export const popModalCount = () => {
+  if (activeModalCount > 0) activeModalCount--;
 };
 
 // Subscribe to closeAllModals event

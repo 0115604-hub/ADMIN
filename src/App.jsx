@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ArrowUp } from "lucide-react";
 import { Sidebar, ADMIN_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
@@ -37,7 +37,7 @@ import {
 import { pushModalHistory, closeAllModals } from "./utils/modalHistory";
 
 export const App = () => {
-  const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading } = useAuth();
+  const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
   const { resetToCurrentMonth } = useMonth();
   const [activeTab, setActiveTab] = useState("worker_dashboard");
   const [transactions, setTransactions] = useState([]);
@@ -50,7 +50,22 @@ export const App = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTopBtn, setShowTopBtn] = useState(false);
 
-  // Sync default tab and always reset to current month (당월) upon user login
+  // Synchronized refs to avoid stale closures in global popstate handler
+  const activeTabRef = useRef(activeTab);
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  const modalOpenRef = useRef(modalOpen);
+  const excelModalOpenRef = useRef(excelModalOpen);
+  const mobileMenuOpenRef = useRef(mobileMenuOpen);
+  const editingItemRef = useRef(editingItem);
+
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { isAuthenticatedRef.current = isAuthenticated; }, [isAuthenticated]);
+  useEffect(() => { modalOpenRef.current = modalOpen; }, [modalOpen]);
+  useEffect(() => { excelModalOpenRef.current = excelModalOpen; }, [excelModalOpen]);
+  useEffect(() => { mobileMenuOpenRef.current = mobileMenuOpen; }, [mobileMenuOpen]);
+  useEffect(() => { editingItemRef.current = editingItem; }, [editingItem]);
+
+  // 1. Initial State and Login/Logout synchronization
   useEffect(() => {
     try {
       document.documentElement.style.zoom = "";
@@ -64,44 +79,74 @@ export const App = () => {
         resetToCurrentMonth();
       }
       try {
-        window.history.replaceState({ screen: "worker_dashboard", isBase: true }, "");
+        // When user logs in, push summary dashboard on top of main entry
+        window.history.pushState({ screen: "worker_dashboard", isSummary: true }, "");
+      } catch (e) {}
+    } else {
+      try {
+        window.history.replaceState({ screen: "main", isMain: true }, "");
       } catch (e) {}
     }
   }, [currentProfile?.id]);
 
-  // 🌟 Global Browser & App Back Button (모바일/PC 인터넷앱 뒤로가기 누를 시 팝업 닫기 + 로그인후 첫화면 이동)
+  // 2. Tab Navigation History (상세페이지 진입 시 히스토리 스택 푸시)
+  useEffect(() => {
+    if (isAuthenticated && activeTab !== "worker_dashboard") {
+      try {
+        window.history.pushState({ screen: activeTab, isDetail: true }, "");
+      } catch (e) {}
+    }
+  }, [activeTab, isAuthenticated]);
+
+  // 3. 🌟 Global Browser & App Back Button (인터넷창 뒤로가기)
+  // 상세페이지에서 누르면 요약화면(worker_dashboard), 요약화면에서 누르면 메인화면(AuthModal)으로 이동
   useEffect(() => {
     const handlePopState = () => {
-      // 1. App 자체 모달 및 모바일 메뉴 닫기
+      // (1) 팝업 / 모달이 열려 있는 경우: 팝업만 닫고 현재 화면 유지
+      const hadAppModals = modalOpenRef.current || excelModalOpenRef.current || mobileMenuOpenRef.current || editingItemRef.current !== null;
       setModalOpen(false);
       setExcelModalOpen(false);
       setMobileMenuOpen(false);
       setEditingItem(null);
 
-      // 2. 전체 컴포넌트에 팝업창 닫기 이벤트 전송
-      closeAllModals();
+      const hadComponentModals = closeAllModals();
 
-      // 3. 로그인 후 첫화면(worker_dashboard)으로 복귀
-      setActiveTab("worker_dashboard");
+      if (hadAppModals || hadComponentModals) {
+        return;
+      }
 
-      // 4. Base 히스토리 유지
-      try {
-        window.history.replaceState({ screen: "worker_dashboard", isBase: true }, "");
-      } catch (e) {}
+      const isAuthed = isAuthenticatedRef.current;
+      const currentTab = activeTabRef.current;
+
+      // 로그인하지 않은 상태(메인화면)에서는 메인화면 유지
+      if (!isAuthed) {
+        try {
+          window.history.replaceState({ screen: "main", isMain: true }, "");
+        } catch (err) {}
+        return;
+      }
+
+      // [규칙 1] 상세페이지에서 누르면 요약화면(worker_dashboard)으로 복귀
+      if (currentTab !== "worker_dashboard") {
+        setActiveTab("worker_dashboard");
+        try {
+          window.history.replaceState({ screen: "worker_dashboard", isSummary: true }, "");
+        } catch (err) {}
+        return;
+      }
+
+      // [규칙 2] 요약화면(worker_dashboard)에서 누르면 메인화면(AuthModal / 로그아웃)으로 이동
+      if (currentTab === "worker_dashboard") {
+        logout();
+        try {
+          window.history.replaceState({ screen: "main", isMain: true }, "");
+        } catch (err) {}
+      }
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
-
-  // 탭 이동 시 히스토리 스택 푸시
-  useEffect(() => {
-    if (activeTab !== "worker_dashboard") {
-      try {
-        window.history.pushState({ screen: activeTab, isTab: true }, "");
-      } catch (e) {}
-    }
-  }, [activeTab]);
+  }, [logout]);
 
   // Scroll to top on active tab change
   useEffect(() => {
