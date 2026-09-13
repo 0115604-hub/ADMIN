@@ -358,102 +358,54 @@ export const IssueLedgerModal = ({
                     }`}
                     title="클릭하여 상세 조회"
                   >
-                    {/* Row Top */}
-                    <div className="flex items-center justify-between gap-2 w-full">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {/* Item Number */}
-                        <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
-                          isCurrent
-                            ? "bg-blue-600 text-white shadow-xs"
-                            : isItDeleted
-                            ? "bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono"
-                            : isItUnresolved
-                            ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                            : "bg-emerald-600 text-white shadow-xs"
-                        }`}>
-                          {itemNum}
-                        </span>
+                    {/* Row: [맨 왼쪽: 카테고리 뱃지] ── [중앙: 제목 내용] ── [우측: 삭제/상태 뱃지 + 수정 버튼] */}
+                    <div className="flex items-center justify-between gap-2 sm:gap-3 w-full min-w-0">
+                      {/* 1. 맨 왼쪽: 카테고리 뱃지 (회의일정 / 품질경보 / 사내공지 / 오픈이슈) */}
+                      <span className={`px-2 py-0.5 rounded text-[10.5px] font-black text-white shrink-0 shadow-2xs ${
+                        isItQualityAlert
+                          ? "bg-rose-600"
+                          : isItMeeting
+                          ? "bg-purple-600"
+                          : isItNotice
+                          ? "bg-emerald-600"
+                          : "bg-gradient-to-r from-blue-600 to-indigo-600"
+                      }`}>
+                        {isItQualityAlert ? "🚨 품질경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
+                      </span>
 
-                        {/* Category Badge */}
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-black text-white shrink-0 shadow-2xs ${
-                          isItQualityAlert
-                            ? "bg-rose-600"
-                            : isItMeeting
-                            ? "bg-purple-600"
-                            : isItNotice
-                            ? "bg-emerald-600"
-                            : "bg-gradient-to-r from-blue-600 to-indigo-600"
-                        }`}>
-                          {isItQualityAlert ? "🚨 품질경보" : isItMeeting ? "📅 회의일정" : isItNotice ? "📢 사내공지" : "📌 오픈이슈"}
-                        </span>
-
-                        {/* Factory Badge */}
-                        <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-black shrink-0 ${
-                          it.plant === "한림공장"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                            : it.plant === "삼랑진공장"
-                            ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                            : it.plant === "화승 R&A"
-                            ? "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                            : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                        }`}>
-                          {it.plant === "화승 R&A" ? "화승 R&A" : it.plant?.replace("공장", "") || "전체"}
-                        </span>
-
-                        {/* Date Badge */}
-                        {it.expireDate && (
-                          <span className={`px-1 py-0.2 rounded text-[9px] font-bold font-mono shrink-0 ${
-                            it.category === "품질경보"
-                              ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border border-rose-200"
-                              : isItMeeting
-                              ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200"
-                              : isItNotice
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200"
-                              : "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 border border-blue-200"
-                          }`}>
-                            {it.category === "품질경보" ? `등록: ${it.expireDate.slice(5)}` : `${it.expireDate.slice(5)}${isItMeeting && it.meetingTime ? ` ${it.meetingTime}` : ""}`}
-                          </span>
-                        )}
-
-                        {/* Content Snippet */}
-                        <span className={`text-xs truncate flex-1 ${
+                      {/* 2. 중앙: 제목 및 내용 (충분한 flex-1 min-w-0 공간 확보하여 명확하게 노출) */}
+                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                        <span className={`text-xs sm:text-[13px] truncate block ${
                           isCurrent
                             ? "font-black text-blue-950 dark:text-blue-100"
                             : isItDeleted
-                            ? "font-semibold text-slate-500 dark:text-slate-400 line-through"
+                            ? "font-semibold text-slate-700 dark:text-slate-300"
                             : isItUnresolved
                             ? "font-black text-amber-950 dark:text-amber-200"
-                            : "font-bold text-slate-800 dark:text-slate-200"
+                            : "font-bold text-slate-900 dark:text-slate-100"
                         }`}>
-                          {it.title ? `${it.title} - ${it.content}` : it.content}
+                          {it.title || it.content}
                         </span>
-
-                        {/* Photo count indicator */}
                         {totalImgCount > 0 && (
                           <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 shrink-0 font-bold hidden sm:inline-flex">
                             <Camera className="w-2.5 h-2.5 text-rose-500" />
                             <span>{totalImgCount}</span>
                           </span>
                         )}
-
-                        {/* Author / Deleter info */}
-                        <span className="text-[10px] text-slate-400 shrink-0 font-mono hidden md:inline">
-                          {isItDeleted && it.deletedBy ? `종결: ${it.deletedBy}` : `${it.author} • ${it.createdAt?.slice(5) || ""}`}
-                        </span>
                       </div>
 
-                      {/* Right: Only Status Badge & Edit Badge */}
+                      {/* 3. 우측: 삭제 뱃지 + 수정 버튼 (shrink-0으로 제목과 절대 겹치지 않음) */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {isItDeleted ? (
-                          <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                            종결
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0">
+                            삭제
                           </span>
                         ) : isItResolved ? (
-                          <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 shrink-0">
                             {isItMeeting ? "회의종결" : "조치완료"}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-md text-[9.5px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0 animate-pulse">
                             {isItMeeting ? "회의예정" : "조치대기"}
                           </span>
                         )}
@@ -464,7 +416,7 @@ export const IssueLedgerModal = ({
                             e.stopPropagation();
                             setOpenActionMenuId((prev) => (prev === it.id ? null : it.id));
                           }}
-                          className={`px-2 py-1 rounded-lg text-[10.5px] font-black shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5 border ${
+                          className={`px-2 py-1 rounded-lg text-[10.5px] font-black shadow-2xs active:scale-95 transition-all cursor-pointer flex items-center gap-0.5 border shrink-0 ${
                             openActionMenuId === it.id
                               ? "bg-amber-500 text-slate-950 border-amber-600 shadow-amber-500/25 ring-2 ring-amber-400/40"
                               : "bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
