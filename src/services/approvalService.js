@@ -16,7 +16,7 @@ import {
 import { isThisWeek, getThisWeekDateRange } from "../utils/dateUtils";
 
 const COLLECTION_NAME = "approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v7_clean";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v8_stable";
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -145,8 +145,104 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
   ];
 };
 
-// Initial sample approval documents (All historical seed items APPROVED)
+// Initial authoritative approval documents (includes pending overtime reports and active drafts)
 export const INITIAL_APPROVAL_DOCS = [
+  {
+    id: "appr_1788484096588",
+    docNumber: "ORYUK-2026-0914-EXP",
+    type: "EXPENSE",
+    typeName: "설비부품 교체 품의서",
+    title: "PU차종 아웃트찬넬 포밍롤 노후 교체 건",
+    plant: "삼랑진공장",
+    department: "설비보전",
+    drafter: "전재율",
+    drafterTitle: "책임",
+    createdAt: "2026-09-14 08:30",
+    content: "PU차종 아웃트찬넬 성형부 3, 4번 포밍롤 마모로 인한 치수 편차 발생 예방을 위해 신규 롤 가공 제작 및 교체를 품의하오니 재가하여 주시기 바랍니다.\n- 공급처: 대명정밀\n- 견적금액: ₩2,400,000",
+    amount: "₩2,400,000",
+    status: "IN_PROGRESS",
+    currentStep: 2,
+    steps: [
+      { role: "담당", name: "전재율", title: "선임", status: "APPROVED", date: "2026-09-14 08:30", comment: "설비보전 품의 상신" },
+      { role: "책임", name: "전재율", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
+    id: "appr_ot_samrangjin_20260912",
+    docNumber: "ORYUK-2026-0912-SAM",
+    type: "OVERTIME",
+    typeName: "특근보고서 (취합)",
+    title: "[삼랑진공장] 9월 12일(토) 특근보고서 취합 ((주)오륙)",
+    plant: "삼랑진공장",
+    department: "생산총괄 ((주)오륙 + 유성)",
+    drafter: "양인나",
+    drafterTitle: "선임",
+    createdAt: "2026-09-12 18:00",
+    content: "■ 9월 12일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙)\n• 총 투입: 54명 (443 M/H) | 총 노무비: ₩6,645,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (54명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 손주희, 이은혜, 김지연, 김미선, 정명순, 서성애, 권순미, 이정임, 한옥주, 서효선 외 39명\n\n3. 주요 작업 내용\n• 현대/기아 긴급 납품 물량 대응 및 삼랑진공장 주말 가동 완료",
+    amount: "₩6,645,000",
+    status: "IN_PROGRESS",
+    currentStep: 2,
+    steps: [
+      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-12 18:00", comment: "특근 취합 기안 상신" },
+      { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
+    id: "appr_ot_hanlim_20260912",
+    docNumber: "ORYUK-2026-0912-HAL",
+    type: "OVERTIME",
+    typeName: "특근보고서 (취합)",
+    title: "[한림공장] 9월 12일(토) 특근보고서 취합 ((주)조영산업, 한울)",
+    plant: "한림공장",
+    department: "생산총괄 ((주)조영산업 + 한울 + 부림텍)",
+    drafter: "오상민",
+    drafterTitle: "선임",
+    createdAt: "2026-09-12 18:00",
+    content: "■ 9월 12일(토) [한림공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 한림공장 ((주)조영산업, 한울)\n• 총 투입: 67명 (643 M/H) | 총 노무비: ₩9,645,000\n\n2. 회사별 세부 투입 현황\n• (주)조영산업 (41명)\n  - 관리자: 이명재, 김동욱, 우창용, 오상민\n  - 작업자: 황수현, 박종미, 마이클, 아흐마드, 바하, 알리, 시로즈, 나심, 샤리프, 하산 외 27명\n• 한울 (26명)\n  - 관리자: -\n  - 작업자: 응웬반남, 쩐득토, 레반뚱, 팜반둥, 부이반뚜, 황반타이, 도반히에우, 응웬반롱, 레반득, 팜반훙 외 16명\n\n3. 주요 작업 내용\n• 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 가동 완료",
+    amount: "₩9,645,000",
+    status: "IN_PROGRESS",
+    currentStep: 2,
+    steps: [
+      { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-12 18:00", comment: "특근 취합 기안 상신" },
+      { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
+  {
+    id: "appr_ot_hanlim_20260913",
+    docNumber: "ORYUK-2026-0913-HAL",
+    type: "OVERTIME",
+    typeName: "특근보고서 (취합)",
+    title: "[한림공장] 9월 13일(일) 특근보고서 취합 ((주)조영산업, 한울)",
+    plant: "한림공장",
+    department: "생산총괄 ((주)조영산업 + 한울 + 부림텍)",
+    drafter: "오상민",
+    drafterTitle: "선임",
+    createdAt: "2026-09-13 18:00",
+    content: "■ 9월 13일(일) [한림공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 한림공장 ((주)조영산업, 한울)\n• 총 투입: 15명 (122 M/H) | 총 노무비: ₩1,830,000\n\n2. 회사별 세부 투입 현황\n• (주)조영산업 (9명)\n  - 관리자: 이명재, 김동욱, 우창용, 오상민\n  - 작업자: 황수현, 마이클, 아흐마드, 바하, 알리\n• 한울 (6명)\n  - 관리자: -\n  - 작업자: 응웬반남, 쩐득토, 레반뚱, 팜반둥, 부이반뚜, 황반타이\n\n3. 주요 작업 내용\n• 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 가동 완료",
+    amount: "₩1,830,000",
+    status: "IN_PROGRESS",
+    currentStep: 2,
+    steps: [
+      { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-13 18:00", comment: "특근 취합 기안 상신" },
+      { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+    ],
+    rejectReason: "",
+    holdReason: ""
+  },
   {
     id: "appr_ot_samrangjin_20260905",
     docNumber: "ORYUK-2026-0905-SAM",
@@ -317,33 +413,42 @@ export const INITIAL_APPROVAL_DOCS = [
   }
 ];
 
-// Helper: Read local storage with normalization
+// Helper: Read local storage with normalization and seamless initial merge
 export const getLocalApprovalDocs = () => {
   try {
     let data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
+      const v7 = localStorage.getItem("oryuk_approval_documents_v7_clean");
       const v6 = localStorage.getItem("oryuk_approval_documents_v6_kwon_sign");
-      if (v6) data = v6;
+      if (v7) data = v7;
+      else if (v6) data = v6;
     }
-    if (!data) {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_APPROVAL_DOCS));
-      return INITIAL_APPROVAL_DOCS;
-    }
-    const parsed = JSON.parse(data);
-    const normalized = parsed.map(normalizeApprovalDoc).map((d) => {
-      // Auto-migrate legacy seed items to APPROVED
-      if (d.id && (d.id.startsWith("appr_20260903_") || d.id === "appr_ot_samrangjin_20260905")) {
-        return {
-          ...d,
-          status: "APPROVED",
-          currentStep: 4,
-          steps: (d.steps || []).map((s) => ({ ...s, status: "APPROVED" }))
-        };
+
+    let parsed = [];
+    if (data) {
+      try {
+        parsed = JSON.parse(data);
+      } catch (e) {
+        parsed = [];
       }
-      return d;
-    });
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
-    return normalized;
+    }
+
+    const docMap = new Map();
+    // 1. Load initial authoritative docs
+    INITIAL_APPROVAL_DOCS.forEach((d) => docMap.set(d.id, d));
+
+    // 2. Overlay existing stored items (keeping latest statuses and comments)
+    if (Array.isArray(parsed)) {
+      parsed.forEach((d) => {
+        if (d && d.id) {
+          docMap.set(d.id, d);
+        }
+      });
+    }
+
+    const merged = Array.from(docMap.values()).map(normalizeApprovalDoc);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+    return merged;
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
     return INITIAL_APPROVAL_DOCS;
@@ -360,19 +465,19 @@ export const saveLocalApprovalDocs = (docs) => {
   }
 };
 
-// Real-time Cloud Synchronization
+// Real-time Cloud Synchronization with Robust Local Merge
 export const subscribeApprovalDocs = (onUpdate) => {
   try {
     const colRef = collection(db, COLLECTION_NAME);
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        const remoteDocs = [];
         if (!snapshot.empty) {
-          const list = [];
           snapshot.forEach((d) => {
             const rawDoc = { id: d.id, ...d.data() };
             const normalized = normalizeApprovalDoc(rawDoc);
-            list.push(normalized);
+            remoteDocs.push(normalized);
 
             // If remote doc had wrong director name or outdated content, quietly sync correction to Firestore
             const directorStep = rawDoc.steps?.find((st) => st.role === "이사");
@@ -380,41 +485,51 @@ export const subscribeApprovalDocs = (onUpdate) => {
               setDoc(doc(db, COLLECTION_NAME, d.id), normalized, { merge: true }).catch(() => {});
             }
           });
-
-          // ⭐ Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
-          const seenOtKeys = new Set();
-          const cleanList = [];
-          for (const item of list) {
-            if (item.type === "OVERTIME") {
-              const dateMatch = (item.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) || (item.docNumber || "").match(/09\d{2}/) || (item.id || "").match(/2026\d{4}/);
-              const dateKey = dateMatch ? dateMatch[0] : (item.createdAt?.slice(0, 10) || item.id);
-              const otKey = `${item.plant || "전사"}_${dateKey}`;
-
-              if (seenOtKeys.has(otKey)) {
-                // If a non-canonical duplicate is found, clean it from Firestore
-                if (item.id && !item.id.startsWith("appr_ot_")) {
-                  try {
-                    deleteDoc(doc(db, COLLECTION_NAME, item.id));
-                  } catch (e) {}
-                  continue;
-                }
-              } else {
-                seenOtKeys.add(otKey);
-              }
-            }
-            cleanList.push(item);
-          }
-
-          cleanList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-          saveLocalApprovalDocs(cleanList);
-          onUpdate(cleanList);
-        } else {
-          const locals = getLocalApprovalDocs();
-          locals.forEach((item) => {
-            setDoc(doc(db, COLLECTION_NAME, item.id), item).catch(() => {});
-          });
-          onUpdate(locals);
         }
+
+        // ⭐ MERGE Remote Docs with Local Docs so items NEVER flash and vanish
+        const localDocs = getLocalApprovalDocs();
+        const mergedMap = new Map();
+
+        // 1. Populate all local items first
+        localDocs.forEach((d) => {
+          if (d && d.id) mergedMap.set(d.id, d);
+        });
+
+        // 2. Overlay remote items
+        remoteDocs.forEach((d) => {
+          if (d && d.id) {
+            mergedMap.set(d.id, d);
+          }
+        });
+
+        // ⭐ Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
+        const seenOtKeys = new Set();
+        const cleanList = [];
+        for (const item of Array.from(mergedMap.values())) {
+          if (item.type === "OVERTIME") {
+            const dateMatch = (item.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) || (item.docNumber || "").match(/09\d{2}/) || (item.id || "").match(/2026\d{4}/);
+            const dateKey = dateMatch ? dateMatch[0] : (item.createdAt?.slice(0, 10) || item.id);
+            const otKey = `${item.plant || "전사"}_${dateKey}`;
+
+            if (seenOtKeys.has(otKey)) {
+              // If a non-canonical duplicate is found, clean it from Firestore
+              if (item.id && !item.id.startsWith("appr_ot_")) {
+                try {
+                  deleteDoc(doc(db, COLLECTION_NAME, item.id));
+                } catch (e) {}
+                continue;
+              }
+            } else {
+              seenOtKeys.add(otKey);
+            }
+          }
+          cleanList.push(item);
+        }
+
+        cleanList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        saveLocalApprovalDocs(cleanList);
+        onUpdate(cleanList);
       },
       (error) => {
         console.warn("Firestore approval sync warning:", error);
