@@ -937,47 +937,19 @@ export const IssueEditModal = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
-                      🚩 착수/시작 일자
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={newIssueForm.startDate || todayDateStr}
-                      onChange={(e) => setNewIssueForm({ ...newIssueForm, startDate: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
-                      🚩 조치 D-DAY/마감 일자 (직접 지정)
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={newIssueForm.expireDate || todayDateStr}
-                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-xl border border-blue-400 dark:border-blue-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-blue-700 dark:text-blue-300 shadow-xs cursor-pointer ring-1 ring-blue-400/30"
-                    />
-                  </div>
-                </div>
-
-                {/* 달력 형식 타임라인 */}
-                <div className="p-2.5 sm:p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200 dark:border-blue-900 space-y-1.5">
+                {/* 달력 형식 타임라인 (최소화 컴팩트형) */}
+                <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                      <span>달력형 타임라인 & 일자별 의견 현황</span>
+                      <span>타임라인 캘린더</span>
                     </span>
-                    <span className="text-[9.5px] text-slate-400">
-                      * 날짜 클릭 시 D-DAY 지정 및 해당 일자 의견 등록으로 지정
+                    <span className="text-[10.5px] font-mono font-bold text-blue-600 dark:text-blue-400">
+                      🚩 D-DAY: {newIssueForm.expireDate ? newIssueForm.expireDate.slice(5) : todayDateStr.slice(5)}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-7 gap-1 sm:gap-1.5 pt-1">
+                  <div className="grid grid-cols-7 gap-1 pt-0.5">
                     {getOpenIssueFormCalendarDays(
                       newIssueForm.startDate || todayDateStr,
                       newIssueForm.expireDate || todayDateStr,
@@ -992,56 +964,39 @@ export const IssueEditModal = ({
                             setNewIssueForm({ ...newIssueForm, expireDate: day.dateStr });
                             setActionOpinionForm((prev) => ({ ...prev, actionDate: day.dateStr }));
                           }}
-                          className={`p-1 sm:p-1.5 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-between min-h-[58px] sm:min-h-[64px] relative group ${
+                          className={`py-1 px-0.5 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-between min-h-[38px] relative ${
                             isSelectedForAction || day.isTarget
-                              ? "bg-blue-600 text-white border-blue-500 shadow-md ring-2 ring-blue-400/60 font-black scale-102"
+                              ? "bg-blue-600 text-white border-blue-500 shadow-xs ring-1 ring-blue-400 font-black"
                               : day.hasOpinions
-                              ? "bg-blue-50/90 dark:bg-blue-950/70 border-blue-400 dark:border-blue-600 text-blue-950 dark:text-blue-100 font-bold ring-1 ring-blue-400/40"
-                              : day.isStart
-                              ? "bg-indigo-100 dark:bg-indigo-950 border-indigo-500 text-indigo-900 dark:text-indigo-200 font-black"
-                              : day.isInRange
-                              ? "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-200 font-medium"
-                              : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500 hover:bg-slate-100"
+                              ? "bg-indigo-600 text-white border-indigo-500 shadow-xs font-black ring-1 ring-indigo-400/60"
+                              : day.isToday
+                              ? "bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-bold"
+                              : "bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100"
                           }`}
                           title={`일자: ${day.dateStr} (의견 ${day.opinionCount}건)`}
                         >
-                          <div className="text-[9.5px] sm:text-[10px] font-mono leading-tight">
-                            <span className={day.dayIndex === 0 ? "text-rose-500 font-bold" : day.dayIndex === 6 ? "text-blue-500 font-bold" : ""}>
+                          <div className="text-[9px] font-mono font-bold leading-none">
+                            <span className={day.dayIndex === 0 && !day.hasOpinions && !day.isTarget ? "text-rose-500" : day.dayIndex === 6 && !day.hasOpinions && !day.isTarget ? "text-blue-500" : ""}>
                               {day.monthDay}
                             </span>
-                            <span className="block text-[8px] opacity-75">({day.dayName})</span>
+                            <span className="text-[7.5px] opacity-75 ml-0.5">({day.dayName})</span>
                           </div>
 
-                          <div className="my-0.5">
-                            {day.isTarget ? (
-                              <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-white text-blue-700 shadow-2xs">
+                          <div className="mt-0.5">
+                            {day.hasOpinions ? (
+                              <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-cyan-300 text-slate-950 flex items-center gap-0.5 shadow-2xs">
+                                💬{day.opinionCount}
+                              </span>
+                            ) : day.isTarget ? (
+                              <span className="text-[7px] font-black opacity-90">
                                 🚩D-DAY
                               </span>
-                            ) : day.isStart ? (
-                              <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-indigo-600 text-white shadow-2xs">
-                                🚩시작
-                              </span>
                             ) : day.isToday ? (
-                              <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-amber-500 text-slate-950 shadow-2xs animate-pulse">
+                              <span className="text-[7px] font-black text-amber-800 dark:text-amber-300">
                                 오늘
                               </span>
-                            ) : null}
-                          </div>
-
-                          <div className="w-full flex items-center justify-center">
-                            {day.hasOpinions ? (
-                              <span className={`px-1 py-0.5 rounded-md text-[8px] sm:text-[8.5px] font-black flex items-center justify-center gap-0.5 shadow-2xs ${
-                                isSelectedForAction || day.isTarget
-                                  ? "bg-cyan-300 text-slate-900"
-                                  : "bg-blue-600 text-white animate-pulse"
-                              }`}>
-                                <MessageSquare className="w-2.5 h-2.5 shrink-0" />
-                                <span>{day.opinionCount}건</span>
-                              </span>
                             ) : (
-                              <span className="text-[7.5px] text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                +의견
-                              </span>
+                              <span className="text-[7px] text-transparent leading-none">-</span>
                             )}
                           </div>
                         </button>
@@ -1882,7 +1837,7 @@ export const IssueEditModal = ({
                 <Save className="w-4 h-4" />
                 <span>
                   {editingIssue
-                    ? "내용수정"
+                    ? "최종등록"
                     : newIssueForm.category === "회의일정"
                     ? "회의일정 등록"
                     : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
