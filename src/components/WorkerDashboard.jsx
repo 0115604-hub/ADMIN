@@ -1196,6 +1196,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         return (l.startDate || "") <= dateStr && (l.endDate || l.startDate || "") >= dateStr;
       });
 
+      // 진행중인 일정을 우선 노출하고, 완료된 일정은 뒤로 정렬
+      dayEvents.sort((a, b) => {
+        const aDone = a.isCompleted || a.isDismissed ? 1 : 0;
+        const bDone = b.isCompleted || b.isDismissed ? 1 : 0;
+        if (aDone !== bDone) return aDone - bDone;
+        return (a.startDate || "").localeCompare(b.startDate || "");
+      });
+
       weekDays.push({
         dateStr,
         year: yyyy,
@@ -2862,6 +2870,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           <span className="text-[10px] text-slate-300 dark:text-slate-600 block">-</span>
                         ) : (
                           day.events.slice(0, 2).map((ev) => {
+                            const isDone = Boolean(ev.isCompleted || ev.isDismissed);
                             const isTodo = ev.leaveType === "할일" || ev.leaveType?.includes("할일");
                             const isRecip = Boolean(ev.isSharedRecipient || ev.sharedBy);
                             const displayText = isTodo
@@ -2882,15 +2891,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                   });
                                 }}
                                 className={`text-[9.5px] px-1 py-0.5 rounded font-bold truncate text-left transition-all ${
-                                  isTodo
+                                  isDone
+                                    ? "bg-slate-200/90 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500 border border-slate-300 dark:border-slate-700/80 opacity-75 shadow-none"
+                                    : isTodo
                                     ? "bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 shadow-2xs"
                                     : isRecip
                                     ? "bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800"
                                     : "bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-200"
                                 }`}
-                                title={`${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
+                                title={`${isDone ? "[완료됨] " : ""}${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
                               >
-                                {displayText}
+                                <span className={isDone ? "line-through decoration-slate-400 dark:decoration-slate-500 decoration-1" : ""}>
+                                  {isDone ? `✓ ${displayText}` : displayText}
+                                </span>
                               </div>
                             );
                           })
