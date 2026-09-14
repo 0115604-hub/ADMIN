@@ -218,9 +218,8 @@ export const RealtimeIssueBoard = ({
                         📢 사내공지
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs flex items-center gap-1">
-                        <Pin className="w-3 h-3 text-cyan-300" />
-                        <span>📌 오픈이슈</span>
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs">
+                        📌 오픈이슈
                       </span>
                     )}
                     <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
