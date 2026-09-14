@@ -372,7 +372,7 @@ export async function runAllBriefings(force = false) {
           ? hanLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
           : "전원 정상 출근";
 
-        // 1-2. 미결재 현황 (특근보고서는 이번주 작성분만 연동)
+        // 1-2. 미결재 현황 (특근보고서는 이번주 작성분만 연동) - 날짜 가까운 순 정렬
         let pendingDocs = [];
         try {
           const snap = await getDocs(collection(db, "approval_documents"));
@@ -390,6 +390,12 @@ export async function runAllBriefings(force = false) {
         } catch (e) {
           console.warn("Error fetching approvals:", e.message);
         }
+
+        pendingDocs.sort((a, b) => {
+          const dateA = a.workDate || a.date || a.createdAt || "";
+          const dateB = b.workDate || b.date || b.createdAt || "";
+          return dateA.localeCompare(dateB);
+        });
 
         let approvalDocLines = "• 없음 (전건 결재완료)";
         if (pendingDocs.length > 0) {
@@ -425,7 +431,7 @@ export async function runAllBriefings(force = false) {
           workLogLines = lines.join("\n") + more;
         }
 
-        // 1-4. 진행중인 오픈이슈 및 품질경보/공지
+        // 1-4. 진행중인 오픈이슈 및 품질경보/공지 - 마감일 가까운 순 정렬
         let allIssues = [];
         try {
           const snap = await getDocs(collection(db, "urgent_issues"));
@@ -439,7 +445,13 @@ export async function runAllBriefings(force = false) {
 
         const activeOpenIssues = allIssues.filter(
           (i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue")
-        );
+        ).sort((a, b) => {
+          const dateA = a.expireDate || a.targetDate || "9999-99-99";
+          const dateB = b.expireDate || b.targetDate || "9999-99-99";
+          if (dateA !== dateB) return dateA.localeCompare(dateB);
+          return (a.createdAt || "").localeCompare(b.createdAt || "");
+        });
+
         let openIssueLines = "• 진행중인 오픈이슈 없음";
         if (activeOpenIssues.length > 0) {
           const oLines = activeOpenIssues.map((o) => {
@@ -455,26 +467,33 @@ export async function runAllBriefings(force = false) {
           }
         }
 
-        // 1-5. 회의 & 사내공지
+        // 1-5. 회의 & 사내공지 - 가까운 날짜순 정렬
         const upcomingMeetings = allIssues.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
         const activeNotices = allIssues.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
 
         let noticeMeetingLines = "• 예정된 회의 및 공지사항 없음";
         const combined = [];
         upcomingMeetings.forEach((m) => {
-          const d = m.expireDate || m.targetDate || "";
+          const d = m.expireDate || m.targetDate || m.createdAt?.slice(0, 10) || "";
           const t = m.meetingTime ? ` ${m.meetingTime}` : "";
           const dText = d ? `${d.slice(5)}${t} ` : "";
-          combined.push(`• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`);
+          combined.push({
+            sortKey: `${d} ${m.meetingTime || "00:00"}`,
+            text: `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`
+          });
         });
         activeNotices.forEach((n) => {
           const d = n.expireDate || n.targetDate || "";
           const dText = d ? `~${d.slice(5)} ` : "";
-          combined.push(`• [공지] ${dText}${n.title || n.content}`);
+          combined.push({
+            sortKey: `${d || "9999-99-99"} 23:59`,
+            text: `• [공지] ${dText}${n.title || n.content}`
+          });
         });
 
         if (combined.length > 0) {
-          noticeMeetingLines = combined.slice(0, 5).join("\n");
+          combined.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+          noticeMeetingLines = combined.slice(0, 5).map((c) => c.text).join("\n");
           if (combined.length > 5) {
             noticeMeetingLines += `\n• 외 ${combined.length - 5}건`;
           }
@@ -763,56 +782,89 @@ async function runClosingBriefing(todayStr, config, customTemplates, force = fal
       console.warn("Error fetching urgent issues for closing briefing:", e.message);
     }
 
-    // 1-1. 품질경보 현황 (금일 등록, 금일 조치완료, 또는 미조치)
+    // 1-1. 품질경보 변동 현황 (금일 등록, 금일 조치/의견 등록, 금일 종결, 또는 현재 미조치 상태)
     const qualityAlerts = allUrgent.filter((i) => {
       if (i.category !== "품질경보") return false;
       const isTodayCreated = i.createdAt?.startsWith(todayStr) || i.startDate === todayStr || i.expireDate === todayStr;
       const isTodayAction = i.actionAt?.startsWith(todayStr);
+      const isTodayReply = i.replies?.some((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
+      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
       const isUnresolvedActive = !i.isDeleted && !i.isResolved;
-      return isTodayCreated || isTodayAction || isUnresolvedActive;
+      return isTodayCreated || isTodayAction || isTodayReply || isTodayDeleted || isUnresolvedActive;
+    }).sort((a, b) => {
+      const timeA = a.actionAt || a.deletedAt || a.createdAt || "";
+      const timeB = b.actionAt || b.deletedAt || b.createdAt || "";
+      return timeA.localeCompare(timeB); // 가까운 시간순
     });
 
-    let qualityLines = " • 금일 신규 등록 및 조치 사항 없음 (정상 가동)";
+    let qualityLines = " • 금일 신규 등록 및 변동사항 없음 (정상 가동)";
     if (qualityAlerts.length > 0) {
       qualityLines = qualityAlerts.map((q) => {
         const plant = q.plant ? q.plant.replace("공장", "") : "삼랑진";
         const title = q.title || q.content || "품질경보";
+        const isDel = Boolean(q.isDeleted);
         const isRes = Boolean(q.isResolved);
         const actionTimeStr = q.actionAt ? (q.actionAt.length > 10 ? ` (${q.actionAt.slice(11, 16) || q.actionAt.slice(5)})` : ` (${q.actionAt})`) : "";
-        const statusText = isRes ? `✅ 조치완료${actionTimeStr}` : `⏳ 조치대기`;
+
+        let statusText = `⏳ 조치대기`;
+        if (isDel) {
+          statusText = `🛑 종결/삭제`;
+        } else if (isRes) {
+          statusText = `✅ 조치완료${actionTimeStr}`;
+        }
 
         let resLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
-        if (isRes && q.actionResult) {
+
+        const todayReplies = (q.replies || []).filter((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
+        if (todayReplies.length > 0) {
+          const latestToday = todayReplies[todayReplies.length - 1];
+          resLine += `\n   - 금일 조치의견: ${latestToday.content} (${latestToday.author})`;
+        } else if (isRes && q.actionResult) {
           resLine += `\n   - 조치내용: ${q.actionResult}`;
         }
-        if (isRes && (q.actionAuthor || q.author)) {
+
+        if (isDel && q.deletedBy) {
+          resLine += `\n   - 종결/삭제자: ${q.deletedBy}`;
+        } else if (isRes && (q.actionAuthor || q.author)) {
           resLine += `\n   - 조치자: ${q.actionAuthor || q.author}`;
-        } else if (!isRes && q.author) {
+        } else if (q.author) {
           resLine += `\n   - 등록자: ${q.author}`;
         }
         return resLine;
       }).join("\n");
     }
 
-    // 1-2. 회의일정 및 결과 (금일 회의 또는 금일 결과가 입력된 회의)
+    // 1-2. 회의일정 변동 및 결과 (금일 회의, 금일 결과 입력, 금일 등록/회신/종결된 회의) - 시간 가까운 순 정렬
     const meetings = allUrgent.filter((i) => {
       if (i.category !== "회의일정") return false;
       const meetingDate = i.expireDate || i.targetDate || i.createdAt?.slice(0, 10);
       const isTodayMeeting = meetingDate === todayStr;
+      const isTodayCreated = i.createdAt?.startsWith(todayStr);
       const isTodayAction = i.actionAt?.startsWith(todayStr);
-      return isTodayMeeting || isTodayAction;
+      const isTodayReply = i.replies?.some((r) => r.createdAt?.startsWith(todayStr) || r.actionDate === todayStr);
+      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
+      return isTodayMeeting || isTodayCreated || isTodayAction || isTodayReply || isTodayDeleted;
+    }).sort((a, b) => {
+      const timeA = (a.expireDate || a.targetDate || "") + (a.meetingTime || "00:00");
+      const timeB = (b.expireDate || b.targetDate || "") + (b.meetingTime || "00:00");
+      return timeA.localeCompare(timeB); // 가까운 시간순
     });
 
-    let meetingLines = " • 금일 등록된 회의일정 없음";
+    let meetingLines = " • 금일 회의일정 및 변동사항 없음";
     if (meetings.length > 0) {
       meetingLines = meetings.map((m) => {
         const plant = m.plant ? m.plant.replace("공장", "") : "삼랑진";
         const timeStr = m.meetingTime ? `${m.meetingTime} ` : "";
         const title = m.title || m.content || "회의";
+        const isDel = Boolean(m.isDeleted);
         const isClosed = Boolean(m.isResolved || m.actionResult);
-        const statusText = isClosed ? "✅ 회의종결" : "⏳ 회의예정";
+
+        let statusText = isClosed ? "✅ 회의종결" : "⏳ 회의예정";
+        if (isDel) statusText = "🛑 회의취소/삭제";
+
         const replyCount = Array.isArray(m.replies) ? m.replies.length : 0;
-        const attText = replyCount > 0 ? ` (참석 ${replyCount}명)` : "";
+        const todayReplies = (m.replies || []).filter((r) => r.createdAt?.startsWith(todayStr) || r.actionDate === todayStr);
+        const attText = replyCount > 0 ? ` (참석 ${replyCount}명${todayReplies.length > 0 ? `, 금일 회신 ${todayReplies.length}명` : ""})` : "";
 
         let mLine = ` • [${plant}] ${timeStr}${title}\n   - 결과: ${statusText}`;
         if (m.actionResult) {
@@ -823,21 +875,28 @@ async function runClosingBriefing(todayStr, config, customTemplates, force = fal
       }).join("\n");
     }
 
-    // 1-3. 사내공지 및 공유사항 (현재 활성 공지)
+    // 1-3. 사내공지 변동 및 공유사항 (금일 신규 등록/수정/종결 공지 및 현재 유효 공지) - 가까운 만료일순 정렬
     const notices = allUrgent.filter((i) => {
       const isNotice = i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항";
       if (!isNotice) return false;
-      if (i.isDeleted) return false;
-      if (i.expireDate && i.expireDate < todayStr) return false;
-      return true;
+      const isTodayCreated = i.createdAt?.startsWith(todayStr);
+      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
+      const isActive = !i.isDeleted && (!i.expireDate || i.expireDate >= todayStr);
+      return isTodayCreated || isTodayDeleted || isActive;
+    }).sort((a, b) => {
+      const dateA = a.expireDate || a.targetDate || "9999-99-99";
+      const dateB = b.expireDate || b.targetDate || "9999-99-99";
+      return dateA.localeCompare(dateB); // 가까운 만료일순
     });
 
-    let noticeLines = " • 금일 신규 사내공지 없음";
+    let noticeLines = " • 금일 신규 등록 및 변동 공지 없음";
     if (notices.length > 0) {
       noticeLines = notices.map((n) => {
         const plant = n.plant === "본사" || !n.plant ? "공통" : n.plant.replace("공장", "");
         const title = n.title || n.content;
-        let nLine = ` • [${plant}] ${title}`;
+        const isTodayCreated = n.createdAt?.startsWith(todayStr);
+        const tag = isTodayCreated ? "[신규] " : "";
+        let nLine = ` • [${plant}] ${tag}${title}`;
         if (n.content && n.content !== n.title) {
           nLine += `\n   - 내용: ${n.content}`;
         }
@@ -846,24 +905,42 @@ async function runClosingBriefing(todayStr, config, customTemplates, force = fal
       }).join("\n");
     }
 
-    // 1-4. 오픈이슈 진행 현황 (진행중이거나 금일 조치 완료)
+    // 1-4. 오픈이슈 변동 현황 (금일 신규, 금일 조치의견 등록, 금일 완료/종결, 또는 현재 진행중) - 마감일 가까운 순 정렬
     const openIssues = allUrgent.filter((i) => {
       const isOpen = i.category === "오픈이슈" || i.category === "open_issue" || i.category === "품질이슈";
       if (!isOpen) return false;
-      if (i.isDeleted) return false;
-      return true;
+      const isTodayCreated = i.createdAt?.startsWith(todayStr);
+      const isTodayReply = i.replies?.some((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
+      const isTodayAction = i.actionAt?.startsWith(todayStr);
+      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
+      const isActive = !i.isDeleted;
+      return isTodayCreated || isTodayReply || isTodayAction || isTodayDeleted || isActive;
+    }).sort((a, b) => {
+      const dateA = a.expireDate || a.targetDate || "9999-99-99";
+      const dateB = b.expireDate || b.targetDate || "9999-99-99";
+      if (dateA !== dateB) return dateA.localeCompare(dateB); // 가까운 마감일순
+      return (b.createdAt || "").localeCompare(a.createdAt || "");
     });
 
-    let openIssueLines = " • 특이 오픈이슈 없음";
+    let openIssueLines = " • 금일 오픈이슈 변동사항 없음";
     if (openIssues.length > 0) {
       openIssueLines = openIssues.map((o) => {
         const plant = o.plant ? o.plant.replace("공장", "") : "삼랑진";
         const title = o.title || o.content || "오픈이슈";
         const isRes = Boolean(o.isResolved);
+        const isDel = Boolean(o.isDeleted);
         const progress = o.progress !== undefined ? Number(o.progress) : (isRes ? 100 : 0);
-        const statusText = isRes ? "✅ 조치완료" : `⏳ 진행중 (진척도 ${progress}%)`;
+        const d = o.expireDate || o.targetDate || "";
+        const dText = d ? `(~${d.slice(5)}) ` : "";
 
-        let oLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
+        let statusText = `⏳ 진행중 (진척도 ${progress}%)`;
+        if (isDel) {
+          statusText = `🛑 종결/삭제`;
+        } else if (isRes) {
+          statusText = `✅ 조치완료`;
+        }
+
+        let oLine = ` • [${plant}] ${dText}${title}\n   - 상태: ${statusText}`;
 
         const todayReplies = (o.replies || []).filter((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
         if (todayReplies.length > 0) {
