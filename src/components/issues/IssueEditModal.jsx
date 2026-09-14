@@ -371,7 +371,7 @@ export const IssueEditModal = ({
                           <strong className="text-slate-900 dark:text-white font-bold text-xs shrink-0">
                             {rep.author} {rep.authorTitle || ""}
                           </strong>
-                          <span className="text-slate-700 dark:text-slate-200 text-xs break-words font-medium">
+                          <span className="text-slate-700 dark:text-slate-200 text-xs break-words font-medium whitespace-pre-wrap">
                             {rep.content}
                           </span>
                         </div>
@@ -480,60 +480,80 @@ export const IssueEditModal = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="조치 의견 및 진행 상황을 입력하세요 (엔터 시 추가)"
+                {/* Multi-line textarea for opinions (No enter-submit, allows line breaks) */}
+                <div>
+                  <textarea
+                    rows="2"
+                    placeholder="조치 의견 및 진행 상황을 입력해 주세요. (줄바꿈 가능, 우측 '의견 등록' 뱃지를 눌러 저장)"
                     value={actionOpinionForm.content}
                     onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        onModalAddOpinion(e);
-                      }
-                    }}
-                    className="flex-1 px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400"
-                  />
+                    className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
+                  ></textarea>
+                </div>
 
-                  {/* Opinion attachment buttons: Photo & Excel */}
-                  <label className="p-2 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-rose-100 shrink-0" title="사진 첨부">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          onOpinionFiles(e.target.files);
-                          e.target.value = "";
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Camera className="w-3.5 h-3.5 text-rose-600" />
-                    <span className="hidden sm:inline">사진</span>
-                  </label>
+                {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [+ 의견 등록] */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 📸 촬영 */}
+                    <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-rose-100 shrink-0" title="카메라로 즉시 촬영">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            onOpinionFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <Camera className="w-3.5 h-3.5 text-rose-600" />
+                      <span>📸 촬영</span>
+                    </label>
 
-                  <label className="p-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-emerald-100 shrink-0" title="엑셀 첨부">
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                      multiple
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          onOpinionFiles(e.target.files);
-                          e.target.value = "";
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="hidden sm:inline">엑셀</span>
-                  </label>
+                    {/* 📁 앨범 */}
+                    <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-blue-100 shrink-0" title="갤러리/앨범에서 사진 선택">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            onOpinionFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                      <span>📁 앨범</span>
+                    </label>
 
+                    {/* 📊 엑셀 */}
+                    <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-emerald-100 shrink-0" title="엑셀 파일 첨부">
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                        multiple
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            onOpinionFiles(e.target.files);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="hidden"
+                      />
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>📊 엑셀</span>
+                    </label>
+                  </div>
+
+                  {/* 전용 의견 등록 뱃지 버튼 */}
                   <button
                     type="button"
                     onClick={onModalAddOpinion}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 transition-all"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>+ 의견 등록</span>
@@ -798,8 +818,27 @@ export const IssueEditModal = ({
                     <div className="pt-1.5 space-y-1.5">
                       <div className="flex items-center justify-between gap-1 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {/* 📸 사진 첨부 */}
-                          <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs">
+                          {/* 📸 즉시 촬영 */}
+                          <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="카메라로 즉시 촬영">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              disabled={isProcessingIssueImages}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  (onIssueFiles || onIssueImageFiles)(e.target.files);
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <Camera className="w-3.5 h-3.5 text-rose-600" />
+                            <span>📸 촬영</span>
+                          </label>
+
+                          {/* 📁 앨범 선택 */}
+                          <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="갤러리/앨범에서 사진 선택">
                             <input
                               type="file"
                               accept="image/*"
@@ -813,12 +852,12 @@ export const IssueEditModal = ({
                               }}
                               className="hidden"
                             />
-                            <Camera className="w-3.5 h-3.5 text-rose-600" />
-                            <span>📸 사진 첨부</span>
+                            <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                            <span>📁 앨범</span>
                           </label>
 
                           {/* 📊 엑셀 첨부 */}
-                          <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs">
+                          <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="엑셀/스프레드시트 첨부">
                             <input
                               type="file"
                               accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
@@ -833,7 +872,7 @@ export const IssueEditModal = ({
                               className="hidden"
                             />
                             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>📊 엑셀 첨부</span>
+                            <span>📊 엑셀</span>
                           </label>
                         </div>
                         <span className="text-[10.5px] text-slate-400 font-medium">
@@ -1028,7 +1067,7 @@ export const IssueEditModal = ({
                               <strong className="text-slate-900 dark:text-white font-bold text-xs shrink-0">
                                 {rep.author} {rep.authorTitle || ""}
                               </strong>
-                              <span className="text-slate-700 dark:text-slate-200 text-xs break-words">
+                              <span className="text-slate-700 dark:text-slate-200 text-xs break-words font-medium whitespace-pre-wrap">
                                 {rep.content}
                               </span>
                             </div>
@@ -1132,63 +1171,83 @@ export const IssueEditModal = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="조치 의견 및 진행 상황을 입력하세요 (엔터 시 추가)"
+                    {/* Multi-line textarea for opinions */}
+                    <div>
+                      <textarea
+                        rows="2"
+                        placeholder="조치 의견 및 진행 상황을 입력해 주세요. (줄바꿈 가능, 우측 '의견 등록' 뱃지를 눌러 저장)"
                         value={actionOpinionForm.content}
                         onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            onModalAddOpinion(e);
-                          }
-                        }}
-                        className="flex-1 px-3 py-2 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium text-slate-900 dark:text-white"
-                      />
+                        className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
+                      ></textarea>
+                    </div>
 
-                      {/* Opinion attachment buttons: Photo & Excel */}
-                      <label className="p-2 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-rose-100 shrink-0" title="사진 첨부">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              onOpinionFiles(e.target.files);
-                              e.target.value = "";
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <Camera className="w-3.5 h-3.5 text-rose-600" />
-                        <span className="hidden sm:inline">사진</span>
-                      </label>
+                    {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [+ 의견 등록] */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* 📸 촬영 */}
+                        <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-rose-100 shrink-0" title="카메라로 즉시 촬영">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                onOpinionFiles(e.target.files);
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <Camera className="w-3.5 h-3.5 text-rose-600" />
+                          <span>📸 촬영</span>
+                        </label>
 
-                      <label className="p-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-emerald-100 shrink-0" title="엑셀 첨부">
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                          multiple
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              onOpinionFiles(e.target.files);
-                              e.target.value = "";
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="hidden sm:inline">엑셀</span>
-                      </label>
+                        {/* 📁 앨범 */}
+                        <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-blue-100 shrink-0" title="갤러리/앨범에서 사진 선택">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                onOpinionFiles(e.target.files);
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                          <span>📁 앨범</span>
+                        </label>
 
+                        {/* 📊 엑셀 */}
+                        <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-emerald-100 shrink-0" title="엑셀 파일 첨부">
+                          <input
+                            type="file"
+                            accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                            multiple
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                onOpinionFiles(e.target.files);
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>📊 엑셀</span>
+                        </label>
+                      </div>
+
+                      {/* 전용 의견 등록 뱃지 버튼 */}
                       <button
                         type="button"
                         onClick={onModalAddOpinion}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1 cursor-pointer shrink-0 transition-all"
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>+ 추가</span>
+                        <span>+ 의견 등록</span>
                       </button>
                     </div>
 
@@ -1356,8 +1415,27 @@ export const IssueEditModal = ({
                   <div className="pt-1.5 space-y-1.5">
                     <div className="flex items-center justify-between gap-1 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* 📸 사진 첨부 */}
-                        <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs">
+                        {/* 📸 즉시 촬영 */}
+                        <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="카메라로 즉시 촬영">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            disabled={isProcessingIssueImages}
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files.length > 0) {
+                                (onIssueFiles || onIssueImageFiles)(e.target.files);
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <Camera className="w-3.5 h-3.5 text-rose-600" />
+                          <span>📸 촬영</span>
+                        </label>
+
+                        {/* 📁 앨범 선택 */}
+                        <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="갤러리/앨범에서 사진 선택">
                           <input
                             type="file"
                             accept="image/*"
@@ -1371,12 +1449,12 @@ export const IssueEditModal = ({
                             }}
                             className="hidden"
                           />
-                          <Camera className="w-3.5 h-3.5 text-rose-600" />
-                          <span>📸 사진 첨부</span>
+                          <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                          <span>📁 앨범</span>
                         </label>
 
                         {/* 📊 엑셀 첨부 */}
-                        <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs">
+                        <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="엑셀 파일 첨부">
                           <input
                             type="file"
                             accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
@@ -1391,7 +1469,7 @@ export const IssueEditModal = ({
                             className="hidden"
                           />
                           <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>📊 엑셀 첨부</span>
+                          <span>📊 엑셀</span>
                         </label>
                       </div>
                       <span className="text-[10.5px] text-slate-400 font-medium">
