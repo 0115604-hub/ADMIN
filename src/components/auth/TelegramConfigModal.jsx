@@ -242,7 +242,7 @@ export const TelegramConfigModal = ({
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-2">
                 <label className="flex items-center justify-between cursor-pointer">
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                    🌅 07:30 모닝브리핑 자동 발송 (월~토)
+                    🌅 07:40 모닝브리핑 자동 발송 (월~토)
                   </span>
                   <input
                     type="checkbox"
@@ -253,7 +253,7 @@ export const TelegramConfigModal = ({
                 </label>
                 <label className="flex items-center justify-between cursor-pointer pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
                   <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-                    📢 17:00 일일마감브리핑 자동 발송 (월~토)
+                    📢 17:30 일일마감브리핑 자동 발송 (월~토)
                   </span>
                   <input
                     type="checkbox"
@@ -300,10 +300,10 @@ export const TelegramConfigModal = ({
                     disabled={sendingClosingBriefing}
                     onClick={onSendDailyClosingBriefing}
                     className="flex items-center gap-1 px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                    title="17:00 마감브리핑(품질경보+회의일정+사내공지+오픈이슈) 즉시 테스트 발송"
+                    title="17:30 마감브리핑(품질경보+회의일정+사내공지+오픈이슈) 즉시 테스트 발송"
                   >
                     <span>📢</span>
-                    <span>{sendingClosingBriefing ? "전송 중..." : "17:00 마감브리핑 발송"}</span>
+                    <span>{sendingClosingBriefing ? "전송 중..." : "17:30 마감브리핑 발송"}</span>
                   </button>
                 </div>
 

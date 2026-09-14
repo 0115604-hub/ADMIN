@@ -9,6 +9,7 @@ import {
 import { db } from "../firebase";
 import {
   sendQualityAlertTelegram,
+  sendQualityOpinionTelegram,
   sendQualityActionTelegram,
   sendQualityDeleteTelegram,
   sendMeetingReplyTelegram
@@ -228,9 +229,9 @@ export const saveUrgentIssue = async (issueData) => {
     console.warn("Firestore save urgent issue fallback to local:", e);
   }
 
-  // Trigger real-time Telegram notification for new alert / issue (오픈이슈는 즉시 발송 제외, 익일 07:30 모닝브리핑에 포함)
+  // Trigger real-time Telegram notification ONLY for 품질경보 등록 (오픈이슈는 모닝브리핑 포함, 사내공지/회의일정은 발송 제외)
   if (existingIdx < 0 && !fullItem.isDeleted) {
-    if (fullItem.category !== "오픈이슈" && fullItem.category !== "open_issue") {
+    if (fullItem.category === "품질경보") {
       sendQualityAlertTelegram(fullItem).catch((err) => {
         console.warn("Telegram alert error:", err);
       });
@@ -240,7 +241,7 @@ export const saveUrgentIssue = async (issueData) => {
   return fullItem;
 };
 
-// Add a Reply / Attendance Response (회신란)
+// Add a Reply / Attendance Response (회신란 / 의견등록)
 export const addIssueReply = async (issueId, replyData) => {
   const current = getLocalUrgentIssues();
   const target = current.find((i) => i.id === issueId);
@@ -274,6 +275,14 @@ export const addIssueReply = async (issueId, replyData) => {
   };
 
   const saved = await saveUrgentIssue(updatedItem);
+
+  // Trigger real-time Telegram notification ONLY for 품질경보 의견 등록
+  if (saved && target.category === "품질경보") {
+    sendQualityOpinionTelegram(target, newReply).catch((err) => {
+      console.warn("Telegram opinion notification error:", err);
+    });
+  }
+
   return saved;
 };
 
@@ -361,13 +370,15 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       console.warn("Firestore soft delete error fallback to local:", e);
     }
 
-    // 3. Send Telegram Notification (Only once per item deletion)
+    // 3. Send Telegram Notification (Only for 품질경보 삭제/종결)
     if (!activeDeletes.has(strId)) {
       activeDeletes.add(strId);
       setTimeout(() => activeDeletes.delete(strId), 10000);
-      sendQualityDeleteTelegram(archivedItem, deleterName).catch((err) => {
-        console.warn("Telegram delete alert error:", err);
-      });
+      if (archivedItem.category === "품질경보") {
+        sendQualityDeleteTelegram(archivedItem, deleterName).catch((err) => {
+          console.warn("Telegram delete alert error:", err);
+        });
+      }
     }
 
     return sorted;

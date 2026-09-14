@@ -24,19 +24,18 @@ const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
 const TEMPLATES_DOC_PATH = ["system_config", "telegram_templates"];
 const TELEGRAM_TEMPLATES_KEY = "oryuk_telegram_templates_v1";
 
-// Default Configuration (Separated delivery: '오륙 통합방' + '경영총괄')
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 / 사내공지 / 회의일정 / 전자결재 / 07:30 일반 모닝브리핑 / 17:00 일일마감브리핑)
-  pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (대표·임원 전용 07:30 손익결산 P&L 브리핑)
+  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보 등록/의견/삭제, 07:40 일반 모닝브리핑, 17:30 일일마감브리핑)
+  pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (대표·임원 전용 07:40 손익결산 P&L 브리핑)
   ceoChatId: "290615483", // 권태형 대표님 1:1 개인톡
   sendQualityAlerts: true,
   sendActionReports: true,
-  sendApprovals: true,
-  sendDailyLeaveBriefing: true, // 07:30 모닝브리핑 (오륙 통합방)
-  sendDailyPnLBriefing: true, // 07:30 손익결산 브리핑 (경영총괄)
-  sendDailyClosingBriefing: true // 17:00 일일마감브리핑 (오륙 통합방, 월~토)
+  sendApprovals: false, // 단톡방 알림 취소 (정책)
+  sendDailyLeaveBriefing: true, // 07:40 모닝브리핑 (오륙 통합방)
+  sendDailyPnLBriefing: true, // 07:40 손익결산 브리핑 (경영총괄)
+  sendDailyClosingBriefing: true // 17:30 일일마감브리핑 (오륙 통합방, 월~토)
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -493,63 +492,26 @@ export const formatKoreanCurrency = (amount) => {
 };
 
 /**
- * 1. 품질경보 / 사내공지 / 회의일정 등록 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
+ * 1. 품질경보 등록 즉시 알림 (오륙 통합방 발송 - 품질경보 외 사내공지/회의일정/오픈이슈는 발송 제외)
  */
 export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) => {
-  // 🌟 오픈이슈는 즉시 발송하지 않고 익일 07:30 모닝브리핑에 포함
-  if (issueItem?.category === "오픈이슈" || issueItem?.category === "open_issue") {
-    console.log("[Telegram] 오픈이슈는 즉시 알림 발송 대상이 아니며 익일 모닝브리핑에 포함됩니다.");
-    return { success: true, skipped: true, reason: "오픈이슈는 모닝브리핑 발송 대상입니다." };
+  if (issueItem?.category !== "품질경보") {
+    console.log(`[Telegram] ${issueItem?.category || "기타"} 등록 알림은 오륙통합방 정책에 따라 발송 제외되었습니다. (품질경보만 발송)`);
+    return { success: true, skipped: true, reason: "ONLY_QUALITY_ALERT_ALLOWED" };
   }
 
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || config.chatId || "-4186792536";
   const plant = issueItem?.plant || "삼랑진공장";
   const writer = issueItem?.author || issueItem?.writer || "현장작업자";
-  const title = issueItem?.title || issueItem?.content || "안내 사항";
+  const title = issueItem?.title || issueItem?.content || "품질경보";
   const content = issueItem?.content && issueItem.content !== issueItem.title ? issueItem.content : "";
   const images = (issueItem?.images || []).slice(0, 3);
   const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 현장 사진 ${images.length}장 첨부됨` : "";
   const dateStr = issueItem?.date || getKSTDateString();
   const timeStr = issueItem?.time || getKSTTimeString();
-  const category = issueItem?.category || "품질경보";
 
-  const expireDate = issueItem?.expireDate || issueItem?.targetDate || "";
-  const meetingTime = issueItem?.meetingTime || "";
-  const expireDateStr = expireDate
-    ? (category === "회의일정"
-        ? `\n• <b>회의일시:</b> <b>${expireDate}${meetingTime ? ` ${meetingTime}` : ""}</b>`
-        : `\n• <b>게시만료:</b> <b>${expireDate}</b>`)
-    : "";
-
-  let message = "";
-  if (category === "회의일정") {
-    message = `
-<b>🟪 [사내 회의일정] 회의 및 일정 안내</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>대상:</b> ${plant}
-• <b>등록자:</b> <b>${writer}</b>
-• <b>회의제목:</b> <b>${title}</b>${expireDateStr}
-${content ? `\n<b>[회의 일정/안건]</b>\n${content}\n` : ""}
-• <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
-━━━━━━━━━━━━━━━━━━━━━
-※ 관련 작업자분들은 시스템에서 [회신]을 등록해 주세요.
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-  } else if (category === "공지사항" || category === "사내공지" || category === "공유사항") {
-    message = `
-<b>🟩 [사내 공지사항] 업무 협조 안내</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>대상:</b> ${plant}
-• <b>공지자:</b> <b>${writer}</b>
-• <b>공지제목:</b> <b>${title}</b>${expireDateStr}
-${content ? `\n<b>[공지 내용]</b>\n${content}\n` : ""}
-• <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-  } else {
-    message = `
+  const message = `
 <b>🟥 [품질경보] 긴급 확인 및 점검 요망</b>
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${plant}
@@ -558,10 +520,9 @@ ${content ? `\n<b>[공지 내용]</b>\n${content}\n` : ""}
 ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 • <b>발령일시:</b> ${dateStr} ${timeStr}${photoCount}
 ━━━━━━━━━━━━━━━━━━━━━
-※ 조치 완료 후 시스템에서 [조치결과]를 등록해 주세요.
+※ 조치 완료 후 시스템에서 [의견]을 등록해 주세요.
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
-  }
 
   const customCfg = { ...config, chatId: destChatId };
   if (images.length > 0) {
@@ -572,130 +533,109 @@ ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2. 품질경보 조치완료 / 회의결과 보고 즉시 알림 (사진 최대 3장 첨부 지원 + 스타일 B)
+ * 2. 품질경보 조치 의견(댓글) 등록 즉시 알림 (오륙 통합방 발송)
  */
-export const sendQualityActionTelegram = async (issueItem, actionResult = null, targetChatId = null) => {
-  const config = getLocalTelegramConfig();
-  const destChatId = targetChatId || config.chatId || "-4186792536";
-  const plant = issueItem?.plant || "삼랑진공장";
-  const title = issueItem?.title || issueItem?.content || "품질경보";
-  const author = actionResult?.actionAuthor || issueItem?.actionAuthor || issueItem?.author || "담당자";
-  const content = actionResult?.actionContent || issueItem?.actionResult || "조치 완료";
-  const rate = actionResult?.actionRate || issueItem?.actionRate || 100;
-  const actionImages = (actionResult?.images || issueItem?.actionImages || []).slice(0, 3);
-  const photoCount = actionImages.length > 0 ? `\n• <b>첨부사진:</b> 관련 사진 ${actionImages.length}장 첨부됨` : "";
-  const nowStr = getKSTFormattedString();
-
-  let message = "";
-  if (issueItem?.category === "회의일정") {
-    message = `
-<b>🟪 [사내 회의결과 보고]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>대상:</b> ${plant}
-• <b>회의제목:</b> <b>${title}</b>
-• <b>기록/작성자:</b> <b>${author}</b>
-
-<b>[회의 결과 및 결정사항]</b>
-${content}
-
-• <b>완료일시:</b> ${nowStr}${photoCount}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-  } else if (issueItem?.category === "공지사항" || issueItem?.category === "사내공지" || issueItem?.category === "공유사항") {
-    message = `
-<b>🟩 [사내 공지 조치/진행 완료]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>공장:</b> ${plant}
-• <b>대상:</b> <b>${title}</b>
-• <b>작성자:</b> <b>${author}</b>
-
-<b>[진행 결과]</b>
-${content}
-
-• <b>완료일시:</b> ${nowStr}${photoCount}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-  } else {
-    message = `
-<b>🟥 [품질경보 조치완료 보고]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>공장:</b> ${plant}
-• <b>대상:</b> <b>${title}</b>
-• <b>조치자:</b> <b>${author}</b>
-
-<b>[조치 내용]</b>
-${content} (조치율 ${rate}%)
-
-• <b>완료일시:</b> ${nowStr}${photoCount}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
+export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetChatId = null) => {
+  if (issueItem?.category !== "품질경보") {
+    console.log(`[Telegram] ${issueItem?.category || "기타"} 의견 알림은 오륙통합방 정책에 따라 발송 제외되었습니다. (품질경보만 발송)`);
+    return { success: true, skipped: true, reason: "ONLY_QUALITY_OPINION_ALLOWED" };
   }
 
+  const config = getLocalTelegramConfig();
+  const destChatId = targetChatId || config.chatId || "-4186792536";
+  const plant = opinionItem?.plant || issueItem?.plant || "삼랑진공장";
+  const writer = opinionItem?.author || opinionItem?.writer || "담당자";
+  const writerTitle = opinionItem?.authorTitle ? ` ${opinionItem.authorTitle}` : "";
+  const title = issueItem?.title || issueItem?.content || "품질경보";
+  const content = opinionItem?.content || opinionItem?.text || opinionItem?.actionResult || "의견 등록";
+  const dateStr = opinionItem?.actionDate || opinionItem?.createdAt?.slice(0, 10) || getKSTDateString();
+  const timeStr = opinionItem?.createdAt && opinionItem.createdAt.length > 10 ? opinionItem.createdAt.slice(11) : getKSTTimeString();
+
+  // Extract valid image objects or data URLs
+  const rawFiles = opinionItem?.files || opinionItem?.images || [];
+  const images = rawFiles
+    .map((f) => {
+      if (typeof f === "string" && (f.startsWith("data:") || f.startsWith("http"))) {
+        return { dataUrl: f };
+      }
+      if (f && f.dataUrl) return f;
+      if (f && f.url) return { dataUrl: f.url };
+      return null;
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 관련 사진 ${images.length}장 첨부됨` : "";
+
+  const message = `
+<b>🟥 [품질경보 조치 의견 등록]</b>
+━━━━━━━━━━━━━━━━━━━━━
+• <b>공장:</b> ${plant}
+• <b>불량제목:</b> <b>${title}</b>
+• <b>의견작성자:</b> <b>${writer}${writerTitle}</b>
+
+<b>[조치 및 의견 내용]</b>
+${content}
+
+• <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
+`.trim();
+
   const customCfg = { ...config, chatId: destChatId };
-  if (actionImages.length > 0) {
-    return await sendTelegramMediaGroup(actionImages, message, customCfg);
+  if (images.length > 0) {
+    return await sendTelegramMediaGroup(images, message, customCfg);
   }
 
   return await sendTelegramMessage(message, customCfg);
 };
 
 /**
- * 3. 회의일정 회신 등록 알림
+ * 2-1. 품질경보 조치완료 보고 즉시 알림 (레거시 호환 - sendQualityOpinionTelegram 연동)
  */
-export const sendMeetingReplyTelegram = async (issueItem, replyItem, targetChatId = null) => {
-  const config = getLocalTelegramConfig();
-  const destChatId = targetChatId || config.chatId || "-4186792536";
-  const plant = issueItem?.plant || "삼랑진공장";
-  const title = issueItem?.title || issueItem?.content || "회의일정";
-  const author = replyItem?.author || "작업자";
-  const titleStr = replyItem?.authorTitle ? ` ${replyItem.authorTitle}` : "";
-  const status = replyItem?.attendanceStatus || "참석";
-  const content = replyItem?.content || "확인 및 회신";
-  const nowStr = replyItem?.createdAt || getKSTFormattedString();
-
-  const message = `
-<b>🟪 [회의일정 회신 등록]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>회의:</b> <b>${title}</b> (${plant})
-• <b>회신자:</b> <b>${author}${titleStr}</b> [${status}]
-• <b>회신내용:</b> ${content}
-• <b>회신일시:</b> ${nowStr}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-
-  return await sendTelegramMessage(message, { ...config, chatId: destChatId });
+export const sendQualityActionTelegram = async (issueItem, actionResult = null, targetChatId = null) => {
+  if (issueItem?.category !== "품질경보") {
+    return { success: true, skipped: true, reason: "ONLY_QUALITY_ALERT_ALLOWED" };
+  }
+  return await sendQualityOpinionTelegram(issueItem, {
+    author: actionResult?.actionAuthor || issueItem?.actionAuthor || "담당자",
+    content: actionResult?.actionContent || issueItem?.actionResult || "조치 완료",
+    files: actionResult?.images || issueItem?.actionImages || []
+  }, targetChatId);
 };
 
 /**
- * 4. 품질경보 / 사내공지 / 회의일정 삭제/종결 즉시 알림
+ * 3. 회의일정 회신 등록 알림 (오륙통합방 정책에 따라 발송 취소/비활성화)
+ */
+export const sendMeetingReplyTelegram = async (issueItem, replyItem, targetChatId = null) => {
+  console.log("[Telegram] 회의일정 회신 알림은 오륙통합방 정책에 따라 발송 제외되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
+};
+
+/**
+ * 4. 품질경보 종결/삭제 즉시 알림 (오륙 통합방 발송 - 품질경보 외 사내공지/회의일정은 발송 제외)
  */
 export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile, targetChatId = null) => {
+  if (deletedIssue?.category !== "품질경보") {
+    console.log(`[Telegram] ${deletedIssue?.category || "기타"} 삭제 알림은 오륙통합방 정책에 따라 발송 제외되었습니다. (품질경보만 발송)`);
+    return { success: true, skipped: true, reason: "ONLY_QUALITY_DELETE_ALLOWED" };
+  }
+
   const config = getLocalTelegramConfig();
   const destChatId = targetChatId || config.chatId || "-4186792536";
   const deleterName = typeof deleterProfile === "string"
     ? (deleterProfile || "총괄관리자")
     : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "총괄관리자");
-  const category = deletedIssue?.category || "품질경보";
-  let header = "<b>🟥 [품질경보 종결/삭제 알림]</b>";
-  if (category === "회의일정") {
-    header = "<b>🟪 [회의일정 종결/삭제 알림]</b>";
-  } else if (category === "공지사항" || category === "사내공지" || category === "공유사항") {
-    header = "<b>🟩 [공지사항 종결/삭제 알림]</b>";
-  }
 
   const nowStr = getKSTFormattedString();
 
   const message = `
-${header}
+<b>🟥 [품질경보 종결/삭제 알림]</b>
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${deletedIssue?.plant || "삼랑진공장"}
-• <b>대상:</b> <b>${deletedIssue?.title || deletedIssue?.content || "항목"}</b>
+• <b>불량제목:</b> <b>${deletedIssue?.title || deletedIssue?.content || "품질경보"}</b>
 • <b>삭제권한자:</b> <b>${deleterName}</b>
-• <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 완료 및 확인 후 종결 처리"}
+• <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 조치 및 확인 후 종결 처리"}
 • <b>삭제일시:</b> ${nowStr}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
@@ -705,128 +645,43 @@ ${header}
 };
 
 /**
- * 5. 전자결재 기안 상신 즉시 알림 (파랑색 🟦)
+ * 5. 전자결재 기안 상신 즉시 알림 (오륙통합방 정책에 따라 발송 취소/비활성화)
  */
 export const sendApprovalDraftTelegram = async (docItem, nextApproverName = "담당 결재자") => {
-  const config = getLocalTelegramConfig();
-  if (!config.enabled || config.sendApprovals === false) {
-    return { success: false, reason: "NOT_CONFIGURED" };
-  }
-  const nowStr = getKSTFormattedString();
-  const message = `
-<b>🟦 [전자결재 기안 상신]</b>
-----------------------------------------
-• <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-• <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-• <b>결재제목:</b> <b>${docItem.title}</b>
-• <b>다음 결재자:</b> <b>${nextApproverName}</b>
-• <b>일시:</b> ${nowStr}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
-`.trim();
-
-  return await sendTelegramMessage(message);
+  console.log("[Telegram] 전자결재 기안 상신 알림은 오륙통합방 정책에 따라 발송 제외되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**
- * 6. 전자결재 최종 승인 완료 알림 (파랑색 🟦)
- * ※ 중간 승인은 단톡방 알림 발송을 전면 차단하고, 대표이사 최종 승인 완료(isFinal===true) 시에만 발송
+ * 6. 전자결재 승인 알림 (오륙통합방 정책에 따라 발송 취소/비활성화)
  */
 export const sendApprovalStepTelegram = async (docItem, approverName, comment = "", isFinal = false, nextApproverName = null) => {
-  const config = getLocalTelegramConfig();
-  if (!config.enabled || config.sendApprovals === false) {
-    return { success: false, reason: "NOT_CONFIGURED" };
-  }
-  // 중간 결재 단계(선임, 팀장, 이사 등) 승인 시 텔레그램 단톡방 알림 발송 완전 차단
-  if (!isFinal) {
-    return { success: true, skipped: true, reason: "INTERMEDIATE_STEP_APPROVAL_SILENCED" };
-  }
-
-  const titleHeader = "🟦 [전자결재 최종 승인 완료]";
-  const nowStr = getKSTFormattedString();
-
-  const message = `
-<b>${titleHeader}</b>
-----------------------------------------
-• <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-• <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-• <b>결재제목:</b> <b>${docItem.title}</b>
-• <b>최종승인자:</b> <b>${approverName}</b>
-• <b>일시:</b> ${nowStr}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
-`.trim();
-
-  return await sendTelegramMessage(message);
+  console.log("[Telegram] 전자결재 승인 알림은 오륙통합방 정책에 따라 발송 제외되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**
- * 7. 전자결재 반려 즉시 알림 (파랑색 🟦)
+ * 7. 전자결재 반려 즉시 알림 (오륙통합방 정책에 따라 발송 취소/비활성화)
  */
 export const sendApprovalRejectTelegram = async (docItem, rejectorName, reason) => {
-  const config = getLocalTelegramConfig();
-  if (!config.enabled || config.sendApprovals === false) {
-    return { success: false, reason: "NOT_CONFIGURED" };
-  }
-  const nowStr = getKSTFormattedString();
-  const message = `
-<b>🟦 [전자결재 반려 알림]</b>
-----------------------------------------
-• <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-• <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-• <b>결재제목:</b> <b>${docItem.title}</b>
-• <b>반려자:</b> <b>${rejectorName}</b>
-• <b>반려사유:</b> ${reason || "내용 보완 후 재상신 요망"}
-• <b>일시:</b> ${nowStr}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
-`.trim();
-
-  return await sendTelegramMessage(message);
+  console.log("[Telegram] 전자결재 반려 알림은 오륙통합방 정책에 따라 발송 제외되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**
- * 8. 전자결재 보류 즉시 알림 (파랑색 🟦)
+ * 8. 전자결재 보류 즉시 알림 (오륙통합방 정책에 따라 발송 취소/비활성화)
  */
 export const sendApprovalHoldTelegram = async (docItem, holderName, reason) => {
-  const config = getLocalTelegramConfig();
-  if (!config.enabled || config.sendApprovals === false) {
-    return { success: false, reason: "NOT_CONFIGURED" };
-  }
-  const nowStr = getKSTFormattedString();
-  const message = `
-<b>🟦 [전자결재 보류 알림]</b>
-----------------------------------------
-• <b>공장:</b> ${docItem.plant || "삼랑진공장"}
-• <b>기안자:</b> ${docItem.drafter} ${docItem.drafterTitle || "선임"}
-• <b>결재제목:</b> <b>${docItem.title}</b>
-• <b>보류자:</b> <b>${holderName}</b>
-• <b>보류사유:</b> ${reason || "검토 필요"}
-• <b>일시:</b> ${nowStr}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">전자결재 바로가기</a>
-`.trim();
-
-  return await sendTelegramMessage(message);
+  console.log("[Telegram] 전자결재 보류 알림은 오륙통합방 정책에 따라 발송 제외되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**
- * 8. 일일업무일지 결재 즉시 알림
+ * 8-1. 일일업무일지 결재 즉시 알림 (오륙통합방 정책에 따라 발송 취소/비활성화)
  */
 export const sendWorkLogApprovedTelegram = async (logItem, approver) => {
-  const message = `
-<b>⬛ [일일업무일지 결재 승인]</b>
-----------------------------------------
-• <b>공장:</b> ${logItem.plant || "삼랑진공장"}
-• <b>작성자:</b> ${logItem.writer} ${logItem.title || ""} (${logItem.process || "생산"})
-• <b>결재자:</b> <b>${approver.name || "총괄관리자"} ${approver.title || ""}</b>
-• <b>지시사항:</b> ${approver.comment || "확인 및 결재 승인"}
-• <b>업무일자:</b> ${logItem.date || ""}
-----------------------------------------
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-
-  return await sendTelegramMessage(message);
+  console.log("[Telegram] 일일업무일지 결재 알림은 오륙통합방 정책에 따라 발송 제외되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**
@@ -962,7 +817,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
   }
 
   try {
-    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
+    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:40`;
 
     // 1. 금일 근태 / 휴가 현황 (공장별 구분)
     const leaves = getLocalAnnualLeaves();
@@ -1185,7 +1040,7 @@ export const sendDailyPnLMorningBriefingTelegram = async (customBriefingData = n
   }
 
   try {
-    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:30`;
+    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:40`;
 
     const livePnL = getLivePnLSummaryData();
     let salesAmount = customBriefingData?.salesAmount ?? livePnL.salesAmount;
@@ -1302,7 +1157,7 @@ ${comment.text || comment.content || ""}
 let isCheckingBriefing = false;
 
 /**
- * Check and Auto-Send Daily 07:30 AM Morning Briefings (Both Rooms)
+ * Check and Auto-Send Daily 07:40 AM Morning Briefings (Both Rooms)
  */
 export const checkAndAutoSendDailyMorningBriefing = async () => {
   const config = getLocalTelegramConfig();
@@ -1312,9 +1167,9 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 
   const { dateStr: todayStr, totalMinutes } = getKSTTimeInfo();
 
-  // Client auto-trigger window: 07:30 AM ~ 07:45 AM KST (450 ~ 465 minutes)
-  if (totalMinutes < 450 || totalMinutes > 465) {
-    return { skipped: true, reason: "OUTSIDE_07_30_WINDOW" };
+  // Client auto-trigger window: 07:40 AM ~ 07:55 AM KST (460 ~ 475 minutes)
+  if (totalMinutes < 460 || totalMinutes > 475) {
+    return { skipped: true, reason: "OUTSIDE_07_40_WINDOW" };
   }
 
   if (isCheckingBriefing) {
@@ -1337,13 +1192,13 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
   try {
     // 1. Check & send General Morning Briefing (오륙 통합방)
     if (needGeneral) {
-      console.log(`[07:30 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
+      console.log(`[07:40 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
       results.general = await sendDailyMorningBriefingTelegram(todayStr);
     }
 
     // 2. Check & send PnL Morning Briefing (경영총괄)
     if (needPnL) {
-      console.log(`[07:30 Daily PnL Briefing] Auto-sending PnL briefing for ${todayStr}...`);
+      console.log(`[07:40 Daily PnL Briefing] Auto-sending PnL briefing for ${todayStr}...`);
       results.pnl = await sendDailyPnLMorningBriefingTelegram();
     }
   } finally {
@@ -1356,7 +1211,7 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
 export const checkAndAutoSendDailyLeaveBriefing = checkAndAutoSendDailyMorningBriefing;
 
 /**
- * 12. 매일 오후 17:00 일일마감브리핑 (월~토) ➜ 오륙 통합방
+ * 12. 매일 오후 17:30 일일마감브리핑 (월~토) ➜ 오륙 통합방
  * 내용: 금일 품질경보, 회의일정, 사내공지, 오픈이슈 변경/조치/종결 현황
  */
 export const formatDailyClosingBriefing = (todayStr = null) => {
@@ -1483,7 +1338,7 @@ export const formatDailyClosingBriefing = (todayStr = null) => {
   }
 
   const defaultMessage = `
-[오륙] 📢 일일마감브리핑 (17:00)
+[오륙] 📢 일일마감브리핑 (17:30)
 ━━━━━━━━━━━━━━━━━━━━
 📅 ${dateFormatted} 일일 업무 마감 현황
 ━━━━━━━━━━━━━━━━━━━━
@@ -1510,7 +1365,7 @@ ${openIssueLines}
 };
 
 /**
- * 13. 매일 오후 17:00 일일마감브리핑 발송 함수 (오륙 통합방)
+ * 13. 매일 오후 17:30 일일마감브리핑 발송 함수 (오륙 통합방)
  */
 export const sendDailyClosingBriefingTelegram = async (targetDateStr = null, targetChatId = null, force = false) => {
   const config = getLocalTelegramConfig();
@@ -1554,7 +1409,7 @@ export const sendDailyClosingBriefingTelegram = async (targetDateStr = null, tar
 let isCheckingClosingBriefing = false;
 
 /**
- * Check and Auto-Send Daily 17:00 PM Closing Briefing (Mon-Sat, 17:00 ~ 17:15 KST)
+ * Check and Auto-Send Daily 17:30 PM Closing Briefing (Mon-Sat, 17:30 ~ 17:45 KST)
  */
 export const checkAndAutoSendDailyClosingBriefing = async () => {
   const config = getLocalTelegramConfig();
@@ -1571,9 +1426,9 @@ export const checkAndAutoSendDailyClosingBriefing = async () => {
     return { skipped: true, reason: "SUNDAY_SKIPPED" };
   }
 
-  // Client auto-trigger window: 17:00 PM ~ 17:15 PM KST (1020 ~ 1035 minutes)
-  if (totalMinutes < 1020 || totalMinutes > 1035) {
-    return { skipped: true, reason: "OUTSIDE_17_00_WINDOW" };
+  // Client auto-trigger window: 17:30 PM ~ 17:45 PM KST (1050 ~ 1065 minutes)
+  if (totalMinutes < 1050 || totalMinutes > 1065) {
+    return { skipped: true, reason: "OUTSIDE_17_30_WINDOW" };
   }
 
   if (isCheckingClosingBriefing) {
@@ -1587,7 +1442,7 @@ export const checkAndAutoSendDailyClosingBriefing = async () => {
 
   isCheckingClosingBriefing = true;
   try {
-    console.log(`[17:00 Daily Closing Briefing] Auto-sending closing summary for ${todayStr}...`);
+    console.log(`[17:30 Daily Closing Briefing] Auto-sending closing summary for ${todayStr}...`);
     return await sendDailyClosingBriefingTelegram(todayStr);
   } finally {
     isCheckingClosingBriefing = false;
@@ -1643,13 +1498,13 @@ export const testTelegramConnection = async (token, chatId) => {
 <b>⬛ [오륙 생산관리 텔레그램 정상 연결]</b>
 ━━━━━━━━━━━━━━━━━━━━━
 텔레그램 봇과 정상적으로 연결되었습니다.
-발송 대상 알림:
+오륙통합방 발송 대상 알림 (5가지):
 
-• <b>품질경보 (적색):</b> 등록 / 조치완료 / 종결삭제
-• <b>사내공지 (녹색):</b> 등록 / 종결삭제
-• <b>회의일정 (보라색):</b> 등록 / 회신 / 종결삭제
-• <b>전자결재 (파랑색):</b> 기안 상신 / 승인 / 반려 / 보류
-• <b>기타업무 (검정):</b> 업무일지 결재 / 07:30 모닝브리핑
+• <b>1. 품질경보:</b> 신규 등록 즉시 알림
+• <b>2. 품질의견:</b> 조치 의견 등록 즉시 알림
+• <b>3. 품질삭제:</b> 종결 및 삭제 즉시 알림
+• <b>4. 모닝브리핑:</b> 매일 07:40 통합 브리핑
+• <b>5. 마감브리핑:</b> 매일 17:30 일일마감 브리핑 (월~토)
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();

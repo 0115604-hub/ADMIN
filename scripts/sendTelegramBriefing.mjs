@@ -290,25 +290,25 @@ async function sendTelegramMessage(token, chatId, text) {
 async function alignToExactSchedule() {
   const info = getKSTTimeInfo();
 
-  // 1. Morning window pre-warm (around 07:30 KST)
-  const targetMorning = 7 * 3600 + 30 * 60; // 07:30:00 KST (27000 seconds)
+  // 1. Morning window pre-warm (around 07:40 KST)
+  const targetMorning = 7 * 3600 + 40 * 60; // 07:40:00 KST (27600 seconds)
   if (info.hour === 7 && info.totalSeconds < targetMorning) {
     const diffMs = (targetMorning - info.totalSeconds) * 1000;
     if (diffMs <= 360000) { // within 6 minutes
-      console.log(`[Runner Pre-Warm 07:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:30:00 KST...`);
+      console.log(`[Runner Pre-Warm 07:40] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:40:00 KST...`);
       await sleep(diffMs);
-      console.log("[Runner Trigger] 07:30:00 KST reached! Dispatching immediately...");
+      console.log("[Runner Trigger] 07:40:00 KST reached! Dispatching immediately...");
     }
   }
 
-  // 2. Evening window pre-warm (around 17:00 KST)
-  const targetClosing = 17 * 3600; // 17:00:00 KST (61200 seconds)
-  if (info.hour === 16 && info.totalSeconds < targetClosing) {
+  // 2. Evening window pre-warm (around 17:30 KST)
+  const targetClosing = 17 * 3600 + 30 * 60; // 17:30:00 KST (63000 seconds)
+  if ((info.hour === 17 && info.totalSeconds < targetClosing) || (info.hour === 16 && info.totalSeconds < targetClosing)) {
     const diffMs = (targetClosing - info.totalSeconds) * 1000;
     if (diffMs <= 360000) { // within 6 minutes
-      console.log(`[Runner Pre-Warm 17:00] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 17:00:00 KST...`);
+      console.log(`[Runner Pre-Warm 17:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 17:30:00 KST...`);
       await sleep(diffMs);
-      console.log("[Runner Trigger] 17:00:00 KST reached! Dispatching immediately...");
+      console.log("[Runner Trigger] 17:30:00 KST reached! Dispatching immediately...");
     }
   }
 }
@@ -324,7 +324,7 @@ export async function runAllBriefings(force = false) {
   }
 
   const todayStr = getKSTDateString();
-  const dateFormatted = `${getKSTFormattedString().split(" ")[0]} 07:30`;
+  const dateFormatted = `${getKSTFormattedString().split(" ")[0]} 07:40`;
   const customTemplates = await getCustomTemplates();
   const timeInfo = getKSTTimeInfo();
   const curHour = timeInfo.hour;
@@ -335,7 +335,7 @@ export async function runAllBriefings(force = false) {
   const isTimeForClosing = isExplicitClosing || (curHour >= 16 && curHour <= 21);
 
   // -------------------------------------------------------------
-  // 1. 07:30 통합 모닝 브리핑 (오륙 통합방: -4186792536)
+  // 1. 07:40 통합 모닝 브리핑 (오륙 통합방: -4186792536)
   // -------------------------------------------------------------
   if (config.sendDailyLeaveBriefing && (isTimeForMorning || force)) {
     const lockRes = await acquireBriefingLock("general", todayStr, force);
@@ -881,7 +881,7 @@ async function runClosingBriefing(todayStr, config, customTemplates, force = fal
     }
 
     const defaultClosingMessage = `
-[오륙] 📢 일일마감브리핑 (17:00)
+[오륙] 📢 일일마감브리핑 (17:30)
 ━━━━━━━━━━━━━━━━━━━━
 📅 ${dateFormatted} 일일 업무 마감 현황
 ━━━━━━━━━━━━━━━━━━━━
@@ -907,7 +907,7 @@ ${openIssueLines}
     const closingMessage = savedTemplate || defaultClosingMessage;
 
     const res = await sendTelegramMessage(config.botToken, destChatId, closingMessage);
-    console.log("[오륙통합방 17:00 마감브리핑] Send Result:", res);
+    console.log("[오륙통합방 17:30 마감브리핑] Send Result:", res);
 
     if (res.ok) {
       await completeBriefingLock("closing", todayStr, true);
@@ -915,7 +915,7 @@ ${openIssueLines}
       await completeBriefingLock("closing", todayStr, false, res.error || "TELEGRAM_SEND_FAILED");
     }
   } catch (err) {
-    console.error("[오륙통합방 17:00 마감브리핑] Error occurred:", err.message);
+    console.error("[오륙통합방 17:30 마감브리핑] Error occurred:", err.message);
     await completeBriefingLock("closing", todayStr, false, err.message);
   }
 }

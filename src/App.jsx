@@ -190,7 +190,7 @@ export const App = () => {
 
   useEffect(() => {
     loadData();
-    // Daily 07:30 AM Morning & 17:00 PM Closing Briefing Checks
+    // Daily 07:40 AM Morning & 17:30 PM Closing Briefing Checks
     checkAndAutoSendDailyMorningBriefing();
     checkAndAutoSendDailyClosingBriefing();
 

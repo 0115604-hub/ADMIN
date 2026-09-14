@@ -158,7 +158,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                품질경보 즉시발송(등록/조치/삭제), 전자결재 실시간 알림, 매일 아침 07:30 통합 모닝브리핑을 전송합니다.
+                품질경보 즉시발송(등록/의견/삭제), 매일 아침 07:40 통합 모닝브리핑, 17:30 일일마감브리핑을 전송합니다.
               </p>
             </div>
           </div>
@@ -209,7 +209,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                품질경보 3단계 / 공지사항 / 전자결재 / 07:30 모닝브리핑 수신방
+                품질경보(등록/의견/삭제) / 07:40 모닝브리핑 / 17:30 마감브리핑 수신방
               </p>
             </div>
           </div>
@@ -217,13 +217,14 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
           {/* Guide Box */}
           <div className="p-3.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 text-xs space-y-1 text-slate-700 dark:text-slate-300">
             <p className="font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1">
-              <span>💡 텔레그램 봇 알림 가이드:</span>
+              <span>💡 오륙통합방 텔레그램 발송 알림 (5가지 한정):</span>
             </p>
             <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
-              <li>현재 <strong>@oryuk_alert_bot (오륙MES알림)</strong>이 설정되어 있습니다.</li>
-              <li><strong>품질경보 (스타일 B)</strong>: 🟥 품질경보 발생 / 조치완료 / 종결삭제 시 딱 3회 알림 발송 (사진 최대 3장 첨부)</li>
-              <li><strong>매일 아침 07:30</strong>: 🌅 <strong>일일 근태/미결재/품질경보 모닝브리핑</strong> 자동 발송 (오륙 통합방)</li>
-              <li><strong>실시간 알림</strong>: 사내 공지사항 및 전자결재 기안/승인/반려/보류 즉시 전송</li>
+              <li><strong>품질경보 등록</strong>: 🟥 신규 품질경보 등록 즉시 발송 (사진 최대 3장)</li>
+              <li><strong>품질경보 의견등록</strong>: 🟥 조치 의견(댓글) 등록 즉시 발송</li>
+              <li><strong>품질경보 종결/삭제</strong>: 🟥 품질경보 확인 후 종결 및 삭제 시 즉시 발송</li>
+              <li><strong>매일 아침 07:40</strong>: 🌅 <strong>일일 근태/미결재/오픈이슈 모닝브리핑</strong> 자동 발송 (오륙 통합방)</li>
+              <li><strong>매일 오후 17:30</strong>: 📢 <strong>일일마감브리핑</strong> 자동 발송 (월~토)</li>
             </ol>
           </div>
 
@@ -266,10 +267,10 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 disabled={sendingBriefing}
                 onClick={handleSendDailyLeaveBriefing}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                title="매일 아침 7시 30분에 자동 전송되는 금일 모닝 브리핑(연차+미결재+품질경보)을 지금 즉시 전송합니다"
+                title="매일 아침 07시 40분에 자동 전송되는 금일 모닝 브리핑(연차+미결재+품질경보)을 지금 즉시 전송합니다"
               >
                 <span>🌅</span>
-                <span>{sendingBriefing ? "전송 중..." : "07:30 모닝브리핑 발송"}</span>
+                <span>{sendingBriefing ? "전송 중..." : "07:40 모닝브리핑 발송"}</span>
               </button>
 
               <button
@@ -277,10 +278,10 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
                 disabled={sendingClosingBriefing}
                 onClick={handleSendDailyClosingBriefing}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                title="매일 오후 17:00(월~토)에 자동 전송되는 금일 일일마감브리핑(품질경보+회의결과+사내공지+오픈이슈)을 지금 즉시 전송합니다"
+                title="매일 오후 17:30(월~토)에 자동 전송되는 금일 일일마감브리핑(품질경보+회의결과+사내공지+오픈이슈)을 지금 즉시 전송합니다"
               >
                 <span>📢</span>
-                <span>{sendingClosingBriefing ? "전송 중..." : "17:00 마감브리핑 발송"}</span>
+                <span>{sendingClosingBriefing ? "전송 중..." : "17:30 마감브리핑 발송"}</span>
               </button>
             </div>
 

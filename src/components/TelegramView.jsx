@@ -124,7 +124,7 @@ export const TelegramView = () => {
   }, []);
 
   const todayDateStr = getKSTDateString();
-  const dateFormatted = `${getKSTFormattedString(todayDateStr).split(" ")[0]} 07:30`;
+  const dateFormatted = `${getKSTFormattedString(todayDateStr).split(" ")[0]} 07:40`;
   const dayName = new Date().toLocaleDateString("ko-KR", { weekday: "short" });
 
   // Current Template Key for Unified Room
@@ -698,8 +698,8 @@ export const TelegramView = () => {
           {/* Sub Message Type Selector */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
-              { id: "briefing", label: "📋 07:30 모닝브리핑", desc: "근태/미결재/품질" },
-              { id: "quality", label: "🟥 품질경보 3단계", desc: "발령/조치/종결" },
+              { id: "briefing", label: "📋 07:40 모닝브리핑", desc: "근태/미결재/오픈이슈" },
+              { id: "quality", label: "🟥 품질경보 3단계", desc: "발령/의견/종결" },
               { id: "notice_meeting", label: "🟩 공지 & 🟪 회의", desc: "사내공지/회의일정" },
               { id: "approval", label: "🟦 전자결재/일지", desc: "기안/승인/반려" }
             ].map((t) => (
@@ -726,7 +726,7 @@ export const TelegramView = () => {
               <div className="flex items-center gap-1.5">
                 {[
                   { key: "1", label: "1단계 (신규 발령)" },
-                  { key: "2", label: "2단계 (조치완료 보고)" },
+                  { key: "2", label: "2단계 (조치의견 등록)" },
                   { key: "3", label: "3단계 (종결/삭제 알림)" }
                 ].map((st) => (
                   <button
@@ -965,7 +965,7 @@ export const TelegramView = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                매출 & 일정공유 브리핑 문구를 예시창에서 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 매일 07:30 발송 시 계속 적용됩니다.
+                매출 & 일정공유 브리핑 문구를 예시창에서 수정한 후 <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장되어 매일 07:40 발송 시 계속 적용됩니다.
               </p>
             </div>
 
@@ -1118,7 +1118,7 @@ export const TelegramView = () => {
                   type="button"
                   onClick={handleSaveManagementTemplate}
                   className="flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer"
-                  title="현재 수정된 텍스트를 기본 서식으로 저장하여 매일 07:30 발송 시 계속 적용합니다."
+                  title="현재 수정된 텍스트를 기본 서식으로 저장하여 매일 07:40 발송 시 계속 적용합니다."
                 >
                   <BookmarkCheck className="w-4 h-4 text-amber-400" />
                   <span>💾 위 예시내용을 앞으로도 계속 적용</span>
@@ -1169,7 +1169,7 @@ export const TelegramView = () => {
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                오륙 통합방(현장·품질·공지)과 경영방(대표·전무 손익)의 수신 채널 ID 및 Bot Token을 설정하고 연결을 테스트합니다.
+                오륙 통합방(품질경보·모닝·마감브리핑)과 경영방(대표·임원 손익)의 수신 채널 ID 및 Bot Token을 설정하고 연결을 테스트합니다.
               </p>
             </div>
           </div>
@@ -1217,7 +1217,7 @@ export const TelegramView = () => {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                품질경보 3단계 / 사내공지 / 회의일정 / 07:30 모닝브리핑
+                품질경보(등록/의견/삭제) / 07:40 모닝 / 17:30 마감
               </p>
             </div>
 
@@ -1233,7 +1233,7 @@ export const TelegramView = () => {
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
               <p className="text-[10px] text-slate-400">
-                매일 아침 07:30 손익결산(매출/매입/달성율/공통일정) 브리핑
+                매일 아침 07:40 손익결산(매출/매입/달성율/공통일정) 브리핑
               </p>
             </div>
           </div>
