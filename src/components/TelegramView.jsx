@@ -54,7 +54,9 @@ import {
 import {
   getKSTDateString,
   getKSTFormattedString,
-  isThisWeek
+  isThisWeek,
+  formatMMDDWithWeekday,
+  formatYYYYMMDDWithWeekday
 } from "../utils/dateUtils";
 import {
   getLocalCommonSchedules,
@@ -221,10 +223,24 @@ export const TelegramView = () => {
     if (morningOpenIssues.length === 0) return "• 진행중인 오픈이슈 없음";
     const oLines = morningOpenIssues.map((o) => {
       const d = o.expireDate || o.targetDate || "";
-      const dText = d ? `(~${d.slice(5)}) ` : "";
+      const dText = d ? `(~${formatMMDDWithWeekday(d)}) ` : "";
       const replyCount = o.replies?.length || 0;
       const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
-      return `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+      let line = `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+
+      // 🌟 의견이 있는 경우 작성자 및 내용 표시
+      if (Array.isArray(o.replies) && o.replies.length > 0) {
+        const replyDetails = o.replies.map((rep) => {
+          const authorText = rep.author || "작업자";
+          const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+          const contentText = rep.content || rep.text || "내용 없음";
+          const repDate = rep.actionDate || rep.createdAt?.slice(0, 10);
+          const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
+          return `  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
+        }).join("\n");
+        line += `\n${replyDetails}`;
+      }
+      return line;
     });
     let text = oLines.slice(0, 5).join("\n");
     if (oLines.length > 5) text += `\n• 외 ${oLines.length - 5}건`;
@@ -239,14 +255,24 @@ export const TelegramView = () => {
 
     const combined = [];
     upcomingMeetings.forEach((m) => {
-      const d = m.expireDate || m.targetDate || "";
+      const d = m.expireDate || m.targetDate || m.createdAt?.slice(0, 10) || "";
       const t = m.meetingTime ? ` ${m.meetingTime}` : "";
-      const dText = d ? `${d.slice(5)}${t} ` : "";
-      combined.push(`• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`);
+      const dText = d ? `${formatMMDDWithWeekday(d)}${t} ` : "";
+      let mLine = `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`;
+      if (Array.isArray(m.replies) && m.replies.length > 0) {
+        const replyDetails = m.replies.map((rep) => {
+          const authorText = rep.author || "참석자";
+          const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+          const contentText = rep.content || rep.text || "참석";
+          return `  └ 💬 ${authorText}${titleText}: ${contentText}`;
+        }).join("\n");
+        mLine += `\n${replyDetails}`;
+      }
+      combined.push(mLine);
     });
     activeNotices.forEach((n) => {
       const d = n.expireDate || n.targetDate || "";
-      const dText = d ? `~${d.slice(5)} ` : "";
+      const dText = d ? `~${formatMMDDWithWeekday(d)} ` : "";
       combined.push(`• [공지] ${dText}${n.title || n.content}`);
     });
 
@@ -261,7 +287,8 @@ export const TelegramView = () => {
     const nowTime = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 
     if (unifiedMsgType === "briefing") {
-      return `<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>\n<b>${dateFormatted} 기준</b>\n━━━━━━━━━━━━━━━━━━━━━\n👥 <b>[1] 금일 근태 / 휴가 현황</b>\n• 삼랑진: ${morningLeaveSamStr}\n• 한림: ${morningLeaveHanStr}\n\n📑 <b>[2] 전일 전자결재 미결 ${morningApprovalDocs.length > 0 ? `(${morningApprovalDocs.length}건)` : ""}</b>\n${morningApprovalDocLines}\n\n📝 <b>[3] 전일 업무일지 미결 ${morningWorkLogs.length > 0 ? `(${morningWorkLogs.length}건)` : ""}</b>\n${morningWorkLogLines}\n\n📌 <b>[4] 진행중인 오픈이슈 ${morningOpenIssues.length > 0 ? `(${morningOpenIssues.length}건)` : ""}</b>\n${morningOpenIssueLines}\n\n📅 <b>[5] 회의 & 사내공지</b>\n${morningNoticeMeetings}\n━━━━━━━━━━━━━━━━━━━━━\n※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
+      const dateFormatted = `${formatYYYYMMDDWithWeekday(todayDateStr)} 07:40 기준`;
+      return `<b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>\n<b>${dateFormatted}</b>\n━━━━━━━━━━━━━━━━━━━━━\n👥 <b>[1] 금일 근태 / 휴가 현황</b>\n• 삼랑진: ${morningLeaveSamStr}\n• 한림: ${morningLeaveHanStr}\n\n📑 <b>[2] 전일 전자결재 미결 ${morningApprovalDocs.length > 0 ? `(${morningApprovalDocs.length}건)` : ""}</b>\n${morningApprovalDocLines}\n\n📝 <b>[3] 전일 업무일지 미결 ${morningWorkLogs.length > 0 ? `(${morningWorkLogs.length}건)` : ""}</b>\n${morningWorkLogLines}\n\n📌 <b>[4] 진행중인 오픈이슈 ${morningOpenIssues.length > 0 ? `(${morningOpenIssues.length}건)` : ""}</b>\n${morningOpenIssueLines}\n\n📅 <b>[5] 회의 & 사내공지</b>\n${morningNoticeMeetings}\n━━━━━━━━━━━━━━━━━━━━━\n※ 미결된 결재 및 일지는 금일 오전 중 확인 부탁드립니다.\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
     }
 
     if (unifiedMsgType === "quality") {

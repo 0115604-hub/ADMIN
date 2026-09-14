@@ -53,7 +53,8 @@ import {
   Copy,
   Eye,
   MessageCircle,
-  RotateCcw
+  RotateCcw,
+  Receipt
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import masterExtrusionData from "../data/extrusion4LinesMasterData.json";
@@ -169,6 +170,7 @@ import {
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
 import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import HanulSettlementModal from "./HanulSettlementModal";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -401,6 +403,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
   const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출") || (assignedProcess?.includes("압출"));
   const isChangyong = currentProfile?.name === "우창용" || currentProfile?.id === "hal_cy";
+  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울");
+  const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
 
   // General Manager Identification
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
@@ -3128,6 +3132,40 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🌟 한울 전용 전월정산표 등록 (상태정보패널과 1번패널 사이 1줄 패널) */}
+      {/* ========================================================================= */}
+      {(isHanul || isAdmin) && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-emerald-500/60 shadow-md shadow-emerald-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0 flex items-center justify-center">
+              <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-100" />
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-black text-xs sm:text-sm text-white tracking-tight">
+                전월정산표 등록
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsHanulSettlementModalOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black ring-2 ring-emerald-300/60 shadow-sm shadow-emerald-500/30 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+              title="탭하여 공통비 및 지출 공제내역 항목별 등록 팝업 열기"
+            >
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-950"></span>
+              </span>
+              <span>입력상세</span>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-950 font-black" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -8524,6 +8562,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
+
+      {/* 🌟 한울 전월 정산표 및 공통비/지출공제 등록 모달 */}
+      <HanulSettlementModal
+        isOpen={isHanulSettlementModalOpen}
+        onClose={() => setIsHanulSettlementModalOpen(false)}
+        initialMonth="2026-08"
+      />
 
     </div>
   );

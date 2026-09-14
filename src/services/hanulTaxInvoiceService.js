@@ -236,6 +236,7 @@ export const getLocalHanulStore = () => {
 export const saveLocalHanulStore = (store) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    window.dispatchEvent(new CustomEvent("hanul_tax_invoice_updated", { detail: store }));
   } catch (e) {
     console.error("Local storage write error for Hanul Tax Invoice:", e);
   }
@@ -274,11 +275,17 @@ export const saveHanulMonthData = async (yearMonth, monthData) => {
   return updated;
 };
 
-// Subscribe to Firestore changes
+// Subscribe to Firestore changes and local window events
 export const subscribeHanulStore = (onUpdate) => {
+  const handleLocal = (e) => {
+    onUpdate(e.detail || getLocalHanulStore());
+  };
+  window.addEventListener("hanul_tax_invoice_updated", handleLocal);
+
+  let unsubFirestore = () => {};
   try {
     const docRef = doc(db, ...FIRESTORE_PATH);
-    return onSnapshot(
+    unsubFirestore = onSnapshot(
       docRef,
       (snap) => {
         if (snap.exists()) {
@@ -297,6 +304,10 @@ export const subscribeHanulStore = (onUpdate) => {
     );
   } catch (e) {
     console.warn("subscribeHanulStore error:", e);
-    return () => {};
   }
+
+  return () => {
+    window.removeEventListener("hanul_tax_invoice_updated", handleLocal);
+    unsubFirestore();
+  };
 };

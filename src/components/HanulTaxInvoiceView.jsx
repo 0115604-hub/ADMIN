@@ -31,6 +31,12 @@ import {
   getDefault9BQCSales,
   STANDARD_8_9BQC_TEMPLATES
 } from "../services/hanulTaxInvoiceService";
+import {
+  getHanulSettlementMonthData,
+  subscribeHanulSettlementStore,
+  saveHanulSettlementMonthData
+} from "../services/hanulSettlementService";
+import HanulSettlementModal from "./HanulSettlementModal";
 
 // 🌟 FRT & RR 대상 품목 인덱스 정의
 // FRT 대상: 3번(idx 2: FRT LH), 4번(idx 3: FRT RH)
@@ -56,8 +62,9 @@ export const HanulTaxInvoiceView = () => {
   const [localMonth, setLocalMonth] = useState(() => getPreviousYearMonth(globalMonth));
   const activeMonth = localMonth || "2026-08";
 
-  // 🌟 정리본 팝업 모달 상태
+  // 🌟 정리본 팝업 모달 & 지출공제 모달 상태
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [isAdminSettlementModalOpen, setIsAdminSettlementModalOpen] = useState(false);
 
   // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
   useEffect(() => {
@@ -112,6 +119,7 @@ export const HanulTaxInvoiceView = () => {
     const raw = getHanulMonthData(activeMonth);
     return ensure8Items(raw, activeMonth);
   });
+  const [settlementData, setSettlementData] = useState(() => getHanulSettlementMonthData(activeMonth));
   const [isSaved, setIsSaved] = useState(false);
 
   // Load and subscribe data on activeMonth changes
@@ -119,14 +127,24 @@ export const HanulTaxInvoiceView = () => {
     const raw = getHanulMonthData(activeMonth);
     const validated = ensure8Items(raw, activeMonth);
     setMonthData(validated);
+    setSettlementData(getHanulSettlementMonthData(activeMonth));
 
-    const unsubscribe = subscribeHanulStore((store) => {
+    const unsubscribeTax = subscribeHanulStore((store) => {
       if (store && store[activeMonth]) {
         setMonthData(ensure8Items(store[activeMonth], activeMonth));
       }
     });
 
-    return () => unsubscribe();
+    const unsubscribeSettlement = subscribeHanulSettlementStore((store) => {
+      if (store && store[activeMonth]) {
+        setSettlementData(store[activeMonth]);
+      }
+    });
+
+    return () => {
+      unsubscribeTax();
+      unsubscribeSettlement();
+    };
   }, [activeMonth]);
 
   // 🌟 1. 기준 원본 데이터 (상단 요약패널 전용 - 단가를 수정해도 변경되지 않음)
@@ -183,10 +201,16 @@ export const HanulTaxInvoiceView = () => {
     return totalSalesQty > 0 ? Math.round(totalSalesAmount / totalSalesQty) : 0;
   }, [totalSalesAmount, totalSalesQty]);
 
-  // 🌟 한울 {N}월 매출금액 (한줄 패널 전용 상태)
-  const prevMonthSales = monthData?.prevMonthSales !== undefined 
-    ? Number(monthData.prevMonthSales) 
-    : (monthData?.invoiceConfig?.invoiceAmount ? Number(monthData.invoiceConfig.invoiceAmount) : totalSalesAmount);
+  // 🌟 한울 {N}월 매출금액 (정산표 등록 데이터 및 세금계산서 실시간 연동)
+  const prevMonthSales = useMemo(() => {
+    if (settlementData?.supplyAmount && Number(settlementData.supplyAmount) > 0) {
+      return Number(settlementData.supplyAmount);
+    }
+    if (monthData?.prevMonthSales !== undefined && Number(monthData.prevMonthSales) > 0) {
+      return Number(monthData.prevMonthSales);
+    }
+    return monthData?.invoiceConfig?.invoiceAmount ? Number(monthData.invoiceConfig.invoiceAmount) : totalSalesAmount;
+  }, [settlementData, monthData, totalSalesAmount]);
 
   // Month Title & Active Month Number
   const monthParts = (activeMonth || "2026-08").split("-");
@@ -203,7 +227,7 @@ export const HanulTaxInvoiceView = () => {
   const frtUnitPrice = salesItems[2]?.unitPrice !== undefined ? Number(salesItems[2].unitPrice) : 2858;
   const rrUnitPrice = salesItems[0]?.unitPrice !== undefined ? Number(salesItems[0].unitPrice) : 11028;
 
-  // 🌟 한울 매출금액 변경 핸들러
+  // 🌟 한울 매출금액 변경 핸들러 (세금계산서 & 정산표 양방향 실시간 동기화)
   const handlePrevMonthSalesChange = (e) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, "");
     const amount = Number(rawValue) || 0;
@@ -220,6 +244,20 @@ export const HanulTaxInvoiceView = () => {
     };
     setMonthData(updated);
     saveHanulMonthData(activeMonth, updated);
+
+    // Sync to settlement store
+    if (settlementData) {
+      const updatedSettlement = {
+        ...settlementData,
+        supplyAmount: amount,
+        taxAmount: Math.round(amount * 0.1),
+        totalWithTax: Math.round(amount * 1.1),
+        netSettlement: Math.round(amount * 1.1) - (Number(settlementData.totalExpense) || 0)
+      };
+      setSettlementData(updatedSettlement);
+      saveHanulSettlementMonthData(activeMonth, updatedSettlement);
+    }
+
     triggerSavedFeedback();
   };
 
@@ -562,27 +600,58 @@ export const HanulTaxInvoiceView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 2. [한울 {N}월 매출금액] 깔끔한 한줄짜리 금액 입력 패널 */}
+      {/* 🌟 2. [한울 {N}월 매출금액] 깔끔한 한줄짜리 금액 입력 패널 + 실시간 정산/지출공제 연동 */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white p-3 sm:p-3.5 rounded-2xl border border-indigo-500/40 shadow-md flex items-center gap-3">
-        <div className="p-1.5 rounded-lg bg-indigo-500/30 text-indigo-300 shrink-0">
-          <Coins className="w-4 h-4" />
-        </div>
-        <span className="font-black text-xs sm:text-sm text-indigo-100 whitespace-nowrap">
-          한울 {activeMonthNum}월 매출금액 :
-        </span>
-        <div className="relative flex-1 max-w-xs sm:max-w-sm">
-          <input
-            type="text"
-            value={prevMonthSales > 0 ? prevMonthSales.toLocaleString() : ""}
-            onFocus={(e) => e.target.select()}
-            onChange={handlePrevMonthSalesChange}
-            placeholder="0"
-            className="w-full pr-8 pl-3 py-1.5 text-right rounded-xl bg-white text-slate-900 font-mono font-black text-sm sm:text-base border border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-inner"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-slate-600 text-xs pointer-events-none">
-            원
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white p-3 sm:p-3.5 rounded-2xl border border-indigo-500/40 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="p-1.5 rounded-lg bg-indigo-500/30 text-indigo-300 shrink-0">
+            <Coins className="w-4 h-4" />
+          </div>
+          <span className="font-black text-xs sm:text-sm text-indigo-100 whitespace-nowrap">
+            한울 {activeMonthNum}월 매출금액 :
           </span>
+          <div className="relative flex-1 max-w-xs sm:max-w-sm">
+            <input
+              type="text"
+              value={prevMonthSales > 0 ? prevMonthSales.toLocaleString() : ""}
+              onFocus={(e) => e.target.select()}
+              onChange={handlePrevMonthSalesChange}
+              placeholder="0"
+              className="w-full pr-8 pl-3 py-1.5 text-right rounded-xl bg-white text-slate-900 font-mono font-black text-sm sm:text-base border border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-inner"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-slate-600 text-xs pointer-events-none">
+              원
+            </span>
+          </div>
+        </div>
+
+        {/* 🌟 한울 실시간 정산/지출공제 연동 정보 표시 & 상세보기 뱃지 */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {Number(settlementData?.totalExpense) > 0 ? (
+            <div className="flex items-center gap-2 bg-rose-500/20 border border-rose-400/40 px-3 py-1.5 rounded-xl text-xs">
+              <span className="text-rose-200 font-medium">지출공제:</span>
+              <strong className="text-rose-300 font-mono font-black">-₩{Number(settlementData.totalExpense).toLocaleString()}</strong>
+              <span className="text-white/40">|</span>
+              <span className="text-emerald-200 font-medium">실정산액:</span>
+              <strong className="text-emerald-300 font-mono font-black">
+                ₩{(Number(prevMonthSales || 0) - Number(settlementData.totalExpense || 0)).toLocaleString()}
+              </strong>
+            </div>
+          ) : (
+            <span className="text-[11px] text-indigo-200/70 hidden lg:inline">
+              ✓ 한울 지출공제 등록 시 실시간 연동
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setIsAdminSettlementModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
+            title="한울 공통비 및 지출 공제내역 상세 열기"
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            <span>지출공제 상세내역</span>
+          </button>
         </div>
       </div>
 
@@ -950,6 +1019,13 @@ export const HanulTaxInvoiceView = () => {
           </div>
         </div>
       )}
+
+      {/* 🌟 Admin용 한울 정산/지출공제 팝업 모달 */}
+      <HanulSettlementModal
+        isOpen={isAdminSettlementModalOpen}
+        onClose={() => setIsAdminSettlementModalOpen(false)}
+        initialMonth={activeMonth}
+      />
     </div>
   );
 };

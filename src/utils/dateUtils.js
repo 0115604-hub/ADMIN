@@ -65,6 +65,37 @@ export const getKSTFormattedString = (date = new Date()) => {
   }
 };
 
+// Format MM-DD(요일), e.g. "2026-10-30" -> "10-30(금)", "09-16" -> "09-16(수)"
+export const formatMMDDWithWeekday = (dateStr) => {
+  if (!dateStr) return "";
+  const clean = String(dateStr).trim().slice(0, 10);
+  let yyyy, mm, dd;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    [yyyy, mm, dd] = clean.split("-");
+  } else if (/^\d{2}-\d{2}$/.test(clean)) {
+    yyyy = new Date().getFullYear();
+    [mm, dd] = clean.split("-");
+  } else {
+    return clean;
+  }
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const dayName = isNaN(d.getTime()) ? '' : `(${days[d.getDay()]})`;
+  return `${mm}-${dd}${dayName}`;
+};
+
+// Format YYYY-MM-DD(요일), e.g. "2026-09-15" -> "2026-09-15(화)"
+export const formatYYYYMMDDWithWeekday = (dateStr) => {
+  if (!dateStr) return "";
+  const clean = String(dateStr).trim().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(clean)) return clean;
+  const [yyyy, mm, dd] = clean.split("-");
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const dayName = isNaN(d.getTime()) ? '' : `(${days[d.getDay()]})`;
+  return `${yyyy}-${mm}-${dd}${dayName}`;
+};
+
 // Format: "YYYY-MM-DD HH:mm" in KST
 export const formatKSTDateTime = (dateOrIso) => {
   if (!dateOrIso) return "";

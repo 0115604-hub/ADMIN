@@ -13,10 +13,22 @@ import {
   getKSTTimeInfo,
   getKoreanTodayDateStr,
   isThisWeek,
-  getThisWeekDateRange
+  getThisWeekDateRange,
+  formatMMDDWithWeekday,
+  formatYYYYMMDDWithWeekday
 } from "../utils/dateUtils";
 
-export { getKSTDateString, getKSTFormattedString, getKSTTimeString, getKSTTimeInfo, getKoreanTodayDateStr, isThisWeek, getThisWeekDateRange };
+export {
+  getKSTDateString,
+  getKSTFormattedString,
+  getKSTTimeString,
+  getKSTTimeInfo,
+  getKoreanTodayDateStr,
+  isThisWeek,
+  getThisWeekDateRange,
+  formatMMDDWithWeekday,
+  formatYYYYMMDDWithWeekday
+};
 
 const TELEGRAM_CONFIG_KEY = "oryuk_telegram_config_v4";
 const CONFIG_DOC_PATH = ["system_config", "telegram"];
@@ -817,7 +829,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
   }
 
   try {
-    const dateFormatted = `${getKSTFormattedString(todayStr).split(" ")[0]} 07:40`;
+    const dateFormatted = `${formatYYYYMMDDWithWeekday(todayStr)} 07:40 기준`;
 
     // 1. 금일 근태 / 휴가 현황 (공장별 구분)
     const leaves = getLocalAnnualLeaves();
@@ -891,10 +903,24 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     if (activeOpenIssues.length > 0) {
       const oLines = activeOpenIssues.map((o) => {
         const d = o.expireDate || o.targetDate || "";
-        const dText = d ? `(~${d.slice(5)}) ` : "";
+        const dText = d ? `(~${formatMMDDWithWeekday(d)}) ` : "";
         const replyCount = o.replies?.length || 0;
         const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
-        return `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+        let line = `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+
+        // 🌟 의견이 있는 경우 작성자 및 내용 표시
+        if (Array.isArray(o.replies) && o.replies.length > 0) {
+          const replyDetails = o.replies.map((rep) => {
+            const authorText = rep.author || "작업자";
+            const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+            const contentText = rep.content || rep.text || "내용 없음";
+            const repDate = rep.actionDate || rep.createdAt?.slice(0, 10);
+            const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
+            return `  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
+          }).join("\n");
+          line += `\n${replyDetails}`;
+        }
+        return line;
       });
       openIssueLines = oLines.slice(0, 5).join("\n");
       if (oLines.length > 5) {
@@ -911,15 +937,25 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     upcomingMeetings.forEach((m) => {
       const d = m.expireDate || m.targetDate || m.createdAt?.slice(0, 10) || "";
       const t = m.meetingTime ? ` ${m.meetingTime}` : "";
-      const dText = d ? `${d.slice(5)}${t} ` : "";
+      const dText = d ? `${formatMMDDWithWeekday(d)}${t} ` : "";
+      let mLine = `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`;
+      if (Array.isArray(m.replies) && m.replies.length > 0) {
+        const replyDetails = m.replies.map((rep) => {
+          const authorText = rep.author || "참석자";
+          const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+          const contentText = rep.content || rep.text || "참석";
+          return `  └ 💬 ${authorText}${titleText}: ${contentText}`;
+        }).join("\n");
+        mLine += `\n${replyDetails}`;
+      }
       combined.push({
         sortKey: `${d} ${m.meetingTime || "00:00"}`,
-        text: `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`
+        text: mLine
       });
     });
     activeNotices.forEach((n) => {
       const d = n.expireDate || n.targetDate || "";
-      const dText = d ? `~${d.slice(5)} ` : "";
+      const dText = d ? `~${formatMMDDWithWeekday(d)} ` : "";
       combined.push({
         sortKey: `${d || "9999-99-99"} 23:59`,
         text: `• [공지] ${dText}${n.title || n.content}`
@@ -938,7 +974,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 
     const defaultMessage = `
 <b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
-<b>${dateFormatted} 기준</b>
+<b>${dateFormatted}</b>
 ━━━━━━━━━━━━━━━━━━━━━
 👥 <b>[1] 금일 근태 / 휴가 현황</b>
 • 삼랑진: ${samStr}
