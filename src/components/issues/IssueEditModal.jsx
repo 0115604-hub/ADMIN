@@ -21,6 +21,16 @@ import {
   X
 } from "lucide-react";
 
+export const getIssueOpinionCount = (item) => {
+  if (!item) return 0;
+  const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
+  if (item.category === "품질경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
+    return replyCount;
+  }
+  const hasAction = typeof item.actionResult === "string" && item.actionResult.trim().length > 0;
+  return replyCount + (hasAction ? 1 : 0);
+};
+
 export const IssueEditModal = ({
   isOpen,
   onClose,
@@ -162,9 +172,9 @@ export const IssueEditModal = ({
                   {newIssueForm.plant}
                 </span>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300" title="조치결과 및 의견 수">
-                  💬 {(newIssueForm.replies?.length || 0) + (newIssueForm.actionResult?.trim() ? 1 : 0)}건
+                  💬 {getIssueOpinionCount(editingIssue || newIssueForm)}건
                 </span>
-                {editingIssue && (
+                {editingIssue && newIssueForm.category !== "품질경보" && (
                   <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black shrink-0 ${
                     newIssueForm.isResolved
                       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
@@ -227,19 +237,21 @@ export const IssueEditModal = ({
               </div>
 
               {/* Quick Status Toggle Button */}
-              <button
-                type="button"
-                onClick={onToggleResolvedStatus}
-                className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0 ${
-                  editingIssue.isResolved
-                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                    : "bg-amber-500 text-slate-950 hover:bg-amber-600"
-                }`}
-                title="클릭 시 조치완료 / 진행중 상태 즉시 전환"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{editingIssue.isResolved ? "조치완료 ✓" : "진행중 (완료처리 ➜)"}</span>
-              </button>
+              {newIssueForm.category !== "품질경보" && (
+                <button
+                  type="button"
+                  onClick={onToggleResolvedStatus}
+                  className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0 ${
+                    editingIssue?.isResolved
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "bg-amber-500 text-slate-950 hover:bg-amber-600"
+                  }`}
+                  title="클릭 시 조치완료 / 진행중 상태 즉시 전환"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{editingIssue?.isResolved ? "조치완료 ✓" : "진행중 (완료처리 ➜)"}</span>
+                </button>
+              )}
             </div>
 
             {/* 2) 제목 & 상세 전달 내용 */}
@@ -248,9 +260,9 @@ export const IssueEditModal = ({
                 <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                   <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0"></div>
                   <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug break-words flex items-center gap-1.5 flex-wrap">
-                    <span>{editingIssue.title || "제목 없음"}</span>
+                    <span>{editingIssue?.title || "제목 없음"}</span>
                     <span className="px-1.5 py-0.2 rounded-md text-[10.5px] font-mono font-black bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shadow-2xs">
-                      💬 {(editingIssue.replies?.length || 0) + (editingIssue.actionResult?.trim() ? 1 : 0)}
+                      💬 {getIssueOpinionCount(editingIssue || newIssueForm)}
                     </span>
                   </h4>
                 </div>
@@ -1506,32 +1518,6 @@ export const IssueEditModal = ({
                     <span className="font-black text-xs sm:text-sm text-rose-950 dark:text-rose-200">
                       품질경보 조치 의견 ({newIssueForm.replies?.length || 0}건)
                     </span>
-                  </div>
-
-                  {/* Quick Status Toggle Button */}
-                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-rose-200 dark:border-rose-800">
-                    <button
-                      type="button"
-                      onClick={() => setNewIssueForm({ ...newIssueForm, isResolved: false })}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                        !newIssueForm.isResolved
-                          ? "bg-amber-500 text-slate-950 shadow-xs"
-                          : "text-slate-400 hover:text-slate-700"
-                      }`}
-                    >
-                      조치대기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewIssueForm({ ...newIssueForm, isResolved: true })}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                        newIssueForm.isResolved
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-slate-400 hover:text-slate-700"
-                      }`}
-                    >
-                      조치완료
-                    </button>
                   </div>
                 </div>
 

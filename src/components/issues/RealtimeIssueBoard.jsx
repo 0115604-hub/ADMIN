@@ -29,6 +29,16 @@ const formatMonthDayWithDayOfWeek = (dateStr) => {
   return dateStr.slice(5);
 };
 
+const getIssueOpinionCount = (item) => {
+  if (!item) return 0;
+  const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
+  if (item.category === "품질경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
+    return replyCount;
+  }
+  const hasAction = typeof item.actionResult === "string" && item.actionResult.trim().length > 0;
+  return replyCount + (hasAction ? 1 : 0);
+};
+
 export const RealtimeIssueBoard = ({
   activeIssues,
   displayedActiveIssues,
@@ -299,7 +309,7 @@ export const RealtimeIssueBoard = ({
                   }`}>
                     <span>{item.title || item.content}</span>
                     <span className="px-1.5 py-0.2 rounded-md text-[10.5px] font-mono font-black bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shadow-2xs no-underline inline-flex items-center gap-0.5" title="조치결과 및 의견 수">
-                      💬 {(item.replies?.length || 0) + (item.actionResult?.trim() ? 1 : 0)}
+                      💬 {getIssueOpinionCount(item)}
                     </span>
                   </h4>
                   {item.title && item.content && (

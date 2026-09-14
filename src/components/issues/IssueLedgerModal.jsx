@@ -18,6 +18,16 @@ import {
   Plus
 } from "lucide-react";
 
+const getIssueOpinionCount = (item) => {
+  if (!item) return 0;
+  const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
+  if (item.category === "품질경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
+    return replyCount;
+  }
+  const hasAction = typeof item.actionResult === "string" && item.actionResult.trim().length > 0;
+  return replyCount + (hasAction ? 1 : 0);
+};
+
 export const IssueLedgerModal = ({
   isOpen,
   onClose,
@@ -308,7 +318,7 @@ export const IssueLedgerModal = ({
                         {it.title || it.content}
                       </span>
                       <span className="px-1.5 py-0.2 rounded-md text-[10px] font-mono font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shrink-0 inline-flex items-center gap-0.5" title="조치결과 및 의견 수">
-                        💬 {(it.replies?.length || 0) + (it.actionResult?.trim() ? 1 : 0)}
+                        💬 {getIssueOpinionCount(it)}
                       </span>
                     </div>
 
@@ -360,8 +370,8 @@ export const IssueLedgerModal = ({
                         </>
                       ) : (
                         <>
-                          {/* 조치완료 상태 표시 */}
-                          {isItResolved && (
+                          {/* 조치완료 상태 표시 (품질경보는 제외) */}
+                          {isItResolved && !isItQualityAlert && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shrink-0">
                               {isItMeeting ? "회의종결" : "조치완료"}
                             </span>
