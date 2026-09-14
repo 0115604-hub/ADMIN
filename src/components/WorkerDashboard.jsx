@@ -2659,8 +2659,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     disabled={scheduleSaving}
                     className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-2xs shadow-blue-500/25 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{scheduleSaving ? "등록중..." : "+ 등록"}</span>
+                    <span>{scheduleSaving ? "등록중..." : "등록"}</span>
                   </button>
                 </div>
               </form>

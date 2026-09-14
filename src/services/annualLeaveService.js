@@ -565,6 +565,9 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
       if (!l) return false;
       if (l.isCompleted || l.isDismissed) return false;
 
+      // 💡 공유받은 작업자는 내용만 공유받은 것이며, 본인의 근태/휴가 상태가 아니므로 근태 상태 계산에서 제외
+      if (l.isSharedRecipient || l.sharedBy) return false;
+
       // Filter out private '할일' if excludeTodo option is true
       if (options.excludeTodo) {
         const type = String(l.leaveType || "");

@@ -153,6 +153,7 @@ export const TelegramView = () => {
     const leaves = getLocalAnnualLeaves();
     return leaves.filter((l) => {
       if (!l.startDate) return false;
+      if (l.isCompleted || l.isDismissed || l.isSharedRecipient || l.sharedBy) return false;
       const start = l.startDate;
       const end = l.endDate || l.startDate;
       return start <= todayDateStr && todayDateStr <= end;

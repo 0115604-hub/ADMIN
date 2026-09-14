@@ -823,6 +823,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     const leaves = getLocalAnnualLeaves();
     const activeLeaves = leaves.filter((l) => {
       if (!l.startDate) return false;
+      if (l.isCompleted || l.isDismissed || l.isSharedRecipient || l.sharedBy) return false;
       const start = l.startDate;
       const end = l.endDate || l.startDate;
       return start <= todayStr && todayStr <= end;
