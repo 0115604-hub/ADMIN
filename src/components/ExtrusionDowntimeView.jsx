@@ -11,7 +11,12 @@ import {
   Sparkles,
   RefreshCw,
   Scale,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Edit3,
+  Save,
+  Check
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
@@ -144,6 +149,13 @@ const LINE_THEMES = {
   }
 };
 
+const DEFAULT_MONTHLY_OP_RATES = {
+  pcm1: "93.4%",
+  pcm3: "92.8%",
+  pvc: "91.5%",
+  tpe: "95.2%"
+};
+
 export const ExtrusionDowntimeView = () => {
   const { currentProfile } = useAuth();
 
@@ -217,6 +229,69 @@ export const ExtrusionDowntimeView = () => {
     const m = selectedWeek.match(/^(\d+월)/);
     return m ? m[1] : "9월";
   }, [selectedWeek]);
+
+  // Current Month's Operating Rate & LOSS Rate (수기 관리 연동)
+  const currentMonthlyOperatingRate = useMemo(() => {
+    if (currentLine?.monthlyOperatingRates?.[currentMonthStr] !== undefined) {
+      return currentLine.monthlyOperatingRates[currentMonthStr];
+    }
+    return DEFAULT_MONTHLY_OP_RATES[selectedLineId] || "93.0%";
+  }, [currentLine, currentMonthStr, selectedLineId]);
+
+  const currentMonthlyLossRate = useMemo(() => {
+    if (currentLine?.monthlyLossRates?.[currentMonthStr] !== undefined) {
+      return currentLine.monthlyLossRates[currentMonthStr];
+    }
+    if (currentLine?.monthlyLossRates?.default !== undefined) {
+      return currentLine.monthlyLossRates.default;
+    }
+    return "6.6%";
+  }, [currentLine, currentMonthStr]);
+
+  const [tempOpRate, setTempOpRate] = useState(currentMonthlyOperatingRate);
+  const [tempLossRate, setTempLossRate] = useState(currentMonthlyLossRate);
+
+  useEffect(() => {
+    setTempOpRate(currentMonthlyOperatingRate);
+    setTempLossRate(currentMonthlyLossRate);
+  }, [currentMonthlyOperatingRate, currentMonthlyLossRate, selectedLineId, currentMonthStr]);
+
+  const handleSaveMonthlyRates = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+
+    let formattedOp = (tempOpRate || "").trim();
+    if (formattedOp && !formattedOp.endsWith("%") && !isNaN(Number(formattedOp))) {
+      formattedOp = `${formattedOp}%`;
+    }
+    if (!formattedOp) formattedOp = currentMonthlyOperatingRate || "93.0%";
+
+    let formattedLoss = (tempLossRate || "").trim();
+    if (formattedLoss && !formattedLoss.endsWith("%") && !isNaN(Number(formattedLoss))) {
+      formattedLoss = `${formattedLoss}%`;
+    }
+    if (!formattedLoss) formattedLoss = currentMonthlyLossRate || "6.0%";
+
+    setDataStore((prev) => {
+      const lineObj = { ...prev[selectedLineId] };
+      const opRates = { ...(lineObj.monthlyOperatingRates || {}) };
+      const lossRates = { ...(lineObj.monthlyLossRates || {}) };
+
+      opRates[currentMonthStr] = formattedOp;
+      lossRates[currentMonthStr] = formattedLoss;
+
+      lineObj.monthlyOperatingRates = opRates;
+      lineObj.monthlyLossRates = lossRates;
+
+      return {
+        ...prev,
+        [selectedLineId]: lineObj
+      };
+    });
+
+    setTempOpRate(formattedOp);
+    setTempLossRate(formattedLoss);
+    showToast(`💾 [${currentLine.name}] ${currentMonthStr} 월가동율(${formattedOp}) & 월누적LOSS율(${formattedLoss})이 저장되었습니다!`);
+  };
 
   // Selected Week Real-time SUM Totals
   const weeklyTotals = useMemo(() => {
@@ -454,6 +529,17 @@ export const ExtrusionDowntimeView = () => {
       weeklyTotals.totalKg,
       `총 ${weeklyTotals.totalHours}시간`,
       "(=SUM 실시간 자동 연동)"
+    ]);
+
+    rows.push([
+      `■ [${currentMonthStr}] 월간 누적 관리 지표`,
+      "",
+      `월가동율: ${currentMonthlyOperatingRate}`,
+      `월누적LOSS율: ${currentMonthlyLossRate}`,
+      "",
+      "",
+      "수기 지표 연동",
+      "관리자 수기 입력 완료"
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -839,21 +925,113 @@ export const ExtrusionDowntimeView = () => {
             </tbody>
             <tfoot>
               <tr className="bg-slate-100 border-t-2 border-slate-300 font-black text-xs text-slate-900">
-                <td colSpan={4} className="py-3.5 px-4 text-center font-black text-sm">
+                <td colSpan={4} className="py-3 px-4 text-center font-black text-sm">
                   ■ 주간 총 비가동 및 LOSS 합계 (실시간 자동 연동)
                 </td>
-                <td className="py-3.5 px-3.5 text-right text-rose-600 text-base font-black">
+                <td className="py-3 px-3.5 text-right text-rose-600 text-base font-black">
                   {weeklyTotals.totalMin.toLocaleString()}
                 </td>
-                <td className="py-3.5 px-3.5 text-right text-blue-700 text-base font-black">
+                <td className="py-3 px-3.5 text-right text-blue-700 text-base font-black">
                   {weeklyTotals.totalKg}
                 </td>
-                <td colSpan={3} className="py-3.5 px-3 text-slate-500 italic text-xs">
+                <td colSpan={3} className="py-3 px-3 text-slate-500 italic text-xs">
                   (=SUM 실시간 자동 계산 연동)
+                </td>
+              </tr>
+              {/* 상세작업실적표 맨 아래 월가동율 & 월누적LOSS율 뱃지 행 */}
+              <tr className="bg-gradient-to-r from-slate-50 via-teal-50/20 to-amber-50/20 border-t border-slate-200 text-xs font-bold">
+                <td colSpan={4} className="py-3 px-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Sparkles className="w-4 h-4 text-teal-600" />
+                    <span className="text-slate-900 font-black text-xs">
+                      [{currentLine.name}] {currentMonthStr} 월간 누적 관리 지표 :
+                    </span>
+                  </div>
+                </td>
+                <td colSpan={2} className="py-2.5 px-3 text-center">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-300 font-black text-xs shadow-xs">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{currentMonthStr} 월가동율:</span>
+                    <span className="text-emerald-700 font-black text-sm bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                      {currentMonthlyOperatingRate}
+                    </span>
+                  </div>
+                </td>
+                <td colSpan={3} className="py-2.5 px-3 text-center">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 font-black text-xs shadow-xs">
+                    <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
+                    <span>{currentMonthStr} 월누적LOSS율:</span>
+                    <span className="text-amber-800 font-black text-sm bg-white px-2 py-0.5 rounded-md border border-amber-200">
+                      {currentMonthlyLossRate}
+                    </span>
+                  </div>
                 </td>
               </tr>
             </tfoot>
           </table>
+        </div>
+
+        {/* 상세작업실적표 맨 아래: 월가동율 & 월누적LOSS율 수기 등록/수정 뱃지 툴바 */}
+        <div className="p-4 bg-slate-900 text-white border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-teal-500/20 border border-teal-400/30 text-teal-300 flex-shrink-0">
+              <Edit3 className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-sm text-white">
+                  📌 {currentLine.name} • {currentMonthStr} 월간 지표 수기 입력 / 수정 뱃지
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                  실시간 자동 저장
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">
+                수치를 수기로 입력하고 [지표 저장] 또는 엔터를 누르면 {currentMonthStr} 월간 지표로 영구 보관됩니다.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleSaveMonthlyRates} className="flex items-center gap-2.5 flex-wrap">
+            {/* 1. 월가동율 수기 뱃지 */}
+            <div className="flex items-center bg-slate-800 border border-emerald-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-emerald-400 transition">
+              <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black whitespace-nowrap">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{currentMonthStr} 월가동율 :</span>
+              </div>
+              <input
+                type="text"
+                value={tempOpRate}
+                onChange={(e) => setTempOpRate(e.target.value)}
+                placeholder="예: 93.4%"
+                className="w-20 px-2 py-1 text-xs font-black text-center rounded-lg bg-slate-900 text-emerald-300 border border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+            </div>
+
+            {/* 2. 월누적LOSS율 수기 뱃지 */}
+            <div className="flex items-center bg-slate-800 border border-amber-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-amber-400 transition">
+              <div className="flex items-center gap-1.5 text-amber-300 text-xs font-black whitespace-nowrap">
+                <TrendingDown className="w-3.5 h-3.5 text-amber-400" />
+                <span>{currentMonthStr} 월누적LOSS율 :</span>
+              </div>
+              <input
+                type="text"
+                value={tempLossRate}
+                onChange={(e) => setTempLossRate(e.target.value)}
+                placeholder="예: 6.6%"
+                className="w-20 px-2 py-1 text-xs font-black text-center rounded-lg bg-slate-900 text-amber-300 border border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+
+            {/* 저장 버튼 */}
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md"
+            >
+              <Save className="w-3.5 h-3.5" />
+              지표 저장
+            </button>
+          </form>
         </div>
       </div>
     </div>
