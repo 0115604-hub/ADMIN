@@ -770,7 +770,7 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    handleOpenEditIssue(item, e, true, true);
+    handleOpenEditIssue(item, e, true, false);
     setTimeout(() => setOpenActionMenuId(null), 100);
   };
 

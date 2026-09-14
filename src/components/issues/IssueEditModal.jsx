@@ -246,11 +246,22 @@ export const IssueEditModal = ({
 
             {/* 2) 제목 & 상세 전달 내용 */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0"></div>
-                <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug break-words">
-                  {editingIssue.title || "제목 없음"}
-                </h4>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0"></div>
+                  <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug break-words">
+                    {editingIssue.title || "제목 없음"}
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsIssueDetailMode(false)}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs shrink-0"
+                  title="제목 및 본문 내용 수정"
+                >
+                  <Edit3 className="w-3 h-3" />
+                  <span>본문 수정</span>
+                </button>
               </div>
               <div className="text-xs sm:text-[13px] font-medium text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
                 {editingIssue.content || "상세 전달 내용이 없습니다."}
