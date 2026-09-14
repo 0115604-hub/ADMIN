@@ -1122,7 +1122,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     try {
       await replyToSharedLeave(sharedReplyModalItem.id, replyTextInput.trim(), currentProfile);
       setToastMessage(
-        `💬 [${sharedReplyModalItem.sharedBy || "보낸작업자"}]님에게 답장을 전송하고 내 일정을 완료(삭제) 처리하였습니다.`
+        `💬 [${sharedReplyModalItem.sharedBy || "보낸작업자"}]님에게 답장을 전송하고 내 일정에서 완전 삭제하였습니다.`
       );
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3500);
@@ -6539,10 +6539,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
-                      <span>{isRecipientModal ? "회신 목록" : "등록 일정 상세 & 전체 목록"}</span>
+                      <span>{isRecipientModal ? "공유받은 내용 및 답변" : "등록 일정 상세 & 전체 목록"}</span>
                     </h3>
                     <p className="text-[11px] opacity-90 truncate">
-                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} {isRecipientModal ? "• 공유받은 일정 회신 목록" : ""}
+                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} {isRecipientModal ? "• 공유받은 내용 및 답변 목록" : ""}
                     </p>
                   </div>
                 </div>
@@ -6611,7 +6611,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>
-                    {isRecipientModal ? "전체 회신 목록" : "전체 등록 이력"} (
+                    {isRecipientModal ? "공유받은 내용 및 답변" : "전체 등록 이력"} (
                     {
                       (annualLeaves || []).filter((l) => {
                         return (myId && l.userId === myId) || (myName && l.userName === myName);
@@ -6654,24 +6654,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         </div>
                         <p className="text-xs font-bold text-slate-500">
                           {scheduleDetailModal.filterTab === "day"
-                            ? `${scheduleDetailModal.selectedDate}에 등록된 ${isRecipientModal ? "회신 내역이" : "일정이"} 없습니다.`
+                            ? `${scheduleDetailModal.selectedDate}에 등록된 ${isRecipientModal ? "공유받은 내용이" : "일정이"} 없습니다.`
                             : scheduleDetailModal.filterTab === "week"
-                            ? `이번 주간에 등록된 ${isRecipientModal ? "회신 내역이" : "일정이"} 없습니다.`
-                            : `등록된 ${isRecipientModal ? "회신 내역이" : "일정 내역이"} 없습니다.`}
+                            ? `이번 주간에 등록된 ${isRecipientModal ? "공유받은 내용이" : "일정이"} 없습니다.`
+                            : `등록된 ${isRecipientModal ? "공유받은 내용 및 답변이" : "일정 내역이"} 없습니다.`}
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setScheduleSelectedDate(scheduleDetailModal.selectedDate);
-                            setScheduleDetailModal(null);
-                          }}
-                          className={`px-3.5 py-1.5 rounded-lg text-white text-xs font-black transition-all cursor-pointer shadow-xs inline-flex items-center gap-1 ${
-                            isRecipientModal ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
-                          }`}
-                        >
-                          {isRecipientModal ? <MessageCircle className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                          <span>{isRecipientModal ? "이 날짜로 회신 등록하기" : "이 날짜로 새 일정 등록하기"}</span>
-                        </button>
+                        {!isRecipientModal && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setScheduleSelectedDate(scheduleDetailModal.selectedDate);
+                              setScheduleDetailModal(null);
+                            }}
+                            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all cursor-pointer shadow-xs inline-flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>이 날짜로 새 일정 등록하기</span>
+                          </button>
+                        )}
                       </div>
                     );
                   }
@@ -6755,7 +6755,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                   type="button"
                                   onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
                                   className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                                  title="보낸 작업자에게 답장을 보내고 일정을 삭제/완료합니다"
+                                  title="보낸 작업자에게 답장을 보내고 내 일정에서 완전 삭제합니다"
                                 >
                                   <MessageCircle className="w-3 h-3" />
                                   <span>답장 후 삭제</span>
@@ -6790,7 +6790,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                   <button
                                     type="button"
                                     onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                    className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
                                     title="일정 완료 처리"
                                   >
                                     <CheckCheck className="w-3 h-3" />
@@ -6880,44 +6880,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   선택 일자: {scheduleDetailModal.selectedDate}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const targetDate = scheduleDetailModal.selectedDate;
-                      const unreplied = (annualLeaves || []).find((l) => {
-                        const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
-                        if (!matchUser) return false;
-                        const inDate = (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate;
-                        return inDate && (l.isSharedRecipient || l.sharedBy) && !l.isCompleted && !l.isDismissed;
-                      });
-
-                      if (isRecipientModal && unreplied) {
-                        setScheduleDetailModal(null);
-                        setReplyTextInput("확인했습니다 👍");
-                        setSharedReplyModalItem(unreplied);
-                      } else {
+                  {!isRecipientModal && (
+                    <button
+                      type="button"
+                      onClick={() => {
                         setScheduleSelectedDate(scheduleDetailModal.selectedDate);
                         setScheduleDetailModal(null);
-                      }
-                    }}
-                    className={`px-3.5 py-1.5 rounded-xl text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1 ${
-                      isRecipientModal
-                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25"
-                        : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/25"
-                    }`}
-                  >
-                    {isRecipientModal ? (
-                      <>
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>회신 등록</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>이 날짜로 일정 등록</span>
-                      </>
-                    )}
-                  </button>
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>이 날짜로 일정 등록</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setScheduleDetailModal(null)}
@@ -6954,10 +6929,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
                 <div>
                   <h3 className="text-base font-black flex items-center gap-1.5">
-                    <span>공유 일정 답장(회신) 및 삭제</span>
+                    <span>공유 일정 답장 및 완전 삭제</span>
                   </h3>
                   <p className="text-[11px] opacity-90">
-                    보낸 작업자에게 답장을 전송해야 일정이 삭제(완료)됩니다.
+                    보낸 작업자에게 답장을 전송하면 내 일정에서 완전 삭제됩니다.
                   </p>
                 </div>
               </div>
@@ -6980,7 +6955,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <div>
                   <p className="font-bold">공유 일정 확인 및 회신 안내</p>
                   <p className="text-[11px] opacity-90 mt-0.5">
-                    공유받은 일정은 보낸 작업자에게 확인 답장을 보내야 내 화면에서 안전하게 완료/삭제 처리되며, 보낸 작업자도 회신을 확인할 수 있습니다.
+                    공유받은 일정은 보낸 작업자에게 확인 답장을 보내면 내 화면 및 데이터에서 즉시 완전 삭제되며, 보낸 작업자에게는 답장 내용이 전달됩니다.
                   </p>
                 </div>
               </div>
@@ -7073,7 +7048,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black shadow-md shadow-purple-500/25 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{replySubmitting ? "답장 전송 중..." : "💬 답장 전송 및 내 일정 삭제"}</span>
+                <span>{replySubmitting ? "답장 전송 중..." : "💬 답장 전송 및 내 일정 완전 삭제"}</span>
               </button>
             </div>
           </div>

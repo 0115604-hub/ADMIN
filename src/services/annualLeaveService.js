@@ -205,7 +205,7 @@ export const completeOrDismissAnnualLeave = async (id) => {
   return updatedLocal;
 };
 
-// 💬 받은 작업자: 답장(회신) 전송 및 내 일정에서 삭제/완료 처리
+// 💬 받은 작업자: 답장(회신) 전송 및 내 일정에서 완전 삭제 처리
 export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientProfile) => {
   const recId = String(recipientLeaveId);
   const nowIso = new Date().toISOString();
@@ -215,25 +215,11 @@ export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientP
   const rTitle = recipientProfile?.title || "선임";
 
   const current = getLocalAnnualLeaves();
-  let originId = null;
+  const targetRecipientDoc = current.find((l) => String(l.id) === recId);
+  const originId = targetRecipientDoc?.originLeaveId || null;
 
-  // 1. Update recipient's leave record (REPLIED & Dismissed)
-  const updatedLocal = current.map((l) => {
-    if (String(l.id) === recId) {
-      originId = l.originLeaveId || null;
-      return {
-        ...l,
-        replyStatus: "REPLIED",
-        replyText: replyText.trim(),
-        replyAt: nowIso,
-        replyAuthor: rName,
-        isCompleted: true,
-        isDismissed: true,
-        completedAt: nowIso
-      };
-    }
-    return l;
-  });
+  // 1. Recipient doc is completely filtered out (deleted) from local array
+  const updatedLocal = current.filter((l) => String(l.id) !== recId);
 
   // 2. If originLeaveId exists, update origin leave doc in local array
   let targetOrigin = null;
@@ -289,12 +275,12 @@ export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientP
 
   saveLocalAnnualLeaves(updatedLocal);
 
-  // 3. Sync recipient and origin docs to Firestore
+  // 3. Delete recipient doc completely from Firestore, and update origin doc in Firestore
   try {
-    const recDoc = updatedLocal.find((l) => String(l.id) === recId);
-    if (recDoc) {
-      await setDoc(doc(db, COLLECTION_NAME, recId), sanitizeLeave(recDoc), { merge: true });
-    }
+    // Delete recipient's document completely
+    await deleteDoc(doc(db, COLLECTION_NAME, recId));
+    console.log("Shared recipient leave completely deleted from Firestore:", recId);
+
     if (originId) {
       if (targetOrigin) {
         await setDoc(doc(db, COLLECTION_NAME, String(originId)), sanitizeLeave(targetOrigin), { merge: true });
