@@ -546,6 +546,36 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return getLatestOvertimeSummary(overtimeReports);
   }, [overtimeReports]);
 
+  // 오늘 날짜 포맷 (예: 9월 14일 (월))
+  const todayFormattedLabel = useMemo(() => {
+    const todayStr = getKSTDateString();
+    const parts = todayStr.split("-");
+    if (parts.length === 3) {
+      const dateObj = new Date(`${todayStr}T00:00:00+09:00`);
+      const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+      const dayName = dayNames[dateObj.getDay()] || "";
+      return `${parseInt(parts[1], 10)}월 ${parseInt(parts[2], 10)}일 (${dayName})`;
+    }
+    return todayStr;
+  }, []);
+
+  // 특근보고서 등록 여부 및 최신 특근보고서 추출 (특근보고서가 등록되었을 때만 노출)
+  const samrangjinSpecialReport = useMemo(() => {
+    if (!Array.isArray(overtimeReports)) return null;
+    const list = overtimeReports
+      .filter((r) => r && r.plant === "삼랑진공장" && (r.reportType === "특근보고서" || r.title?.includes("특근")))
+      .sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
+    return list[0] || null;
+  }, [overtimeReports]);
+
+  const hallimSpecialReport = useMemo(() => {
+    if (!Array.isArray(overtimeReports)) return null;
+    const list = overtimeReports
+      .filter((r) => r && r.plant === "한림공장" && (r.reportType === "특근보고서" || r.title?.includes("특근")))
+      .sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
+    return list[0] || null;
+  }, [overtimeReports]);
+
   const handleOpenWorkerLogs = (worker) => {
     pushModalHistory("worker_access_logs");
     const freshLogs = getLocalAccessLogs();
@@ -3034,12 +3064,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 truncate">
             <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white truncate flex items-center gap-1.5">
               <span>2. 근태현황 및 관리</span>
-              <span className="hidden sm:inline-block text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300">
-                5개사 잔업스마트대장
-              </span>
             </h2>
-            <span className="hidden md:inline-block px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800 shrink-0">
-              9월: 평일 880H • 주말 440H
+            <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 shrink-0">
+              {todayFormattedLabel}
             </span>
           </div>
 
@@ -3101,70 +3128,80 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           ))}
         </div>
 
-        {/* 2 Factory Overtime Legacy Cards Bottom Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
-          {/* 삼랑진공장 */}
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9.5px] font-black shrink-0">
-                  삼랑진공장
-                </span>
-                <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 shrink-0">
-                  {overtimeSummary.samrangjin.date}
-                </span>
-                <span className="text-[9.5px] text-slate-500 font-bold truncate">{overtimeSummary.samrangjin.author} {overtimeSummary.samrangjin.authorTitle || "선임"}</span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                  ₩{overtimeSummary.samrangjin.cost.toLocaleString()}
-                </span>
-                <span className="text-[9.5px] text-slate-400 font-bold">
-                  ({overtimeSummary.samrangjin.headcount}명)
-                </span>
-              </div>
-            </div>
+        {/* 2 Factory Overtime Cards (특근보고서가 등록되었을 때만 노출) */}
+        {(samrangjinSpecialReport || hallimSpecialReport) && (
+          <div className={`grid grid-cols-1 ${samrangjinSpecialReport && hallimSpecialReport ? "md:grid-cols-2" : ""} gap-2 pt-1`}>
+            {/* 삼랑진공장 특근보고서 */}
+            {samrangjinSpecialReport && (
+              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9.5px] font-black shrink-0">
+                      삼랑진공장 특근
+                    </span>
+                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 shrink-0">
+                      {samrangjinSpecialReport.workDateFormatted || samrangjinSpecialReport.workDate}
+                    </span>
+                    <span className="text-[9.5px] text-slate-500 font-bold truncate">
+                      {samrangjinSpecialReport.author} {samrangjinSpecialReport.authorTitle || "선임"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-xs font-black text-rose-600 dark:text-rose-400">
+                      ₩{(samrangjinSpecialReport.cost || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[9.5px] text-slate-400 font-bold">
+                      ({samrangjinSpecialReport.totalWorkers || samrangjinSpecialReport.headcount || 0}명)
+                    </span>
+                  </div>
+                </div>
 
-            <div className="flex flex-wrap gap-1">
-              {overtimeSummary.samrangjin.lines.map((ln) => (
-                <span key={ln.name} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                  {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
-                </span>
-              ))}
-            </div>
+                <div className="flex flex-wrap gap-1">
+                  {(samrangjinSpecialReport.items || []).map((it) => (
+                    <span key={it.id || it.category} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                      {it.category}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 한림공장 특근보고서 */}
+            {hallimSpecialReport && (
+              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[9.5px] font-black shrink-0">
+                      한림공장 특근
+                    </span>
+                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800 shrink-0">
+                      {hallimSpecialReport.workDateFormatted || hallimSpecialReport.workDate}
+                    </span>
+                    <span className="text-[9.5px] text-slate-500 font-bold truncate">
+                      {hallimSpecialReport.author} {hallimSpecialReport.authorTitle || "선임"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-xs font-black text-rose-600 dark:text-rose-400">
+                      ₩{(hallimSpecialReport.cost || 0).toLocaleString()}
+                    </span>
+                    <span className="text-[9.5px] text-slate-400 font-bold">
+                      ({hallimSpecialReport.totalWorkers || hallimSpecialReport.headcount || 0}명)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1">
+                  {(hallimSpecialReport.items || []).map((it) => (
+                    <span key={it.id || it.category} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                      {it.category}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* 한림공장 */}
-          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[9.5px] font-black shrink-0">
-                  한림공장
-                </span>
-                <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800 shrink-0">
-                  {overtimeSummary.hallim.date}
-                </span>
-                <span className="text-[9.5px] text-slate-500 font-bold truncate">{overtimeSummary.hallim.author} {overtimeSummary.hallim.authorTitle || "선임"}</span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                  ₩{overtimeSummary.hallim.cost.toLocaleString()}
-                </span>
-                <span className="text-[9.5px] text-slate-400 font-bold">
-                  ({overtimeSummary.hallim.headcount}명)
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-1">
-              {overtimeSummary.hallim.lines.map((ln) => (
-                <span key={ln.name} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                  {ln.name}: <strong className="text-purple-600 dark:text-purple-400">{ln.count}명</strong>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
