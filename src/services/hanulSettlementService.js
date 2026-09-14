@@ -5,6 +5,7 @@ import {
   saveLocalHanulStore,
   createDefaultHanulMonthData
 } from "./hanulTaxInvoiceService";
+import { DEFAULT_HANUL_ATTACHMENTS } from "../data/defaultHanulAttachments";
 
 const STORAGE_KEY_SETTLEMENT = "oryuk_hanul_settlement_store_v1";
 const FIRESTORE_PATH = ["system_store", "hanul_monthly_settlement_master"];
@@ -79,7 +80,8 @@ export const getInitialSettlementStore = () => ({
     taxAmount: 11831640,
     totalWithTax: 130148040,
     totalExpense: 115922497,
-    netSettlement: 14225543
+    netSettlement: 14225543,
+    attachments: DEFAULT_HANUL_ATTACHMENTS["2026-07"] || []
   },
   "2026-08": {
     yearMonth: "2026-08",
@@ -107,7 +109,8 @@ export const getInitialSettlementStore = () => ({
     taxAmount: 0,
     totalWithTax: 0,
     totalExpense: 0,
-    netSettlement: 0
+    netSettlement: 0,
+    attachments: []
   }
 });
 
@@ -128,6 +131,9 @@ export const getLocalSettlementStore = () => {
           parsed["2026-07"].expenses.length < 16
         ) {
           parsed["2026-07"] = initial["2026-07"];
+          saveLocalSettlementStore(parsed);
+        } else if (!parsed["2026-07"].attachments || parsed["2026-07"].attachments.length === 0) {
+          parsed["2026-07"].attachments = initial["2026-07"].attachments || [];
           saveLocalSettlementStore(parsed);
         }
         return { ...initial, ...parsed };
@@ -182,7 +188,8 @@ export const getHanulSettlementMonthData = (yearMonth = "2026-08") => {
     taxAmount: 0,
     totalWithTax: 0,
     totalExpense: 0,
-    netSettlement: 0
+    netSettlement: 0,
+    attachments: []
   };
 
   store[yearMonth] = newMonth;
