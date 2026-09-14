@@ -602,7 +602,7 @@ export const OvertimeStatusView = () => {
       return sum + (workHours || 0);
     }, 0);
 
-    setReportModalTitle(`${d}월 ? ${d}일 : 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`.replace(/undefined월 \? undefined일 : /, ""));
+    setReportModalTitle(`9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`);
     setReportModalAuthor(compMeta.author || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     

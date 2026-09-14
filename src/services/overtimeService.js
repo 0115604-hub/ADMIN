@@ -10,13 +10,14 @@ import {
   orderBy
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { syncPlantOvertimeToApprovalBox } from "./approvalService";
 
 // ⭐ 공장별 소속 협력업체 취합 체계 (Plant-to-Company Mapping)
 // 삼랑진공장: (주)오륙, 유성
 // 한림공장: (주)조영산업, 한울, 부림텍
 export const PLANT_COMPANIES = {
   "삼랑진공장": ["(주)오륙", "유성"],
-  "한림공장": ["한울", "부림텍"]
+  "한림공장": ["(주)조영산업", "한울", "부림텍"]
 };
 
 export const getPlantForCompany = (companyName) => {
@@ -381,12 +382,24 @@ export const saveOvertimeReport = async (report) => {
     console.warn("Firestore overtime save error:", e);
   }
 
+  // ⭐ Auto-sync to Electronic Approval Box
+  try {
+    await syncPlantOvertimeToApprovalBox({
+      plant: cleanReport.plant,
+      company: cleanReport.company,
+      workDate: cleanReport.workDate
+    });
+  } catch (e) {
+    console.warn("syncPlantOvertimeToApprovalBox error on save:", e);
+  }
+
   return cleanReport;
 };
 
 // Delete Overtime Report
 export const deleteOvertimeReport = async (reportId) => {
   const currentReports = getLocalOvertimeReports();
+  const deletedRep = currentReports.find((r) => r.id === reportId);
   const updatedReports = currentReports.filter((r) => r.id !== reportId);
   saveLocalOvertimeReports(updatedReports);
 
@@ -394,6 +407,20 @@ export const deleteOvertimeReport = async (reportId) => {
     await deleteDoc(doc(db, COLLECTION_NAME, reportId));
   } catch (e) {
     console.warn("Firestore overtime delete error:", e);
+  }
+
+  // ⭐ Auto-sync to Electronic Approval Box on deletion
+  if (deletedRep) {
+    try {
+      await syncPlantOvertimeToApprovalBox({
+        plant: deletedRep.plant,
+        company: deletedRep.company,
+        workDate: deletedRep.workDate,
+        isDeleteAction: true
+      });
+    } catch (e) {
+      console.warn("syncPlantOvertimeToApprovalBox error on delete:", e);
+    }
   }
 
   return updatedReports;

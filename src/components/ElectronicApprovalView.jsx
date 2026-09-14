@@ -46,7 +46,8 @@ import {
   checkApprovalPermission,
   getAutoApprovalSteps,
   APPROVAL_MANAGERS,
-  syncPlantOvertimeToApprovalBox
+  syncPlantOvertimeToApprovalBox,
+  syncAllOvertimeReportsToApprovalBox
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
@@ -178,8 +179,9 @@ export const ElectronicApprovalView = () => {
     images: []
   });
 
-  // Real-time Cloud Synchronization
+  // Real-time Cloud Synchronization & Overtime Synthesis
   useEffect(() => {
+    syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("Auto-sync overtime approval error:", e));
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
       if (selectedDoc) {
