@@ -2694,7 +2694,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         setScheduleDetailModal({
                           selectedDate: l.startDate || todayDateStr,
                           dayName: "",
-                          filterTab: "day"
+                          filterTab: "day",
+                          isRecipient: isRecipient
                         })
                       }
                       className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all cursor-pointer hover:shadow-xs active:scale-95 ${
@@ -2749,7 +2750,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   setScheduleDetailModal({
                     selectedDate: scheduleSelectedDate || todayDateStr,
                     dayName: "",
-                    filterTab: "all"
+                    filterTab: "all",
+                    isRecipient: false
                   })
                 }
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all cursor-pointer border border-indigo-200 dark:border-indigo-800 shadow-2xs"
@@ -2814,6 +2816,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 {myWeeklyCalendarDays.map((day) => {
                   const isSun = day.dayOfWeek === 0;
                   const isSat = day.dayOfWeek === 6;
+                  const hasRecip = day.events.some((e) => e.isSharedRecipient || e.sharedBy);
+
                   return (
                     <div
                       key={day.dateStr}
@@ -2822,7 +2826,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         setScheduleDetailModal({
                           selectedDate: day.dateStr,
                           dayName: day.dayName,
-                          filterTab: day.events.length > 0 ? "day" : "all"
+                          filterTab: day.events.length > 0 ? "day" : "all",
+                          isRecipient: hasRecip
                         });
                       }}
                       className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer min-h-[68px] flex flex-col justify-between hover:shadow-xs group ${
@@ -2849,6 +2854,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         ) : (
                           day.events.slice(0, 2).map((ev) => {
                             const isTodo = ev.leaveType === "할일" || ev.leaveType?.includes("할일");
+                            const isRecip = Boolean(ev.isSharedRecipient || ev.sharedBy);
                             const displayText = isTodo
                               ? (ev.reason && ev.reason !== "할일" ? `📝 ${ev.reason}` : "📝 할일")
                               : (ev.reason && ev.reason !== ev.leaveType ? `${ev.leaveType} (${ev.reason})` : ev.leaveType);
@@ -2862,12 +2868,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                   setScheduleDetailModal({
                                     selectedDate: day.dateStr,
                                     dayName: day.dayName,
-                                    filterTab: "day"
+                                    filterTab: "day",
+                                    isRecipient: isRecip
                                   });
                                 }}
                                 className={`text-[9.5px] px-1 py-0.5 rounded font-bold truncate text-left transition-all ${
                                   isTodo
                                     ? "bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-950 dark:text-amber-100 border border-amber-300 dark:border-amber-700 shadow-2xs"
+                                    : isRecip
+                                    ? "bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800"
                                     : "bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-900 dark:text-blue-200"
                                 }`}
                                 title={`${ev.leaveType}: ${ev.reason || ""} (탭하여 전체 리스트 보기)`}
@@ -2885,7 +2894,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               setScheduleDetailModal({
                                 selectedDate: day.dateStr,
                                 dayName: day.dayName,
-                                filterTab: "day"
+                                filterTab: "day",
+                                isRecipient: hasRecip
                               });
                             }}
                             className="text-[9px] text-blue-600 dark:text-blue-400 font-bold block hover:underline"
@@ -6484,395 +6494,443 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       )}
       {/* ========================================================================= */}
-      {/* 🗓️ 등록 일정 상세 & 전체 리스트 팝업 모달 */}
+      {/* 🗓️ 등록 일정 상세 & 회신 목록 팝업 모달 */}
       {/* ========================================================================= */}
-      {scheduleDetailModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto cursor-pointer"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setScheduleDetailModal(null);
-          }}
-        >
+      {scheduleDetailModal && (() => {
+        const myId = currentProfile?.id;
+        const myName = workerFullName;
+
+        // 받은 사람 뷰 여부 판정 (공유받은 일정이 포함된 경우 '회신 목록' 및 '회신 등록' 모드로 전환)
+        const hasRecipientOnSelectedDate = (annualLeaves || []).some((l) => {
+          if (!l) return false;
+          const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
+          if (!matchUser) return false;
+          const targetDate = scheduleDetailModal.selectedDate;
+          const inDate = (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate;
+          return inDate && Boolean(l.isSharedRecipient || l.sharedBy);
+        });
+
+        const isRecipientModal = Boolean(scheduleDetailModal.isRecipient || hasRecipientOnSelectedDate);
+
+        return (
           <div
-            className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 border-blue-500/40 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto cursor-default"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto cursor-pointer"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setScheduleDetailModal(null);
+            }}
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-3.5 sm:p-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-white/20 text-white shrink-0">
-                  <Calendar className="w-5 h-5" />
+            <div
+              className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto cursor-default ${
+                isRecipientModal ? "border-purple-500/50" : "border-blue-500/40"
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div
+                className={`flex items-center justify-between p-3.5 sm:p-4 text-white ${
+                  isRecipientModal
+                    ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700"
+                    : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-white/20 text-white shrink-0">
+                    {isRecipientModal ? <MessageCircle className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
+                      <span>{isRecipientModal ? "회신 목록" : "등록 일정 상세 & 전체 목록"}</span>
+                    </h3>
+                    <p className="text-[11px] opacity-90 truncate">
+                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} {isRecipientModal ? "• 공유받은 일정 회신 목록" : ""}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
-                    <span>등록 일정 상세 & 전체 목록</span>
-                  </h3>
-                  <p className="text-[11px] opacity-90 truncate">
-                    [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setScheduleDetailModal(null)}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer shrink-0"
-                title="닫기"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 p-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-xs font-bold overflow-x-auto no-scrollbar">
-              <button
-                type="button"
-                onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "day" }))}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                  scheduleDetailModal.filterTab === "day"
-                    ? "bg-blue-600 text-white font-black shadow-xs"
-                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                }`}
-              >
-                <CalendarDays className="w-3.5 h-3.5" />
-                <span>
-                  선택 일자 ({scheduleDetailModal.selectedDate?.slice(5)}) (
-                  {
-                    (annualLeaves || []).filter((l) => {
-                      const myId = currentProfile?.id;
-                      const myName = workerFullName;
-                      const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
-                      if (!matchUser) return false;
-                      return (l.startDate || "") <= scheduleDetailModal.selectedDate && (l.endDate || l.startDate || "") >= scheduleDetailModal.selectedDate;
-                    }).length
-                  }
-                  건)
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "week" }))}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                  scheduleDetailModal.filterTab === "week"
-                    ? "bg-blue-600 text-white font-black shadow-xs"
-                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                }`}
-              >
-                <Calendar className="w-3.5 h-3.5" />
-                <span>
-                  이번 주간 (
-                  {
-                    myWeeklyCalendarDays.reduce((acc, d) => acc + (d.events?.length || 0), 0)
-                  }
-                  건)
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "all" }))}
-                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                  scheduleDetailModal.filterTab === "all"
-                    ? "bg-blue-600 text-white font-black shadow-xs"
-                    : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>
-                  전체 등록 이력 (
-                  {
-                    (annualLeaves || []).filter((l) => {
-                      const myId = currentProfile?.id;
-                      const myName = workerFullName;
-                      return (myId && l.userId === myId) || (myName && l.userName === myName);
-                    }).length
-                  }
-                  건)
-                </span>
-              </button>
-            </div>
-
-            {/* Modal Body - Schedules List */}
-            <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 max-h-[58vh]">
-              {(() => {
-                const myId = currentProfile?.id;
-                const myName = workerFullName;
-                let list = (annualLeaves || []).filter((l) => {
-                  if (!l) return false;
-                  return (myId && l.userId === myId) || (myName && l.userName === myName);
-                });
-
-                if (scheduleDetailModal.filterTab === "day") {
-                  const targetDate = scheduleDetailModal.selectedDate;
-                  list = list.filter((l) => (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate);
-                } else if (scheduleDetailModal.filterTab === "week") {
-                  const weekDates = myWeeklyCalendarDays.map((d) => d.dateStr);
-                  const minDate = weekDates[0] || "";
-                  const maxDate = weekDates[weekDates.length - 1] || "";
-                  list = list.filter((l) => {
-                    const s = l.startDate || "";
-                    const e = l.endDate || l.startDate || "";
-                    return s <= maxDate && e >= minDate;
-                  });
-                }
-
-                list.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
-
-                if (list.length === 0) {
-                  return (
-                    <div className="py-10 text-center space-y-3">
-                      <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
-                        <Calendar className="w-6 h-6" />
-                      </div>
-                      <p className="text-xs font-bold text-slate-500">
-                        {scheduleDetailModal.filterTab === "day"
-                          ? `${scheduleDetailModal.selectedDate}에 등록된 일정이 없습니다.`
-                          : scheduleDetailModal.filterTab === "week"
-                          ? "이번 주간에 등록된 일정이 없습니다."
-                          : "등록된 일정 내역이 없습니다."}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setScheduleSelectedDate(scheduleDetailModal.selectedDate);
-                          setScheduleDetailModal(null);
-                        }}
-                        className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-black transition-all cursor-pointer shadow-xs inline-flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>이 날짜로 새 일정 등록하기</span>
-                      </button>
-                    </div>
-                  );
-                }
-
-                return list.map((item) => {
-                  const isToday = (item.startDate || "") === todayDateStr;
-                  const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
-                  const isOrigin = Boolean(
-                    item.isSharedOrigin ||
-                    (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
-                    (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
-                  );
-                  const isDone = item.isCompleted || item.isDismissed;
-                  const isReplied = item.replyStatus === "REPLIED" || Boolean(item.replyText);
-
-                  const repliedCount = Array.isArray(item.sharedWithDetails)
-                    ? item.sharedWithDetails.filter((d) => d.status === "REPLIED" || Boolean(d.replyText)).length
-                    : 0;
-                  const totalSharedCount = Array.isArray(item.sharedWithDetails)
-                    ? item.sharedWithDetails.length
-                    : (item.sharedWith?.length || 0);
-
-                  return (
-                    <div
-                      key={item.id}
-                      className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
-                        isToday
-                          ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-400/80 shadow-xs ring-1 ring-blue-400/30"
-                          : isDone
-                          ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-75"
-                          : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs"
-                      }`}
-                    >
-                      {/* Top row: Badges & Actions */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-xs font-black shadow-2xs flex items-center gap-1">
-                            <span>{item.leaveType}</span>
-                          </span>
-
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-blue-500" />
-                            <span>
-                              {item.startDate}
-                              {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
-                            </span>
-                          </span>
-
-                          {isToday && (
-                            <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[10px] font-black animate-pulse">
-                              오늘
-                            </span>
-                          )}
-
-                          {isRecipient && (
-                            <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-black flex items-center gap-1">
-                              <MessageCircle className="w-3 h-3" />
-                              <span>공유받음 ({item.sharedBy || "동료작업자"})</span>
-                            </span>
-                          )}
-
-                          {isOrigin && (
-                            <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-black flex items-center gap-1">
-                              <Users className="w-3 h-3" />
-                              <span>공유 {totalSharedCount}명 {repliedCount > 0 ? `(회신 ${repliedCount}/${totalSharedCount})` : ""}</span>
-                            </span>
-                          )}
-
-                          {isDone && (
-                            <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
-                              완료됨
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Delete / Dismiss Action Buttons */}
-                        <div className="flex items-center gap-1.5">
-                          {isRecipient ? (
-                            !isDone && (
-                              <button
-                                type="button"
-                                onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                                title="보낸 작업자에게 답장을 보내고 일정을 삭제/완료합니다"
-                              >
-                                <MessageCircle className="w-3 h-3" />
-                                <span>답장 후 삭제</span>
-                              </button>
-                            )
-                          ) : isOrigin ? (
-                            <>
-                              {!isDone && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-black border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1"
-                                  title="공유 작업자들의 회신 내용을 확인하고 완료/삭제합니다"
-                                >
-                                  <Users className="w-3 h-3" />
-                                  <span>회신 확인 및 완료</span>
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => handleRequestDismissOrDelete(item, "delete")}
-                                className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-800 transition-all cursor-pointer flex items-center gap-0.5"
-                                title="일정 완전 삭제"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                <span>삭제</span>
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              {!isDone && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                  className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
-                                  title="일정 완료 처리"
-                                >
-                                  <CheckCheck className="w-3 h-3" />
-                                  <span>완료</span>
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => handleRequestDismissOrDelete(item, "delete")}
-                                className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-800 transition-all cursor-pointer flex items-center gap-0.5"
-                                title="일정 완전 삭제"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                <span>삭제</span>
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Content / Reason */}
-                      <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
-                        <div>
-                          <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
-                          <span>{item.reason || item.leaveType}</span>
-                        </div>
-
-                        {/* Recipient Reply Display */}
-                        {isRecipient && isReplied && (
-                          <div className="mt-1 pt-1.5 border-t border-purple-200/60 dark:border-purple-900/40 text-purple-900 dark:text-purple-200 text-[11px] flex items-center gap-1.5">
-                            <CheckCheck className="w-3 h-3 text-purple-600 shrink-0" />
-                            <span>
-                              내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
-                              {item.replyAt && <span className="opacity-75 text-[10px] ml-1">({item.replyAt.slice(0, 16).replace("T", " ")})</span>}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Origin Sender Replies Summary Preview */}
-                        {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
-                          <div className="mt-1 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 text-[11px] space-y-1">
-                            <span className="text-slate-500 font-bold block">공유 대상자 회신 현황:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {item.sharedWithDetails.map((d, dIdx) => (
-                                <span
-                                  key={dIdx}
-                                  className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border flex items-center gap-1 ${
-                                    d.status === "REPLIED" || Boolean(d.replyText)
-                                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800"
-                                      : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800"
-                                  }`}
-                                >
-                                  <span>{d.name}</span>
-                                  {d.status === "REPLIED" || Boolean(d.replyText) ? (
-                                    <span className="font-black text-emerald-600 dark:text-emerald-400">"{d.replyText || "확인"}"</span>
-                                  ) : (
-                                    <span className="text-amber-600 dark:text-amber-400 font-normal">미회신</span>
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Footer Info */}
-                      <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          <span>
-                            작성: {item.userName || workerFullName} ({item.plant || workerPlant})
-                          </span>
-                        </span>
-                        <span>
-                          등록: {item.createdAt ? item.createdAt.slice(0, 16).replace("T", " ") : item.createdDate || "-"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-500 truncate">
-                선택 일자: {scheduleDetailModal.selectedDate}
-              </span>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScheduleSelectedDate(scheduleDetailModal.selectedDate);
-                    setScheduleDetailModal(null);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>이 날짜로 일정 등록</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => setScheduleDetailModal(null)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer shrink-0"
+                  title="닫기"
                 >
-                  닫기
+                  <X className="w-4 h-4" />
                 </button>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1.5 p-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-xs font-bold overflow-x-auto no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "day" }))}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                    scheduleDetailModal.filterTab === "day"
+                      ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
+                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  }`}
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span>
+                    선택 일자 ({scheduleDetailModal.selectedDate?.slice(5)}) (
+                    {
+                      (annualLeaves || []).filter((l) => {
+                        const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
+                        if (!matchUser) return false;
+                        return (l.startDate || "") <= scheduleDetailModal.selectedDate && (l.endDate || l.startDate || "") >= scheduleDetailModal.selectedDate;
+                      }).length
+                    }
+                    건)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "week" }))}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                    scheduleDetailModal.filterTab === "week"
+                      ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
+                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>
+                    이번 주간 (
+                    {
+                      myWeeklyCalendarDays.reduce((acc, d) => acc + (d.events?.length || 0), 0)
+                    }
+                    건)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "all" }))}
+                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                    scheduleDetailModal.filterTab === "all"
+                      ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
+                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>
+                    {isRecipientModal ? "전체 회신 목록" : "전체 등록 이력"} (
+                    {
+                      (annualLeaves || []).filter((l) => {
+                        return (myId && l.userId === myId) || (myName && l.userName === myName);
+                      }).length
+                    }
+                    건)
+                  </span>
+                </button>
+              </div>
+
+              {/* Modal Body - Schedules List */}
+              <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 max-h-[58vh]">
+                {(() => {
+                  let list = (annualLeaves || []).filter((l) => {
+                    if (!l) return false;
+                    return (myId && l.userId === myId) || (myName && l.userName === myName);
+                  });
+
+                  if (scheduleDetailModal.filterTab === "day") {
+                    const targetDate = scheduleDetailModal.selectedDate;
+                    list = list.filter((l) => (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate);
+                  } else if (scheduleDetailModal.filterTab === "week") {
+                    const weekDates = myWeeklyCalendarDays.map((d) => d.dateStr);
+                    const minDate = weekDates[0] || "";
+                    const maxDate = weekDates[weekDates.length - 1] || "";
+                    list = list.filter((l) => {
+                      const s = l.startDate || "";
+                      const e = l.endDate || l.startDate || "";
+                      return s <= maxDate && e >= minDate;
+                    });
+                  }
+
+                  list.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+
+                  if (list.length === 0) {
+                    return (
+                      <div className="py-10 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
+                          {isRecipientModal ? <MessageCircle className="w-6 h-6" /> : <Calendar className="w-6 h-6" />}
+                        </div>
+                        <p className="text-xs font-bold text-slate-500">
+                          {scheduleDetailModal.filterTab === "day"
+                            ? `${scheduleDetailModal.selectedDate}에 등록된 ${isRecipientModal ? "회신 내역이" : "일정이"} 없습니다.`
+                            : scheduleDetailModal.filterTab === "week"
+                            ? `이번 주간에 등록된 ${isRecipientModal ? "회신 내역이" : "일정이"} 없습니다.`
+                            : `등록된 ${isRecipientModal ? "회신 내역이" : "일정 내역이"} 없습니다.`}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScheduleSelectedDate(scheduleDetailModal.selectedDate);
+                            setScheduleDetailModal(null);
+                          }}
+                          className={`px-3.5 py-1.5 rounded-lg text-white text-xs font-black transition-all cursor-pointer shadow-xs inline-flex items-center gap-1 ${
+                            isRecipientModal ? "bg-purple-600 hover:bg-purple-700" : "bg-blue-600 hover:bg-blue-700"
+                          }`}
+                        >
+                          {isRecipientModal ? <MessageCircle className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                          <span>{isRecipientModal ? "이 날짜로 회신 등록하기" : "이 날짜로 새 일정 등록하기"}</span>
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return list.map((item) => {
+                    const isToday = (item.startDate || "") === todayDateStr;
+                    const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
+                    const isOrigin = Boolean(
+                      item.isSharedOrigin ||
+                      (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
+                      (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
+                    );
+                    const isDone = item.isCompleted || item.isDismissed;
+                    const isReplied = item.replyStatus === "REPLIED" || Boolean(item.replyText);
+
+                    const repliedCount = Array.isArray(item.sharedWithDetails)
+                      ? item.sharedWithDetails.filter((d) => d.status === "REPLIED" || Boolean(d.replyText)).length
+                      : 0;
+                    const totalSharedCount = Array.isArray(item.sharedWithDetails)
+                      ? item.sharedWithDetails.length
+                      : (item.sharedWith?.length || 0);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
+                          isToday
+                            ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-400/80 shadow-xs ring-1 ring-blue-400/30"
+                            : isDone
+                            ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-75"
+                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs"
+                        }`}
+                      >
+                        {/* Top row: Badges & Actions */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-xs font-black shadow-2xs flex items-center gap-1">
+                              <span>{item.leaveType}</span>
+                            </span>
+
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-blue-500" />
+                              <span>
+                                {item.startDate}
+                                {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
+                              </span>
+                            </span>
+
+                            {isToday && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                                오늘
+                              </span>
+                            )}
+
+                            {isRecipient && (
+                              <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-black flex items-center gap-1">
+                                <MessageCircle className="w-3 h-3" />
+                                <span>공유받음 ({item.sharedBy || "동료작업자"})</span>
+                              </span>
+                            )}
+
+                            {isOrigin && (
+                              <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-black flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                <span>공유 {totalSharedCount}명 {repliedCount > 0 ? `(회신 ${repliedCount}/${totalSharedCount})` : ""}</span>
+                              </span>
+                            )}
+
+                            {isDone && (
+                              <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
+                                완료됨
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Delete / Dismiss Action Buttons */}
+                          <div className="flex items-center gap-1.5">
+                            {isRecipient ? (
+                              !isDone && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                  className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                                  title="보낸 작업자에게 답장을 보내고 일정을 삭제/완료합니다"
+                                >
+                                  <MessageCircle className="w-3 h-3" />
+                                  <span>답장 후 삭제</span>
+                                </button>
+                              )
+                            ) : isOrigin ? (
+                              <>
+                                {!isDone && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-black border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1"
+                                    title="공유 작업자들의 회신 내용을 확인하고 완료/삭제합니다"
+                                  >
+                                    <Users className="w-3 h-3" />
+                                    <span>회신 확인 및 완료</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestDismissOrDelete(item, "delete")}
+                                  className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-800 transition-all cursor-pointer flex items-center gap-0.5"
+                                  title="일정 완전 삭제"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>삭제</span>
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                {!isDone && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                    className="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
+                                    title="일정 완료 처리"
+                                  >
+                                    <CheckCheck className="w-3 h-3" />
+                                    <span>완료</span>
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRequestDismissOrDelete(item, "delete")}
+                                  className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-[11px] font-bold border border-rose-200 dark:border-rose-800 transition-all cursor-pointer flex items-center gap-0.5"
+                                  title="일정 완전 삭제"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>삭제</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Content / Reason */}
+                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
+                          <div>
+                            <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
+                            <span>{item.reason || item.leaveType}</span>
+                          </div>
+
+                          {/* Recipient Reply Display */}
+                          {isRecipient && isReplied && (
+                            <div className="mt-1 pt-1.5 border-t border-purple-200/60 dark:border-purple-900/40 text-purple-900 dark:text-purple-200 text-[11px] flex items-center gap-1.5">
+                              <CheckCheck className="w-3 h-3 text-purple-600 shrink-0" />
+                              <span>
+                                내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
+                                {item.replyAt && <span className="opacity-75 text-[10px] ml-1">({item.replyAt.slice(0, 16).replace("T", " ")})</span>}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Origin Sender Replies Summary Preview */}
+                          {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
+                            <div className="mt-1 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 text-[11px] space-y-1">
+                              <span className="text-slate-500 font-bold block">공유 대상자 회신 현황:</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {item.sharedWithDetails.map((d, dIdx) => (
+                                  <span
+                                    key={dIdx}
+                                    className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border flex items-center gap-1 ${
+                                      d.status === "REPLIED" || Boolean(d.replyText)
+                                        ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800"
+                                        : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800"
+                                    }`}
+                                  >
+                                    <span>{d.name}</span>
+                                    {d.status === "REPLIED" || Boolean(d.replyText) ? (
+                                      <span className="font-black text-emerald-600 dark:text-emerald-400">"{d.replyText || "확인"}"</span>
+                                    ) : (
+                                      <span className="text-amber-600 dark:text-amber-400 font-normal">미회신</span>
+                                    )}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Footer Info */}
+                        <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3 h-3" />
+                            <span>
+                              작성: {item.userName || workerFullName} ({item.plant || workerPlant})
+                            </span>
+                          </span>
+                          <span>
+                            등록: {item.createdAt ? item.createdAt.slice(0, 16).replace("T", " ") : item.createdDate || "-"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-500 truncate">
+                  선택 일자: {scheduleDetailModal.selectedDate}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetDate = scheduleDetailModal.selectedDate;
+                      const unreplied = (annualLeaves || []).find((l) => {
+                        const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
+                        if (!matchUser) return false;
+                        const inDate = (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate;
+                        return inDate && (l.isSharedRecipient || l.sharedBy) && !l.isCompleted && !l.isDismissed;
+                      });
+
+                      if (isRecipientModal && unreplied) {
+                        setScheduleDetailModal(null);
+                        setReplyTextInput("확인했습니다 👍");
+                        setSharedReplyModalItem(unreplied);
+                      } else {
+                        setScheduleSelectedDate(scheduleDetailModal.selectedDate);
+                        setScheduleDetailModal(null);
+                      }
+                    }}
+                    className={`px-3.5 py-1.5 rounded-xl text-white text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1 ${
+                      isRecipientModal
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25"
+                        : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/25"
+                    }`}
+                  >
+                    {isRecipientModal ? (
+                      <>
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>회신 등록</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>이 날짜로 일정 등록</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScheduleDetailModal(null)}
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+                  >
+                    닫기
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 💬 받은 작업자: 공유 일정 답장(회신) 전송 및 내 일정 삭제 모달 */}
