@@ -8,6 +8,27 @@ import {
   Trash2
 } from "lucide-react";
 
+const formatMonthDayWithDayOfWeek = (dateStr) => {
+  if (!dateStr) return "";
+  try {
+    const parts = dateStr.slice(0, 10).split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10);
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month - 1, day);
+      const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+      const dayName = dayNames[d.getDay()];
+      const mStr = String(month).padStart(2, "0");
+      const dStr = String(day).padStart(2, "0");
+      return `${mStr}/${dStr}(${dayName})`;
+    }
+  } catch (e) {
+    // fallback
+  }
+  return dateStr.slice(5);
+};
+
 export const RealtimeIssueBoard = ({
   activeIssues,
   displayedActiveIssues,
@@ -234,12 +255,12 @@ export const RealtimeIssueBoard = ({
                     {item.expireDate && (
                       <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         {isQualityAlert
-                          ? `🚨 등록일: ${item.expireDate.slice(5)}`
+                          ? `🚨 등록일: ${formatMonthDayWithDayOfWeek(item.expireDate)}`
                           : isMeeting
-                          ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
+                          ? `📅 회의: ${formatMonthDayWithDayOfWeek(item.expireDate)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
                           : isNotice
-                          ? `📅 만료: ~${item.expireDate.slice(5)}`
-                          : `🚩 D-DAY: ${item.expireDate.slice(5)}`}
+                          ? `📅 만료: ~${formatMonthDayWithDayOfWeek(item.expireDate)}`
+                          : `🚩 D-DAY: ${formatMonthDayWithDayOfWeek(item.expireDate)}`}
                       </span>
                     )}
                     {item.author && (
@@ -249,7 +270,7 @@ export const RealtimeIssueBoard = ({
                     )}
                   </div>
 
-                  {/* 우측 삭제 버튼 (회의일정과 동일하게 삭제 뱃지만 배치) */}
+                  {/* 우측 삭제 버튼 (빨간색 뱃지로 시인성 대폭 개선) */}
                   <div className="flex items-center gap-1.5 ml-auto shrink-0">
                     <button
                       type="button"
@@ -257,7 +278,7 @@ export const RealtimeIssueBoard = ({
                         e.stopPropagation();
                         onOpenDeleteModal(item, e);
                       }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
+                      className="p-1 sm:p-1.5 rounded-lg bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white dark:bg-rose-950/80 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white border border-rose-300 dark:border-rose-700 shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0 flex items-center justify-center"
                       title="이 항목 삭제"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

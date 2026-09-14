@@ -378,14 +378,14 @@ export const IssueLedgerModal = ({
                             <span>수정</span>
                           </button>
 
-                          {/* 2. 삭제 버튼 */}
+                          {/* 2. 삭제 버튼 (빨간색 뱃지로 시인성 개선) */}
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               onOpenDeleteModal(it, e, false);
                             }}
-                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
+                            className="p-1 sm:p-1.5 rounded-lg bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white dark:bg-rose-950/80 dark:hover:bg-rose-600 dark:text-rose-300 dark:hover:text-white border border-rose-300 dark:border-rose-700 shadow-2xs active:scale-95 transition-all cursor-pointer shrink-0 flex items-center justify-center"
                             title="이 항목 삭제"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
