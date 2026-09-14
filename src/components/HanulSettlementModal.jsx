@@ -62,8 +62,8 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
-  // UI View Modes: "form" (기본 입력), "split" (증빙 나란히 보기), "imageOnly" (이미지만 보기)
-  const [viewMode, setViewMode] = useState("form");
+  // UI View Modes: "split" (기본: 좌측 항목입력 / 우측 증빙뷰어), "form" (항목만 크게), "imageOnly" (이미지만 크게)
+  const [viewMode, setViewMode] = useState("split");
   const [isViewerModalOpen, setIsViewerModalOpen] = useState(false);
   const [activeViewerAttId, setActiveViewerAttId] = useState(null);
   const [activeViewerPageIndex, setActiveViewerPageIndex] = useState(0);
@@ -74,7 +74,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const [conversionError, setConversionError] = useState("");
   const fileInputRef = useRef(null);
 
-  // Keep a ref of latest values to prevent any race condition or lost inputs
+  // Keep a ref of latest values to prevent any lost inputs
   const latestStateRef = useRef({
     selectedMonth,
     products,
@@ -111,7 +111,6 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     const data = getHanulSettlementMonthData(selectedMonth);
     if (data) {
       setProducts(data.products || []);
-      // Ensure expenses are cleanly renumbered on initial load
       setExpenses(renumberExpenses(data.expenses || []));
       setAttachments(data.attachments || []);
       setSettlementDate(data.settlementDate || `${selectedMonth}-28`);
@@ -198,7 +197,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     });
   };
 
-  // Immediate save on input blur (focus out) to ensure the very last typed value is saved instantly
+  // Immediate save on input blur
   const handleInputBlur = () => {
     persistCurrentData(selectedMonth);
   };
@@ -218,17 +217,14 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     await persistCurrentData(selectedMonth, { expenses: updated });
   };
 
-  // 🌟 Delete Expense Item & Auto-Renumber Sequentially (1, 2, 3...)
+  // Delete Expense Item & Auto-Renumber Sequentially
   const handleDeleteExpenseItem = async (id) => {
     if (!window.confirm("이 지출/공제 항목을 삭제하시겠습니까?\n(삭제 후 나머지 항목들이 자동으로 재정렬 및 재번호 부여됩니다.)")) return;
     
-    // 1. Filter out deleted item
     const filtered = expenses.filter((e) => e.id !== id);
-    // 2. Automatically renumber remaining items cleanly
     const reordered = renumberExpenses(filtered);
     
     setExpenses(reordered);
-    // 3. Immediately persist the reordered list to guarantee latest values are saved
     await persistCurrentData(selectedMonth, { expenses: reordered });
   };
 
@@ -363,16 +359,16 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
-      <div className={`relative w-full ${viewMode === "split" ? "max-w-7xl" : "max-w-5xl"} bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border-2 border-emerald-500/50 flex flex-col max-h-[94vh] overflow-hidden transition-all duration-200`}>
+      <div className={`relative w-full ${viewMode === "split" ? "max-w-[96vw] xl:max-w-7xl" : "max-w-5xl"} bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border-2 border-emerald-500/50 flex flex-col max-h-[95vh] h-[92vh] overflow-hidden transition-all duration-200`}>
         {/* Top Header */}
-        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-500/30 shrink-0">
+        <div className="flex items-center justify-between px-3.5 py-2.5 sm:px-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-500/30 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-emerald-600/90 text-white shadow-sm ring-1 ring-white/20 shrink-0">
-              <Receipt className="w-5 h-5 text-emerald-200" />
+            <div className="p-1.5 rounded-xl bg-emerald-600/90 text-white shadow-sm ring-1 ring-white/20 shrink-0">
+              <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-200" />
             </div>
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-black text-white tracking-tight truncate">
+                <h2 className="text-xs sm:text-sm md:text-base font-black text-white tracking-tight truncate">
                   (주)한울 전월 정산표 • 공통비 및 지출 공제내역 등록
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-slate-950 shrink-0">
@@ -392,7 +388,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
         </div>
 
         {/* Top Controls: Dropdown Month Selector, View Mode Switches & Actions */}
-        <div className="p-2.5 sm:p-3 bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+        <div className="px-3 py-2 bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
           {/* Left: Dropdown Month Selector */}
           <div className="flex items-center gap-2 min-w-0">
             <label className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
@@ -402,7 +398,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             <select
               value={selectedMonth}
               onChange={(e) => handleMonthChange(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border-2 border-emerald-500/60 bg-white dark:bg-slate-800 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs cursor-pointer"
+              className="px-2.5 py-1 rounded-xl border-2 border-emerald-500/60 bg-white dark:bg-slate-800 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs cursor-pointer"
             >
               {monthDropdownOptions.map((opt) => (
                 <option key={opt.ym} value={opt.ym}>
@@ -413,36 +409,37 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
           </div>
 
           {/* Center: View Mode Toggle Tabs */}
-          <div className="flex items-center bg-slate-200/80 dark:bg-slate-800/80 p-1 rounded-xl gap-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("form")}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                viewMode === "form"
-                  ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-xs"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              📝 항목 입력
-            </button>
+          <div className="flex items-center bg-slate-200/80 dark:bg-slate-800/80 p-0.5 rounded-xl gap-0.5">
             <button
               type="button"
               onClick={() => setViewMode("split")}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
                 viewMode === "split"
                   ? "bg-emerald-600 text-white shadow-xs"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
-              title="증빙 이미지와 항목 입력을 한눈에 나란히 비교하며 입력"
+              title="좌측 항목 입력창과 우측 증빙 이미지 뷰어를 나란히 보며 작성"
             >
               <Columns2 className="w-3.5 h-3.5" />
-              <span>증빙 나란히 보기</span>
+              <span>나란히 보기 (좌:항목 / 우:뷰어)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("form")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                viewMode === "form"
+                  ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+              title="항목 입력창만 넓게 보기"
+            >
+              📝 항목만 보기
             </button>
             {attachments.length > 0 && (
               <button
                 type="button"
                 onClick={() => handleOpenViewer()}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-900 transition-all cursor-pointer"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-900 transition-all cursor-pointer"
                 title="변환된 증빙 이미지만 크게 보기"
               >
                 <Eye className="w-3.5 h-3.5 text-emerald-600" />
@@ -452,8 +449,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
           </div>
 
           {/* Right: File Upload & Actions */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Hidden File Input */}
+          <div className="flex items-center gap-1.5 ml-auto">
             <input
               type="file"
               ref={fileInputRef}
@@ -463,26 +459,25 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
               className="hidden"
             />
 
-            {/* Upload File Button */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isConverting}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
-              title="PDF, 엑셀, 영수증 사진을 업로드하면 자동으로 고화질 이미지로 변환됩니다"
+              className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black flex items-center gap-1 shadow-sm shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
+              title="PDF, 엑셀, 영수증 사진을 업로드하면 자동으로 고화질 이미지로 변환되어 우측 뷰어에 표시됩니다"
             >
               {isConverting ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <UploadCloud className="w-3.5 h-3.5 text-emerald-200" />
               )}
-              <span>{isConverting ? "이미지 변환중..." : "증빙 파일 업로드"}</span>
+              <span>{isConverting ? "변환중..." : "증빙 파일 업로드"}</span>
             </button>
 
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 text-slate-700 dark:text-slate-200 hover:text-emerald-700 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all shadow-2xs"
+              className="px-2 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-emerald-50 text-slate-700 dark:text-slate-200 hover:text-emerald-700 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
               title="지출공제 엑셀 파일 다운로드"
             >
               <Download className="w-3.5 h-3.5 text-emerald-600" />
@@ -492,7 +487,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             <button
               type="button"
               onClick={handleResetExpenses}
-              className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 text-slate-500 hover:text-rose-600 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+              className="px-2 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-rose-50 text-slate-500 hover:text-rose-600 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
               title="모든 항목 금액을 0원으로 초기화"
             >
               <RotateCcw className="w-3 h-3" />
@@ -503,15 +498,15 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
 
         {/* Conversion Status / Progress Banner */}
         {isConverting && (
-          <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/60 border-b border-emerald-300 dark:border-emerald-800 flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 animate-pulse">
-            <RefreshCw className="w-4 h-4 animate-spin text-emerald-600 shrink-0" />
+          <div className="px-4 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 border-b border-emerald-300 dark:border-emerald-800 flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 animate-pulse shrink-0">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
             <span>{conversionStatus}</span>
           </div>
         )}
 
         {/* Error Banner */}
         {conversionError && (
-          <div className="px-4 py-2 bg-rose-50 dark:bg-rose-950/60 border-b border-rose-300 dark:border-rose-800 flex items-center justify-between gap-2 text-xs font-bold text-rose-800 dark:text-rose-200">
+          <div className="px-4 py-1.5 bg-rose-50 dark:bg-rose-950/60 border-b border-rose-300 dark:border-rose-800 flex items-center justify-between gap-2 text-xs font-bold text-rose-800 dark:text-rose-200 shrink-0">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{conversionError}</span>
@@ -528,48 +523,50 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
 
         {/* Attached Files & Converted Images Quick Badge Bar */}
         {attachments.length > 0 && (
-          <div className="px-3 sm:px-4 py-2 bg-slate-100/90 dark:bg-slate-950/90 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto shrink-0 scrollbar-none">
-            <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase shrink-0 flex items-center gap-1">
-              <ImageIcon className="w-3.5 h-3.5 text-emerald-600" />
-              <span>변환된 증빙 이미지 ({attachments.length}개 파일):</span>
+          <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none">
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase shrink-0 flex items-center gap-1">
+              <ImageIcon className="w-3 h-3 text-emerald-600" />
+              <span>증빙 이미지 ({attachments.length}개):</span>
             </span>
 
             {attachments.map((att) => {
               const numPages = att.pages?.length || 1;
+              const isSelected = activeViewerAttId === att.id;
               return (
                 <div
                   key={att.id}
-                  className="flex items-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs overflow-hidden shrink-0 group hover:border-emerald-500 transition-all"
+                  className={`flex items-center rounded-lg border shadow-2xs overflow-hidden shrink-0 transition-all ${
+                    isSelected
+                      ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 ring-1 ring-emerald-400"
+                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-400"
+                  }`}
                 >
                   <button
                     type="button"
                     onClick={() => {
                       setActiveViewerAttId(att.id);
                       setActiveViewerPageIndex(0);
-                      if (viewMode !== "split") {
-                        setIsViewerModalOpen(true);
-                      }
                     }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-emerald-600 cursor-pointer"
-                    title={`클릭하여 '${att.fileName}' 변환 이미지 보기`}
+                    className="flex items-center gap-1 px-2 py-0.5 text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-emerald-600 cursor-pointer"
+                    title={`클릭하여 우측 뷰어에 '${att.fileName}' 표시`}
                   >
                     {att.fileType === "pdf" ? (
-                      <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <FileText className="w-3 h-3 text-rose-500 shrink-0" />
                     ) : att.fileType === "excel" ? (
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <FileSpreadsheet className="w-3 h-3 text-emerald-500 shrink-0" />
                     ) : (
-                      <ImageIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <ImageIcon className="w-3 h-3 text-blue-500 shrink-0" />
                     )}
-                    <span className="truncate max-w-[140px]">{att.fileName}</span>
-                    <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                      {numPages}장
+                    <span className="truncate max-w-[120px] sm:max-w-[160px] text-[11px]">{att.fileName}</span>
+                    <span className="px-1 py-0.2 rounded-full text-[9px] font-black bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                      {numPages}p
                     </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleDeleteAttachment(att.id)}
-                    className="px-1.5 py-1 text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer border-l border-slate-100 dark:border-slate-700"
+                    className="px-1 py-0.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer border-l border-slate-100 dark:border-slate-700"
                     title="증빙 삭제"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -581,87 +578,58 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="px-2 py-1 rounded-xl border border-dashed border-emerald-500/70 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+              className="px-2 py-0.5 rounded-lg border border-dashed border-emerald-500/70 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center gap-0.5 cursor-pointer shrink-0"
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-2.5 h-2.5" />
               <span>추가</span>
             </button>
           </div>
         )}
 
         {/* KPI Summary Card: Total Expense */}
-        <div className="px-4 py-2.5 bg-rose-50/60 dark:bg-rose-950/20 border-b border-rose-200/80 dark:border-rose-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+        <div className="px-3.5 py-2 bg-rose-50/60 dark:bg-rose-950/20 border-b border-rose-200/80 dark:border-rose-800/60 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-              {selectedMonth} 등록 항목: <strong className="text-slate-900 dark:text-white font-black">{expenses.length}개 항목</strong>
+              {selectedMonth} 등록 항목: <strong className="text-slate-900 dark:text-white font-black">{expenses.length}개</strong>
               {expenses.filter(e => e.amount > 0).length > 0 && (
                 <span className="text-rose-600 dark:text-rose-400 ml-1">
-                  ({expenses.filter(e => e.amount > 0).length}개 금액 입력됨)
+                  ({expenses.filter(e => e.amount > 0).length}개 입력됨)
                 </span>
               )}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs sm:text-sm font-black text-rose-700 dark:text-rose-300">
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs font-black text-rose-700 dark:text-rose-300">
               공통비 / 지출공제 총합계 :
             </span>
-            <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono">
+            <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 font-mono">
               - {formatAmount(calculatedTotals.totalExpense)}
             </span>
           </div>
         </div>
 
-        {/* Modal Main Content Area: Split-view or Form-only */}
+        {/* 🌟 Modal Main Content Area: Left = Input Items Panel / Right = Document Image Viewer Panel */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          {/* Left Panel: Converted Image Viewer (Visible in Split View Mode) */}
-          {viewMode === "split" && (
-            <div className="w-full md:w-1/2 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 p-2 sm:p-3 flex flex-col min-h-[350px] md:min-h-0 bg-slate-950">
-              <HanulDocumentImageViewer
-                attachments={attachments}
-                activeAttachmentId={activeViewerAttId}
-                initialPageIndex={activeViewerPageIndex}
-                isEmbedded={true}
-                onDeleteAttachment={handleDeleteAttachment}
-              />
-            </div>
-          )}
-
-          {/* Right Panel (or Full Panel): Expense Input Grid */}
-          <div className={`${viewMode === "split" ? "w-full md:w-1/2" : "w-full"} p-3 sm:p-4 overflow-y-auto flex-1 space-y-3`}>
-            {/* If no attachments and in split view, show quick upload guide */}
-            {viewMode === "split" && attachments.length === 0 && (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="p-4 rounded-2xl border-2 border-dashed border-emerald-500/50 hover:border-emerald-500 bg-emerald-50/30 hover:bg-emerald-50/60 dark:bg-emerald-950/10 dark:hover:bg-emerald-950/30 transition-all cursor-pointer text-center"
-              >
-                <UploadCloud className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-                <p className="text-xs font-black text-slate-800 dark:text-slate-200 mb-0.5">
-                  정산표 파일(PDF, 엑셀, 사진)을 업로드하여 좌측에 띄우세요
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  클릭하거나 파일을 드래그하면 즉시 고화질 이미지로 변환되어 표시됩니다.
-                </p>
-              </div>
-            )}
-
-            {/* Expense Items Grid */}
-            <div className={`grid grid-cols-1 ${viewMode === "split" ? "sm:grid-cols-1" : "md:grid-cols-2"} gap-2.5`}>
+          {/* 🌟 1. [LEFT PANEL]: Expense Input Grid (항목 패널이 왼쪽) - Slim & Compact for High Visibility */}
+          <div className={`${viewMode === "split" ? "w-full md:w-[50%] lg:w-[48%] border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800" : "w-full"} p-2.5 sm:p-3 overflow-y-auto flex flex-col space-y-1.5 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700`}>
+            {/* List of Compact Expense Item Rows */}
+            <div className={`grid grid-cols-1 ${viewMode === "form" ? "md:grid-cols-2" : "grid-cols-1"} gap-1.5`}>
               {expenses.map((exp, idx) => {
-                const isFilled = exp.amount > 0;
+                const isFilled = Number(exp.amount) > 0;
                 return (
                   <div
                     key={exp.id || idx}
-                    className={`p-3 rounded-2xl border transition-all ${
+                    className={`px-2.5 py-1.5 rounded-xl border transition-all ${
                       isFilled
-                        ? "bg-rose-50/50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 shadow-xs ring-1 ring-rose-400/30"
-                        : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300"
+                        ? "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 shadow-2xs ring-1 ring-rose-400/30"
+                        : "bg-slate-50/90 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300"
                     }`}
                   >
-                    {/* Top: Item Title & Delete Button */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
+                    {/* Line 1: Item Number Badge + Category Name + Delete Button */}
+                    <div className="flex items-center justify-between gap-1.5 mb-1">
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                        <span className="w-4 h-4 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-[10px] flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
                         <input
@@ -669,7 +637,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
                           value={exp.category}
                           onBlur={handleInputBlur}
                           onChange={(e) => handleExpenseChange(exp.id, "category", e.target.value)}
-                          className="w-full px-1.5 py-0.5 rounded bg-transparent font-black text-xs sm:text-sm text-slate-900 dark:text-white border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900"
+                          className="w-full px-1 py-0.5 rounded bg-transparent font-black text-xs text-slate-900 dark:text-white border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900"
                         />
                       </div>
 
@@ -679,37 +647,35 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
                         className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
                         title="항목 삭제 (삭제 시 순서가 자동 재정렬됩니다)"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
 
-                    {/* Input Grid: Clean Amount and Remark */}
-                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    {/* Line 2: Slim Amount Input + Note Input */}
+                    <div className="flex items-center gap-1.5">
                       {/* Amount Input with Thousands Separator */}
-                      <div className="sm:col-span-5 relative">
-                        <div className="flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500">
-                          <span className="pl-2.5 text-xs font-bold text-slate-400">₩</span>
-                          <input
-                            type="text"
-                            value={Number(exp.amount) > 0 ? Number(exp.amount).toLocaleString() : ""}
-                            placeholder="0"
-                            onFocus={(e) => e.target.select()}
-                            onBlur={handleInputBlur}
-                            onChange={(e) => handleExpenseChange(exp.id, "amount", e.target.value)}
-                            className="w-full px-2 py-2 text-right font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none bg-transparent"
-                          />
-                        </div>
+                      <div className="w-32 sm:w-36 shrink-0 relative flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500">
+                        <span className="pl-1.5 text-[10px] font-bold text-slate-400">₩</span>
+                        <input
+                          type="text"
+                          value={Number(exp.amount) > 0 ? Number(exp.amount).toLocaleString() : ""}
+                          placeholder="0"
+                          onFocus={(e) => e.target.select()}
+                          onBlur={handleInputBlur}
+                          onChange={(e) => handleExpenseChange(exp.id, "amount", e.target.value)}
+                          className="w-full px-1.5 py-1 text-right font-mono font-black text-xs text-slate-900 dark:text-white focus:outline-none bg-transparent"
+                        />
                       </div>
 
                       {/* Note / Evidence Input */}
-                      <div className="sm:col-span-7">
+                      <div className="flex-1 min-w-0">
                         <input
                           type="text"
                           value={exp.note || ""}
-                          placeholder="세부내역 및 증빙구분 입력 (예: 전자세금계산서, 이체 등)"
+                          placeholder="비고 / 증빙 (예: 세금계산서)"
                           onBlur={handleInputBlur}
                           onChange={(e) => handleExpenseChange(exp.id, "note", e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
+                          className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 truncate"
                         />
                       </div>
                     </div>
@@ -723,19 +689,32 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
               <button
                 type="button"
                 onClick={handleAddExpenseItem}
-                className="w-full py-2.5 rounded-xl border-2 border-dashed border-emerald-500/70 hover:border-emerald-500 bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-[0.99]"
+                className="w-full py-2 rounded-xl border-2 border-dashed border-emerald-500/70 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs active:scale-[0.99]"
               >
                 <span>항목 직접 추가</span>
               </button>
             </div>
           </div>
+
+          {/* 🌟 2. [RIGHT PANEL]: Converted Document Image Viewer Panel (뷰어 패널은 오른쪽) with Wheel Zoom & Pan Scroll */}
+          {viewMode === "split" && (
+            <div className="w-full md:w-[50%] lg:w-[52%] p-2 sm:p-2.5 flex flex-col min-h-[360px] md:min-h-0 bg-slate-950">
+              <HanulDocumentImageViewer
+                attachments={attachments}
+                activeAttachmentId={activeViewerAttId}
+                initialPageIndex={activeViewerPageIndex}
+                isEmbedded={true}
+                onDeleteAttachment={handleDeleteAttachment}
+              />
+            </div>
+          )}
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 sm:p-4 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
+        <div className="px-3.5 py-2 sm:px-4 bg-slate-50 dark:bg-slate-950/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
             {isSavedToast && (
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-black border border-emerald-300 animate-fadeIn flex items-center gap-1">
+              <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-black border border-emerald-300 animate-fadeIn flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 <span>지출 공제내역이 안전하게 저장되었습니다!</span>
               </span>
@@ -746,14 +725,14 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             <button
               type="button"
               onClick={handleModalClose}
-              className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black transition-all cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black transition-all cursor-pointer"
             >
               닫기
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-sm shadow-emerald-600/30 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-sm shadow-emerald-600/30 cursor-pointer active:scale-95"
             >
               <Save className="w-3.5 h-3.5" />
               <span>지출 공제내역 저장</span>
