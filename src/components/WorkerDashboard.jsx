@@ -439,20 +439,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const matrix = smartOvertimeData?.attendanceMatrix || [];
     const daily = calculateDailySummary(matrix, 8);
     const defaultMeta = {
-      "(주)오륙": { workers: 67, attended: 67, otHours: 97, totalHours: 633, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
-      "(주)조영산업": { workers: 18, attended: 18, otHours: 36, totalHours: 180, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
-      "한울": { workers: 12, attended: 12, otHours: 21, totalHours: 117, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
-      "부림텍": { workers: 10, attended: 10, otHours: 14, totalHours: 94, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
-      "유성": { workers: 5, attended: 5, otHours: 6, totalHours: 44, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
+      "(주)오륙": { workers: 67, attended: 67, otWorkers: 43, otHours: 97, totalHours: 633, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
+      "(주)조영산업": { workers: 18, attended: 18, otWorkers: 14, otHours: 36, totalHours: 180, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
+      "한울": { workers: 12, attended: 12, otWorkers: 8, otHours: 21, totalHours: 117, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
+      "부림텍": { workers: 10, attended: 10, otWorkers: 6, otHours: 14, totalHours: 94, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
+      "유성": { workers: 5, attended: 5, otWorkers: 3, otHours: 6, totalHours: 44, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
     };
 
     return ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"].map((name) => {
       const meta = defaultMeta[name];
       const b = daily?.companyBreakdown?.[name];
+      const calcOtWorkers = b ? ((b.ot19 || 0) + (b.ot21 || 0) + (b.ot22 || 0) + (b.specialNight || 0)) : meta.otWorkers;
       return {
         name,
         workers: b?.total ?? meta.workers,
         attended: b?.attended ?? meta.attended,
+        otWorkers: (calcOtWorkers && calcOtWorkers > 0) ? calcOtWorkers : meta.otWorkers,
         otHours: b?.otHours ?? meta.otHours,
         totalHours: b?.totalHours ?? meta.totalHours,
         dot: meta.dot,
@@ -3056,43 +3058,42 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        {/* 5 Company Today Overview Cards - Simple & Bold Number Design */}
+        {/* 5 Company Today Overview Cards - Simple & Slim 2-Metric Design */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
           {companyOverviewStats.map((comp) => (
             <div
               key={comp.name}
               onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
-              className={`p-3 rounded-2xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800 ${comp.borderHover} transition-all duration-200 shadow-sm hover:shadow-md cursor-pointer group flex flex-col justify-between space-y-2`}
+              className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800 ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
               title="클릭 시 5개사 근태/잔업 대장 상세관리로 이동"
             >
-              {/* Header: Company Name + Attendance Status */}
-              <div className="flex items-center justify-between gap-1 pb-1.5 border-b border-slate-200/70 dark:border-slate-800/80">
+              {/* Header: Company Name */}
+              <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-200/70 dark:border-slate-800/80">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className={`w-2 h-2 rounded-full ${comp.dot} shrink-0`}></span>
                   <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors truncate">
                     {comp.name}
                   </span>
                 </div>
-                <span className={`text-[10px] sm:text-[10.5px] font-mono font-black px-1.5 py-0.5 rounded-md border shrink-0 ${comp.badgeColor}`}>
-                  {comp.attended}/{comp.workers}명
-                </span>
               </div>
 
-              {/* Bold Large Metric Numbers Grid */}
+              {/* 2 Simple & Slim Metrics: 1. 전체 근로 대비 출근 인원 / 2. 잔업 투입 인원 */}
               <div className="grid grid-cols-2 gap-1.5">
-                {/* 당일 잔업 */}
-                <div className="bg-white dark:bg-slate-900/90 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-slate-800/90 text-center">
-                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">당일 잔업</div>
-                  <div className="font-mono font-black text-base sm:text-lg text-amber-600 dark:text-amber-400 leading-tight mt-0.5">
-                    +{comp.otHours}<span className="text-[10px] font-bold ml-0.5">H</span>
+                {/* 1. 출근 현황 */}
+                <div className="bg-white dark:bg-slate-900/90 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800/90 text-center flex flex-col justify-center">
+                  <div className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400">출근 현황</div>
+                  <div className="font-mono font-black text-xs sm:text-sm text-cyan-600 dark:text-cyan-300 leading-tight mt-0.5">
+                    {comp.attended}<span className="text-[10px] text-slate-400 font-bold">/{comp.workers}</span>
+                    <span className="text-[9.5px] font-bold ml-0.5 text-slate-500">명</span>
                   </div>
                 </div>
 
-                {/* 투입 공수 */}
-                <div className="bg-white dark:bg-slate-900/90 p-1.5 sm:p-2 rounded-xl border border-slate-200/80 dark:border-slate-800/90 text-center">
-                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400">투입 공수</div>
-                  <div className="font-mono font-black text-base sm:text-lg text-cyan-600 dark:text-cyan-300 leading-tight mt-0.5">
-                    {comp.totalHours}<span className="text-[10px] font-bold ml-0.5">H</span>
+                {/* 2. 잔업 투입 인원 */}
+                <div className="bg-white dark:bg-slate-900/90 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800/90 text-center flex flex-col justify-center">
+                  <div className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400">잔업 투입</div>
+                  <div className="font-mono font-black text-xs sm:text-sm text-amber-600 dark:text-amber-400 leading-tight mt-0.5">
+                    {comp.otWorkers}
+                    <span className="text-[9.5px] font-bold ml-0.5 text-slate-500">명</span>
                   </div>
                 </div>
               </div>
