@@ -262,7 +262,8 @@ export const addIssueReply = async (issueId, replyData) => {
     plant: replyData.plant || target.plant || "삼랑진공장",
     attendanceStatus: replyData.attendanceStatus || "확인",
     actionDate: replyData.actionDate || replyData.date || nowStr.slice(0, 10),
-    content: replyData.content ? replyData.content.trim() : "확인했습니다.",
+    content: replyData.content ? replyData.content.trim() : (replyData.files?.length > 0 ? "파일이 첨부되었습니다." : "확인했습니다."),
+    files: replyData.files || replyData.images || [],
     createdAt: nowStr
   };
 

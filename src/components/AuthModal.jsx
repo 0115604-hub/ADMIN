@@ -109,7 +109,8 @@ export const AuthModal = () => {
   const [actionOpinionForm, setActionOpinionForm] = useState({
     actionDate: "",
     author: "",
-    content: ""
+    content: "",
+    files: []
   });
 
   // Lightbox & Image Processing State
@@ -795,8 +796,9 @@ export const AuthModal = () => {
   const handleModalAddOpinion = async (e) => {
     if (e) e.preventDefault();
     const content = actionOpinionForm.content.trim();
-    if (!content) {
-      alert("조치 의견 내용을 입력해 주세요.");
+    const opinionFiles = actionOpinionForm.files || [];
+    if (!content && opinionFiles.length === 0) {
+      alert("조치 의견 내용 또는 첨부파일을 입력해 주세요.");
       return;
     }
     const authorName = actionOpinionForm.author || currentProfile?.name || allWorkers[0]?.name || "설유철";
@@ -811,13 +813,14 @@ export const AuthModal = () => {
           plant: authorObj?.plantName || editingIssue.plant || "삼랑진공장",
           attendanceStatus: "확인",
           actionDate: targetDate,
-          content: content
+          content: content || "파일이 첨부되었습니다.",
+          files: opinionFiles
         });
         if (updated) {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
           setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [] }));
-          setActionOpinionForm((prev) => ({ ...prev, content: "" }));
+          setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
         }
       } catch (err) {
         console.error("Add opinion error:", err);
@@ -835,12 +838,13 @@ export const AuthModal = () => {
         plant: authorObj?.plantName || newIssueForm.plant || "삼랑진공장",
         attendanceStatus: "확인",
         actionDate: targetDate,
-        content: content,
+        content: content || "파일이 첨부되었습니다.",
+        files: opinionFiles,
         createdAt: nowStr
       };
 
       setNewIssueForm((prev) => ({ ...prev, replies: [...(prev.replies || []), newOp] }));
-      setActionOpinionForm((prev) => ({ ...prev, content: "" }));
+      setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
     }
   };
 
@@ -934,28 +938,106 @@ export const AuthModal = () => {
     }
   };
 
-  // Image Upload Handlers
-  const handleIssueImageFiles = async (files) => {
+  // File & Image Upload Handlers (Photos & Excel)
+  const handleIssueFiles = async (files) => {
     if (!files || files.length === 0) return;
     setIsProcessingIssueImages(true);
-    const availableSlots = 3 - (newIssueForm.images?.length || 0);
-    const filesToProcess = Array.from(files).slice(0, availableSlots);
+    const filesArray = Array.from(files);
 
     try {
-      const compressedImages = await Promise.all(
-        filesToProcess.map((f) => compressImage(f, 1200, 1200, 0.8))
+      const processed = await Promise.all(
+        filesArray.map(async (file) => {
+          if (file.type.startsWith("image/")) {
+            const compressed = await compressImage(file, 1200, 1200, 0.8);
+            return compressed ? { ...compressed, fileType: "image" } : null;
+          } else {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onerror = reject;
+              reader.onload = (e) => {
+                const isExcel =
+                  file.name.endsWith(".xlsx") ||
+                  file.name.endsWith(".xls") ||
+                  file.name.endsWith(".csv") ||
+                  file.type.includes("sheet") ||
+                  file.type.includes("excel") ||
+                  file.type.includes("csv");
+                resolve({
+                  id: `file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  name: file.name,
+                  size: (file.size / 1024).toFixed(1) + " KB",
+                  fileType: isExcel ? "excel" : "file",
+                  dataUrl: e.target.result
+                });
+              };
+              reader.readAsDataURL(file);
+            });
+          }
+        })
       );
-      const valid = compressedImages.filter(Boolean);
+      const valid = processed.filter(Boolean);
       setNewIssueForm((prev) => ({
         ...prev,
         images: [...(prev.images || []), ...valid]
       }));
     } catch (err) {
-      console.error("Image compression error:", err);
-      alert("사진을 처리하는 중 오류가 발생했습니다.");
+      console.error("File processing error:", err);
+      alert("파일을 처리하는 중 오류가 발생했습니다.");
     } finally {
       setIsProcessingIssueImages(false);
     }
+  };
+
+  const handleOpinionFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const filesArray = Array.from(files);
+    try {
+      const processed = await Promise.all(
+        filesArray.map(async (file) => {
+          if (file.type.startsWith("image/")) {
+            const compressed = await compressImage(file, 1200, 1200, 0.8);
+            return compressed ? { ...compressed, fileType: "image" } : null;
+          } else {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onerror = reject;
+              reader.onload = (e) => {
+                const isExcel =
+                  file.name.endsWith(".xlsx") ||
+                  file.name.endsWith(".xls") ||
+                  file.name.endsWith(".csv") ||
+                  file.type.includes("sheet") ||
+                  file.type.includes("excel") ||
+                  file.type.includes("csv");
+                resolve({
+                  id: `op_file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  name: file.name,
+                  size: (file.size / 1024).toFixed(1) + " KB",
+                  fileType: isExcel ? "excel" : "file",
+                  dataUrl: e.target.result
+                });
+              };
+              reader.readAsDataURL(file);
+            });
+          }
+        })
+      );
+      const valid = processed.filter(Boolean);
+      setActionOpinionForm((prev) => ({
+        ...prev,
+        files: [...(prev.files || []), ...valid]
+      }));
+    } catch (err) {
+      console.error("Opinion file processing error:", err);
+      alert("의견 첨부파일을 처리하는 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleRemoveOpinionFile = (idx) => {
+    setActionOpinionForm((prev) => ({
+      ...prev,
+      files: (prev.files || []).filter((_, i) => i !== idx)
+    }));
   };
 
   const handleActionImageFiles = async (files) => {
@@ -1228,8 +1310,11 @@ export const AuthModal = () => {
         onModalAddReply={handleModalAddReply}
         onModalDeleteReply={handleModalDeleteReply}
         isProcessingIssueImages={isProcessingIssueImages}
-        onIssueImageFiles={handleIssueImageFiles}
+        onIssueFiles={handleIssueFiles}
+        onIssueImageFiles={handleIssueFiles}
         onRemoveIssueImage={handleRemoveIssueImage}
+        onOpinionFiles={handleOpinionFiles}
+        onRemoveOpinionFile={handleRemoveOpinionFile}
         isProcessingActionImages={isProcessingActionImages}
         onNewIssueActionImageFiles={handleNewIssueActionImageFiles}
         onRemoveNewIssueActionImage={handleRemoveNewIssueActionImage}
