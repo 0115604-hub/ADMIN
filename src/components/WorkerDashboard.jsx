@@ -1073,7 +1073,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleDismissMyLeave = async (leaveId) => {
     try {
       await completeOrDismissAnnualLeave(leaveId);
-      setToastMessage("일정이 완료되었습니다. (주차별 달력에는 기록이 보존됩니다)");
+      setToastMessage("일정이 완료되어 삭제되었습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
     } catch (err) {
@@ -1103,7 +1103,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return;
     }
 
-    // 3. 일반 개인 일정인 경우
+    // 3. 일반 개인 일정인 경우: 완료/삭제 모두 즉시 완전 삭제 처리
     if (actionType === "delete") {
       handleDeleteLeave(item.id);
     } else {
@@ -1136,16 +1136,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   };
 
   // ✓ 보낸 작업자: 회신 확인 완료 및 최종 삭제/완료 처리
-  const handleConfirmSenderDismiss = async (actionType = "complete") => {
+  const handleConfirmSenderDismiss = async (actionType = "delete") => {
     if (!sharedSenderConfirmModalItem) return;
     setConfirmSubmitting(true);
     try {
-      await confirmSharedLeaveReplies(sharedSenderConfirmModalItem.id, currentProfile, actionType);
-      setToastMessage(
-        actionType === "delete"
-          ? "공유 일정 회신을 확인하고 일정을 완전 삭제하였습니다."
-          : "공유 일정 회신을 확인하고 일정을 완료 처리하였습니다."
-      );
+      await confirmSharedLeaveReplies(sharedSenderConfirmModalItem.id, currentProfile, "delete");
+      setToastMessage("공유 일정 회신을 확인하고 일정을 완료(삭제)하였습니다.");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3500);
       setSharedSenderConfirmModalItem(null);
@@ -7245,11 +7241,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 <button
                   type="button"
                   disabled={confirmSubmitting}
-                  onClick={() => handleConfirmSenderDismiss("complete")}
+                  onClick={() => handleConfirmSenderDismiss("delete")}
                   className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black shadow-md shadow-blue-500/25 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  <span>{confirmSubmitting ? "처리 중..." : "✓ 회신 확인 완료 (달력 보존)"}</span>
+                  <span>{confirmSubmitting ? "처리 중..." : "✓ 회신 확인 및 완료 삭제"}</span>
                 </button>
               </div>
             </div>
