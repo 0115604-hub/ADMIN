@@ -942,7 +942,7 @@ export const IssueEditModal = ({
 
                   <div>
                     <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
-                      🎯 조치 목표/마감 일자 (직접 지정)
+                      🚩 조치 D-DAY/마감 일자 (직접 지정)
                     </label>
                     <input
                       type="date"
@@ -962,7 +962,7 @@ export const IssueEditModal = ({
                       <span>달력형 타임라인 & 일자별 의견 현황</span>
                     </span>
                     <span className="text-[9.5px] text-slate-400">
-                      * 날짜 클릭 시 목표일 지정 및 해당 일자 의견 등록으로 지정
+                      * 날짜 클릭 시 D-DAY 지정 및 해당 일자 의견 등록으로 지정
                     </span>
                   </div>
 
@@ -1004,7 +1004,7 @@ export const IssueEditModal = ({
                           <div className="my-0.5">
                             {day.isTarget ? (
                               <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-white text-blue-700 shadow-2xs">
-                                🎯목표
+                                🚩D-DAY
                               </span>
                             ) : day.isStart ? (
                               <span className="px-1 py-0.2 rounded text-[7.5px] font-black bg-indigo-600 text-white shadow-2xs">
