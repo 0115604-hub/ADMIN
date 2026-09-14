@@ -492,17 +492,21 @@ export const ElectronicApprovalView = () => {
     alert("문서가 [반려] 처리되었습니다.");
   };
 
-  // Delete Document (Only ADMIN)
+  // Delete Document (Only ADMIN - Permanent Deletion)
   const handleDelete = async (id, e) => {
     if (e) e.stopPropagation();
     if (!isAdmin) {
       alert("결재 문서 삭제 권한이 없습니다. (총괄관리자 ADMIN 전용)");
       return;
     }
-    if (window.confirm("이 결재 문서를 완전히 삭제하시겠습니까?")) {
+    if (window.confirm("이 결재 문서를 영구 삭제하시겠습니까?\n삭제된 문서는 다시 복구되지 않으며 결재함에서 완전히 제거됩니다.")) {
       const updated = await deleteApprovalDocument(id);
       setApprovalDocs(updated);
-      if (selectedDoc?.id === id) setSelectedDoc(null);
+      if (selectedDoc?.id === id) {
+        setSelectedDoc(null);
+        setActionType("APPROVE");
+      }
+      alert("결재 문서가 영구 삭제되었습니다.");
     }
   };
 

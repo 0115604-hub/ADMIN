@@ -16,7 +16,28 @@ import {
 import { isThisWeek, getThisWeekDateRange } from "../utils/dateUtils";
 
 const COLLECTION_NAME = "approval_documents";
+const DELETED_COLLECTION_NAME = "deleted_approval_documents";
 const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v8_stable";
+const DELETED_STORAGE_KEY = "oryuk_approval_deleted_ids_v8";
+
+// ⭐ Helper: Manage permanently deleted document IDs (Tombstone blacklist)
+export const getDeletedApprovalIds = () => {
+  try {
+    const raw = localStorage.getItem(DELETED_STORAGE_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch (e) {}
+  return new Set();
+};
+
+export const saveDeletedApprovalIds = (setOrArr) => {
+  try {
+    const arr = Array.from(setOrArr);
+    localStorage.setItem(DELETED_STORAGE_KEY, JSON.stringify(arr));
+  } catch (e) {}
+};
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
@@ -413,9 +434,10 @@ export const INITIAL_APPROVAL_DOCS = [
   }
 ];
 
-// Helper: Read local storage with normalization and seamless initial merge
+// Helper: Read local storage with normalization, initial docs and permanent deletion filtering
 export const getLocalApprovalDocs = () => {
   try {
+    const deletedIds = getDeletedApprovalIds();
     let data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
       const v7 = localStorage.getItem("oryuk_approval_documents_v7_clean");
@@ -434,13 +456,17 @@ export const getLocalApprovalDocs = () => {
     }
 
     const docMap = new Map();
-    // 1. Load initial authoritative docs
-    INITIAL_APPROVAL_DOCS.forEach((d) => docMap.set(d.id, d));
+    // 1. Load initial authoritative docs (excluding permanently deleted IDs)
+    INITIAL_APPROVAL_DOCS.forEach((d) => {
+      if (!deletedIds.has(d.id)) {
+        docMap.set(d.id, d);
+      }
+    });
 
-    // 2. Overlay existing stored items (keeping latest statuses and comments)
+    // 2. Overlay existing stored items (excluding permanently deleted IDs)
     if (Array.isArray(parsed)) {
       parsed.forEach((d) => {
-        if (d && d.id) {
+        if (d && d.id && !deletedIds.has(d.id)) {
           docMap.set(d.id, d);
         }
       });
@@ -451,30 +477,59 @@ export const getLocalApprovalDocs = () => {
     return merged;
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
-    return INITIAL_APPROVAL_DOCS;
+    const deletedIds = getDeletedApprovalIds();
+    return INITIAL_APPROVAL_DOCS.filter((d) => !deletedIds.has(d.id));
   }
 };
 
 // Helper: Save local storage
 export const saveLocalApprovalDocs = (docs) => {
   try {
-    const normalized = docs.map(normalizeApprovalDoc);
+    const deletedIds = getDeletedApprovalIds();
+    const cleanDocs = docs.filter((d) => d && !deletedIds.has(d.id));
+    const normalized = cleanDocs.map(normalizeApprovalDoc);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
     console.error("Local storage write error for approval documents:", e);
   }
 };
 
-// Real-time Cloud Synchronization with Robust Local Merge
+// Real-time Cloud Synchronization with Robust Local Merge & Permanent Deletion Blacklist
 export const subscribeApprovalDocs = (onUpdate) => {
   try {
+    // 1. Subscribe to deleted documents collection for real-time multi-device deletion
+    try {
+      onSnapshot(collection(db, DELETED_COLLECTION_NAME), (delSnap) => {
+        if (!delSnap.empty) {
+          const deletedIds = getDeletedApprovalIds();
+          let hasNewDeletes = false;
+          delSnap.forEach((d) => {
+            if (!deletedIds.has(d.id)) {
+              deletedIds.add(d.id);
+              hasNewDeletes = true;
+            }
+          });
+          if (hasNewDeletes) {
+            saveDeletedApprovalIds(deletedIds);
+            onUpdate(getLocalApprovalDocs());
+          }
+        }
+      }, () => {});
+    } catch (e) {}
+
     const colRef = collection(db, COLLECTION_NAME);
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        const deletedIds = getDeletedApprovalIds();
         const remoteDocs = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
+            if (deletedIds.has(d.id)) {
+              // Delete permanently from remote if previously marked deleted
+              deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
+              return;
+            }
             const rawDoc = { id: d.id, ...d.data() };
             const normalized = normalizeApprovalDoc(rawDoc);
             remoteDocs.push(normalized);
@@ -493,12 +548,12 @@ export const subscribeApprovalDocs = (onUpdate) => {
 
         // 1. Populate all local items first
         localDocs.forEach((d) => {
-          if (d && d.id) mergedMap.set(d.id, d);
+          if (d && d.id && !deletedIds.has(d.id)) mergedMap.set(d.id, d);
         });
 
         // 2. Overlay remote items
         remoteDocs.forEach((d) => {
-          if (d && d.id) {
+          if (d && d.id && !deletedIds.has(d.id)) {
             mergedMap.set(d.id, d);
           }
         });
@@ -507,6 +562,8 @@ export const subscribeApprovalDocs = (onUpdate) => {
         const seenOtKeys = new Set();
         const cleanList = [];
         for (const item of Array.from(mergedMap.values())) {
+          if (deletedIds.has(item.id)) continue;
+
           if (item.type === "OVERTIME") {
             const dateMatch = (item.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) || (item.docNumber || "").match(/09\d{2}/) || (item.id || "").match(/2026\d{4}/);
             const dateKey = dateMatch ? dateMatch[0] : (item.createdAt?.slice(0, 10) || item.id);
@@ -849,11 +906,28 @@ export const rejectDocumentStep = async (docId, stepIndex, rejectorName, rejectR
   return saved;
 };
 
-// Delete Document
+// Permanent Delete Document (영구 삭제)
 export const deleteApprovalDocument = async (id) => {
+  if (!id) return getLocalApprovalDocs();
+
+  // 1. Record in local deleted blacklist
+  const deletedIds = getDeletedApprovalIds();
+  deletedIds.add(id);
+  saveDeletedApprovalIds(deletedIds);
+
+  // 2. Remove from local storage
   const current = getLocalApprovalDocs();
   const updated = current.filter((d) => d.id !== id);
   saveLocalApprovalDocs(updated);
+
+  // 3. Remove from Firestore approval_documents and record in deleted_approval_documents
+  try {
+    await setDoc(doc(db, DELETED_COLLECTION_NAME, id), {
+      id,
+      deletedAt: new Date().toISOString(),
+      isDeleted: true
+    }, { merge: true });
+  } catch (e) {}
 
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, id));
@@ -955,12 +1029,18 @@ export const syncPlantOvertimeToApprovalBox = async ({
     }).replace(/\. /g, "-").replace(/\./g, "");
 
     const currentApprovalDocs = getLocalApprovalDocs();
+    const deletedIds = getDeletedApprovalIds();
     const syncedDocs = [];
 
     for (const targetPlant of targetPlants) {
       const targetCompanies = PLANT_COMPANIES_MAP[targetPlant] || [];
       const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
       const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+
+      // ⭐ If permanently deleted by ADMIN, never resurrect
+      if (deletedIds.has(canonicalDocId)) {
+        continue;
+      }
 
       // 🧹 1. Clean any duplicate overtime approval documents for this plant and date
       const duplicateDocs = currentApprovalDocs.filter(d => 
