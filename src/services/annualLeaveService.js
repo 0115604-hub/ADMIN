@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   setDoc,
+  getDoc,
   deleteDoc,
   getDocs,
   onSnapshot
@@ -180,6 +181,201 @@ export const completeOrDismissAnnualLeave = async (id) => {
     }
   } catch (e) {
     console.error("Firestore dismiss/complete annual leave error:", e);
+  }
+
+  return updatedLocal;
+};
+
+// 💬 받은 작업자: 답장(회신) 전송 및 내 일정에서 삭제/완료 처리
+export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientProfile) => {
+  const recId = String(recipientLeaveId);
+  const nowIso = new Date().toISOString();
+  const rName = recipientProfile?.name || "작업자";
+  const rId = recipientProfile?.id || "";
+  const rPlant = recipientProfile?.plant || "";
+  const rTitle = recipientProfile?.title || "선임";
+
+  const current = getLocalAnnualLeaves();
+  let originId = null;
+
+  // 1. Update recipient's leave record (REPLIED & Dismissed)
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === recId) {
+      originId = l.originLeaveId || null;
+      return {
+        ...l,
+        replyStatus: "REPLIED",
+        replyText: replyText.trim(),
+        replyAt: nowIso,
+        replyAuthor: rName,
+        isCompleted: true,
+        isDismissed: true,
+        completedAt: nowIso
+      };
+    }
+    return l;
+  });
+
+  // 2. If originLeaveId exists, update origin leave doc in local array
+  let targetOrigin = null;
+  if (originId) {
+    for (let i = 0; i < updatedLocal.length; i++) {
+      if (String(updatedLocal[i].id) === String(originId)) {
+        const origin = updatedLocal[i];
+        const prevDetails = Array.isArray(origin.sharedWithDetails) ? [...origin.sharedWithDetails] : [];
+        const matchIdx = prevDetails.findIndex((d) => d.name === rName || (rId && d.id === rId));
+
+        if (matchIdx >= 0) {
+          prevDetails[matchIdx] = {
+            ...prevDetails[matchIdx],
+            status: "REPLIED",
+            replyText: replyText.trim(),
+            replyAt: nowIso
+          };
+        } else {
+          prevDetails.push({
+            id: rId,
+            name: rName,
+            plant: rPlant,
+            title: rTitle,
+            status: "REPLIED",
+            replyText: replyText.trim(),
+            replyAt: nowIso
+          });
+        }
+
+        const prevReplies = Array.isArray(origin.replies) ? [...origin.replies] : [];
+        prevReplies.push({
+          id: `reply_${Date.now()}`,
+          author: rName,
+          authorId: rId,
+          plant: rPlant,
+          title: rTitle,
+          text: replyText.trim(),
+          createdAt: nowIso
+        });
+
+        updatedLocal[i] = {
+          ...origin,
+          sharedWithDetails: prevDetails,
+          replies: prevReplies,
+          hasNewReply: true,
+          updatedAt: nowIso
+        };
+        targetOrigin = updatedLocal[i];
+        break;
+      }
+    }
+  }
+
+  saveLocalAnnualLeaves(updatedLocal);
+
+  // 3. Sync recipient and origin docs to Firestore
+  try {
+    const recDoc = updatedLocal.find((l) => String(l.id) === recId);
+    if (recDoc) {
+      await setDoc(doc(db, COLLECTION_NAME, recId), sanitizeLeave(recDoc), { merge: true });
+    }
+    if (originId) {
+      if (targetOrigin) {
+        await setDoc(doc(db, COLLECTION_NAME, String(originId)), sanitizeLeave(targetOrigin), { merge: true });
+      } else {
+        // Fallback fetch from Firestore if origin wasn't in local cache
+        const originRef = doc(db, COLLECTION_NAME, String(originId));
+        const snap = await getDoc(originRef);
+        if (snap.exists()) {
+          const originData = snap.data();
+          const prevDetails = Array.isArray(originData.sharedWithDetails) ? [...originData.sharedWithDetails] : [];
+          const matchIdx = prevDetails.findIndex((d) => d.name === rName || (rId && d.id === rId));
+          if (matchIdx >= 0) {
+            prevDetails[matchIdx] = {
+              ...prevDetails[matchIdx],
+              status: "REPLIED",
+              replyText: replyText.trim(),
+              replyAt: nowIso
+            };
+          } else {
+            prevDetails.push({
+              id: rId,
+              name: rName,
+              plant: rPlant,
+              title: rTitle,
+              status: "REPLIED",
+              replyText: replyText.trim(),
+              replyAt: nowIso
+            });
+          }
+          const prevReplies = Array.isArray(originData.replies) ? [...originData.replies] : [];
+          prevReplies.push({
+            id: `reply_${Date.now()}`,
+            author: rName,
+            authorId: rId,
+            plant: rPlant,
+            title: rTitle,
+            text: replyText.trim(),
+            createdAt: nowIso
+          });
+          await setDoc(originRef, sanitizeLeave({
+            ...originData,
+            sharedWithDetails: prevDetails,
+            replies: prevReplies,
+            hasNewReply: true,
+            updatedAt: nowIso
+          }), { merge: true });
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Firestore sync error in replyToSharedLeave:", err);
+  }
+
+  return updatedLocal;
+};
+
+// ✓ 보낸 작업자: 회신(답변) 확인 완료 및 최종 삭제/완료 처리
+export const confirmSharedLeaveReplies = async (originLeaveId, senderProfile, actionType = "complete") => {
+  const origId = String(originLeaveId);
+  const nowIso = new Date().toISOString();
+  const sName = senderProfile?.name || "보낸작업자";
+
+  const current = getLocalAnnualLeaves();
+
+  if (actionType === "delete") {
+    // Complete deletion from local and Firestore
+    const filteredLocal = current.filter((l) => String(l.id) !== origId);
+    saveLocalAnnualLeaves(filteredLocal);
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, origId));
+    } catch (err) {
+      console.error("Firestore delete error in confirmSharedLeaveReplies:", err);
+    }
+    return filteredLocal;
+  }
+
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === origId) {
+      return {
+        ...l,
+        isConfirmedBySender: true,
+        confirmedAt: nowIso,
+        confirmedBy: sName,
+        isCompleted: true,
+        isDismissed: true,
+        completedAt: nowIso
+      };
+    }
+    return l;
+  });
+
+  saveLocalAnnualLeaves(updatedLocal);
+
+  try {
+    const origDoc = updatedLocal.find((l) => String(l.id) === origId);
+    if (origDoc) {
+      await setDoc(doc(db, COLLECTION_NAME, origId), sanitizeLeave(origDoc), { merge: true });
+    }
+  } catch (err) {
+    console.error("Firestore sync error in confirmSharedLeaveReplies:", err);
   }
 
   return updatedLocal;
