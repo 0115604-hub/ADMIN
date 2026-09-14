@@ -16,7 +16,8 @@ import {
   TrendingDown,
   Edit3,
   Save,
-  Check
+  Check,
+  X
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
@@ -156,7 +157,7 @@ const DEFAULT_MONTHLY_OP_RATES = {
   tpe: { "7월": "96.3%", "8월": "89.7%", "9월": "95.2%", default: "95.2%" }
 };
 
-const AVAILABLE_EDIT_MONTHS = ["7월", "8월", "9월", "10월", "11월", "12월", "1월", "2월", "3월", "4월", "5월", "6월"];
+const ALL_MONTHS = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
 
 const getLineOpRate = (lineObj, lineId, month) => {
   if (lineObj?.monthlyOperatingRates?.[month] !== undefined) {
@@ -249,52 +250,48 @@ export const ExtrusionDowntimeView = () => {
     return m ? m[1] : "9월";
   }, [selectedWeek]);
 
-  // Target month for manual indicator editing (월 선택 지원)
-  const [targetEditMonth, setTargetEditMonth] = useState(currentMonthStr);
+  // 1~12월 수동 지표 입력 모달 상태
+  const [modalEditMonth, setModalEditMonth] = useState(null);
+  const [modalOpRate, setModalOpRate] = useState("");
+  const [modalLossRate, setModalLossRate] = useState("");
 
-  useEffect(() => {
-    setTargetEditMonth(currentMonthStr);
-  }, [currentMonthStr, selectedLineId]);
+  const handleOpenMonthEditModal = (month) => {
+    const op = getLineOpRate(currentLine, selectedLineId, month);
+    const loss = getLineLossRate(currentLine, month);
+    setModalEditMonth(month);
+    setModalOpRate(op);
+    setModalLossRate(loss);
+  };
 
-  // Target Month's Operating Rate & LOSS Rate (수기 관리 연동)
-  const targetMonthlyOperatingRate = useMemo(() => {
-    return getLineOpRate(currentLine, selectedLineId, targetEditMonth);
-  }, [currentLine, selectedLineId, targetEditMonth]);
+  const handleCloseMonthEditModal = () => {
+    setModalEditMonth(null);
+    setModalOpRate("");
+    setModalLossRate("");
+  };
 
-  const targetMonthlyLossRate = useMemo(() => {
-    return getLineLossRate(currentLine, targetEditMonth);
-  }, [currentLine, targetEditMonth]);
-
-  const [tempOpRate, setTempOpRate] = useState(targetMonthlyOperatingRate);
-  const [tempLossRate, setTempLossRate] = useState(targetMonthlyLossRate);
-
-  useEffect(() => {
-    setTempOpRate(targetMonthlyOperatingRate);
-    setTempLossRate(targetMonthlyLossRate);
-  }, [targetMonthlyOperatingRate, targetMonthlyLossRate, selectedLineId, targetEditMonth]);
-
-  const handleSaveMonthlyRates = (e) => {
+  const handleSaveModalRates = (e) => {
     if (e && e.preventDefault) e.preventDefault();
+    if (!modalEditMonth) return;
 
-    let formattedOp = (tempOpRate || "").trim();
+    let formattedOp = (modalOpRate || "").trim();
     if (formattedOp && !formattedOp.endsWith("%") && !isNaN(Number(formattedOp))) {
       formattedOp = `${formattedOp}%`;
     }
-    if (!formattedOp) formattedOp = targetMonthlyOperatingRate || "93.0%";
+    if (!formattedOp) formattedOp = getLineOpRate(currentLine, selectedLineId, modalEditMonth);
 
-    let formattedLoss = (tempLossRate || "").trim();
+    let formattedLoss = (modalLossRate || "").trim();
     if (formattedLoss && !formattedLoss.endsWith("%") && !isNaN(Number(formattedLoss))) {
       formattedLoss = `${formattedLoss}%`;
     }
-    if (!formattedLoss) formattedLoss = targetMonthlyLossRate || "6.0%";
+    if (!formattedLoss) formattedLoss = getLineLossRate(currentLine, modalEditMonth);
 
     setDataStore((prev) => {
       const lineObj = { ...prev[selectedLineId] };
       const opRates = { ...(lineObj.monthlyOperatingRates || {}) };
       const lossRates = { ...(lineObj.monthlyLossRates || {}) };
 
-      opRates[targetEditMonth] = formattedOp;
-      lossRates[targetEditMonth] = formattedLoss;
+      opRates[modalEditMonth] = formattedOp;
+      lossRates[modalEditMonth] = formattedLoss;
 
       lineObj.monthlyOperatingRates = opRates;
       lineObj.monthlyLossRates = lossRates;
@@ -305,9 +302,8 @@ export const ExtrusionDowntimeView = () => {
       };
     });
 
-    setTempOpRate(formattedOp);
-    setTempLossRate(formattedLoss);
-    showToast(`💾 [${currentLine.name}] ${targetEditMonth} 월가동율(${formattedOp}) & 월누적LOSS율(${formattedLoss})이 저장되었습니다!`);
+    showToast(`💾 [${currentLine.name}] ${modalEditMonth} 가동율(${formattedOp}) & LOSS율(${formattedLoss})이 저장되었습니다!`);
+    handleCloseMonthEditModal();
   };
 
   // Selected Week Real-time SUM Totals
@@ -551,12 +547,12 @@ export const ExtrusionDowntimeView = () => {
     rows.push([
       `■ [${currentMonthStr}] 월간 누적 관리 지표`,
       "",
-      `월가동율: ${currentMonthlyOperatingRate}`,
-      `월누적LOSS율: ${currentMonthlyLossRate}`,
+      `월가동율: ${getLineOpRate(currentLine, selectedLineId, currentMonthStr)}`,
+      `월누적LOSS율: ${getLineLossRate(currentLine, currentMonthStr)}`,
       "",
       "",
-      "수기 지표 연동",
-      "관리자 수기 입력 완료"
+      "수동 지표 연동",
+      "관리자 수동 입력 완료"
     ]);
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -955,126 +951,164 @@ export const ExtrusionDowntimeView = () => {
                   (=SUM 실시간 자동 계산 연동)
                 </td>
               </tr>
-              {/* 상세작업실적표 맨 아래 월가동율 & 월누적LOSS율 뱃지 행 */}
-              <tr className="bg-gradient-to-r from-slate-50 via-teal-50/20 to-amber-50/20 border-t border-slate-200 text-xs font-bold">
-                <td colSpan={4} className="py-3 px-4 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Sparkles className="w-4 h-4 text-teal-600" />
-                    <span className="text-slate-900 font-black text-xs">
-                      [{currentLine.name}] {targetEditMonth} 월간 누적 관리 지표 :
-                    </span>
-                    {targetEditMonth !== currentMonthStr && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold">
-                        {targetEditMonth} 조회/수정 중
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td colSpan={2} className="py-2.5 px-3 text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-300 font-black text-xs shadow-xs">
-                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{targetEditMonth} 월가동율:</span>
-                    <span className="text-emerald-700 font-black text-sm bg-white px-2 py-0.5 rounded-md border border-emerald-200">
-                      {targetMonthlyOperatingRate}
-                    </span>
-                  </div>
-                </td>
-                <td colSpan={3} className="py-2.5 px-3 text-center">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 font-black text-xs shadow-xs">
-                    <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{targetEditMonth} 월누적LOSS율:</span>
-                    <span className="text-amber-800 font-black text-sm bg-white px-2 py-0.5 rounded-md border border-amber-200">
-                      {targetMonthlyLossRate}
-                    </span>
-                  </div>
-                </td>
-              </tr>
             </tfoot>
           </table>
         </div>
 
-        {/* 상세작업실적표 맨 아래: 월가동율 & 월누적LOSS율 수기 등록/수정 뱃지 툴바 */}
-        <div className="p-4 bg-slate-900 text-white border-t border-slate-800 flex flex-col xl:flex-row items-center justify-between gap-3.5">
-          <div className="flex items-center gap-3 w-full xl:w-auto">
-            <div className="p-2.5 rounded-xl bg-teal-500/20 border border-teal-400/30 text-teal-300 flex-shrink-0">
-              <Edit3 className="w-4 h-4" />
+        {/* 상세작업실적표 맨 아래: 1~12월 정렬된 작은 패널 그리드 (탭하면 가동율/LOSS율 수동 입력 모달) */}
+        <div className="p-4 bg-slate-900 border-t border-slate-800 text-white space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-teal-400"></div>
+              <span className="text-xs sm:text-sm font-black text-white">
+                📊 [{currentLine.name}] 1~12월 가동율 및 LOSS율 관리 패널
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 font-bold">
+                패널 탭 ➔ 수동 입력
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-black text-sm text-white">
-                  📌 {currentLine.name} • {targetEditMonth} 월간 지표 수기 입력 / 수정 뱃지
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                  월별 선택 및 실시간 자동 저장
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
-                수정할 대상 월(7~12월 등)을 선택하고 가동율/LOSS율을 입력 후 [지표 저장]을 누르면 해당 월 지표로 영구 저장됩니다.
-              </p>
-            </div>
+            <span className="text-[11px] text-slate-400 font-medium">
+              원하는 월 패널을 탭(클릭)하면 가동율과 LOSS율을 수동으로 입력/수정할 수 있습니다.
+            </span>
           </div>
 
-          <form onSubmit={handleSaveMonthlyRates} className="flex items-center gap-2.5 flex-wrap w-full xl:w-auto justify-start xl:justify-end">
-            {/* 1. 대상 월 선택 드롭다운 뱃지 */}
-            <div className="flex items-center bg-slate-800 border border-teal-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-teal-400 transition">
-              <div className="flex items-center gap-1.5 text-teal-300 text-xs font-black whitespace-nowrap">
-                <Calendar className="w-3.5 h-3.5 text-teal-400" />
-                <span>대상 월 :</span>
-              </div>
-              <select
-                value={targetEditMonth}
-                onChange={(e) => setTargetEditMonth(e.target.value)}
-                className="text-xs font-black px-2.5 py-1 rounded-lg bg-slate-900 text-teal-300 border border-teal-500/40 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
-              >
-                {AVAILABLE_EDIT_MONTHS.map((m) => (
-                  <option key={m} value={m}>
-                    {m} {m === currentMonthStr ? "(당주 월)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* 1~12월 12개 정렬된 패널 그리드 */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2">
+            {ALL_MONTHS.map((m) => {
+              const opRate = getLineOpRate(currentLine, selectedLineId, m);
+              const lossRate = getLineLossRate(currentLine, m);
+              const isCurrent = m === currentMonthStr;
 
-            {/* 2. 월가동율 수기 뱃지 */}
-            <div className="flex items-center bg-slate-800 border border-emerald-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-emerald-400 transition">
-              <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black whitespace-nowrap">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{targetEditMonth} 월가동율 :</span>
-              </div>
-              <input
-                type="text"
-                value={tempOpRate}
-                onChange={(e) => setTempOpRate(e.target.value)}
-                placeholder="예: 93.4%"
-                className="w-20 px-2 py-1 text-xs font-black text-center rounded-lg bg-slate-900 text-emerald-300 border border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-              />
-            </div>
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => handleOpenMonthEditModal(m)}
+                  className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between group cursor-pointer active:scale-95 ${
+                    isCurrent
+                      ? "bg-slate-800/95 border-teal-500 ring-2 ring-teal-500/30 shadow-md hover:bg-slate-800"
+                      : "bg-slate-800/60 border-slate-700/70 hover:border-teal-400/60 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-700/60 mb-1.5">
+                    <span className={`text-xs font-black ${isCurrent ? "text-amber-400" : "text-slate-200 group-hover:text-white"}`}>
+                      {m}
+                    </span>
+                    {isCurrent ? (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                        당월
+                      </span>
+                    ) : (
+                      <Edit3 className="w-3 h-3 text-slate-500 group-hover:text-teal-400 transition" />
+                    )}
+                  </div>
 
-            {/* 3. 월누적LOSS율 수기 뱃지 */}
-            <div className="flex items-center bg-slate-800 border border-amber-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-amber-400 transition">
-              <div className="flex items-center gap-1.5 text-amber-300 text-xs font-black whitespace-nowrap">
-                <TrendingDown className="w-3.5 h-3.5 text-amber-400" />
-                <span>{targetEditMonth} 월누적LOSS율 :</span>
-              </div>
-              <input
-                type="text"
-                value={tempLossRate}
-                onChange={(e) => setTempLossRate(e.target.value)}
-                placeholder="예: 6.6%"
-                className="w-20 px-2 py-1 text-xs font-black text-center rounded-lg bg-slate-900 text-amber-300 border border-amber-500/50 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
-            </div>
-
-            {/* 저장 버튼 */}
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md"
-            >
-              <Save className="w-3.5 h-3.5" />
-              {targetEditMonth} 지표 저장
-            </button>
-          </form>
+                  <div className="space-y-1 text-[10px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-bold">가동:</span>
+                      <span className="text-emerald-400 font-black">{opRate || "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-bold">LOSS:</span>
+                      <span className="text-amber-400 font-black">{lossRate || "-"}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* 1~12월 개별 지표 수동 입력 모달 */}
+      {modalEditMonth && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xl w-full max-w-sm space-y-4 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900">
+                    [{currentLine.name}] {modalEditMonth} 지표 수동 입력
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    가동율과 LOSS율을 수동으로 입력해 주세요.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseMonthEditModal}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveModalRates} className="space-y-3.5">
+              {/* 1. 월가동율 입력 */}
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1 flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span>{modalEditMonth} 월가동율 (%)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={modalOpRate}
+                    onChange={(e) => setModalOpRate(e.target.value)}
+                    placeholder="예: 93.4 또는 93.4%"
+                    autoFocus
+                    className="w-full px-3.5 py-2.5 text-sm font-black rounded-xl border border-slate-200 bg-emerald-50/40 text-emerald-900 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                    %
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. 월누적 LOSS율 입력 */}
+              <div>
+                <label className="block text-xs font-black text-slate-700 mb-1 flex items-center gap-1.5">
+                  <TrendingDown className="w-4 h-4 text-amber-600" />
+                  <span>{modalEditMonth} 월누적 LOSS율 (%)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={modalLossRate}
+                    onChange={(e) => setModalLossRate(e.target.value)}
+                    placeholder="예: 6.6 또는 6.6%"
+                    className="w-full px-3.5 py-2.5 text-sm font-black rounded-xl border border-slate-200 bg-amber-50/40 text-amber-900 focus:bg-white focus:ring-2 focus:ring-amber-500 outline-none"
+                  />
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
+                    %
+                  </span>
+                </div>
+              </div>
+
+              {/* 버튼 그룹 */}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseMonthEditModal}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-black hover:bg-slate-100 transition cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black flex items-center gap-1.5 shadow-md transition active:scale-95 cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  {modalEditMonth} 지표 저장
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
