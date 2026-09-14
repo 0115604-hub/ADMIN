@@ -554,6 +554,50 @@ export const OvertimeStatusView = () => {
     setHasUnsavedChanges(true);
   };
 
+  // 1-Click Copy Previous Day's Attendance to Selected Day for All Filtered Workers
+  const handleSetAllFilteredWorkersSameAsPrevDay = () => {
+    if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
+    const prevDay = selectedDay - 1;
+    if (prevDay < 1) {
+      triggerToast("⚠️ 1일은 전일(이전 일자) 데이터가 존재하지 않습니다.");
+      return;
+    }
+
+    const updatedMatrix = [...smartData.attendanceMatrix];
+    let appliedCount = 0;
+
+    filteredAttendanceWorkers.forEach((worker) => {
+      const idx = worker.originalMatrixIndex;
+      if (updatedMatrix[idx]) {
+        const prevDaily = updatedMatrix[idx].daily || {};
+        const prevVal =
+          prevDaily[prevDay] !== undefined
+            ? prevDaily[prevDay]
+            : prevDaily[String(prevDay)] !== undefined
+            ? prevDaily[String(prevDay)]
+            : worker.daily?.[prevDay] !== undefined
+            ? worker.daily[prevDay]
+            : worker.daily?.[String(prevDay)] || "";
+
+        if (prevVal) appliedCount++;
+
+        updatedMatrix[idx] = {
+          ...updatedMatrix[idx],
+          daily: { ...prevDaily, [selectedDay]: prevVal }
+        };
+      }
+    });
+
+    const newLedger = {
+      ...smartData,
+      attendanceMatrix: updatedMatrix
+    };
+
+    setSmartData(newLedger);
+    setHasUnsavedChanges(true);
+    triggerToast(`📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 전일(9월 ${prevDay}일)과 동일한 근태가 일괄 적용되었습니다.`);
+  };
+
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
   const handleSetAllFilteredWorkersRegular = () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
@@ -1397,7 +1441,16 @@ export const OvertimeStatusView = () => {
                   (조회 {filteredAttendanceWorkers.length}명)
                 </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSetAllFilteredWorkersSameAsPrevDay}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-indigo-500 ring-2 ring-indigo-400/20"
+                  title={`전일(9월 ${selectedDay > 1 ? selectedDay - 1 : 1}일)과 동일한 근태를 현재 선택된 9월 ${selectedDay}일에 일괄 적용합니다`}
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>📋 전일과동일</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleSetAllFilteredWorkersRegular}
@@ -1405,7 +1458,7 @@ export const OvertimeStatusView = () => {
                   title="조회된 모든 작업자의 오늘 근태를 '정시(🟢)'로 일괄 선택합니다"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  <span>🟢 정시 전체선택</span>
+                  <span>🟢 정시전체선택</span>
                 </button>
               </div>
             </div>
