@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   X,
   Save,
@@ -31,6 +31,23 @@ import { convertFileToImages } from "../utils/fileToImageConverter";
 import HanulDocumentImageViewer from "./HanulDocumentImageViewer";
 import * as XLSX from "xlsx";
 
+/**
+ * Helper to renumber expense categories sequentially (1. ..., 2. ..., 3. ...)
+ */
+export const renumberExpenses = (items) => {
+  if (!items || !Array.isArray(items)) return [];
+  return items.map((item, idx) => {
+    const newNum = idx + 1;
+    const rawCat = item.category || "";
+    // Strip existing leading number e.g. "1. ", "12. ", "4) "
+    const cleanName = rawCat.replace(/^\d+\s*[\.\)]\s*/, "").trim();
+    return {
+      ...item,
+      category: `${newNum}. ${cleanName || "공통비/공제 항목"}`
+    };
+  });
+};
+
 export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08" }) => {
   const { formatAmount } = useCurrency() || { formatAmount: (v) => `₩${Number(v || 0).toLocaleString()}` };
 
@@ -43,6 +60,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const [settlementDate, setSettlementDate] = useState("");
   const [status, setStatus] = useState("DRAFT");
   const [isSavedToast, setIsSavedToast] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // UI View Modes: "form" (기본 입력), "split" (증빙 나란히 보기), "imageOnly" (이미지만 보기)
   const [viewMode, setViewMode] = useState("form");
@@ -55,6 +73,25 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const [conversionStatus, setConversionStatus] = useState("");
   const [conversionError, setConversionError] = useState("");
   const fileInputRef = useRef(null);
+
+  // Keep a ref of latest values to prevent any race condition or lost inputs
+  const latestStateRef = useRef({
+    selectedMonth,
+    products,
+    expenses,
+    attachments,
+    settlementDate
+  });
+
+  useEffect(() => {
+    latestStateRef.current = {
+      selectedMonth,
+      products,
+      expenses,
+      attachments,
+      settlementDate
+    };
+  }, [selectedMonth, products, expenses, attachments, settlementDate]);
 
   // Available Month Dropdown Options
   const monthDropdownOptions = [
@@ -74,7 +111,8 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     const data = getHanulSettlementMonthData(selectedMonth);
     if (data) {
       setProducts(data.products || []);
-      setExpenses(data.expenses || []);
+      // Ensure expenses are cleanly renumbered on initial load
+      setExpenses(renumberExpenses(data.expenses || []));
       setAttachments(data.attachments || []);
       setSettlementDate(data.settlementDate || `${selectedMonth}-28`);
       setStatus(data.status || "DRAFT");
@@ -101,10 +139,53 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     };
   }, [products, expenses]);
 
+  // Core Persistence Function: Always guarantees saving the latest data to storage & Firestore
+  const persistCurrentData = useCallback(async (targetMonth = selectedMonth, overrides = {}) => {
+    const currentExpenses = overrides.expenses !== undefined ? overrides.expenses : latestStateRef.current.expenses;
+    const currentAttachments = overrides.attachments !== undefined ? overrides.attachments : latestStateRef.current.attachments;
+    const currentProducts = overrides.products !== undefined ? overrides.products : latestStateRef.current.products;
+    const currentSettlementDate = overrides.settlementDate !== undefined ? overrides.settlementDate : latestStateRef.current.settlementDate;
+
+    const totalQty = currentProducts.reduce((s, p) => s + (Number(p.qty) || 0), 0);
+    const supplyAmount = currentProducts.reduce((s, p) => s + (Number(p.unitPrice || 0) * Number(p.qty || 0)), 0);
+    const taxAmount = Math.round(supplyAmount * 0.1);
+    const totalWithTax = supplyAmount + taxAmount;
+    const totalExpense = currentExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const netSettlement = totalWithTax > 0 ? (totalWithTax - totalExpense) : (totalExpense > 0 ? -totalExpense : 0);
+
+    const monthData = {
+      yearMonth: targetMonth,
+      sheetCode: targetMonth.replace("-", "").slice(2),
+      settlementDate: currentSettlementDate || `${targetMonth}-28`,
+      status: totalExpense > 0 || totalQty > 0 ? "CONFIRMED" : "DRAFT",
+      products: currentProducts,
+      expenses: currentExpenses,
+      attachments: currentAttachments,
+      totalQty,
+      supplyAmount,
+      taxAmount,
+      totalWithTax,
+      totalExpense,
+      netSettlement
+    };
+
+    await saveHanulSettlementMonthData(targetMonth, monthData);
+    return monthData;
+  }, [selectedMonth]);
+
+  // Debounced Auto-Save: Whenever user stops typing for 600ms, automatically persist the latest values
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(async () => {
+      await persistCurrentData(selectedMonth);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [expenses, attachments, products, settlementDate, selectedMonth, isOpen, persistCurrentData]);
+
   // Handle Expense Change with thousands separator support
   const handleExpenseChange = (id, field, value) => {
-    setExpenses((prev) =>
-      prev.map((e) => {
+    setExpenses((prev) => {
+      const updated = prev.map((e) => {
         if (e.id !== id) return e;
         if (field === "amount") {
           const cleanStr = String(value).replace(/[^0-9]/g, "");
@@ -112,29 +193,43 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
           return { ...e, amount: isNaN(num) ? 0 : num };
         }
         return { ...e, [field]: value };
-      })
-    );
+      });
+      return updated;
+    });
+  };
+
+  // Immediate save on input blur (focus out) to ensure the very last typed value is saved instantly
+  const handleInputBlur = () => {
+    persistCurrentData(selectedMonth);
   };
 
   // Add Custom Expense Item (No + icon on button)
-  const handleAddExpenseItem = () => {
+  const handleAddExpenseItem = async () => {
     const newId = `exp_custom_${Date.now()}`;
     const nextCode = expenses.length + 1;
-    setExpenses((prev) => [
-      ...prev,
-      {
-        id: newId,
-        category: `${nextCode}. 신규 공통비/공제 항목`,
-        amount: 0,
-        note: ""
-      }
-    ]);
+    const newItem = {
+      id: newId,
+      category: `${nextCode}. 신규 공통비/공제 항목`,
+      amount: 0,
+      note: ""
+    };
+    const updated = [...expenses, newItem];
+    setExpenses(updated);
+    await persistCurrentData(selectedMonth, { expenses: updated });
   };
 
-  // Delete Expense Item
-  const handleDeleteExpenseItem = (id) => {
-    if (!window.confirm("이 지출/공제 항목을 삭제하시겠습니까?")) return;
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  // 🌟 Delete Expense Item & Auto-Renumber Sequentially (1, 2, 3...)
+  const handleDeleteExpenseItem = async (id) => {
+    if (!window.confirm("이 지출/공제 항목을 삭제하시겠습니까?\n(삭제 후 나머지 항목들이 자동으로 재정렬 및 재번호 부여됩니다.)")) return;
+    
+    // 1. Filter out deleted item
+    const filtered = expenses.filter((e) => e.id !== id);
+    // 2. Automatically renumber remaining items cleanly
+    const reordered = renumberExpenses(filtered);
+    
+    setExpenses(reordered);
+    // 3. Immediately persist the reordered list to guarantee latest values are saved
+    await persistCurrentData(selectedMonth, { expenses: reordered });
   };
 
   // Handle File Upload & Conversion to Image
@@ -165,10 +260,11 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     }
 
     if (newAttachments.length > 0) {
-      setAttachments((prev) => [...prev, ...newAttachments]);
-      // If no active viewer attachment, select the first newly added
+      const mergedAttachments = [...attachments, ...newAttachments];
+      setAttachments(mergedAttachments);
       setActiveViewerAttId(newAttachments[0].id);
       setActiveViewerPageIndex(0);
+      await persistCurrentData(selectedMonth, { attachments: mergedAttachments });
     }
 
     setIsConverting(false);
@@ -179,10 +275,10 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   };
 
   // Delete Attachment
-  const handleDeleteAttachment = (attId) => {
-    setAttachments((prev) => prev.filter((a) => a.id !== attId));
+  const handleDeleteAttachment = async (attId) => {
+    const remaining = attachments.filter((a) => a.id !== attId);
+    setAttachments(remaining);
     if (activeViewerAttId === attId) {
-      const remaining = attachments.filter((a) => a.id !== attId);
       if (remaining.length > 0) {
         setActiveViewerAttId(remaining[0].id);
         setActiveViewerPageIndex(0);
@@ -191,6 +287,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
         setIsViewerModalOpen(false);
       }
     }
+    await persistCurrentData(selectedMonth, { attachments: remaining });
   };
 
   // Open Full-Screen Image Viewer
@@ -205,29 +302,35 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     setIsViewerModalOpen(true);
   };
 
-  // Save Current Month Data
-  const handleSave = async () => {
-    const monthData = {
-      yearMonth: selectedMonth,
-      sheetCode: selectedMonth.replace("-", "").slice(2),
-      settlementDate,
-      status: calculatedTotals.totalExpense > 0 || calculatedTotals.totalQty > 0 ? "CONFIRMED" : "DRAFT",
-      products,
-      expenses,
-      attachments,
-      ...calculatedTotals
-    };
+  // Month Change: Save current month before switching
+  const handleMonthChange = async (newMonth) => {
+    if (newMonth === selectedMonth) return;
+    await persistCurrentData(selectedMonth);
+    setSelectedMonth(newMonth);
+  };
 
-    await saveHanulSettlementMonthData(selectedMonth, monthData);
-    setStatus(monthData.status);
+  // Explicit Save Current Month Data
+  const handleSave = async () => {
+    setIsAutoSaving(true);
+    const saved = await persistCurrentData(selectedMonth);
+    setStatus(saved.status);
+    setIsAutoSaving(false);
     setIsSavedToast(true);
     setTimeout(() => setIsSavedToast(false), 3000);
   };
 
+  // Close Modal: Save latest values automatically on exit
+  const handleModalClose = async () => {
+    await persistCurrentData(selectedMonth);
+    onClose();
+  };
+
   // Reset All Expenses to 0
-  const handleResetExpenses = () => {
+  const handleResetExpenses = async () => {
     if (!window.confirm("모든 지출/공제 금액을 0원으로 초기화하시겠습니까?")) return;
-    setExpenses((prev) => prev.map((e) => ({ ...e, amount: 0 })));
+    const resetList = expenses.map((e) => ({ ...e, amount: 0 }));
+    setExpenses(resetList);
+    await persistCurrentData(selectedMonth, { expenses: resetList });
   };
 
   // Export to Excel
@@ -281,7 +384,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleModalClose}
             className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -298,7 +401,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             </label>
             <select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              onChange={(e) => handleMonthChange(e.target.value)}
               className="px-3 py-1.5 rounded-xl border-2 border-emerald-500/60 bg-white dark:bg-slate-800 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs cursor-pointer"
             >
               {monthDropdownOptions.map((opt) => (
@@ -564,6 +667,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
                         <input
                           type="text"
                           value={exp.category}
+                          onBlur={handleInputBlur}
                           onChange={(e) => handleExpenseChange(exp.id, "category", e.target.value)}
                           className="w-full px-1.5 py-0.5 rounded bg-transparent font-black text-xs sm:text-sm text-slate-900 dark:text-white border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900"
                         />
@@ -573,7 +677,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
                         type="button"
                         onClick={() => handleDeleteExpenseItem(exp.id)}
                         className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
-                        title="항목 삭제"
+                        title="항목 삭제 (삭제 시 순서가 자동 재정렬됩니다)"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -590,6 +694,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
                             value={Number(exp.amount) > 0 ? Number(exp.amount).toLocaleString() : ""}
                             placeholder="0"
                             onFocus={(e) => e.target.select()}
+                            onBlur={handleInputBlur}
                             onChange={(e) => handleExpenseChange(exp.id, "amount", e.target.value)}
                             className="w-full px-2 py-2 text-right font-mono font-black text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none bg-transparent"
                           />
@@ -602,6 +707,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
                           type="text"
                           value={exp.note || ""}
                           placeholder="세부내역 및 증빙구분 입력 (예: 전자세금계산서, 이체 등)"
+                          onBlur={handleInputBlur}
                           onChange={(e) => handleExpenseChange(exp.id, "note", e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
                         />
@@ -631,7 +737,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             {isSavedToast && (
               <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-black border border-emerald-300 animate-fadeIn flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>지출 공제내역과 증빙 이미지가 안전하게 저장되었습니다!</span>
+                <span>지출 공제내역이 안전하게 저장되었습니다!</span>
               </span>
             )}
           </div>
@@ -639,7 +745,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleModalClose}
               className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black transition-all cursor-pointer"
             >
               닫기
