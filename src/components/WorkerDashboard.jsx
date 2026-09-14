@@ -6539,10 +6539,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
-                      <span>{isRecipientModal ? "공유받은 내용 및 답변" : "등록 일정 상세 & 전체 목록"}</span>
+                      <span>{isRecipientModal ? "공유받은 내용 & 답장" : "등록 일정 상세 & 전체 목록"}</span>
                     </h3>
                     <p className="text-[11px] opacity-90 truncate">
-                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} {isRecipientModal ? "• 공유받은 내용 및 답변 목록" : ""}
+                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} {isRecipientModal ? "• 공유받은 내용 & 답장 목록" : ""}
                     </p>
                   </div>
                 </div>
@@ -6611,7 +6611,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>
-                    {isRecipientModal ? "공유받은 내용 및 답변" : "전체 등록 이력"} (
+                    {isRecipientModal ? "공유받은 내용 & 답장" : "전체 등록 이력"} (
                     {
                       (annualLeaves || []).filter((l) => {
                         return (myId && l.userId === myId) || (myName && l.userName === myName);
@@ -6657,7 +6657,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             ? `${scheduleDetailModal.selectedDate}에 등록된 ${isRecipientModal ? "공유받은 내용이" : "일정이"} 없습니다.`
                             : scheduleDetailModal.filterTab === "week"
                             ? `이번 주간에 등록된 ${isRecipientModal ? "공유받은 내용이" : "일정이"} 없습니다.`
-                            : `등록된 ${isRecipientModal ? "공유받은 내용 및 답변이" : "일정 내역이"} 없습니다.`}
+                            : `등록된 ${isRecipientModal ? "공유받은 내용 & 답장이" : "일정 내역이"} 없습니다.`}
                         </p>
                         {!isRecipientModal && (
                           <button
