@@ -554,15 +554,98 @@ export const OvertimeStatusView = () => {
     setHasUnsavedChanges(true);
   };
 
-  // 1-Click Copy Previous Day's Attendance to Selected Day for All Filtered Workers
+  // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day for All Filtered Workers
   const handleSetAllFilteredWorkersSameAsPrevDay = () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
-    const prevDay = selectedDay - 1;
-    if (prevDay < 1) {
-      triggerToast("⚠️ 1일은 전일(이전 일자) 데이터가 존재하지 않습니다.");
+    if (selectedDay <= 1) {
+      triggerToast("⚠️ 1일은 이전 일자 데이터가 존재하지 않습니다.");
       return;
     }
 
+    const currentDt = new Date(2026, 8, selectedDay);
+    const currentDow = currentDt.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
+
+    // Helper: checks if a day has any worker attendance configured
+    const hasDataOnDay = (d) => {
+      if (!d || d < 1 || d >= selectedDay) return false;
+      return (smartData.attendanceMatrix || []).some((w) => {
+        const v = w.daily ? String(w.daily[d] || "").trim() : "";
+        return v && v !== "-" && v !== "휴무";
+      });
+    };
+
+    let targetSourceDay = null;
+
+    // Case 1: Monday (월요일) -> Look for closest weekday in previous week (금 -> 목 -> 수 -> 화 -> 월)
+    if (currentDow === 1) {
+      for (let offset = 3; offset <= 7; offset++) {
+        const candidate = selectedDay - offset;
+        if (candidate >= 1 && hasDataOnDay(candidate)) {
+          targetSourceDay = candidate;
+          break;
+        }
+      }
+      if (!targetSourceDay) {
+        // Look for any preceding weekday with data down to day 1
+        for (let d = selectedDay - 1; d >= 1; d--) {
+          const dDt = new Date(2026, 8, d);
+          const dDow = dDt.getDay();
+          if (dDow !== 0 && dDow !== 6 && hasDataOnDay(d)) {
+            targetSourceDay = d;
+            break;
+          }
+        }
+      }
+      if (!targetSourceDay) {
+        targetSourceDay = Math.max(1, selectedDay - 3);
+      }
+    }
+    // Case 2: Sunday (일요일) -> Check previous Friday or Thursday
+    else if (currentDow === 0) {
+      for (let offset = 2; offset <= 6; offset++) {
+        const candidate = selectedDay - offset;
+        if (candidate >= 1 && hasDataOnDay(candidate)) {
+          targetSourceDay = candidate;
+          break;
+        }
+      }
+      if (!targetSourceDay) {
+        targetSourceDay = Math.max(1, selectedDay - 2);
+      }
+    }
+    // Case 3: Saturday (토요일) -> Check previous Friday
+    else if (currentDow === 6) {
+      for (let offset = 1; offset <= 5; offset++) {
+        const candidate = selectedDay - offset;
+        if (candidate >= 1 && hasDataOnDay(candidate)) {
+          targetSourceDay = candidate;
+          break;
+        }
+      }
+      if (!targetSourceDay) {
+        targetSourceDay = Math.max(1, selectedDay - 1);
+      }
+    }
+    // Case 4: Tuesday ~ Friday (화~금) -> Check selectedDay - 1, then search backwards if empty
+    else {
+      if (hasDataOnDay(selectedDay - 1)) {
+        targetSourceDay = selectedDay - 1;
+      } else {
+        for (let d = selectedDay - 1; d >= 1; d--) {
+          const dDt = new Date(2026, 8, d);
+          const dDow = dDt.getDay();
+          if (dDow !== 0 && dDow !== 6 && hasDataOnDay(d)) {
+            targetSourceDay = d;
+            break;
+          }
+        }
+        if (!targetSourceDay) {
+          targetSourceDay = selectedDay - 1;
+        }
+      }
+    }
+
+    const sourceDayLabel = getDayOfWeekKorean(targetSourceDay);
     const updatedMatrix = [...smartData.attendanceMatrix];
     let appliedCount = 0;
 
@@ -570,20 +653,25 @@ export const OvertimeStatusView = () => {
       const idx = worker.originalMatrixIndex;
       if (updatedMatrix[idx]) {
         const prevDaily = updatedMatrix[idx].daily || {};
-        const prevVal =
-          prevDaily[prevDay] !== undefined
-            ? prevDaily[prevDay]
-            : prevDaily[String(prevDay)] !== undefined
-            ? prevDaily[String(prevDay)]
-            : worker.daily?.[prevDay] !== undefined
-            ? worker.daily[prevDay]
-            : worker.daily?.[String(prevDay)] || "";
+        let sourceVal =
+          prevDaily[targetSourceDay] !== undefined
+            ? prevDaily[targetSourceDay]
+            : prevDaily[String(targetSourceDay)] !== undefined
+            ? prevDaily[String(targetSourceDay)]
+            : worker.daily?.[targetSourceDay] !== undefined
+            ? worker.daily[targetSourceDay]
+            : worker.daily?.[String(targetSourceDay)] || "";
 
-        if (prevVal) appliedCount++;
+        // If source value was empty, "-" or unrecorded, default to regular "🟢" so attendance table visibly reflects data
+        if (!sourceVal || sourceVal === "-" || sourceVal === "undefined" || sourceVal === "휴무") {
+          sourceVal = "🟢";
+        }
+
+        if (sourceVal) appliedCount++;
 
         updatedMatrix[idx] = {
           ...updatedMatrix[idx],
-          daily: { ...prevDaily, [selectedDay]: prevVal }
+          daily: { ...prevDaily, [selectedDay]: sourceVal }
         };
       }
     });
@@ -595,7 +683,13 @@ export const OvertimeStatusView = () => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    triggerToast(`📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 전일(9월 ${prevDay}일)과 동일한 근태가 일괄 적용되었습니다.`);
+
+    const isMonday = currentDow === 1;
+    const msg = isMonday
+      ? `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전주 평일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다.`
+      : `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 전일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다.`;
+
+    triggerToast(msg);
   };
 
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
