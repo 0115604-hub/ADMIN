@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Calendar,
   Shield,
+  MessageSquare,
   Edit3,
   ChevronUp,
   ChevronDown,
@@ -220,80 +221,7 @@ export const IssueLedgerModal = ({
           </button>
         </div>
 
-        {/* 📅 [오픈이슈 전용 일정표] - 오픈이슈 탭에서만 일정표 노출 */}
-        {(ledgerCategoryTab === "open_issue" || ledgerCategoryTab === "quality_issue") && (
-          <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-blue-950/40 via-slate-900 to-indigo-950/30 border-2 border-blue-500/40 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-blue-400" />
-                <strong className="text-xs sm:text-sm font-black text-blue-300">
-                  오픈이슈 조치/목표 일정표 (Schedule Timeline)
-                </strong>
-              </div>
-              {selectedScheduleDate ? (
-                <button
-                  type="button"
-                  onClick={() => setSelectedScheduleDate("")}
-                  className="text-[11px] font-bold text-blue-400 hover:text-blue-200 underline cursor-pointer"
-                >
-                  {selectedScheduleDate} 필터 해제 (전체 보기) ✕
-                </button>
-              ) : (
-                <span className="text-[10.5px] text-slate-400">
-                  * 날짜 클릭 시 해당 일자 오픈이슈만 필터링됩니다.
-                </span>
-              )}
-            </div>
 
-            {/* 7-Days Schedule Strip */}
-            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-xs">
-              {openIssueScheduleDays?.map((day) => {
-                const isSelected = selectedScheduleDate === day.dateStr;
-                return (
-                  <button
-                    key={day.dateStr}
-                    type="button"
-                    onClick={() => {
-                      setSelectedScheduleDate((prev) => (prev === day.dateStr ? "" : day.dateStr));
-                      setIssueModalPage(1);
-                    }}
-                    className={`p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex flex-col items-center justify-between min-h-[54px] ${
-                      isSelected
-                        ? "bg-orange-600 text-white border-orange-400 ring-2 ring-orange-400/50 shadow-md scale-105"
-                        : day.isToday
-                        ? "bg-orange-950/60 border-orange-500/80 text-orange-200 ring-1 ring-orange-500/30 font-black"
-                        : day.totalCount > 0
-                        ? "bg-slate-800 border-slate-700 hover:border-orange-400/60 text-slate-200"
-                        : "bg-slate-800/40 border-slate-700/50 text-slate-500 opacity-60 hover:opacity-100"
-                    }`}
-                  >
-                    <div className="text-[9.5px] sm:text-[10px] font-mono leading-tight">
-                      {day.isToday ? "오늘" : `${day.dateStr.slice(5)}`}
-                      <span className="block text-[8.5px] opacity-75">({day.dayName})</span>
-                    </div>
-                    <div className="mt-1">
-                      {day.unresolvedCount > 0 ? (
-                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-black ${
-                          isSelected ? "bg-white text-rose-600" : "bg-rose-600 text-white"
-                        }`}>
-                          미결 {day.unresolvedCount}
-                        </span>
-                      ) : day.resolvedCount > 0 ? (
-                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-black ${
-                          isSelected ? "bg-white text-emerald-600" : "bg-emerald-600/80 text-white"
-                        }`}>
-                          ✓ {day.resolvedCount}
-                        </span>
-                      ) : (
-                        <span className="text-[9px] text-slate-500">-</span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* 🗂️ [종결삭제관리 전용 안내 바] */}
         {(ledgerCategoryTab === "closed_deleted" || ledgerCategoryTab === "deleted") && (
@@ -405,9 +333,18 @@ export const IssueLedgerModal = ({
                             {isItMeeting ? "회의종결" : "조치완료"}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shrink-0 animate-pulse">
-                            {isItMeeting ? "회의예정" : "조치대기"}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenEditIssue(it, null, true, true);
+                            }}
+                            className="px-2 py-1 rounded-lg text-[10.5px] font-black bg-blue-50 hover:bg-blue-100 active:scale-95 text-blue-700 dark:bg-blue-950/70 dark:hover:bg-blue-900/70 dark:text-blue-300 border border-blue-300 dark:border-blue-700 shrink-0 cursor-pointer transition-all shadow-2xs flex items-center gap-1"
+                            title="조치 의견 및 진행상황 등록"
+                          >
+                            <MessageSquare className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                            <span>의견등록</span>
+                          </button>
                         )}
 
                         <button
@@ -421,7 +358,7 @@ export const IssueLedgerModal = ({
                               ? "bg-amber-500 text-slate-950 border-amber-600 shadow-amber-500/25 ring-2 ring-amber-400/40"
                               : "bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
                           }`}
-                          title="수정 및 결과 입력 메뉴 열기"
+                          title="수정 메뉴 열기"
                         >
                           <Edit3 className="w-3 h-3" />
                           <span>수정</span>
@@ -482,22 +419,7 @@ export const IssueLedgerModal = ({
                             </>
                           ) : (
                             <>
-                              {/* 1. 회의결과입력 / 조치결과입력 */}
-                              <button
-                                type="button"
-                                onClick={(e) => onExecuteMeetingResult(it, e)}
-                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-black shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer text-white ${
-                                  isItMeeting
-                                    ? "bg-purple-600 hover:bg-purple-700 shadow-purple-500/20"
-                                    : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/20"
-                                }`}
-                                title={isItMeeting ? "회의 결과 및 결정사항 입력" : "조치 결과 입력"}
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{isItMeeting ? "회의결과입력" : "조치결과입력"}</span>
-                              </button>
-
-                              {/* 2. 내용수정 */}
+                              {/* 1. 내용수정 */}
                               <button
                                 type="button"
                                 onClick={(e) => onExecuteEditContent(it, e)}
@@ -508,7 +430,7 @@ export const IssueLedgerModal = ({
                                 <span>내용수정</span>
                               </button>
 
-                              {/* 3. 삭제 버튼 */}
+                              {/* 2. 삭제 버튼 */}
                               <button
                                 type="button"
                                 onClick={(e) => {
