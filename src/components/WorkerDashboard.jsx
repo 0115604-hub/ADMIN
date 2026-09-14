@@ -52,7 +52,8 @@ import {
   Image as ImageIcon,
   Copy,
   Eye,
-  MessageCircle
+  MessageCircle,
+  RotateCcw
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -133,6 +134,7 @@ import {
   saveAnnualLeave,
   deleteAnnualLeave,
   completeOrDismissAnnualLeave,
+  reactivateAnnualLeave,
   getUserLeaveStatus,
   replyToSharedLeave,
   confirmSharedLeaveReplies
@@ -1073,11 +1075,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleDismissMyLeave = async (leaveId) => {
     try {
       await completeOrDismissAnnualLeave(leaveId);
-      setToastMessage("일정이 완료되어 삭제되었습니다.");
+      setToastMessage("일정이 완료되었습니다. (완료 탭에서 확인 가능)");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
     } catch (err) {
       alert("일정 완료 처리 중 오류: " + err.message);
+    }
+  };
+
+  const handleReactivateLeave = async (item) => {
+    if (!item) return;
+    try {
+      await reactivateAnnualLeave(item.id);
+      setToastMessage(`[${item.leaveType}] 일정을 다시 '진행중'으로 복구하였습니다.`);
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 3000);
+    } catch (err) {
+      alert("일정 복구 중 오류 발생: " + err.message);
     }
   };
 
@@ -6552,70 +6566,100 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
 
               {/* Filter Tabs */}
-              <div className="flex items-center gap-1.5 p-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-xs font-bold overflow-x-auto no-scrollbar">
-                <button
-                  type="button"
-                  onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "day" }))}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                    scheduleDetailModal.filterTab === "day"
-                      ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
-                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  }`}
-                >
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  <span>
-                    선택 일자 ({scheduleDetailModal.selectedDate?.slice(5)}) (
-                    {
-                      (annualLeaves || []).filter((l) => {
-                        const matchUser = (myId && l.userId === myId) || (myName && l.userName === myName);
-                        if (!matchUser) return false;
-                        return (l.startDate || "") <= scheduleDetailModal.selectedDate && (l.endDate || l.startDate || "") >= scheduleDetailModal.selectedDate;
-                      }).length
-                    }
-                    건)
-                  </span>
-                </button>
+              {(() => {
+                const userAllLeaves = (annualLeaves || []).filter((l) => {
+                  if (!l) return false;
+                  return (myId && l.userId === myId) || (myName && l.userName === myName);
+                });
 
-                <button
-                  type="button"
-                  onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "week" }))}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                    scheduleDetailModal.filterTab === "week"
-                      ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
-                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  }`}
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>
-                    이번 주간 (
-                    {
-                      myWeeklyCalendarDays.reduce((acc, d) => acc + (d.events?.length || 0), 0)
-                    }
-                    건)
-                  </span>
-                </button>
+                const targetDate = scheduleDetailModal.selectedDate || todayDateStr;
+                const dayActive = userAllLeaves.filter((l) => {
+                  if (l.isCompleted || l.isDismissed) return false;
+                  return (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate;
+                });
 
-                <button
-                  type="button"
-                  onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "all" }))}
-                  className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                    scheduleDetailModal.filterTab === "all"
-                      ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
-                      : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>
-                    {isRecipientModal ? "공유받은 내용 & 답장" : "전체 등록 이력"} (
-                    {
-                      (annualLeaves || []).filter((l) => {
-                        return (myId && l.userId === myId) || (myName && l.userName === myName);
-                      }).length
-                    }
-                    건)
-                  </span>
-                </button>
-              </div>
+                const weekDates = myWeeklyCalendarDays.map((d) => d.dateStr);
+                const minDate = weekDates[0] || "";
+                const maxDate = weekDates[weekDates.length - 1] || "";
+                const weekActive = userAllLeaves.filter((l) => {
+                  if (l.isCompleted || l.isDismissed) return false;
+                  const s = l.startDate || "";
+                  const e = l.endDate || l.startDate || "";
+                  return s <= maxDate && e >= minDate;
+                });
+
+                const totalActive = userAllLeaves.filter((l) => !l.isCompleted && !l.isDismissed);
+                const totalCompleted = userAllLeaves.filter((l) => l.isCompleted || l.isDismissed);
+
+                return (
+                  <div className="flex items-center gap-1.5 p-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-xs font-bold overflow-x-auto no-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "day" }))}
+                      className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                        scheduleDetailModal.filterTab === "day"
+                          ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
+                          : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      <span>선택 일자 ({targetDate.slice(5)}) ({dayActive.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "week" }))}
+                      className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                        scheduleDetailModal.filterTab === "week"
+                          ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
+                          : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>이번 주간 ({weekActive.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "active" }))}
+                      className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                        scheduleDetailModal.filterTab === "active"
+                          ? "bg-blue-600 text-white font-black shadow-xs"
+                          : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      <span>진행중 ({totalActive.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "completed" }))}
+                      className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                        scheduleDetailModal.filterTab === "completed"
+                          ? "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400/50"
+                          : "bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800"
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>완료 / 마무리 ({totalCompleted.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "all" }))}
+                      className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
+                        scheduleDetailModal.filterTab === "all"
+                          ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
+                          : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>{isRecipientModal ? "공유/답장 전체" : "전체 이력"} ({userAllLeaves.length})</span>
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Modal Body - Schedules List */}
               <div className="p-3 sm:p-4 overflow-y-auto space-y-2.5 flex-1 max-h-[58vh]">
@@ -6626,7 +6670,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   });
 
                   if (scheduleDetailModal.filterTab === "day") {
-                    const targetDate = scheduleDetailModal.selectedDate;
+                    const targetDate = scheduleDetailModal.selectedDate || todayDateStr;
                     list = list.filter((l) => (l.startDate || "") <= targetDate && (l.endDate || l.startDate || "") >= targetDate);
                   } else if (scheduleDetailModal.filterTab === "week") {
                     const weekDates = myWeeklyCalendarDays.map((d) => d.dateStr);
@@ -6637,9 +6681,106 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       const e = l.endDate || l.startDate || "";
                       return s <= maxDate && e >= minDate;
                     });
+                  } else if (scheduleDetailModal.filterTab === "active") {
+                    list = list.filter((l) => !l.isCompleted && !l.isDismissed);
+                  } else if (scheduleDetailModal.filterTab === "completed") {
+                    list = list.filter((l) => l.isCompleted || l.isDismissed);
                   }
 
                   list.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+
+                  // Special Dedicated 'Completed' View Tab
+                  if (scheduleDetailModal.filterTab === "completed") {
+                    if (list.length === 0) {
+                      return (
+                        <div className="py-10 text-center space-y-3">
+                          <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-500 mx-auto flex items-center justify-center">
+                            <CheckCircle2 className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-500">
+                            완료되거나 마무리가 끝난 일정이 없습니다.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 pb-1">
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                            <span>완료 및 마무리된 일정 목록 ({list.length}건)</span>
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 font-normal">
+                            실수로 완료한 경우 '진행중으로 복구'가 가능합니다
+                          </span>
+                        </div>
+
+                        {list.map((item) => {
+                          const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
+                          const isOrigin = Boolean(
+                            item.isSharedOrigin ||
+                            (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
+                            (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
+                          );
+                          const completeTime = item.completedAt || item.replyAt || item.updatedAt;
+
+                          return (
+                            <div
+                              key={item.id}
+                              className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/70 shadow-2xs space-y-2"
+                            >
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-slate-600 text-white text-xs font-bold flex items-center gap-1">
+                                    <span>{item.leaveType}</span>
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-slate-500" />
+                                    <span>
+                                      {item.startDate}
+                                      {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
+                                    </span>
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-black border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                                    <CheckCheck className="w-3 h-3 text-emerald-600" />
+                                    <span>{isRecipient ? "답장 및 마무리 완료" : "완료됨"}</span>
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleReactivateLeave(item)}
+                                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                                  title="일정을 다시 '진행중' 상태로 복구합니다"
+                                >
+                                  <RotateCcw className="w-3 h-3" />
+                                  <span>진행중으로 복구</span>
+                                </button>
+                              </div>
+
+                              <div className="p-2 rounded-lg bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100">
+                                <div>
+                                  <span className="text-slate-400 font-normal mr-1.5">내용:</span>
+                                  <span>{item.reason || item.leaveType}</span>
+                                </div>
+                                {isRecipient && item.replyText && (
+                                  <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-purple-800 dark:text-purple-300 text-[11px]">
+                                    내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
+                                <span>작성: {item.userName || workerFullName} ({item.plant || workerPlant})</span>
+                                {completeTime && <span>완료 시각: {formatKSTDateTime(completeTime)}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
 
                   const activeList = list.filter((l) => !l.isCompleted && !l.isDismissed);
                   const completedList = list.filter((l) => l.isCompleted || l.isDismissed);
@@ -6655,6 +6796,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             ? `${scheduleDetailModal.selectedDate}에 등록된 ${isRecipientModal ? "공유받은 내용이" : "일정이"} 없습니다.`
                             : scheduleDetailModal.filterTab === "week"
                             ? `이번 주간에 등록된 ${isRecipientModal ? "공유받은 내용이" : "일정이"} 없습니다.`
+                            : scheduleDetailModal.filterTab === "active"
+                            ? "현재 진행 중인 등록 일정이 없습니다."
                             : `등록된 ${isRecipientModal ? "공유받은 내용 & 답장이" : "일정 내역이"} 없습니다.`}
                         </p>
                         {!isRecipientModal && (
@@ -6845,7 +6988,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         </div>
                       )}
 
-                      {/* 2. Finished / Completed History (한 줄 간단 기록) */}
+                      {/* 2. Finished / Completed History (한 줄 간단 기록 - 클릭 시 완료탭 이동 가능) */}
                       {completedList.length > 0 && (
                         <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
                           <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 px-1">
@@ -6853,7 +6996,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                               <span>마무리 / 완료 이력 ({completedList.length}건)</span>
                             </span>
-                            <span className="text-[10.5px] text-slate-400 font-normal">한 줄 간단 기록</span>
+                            <button
+                              type="button"
+                              onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "completed" }))}
+                              className="text-[10.5px] text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+                            >
+                              <span>완료 탭에서 상세 관리</span>
+                              <span>▶</span>
+                            </button>
                           </div>
 
                           <div className="space-y-1 max-h-[26vh] overflow-y-auto pr-0.5">
@@ -6899,7 +7049,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                     )}
                                   </div>
 
-                                  {/* Right: Completion Timestamp & Complete Badge */}
+                                  {/* Right: Completion Timestamp & Complete Badge & Quick Reactivate */}
                                   <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-400">
                                     {completeTime && (
                                       <span className="hidden sm:inline font-mono">{formatKSTDateTime(completeTime)}</span>
@@ -6907,6 +7057,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                     <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black text-[9.5px]">
                                       {isRecipient ? "답장 완료" : "완료됨"}
                                     </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleReactivateLeave(item)}
+                                      className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 font-bold cursor-pointer"
+                                      title="진행중으로 복구"
+                                    >
+                                      <RotateCcw className="w-3 h-3" />
+                                    </button>
                                   </div>
                                 </div>
                               );

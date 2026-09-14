@@ -169,17 +169,14 @@ export const deleteAnnualLeave = async (id) => {
   return filteredLocal;
 };
 
-// Complete or Dismiss an annual leave record (Cascades to all shared recipient copies)
+// Complete or Dismiss an annual leave record (Only marks THIS specific record as complete)
 export const completeOrDismissAnnualLeave = async (id) => {
   const leaveId = String(id);
   const nowIso = new Date().toISOString();
   const current = getLocalAnnualLeaves();
 
-  const targetDoc = current.find((l) => String(l.id) === leaveId);
-  const isOrigin = targetDoc?.isSharedOrigin || current.some((l) => String(l.originLeaveId) === leaveId);
-
   const updatedLocal = current.map((l) => {
-    if (String(l.id) === leaveId || (isOrigin && String(l.originLeaveId) === leaveId)) {
+    if (String(l.id) === leaveId) {
       return {
         ...l,
         isCompleted: true,
@@ -193,14 +190,47 @@ export const completeOrDismissAnnualLeave = async (id) => {
   saveLocalAnnualLeaves(updatedLocal);
 
   try {
-    const updatedDocs = updatedLocal.filter(
-      (l) => String(l.id) === leaveId || (isOrigin && String(l.originLeaveId) === leaveId)
-    );
-    for (const uDoc of updatedDocs) {
-      await setDoc(doc(db, COLLECTION_NAME, String(uDoc.id)), sanitizeLeave(uDoc), { merge: true });
+    const targetDoc = updatedLocal.find((l) => String(l.id) === leaveId);
+    if (targetDoc) {
+      await setDoc(doc(db, COLLECTION_NAME, leaveId), sanitizeLeave(targetDoc), { merge: true });
+      console.log("Annual leave marked complete in Firestore cloud:", leaveId);
     }
   } catch (e) {
     console.error("Firestore dismiss/complete annual leave error:", e);
+  }
+
+  return updatedLocal;
+};
+
+// Reactivate a completed/dismissed annual leave record
+export const reactivateAnnualLeave = async (id) => {
+  const leaveId = String(id);
+  const nowIso = new Date().toISOString();
+  const current = getLocalAnnualLeaves();
+
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === leaveId) {
+      return {
+        ...l,
+        isCompleted: false,
+        isDismissed: false,
+        completedAt: null,
+        isConfirmedBySender: false,
+        updatedAt: nowIso
+      };
+    }
+    return l;
+  });
+  saveLocalAnnualLeaves(updatedLocal);
+
+  try {
+    const targetDoc = updatedLocal.find((l) => String(l.id) === leaveId);
+    if (targetDoc) {
+      await setDoc(doc(db, COLLECTION_NAME, leaveId), sanitizeLeave(targetDoc), { merge: true });
+      console.log("Annual leave reactivated in Firestore cloud:", leaveId);
+    }
+  } catch (e) {
+    console.error("Firestore reactivate annual leave error:", e);
   }
 
   return updatedLocal;
@@ -362,7 +392,8 @@ export const confirmSharedLeaveReplies = async (originLeaveId, senderProfile, ac
   const current = getLocalAnnualLeaves();
 
   const updatedLocal = current.map((l) => {
-    if (String(l.id) === origId || String(l.originLeaveId) === origId) {
+    // Only sender origin doc is marked completed & confirmed
+    if (String(l.id) === origId) {
       return {
         ...l,
         isConfirmedBySender: true,
@@ -380,11 +411,9 @@ export const confirmSharedLeaveReplies = async (originLeaveId, senderProfile, ac
   saveLocalAnnualLeaves(updatedLocal);
 
   try {
-    const updatedDocs = updatedLocal.filter(
-      (l) => String(l.id) === origId || String(l.originLeaveId) === origId
-    );
-    for (const uDoc of updatedDocs) {
-      await setDoc(doc(db, COLLECTION_NAME, String(uDoc.id)), sanitizeLeave(uDoc), { merge: true });
+    const originDoc = updatedLocal.find((l) => String(l.id) === origId);
+    if (originDoc) {
+      await setDoc(doc(db, COLLECTION_NAME, origId), sanitizeLeave(originDoc), { merge: true });
     }
   } catch (err) {
     console.error("Firestore sync error in confirmSharedLeaveReplies:", err);
