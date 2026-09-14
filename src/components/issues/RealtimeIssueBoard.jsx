@@ -288,7 +288,7 @@ export const RealtimeIssueBoard = ({
 
                 {/* 2단: 전체 너비 제목 및 내용 (엔터 줄바꿈 보존 및 내용 폰트 크기 60% 조정) */}
                 <div className="min-w-0">
-                  <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words whitespace-pre-wrap group-hover:underline ${
+                  <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words whitespace-pre-wrap flex items-center gap-1.5 flex-wrap group-hover:underline ${
                     isQualityAlert
                       ? "text-rose-700 dark:text-rose-300"
                       : isMeeting
@@ -297,7 +297,10 @@ export const RealtimeIssueBoard = ({
                       ? "text-slate-900 dark:text-white"
                       : "text-blue-800 dark:text-blue-300"
                   }`}>
-                    {item.title || item.content}
+                    <span>{item.title || item.content}</span>
+                    <span className="px-1.5 py-0.2 rounded-md text-[10.5px] font-mono font-black bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shadow-2xs no-underline inline-flex items-center gap-0.5" title="조치결과 및 의견 수">
+                      💬 {(item.replies?.length || 0) + (item.actionResult?.trim() ? 1 : 0)}
+                    </span>
                   </h4>
                   {item.title && item.content && (
                     <p className="text-[9.5px] sm:text-[10px] font-medium leading-relaxed text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap break-words">

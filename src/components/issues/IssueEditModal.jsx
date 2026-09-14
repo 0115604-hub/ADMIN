@@ -161,11 +161,9 @@ export const IssueEditModal = ({
                 <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                   {newIssueForm.plant}
                 </span>
-                {newIssueForm.category === "오픈이슈" && (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300">
-                    💬 의견 {(newIssueForm.replies?.length || 0)}건
-                  </span>
-                )}
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300" title="조치결과 및 의견 수">
+                  💬 {(newIssueForm.replies?.length || 0) + (newIssueForm.actionResult?.trim() ? 1 : 0)}건
+                </span>
                 {editingIssue && (
                   <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black shrink-0 ${
                     newIssueForm.isResolved
@@ -247,10 +245,13 @@ export const IssueEditModal = ({
             {/* 2) 제목 & 상세 전달 내용 */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                   <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse shrink-0"></div>
-                  <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug break-words">
-                    {editingIssue.title || "제목 없음"}
+                  <h4 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-snug break-words flex items-center gap-1.5 flex-wrap">
+                    <span>{editingIssue.title || "제목 없음"}</span>
+                    <span className="px-1.5 py-0.2 rounded-md text-[10.5px] font-mono font-black bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shadow-2xs">
+                      💬 {(editingIssue.replies?.length || 0) + (editingIssue.actionResult?.trim() ? 1 : 0)}
+                    </span>
                   </h4>
                 </div>
                 <button

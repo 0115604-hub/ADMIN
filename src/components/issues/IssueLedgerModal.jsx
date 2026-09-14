@@ -295,8 +295,8 @@ export const IssueLedgerModal = ({
                     </span>
 
                     {/* 2. 중앙: 제목 및 내용 */}
-                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      <span className={`text-xs sm:text-[13px] truncate block ${
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-xs sm:text-[13px] truncate ${
                         isCurrent
                           ? "font-black text-blue-950 dark:text-blue-100"
                           : isItDeleted
@@ -306,6 +306,9 @@ export const IssueLedgerModal = ({
                           : "font-bold text-slate-900 dark:text-slate-100"
                       }`}>
                         {it.title || it.content}
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded-md text-[10px] font-mono font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300 dark:border-blue-800 shrink-0 inline-flex items-center gap-0.5" title="조치결과 및 의견 수">
+                        💬 {(it.replies?.length || 0) + (it.actionResult?.trim() ? 1 : 0)}
                       </span>
                     </div>
 
