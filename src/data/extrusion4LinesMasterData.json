@@ -2860,6 +2860,12 @@
         "totalMinutes": 570,
         "totalWeight": 137
       }
+    },
+    "monthlyOperatingRates": {
+      "7월": "94.2%",
+      "8월": "95.1%",
+      "9월": "93.4%",
+      "default": "93.0%"
     }
   },
   "pcm3": {
@@ -5710,6 +5716,12 @@
         "totalMinutes": 690,
         "totalWeight": 148
       }
+    },
+    "monthlyOperatingRates": {
+      "7월": "93.5%",
+      "8월": "94.0%",
+      "9월": "92.8%",
+      "default": "92.8%"
     }
   },
   "pvc": {
@@ -8222,6 +8234,12 @@
         "totalMinutes": 1440,
         "totalWeight": 45
       }
+    },
+    "monthlyOperatingRates": {
+      "7월": "89.6%",
+      "8월": "96.5%",
+      "9월": "91.5%",
+      "default": "91.5%"
     }
   },
   "tpe": {
@@ -10591,6 +10609,12 @@
         "totalMinutes": 180,
         "totalWeight": 43
       }
+    },
+    "monthlyOperatingRates": {
+      "7월": "96.3%",
+      "8월": "89.7%",
+      "9월": "95.2%",
+      "default": "95.2%"
     }
   }
 }

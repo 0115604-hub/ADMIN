@@ -56,6 +56,7 @@ import {
   RotateCcw
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import masterExtrusionData from "../data/extrusion4LinesMasterData.json";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -182,81 +183,103 @@ const TIME_OPTIONS_30MIN = [
   "03:00", "03:30", "04:00", "04:30", "05:00", "05:30"
 ];
 
-// Extrusion 4-Lines Summary (PCM 1호, PCM 3호, PVC, TPE) - Real Excel Verified
-const EXTRUSION_SUMMARY = [
-  {
-    line: "압출 1호 (PCM #1)",
-    code: "PCM #1",
-    themeColor: "teal",
-    currentMonth: "9월",
-    currentMonthMin: 570,
-    currentMonthHours: "9.5h",
-    lossRate: "6.6%",
-    opRatio: "92.1",
-    monthlyTrend: [
-      { month: "7월", min: 5622, hours: "93.7h", loss: "7.2%" },
-      { month: "8월", min: 3643, hours: "60.7h", loss: "5.3%" },
-      { month: "9월", min: 570, hours: "9.5h", loss: "6.6%", isCurrent: true }
-    ],
-    weeklyTrend: [
-      { week: "1주", min: 570 }
-    ]
-  },
-  {
-    line: "압출 3호 (PCM #3)",
-    code: "PCM #3",
-    themeColor: "blue",
-    currentMonth: "9월",
-    currentMonthMin: 690,
-    currentMonthHours: "11.5h",
-    lossRate: "6.6%",
-    opRatio: "90.4",
-    monthlyTrend: [
-      { month: "7월", min: 6835, hours: "113.9h", loss: "7.6%" },
-      { month: "8월", min: 4835, hours: "80.6h", loss: "6.3%" },
-      { month: "9월", min: 690, hours: "11.5h", loss: "6.6%", isCurrent: true }
-    ],
-    weeklyTrend: [
-      { week: "1주", min: 690 }
-    ]
-  },
-  {
-    line: "압출 PVC 라인",
-    code: "PVC",
-    themeColor: "amber",
-    currentMonth: "9월",
-    currentMonthMin: 1440,
-    currentMonthHours: "24.0h",
-    lossRate: "8.3%",
-    opRatio: "80.0",
-    monthlyTrend: [
-      { month: "7월", min: 25876, hours: "431.3h", loss: "10.4%" },
-      { month: "8월", min: 15529, hours: "258.8h", loss: "3.5%" },
-      { month: "9월", min: 1440, hours: "24.0h", loss: "8.3%", isCurrent: true }
-    ],
-    weeklyTrend: [
-      { week: "1주", min: 1440 }
-    ]
-  },
-  {
-    line: "압출 TPE 라인",
-    code: "TPE",
-    themeColor: "purple",
-    currentMonth: "9월",
-    currentMonthMin: 180,
-    currentMonthHours: "3.0h",
-    lossRate: "4.7%",
-    opRatio: "97.5",
-    monthlyTrend: [
-      { month: "7월", min: 9925, hours: "165.4h", loss: "3.7%" },
-      { month: "8월", min: 5970, hours: "99.5h", loss: "10.3%" },
-      { month: "9월", min: 180, hours: "3.0h", loss: "4.7%", isCurrent: true }
-    ],
-    weeklyTrend: [
-      { week: "1주", min: 180 }
-    ]
+// Storage key for Extrusion 4-Lines Downtime Data
+const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_4lines_v6_clean";
+
+const DEFAULT_EXTRUSION_OP_RATES = {
+  pcm1: { "7월": "94.2%", "8월": "95.1%", "9월": "93.4%", default: "93.0%" },
+  pcm3: { "7월": "93.5%", "8월": "94.0%", "9월": "92.8%", default: "92.8%" },
+  pvc: { "7월": "89.6%", "8월": "96.5%", "9월": "91.5%", default: "91.5%" },
+  tpe: { "7월": "96.3%", "8월": "89.7%", "9월": "95.2%", default: "95.2%" }
+};
+
+// Dynamic Extrusion 4-Lines Summary with real-time manual data synchronization
+export const getExtrusionSummaryData = () => {
+  let store = masterExtrusionData;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_EXTRUSION);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === "object") store = parsed;
+    }
+  } catch (e) {
+    console.error("Failed to load extrusion store:", e);
   }
-];
+
+  const lineKeys = [
+    { key: "pcm1", defaultName: "압출 1호 (PCM #1)", defaultCode: "PCM #1", themeColor: "teal" },
+    { key: "pcm3", defaultName: "압출 3호 (PCM #3)", defaultCode: "PCM #3", themeColor: "blue" },
+    { key: "pvc", defaultName: "압출 PVC 라인", defaultCode: "PVC", themeColor: "amber" },
+    { key: "tpe", defaultName: "압출 TPE 라인", defaultCode: "TPE", themeColor: "purple" }
+  ];
+
+  return lineKeys.map(({ key, defaultName, defaultCode, themeColor }) => {
+    const lObj = store[key] || masterExtrusionData[key] || {};
+    const lineName = lObj.name || defaultName;
+    const lineCode = lObj.code || defaultCode;
+
+    // 9월 누적 비가동 시간 계산
+    const weeks = Object.keys(lObj.weeklyData || {});
+    const sepWeeks = weeks.filter((w) => w.startsWith("9월"));
+    let sepMin = 0;
+    sepWeeks.forEach((w) => {
+      const rows = lObj.weeklyData[w]?.rows || [];
+      rows.forEach((r) => {
+        sepMin += Number(r.minutes || 0);
+      });
+    });
+    if (sepMin === 0) {
+      const fallbackMin = { pcm1: 570, pcm3: 690, pvc: 1440, tpe: 180 };
+      sepMin = fallbackMin[key] || 570;
+    }
+    const sepHours = (sepMin / 60).toFixed(1) + "h";
+
+    // 7월, 8월, 9월 월별 추이 (수기로 넣은 데이터 완벽 연동)
+    const months = ["7월", "8월", "9월"];
+    const monthlyTrend = months.map((m) => {
+      // 1. 월가동율 (수기 저장 데이터 우선)
+      const opRaw =
+        lObj.monthlyOperatingRates?.[m] ||
+        DEFAULT_EXTRUSION_OP_RATES[key]?.[m] ||
+        DEFAULT_EXTRUSION_OP_RATES[key]?.default ||
+        "93.0%";
+      const opNum = parseFloat(String(opRaw).replace("%", "")) || 93.0;
+      const opStr = `${opNum.toFixed(1)}%`;
+
+      // 2. 월누적 LOSS율 (수기 저장 데이터 우선)
+      const lossRaw =
+        lObj.monthlyLossRates?.[m] ||
+        lObj.monthlyLossRates?.default ||
+        "6.0%";
+      const lossNum = parseFloat(String(lossRaw).replace("%", "")) || 6.0;
+      const lossStr = `${lossNum.toFixed(1)}%`;
+
+      return {
+        month: m,
+        opRate: opStr,
+        opNum: opNum,
+        lossRate: lossStr,
+        lossNum: lossNum,
+        isCurrent: m === "9월"
+      };
+    });
+
+    const currSep = monthlyTrend.find((m) => m.month === "9월") || monthlyTrend[monthlyTrend.length - 1];
+
+    return {
+      lineKey: key,
+      line: lineName,
+      code: lineCode,
+      themeColor,
+      currentMonth: "9월",
+      currentMonthMin: sepMin,
+      currentMonthHours: sepHours,
+      lossRate: currSep.lossRate,
+      opRatio: currSep.opNum.toFixed(1),
+      monthlyTrend
+    };
+  });
+};
 
 // Quality 4 Core Items Summary (당월 누적 불량률)
 const QUALITY_MONTHLY_SUMMARY = [
@@ -387,6 +410,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // Approval Documents Subscription (Real-time for Top Panel)
   // 5 Company Smart Overtime Ledger Subscription for Panel 4
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+
+  // Extrusion 4-Lines Downtime Summary (수기 지표 실시간 연동)
+  const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
+
+  useEffect(() => {
+    const refreshExtrusionData = () => {
+      setExtrusionSummaryList(getExtrusionSummaryData());
+    };
+    window.addEventListener("storage", refreshExtrusionData);
+    window.addEventListener("focus", refreshExtrusionData);
+    return () => {
+      window.removeEventListener("storage", refreshExtrusionData);
+      window.removeEventListener("focus", refreshExtrusionData);
+    };
+  }, []);
 
   useEffect(() => {
     const unsub = subscribeSmartOvertimeData((data) => {
@@ -3017,9 +3055,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
         {/* 4 Line Cards with Monthly Mini Graph & Current Month Downtime */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2.5">
-          {EXTRUSION_SUMMARY.map((ex) => {
-            const maxM = Math.max(...ex.monthlyTrend.map((m) => m.min), 500);
-
+          {extrusionSummaryList.map((ex) => {
             return (
               <div
                 key={ex.line}
@@ -3055,46 +3091,69 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </span>
                   </div>
 
-                  {/* Right Side: 월별 비가동 비교 미니 바 그래프 */}
+                  {/* Right Side: 월별 가동율 & LOSS율 추이 (긴막대: 월가동율, 내부 작은막대: LOSS율) */}
                   <div className="flex flex-col justify-center space-y-1 min-w-0">
                     <div className="flex items-center justify-between text-[9.5px] font-extrabold text-slate-500 dark:text-slate-400">
                       <span>월별 추이 (7~9월)</span>
-                      <span>시간(h)</span>
+                      <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                        <span className="inline-block w-2 h-1.5 rounded-xs bg-emerald-500"></span> 가동
+                        <span className="inline-block w-2 h-1.5 rounded-xs bg-rose-500 ml-0.5"></span> LOSS
+                      </span>
                     </div>
 
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       {ex.monthlyTrend.map((mItem) => {
-                        const barPct = Math.min(100, Math.max(12, (mItem.min / maxM) * 100));
+                        // 긴막대: 월가동율 (0~100% 기준)
+                        const opPct = Math.min(100, Math.max(10, mItem.opNum));
+                        // 긴막대 내부 작은 막대: LOSS율 (긴막대 폭 기준 비례)
+                        const innerLossPct = Math.min(100, Math.max(12, (mItem.lossNum / opPct) * 100));
 
                         return (
                           <div key={mItem.month} className="flex items-center gap-1 text-[9.5px]">
+                            {/* 월 표기 (7월, 8월, 9월) */}
                             <span
-                              className={`w-5 text-center font-bold shrink-0 ${
+                              className={`w-5 text-center shrink-0 ${
                                 mItem.isCurrent
                                   ? "text-amber-600 dark:text-amber-400 font-black"
-                                  : "text-slate-400"
+                                  : "text-slate-500 dark:text-slate-400 font-bold"
                               }`}
                             >
                               {mItem.month}
                             </span>
-                            <div className="flex-1 bg-slate-200 dark:bg-slate-900 rounded-full h-2.5 p-0.2 overflow-hidden min-w-0">
+
+                            {/* 긴막대 (월가동율) + 긴막대 안의 작은 막대 (LOSS율) */}
+                            <div className="flex-1 bg-slate-200/90 dark:bg-slate-900 rounded-md h-3.5 p-0.2 relative overflow-hidden min-w-0">
+                              {/* 1. 긴막대: 월가동율 */}
                               <div
-                                className={`h-full rounded-full transition-all duration-500 flex items-center justify-end pr-1 ${
+                                className={`h-full rounded relative transition-all duration-500 flex items-center ${
                                   mItem.isCurrent
-                                    ? "bg-gradient-to-r from-amber-500 to-rose-500"
-                                    : "bg-slate-400 dark:bg-slate-600"
+                                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 shadow-xs"
+                                    : "bg-teal-600/75 dark:bg-teal-700/75"
                                 }`}
-                                style={{ width: `${barPct}%` }}
+                                style={{ width: `${opPct}%` }}
+                                title={`${mItem.month} 월가동율: ${mItem.opRate}`}
                               >
-                                {barPct > 45 && (
-                                  <span className="text-[8px] font-black text-white">
-                                    {mItem.hours}
+                                {/* 2. 긴막대 안의 작은 막대: LOSS율 */}
+                                <div
+                                  className="h-full rounded-l bg-gradient-to-r from-rose-500 to-amber-500 shadow-xs flex items-center justify-center shrink-0 border-r border-white/50"
+                                  style={{ width: `${innerLossPct}%`, minWidth: "18px" }}
+                                  title={`${mItem.month} LOSS율: ${mItem.lossRate}`}
+                                >
+                                  <span className="text-[7px] font-black text-white px-0.5 leading-none truncate">
+                                    {mItem.lossRate}
                                   </span>
-                                )}
+                                </div>
+
+                                {/* 긴막대 우측 끝 월가동율 텍스트 */}
+                                <span className="text-[7.5px] font-black text-white ml-auto pr-0.5 leading-none drop-shadow-xs truncate">
+                                  {mItem.opRate}
+                                </span>
                               </div>
                             </div>
-                            <span className="w-8 text-right font-black text-slate-700 dark:text-slate-300 shrink-0">
-                              {mItem.hours}
+
+                            {/* 우측 수치 요약 */}
+                            <span className="w-10 text-right font-black text-[9px] text-emerald-700 dark:text-emerald-400 shrink-0">
+                              {mItem.opRate}
                             </span>
                           </div>
                         );
