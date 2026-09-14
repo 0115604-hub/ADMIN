@@ -65,6 +65,32 @@ export const getKSTFormattedString = (date = new Date()) => {
   }
 };
 
+// Format: "YYYY-MM-DD HH:mm" in KST
+export const formatKSTDateTime = (dateOrIso) => {
+  if (!dateOrIso) return "";
+  try {
+    const d = typeof dateOrIso === 'string' || typeof dateOrIso === 'number' ? new Date(dateOrIso) : dateOrIso;
+    if (isNaN(d.getTime())) return String(dateOrIso);
+    const dateStr = getKSTDateString(d);
+    const timeStr = getKSTTimeString(d);
+    return `${dateStr} ${timeStr}`;
+  } catch (e) {
+    return String(dateOrIso);
+  }
+};
+
+// Format: "YYYY-MM-DD" in KST from any date/ISO/string
+export const formatKSTDate = (dateOrIso) => {
+  if (!dateOrIso) return "";
+  try {
+    const d = typeof dateOrIso === 'string' || typeof dateOrIso === 'number' ? new Date(dateOrIso) : dateOrIso;
+    if (isNaN(d.getTime())) return String(dateOrIso).slice(0, 10);
+    return getKSTDateString(d);
+  } catch (e) {
+    return String(dateOrIso).slice(0, 10);
+  }
+};
+
 // Format: "HH:mm" in KST
 export const getKSTTimeString = (date = new Date()) => {
   try {

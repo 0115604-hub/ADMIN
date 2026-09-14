@@ -164,7 +164,7 @@ import {
   getScheduleCategoryMeta
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
-import { getKSTDateString, formatRelativeAccessTime } from "../utils/dateUtils";
+import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
@@ -1055,7 +1055,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         if (!matchUser) return false;
         if (l.isCompleted || l.isDismissed) return false;
 
-        const regDate = l.createdAt ? l.createdAt.slice(0, 10) : (l.createdDate || l.startDate || "");
+        const regDate = l.createdAt ? formatKSTDate(l.createdAt) : (l.createdDate || l.startDate || "");
         const startDate = l.startDate || l.date || regDate;
         const targetEndDate = l.endDate || l.startDate || l.date || regDate;
         const effectiveStart = regDate && regDate <= startDate ? regDate : startDate;
@@ -1374,7 +1374,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules.filter((s) => {
       if (s.isCompleted) return false;
-      const regDate = s.createdAt ? s.createdAt.slice(0, 10) : (s.startDate || s.date);
+      const regDate = s.createdAt ? formatKSTDate(s.createdAt) : (s.startDate || s.date);
       const startDate = s.startDate || s.date;
       const endDate = s.endDate || startDate;
       const effectiveStart = regDate <= startDate ? regDate : startDate;
@@ -2703,7 +2703,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           ? "bg-blue-600 text-white border-blue-600 shadow-2xs ring-2 ring-blue-400/40 animate-pulse"
                           : "bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800 hover:border-blue-400"
                       }`}
-                      title={`[클릭 시 상세/전체목록 확인] 등록일: ${l.createdAt?.slice(0, 10) || l.createdDate || "미상"} ~ 만료일: ${l.endDate || l.startDate}`}
+                      title={`[클릭 시 상세/전체목록 확인] 등록일: ${l.createdAt ? formatKSTDate(l.createdAt) : (l.createdDate || "미상")} ~ 만료일: ${l.endDate || l.startDate}`}
                     >
                       <span className="font-extrabold">{l.startDate?.slice(5)}</span>
                       <span className="opacity-90">{l.leaveType}</span>
@@ -6109,7 +6109,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                           : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-300 dark:border-purple-700";
 
                       const schedDate = item.startDate || item.date || todayDateStr;
-                      const regDate = item.createdAt ? item.createdAt.slice(0, 10) : schedDate;
+                      const regDate = item.createdAt ? formatKSTDate(item.createdAt) : schedDate;
                       const isToday = schedDate === todayDateStr;
                       const formattedSched = schedDate.slice(5).replace("-", ".");
                       const formattedReg = regDate.slice(5).replace("-", ".");
@@ -6824,7 +6824,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                               <CheckCheck className="w-3 h-3 text-purple-600 shrink-0" />
                               <span>
                                 내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
-                                {item.replyAt && <span className="opacity-75 text-[10px] ml-1">({item.replyAt.slice(0, 16).replace("T", " ")})</span>}
+                                {item.replyAt && <span className="opacity-75 text-[10px] ml-1">({formatKSTDateTime(item.replyAt)})</span>}
                               </span>
                             </div>
                           )}
@@ -6865,7 +6865,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             </span>
                           </span>
                           <span>
-                            등록: {item.createdAt ? item.createdAt.slice(0, 16).replace("T", " ") : item.createdDate || "-"}
+                            등록: {item.createdAt ? formatKSTDateTime(item.createdAt) : item.createdDate || "-"}
                           </span>
                         </div>
                       </div>
@@ -7190,7 +7190,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                 </p>
                                 {r.replyAt && (
                                   <p className="text-[10px] text-slate-400 mt-0.5">
-                                    회신 시간: {r.replyAt.slice(0, 16).replace("T", " ")}
+                                    회신 시간: {formatKSTDateTime(r.replyAt)}
                                   </p>
                                 )}
                               </div>
