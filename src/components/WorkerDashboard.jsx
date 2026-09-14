@@ -3223,75 +3223,63 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           ))}
         </div>
 
-        {/* 2 Factory Overtime Cards (특근보고서가 등록되었을 때만 노출) */}
+        {/* 2 Factory Overtime Cards (특근보고서가 등록되었을 때만 노출 - 간결하고 슬림한 디자인) */}
         {(samrangjinSpecialReport || hallimSpecialReport) && (
-          <div className={`grid grid-cols-1 ${samrangjinSpecialReport && hallimSpecialReport ? "md:grid-cols-2" : ""} gap-2 pt-1`}>
+          <div className={`grid grid-cols-1 ${samrangjinSpecialReport && hallimSpecialReport ? "md:grid-cols-2" : ""} gap-1.5 pt-0.5`}>
             {/* 삼랑진공장 특근보고서 */}
             {samrangjinSpecialReport && (
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9.5px] font-black shrink-0">
-                      삼랑진공장 특근
-                    </span>
-                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 shrink-0">
-                      {samrangjinSpecialReport.workDateFormatted || samrangjinSpecialReport.workDate}
-                    </span>
-                    <span className="text-[9.5px] text-slate-500 font-bold truncate">
-                      {samrangjinSpecialReport.author} {samrangjinSpecialReport.authorTitle || "선임"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                      ₩{(samrangjinSpecialReport.cost || 0).toLocaleString()}
-                    </span>
-                    <span className="text-[9.5px] text-slate-400 font-bold">
-                      ({samrangjinSpecialReport.totalWorkers || samrangjinSpecialReport.headcount || 0}명)
-                    </span>
-                  </div>
+              <div
+                onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-800/70 flex items-center justify-between gap-2 min-w-0 shadow-2xs hover:shadow-xs cursor-pointer transition-all group"
+                title="클릭 시 특근보고서 상세 이동"
+              >
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="px-1.5 py-0.5 rounded-md bg-amber-500 text-white text-[9.5px] font-black shrink-0">
+                    삼랑진 특근
+                  </span>
+                  <span className="text-[10px] font-bold text-amber-900 dark:text-amber-200 shrink-0">
+                    {samrangjinSpecialReport.workDateFormatted || samrangjinSpecialReport.workDate}
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate hidden sm:inline">
+                    {(samrangjinSpecialReport.items || []).map((it) => `${it.category} ${it.count || 1}명`).join(" · ")}
+                  </span>
                 </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {(samrangjinSpecialReport.items || []).map((it) => (
-                    <span key={it.id || it.category} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                      {it.category}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
-                    </span>
-                  ))}
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
+                    ₩{(samrangjinSpecialReport.cost || 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    ({samrangjinSpecialReport.totalWorkers || samrangjinSpecialReport.headcount || 0}명)
+                  </span>
                 </div>
               </div>
             )}
 
             {/* 한림공장 특근보고서 */}
             {hallimSpecialReport && (
-              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 space-y-1 min-w-0">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[9.5px] font-black shrink-0">
-                      한림공장 특근
-                    </span>
-                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800 shrink-0">
-                      {hallimSpecialReport.workDateFormatted || hallimSpecialReport.workDate}
-                    </span>
-                    <span className="text-[9.5px] text-slate-500 font-bold truncate">
-                      {hallimSpecialReport.author} {hallimSpecialReport.authorTitle || "선임"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-                      ₩{(hallimSpecialReport.cost || 0).toLocaleString()}
-                    </span>
-                    <span className="text-[9.5px] text-slate-400 font-bold">
-                      ({hallimSpecialReport.totalWorkers || hallimSpecialReport.headcount || 0}명)
-                    </span>
-                  </div>
+              <div
+                onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-300/80 dark:border-emerald-800/70 flex items-center justify-between gap-2 min-w-0 shadow-2xs hover:shadow-xs cursor-pointer transition-all group"
+                title="클릭 시 특근보고서 상세 이동"
+              >
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[9.5px] font-black shrink-0">
+                    한림 특근
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-900 dark:text-emerald-200 shrink-0">
+                    {hallimSpecialReport.workDateFormatted || hallimSpecialReport.workDate}
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate hidden sm:inline">
+                    {(hallimSpecialReport.items || []).map((it) => `${it.category} ${it.count || 1}명`).join(" · ")}
+                  </span>
                 </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {(hallimSpecialReport.items || []).map((it) => (
-                    <span key={it.id || it.category} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                      {it.category}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
-                    </span>
-                  ))}
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
+                    ₩{(hallimSpecialReport.cost || 0).toLocaleString()}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    ({hallimSpecialReport.totalWorkers || hallimSpecialReport.headcount || 0}명)
+                  </span>
                 </div>
               </div>
             )}
