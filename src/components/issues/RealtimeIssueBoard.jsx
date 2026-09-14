@@ -5,8 +5,6 @@ import {
   Plus,
   ChevronUp,
   ChevronDown,
-  MessageSquare,
-  Camera,
   Trash2
 } from "lucide-react";
 
@@ -186,8 +184,6 @@ export const RealtimeIssueBoard = ({
             const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
             const isOpenIssue = item.category === "오픈이슈" || item.category === "품질이슈";
             const isQualityAlert = item.category === "품질경보";
-            const imgCount = (item.images?.length || 0) + (item.actionImages?.length || 0);
-            const repliesCount = item.replies?.length || 0;
 
             return (
               <div
@@ -254,20 +250,8 @@ export const RealtimeIssueBoard = ({
                     )}
                   </div>
 
-                  {/* 우측 사진 수 & 의견 수 & 삭제 버튼 */}
+                  {/* 우측 삭제 버튼 (회의일정과 동일하게 삭제 뱃지만 배치) */}
                   <div className="flex items-center gap-1.5 ml-auto shrink-0">
-                    {isOpenIssue && repliesCount > 0 && (
-                      <span className="px-2 py-0.5 rounded-lg text-[10.5px] font-black bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                        <span>의견 {repliesCount}건</span>
-                      </span>
-                    )}
-                    {!isMeeting && imgCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1">
-                        <Camera className="w-3 h-3 text-rose-500" />
-                        <span>{imgCount}</span>
-                      </span>
-                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -301,15 +285,6 @@ export const RealtimeIssueBoard = ({
                     </p>
                   )}
                 </div>
-
-                {/* 3단: 조치 결과 */}
-                {!isMeeting && item.actionResult && (
-                  <div className="text-[11px] sm:text-xs pt-0.5 break-words">
-                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                      └ 조치결과: {item.actionResult}
-                    </span>
-                  </div>
-                )}
               </div>
             );
           })}

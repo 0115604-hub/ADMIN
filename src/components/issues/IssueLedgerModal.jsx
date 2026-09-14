@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   Calendar,
   Shield,
-  Camera,
   Edit3,
   ChevronUp,
   ChevronDown,
@@ -338,7 +337,6 @@ export const IssueLedgerModal = ({
                 const isItResolved = Boolean(it.isResolved);
                 const isItUnresolved = !isItDeleted && !isItResolved;
                 const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
-                const totalImgCount = (it.images?.length || 0) + (it.actionImages?.length || 0);
 
                 return (
                   <div
@@ -386,12 +384,6 @@ export const IssueLedgerModal = ({
                         }`}>
                           {it.title || it.content}
                         </span>
-                        {totalImgCount > 0 && (
-                          <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-0.5 shrink-0 font-bold hidden sm:inline-flex">
-                            <Camera className="w-2.5 h-2.5 text-rose-500" />
-                            <span>{totalImgCount}</span>
-                          </span>
-                        )}
                       </div>
 
                       {/* 3. 우측: 삭제 뱃지 + 수정 버튼 (shrink-0으로 제목과 절대 겹치지 않음) */}
