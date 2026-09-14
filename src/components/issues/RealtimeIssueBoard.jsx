@@ -239,7 +239,7 @@ export const RealtimeIssueBoard = ({
                           ? `📅 회의: ${item.expireDate.slice(5)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
                           : isNotice
                           ? `📅 만료: ~${item.expireDate.slice(5)}`
-                          : `📅 목표: ${item.expireDate.slice(5)}`}
+                          : `🚩 목표: ${item.expireDate.slice(5)}`}
                       </span>
                     )}
                     {item.author && (
