@@ -6533,6 +6533,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         });
 
         const isRecipientModal = Boolean(scheduleDetailModal.isRecipient || hasRecipientOnSelectedDate);
+        const isAllTab = scheduleDetailModal.filterTab === "all";
+        const modalTitle = isAllTab
+          ? "전체리스트 관리"
+          : scheduleDetailModal.filterTab === "completed"
+          ? "완료 / 마무리 이력"
+          : scheduleDetailModal.filterTab === "active"
+          ? "진행 중인 일정 목록"
+          : isRecipientModal
+          ? "공유받은 내용 & 답장"
+          : "목록관리";
 
         return (
           <div
@@ -6543,28 +6553,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           >
             <div
               className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto cursor-default ${
-                isRecipientModal ? "border-purple-500/50" : "border-blue-500/40"
+                isRecipientModal && !isAllTab ? "border-purple-500/50" : "border-blue-500/40"
               }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
               <div
                 className={`flex items-center justify-between p-3.5 sm:p-4 text-white ${
-                  isRecipientModal
+                  isRecipientModal && !isAllTab
                     ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700"
                     : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-2 rounded-xl bg-white/20 text-white shrink-0">
-                    {isRecipientModal ? <MessageCircle className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                    {isRecipientModal && !isAllTab ? <MessageCircle className="w-5 h-5" /> : isAllTab ? <FileText className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
-                      <span>{isRecipientModal ? "공유받은 내용 & 답장" : "목록관리"}</span>
+                      <span>{modalTitle}</span>
                     </h3>
                     <p className="text-[11px] opacity-90 truncate">
-                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} {isRecipientModal ? "• 공유받은 내용 & 답장 목록" : "• 목록관리"}
+                      [{workerPlant}] {workerFullName} {officialTitle} • {scheduleDetailModal.selectedDate} {scheduleDetailModal.dayName ? `(${scheduleDetailModal.dayName}요일)` : ""} • {modalTitle}
                     </p>
                   </div>
                 </div>
@@ -6668,7 +6678,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       }`}
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>{isRecipientModal ? "공유/답장 전체" : "전체 이력"} ({userAllLeaves.length})</span>
+                      <span>전체리스트 관리 ({userAllLeaves.length})</span>
                     </button>
                   </div>
                 );
