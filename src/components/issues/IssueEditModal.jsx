@@ -361,7 +361,7 @@ export const IssueEditModal = ({
                   <span>의견 ({editingIssue.replies?.length || 0}건)</span>
                 </span>
                 <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-semibold">
-                  * 작업자 누구나 의견 및 사진/엑셀을 등록할 수 있습니다.
+                  * 첨부파일 없이 텍스트만 작성하거나 사진/엑셀을 함께 등록할 수 있습니다.
                 </span>
               </div>
 
@@ -491,18 +491,18 @@ export const IssueEditModal = ({
                   </div>
                 </div>
 
-                {/* Multi-line textarea for opinions (No enter-submit, allows line breaks) */}
+                {/* Multi-line textarea for opinions (No enter-submit, allows line breaks, text-only supported) */}
                 <div>
                   <textarea
                     rows="2"
-                    placeholder="조치 의견 및 진행 상황을 입력해 주세요. (줄바꿈 가능, 우측 '의견 등록' 뱃지를 눌러 저장)"
+                    placeholder="조치 의견 및 진행 상황을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
                     value={actionOpinionForm.content}
                     onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
                   ></textarea>
                 </div>
 
-                {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [+ 의견 등록] */}
+                {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [의견등록] */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* 📸 촬영 */}
@@ -564,10 +564,9 @@ export const IssueEditModal = ({
                   <button
                     type="button"
                     onClick={onModalAddOpinion}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center justify-center cursor-pointer shrink-0 transition-all"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ 의견 등록</span>
+                    <span>의견등록</span>
                   </button>
                 </div>
 
@@ -1013,7 +1012,7 @@ export const IssueEditModal = ({
                       <span>의견 ({newIssueForm.replies?.length || 0}건)</span>
                     </span>
                     <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-semibold">
-                      * 날짜 지정 후 의견 및 사진/엑셀을 추가할 수 있습니다.
+                      * 첨부파일 없이 텍스트만 작성하거나 사진/엑셀을 함께 등록할 수 있습니다.
                     </span>
                   </div>
 
@@ -1137,18 +1136,18 @@ export const IssueEditModal = ({
                       </div>
                     </div>
 
-                    {/* Multi-line textarea for opinions */}
+                    {/* Multi-line textarea for opinions (No enter-submit, allows line breaks, text-only supported) */}
                     <div>
                       <textarea
                         rows="2"
-                        placeholder="조치 의견 및 진행 상황을 입력해 주세요. (줄바꿈 가능, 우측 '의견 등록' 뱃지를 눌러 저장)"
+                        placeholder="조치 의견 및 진행 상황을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
                         value={actionOpinionForm.content}
                         onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
                         className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
                       ></textarea>
                     </div>
 
-                    {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [+ 의견 등록] */}
+                    {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [의견등록] */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {/* 📸 촬영 */}
@@ -1210,10 +1209,9 @@ export const IssueEditModal = ({
                       <button
                         type="button"
                         onClick={onModalAddOpinion}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0 transition-all"
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center justify-center cursor-pointer shrink-0 transition-all"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>+ 의견 등록</span>
+                        <span>의견등록</span>
                       </button>
                     </div>
 
