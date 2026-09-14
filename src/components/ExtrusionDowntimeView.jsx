@@ -956,24 +956,24 @@ export const ExtrusionDowntimeView = () => {
         </div>
 
         {/* 상세작업실적표 맨 아래: 1~12월 정렬된 작은 패널 그리드 (탭하면 가동율/LOSS율 수동 입력 모달) */}
-        <div className="p-4 bg-slate-900 border-t border-slate-800 text-white space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-teal-400"></div>
+        <div className="p-3 sm:p-3.5 bg-slate-900 border-t border-slate-800 text-white space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1.5 border-b border-slate-800">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-teal-400"></div>
               <span className="text-xs sm:text-sm font-black text-white">
                 📊 [{currentLine.name}] 1~12월 가동율 및 LOSS율 관리 패널
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 font-bold">
-                패널 탭 ➔ 수동 입력
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 font-bold">
+                탭 ➔ 수동 입력
               </span>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium">
+            <span className="text-[10px] text-slate-400 font-medium">
               원하는 월 패널을 탭(클릭)하면 가동율과 LOSS율을 수동으로 입력/수정할 수 있습니다.
             </span>
           </div>
 
           {/* 1~12월 12개 정렬된 패널 그리드 */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12 gap-1.5">
             {ALL_MONTHS.map((m) => {
               const opRate = getLineOpRate(currentLine, selectedLineId, m);
               const lossRate = getLineLossRate(currentLine, m);
@@ -984,32 +984,32 @@ export const ExtrusionDowntimeView = () => {
                   key={m}
                   type="button"
                   onClick={() => handleOpenMonthEditModal(m)}
-                  className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between group cursor-pointer active:scale-95 ${
+                  className={`p-1.5 sm:p-2 rounded-lg border text-left transition-all flex flex-col justify-between group cursor-pointer active:scale-95 ${
                     isCurrent
-                      ? "bg-slate-800/95 border-teal-500 ring-2 ring-teal-500/30 shadow-md hover:bg-slate-800"
+                      ? "bg-slate-800/95 border-teal-500 ring-1 ring-teal-500/40 shadow-xs hover:bg-slate-800"
                       : "bg-slate-800/60 border-slate-700/70 hover:border-teal-400/60 hover:bg-slate-800"
                   }`}
                 >
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-700/60 mb-1.5">
-                    <span className={`text-xs font-black ${isCurrent ? "text-amber-400" : "text-slate-200 group-hover:text-white"}`}>
+                  <div className="flex items-center justify-between pb-0.5 border-b border-slate-700/60 mb-1">
+                    <span className={`text-[11px] font-black ${isCurrent ? "text-amber-400" : "text-slate-200 group-hover:text-white"}`}>
                       {m}
                     </span>
                     {isCurrent ? (
-                      <span className="text-[8px] px-1 py-0.2 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
+                      <span className="text-[7.5px] px-1 py-0 rounded bg-amber-400/20 text-amber-300 font-bold border border-amber-400/30">
                         당월
                       </span>
                     ) : (
-                      <Edit3 className="w-3 h-3 text-slate-500 group-hover:text-teal-400 transition" />
+                      <Edit3 className="w-2.5 h-2.5 text-slate-500 group-hover:text-teal-400 transition" />
                     )}
                   </div>
 
-                  <div className="space-y-1 text-[10px]">
+                  <div className="space-y-0.5 text-[9px] leading-tight">
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-bold">가동:</span>
+                      <span className="text-slate-400 font-bold">가동</span>
                       <span className="text-emerald-400 font-black">{opRate || "-"}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 font-bold">LOSS:</span>
+                      <span className="text-slate-400 font-bold">LOSS</span>
                       <span className="text-amber-400 font-black">{lossRate || "-"}</span>
                     </div>
                   </div>
