@@ -2711,7 +2711,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         setScheduleDetailModal({
                           selectedDate: l.startDate || todayDateStr,
                           dayName: "",
-                          filterTab: "day",
+                          filterTab: isRecipient || isOrigin ? "shared" : "day",
                           isRecipient: isRecipient
                         })
                       }
@@ -2767,12 +2767,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   setScheduleDetailModal({
                     selectedDate: scheduleSelectedDate || todayDateStr,
                     dayName: "",
-                    filterTab: "all",
+                    filterTab: "shared",
                     isRecipient: false
                   })
                 }
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-black transition-all cursor-pointer border border-indigo-200 dark:border-indigo-800 shadow-2xs"
-                title="전체 등록 일정 목록 팝업 열기"
+                title="공유답장 및 전체 등록 일정 목록 팝업 열기"
               >
                 <FileText className="w-3 h-3 text-indigo-600" />
                 <span>전체 리스트</span>
@@ -6533,8 +6533,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         });
 
         const isRecipientModal = Boolean(scheduleDetailModal.isRecipient || hasRecipientOnSelectedDate);
-        const isAllTab = scheduleDetailModal.filterTab === "all";
-        const modalTitle = isAllTab
+        const isSharedTab = scheduleDetailModal.filterTab === "shared" || scheduleDetailModal.filterTab === "all";
+        const isAllTab = isSharedTab;
+        const modalTitle = isSharedTab
           ? "전체리스트 관리"
           : scheduleDetailModal.filterTab === "completed"
           ? "완료 / 마무리 이력"
@@ -6553,21 +6554,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           >
             <div
               className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border-2 w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scaleUp my-auto cursor-default ${
-                isRecipientModal && !isAllTab ? "border-purple-500/50" : "border-blue-500/40"
+                isRecipientModal || isSharedTab ? "border-purple-500/50" : "border-blue-500/40"
               }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
               <div
                 className={`flex items-center justify-between p-3.5 sm:p-4 text-white ${
-                  isRecipientModal && !isAllTab
+                  isRecipientModal || isSharedTab
                     ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700"
                     : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700"
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-2 rounded-xl bg-white/20 text-white shrink-0">
-                    {isRecipientModal && !isAllTab ? <MessageCircle className="w-5 h-5" /> : isAllTab ? <FileText className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
+                    {isRecipientModal || isSharedTab ? <MessageCircle className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm sm:text-base font-black truncate flex items-center gap-1.5">
@@ -6613,6 +6614,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                 const totalActive = userAllLeaves.filter((l) => !l.isCompleted && !l.isDismissed);
                 const totalCompleted = userAllLeaves.filter((l) => l.isCompleted || l.isDismissed);
+
+                const sharedLeaves = userAllLeaves.filter((l) => {
+                  return (
+                    Boolean(l.isSharedRecipient || l.sharedBy) ||
+                    Boolean(l.isSharedOrigin) ||
+                    (Array.isArray(l.sharedWithDetails) && l.sharedWithDetails.length > 0) ||
+                    (Array.isArray(l.sharedWith) && l.sharedWith.length > 0) ||
+                    Boolean(l.originLeaveId)
+                  );
+                });
 
                 return (
                   <div className="flex items-center gap-1.5 p-2.5 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-xs font-bold overflow-x-auto no-scrollbar">
@@ -6670,15 +6681,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                     <button
                       type="button"
-                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "all" }))}
+                      onClick={() => setScheduleDetailModal((prev) => ({ ...prev, filterTab: "shared" }))}
                       className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 shrink-0 cursor-pointer ${
-                        scheduleDetailModal.filterTab === "all"
-                          ? (isRecipientModal ? "bg-purple-600 text-white font-black shadow-xs" : "bg-blue-600 text-white font-black shadow-xs")
-                          : "bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                        scheduleDetailModal.filterTab === "shared" || scheduleDetailModal.filterTab === "all"
+                          ? "bg-purple-600 text-white font-black shadow-xs ring-1 ring-purple-400/50"
+                          : "bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 border border-purple-200 dark:border-purple-800"
                       }`}
                     >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>전체리스트 관리 ({userAllLeaves.length})</span>
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>공유답장 ({sharedLeaves.length})</span>
                     </button>
                   </div>
                 );
@@ -6708,6 +6719,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     list = list.filter((l) => !l.isCompleted && !l.isDismissed);
                   } else if (scheduleDetailModal.filterTab === "completed") {
                     list = list.filter((l) => l.isCompleted || l.isDismissed);
+                  } else if (scheduleDetailModal.filterTab === "shared" || scheduleDetailModal.filterTab === "all") {
+                    list = list.filter((l) => {
+                      return (
+                        Boolean(l.isSharedRecipient || l.sharedBy) ||
+                        Boolean(l.isSharedOrigin) ||
+                        (Array.isArray(l.sharedWithDetails) && l.sharedWithDetails.length > 0) ||
+                        (Array.isArray(l.sharedWith) && l.sharedWith.length > 0) ||
+                        Boolean(l.originLeaveId)
+                      );
+                    });
                   }
 
                   list.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
@@ -6801,6 +6822,275 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             </div>
                           );
                         })}
+                      </div>
+                    );
+                  }
+
+                  // 💬 Special Dedicated 'Shared' View Tab (진행 중인 공유 일정과 답장 후 삭제된 항목 구분)
+                  if (scheduleDetailModal.filterTab === "shared" || scheduleDetailModal.filterTab === "all") {
+                    const activeShared = list.filter((l) => !l.isCompleted && !l.isDismissed && l.replyStatus !== "REPLIED" && !l.replyText);
+                    const repliedShared = list.filter((l) => l.isCompleted || l.isDismissed || l.replyStatus === "REPLIED" || Boolean(l.replyText));
+
+                    if (activeShared.length === 0 && repliedShared.length === 0) {
+                      return (
+                        <div className="py-10 text-center space-y-3">
+                          <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-950/40 text-purple-500 mx-auto flex items-center justify-center">
+                            <MessageCircle className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-500">
+                            공유받거나 동료에게 보낸 공유답장 내역이 없습니다.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-4">
+                        {/* 1. 진행 중인 공유 일정 (미답장 / 확인 대기) */}
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 pb-0.5">
+                            <span className="flex items-center gap-1.5">
+                              <MessageCircle className="w-4 h-4 text-purple-600" />
+                              <span>진행 중인 공유 일정 ({activeShared.length}건)</span>
+                            </span>
+                            <span className="text-[10.5px] text-slate-400 font-normal">
+                              답장 작성 후 삭제하거나 회신을 확인할 수 있습니다
+                            </span>
+                          </div>
+
+                          {activeShared.length === 0 ? (
+                            <div className="py-3.5 px-3 text-center text-xs font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                              현재 대기 중인 공유 일정이 없습니다.
+                            </div>
+                          ) : (
+                            <div className="space-y-2.5">
+                              {activeShared.map((item) => {
+                                const isToday = (item.startDate || "") === todayDateStr;
+                                const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
+                                const isOrigin = Boolean(
+                                  item.isSharedOrigin ||
+                                  (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
+                                  (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
+                                );
+                                const repliedCount = Array.isArray(item.sharedWithDetails)
+                                  ? item.sharedWithDetails.filter((d) => d.status === "REPLIED" || Boolean(d.replyText)).length
+                                  : 0;
+                                const totalSharedCount = Array.isArray(item.sharedWithDetails)
+                                  ? item.sharedWithDetails.length
+                                  : (item.sharedWith?.length || 0);
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="p-3.5 rounded-xl border border-purple-200 dark:border-purple-800/80 bg-white dark:bg-slate-800 shadow-2xs space-y-2.5"
+                                  >
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-xs font-black shadow-2xs flex items-center gap-1">
+                                          <span>{item.leaveType}</span>
+                                        </span>
+
+                                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
+                                          <Calendar className="w-3 h-3 text-blue-500" />
+                                          <span>
+                                            {item.startDate}
+                                            {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
+                                          </span>
+                                        </span>
+
+                                        {isToday && (
+                                          <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                                            오늘
+                                          </span>
+                                        )}
+
+                                        {isRecipient && (
+                                          <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-black flex items-center gap-1">
+                                            <MessageCircle className="w-3 h-3" />
+                                            <span>공유받음 ({item.sharedBy || "동료작업자"})</span>
+                                          </span>
+                                        )}
+
+                                        {isOrigin && (
+                                          <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-black flex items-center gap-1">
+                                            <Users className="w-3 h-3" />
+                                            <span>공유 {totalSharedCount}명 {repliedCount > 0 ? `(회신 ${repliedCount}/${totalSharedCount})` : ""}</span>
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5">
+                                        {isRecipient ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                                            title="보낸 작업자에게 답장을 보내고 내 일정에서 완전 삭제합니다"
+                                          >
+                                            <MessageCircle className="w-3 h-3" />
+                                            <span>답장 후 삭제</span>
+                                          </button>
+                                        ) : isOrigin ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                            className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-black border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1"
+                                            title="공유 작업자들의 회신 내용을 확인하고 완료/삭제합니다"
+                                          >
+                                            <Users className="w-3 h-3" />
+                                            <span>회신 확인 및 완료</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
+                                          >
+                                            <CheckCheck className="w-3 h-3" />
+                                            <span>완료</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
+                                      <div>
+                                        <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
+                                        <span>{item.reason || item.leaveType}</span>
+                                      </div>
+
+                                      {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
+                                        <div className="mt-1 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 text-[11px] space-y-1">
+                                          <span className="text-slate-500 font-bold block">공유 대상자 회신 현황:</span>
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {item.sharedWithDetails.map((d, dIdx) => (
+                                              <span
+                                                key={dIdx}
+                                                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border flex items-center gap-1 ${
+                                                  d.status === "REPLIED" || Boolean(d.replyText)
+                                                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800"
+                                                    : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800"
+                                                }`}
+                                              >
+                                                <span>{d.name}</span>
+                                                {d.status === "REPLIED" || Boolean(d.replyText) ? (
+                                                  <span className="font-black text-emerald-600 dark:text-emerald-400">"{d.replyText || "확인"}"</span>
+                                                ) : (
+                                                  <span className="text-amber-600 dark:text-amber-400 font-normal">미회신</span>
+                                                )}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
+                                      <span className="flex items-center gap-1">
+                                        <User className="w-3 h-3" />
+                                        <span>작성: {item.userName || workerFullName} ({item.plant || workerPlant})</span>
+                                      </span>
+                                      <span>등록: {item.createdAt ? formatKSTDateTime(item.createdAt) : item.createdDate || "-"}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 2. 답장 후 삭제 및 완료된 공유 이력 (별도 구분 섹션) */}
+                        <div className="pt-3 border-t border-slate-200 dark:border-slate-700 space-y-2.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-200 pb-0.5">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCheck className="w-4 h-4 text-emerald-600" />
+                              <span>✓ 답장 후 삭제 및 완료된 공유 이력 ({repliedShared.length}건)</span>
+                            </span>
+                            <span className="text-[10.5px] text-slate-400 font-normal">
+                              실수로 삭제/완료한 경우 '진행중으로 복구'할 수 있습니다
+                            </span>
+                          </div>
+
+                          {repliedShared.length === 0 ? (
+                            <div className="py-3.5 px-3 text-center text-xs font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                              답장 후 삭제되거나 마무리된 공유 이력이 없습니다.
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {repliedShared.map((item) => {
+                                const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
+                                const isOrigin = Boolean(
+                                  item.isSharedOrigin ||
+                                  (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
+                                  (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
+                                );
+                                const completeTime = item.completedAt || item.replyAt || item.updatedAt;
+
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/90 dark:bg-slate-800/70 shadow-2xs space-y-2"
+                                  >
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="px-2 py-0.5 rounded-md bg-slate-600 text-white text-xs font-bold flex items-center gap-1">
+                                          <span>{item.leaveType}</span>
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
+                                          <Calendar className="w-3 h-3 text-slate-500" />
+                                          <span>
+                                            {item.startDate}
+                                            {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
+                                          </span>
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 text-[11px] font-black border border-purple-300 dark:border-purple-800 flex items-center gap-1">
+                                          <CheckCheck className="w-3 h-3 text-purple-600" />
+                                          <span>{isRecipient ? `답장 완료 (${item.sharedBy || "동료"})` : "회신 완료 및 삭제"}</span>
+                                        </span>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => handleReactivateLeave(item)}
+                                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                                        title="일정을 다시 '진행중' 상태로 복구합니다"
+                                      >
+                                        <RotateCcw className="w-3 h-3" />
+                                        <span>진행중으로 복구</span>
+                                      </button>
+                                    </div>
+
+                                    <div className="p-2 rounded-lg bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
+                                      <div>
+                                        <span className="text-slate-400 font-normal mr-1.5">내용:</span>
+                                        <span>{item.reason || item.leaveType}</span>
+                                      </div>
+                                      {isRecipient && item.replyText && (
+                                        <div className="mt-1 pt-1 border-t border-purple-100 dark:border-purple-900/50 text-purple-800 dark:text-purple-300 text-[11px]">
+                                          내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
+                                        </div>
+                                      )}
+                                      {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
+                                        <div className="mt-1 pt-1 border-t border-indigo-100 dark:border-indigo-900/50 text-[11px] flex flex-wrap gap-1">
+                                          {item.sharedWithDetails.map((d, dIdx) => (
+                                            <span key={dIdx} className="text-slate-600 dark:text-slate-300">
+                                              {d.name}: <strong>"{d.replyText || "확인"}"</strong>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
+                                      <span>작성: {item.userName || workerFullName} ({item.plant || workerPlant})</span>
+                                      {completeTime && <span>처리 시각: {formatKSTDateTime(completeTime)}</span>}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   }
