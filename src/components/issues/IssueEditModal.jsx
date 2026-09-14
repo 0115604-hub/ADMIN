@@ -371,34 +371,37 @@ export const IssueEditModal = ({
                   {editingIssue.replies.map((rep) => (
                     <div
                       key={rep.id}
-                      className="p-2.5 rounded-xl bg-white dark:bg-slate-900/90 border border-blue-200/80 dark:border-blue-900/80 space-y-1.5 shadow-2xs"
+                      className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/80 space-y-1.5 shadow-2xs"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-blue-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                      {/* 상단 메타데이터: 날짜, 작성자(은은하게), 시간, 삭제 */}
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 flex items-center gap-0.5">
                             <Calendar className="w-2.5 h-2.5" />
                             <span>{rep.actionDate || rep.createdAt?.slice(0, 10)}</span>
                           </span>
-                          <strong className="text-slate-900 dark:text-white font-bold text-xs shrink-0">
-                            {rep.author} {rep.authorTitle || ""}
-                          </strong>
-                          <span className="text-slate-700 dark:text-slate-200 text-xs break-words font-medium whitespace-pre-wrap">
-                            {rep.content}
+                          <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                            작성자: {rep.author} {rep.authorTitle || ""}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0 ml-auto">
                           <span className="text-[9.5px] text-slate-400 font-mono">
                             {rep.createdAt?.slice(11, 16) || ""}
                           </span>
                           <button
                             type="button"
                             onClick={(e) => onModalDeleteOpinion(rep.id, e)}
-                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                            className="text-slate-400 hover:text-rose-600 p-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
                             title="의견 삭제"
                           >
                             ✕
                           </button>
                         </div>
+                      </div>
+
+                      {/* 본문 내용: 작업자 이름보다 훨씬 더 크고 굵게 도드라지게 표현 */}
+                      <div className="p-2 rounded-lg bg-white/95 dark:bg-slate-900/95 border border-blue-100 dark:border-blue-900/50 text-xs sm:text-[13px] font-bold text-slate-950 dark:text-white leading-relaxed whitespace-pre-wrap break-words shadow-2xs">
+                        {rep.content}
                       </div>
 
                       {/* Opinion attached files/images */}
@@ -1021,34 +1024,37 @@ export const IssueEditModal = ({
                       {newIssueForm.replies.map((rep) => (
                         <div
                           key={rep.id}
-                          className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/80 space-y-1.5 shadow-2xs"
+                          className="p-2.5 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/80 space-y-1.5 shadow-2xs"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
-                              <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-blue-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                          {/* 상단 메타데이터: 날짜, 작성자(은은하게), 시간, 삭제 */}
+                          <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0 flex items-center gap-0.5">
                                 <Calendar className="w-2.5 h-2.5" />
                                 <span>{rep.actionDate || rep.createdAt?.slice(0, 10)}</span>
                               </span>
-                              <strong className="text-slate-900 dark:text-white font-bold text-xs shrink-0">
-                                {rep.author} {rep.authorTitle || ""}
-                              </strong>
-                              <span className="text-slate-700 dark:text-slate-200 text-xs break-words font-medium whitespace-pre-wrap">
-                                {rep.content}
+                              <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                                작성자: {rep.author} {rep.authorTitle || ""}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1 shrink-0">
+                            <div className="flex items-center gap-1 shrink-0 ml-auto">
                               <span className="text-[9.5px] text-slate-400 font-mono">
                                 {rep.createdAt?.slice(11, 16) || ""}
                               </span>
                               <button
                                 type="button"
                                 onClick={(e) => onModalDeleteOpinion(rep.id, e)}
-                                className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
+                                className="text-slate-400 hover:text-rose-600 p-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
                                 title="의견 삭제"
                               >
                                 ✕
                               </button>
                             </div>
+                          </div>
+
+                          {/* 본문 내용: 작업자 이름보다 훨씬 더 크고 굵게 도드라지게 표현 */}
+                          <div className="p-2 rounded-lg bg-white/95 dark:bg-slate-900/95 border border-blue-100 dark:border-blue-900/50 text-xs sm:text-[13px] font-bold text-slate-950 dark:text-white leading-relaxed whitespace-pre-wrap break-words shadow-2xs">
+                            {rep.content}
                           </div>
 
                           {/* Opinion attached files/images */}
@@ -1717,35 +1723,37 @@ export const IssueEditModal = ({
                     {newIssueForm.replies.map((rep) => (
                       <div
                         key={rep.id}
-                        className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-2"
+                        className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 space-y-1 shadow-2xs"
                       >
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
-                          <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
-                            rep.attendanceStatus === "참석"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                              : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                          }`}>
-                            {rep.attendanceStatus || "확인"}
-                          </span>
-                          <strong className="text-slate-900 dark:text-white font-bold shrink-0">
-                            {rep.author}
-                          </strong>
-                          <span className="text-slate-700 dark:text-slate-300 break-words">
-                            {rep.content}
-                          </span>
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${
+                              rep.attendanceStatus === "참석"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            }`}>
+                              {rep.attendanceStatus || "확인"}
+                            </span>
+                            <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                              {rep.author}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0 ml-auto">
+                            <span className="text-[9.5px] text-slate-400 font-mono">
+                              {rep.createdAt?.slice(5) || ""}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => onModalDeleteReply(rep.id, e)}
+                              className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
+                              title="회신 삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span className="text-[9.5px] text-slate-400 font-mono">
-                            {rep.createdAt?.slice(5) || ""}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => onModalDeleteReply(rep.id, e)}
-                            className="text-slate-400 hover:text-rose-600 p-0.5 cursor-pointer"
-                            title="회신 삭제"
-                          >
-                            ✕
-                          </button>
+                        <div className="text-xs sm:text-[13px] font-bold text-slate-900 dark:text-white break-words whitespace-pre-wrap leading-relaxed">
+                          {rep.content}
                         </div>
                       </div>
                     ))}
