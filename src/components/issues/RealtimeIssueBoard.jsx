@@ -265,9 +265,9 @@ export const RealtimeIssueBoard = ({
                   </div>
                 </div>
 
-                {/* 2단: 전체 너비 제목 및 내용 */}
+                {/* 2단: 전체 너비 제목 및 내용 (엔터 줄바꿈 보존 및 내용 폰트 크기 60% 조정) */}
                 <div className="min-w-0">
-                  <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words group-hover:underline ${
+                  <h4 className={`text-xs sm:text-sm md:text-base font-black leading-snug break-words whitespace-pre-wrap group-hover:underline ${
                     isQualityAlert
                       ? "text-rose-700 dark:text-rose-300"
                       : isMeeting
@@ -279,7 +279,7 @@ export const RealtimeIssueBoard = ({
                     {item.title || item.content}
                   </h4>
                   {item.title && item.content && (
-                    <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 mt-0.5 break-words">
+                    <p className="text-[9.5px] sm:text-[10px] font-medium leading-relaxed text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-wrap break-words">
                       {item.content}
                     </p>
                   )}
