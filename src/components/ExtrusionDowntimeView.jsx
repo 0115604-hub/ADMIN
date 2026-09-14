@@ -150,10 +150,29 @@ const LINE_THEMES = {
 };
 
 const DEFAULT_MONTHLY_OP_RATES = {
-  pcm1: "93.4%",
-  pcm3: "92.8%",
-  pvc: "91.5%",
-  tpe: "95.2%"
+  pcm1: { "7월": "94.2%", "8월": "95.1%", "9월": "93.4%", default: "93.0%" },
+  pcm3: { "7월": "93.5%", "8월": "94.0%", "9월": "92.8%", default: "92.8%" },
+  pvc: { "7월": "89.6%", "8월": "96.5%", "9월": "91.5%", default: "91.5%" },
+  tpe: { "7월": "96.3%", "8월": "89.7%", "9월": "95.2%", default: "95.2%" }
+};
+
+const AVAILABLE_EDIT_MONTHS = ["7월", "8월", "9월", "10월", "11월", "12월", "1월", "2월", "3월", "4월", "5월", "6월"];
+
+const getLineOpRate = (lineObj, lineId, month) => {
+  if (lineObj?.monthlyOperatingRates?.[month] !== undefined) {
+    return lineObj.monthlyOperatingRates[month];
+  }
+  return DEFAULT_MONTHLY_OP_RATES[lineId]?.[month] || DEFAULT_MONTHLY_OP_RATES[lineId]?.default || "93.0%";
+};
+
+const getLineLossRate = (lineObj, month) => {
+  if (lineObj?.monthlyLossRates?.[month] !== undefined) {
+    return lineObj.monthlyLossRates[month];
+  }
+  if (lineObj?.monthlyLossRates?.default !== undefined) {
+    return lineObj.monthlyLossRates.default;
+  }
+  return "6.0%";
 };
 
 export const ExtrusionDowntimeView = () => {
@@ -230,31 +249,29 @@ export const ExtrusionDowntimeView = () => {
     return m ? m[1] : "9월";
   }, [selectedWeek]);
 
-  // Current Month's Operating Rate & LOSS Rate (수기 관리 연동)
-  const currentMonthlyOperatingRate = useMemo(() => {
-    if (currentLine?.monthlyOperatingRates?.[currentMonthStr] !== undefined) {
-      return currentLine.monthlyOperatingRates[currentMonthStr];
-    }
-    return DEFAULT_MONTHLY_OP_RATES[selectedLineId] || "93.0%";
-  }, [currentLine, currentMonthStr, selectedLineId]);
-
-  const currentMonthlyLossRate = useMemo(() => {
-    if (currentLine?.monthlyLossRates?.[currentMonthStr] !== undefined) {
-      return currentLine.monthlyLossRates[currentMonthStr];
-    }
-    if (currentLine?.monthlyLossRates?.default !== undefined) {
-      return currentLine.monthlyLossRates.default;
-    }
-    return "6.6%";
-  }, [currentLine, currentMonthStr]);
-
-  const [tempOpRate, setTempOpRate] = useState(currentMonthlyOperatingRate);
-  const [tempLossRate, setTempLossRate] = useState(currentMonthlyLossRate);
+  // Target month for manual indicator editing (월 선택 지원)
+  const [targetEditMonth, setTargetEditMonth] = useState(currentMonthStr);
 
   useEffect(() => {
-    setTempOpRate(currentMonthlyOperatingRate);
-    setTempLossRate(currentMonthlyLossRate);
-  }, [currentMonthlyOperatingRate, currentMonthlyLossRate, selectedLineId, currentMonthStr]);
+    setTargetEditMonth(currentMonthStr);
+  }, [currentMonthStr, selectedLineId]);
+
+  // Target Month's Operating Rate & LOSS Rate (수기 관리 연동)
+  const targetMonthlyOperatingRate = useMemo(() => {
+    return getLineOpRate(currentLine, selectedLineId, targetEditMonth);
+  }, [currentLine, selectedLineId, targetEditMonth]);
+
+  const targetMonthlyLossRate = useMemo(() => {
+    return getLineLossRate(currentLine, targetEditMonth);
+  }, [currentLine, targetEditMonth]);
+
+  const [tempOpRate, setTempOpRate] = useState(targetMonthlyOperatingRate);
+  const [tempLossRate, setTempLossRate] = useState(targetMonthlyLossRate);
+
+  useEffect(() => {
+    setTempOpRate(targetMonthlyOperatingRate);
+    setTempLossRate(targetMonthlyLossRate);
+  }, [targetMonthlyOperatingRate, targetMonthlyLossRate, selectedLineId, targetEditMonth]);
 
   const handleSaveMonthlyRates = (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -263,21 +280,21 @@ export const ExtrusionDowntimeView = () => {
     if (formattedOp && !formattedOp.endsWith("%") && !isNaN(Number(formattedOp))) {
       formattedOp = `${formattedOp}%`;
     }
-    if (!formattedOp) formattedOp = currentMonthlyOperatingRate || "93.0%";
+    if (!formattedOp) formattedOp = targetMonthlyOperatingRate || "93.0%";
 
     let formattedLoss = (tempLossRate || "").trim();
     if (formattedLoss && !formattedLoss.endsWith("%") && !isNaN(Number(formattedLoss))) {
       formattedLoss = `${formattedLoss}%`;
     }
-    if (!formattedLoss) formattedLoss = currentMonthlyLossRate || "6.0%";
+    if (!formattedLoss) formattedLoss = targetMonthlyLossRate || "6.0%";
 
     setDataStore((prev) => {
       const lineObj = { ...prev[selectedLineId] };
       const opRates = { ...(lineObj.monthlyOperatingRates || {}) };
       const lossRates = { ...(lineObj.monthlyLossRates || {}) };
 
-      opRates[currentMonthStr] = formattedOp;
-      lossRates[currentMonthStr] = formattedLoss;
+      opRates[targetEditMonth] = formattedOp;
+      lossRates[targetEditMonth] = formattedLoss;
 
       lineObj.monthlyOperatingRates = opRates;
       lineObj.monthlyLossRates = lossRates;
@@ -290,7 +307,7 @@ export const ExtrusionDowntimeView = () => {
 
     setTempOpRate(formattedOp);
     setTempLossRate(formattedLoss);
-    showToast(`💾 [${currentLine.name}] ${currentMonthStr} 월가동율(${formattedOp}) & 월누적LOSS율(${formattedLoss})이 저장되었습니다!`);
+    showToast(`💾 [${currentLine.name}] ${targetEditMonth} 월가동율(${formattedOp}) & 월누적LOSS율(${formattedLoss})이 저장되었습니다!`);
   };
 
   // Selected Week Real-time SUM Totals
@@ -944,25 +961,30 @@ export const ExtrusionDowntimeView = () => {
                   <div className="flex items-center justify-end gap-2">
                     <Sparkles className="w-4 h-4 text-teal-600" />
                     <span className="text-slate-900 font-black text-xs">
-                      [{currentLine.name}] {currentMonthStr} 월간 누적 관리 지표 :
+                      [{currentLine.name}] {targetEditMonth} 월간 누적 관리 지표 :
                     </span>
+                    {targetEditMonth !== currentMonthStr && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-300 font-bold">
+                        {targetEditMonth} 조회/수정 중
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td colSpan={2} className="py-2.5 px-3 text-center">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-300 font-black text-xs shadow-xs">
                     <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>{currentMonthStr} 월가동율:</span>
+                    <span>{targetEditMonth} 월가동율:</span>
                     <span className="text-emerald-700 font-black text-sm bg-white px-2 py-0.5 rounded-md border border-emerald-200">
-                      {currentMonthlyOperatingRate}
+                      {targetMonthlyOperatingRate}
                     </span>
                   </div>
                 </td>
                 <td colSpan={3} className="py-2.5 px-3 text-center">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 font-black text-xs shadow-xs">
                     <TrendingDown className="w-3.5 h-3.5 text-amber-600" />
-                    <span>{currentMonthStr} 월누적LOSS율:</span>
+                    <span>{targetEditMonth} 월누적LOSS율:</span>
                     <span className="text-amber-800 font-black text-sm bg-white px-2 py-0.5 rounded-md border border-amber-200">
-                      {currentMonthlyLossRate}
+                      {targetMonthlyLossRate}
                     </span>
                   </div>
                 </td>
@@ -972,32 +994,51 @@ export const ExtrusionDowntimeView = () => {
         </div>
 
         {/* 상세작업실적표 맨 아래: 월가동율 & 월누적LOSS율 수기 등록/수정 뱃지 툴바 */}
-        <div className="p-4 bg-slate-900 text-white border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3.5">
-          <div className="flex items-center gap-3">
+        <div className="p-4 bg-slate-900 text-white border-t border-slate-800 flex flex-col xl:flex-row items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3 w-full xl:w-auto">
             <div className="p-2.5 rounded-xl bg-teal-500/20 border border-teal-400/30 text-teal-300 flex-shrink-0">
               <Edit3 className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-black text-sm text-white">
-                  📌 {currentLine.name} • {currentMonthStr} 월간 지표 수기 입력 / 수정 뱃지
+                  📌 {currentLine.name} • {targetEditMonth} 월간 지표 수기 입력 / 수정 뱃지
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-                  실시간 자동 저장
+                  월별 선택 및 실시간 자동 저장
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-medium mt-0.5">
-                수치를 수기로 입력하고 [지표 저장] 또는 엔터를 누르면 {currentMonthStr} 월간 지표로 영구 보관됩니다.
+                수정할 대상 월(7~12월 등)을 선택하고 가동율/LOSS율을 입력 후 [지표 저장]을 누르면 해당 월 지표로 영구 저장됩니다.
               </p>
             </div>
           </div>
 
-          <form onSubmit={handleSaveMonthlyRates} className="flex items-center gap-2.5 flex-wrap">
-            {/* 1. 월가동율 수기 뱃지 */}
+          <form onSubmit={handleSaveMonthlyRates} className="flex items-center gap-2.5 flex-wrap w-full xl:w-auto justify-start xl:justify-end">
+            {/* 1. 대상 월 선택 드롭다운 뱃지 */}
+            <div className="flex items-center bg-slate-800 border border-teal-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-teal-400 transition">
+              <div className="flex items-center gap-1.5 text-teal-300 text-xs font-black whitespace-nowrap">
+                <Calendar className="w-3.5 h-3.5 text-teal-400" />
+                <span>대상 월 :</span>
+              </div>
+              <select
+                value={targetEditMonth}
+                onChange={(e) => setTargetEditMonth(e.target.value)}
+                className="text-xs font-black px-2.5 py-1 rounded-lg bg-slate-900 text-teal-300 border border-teal-500/40 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
+              >
+                {AVAILABLE_EDIT_MONTHS.map((m) => (
+                  <option key={m} value={m}>
+                    {m} {m === currentMonthStr ? "(당주 월)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. 월가동율 수기 뱃지 */}
             <div className="flex items-center bg-slate-800 border border-emerald-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-emerald-400 transition">
               <div className="flex items-center gap-1.5 text-emerald-300 text-xs font-black whitespace-nowrap">
                 <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{currentMonthStr} 월가동율 :</span>
+                <span>{targetEditMonth} 월가동율 :</span>
               </div>
               <input
                 type="text"
@@ -1008,11 +1049,11 @@ export const ExtrusionDowntimeView = () => {
               />
             </div>
 
-            {/* 2. 월누적LOSS율 수기 뱃지 */}
+            {/* 3. 월누적LOSS율 수기 뱃지 */}
             <div className="flex items-center bg-slate-800 border border-amber-500/50 rounded-xl px-3 py-1.5 gap-2 shadow-sm hover:border-amber-400 transition">
               <div className="flex items-center gap-1.5 text-amber-300 text-xs font-black whitespace-nowrap">
                 <TrendingDown className="w-3.5 h-3.5 text-amber-400" />
-                <span>{currentMonthStr} 월누적LOSS율 :</span>
+                <span>{targetEditMonth} 월누적LOSS율 :</span>
               </div>
               <input
                 type="text"
@@ -1029,7 +1070,7 @@ export const ExtrusionDowntimeView = () => {
               className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md"
             >
               <Save className="w-3.5 h-3.5" />
-              지표 저장
+              {targetEditMonth} 지표 저장
             </button>
           </form>
         </div>
