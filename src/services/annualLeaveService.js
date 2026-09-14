@@ -169,12 +169,44 @@ export const deleteAnnualLeave = async (id) => {
   return filteredLocal;
 };
 
-// Complete or Dismiss an annual leave record (Cascades to all shared recipient copies and completely deletes)
+// Complete or Dismiss an annual leave record (Cascades to all shared recipient copies)
 export const completeOrDismissAnnualLeave = async (id) => {
-  return await deleteAnnualLeave(id);
+  const leaveId = String(id);
+  const nowIso = new Date().toISOString();
+  const current = getLocalAnnualLeaves();
+
+  const targetDoc = current.find((l) => String(l.id) === leaveId);
+  const isOrigin = targetDoc?.isSharedOrigin || current.some((l) => String(l.originLeaveId) === leaveId);
+
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === leaveId || (isOrigin && String(l.originLeaveId) === leaveId)) {
+      return {
+        ...l,
+        isCompleted: true,
+        isDismissed: true,
+        completedAt: nowIso,
+        updatedAt: nowIso
+      };
+    }
+    return l;
+  });
+  saveLocalAnnualLeaves(updatedLocal);
+
+  try {
+    const updatedDocs = updatedLocal.filter(
+      (l) => String(l.id) === leaveId || (isOrigin && String(l.originLeaveId) === leaveId)
+    );
+    for (const uDoc of updatedDocs) {
+      await setDoc(doc(db, COLLECTION_NAME, String(uDoc.id)), sanitizeLeave(uDoc), { merge: true });
+    }
+  } catch (e) {
+    console.error("Firestore dismiss/complete annual leave error:", e);
+  }
+
+  return updatedLocal;
 };
 
-// 💬 받은 작업자: 답장(회신) 전송 및 내 일정에서 완전 삭제 처리
+// 💬 받은 작업자: 답장(회신) 전송 및 내 일정 마무리 완료 이력 저장
 export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientProfile) => {
   const recId = String(recipientLeaveId);
   const nowIso = new Date().toISOString();
@@ -184,11 +216,26 @@ export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientP
   const rTitle = recipientProfile?.title || "선임";
 
   const current = getLocalAnnualLeaves();
-  const targetRecipientDoc = current.find((l) => String(l.id) === recId);
-  const originId = targetRecipientDoc?.originLeaveId || null;
+  let originId = null;
 
-  // 1. Recipient doc is completely filtered out (deleted) from local array
-  const updatedLocal = current.filter((l) => String(l.id) !== recId);
+  // 1. Recipient doc is marked as replied & completed in local array
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === recId) {
+      originId = l.originLeaveId || null;
+      return {
+        ...l,
+        replyStatus: "REPLIED",
+        replyText: replyText.trim(),
+        replyAt: nowIso,
+        replyAuthor: rName,
+        isCompleted: true,
+        isDismissed: true,
+        completedAt: nowIso,
+        updatedAt: nowIso
+      };
+    }
+    return l;
+  });
 
   // 2. If originLeaveId exists, update origin leave doc in local array
   let targetOrigin = null;
@@ -244,17 +291,17 @@ export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientP
 
   saveLocalAnnualLeaves(updatedLocal);
 
-  // 3. Delete recipient doc completely from Firestore, and update origin doc in Firestore
+  // 3. Update recipient doc and origin doc in Firestore
   try {
-    // Delete recipient's document completely
-    await deleteDoc(doc(db, COLLECTION_NAME, recId));
-    console.log("Shared recipient leave completely deleted from Firestore:", recId);
+    const recDoc = updatedLocal.find((l) => String(l.id) === recId);
+    if (recDoc) {
+      await setDoc(doc(db, COLLECTION_NAME, recId), sanitizeLeave(recDoc), { merge: true });
+    }
 
     if (originId) {
       if (targetOrigin) {
         await setDoc(doc(db, COLLECTION_NAME, String(originId)), sanitizeLeave(targetOrigin), { merge: true });
       } else {
-        // Fallback fetch from Firestore if origin wasn't in local cache
         const originRef = doc(db, COLLECTION_NAME, String(originId));
         const snap = await getDoc(originRef);
         if (snap.exists()) {
@@ -306,10 +353,44 @@ export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientP
   return updatedLocal;
 };
 
-// ✓ 보낸 작업자: 회신(답변) 확인 완료 및 최종 삭제/완료 처리 (공유받은 작업자들도 자동 연동 삭제)
-export const confirmSharedLeaveReplies = async (originLeaveId, senderProfile, actionType = "delete") => {
+// ✓ 보낸 작업자: 회신(답변) 확인 완료 및 최종 마무리 처리 (보낸이 및 공유받은 작업자 기록 보존)
+export const confirmSharedLeaveReplies = async (originLeaveId, senderProfile, actionType = "complete") => {
   const origId = String(originLeaveId);
-  return await deleteAnnualLeave(origId);
+  const nowIso = new Date().toISOString();
+  const sName = senderProfile?.name || "보낸작업자";
+
+  const current = getLocalAnnualLeaves();
+
+  const updatedLocal = current.map((l) => {
+    if (String(l.id) === origId || String(l.originLeaveId) === origId) {
+      return {
+        ...l,
+        isConfirmedBySender: true,
+        confirmedAt: nowIso,
+        confirmedBy: sName,
+        isCompleted: true,
+        isDismissed: true,
+        completedAt: nowIso,
+        updatedAt: nowIso
+      };
+    }
+    return l;
+  });
+
+  saveLocalAnnualLeaves(updatedLocal);
+
+  try {
+    const updatedDocs = updatedLocal.filter(
+      (l) => String(l.id) === origId || String(l.originLeaveId) === origId
+    );
+    for (const uDoc of updatedDocs) {
+      await setDoc(doc(db, COLLECTION_NAME, String(uDoc.id)), sanitizeLeave(uDoc), { merge: true });
+    }
+  } catch (err) {
+    console.error("Firestore sync error in confirmSharedLeaveReplies:", err);
+  }
+
+  return updatedLocal;
 };
 
 // Supported Leave Types Meta Helper

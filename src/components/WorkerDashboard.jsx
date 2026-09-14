@@ -6641,7 +6641,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                   list.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
 
-                  if (list.length === 0) {
+                  const activeList = list.filter((l) => !l.isCompleted && !l.isDismissed);
+                  const completedList = list.filter((l) => l.isCompleted || l.isDismissed);
+
+                  if (activeList.length === 0 && completedList.length === 0) {
                     return (
                       <div className="py-10 text-center space-y-3">
                         <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
@@ -6671,179 +6674,248 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     );
                   }
 
-                  return list.map((item) => {
-                    const isToday = (item.startDate || "") === todayDateStr;
-                    const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
-                    const isOrigin = Boolean(
-                      item.isSharedOrigin ||
-                      (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
-                      (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
-                    );
-                    const isDone = item.isCompleted || item.isDismissed;
-                    const isReplied = item.replyStatus === "REPLIED" || Boolean(item.replyText);
+                  return (
+                    <div className="space-y-3">
+                      {/* 1. Active Schedules */}
+                      {activeList.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {activeList.map((item) => {
+                            const isToday = (item.startDate || "") === todayDateStr;
+                            const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
+                            const isOrigin = Boolean(
+                              item.isSharedOrigin ||
+                              (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
+                              (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
+                            );
+                            const isDone = item.isCompleted || item.isDismissed;
+                            const isReplied = item.replyStatus === "REPLIED" || Boolean(item.replyText);
 
-                    const repliedCount = Array.isArray(item.sharedWithDetails)
-                      ? item.sharedWithDetails.filter((d) => d.status === "REPLIED" || Boolean(d.replyText)).length
-                      : 0;
-                    const totalSharedCount = Array.isArray(item.sharedWithDetails)
-                      ? item.sharedWithDetails.length
-                      : (item.sharedWith?.length || 0);
+                            const repliedCount = Array.isArray(item.sharedWithDetails)
+                              ? item.sharedWithDetails.filter((d) => d.status === "REPLIED" || Boolean(d.replyText)).length
+                              : 0;
+                            const totalSharedCount = Array.isArray(item.sharedWithDetails)
+                              ? item.sharedWithDetails.length
+                              : (item.sharedWith?.length || 0);
 
-                    return (
-                      <div
-                        key={item.id}
-                        className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
-                          isToday
-                            ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-400/80 shadow-xs ring-1 ring-blue-400/30"
-                            : isDone
-                            ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-75"
-                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs"
-                        }`}
-                      >
-                        {/* Top row: Badges & Actions */}
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-xs font-black shadow-2xs flex items-center gap-1">
-                              <span>{item.leaveType}</span>
-                            </span>
+                            return (
+                              <div
+                                key={item.id}
+                                className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
+                                  isToday
+                                    ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-400/80 shadow-xs ring-1 ring-blue-400/30"
+                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs"
+                                }`}
+                              >
+                                {/* Top row: Badges & Actions */}
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-xs font-black shadow-2xs flex items-center gap-1">
+                                      <span>{item.leaveType}</span>
+                                    </span>
 
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-blue-500" />
-                              <span>
-                                {item.startDate}
-                                {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
-                              </span>
-                            </span>
+                                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-600 flex items-center gap-1">
+                                      <Calendar className="w-3 h-3 text-blue-500" />
+                                      <span>
+                                        {item.startDate}
+                                        {item.endDate && item.endDate !== item.startDate ? ` ~ ${item.endDate}` : ""}
+                                      </span>
+                                    </span>
 
-                            {isToday && (
-                              <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[10px] font-black animate-pulse">
-                                오늘
-                              </span>
-                            )}
-
-                            {isRecipient && (
-                              <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-black flex items-center gap-1">
-                                <MessageCircle className="w-3 h-3" />
-                                <span>공유받음 ({item.sharedBy || "동료작업자"})</span>
-                              </span>
-                            )}
-
-                            {isOrigin && (
-                              <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-black flex items-center gap-1">
-                                <Users className="w-3 h-3" />
-                                <span>공유 {totalSharedCount}명 {repliedCount > 0 ? `(회신 ${repliedCount}/${totalSharedCount})` : ""}</span>
-                              </span>
-                            )}
-
-                            {isDone && (
-                              <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
-                                완료됨
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-1.5">
-                            {isRecipient ? (
-                              !isDone && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                  className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                                  title="보낸 작업자에게 답장을 보내고 내 일정에서 완전 삭제합니다"
-                                >
-                                  <MessageCircle className="w-3 h-3" />
-                                  <span>답장 후 삭제</span>
-                                </button>
-                              )
-                            ) : isOrigin ? (
-                              !isDone && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                  className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-black border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1"
-                                  title="공유 작업자들의 회신 내용을 확인하고 완료/삭제합니다"
-                                >
-                                  <Users className="w-3 h-3" />
-                                  <span>회신 확인 및 완료</span>
-                                </button>
-                              )
-                            ) : (
-                              !isDone && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
-                                  title="일정 완료 및 삭제 처리"
-                                >
-                                  <CheckCheck className="w-3 h-3" />
-                                  <span>완료</span>
-                                </button>
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Content / Reason */}
-                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
-                          <div>
-                            <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
-                            <span>{item.reason || item.leaveType}</span>
-                          </div>
-
-                          {/* Recipient Reply Display */}
-                          {isRecipient && isReplied && (
-                            <div className="mt-1 pt-1.5 border-t border-purple-200/60 dark:border-purple-900/40 text-purple-900 dark:text-purple-200 text-[11px] flex items-center gap-1.5">
-                              <CheckCheck className="w-3 h-3 text-purple-600 shrink-0" />
-                              <span>
-                                내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
-                                {item.replyAt && <span className="opacity-75 text-[10px] ml-1">({formatKSTDateTime(item.replyAt)})</span>}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Origin Sender Replies Summary Preview */}
-                          {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
-                            <div className="mt-1 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 text-[11px] space-y-1">
-                              <span className="text-slate-500 font-bold block">공유 대상자 회신 현황:</span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {item.sharedWithDetails.map((d, dIdx) => (
-                                  <span
-                                    key={dIdx}
-                                    className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border flex items-center gap-1 ${
-                                      d.status === "REPLIED" || Boolean(d.replyText)
-                                        ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800"
-                                        : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800"
-                                    }`}
-                                  >
-                                    <span>{d.name}</span>
-                                    {d.status === "REPLIED" || Boolean(d.replyText) ? (
-                                      <span className="font-black text-emerald-600 dark:text-emerald-400">"{d.replyText || "확인"}"</span>
-                                    ) : (
-                                      <span className="text-amber-600 dark:text-amber-400 font-normal">미회신</span>
+                                    {isToday && (
+                                      <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                                        오늘
+                                      </span>
                                     )}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
 
-                        {/* Footer Info */}
-                        <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
-                          <span className="flex items-center gap-1">
-                            <User className="w-3 h-3" />
-                            <span>
-                              작성: {item.userName || workerFullName} ({item.plant || workerPlant})
-                            </span>
-                          </span>
-                          <span>
-                            등록: {item.createdAt ? formatKSTDateTime(item.createdAt) : item.createdDate || "-"}
-                          </span>
+                                    {isRecipient && (
+                                      <span className="px-2 py-0.5 rounded-md bg-purple-600 text-white text-[11px] font-black flex items-center gap-1">
+                                        <MessageCircle className="w-3 h-3" />
+                                        <span>공유받음 ({item.sharedBy || "동료작업자"})</span>
+                                      </span>
+                                    )}
+
+                                    {isOrigin && (
+                                      <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white text-[11px] font-black flex items-center gap-1">
+                                        <Users className="w-3 h-3" />
+                                        <span>공유 {totalSharedCount}명 {repliedCount > 0 ? `(회신 ${repliedCount}/${totalSharedCount})` : ""}</span>
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Action Buttons */}
+                                  <div className="flex items-center gap-1.5">
+                                    {isRecipient ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-[11px] font-black shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                                        title="보낸 작업자에게 답장을 보내고 내 일정에서 완전 삭제합니다"
+                                      >
+                                        <MessageCircle className="w-3 h-3" />
+                                        <span>답장 후 삭제</span>
+                                      </button>
+                                    ) : isOrigin ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                        className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[11px] font-black border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1"
+                                        title="공유 작업자들의 회신 내용을 확인하고 완료/삭제합니다"
+                                      >
+                                        <Users className="w-3 h-3" />
+                                        <span>회신 확인 및 완료</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRequestDismissOrDelete(item, "dismiss")}
+                                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 transition-all cursor-pointer flex items-center gap-0.5"
+                                        title="일정 완료 처리"
+                                      >
+                                        <CheckCheck className="w-3 h-3" />
+                                        <span>완료</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Content / Reason */}
+                                <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
+                                  <div>
+                                    <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
+                                    <span>{item.reason || item.leaveType}</span>
+                                  </div>
+
+                                  {/* Recipient Reply Display */}
+                                  {isRecipient && isReplied && (
+                                    <div className="mt-1 pt-1.5 border-t border-purple-200/60 dark:border-purple-900/40 text-purple-900 dark:text-purple-200 text-[11px] flex items-center gap-1.5">
+                                      <CheckCheck className="w-3 h-3 text-purple-600 shrink-0" />
+                                      <span>
+                                        내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
+                                        {item.replyAt && <span className="opacity-75 text-[10px] ml-1">({formatKSTDateTime(item.replyAt)})</span>}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Origin Sender Replies Summary Preview */}
+                                  {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
+                                    <div className="mt-1 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 text-[11px] space-y-1">
+                                      <span className="text-slate-500 font-bold block">공유 대상자 회신 현황:</span>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {item.sharedWithDetails.map((d, dIdx) => (
+                                          <span
+                                            key={dIdx}
+                                            className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border flex items-center gap-1 ${
+                                              d.status === "REPLIED" || Boolean(d.replyText)
+                                                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800"
+                                                : "bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800"
+                                            }`}
+                                          >
+                                            <span>{d.name}</span>
+                                            {d.status === "REPLIED" || Boolean(d.replyText) ? (
+                                              <span className="font-black text-emerald-600 dark:text-emerald-400">"{d.replyText || "확인"}"</span>
+                                            ) : (
+                                              <span className="text-amber-600 dark:text-amber-400 font-normal">미회신</span>
+                                            )}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Footer Info */}
+                                <div className="flex items-center justify-between text-[10.5px] text-slate-400 pt-0.5 flex-wrap gap-1">
+                                  <span className="flex items-center gap-1">
+                                    <User className="w-3 h-3" />
+                                    <span>
+                                      작성: {item.userName || workerFullName} ({item.plant || workerPlant})
+                                    </span>
+                                  </span>
+                                  <span>
+                                    등록: {item.createdAt ? formatKSTDateTime(item.createdAt) : item.createdDate || "-"}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                    );
-                  });
+                      ) : (
+                        <div className="py-4 text-center text-xs font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                          현재 진행 중인 등록 일정이 없습니다.
+                        </div>
+                      )}
+
+                      {/* 2. Finished / Completed History (한 줄 간단 기록) */}
+                      {completedList.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-500 dark:text-slate-400 px-1">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>마무리 / 완료 이력 ({completedList.length}건)</span>
+                            </span>
+                            <span className="text-[10.5px] text-slate-400 font-normal">한 줄 간단 기록</span>
+                          </div>
+
+                          <div className="space-y-1 max-h-[26vh] overflow-y-auto pr-0.5">
+                            {completedList.map((item) => {
+                              const isRecipient = Boolean(item.isSharedRecipient || item.sharedBy);
+                              const isOrigin = Boolean(
+                                item.isSharedOrigin ||
+                                (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
+                                (Array.isArray(item.sharedWith) && item.sharedWith.length > 0)
+                              );
+                              const replyText = item.replyText || "";
+                              const formattedDate = item.startDate ? item.startDate.slice(5) : "";
+                              const completeTime = item.completedAt || item.replyAt || item.updatedAt;
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-[11px] flex items-center justify-between gap-2 transition-all hover:bg-slate-100 dark:hover:bg-slate-800/90"
+                                >
+                                  {/* Left: 1-line summary */}
+                                  <div className="flex items-center gap-1.5 truncate min-w-0 flex-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                    <span className="font-extrabold text-slate-700 dark:text-slate-200 shrink-0">
+                                      [{formattedDate}]
+                                    </span>
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 shrink-0">
+                                      {item.leaveType}
+                                    </span>
+                                    <span className="truncate text-slate-700 dark:text-slate-300 font-bold">
+                                      {item.reason || item.leaveType}
+                                    </span>
+
+                                    {/* Shared / Reply contextual note */}
+                                    {isRecipient && (
+                                      <span className="text-[10px] text-purple-700 dark:text-purple-300 truncate shrink-0">
+                                        • {item.sharedBy} 공유 {replyText ? `(답장: "${replyText}")` : "(답장 완료)"}
+                                      </span>
+                                    )}
+                                    {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
+                                      <span className="text-[10px] text-indigo-700 dark:text-indigo-300 truncate shrink-0">
+                                        • 공유 {item.sharedWithDetails.length}명 회신 완료
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Right: Completion Timestamp & Complete Badge */}
+                                  <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-400">
+                                    {completeTime && (
+                                      <span className="hidden sm:inline font-mono">{formatKSTDateTime(completeTime)}</span>
+                                    )}
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-black text-[9.5px]">
+                                      {isRecipient ? "답장 완료" : "완료됨"}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
                 })()}
               </div>
 
