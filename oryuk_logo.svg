@@ -1,29 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
   <defs>
-    <linearGradient id="oryuk-dot1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#38bdf8" />
-      <stop offset="100%" stopColor="#0ea5e9" />
+    <linearGradient id="fav-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f0f9ff" />
     </linearGradient>
-    <linearGradient id="oryuk-dot2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#60a5fa" />
-      <stop offset="100%" stopColor="#2563eb" />
+    <linearGradient id="fav-dot1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
     </linearGradient>
-    <linearGradient id="oryuk-dot3" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#2563eb" />
-      <stop offset="100%" stopColor="#1d4ed8" />
+    <linearGradient id="fav-dot2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa" />
+      <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
-    <linearGradient id="oryuk-dot4" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#1e40af" />
-      <stop offset="100%" stopColor="#172554" />
+    <linearGradient id="fav-dot3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#1d4ed8" />
     </linearGradient>
-    <linearGradient id="oryuk-dot5" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#1d4ed8" />
-      <stop offset="100%" stopColor="#1e3a8a" />
+    <linearGradient id="fav-dot4" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1e40af" />
+    </linearGradient>
+    <linearGradient id="fav-dot5" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9" />
+      <stop offset="100%" stop-color="#2563eb" />
     </linearGradient>
   </defs>
-  <ellipse cx="32.5" cy="24.5" rx="10.5" ry="13.5" transform="rotate(-28 32.5 24.5)" fill="url(#oryuk-dot1)" />
-  <circle cx="67.5" cy="24" r="13.5" fill="url(#oryuk-dot2)" />
-  <circle cx="78.5" cy="54.5" r="14.5" fill="url(#oryuk-dot3)" />
-  <circle cx="50" cy="77.5" r="16.5" fill="url(#oryuk-dot4)" />
-  <ellipse cx="21.5" cy="55" rx="11.5" ry="14.5" transform="rotate(12 21.5 55)" fill="url(#oryuk-dot5)" />
+  <!-- Bright Circular Badge for Perfect Visibility on Dark/Light Tabs -->
+  <circle cx="50" cy="50" r="48" fill="url(#fav-bg)" stroke="#7dd3fc" stroke-width="2.5" />
+  
+  <!-- 5 Balanced Vibrant Dots -->
+  <g transform="translate(50, 50) scale(0.82) translate(-50, -50)">
+    <ellipse cx="32.5" cy="24.5" rx="10.5" ry="13.5" transform="rotate(-28 32.5 24.5)" fill="url(#fav-dot1)" />
+    <circle cx="67.5" cy="24" r="13.5" fill="url(#fav-dot2)" />
+    <circle cx="78.5" cy="54.5" r="14.5" fill="url(#fav-dot3)" />
+    <circle cx="50" cy="77.5" r="16.5" fill="url(#fav-dot4)" />
+    <ellipse cx="21.5" cy="55" rx="11.5" ry="14.5" transform="rotate(12 21.5 55)" fill="url(#fav-dot5)" />
+  </g>
 </svg>
