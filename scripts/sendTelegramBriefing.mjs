@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
   chatId: "-4186792536", // '오륙 통합방'
-  pnlChatId: "-1003939516875", // '경영총괄'
+  pnlChatId: "-1003939516875", // '경영총괄 / 경영방'
   sendDailyLeaveBriefing: true,
   sendDailyPnLBriefing: true,
   sendDailyClosingBriefing: true
@@ -60,6 +60,50 @@ function getKSTFormattedString(date = new Date()) {
   const dayName = days[dateObj.getDay()];
 
   return `${yyyy}.${mm}.${dd}(${dayName}) ${hh}:${min}`;
+}
+
+function formatMMDDWithWeekday(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const clean = String(dateStr).trim().replace(/\(.*?\)/g, "").trim();
+    const parts = clean.split("-");
+    let dateObj;
+    if (parts.length === 3) {
+      dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    } else if (parts.length === 2) {
+      const year = new Date().getFullYear();
+      dateObj = new Date(year, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+    }
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+      const dayOfWeek = weekdays[dateObj.getDay()];
+      const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const dd = String(dateObj.getDate()).padStart(2, "0");
+      return `${mm}-${dd}(${dayOfWeek})`;
+    }
+  } catch (e) {}
+  return dateStr;
+}
+
+function formatYYYYMMDDWithWeekday(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const clean = String(dateStr).trim().replace(/\(.*?\)/g, "").trim();
+    const parts = clean.split("-");
+    let dateObj;
+    if (parts.length === 3) {
+      dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    }
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+      const dayOfWeek = weekdays[dateObj.getDay()];
+      const yyyy = dateObj.getFullYear();
+      const mm = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const dd = String(dateObj.getDate()).padStart(2, "0");
+      return `${yyyy}.${mm}.${dd}(${dayOfWeek})`;
+    }
+  } catch (e) {}
+  return dateStr;
 }
 
 function getKSTTimeInfo(date = new Date()) {
@@ -181,12 +225,10 @@ async function acquireBriefingLock(briefingType, todayStr, force = false) {
       const dateField = briefingType === "general" ? "lastSentDate" : briefingType === "closing" ? "lastClosingSentDate" : "lastPnLSentDate";
       const lockField = briefingType === "general" ? "generalLock" : briefingType === "closing" ? "closingLock" : "pnlLock";
 
-      // 1. If already completed today, skip
       if (data[dateField] === todayStr) {
         return { acquired: false, reason: "ALREADY_SENT_TODAY", lastSentDate: data[dateField] };
       }
 
-      // 2. Check if actively locked by another instance in the last 90s
       const currentLock = data[lockField];
       if (currentLock && currentLock.date === todayStr && currentLock.status === "SENDING") {
         const lockedAtMs = currentLock.lockedAt ? new Date(currentLock.lockedAt).getTime() : 0;
@@ -196,7 +238,6 @@ async function acquireBriefingLock(briefingType, todayStr, force = false) {
         }
       }
 
-      // 3. Claim lock atomically
       transaction.set(lockDocRef, {
         [lockField]: {
           status: "SENDING",
@@ -285,19 +326,19 @@ async function sendTelegramMessage(token, chatId, text) {
 }
 
 /**
- * Align exact execution to 07:30:00 KST or 17:00:00 KST
+ * Align exact execution to 07:30:00 KST or 17:30:00 KST
  */
 async function alignToExactSchedule() {
   const info = getKSTTimeInfo();
 
-  // 1. Morning window pre-warm (around 07:40 KST)
-  const targetMorning = 7 * 3600 + 40 * 60; // 07:40:00 KST (27600 seconds)
+  // 1. Morning window pre-warm (around 07:30 KST)
+  const targetMorning = 7 * 3600 + 30 * 60; // 07:30:00 KST (27000 seconds)
   if (info.hour === 7 && info.totalSeconds < targetMorning) {
     const diffMs = (targetMorning - info.totalSeconds) * 1000;
-    if (diffMs <= 360000) { // within 6 minutes
-      console.log(`[Runner Pre-Warm 07:40] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:40:00 KST...`);
+    if (diffMs <= 360000) {
+      console.log(`[Runner Pre-Warm 07:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 07:30:00 KST...`);
       await sleep(diffMs);
-      console.log("[Runner Trigger] 07:40:00 KST reached! Dispatching immediately...");
+      console.log("[Runner Trigger] 07:30:00 KST reached! Dispatching immediately...");
     }
   }
 
@@ -305,7 +346,7 @@ async function alignToExactSchedule() {
   const targetClosing = 17 * 3600 + 30 * 60; // 17:30:00 KST (63000 seconds)
   if ((info.hour === 17 && info.totalSeconds < targetClosing) || (info.hour === 16 && info.totalSeconds < targetClosing)) {
     const diffMs = (targetClosing - info.totalSeconds) * 1000;
-    if (diffMs <= 360000) { // within 6 minutes
+    if (diffMs <= 360000) {
       console.log(`[Runner Pre-Warm 17:30] Current KST ${info.hour}:${info.minute}:${info.second}. Waiting ${Math.round(diffMs / 1000)}s until 17:30:00 KST...`);
       await sleep(diffMs);
       console.log("[Runner Trigger] 17:30:00 KST reached! Dispatching immediately...");
@@ -314,7 +355,7 @@ async function alignToExactSchedule() {
 }
 
 export async function runAllBriefings(force = false) {
-  console.log("=== Starting Scheduled Briefings Dispatcher ===");
+  console.log("=== Starting Scheduled Briefings Dispatcher (07:30 / 17:30) ===");
   await alignToExactSchedule();
 
   const config = await getConfig();
@@ -324,7 +365,7 @@ export async function runAllBriefings(force = false) {
   }
 
   const todayStr = getKSTDateString();
-  const dateFormatted = `${getKSTFormattedString().split(" ")[0]} 07:40`;
+  const dateFormatted = `${formatYYYYMMDDWithWeekday(todayStr)} 07:30`;
   const customTemplates = await getCustomTemplates();
   const timeInfo = getKSTTimeInfo();
   const curHour = timeInfo.hour;
@@ -334,15 +375,21 @@ export async function runAllBriefings(force = false) {
   const isTimeForMorning = isExplicitMorning || (curHour >= 6 && curHour <= 10);
   const isTimeForClosing = isExplicitClosing || (curHour >= 16 && curHour <= 21);
 
+  // Target Destination Chat IDs: Both 통합방 and 경영방
+  const targetChatIds = [
+    config.chatId || "-4186792536",
+    config.pnlChatId || "-1003939516875"
+  ].filter((id, idx, arr) => id && arr.indexOf(id) === idx);
+
   // -------------------------------------------------------------
-  // 1. 07:40 통합 모닝 브리핑 (오륙 통합방: -4186792536)
+  // 1. 07:30 통합 일일 모닝 브리핑 (통합방 & 경영방 동시 발송)
   // -------------------------------------------------------------
   if (config.sendDailyLeaveBriefing && (isTimeForMorning || force)) {
     const lockRes = await acquireBriefingLock("general", todayStr, force);
     if (!lockRes.acquired) {
-      console.log(`[오륙통합방 모닝브리핑] Skipping send: ${lockRes.reason}`);
+      console.log(`[모닝브리핑] Skipping send: ${lockRes.reason}`);
     } else {
-      console.log(`[오륙통합방 모닝브리핑] Lock acquired. Generating briefing for ${todayStr}...`);
+      console.log(`[모닝브리핑] Lock acquired. Generating briefing for ${todayStr}...`);
 
       try {
         // 1-1. 연차 현황 (삼랑진 / 한림 구분)
@@ -372,7 +419,7 @@ export async function runAllBriefings(force = false) {
           ? hanLeaves.map((l) => `${l.userName} ${l.title || "선임"}(${l.leaveType || "연차"})`).join(", ")
           : "전원 정상 출근";
 
-        // 1-2. 미결재 현황 (특근보고서는 이번주 작성분만 연동) - 날짜 가까운 순 정렬
+        // 1-2. 미결재 현황
         let pendingDocs = [];
         try {
           const snap = await getDocs(collection(db, "approval_documents"));
@@ -431,7 +478,7 @@ export async function runAllBriefings(force = false) {
           workLogLines = lines.join("\n") + more;
         }
 
-        // 1-4. 진행중인 오픈이슈 및 품질경보/공지 - 마감일 가까운 순 정렬
+        // 1-4. 진행중인 오픈이슈 (요일 및 의견 상세 포함)
         let allIssues = [];
         try {
           const snap = await getDocs(collection(db, "urgent_issues"));
@@ -456,10 +503,22 @@ export async function runAllBriefings(force = false) {
         if (activeOpenIssues.length > 0) {
           const oLines = activeOpenIssues.map((o) => {
             const d = o.expireDate || o.targetDate || "";
-            const dText = d ? `(~${d.slice(5)}) ` : "";
-            const replyCount = o.replies?.length || 0;
-            const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
-            return `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
+            const dText = d ? `(~${formatMMDDWithWeekday(d)}) ` : "";
+            const mainLine = `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})`;
+            
+            const replies = Array.isArray(o.replies) ? o.replies : [];
+            if (replies.length > 0) {
+              const replyLines = replies.map((rep) => {
+                const authorText = rep.author ? `${rep.author}` : "작성자";
+                const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+                const contentText = rep.content ? `${rep.content.trim()}` : "확인";
+                const repDate = rep.actionDate || (rep.createdAt ? rep.createdAt.slice(0, 10) : "");
+                const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
+                return `  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
+              }).join("\n");
+              return `${mainLine}\n${replyLines}`;
+            }
+            return mainLine;
           });
           openIssueLines = oLines.slice(0, 5).join("\n");
           if (oLines.length > 5) {
@@ -467,7 +526,7 @@ export async function runAllBriefings(force = false) {
           }
         }
 
-        // 1-5. 회의 & 사내공지 - 가까운 날짜순 정렬
+        // 1-5. 회의 & 사내공지 (요일 및 의견 상세 포함)
         const upcomingMeetings = allIssues.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate || i.targetDate || i.createdAt?.slice(0, 10)) >= todayStr);
         const activeNotices = allIssues.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (!i.expireDate || i.expireDate >= todayStr));
 
@@ -476,18 +535,50 @@ export async function runAllBriefings(force = false) {
         upcomingMeetings.forEach((m) => {
           const d = m.expireDate || m.targetDate || m.createdAt?.slice(0, 10) || "";
           const t = m.meetingTime ? ` ${m.meetingTime}` : "";
-          const dText = d ? `${d.slice(5)}${t} ` : "";
+          const dText = d ? `${formatMMDDWithWeekday(d)}${t} ` : "";
+          const mainLine = `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`;
+          
+          const replies = Array.isArray(m.replies) ? m.replies : [];
+          let itemText = mainLine;
+          if (replies.length > 0) {
+            const replyLines = replies.map((rep) => {
+              const authorText = rep.author ? `${rep.author}` : "작성자";
+              const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+              const contentText = rep.content ? `${rep.content.trim()}` : "확인";
+              const repDate = rep.actionDate || (rep.createdAt ? rep.createdAt.slice(0, 10) : "");
+              const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
+              return `  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
+            }).join("\n");
+            itemText = `${mainLine}\n${replyLines}`;
+          }
+
           combined.push({
             sortKey: `${d} ${m.meetingTime || "00:00"}`,
-            text: `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`
+            text: itemText
           });
         });
+
         activeNotices.forEach((n) => {
           const d = n.expireDate || n.targetDate || "";
-          const dText = d ? `~${d.slice(5)} ` : "";
+          const dText = d ? `~${formatMMDDWithWeekday(d)} ` : "";
+          const mainLine = `• [공지] ${dText}${n.title || n.content}`;
+          const replies = Array.isArray(n.replies) ? n.replies : [];
+          let itemText = mainLine;
+          if (replies.length > 0) {
+            const replyLines = replies.map((rep) => {
+              const authorText = rep.author ? `${rep.author}` : "작성자";
+              const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
+              const contentText = rep.content ? `${rep.content.trim()}` : "확인";
+              const repDate = rep.actionDate || (rep.createdAt ? rep.createdAt.slice(0, 10) : "");
+              const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
+              return `  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
+            }).join("\n");
+            itemText = `${mainLine}\n${replyLines}`;
+          }
+
           combined.push({
             sortKey: `${d || "9999-99-99"} 23:59`,
-            text: `• [공지] ${dText}${n.title || n.content}`
+            text: itemText
           });
         });
 
@@ -499,7 +590,6 @@ export async function runAllBriefings(force = false) {
           }
         }
 
-        const savedUnifiedTemplate = customTemplates["unified_briefing"]?.text;
         const defaultGeneralMessage = `
 <b>⬛ [오륙 생산관리] 일일 모닝 브리핑</b>
 <b>${dateFormatted} 기준</b>
@@ -523,17 +613,15 @@ ${noticeMeetingLines}
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-        const generalMessage = savedUnifiedTemplate || defaultGeneralMessage;
-        const res = await sendTelegramMessage(config.botToken, config.chatId || "-4186792536", generalMessage);
-        console.log("[오륙통합방 모닝브리핑] Send Result:", res);
-
-        if (res.ok) {
-          await completeBriefingLock("general", todayStr, true);
-        } else {
-          await completeBriefingLock("general", todayStr, false, res.error || "TELEGRAM_SEND_FAILED");
+        // Send to ALL target chat rooms (통합방 & 경영방)
+        for (const cid of targetChatIds) {
+          const res = await sendTelegramMessage(config.botToken, cid, defaultGeneralMessage);
+          console.log(`[모닝브리핑 발송 -> ${cid}] Send Result:`, res);
         }
+
+        await completeBriefingLock("general", todayStr, true);
       } catch (err) {
-        console.error("[오륙통합방 모닝브리핑] Error occurred:", err.message);
+        console.error("[모닝브리핑] Error occurred:", err.message);
         await completeBriefingLock("general", todayStr, false, err.message);
       }
     }
@@ -542,7 +630,7 @@ ${noticeMeetingLines}
   // -------------------------------------------------------------
   // 2. 07:30 손익결산 브리핑 (경영총괄: -1003939516875)
   // -------------------------------------------------------------
-  if (config.sendDailyPnLBriefing) {
+  if (config.sendDailyPnLBriefing && (isTimeForMorning || force)) {
     const lockRes = await acquireBriefingLock("pnl", todayStr, force);
     if (!lockRes.acquired) {
       console.log(`[경영총괄 손익브리핑] Skipping send: ${lockRes.reason}`);
@@ -550,7 +638,6 @@ ${noticeMeetingLines}
       console.log(`[경영총괄 손익브리핑] Lock acquired. Generating PnL briefing for ${todayStr}...`);
 
       try {
-        // 2-1. 당월 & 전월 실시간 손익 데이터 조회 (Firestore system_store/monthly_master)
         let totalSales = 965489801;
         let totalPurchases = 978009146;
         let prevSales = 2090811613;
@@ -584,7 +671,6 @@ ${noticeMeetingLines}
         const salesAchTxt = `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`;
         const purchAchTxt = `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`;
 
-        // 2-2. 사내 공통일정 조회 (등록일부터 종료일까지 노출, 지난 일정 자동 삭제)
         let commonSchedules = "";
         try {
           const snap = await getDocs(collection(db, "company_common_schedules"));
@@ -597,17 +683,13 @@ ${noticeMeetingLines}
             const endDate = s.endDate || startDate;
             const effectiveStart = regDate <= startDate ? regDate : startDate;
 
-            // 일정이 지났으면 DB에서 자동 삭제
             if (endDate && endDate < todayStr) {
               try {
                 await deleteDoc(doc(db, "company_common_schedules", docSnap.id));
-              } catch (delErr) {
-                console.warn(`Failed to auto-delete expired schedule ${docSnap.id}:`, delErr.message);
-              }
+              } catch (delErr) {}
               continue;
             }
 
-            // 등록일(또는 시작일)부터 종료일까지 노출
             if (effectiveStart && endDate && effectiveStart <= todayStr && todayStr <= endDate) {
               todayScheds.push(s);
             }
@@ -636,8 +718,8 @@ ${noticeMeetingLines}
               const endDate = s.endDate || startDate;
               const cat = getCategoryMeta(s.target);
               const timeStr = s.time && s.time !== "종일" ? ` [⏰ ${s.time}]` : "";
-              const sFormatted = startDate.slice(5).replace("-", ".");
-              const eFormatted = endDate.slice(5).replace("-", ".");
+              const sFormatted = formatMMDDWithWeekday(startDate);
+              const eFormatted = formatMMDDWithWeekday(endDate);
               const commentsCount = Array.isArray(s.comments) && s.comments.length > 0 ? ` (의견 ${s.comments.length}건)` : "";
               if (startDate !== endDate) {
                 return `• ${cat.emoji} [${sFormatted}~${eFormatted}]${timeStr} <b>${s.title}</b> (${cat.badge})${commentsCount}`;
@@ -656,8 +738,7 @@ ${noticeMeetingLines}
           commonSchedules = "• 등록된 사내 공통일정이 없습니다. ✨";
         }
 
-        const savedPnLTemplate = customTemplates["management_pnl"]?.text;
-        const defaultPnLMessage = `
+        const pnlMessage = `
 <b>⬛ [오륙] 매출 & 일정공유</b>
 <b>${dateFormatted} 기준</b>
 ━━━━━━━━━━━━━━━━━━━━━
@@ -676,59 +757,6 @@ ${commonSchedules}
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
 
-        let pnlMessage = defaultPnLMessage;
-        if (savedPnLTemplate) {
-          let text = savedPnLTemplate
-            .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
-            .replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유")
-            .replace(/일일아침손익결산/g, "매출 & 일정공유")
-            .replace(/손익결산\s*브리핑/g, "매출 & 일정공유")
-            .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
-            .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
-            .replace(/경영정보공유/g, "")
-            .replace(/경영정보/g, "");
-
-          if (dateFormatted) {
-            text = text.replace(/<b>\d{4}\.\d{2}\.\d{2}[^<]*?기준<\/b>/, `<b>${dateFormatted} 기준</b>`);
-          }
-
-          const salesStr = `₩${Number(Math.round(totalSales)).toLocaleString()}원`;
-          const purchaseStr = `₩${Number(Math.round(totalPurchases)).toLocaleString()}원`;
-          const costRatioStr = `${costRatio}%`;
-
-          // 1. Placeholder replacements
-          text = text.replace(/\{salesAmount\}/g, salesStr);
-          text = text.replace(/\{purchaseAmount\}/g, purchaseStr);
-          text = text.replace(/\{costRatio\}/g, costRatioStr);
-          text = text.replace(/\{salesAchievementRate\}/g, salesAchTxt);
-          text = text.replace(/\{purchaseAchievementRate\}/g, purchAchTxt);
-
-          // 2. Section [1] live regex updates
-          const section1Regex = /(<b>\[1\][^<]*?<\/b>[\s\S]*?•\s*<b>매출액:<\/b>\s*)([^\n]+)(\n[\s\S]*?•\s*<b>매입액:<\/b>\s*)([^\n]+)(\n[\s\S]*?•\s*<b>매출대비 원가율:<\/b>\s*)([^\n]+)/i;
-          if (section1Regex.test(text)) {
-            text = text.replace(section1Regex, `$1${salesStr}$3${purchaseStr}$5${costRatioStr}`);
-          }
-
-          // 3. Section [2] live regex updates
-          const section2Regex = /(<b>\[2\][^<]*?<\/b>[^\n]*\n[\s\S]*?•\s*<b>전월대비 매출 달성율:<\/b>\s*<b>)([^<]+)(<\/b>\n[\s\S]*?•\s*<b>전월대비 매입 달성율:<\/b>\s*<b>)([^<]+)(<\/b>)/i;
-          if (section2Regex.test(text)) {
-            text = text.replace(section2Regex, `$1${salesAchTxt}$3${purchAchTxt}$5`);
-          }
-
-          // 4. Section [3] schedule replacement
-          if (text.includes("{commonSchedules}")) {
-            pnlMessage = text.replace(/\{commonSchedules\}/g, commonSchedules);
-          } else if (text.includes("${commonSchedules}")) {
-            pnlMessage = text.replace(/\$\{commonSchedules\}/g, commonSchedules);
-          } else {
-            const section3Regex = /(<b>\[3\][^<]*?<\/b>|\[3\][^\n]*\n)([\s\S]*?)(?=(━━━━━━━━━━━━━━━━━━━━━|<a\s+href|$))/i;
-            if (section3Regex.test(text)) {
-              pnlMessage = text.replace(section3Regex, `<b>[3] 사내 공통일정</b>\n${commonSchedules}\n`);
-            } else {
-              pnlMessage = `${text}\n\n<b>[3] 사내 공통일정</b>\n${commonSchedules}`;
-            }
-          }
-        }
         const res = await sendTelegramMessage(config.botToken, config.pnlChatId || "-1003939516875", pnlMessage);
         console.log("[경영총괄 손익브리핑] Send Result:", res);
 
@@ -745,234 +773,86 @@ ${commonSchedules}
   }
 
   // -------------------------------------------------------------
-  // 3. 17:00 일일마감브리핑 (월~토) (오륙 통합방: -4186792536)
+  // 3. 17:30 일일마감브리핑 (월~토) (통합방 & 경영방 동시 발송)
   // -------------------------------------------------------------
-  const dayOfWeek = new Date().getDay(); // 0: Sunday, 1-6: Mon-Sat
-  const isEligibleClosingDay = dayOfWeek !== 0 || force;
+  const dayOfWeek = new Date().getDay();
+  if (config.sendDailyClosingBriefing && (isTimeForClosing || force) && (dayOfWeek >= 1 && dayOfWeek <= 6 || force)) {
+    const lockRes = await acquireBriefingLock("closing", todayStr, force);
+    if (!lockRes.acquired) {
+      console.log(`[일일마감브리핑] Skipping send: ${lockRes.reason}`);
+    } else {
+      console.log(`[일일마감브리핑] Lock acquired. Generating closing briefing for ${todayStr}...`);
 
-  if (config.sendDailyClosingBriefing !== false && isEligibleClosingDay && (isTimeForClosing || force)) {
-    await runClosingBriefing(todayStr, config, customTemplates, force);
-  }
-
-  console.log("=== Scheduled Briefings Dispatch Finished ===");
-}
-
-/**
- * 17:00 일일마감브리핑 실행 함수 (옵션 1: 표준 분과별 종합 보고형)
- */
-async function runClosingBriefing(todayStr, config, customTemplates, force = false) {
-  const destChatId = config.chatId || "-4186792536";
-  const dateFormatted = `${getKSTFormattedString().split(" ")[0]}`;
-
-  const lockRes = await acquireBriefingLock("closing", todayStr, force);
-  if (!lockRes.acquired) {
-    console.log(`[오륙통합방 17:00 마감브리핑] Skipping send: ${lockRes.reason}`);
-    return;
-  }
-
-  console.log(`[오륙통합방 17:00 마감브리핑] Lock acquired. Generating closing briefing for ${todayStr}...`);
-
-  try {
-    // 1. Fetch urgent issues from Firestore
-    let allUrgent = [];
-    try {
-      const snap = await getDocs(collection(db, "urgent_issues"));
-      allUrgent = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    } catch (e) {
-      console.warn("Error fetching urgent issues for closing briefing:", e.message);
-    }
-
-    // 1-1. 품질경보 변동 현황 (금일 등록, 금일 조치/의견 등록, 금일 종결, 또는 현재 미조치 상태)
-    const qualityAlerts = allUrgent.filter((i) => {
-      if (i.category !== "품질경보") return false;
-      const isTodayCreated = i.createdAt?.startsWith(todayStr) || i.startDate === todayStr || i.expireDate === todayStr;
-      const isTodayAction = i.actionAt?.startsWith(todayStr);
-      const isTodayReply = i.replies?.some((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
-      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
-      const isUnresolvedActive = !i.isDeleted && !i.isResolved;
-      return isTodayCreated || isTodayAction || isTodayReply || isTodayDeleted || isUnresolvedActive;
-    }).sort((a, b) => {
-      const timeA = a.actionAt || a.deletedAt || a.createdAt || "";
-      const timeB = b.actionAt || b.deletedAt || b.createdAt || "";
-      return timeA.localeCompare(timeB); // 가까운 시간순
-    });
-
-    let qualityLines = " • 금일 신규 등록 및 변동사항 없음 (정상 가동)";
-    if (qualityAlerts.length > 0) {
-      qualityLines = qualityAlerts.map((q) => {
-        const plant = q.plant ? q.plant.replace("공장", "") : "삼랑진";
-        const title = q.title || q.content || "품질경보";
-        const isDel = Boolean(q.isDeleted);
-        const isRes = Boolean(q.isResolved);
-        const actionTimeStr = q.actionAt ? (q.actionAt.length > 10 ? ` (${q.actionAt.slice(11, 16) || q.actionAt.slice(5)})` : ` (${q.actionAt})`) : "";
-
-        let statusText = `⏳ 조치대기`;
-        if (isDel) {
-          statusText = `🛑 종결/삭제`;
-        } else if (isRes) {
-          statusText = `✅ 조치완료${actionTimeStr}`;
+      try {
+        let allIssues = [];
+        try {
+          const snap = await getDocs(collection(db, "urgent_issues"));
+          snap.forEach((docSnap) => {
+            allIssues.push(docSnap.data());
+          });
+        } catch (e) {
+          console.warn("Error fetching issues for closing briefing:", e.message);
         }
 
-        let resLine = ` • [${plant}] ${title}\n   - 상태: ${statusText}`;
-
-        const todayReplies = (q.replies || []).filter((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
-        if (todayReplies.length > 0) {
-          const latestToday = todayReplies[todayReplies.length - 1];
-          resLine += `\n   - 금일 조치의견: ${latestToday.content} (${latestToday.author})`;
-        } else if (isRes && q.actionResult) {
-          resLine += `\n   - 조치내용: ${q.actionResult}`;
+        const activeAlerts = allIssues.filter((i) => !i.isDeleted && i.category === "품질경보");
+        let alertLines = " • 금일 신규 등록 및 변동사항 없음 (정상 가동)";
+        if (activeAlerts.length > 0) {
+          alertLines = activeAlerts.slice(0, 4).map((a) => {
+            const plantShort = a.plant?.replace("공장", "") || "삼랑진";
+            const statusStr = a.isResolved ? "✅ 조치완료" : "⏳ 점검중";
+            return ` • [${plantShort}] ${a.title || a.content}\n   - 조치: ${statusStr}`;
+          }).join("\n");
         }
 
-        if (isDel && q.deletedBy) {
-          resLine += `\n   - 종결/삭제자: ${q.deletedBy}`;
-        } else if (isRes && (q.actionAuthor || q.author)) {
-          resLine += `\n   - 조치자: ${q.actionAuthor || q.author}`;
-        } else if (q.author) {
-          resLine += `\n   - 등록자: ${q.author}`;
-        }
-        return resLine;
-      }).join("\n");
-    }
-
-    // 1-2. 회의일정 변동 및 결과 (금일 회의, 금일 결과 입력, 금일 등록/회신/종결된 회의) - 시간 가까운 순 정렬
-    const meetings = allUrgent.filter((i) => {
-      if (i.category !== "회의일정") return false;
-      const meetingDate = i.expireDate || i.targetDate || i.createdAt?.slice(0, 10);
-      const isTodayMeeting = meetingDate === todayStr;
-      const isTodayCreated = i.createdAt?.startsWith(todayStr);
-      const isTodayAction = i.actionAt?.startsWith(todayStr);
-      const isTodayReply = i.replies?.some((r) => r.createdAt?.startsWith(todayStr) || r.actionDate === todayStr);
-      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
-      return isTodayMeeting || isTodayCreated || isTodayAction || isTodayReply || isTodayDeleted;
-    }).sort((a, b) => {
-      const timeA = (a.expireDate || a.targetDate || "") + (a.meetingTime || "00:00");
-      const timeB = (b.expireDate || b.targetDate || "") + (b.meetingTime || "00:00");
-      return timeA.localeCompare(timeB); // 가까운 시간순
-    });
-
-    let meetingLines = " • 금일 회의일정 및 변동사항 없음";
-    if (meetings.length > 0) {
-      meetingLines = meetings.map((m) => {
-        const plant = m.plant ? m.plant.replace("공장", "") : "삼랑진";
-        const timeStr = m.meetingTime ? `${m.meetingTime} ` : "";
-        const title = m.title || m.content || "회의";
-        const isDel = Boolean(m.isDeleted);
-        const isClosed = Boolean(m.isResolved || m.actionResult);
-
-        let statusText = isClosed ? "✅ 회의종결" : "⏳ 회의예정";
-        if (isDel) statusText = "🛑 회의취소/삭제";
-
-        const replyCount = Array.isArray(m.replies) ? m.replies.length : 0;
-        const todayReplies = (m.replies || []).filter((r) => r.createdAt?.startsWith(todayStr) || r.actionDate === todayStr);
-        const attText = replyCount > 0 ? ` (참석 ${replyCount}명${todayReplies.length > 0 ? `, 금일 회신 ${todayReplies.length}명` : ""})` : "";
-
-        let mLine = ` • [${plant}] ${timeStr}${title}\n   - 결과: ${statusText}`;
-        if (m.actionResult) {
-          mLine += `\n   - 결정사항: ${m.actionResult}`;
-        }
-        mLine += `\n   - 보고자: ${m.actionAuthor || m.author || "관리자"}${attText}`;
-        return mLine;
-      }).join("\n");
-    }
-
-    // 1-3. 사내공지 변동 및 공유사항 (금일 신규 등록/수정/종결 공지 및 현재 유효 공지) - 가까운 만료일순 정렬
-    const notices = allUrgent.filter((i) => {
-      const isNotice = i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항";
-      if (!isNotice) return false;
-      const isTodayCreated = i.createdAt?.startsWith(todayStr);
-      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
-      const isActive = !i.isDeleted && (!i.expireDate || i.expireDate >= todayStr);
-      return isTodayCreated || isTodayDeleted || isActive;
-    }).sort((a, b) => {
-      const dateA = a.expireDate || a.targetDate || "9999-99-99";
-      const dateB = b.expireDate || b.targetDate || "9999-99-99";
-      return dateA.localeCompare(dateB); // 가까운 만료일순
-    });
-
-    let noticeLines = " • 금일 신규 등록 및 변동 공지 없음";
-    if (notices.length > 0) {
-      noticeLines = notices.map((n) => {
-        const plant = n.plant === "본사" || !n.plant ? "공통" : n.plant.replace("공장", "");
-        const title = n.title || n.content;
-        const isTodayCreated = n.createdAt?.startsWith(todayStr);
-        const tag = isTodayCreated ? "[신규] " : "";
-        let nLine = ` • [${plant}] ${tag}${title}`;
-        if (n.content && n.content !== n.title) {
-          nLine += `\n   - 내용: ${n.content}`;
-        }
-        nLine += `\n   - 등록: ${n.author || "본사"}`;
-        return nLine;
-      }).join("\n");
-    }
-
-    // 1-4. 오픈이슈 변동 현황 (금일 신규, 금일 조치의견 등록, 금일 완료/종결, 또는 현재 진행중) - 마감일 가까운 순 정렬
-    const openIssues = allUrgent.filter((i) => {
-      const isOpen = i.category === "오픈이슈" || i.category === "open_issue" || i.category === "품질이슈";
-      if (!isOpen) return false;
-      const isTodayCreated = i.createdAt?.startsWith(todayStr);
-      const isTodayReply = i.replies?.some((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
-      const isTodayAction = i.actionAt?.startsWith(todayStr);
-      const isTodayDeleted = i.deletedAt?.startsWith(todayStr);
-      const isActive = !i.isDeleted;
-      return isTodayCreated || isTodayReply || isTodayAction || isTodayDeleted || isActive;
-    }).sort((a, b) => {
-      const dateA = a.expireDate || a.targetDate || "9999-99-99";
-      const dateB = b.expireDate || b.targetDate || "9999-99-99";
-      if (dateA !== dateB) return dateA.localeCompare(dateB); // 가까운 마감일순
-      return (b.createdAt || "").localeCompare(a.createdAt || "");
-    });
-
-    let openIssueLines = " • 금일 오픈이슈 변동사항 없음";
-    if (openIssues.length > 0) {
-      openIssueLines = openIssues.map((o) => {
-        const plant = o.plant ? o.plant.replace("공장", "") : "삼랑진";
-        const title = o.title || o.content || "오픈이슈";
-        const isRes = Boolean(o.isResolved);
-        const isDel = Boolean(o.isDeleted);
-        const progress = o.progress !== undefined ? Number(o.progress) : (isRes ? 100 : 0);
-        const d = o.expireDate || o.targetDate || "";
-        const dText = d ? `(~${d.slice(5)}) ` : "";
-
-        let statusText = `⏳ 진행중 (진척도 ${progress}%)`;
-        if (isDel) {
-          statusText = `🛑 종결/삭제`;
-        } else if (isRes) {
-          statusText = `✅ 조치완료`;
+        const todayMeetings = allIssues.filter((i) => !i.isDeleted && i.category === "회의일정" && (i.expireDate === todayStr || i.targetDate === todayStr || i.createdAt?.slice(0, 10) === todayStr));
+        let meetingLines = " • 금일 회의일정 및 변동사항 없음";
+        if (todayMeetings.length > 0) {
+          meetingLines = todayMeetings.slice(0, 4).map((m) => {
+            const plantShort = m.plant?.replace("공장", "") || "삼랑진";
+            const timeStr = m.meetingTime ? ` [${m.meetingTime}]` : "";
+            const repliesCount = Array.isArray(m.replies) && m.replies.length > 0 ? ` (의견 ${m.replies.length}건)` : "";
+            return ` • [${plantShort}]${timeStr} ${m.title || m.content}${repliesCount}`;
+          }).join("\n");
         }
 
-        let oLine = ` • [${plant}] ${dText}${title}\n   - 상태: ${statusText}`;
-
-        const todayReplies = (o.replies || []).filter((r) => r.actionDate === todayStr || r.createdAt?.startsWith(todayStr));
-        if (todayReplies.length > 0) {
-          const latestToday = todayReplies[todayReplies.length - 1];
-          oLine += `\n   - 금일 조치의견: ${latestToday.content} (${latestToday.author})`;
-        } else if (o.replies && o.replies.length > 0) {
-          const latestRep = o.replies[o.replies.length - 1];
-          oLine += `\n   - 최근 조치의견: ${latestRep.content} (${latestRep.author})`;
-        } else if (o.actionResult) {
-          oLine += `\n   - 조치내용: ${o.actionResult}`;
+        const todayNotices = allIssues.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") && (i.createdAt?.slice(0, 10) === todayStr || i.date === todayStr));
+        let noticeLines = " • 금일 신규 등록 및 변동 공지 없음";
+        if (todayNotices.length > 0) {
+          noticeLines = todayNotices.slice(0, 4).map((n) => {
+            return ` • ${n.title || n.content}`;
+          }).join("\n");
         }
-        oLine += `\n   - 작성자: ${o.author || "관리자"}`;
-        return oLine;
-      }).join("\n");
-    }
 
-    const defaultClosingMessage = `
-[오륙] 📢 일일마감브리핑 (17:30)
+        const activeOpenIssues = allIssues.filter((i) => !i.isDeleted && !i.isResolved && (i.category === "오픈이슈" || i.category === "open_issue"));
+        let openIssueLines = " • 진행중인 오픈이슈 없음";
+        if (activeOpenIssues.length > 0) {
+          openIssueLines = activeOpenIssues.slice(0, 4).map((o) => {
+            const plantShort = o.plant?.replace("공장", "") || "삼랑진";
+            const d = o.expireDate || o.targetDate || "";
+            const dText = d ? `(~${formatMMDDWithWeekday(d)}) ` : "";
+            const replies = Array.isArray(o.replies) ? o.replies : [];
+            const lastReply = replies.length > 0 ? replies[replies.length - 1] : null;
+            const replySummary = lastReply ? `\n   - 최근 조치의견: ${lastReply.content} (${lastReply.author || "담당"})` : "";
+            return ` • [${plantShort}] ${dText}${o.title || o.content}\n   - 상태: ⏳ 진행중 (진척도 ${o.progress || 0}%)${replySummary}\n   - 작성자: ${o.author || "담당"}`;
+          }).join("\n");
+        }
+
+        const closingMessage = `
+[오륙] 📢 <b>일일마감브리핑 (17:30)</b>
 ━━━━━━━━━━━━━━━━━━━━
-📅 ${dateFormatted} 일일 업무 마감 현황
+📅 <b>${formatYYYYMMDDWithWeekday(todayStr)} 일일 업무 마감 현황</b>
 ━━━━━━━━━━━━━━━━━━━━
 
-🚨 [1] 품질경보 현황 (총 ${qualityAlerts.length}건)
-${qualityLines}
+🚨 <b>[1] 품질경보 현황 (총 ${activeAlerts.length}건)</b>
+${alertLines}
 
-📅 [2] 회의일정 및 결과 (총 ${meetings.length}건)
+📅 <b>[2] 회의일정 및 결과 (총 ${todayMeetings.length}건)</b>
 ${meetingLines}
 
-📢 [3] 사내공지 및 공유사항 (총 ${notices.length}건)
+📢 <b>[3] 사내공지 및 공유사항 (총 ${todayNotices.length}건)</b>
 ${noticeLines}
 
-📌 [4] 오픈이슈 진행 현황 (총 ${openIssues.length}건)
+📌 <b>[4] 오픈이슈 진행 현황 (총 ${activeOpenIssues.length}건)</b>
 ${openIssueLines}
 
 ━━━━━━━━━━━━━━━━━━━━
@@ -980,24 +860,28 @@ ${openIssueLines}
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
-    const savedTemplate = customTemplates["daily_closing_briefing"]?.text;
-    const closingMessage = savedTemplate || defaultClosingMessage;
+        // Send closing briefing to ALL target chat rooms (통합방 & 경영방)
+        for (const cid of targetChatIds) {
+          const res = await sendTelegramMessage(config.botToken, cid, closingMessage);
+          console.log(`[일일마감브리핑 발송 -> ${cid}] Send Result:`, res);
+        }
 
-    const res = await sendTelegramMessage(config.botToken, destChatId, closingMessage);
-    console.log("[오륙통합방 17:30 마감브리핑] Send Result:", res);
-
-    if (res.ok) {
-      await completeBriefingLock("closing", todayStr, true);
-    } else {
-      await completeBriefingLock("closing", todayStr, false, res.error || "TELEGRAM_SEND_FAILED");
+        await completeBriefingLock("closing", todayStr, true);
+      } catch (err) {
+        console.error("[일일마감브리핑] Error occurred:", err.message);
+        await completeBriefingLock("closing", todayStr, false, err.message);
+      }
     }
-  } catch (err) {
-    console.error("[오륙통합방 17:30 마감브리핑] Error occurred:", err.message);
-    await completeBriefingLock("closing", todayStr, false, err.message);
   }
+
+  console.log("=== Scheduled Briefings Dispatch Finished ===");
 }
 
-// CLI Runner
-const isForce = process.argv.includes("--force");
-await runAllBriefings(isForce);
-process.exit(0);
+const isDirectRun = process.argv[1]?.endsWith("sendTelegramBriefing.mjs") || process.argv[1]?.endsWith("sendTelegramBriefing.js");
+if (isDirectRun) {
+  const force = process.argv.includes("--force") || process.env.FORCE_SEND === "true";
+  runAllBriefings(force).catch((e) => {
+    console.error("Fatal error in scheduled briefing dispatcher:", e);
+    process.exit(1);
+  });
+}

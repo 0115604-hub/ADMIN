@@ -12,7 +12,11 @@ import {
   sendQualityOpinionTelegram,
   sendQualityActionTelegram,
   sendQualityDeleteTelegram,
-  sendMeetingReplyTelegram
+  sendMeetingReplyTelegram,
+  sendOpenIssueAlertTelegram,
+  sendOpenIssueReplyTelegram,
+  sendMeetingNoticeAlertTelegram,
+  sendMeetingNoticeReplyTelegram
 } from "./telegramService";
 
 const COLLECTION_NAME = "urgent_issues";
@@ -229,12 +233,51 @@ export const saveUrgentIssue = async (issueData) => {
     console.warn("Firestore save urgent issue fallback to local:", e);
   }
 
-  // Trigger real-time Telegram notification ONLY for 품질경보 등록 (오픈이슈는 모닝브리핑 포함, 사내공지/회의일정은 발송 제외)
-  if (existingIdx < 0 && !fullItem.isDeleted) {
-    if (fullItem.category === "품질경보") {
-      sendQualityAlertTelegram(fullItem).catch((err) => {
-        console.warn("Telegram alert error:", err);
-      });
+  // Trigger real-time Telegram notification for items (경영방 및 통합방 실시간 모니터링)
+  if (!fullItem.isDeleted) {
+    if (existingIdx < 0) {
+      // 1. 신규 등록 즉시 알림
+      if (fullItem.category === "품질경보") {
+        sendQualityAlertTelegram(fullItem).catch((err) => {
+          console.warn("Telegram alert error:", err);
+        });
+      } else if (fullItem.category === "오픈이슈" || fullItem.category === "open_issue" || fullItem.category === "품질이슈") {
+        sendOpenIssueAlertTelegram(fullItem, "CREATE").catch((err) => {
+          console.warn("Telegram open issue alert error:", err);
+        });
+      } else if (fullItem.category === "회의일정" || fullItem.category === "공지사항" || fullItem.category === "사내공지" || fullItem.category === "공유사항") {
+        sendMeetingNoticeAlertTelegram(fullItem, "CREATE").catch((err) => {
+          console.warn("Telegram meeting/notice alert error:", err);
+        });
+      }
+    } else {
+      // 2. 기존 항목 수정 / 상태 변경 / 조치완료 시 알림
+      const prevItem = current[existingIdx];
+      const isNewlyResolved = !prevItem?.isResolved && fullItem.isResolved;
+      const progressChanged = prevItem?.progress !== undefined && fullItem.progress !== undefined && prevItem.progress !== fullItem.progress;
+      const actionResultAdded = !prevItem?.actionResult && Boolean(fullItem.actionResult?.trim());
+
+      if (fullItem.category === "품질경보") {
+        if (isNewlyResolved || actionResultAdded) {
+          sendQualityActionTelegram(fullItem, {
+            actionAuthor: fullItem.actionAuthor || fullItem.author,
+            actionContent: fullItem.actionResult,
+            images: fullItem.actionImages
+          }).catch((err) => {
+            console.warn("Telegram quality action error:", err);
+          });
+        }
+      } else if (fullItem.category === "오픈이슈" || fullItem.category === "open_issue" || fullItem.category === "품질이슈") {
+        if (isNewlyResolved) {
+          sendOpenIssueAlertTelegram(fullItem, "RESOLVE").catch((err) => {
+            console.warn("Telegram open issue resolve alert error:", err);
+          });
+        } else if (progressChanged || actionResultAdded) {
+          sendOpenIssueAlertTelegram(fullItem, "UPDATE").catch((err) => {
+            console.warn("Telegram open issue update alert error:", err);
+          });
+        }
+      }
     }
   }
 
@@ -276,11 +319,21 @@ export const addIssueReply = async (issueId, replyData) => {
 
   const saved = await saveUrgentIssue(updatedItem);
 
-  // Trigger real-time Telegram notification ONLY for 품질경보 의견 등록
-  if (saved && target.category === "품질경보") {
-    sendQualityOpinionTelegram(target, newReply).catch((err) => {
-      console.warn("Telegram opinion notification error:", err);
-    });
+  // Trigger real-time Telegram notification for opinion/reply (경영방 및 통합방 실시간 모니터링)
+  if (saved) {
+    if (target.category === "품질경보") {
+      sendQualityOpinionTelegram(target, newReply).catch((err) => {
+        console.warn("Telegram opinion notification error:", err);
+      });
+    } else if (target.category === "오픈이슈" || target.category === "open_issue" || target.category === "품질이슈") {
+      sendOpenIssueReplyTelegram(target, newReply).catch((err) => {
+        console.warn("Telegram open issue reply error:", err);
+      });
+    } else if (target.category === "회의일정" || target.category === "공지사항" || target.category === "사내공지" || target.category === "공유사항") {
+      sendMeetingNoticeReplyTelegram(target, newReply).catch((err) => {
+        console.warn("Telegram meeting/notice reply error:", err);
+      });
+    }
   }
 
   return saved;
