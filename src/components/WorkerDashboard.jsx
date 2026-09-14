@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Factory,
   Calendar,
@@ -167,7 +167,7 @@ import {
   getScheduleCategoryMeta
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
-import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime } from "../utils/dateUtils";
+import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
@@ -483,7 +483,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       isTotal: true
     };
 
-    return [...companies, totalItem];
+    return [totalItem, ...companies];
   }, [smartOvertimeData]);
 
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
@@ -581,22 +581,66 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return todayStr;
   }, []);
 
-  // 특근보고서 등록 여부 및 최신 특근보고서 추출 (특근보고서가 등록되었을 때만 노출)
+  // 특근보고서 결재 완료 여부 확인 (결재 완료 시 대시보드에서 자동 숨김)
+  const isOvertimeReportApproved = useCallback((rep) => {
+    if (!rep) return false;
+    if (rep.approvalStatus === "결재완료" || rep.approvalStatus === "APPROVED" || rep.status === "APPROVED" || rep.status === "결재완료") {
+      return true;
+    }
+    if (Array.isArray(rep.approval) && rep.approval.length > 0 && rep.approval.every((st) => st.status === "완료" || st.status === "APPROVED")) {
+      return true;
+    }
+    if (Array.isArray(approvalDocs)) {
+      const plantKey = rep.plant === "삼랑진공장" ? "samrangjin" : "hanlim";
+      const dateKey = rep.workDate ? rep.workDate.replace(/-/g, "") : "";
+      const matchedDoc = approvalDocs.find((d) => {
+        const isOt = d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "OVERTIME";
+        if (!isOt) return false;
+        const matchesPlant = d.plant === rep.plant || d.targetPlant === rep.plant || (d.id && d.id.includes(plantKey));
+        const matchesDate = (dateKey && d.id && d.id.includes(dateKey)) || d.workDate === rep.workDate;
+        return matchesPlant && matchesDate;
+      });
+      if (matchedDoc && (matchedDoc.status === "APPROVED" || matchedDoc.status === "결재완료")) {
+        return true;
+      }
+    }
+    return false;
+  }, [approvalDocs]);
+
+  // 특근보고서 등록 여부 및 최신 특근보고서 추출 (이번주차에 등록된 미결재 특근보고서만 노출, 결재 완료되거나 미등록 시 공란)
   const samrangjinSpecialReport = useMemo(() => {
     if (!Array.isArray(overtimeReports)) return null;
     const list = overtimeReports
-      .filter((r) => r && r.plant === "삼랑진공장" && (r.reportType === "특근보고서" || r.title?.includes("특근")))
+      .filter((r) => {
+        if (!r || r.plant !== "삼랑진공장") return false;
+        const isSpecial = r.reportType === "특근보고서" || r.title?.includes("특근");
+        if (!isSpecial) return false;
+        // 이번주차 등록 여부 확인 (이번주차가 아니면 제외)
+        if (!isThisWeek(r.workDate || r.workDateFormatted)) return false;
+        // 결재 완료 여부 확인 (결재 완료 시 미노출)
+        if (isOvertimeReportApproved(r)) return false;
+        return true;
+      })
       .sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
     return list[0] || null;
-  }, [overtimeReports]);
+  }, [overtimeReports, isOvertimeReportApproved]);
 
   const hallimSpecialReport = useMemo(() => {
     if (!Array.isArray(overtimeReports)) return null;
     const list = overtimeReports
-      .filter((r) => r && r.plant === "한림공장" && (r.reportType === "특근보고서" || r.title?.includes("특근")))
+      .filter((r) => {
+        if (!r || r.plant !== "한림공장") return false;
+        const isSpecial = r.reportType === "특근보고서" || r.title?.includes("특근");
+        if (!isSpecial) return false;
+        // 이번주차 등록 여부 확인 (이번주차가 아니면 제외)
+        if (!isThisWeek(r.workDate || r.workDateFormatted)) return false;
+        // 결재 완료 여부 확인 (결재 완료 시 미노출)
+        if (isOvertimeReportApproved(r)) return false;
+        return true;
+      })
       .sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
     return list[0] || null;
-  }, [overtimeReports]);
+  }, [overtimeReports, isOvertimeReportApproved]);
 
   const handleOpenWorkerLogs = (worker) => {
     pushModalHistory("worker_access_logs");
