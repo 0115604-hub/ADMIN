@@ -19,7 +19,9 @@ import {
   ArrowDownToLine,
   RefreshCw,
   Move,
-  Maximize
+  Maximize,
+  LocateFixed,
+  RotateCcw
 } from "lucide-react";
 
 export const HanulDocumentImageViewer = ({
@@ -36,10 +38,11 @@ export const HanulDocumentImageViewer = ({
   const [selectedPageIndex, setSelectedPageIndex] = useState(initialPageIndex);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
 
   // Drag to pan state
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const viewportRef = useRef(null);
 
   // Sync selected attachment
@@ -55,35 +58,48 @@ export const HanulDocumentImageViewer = ({
     }
   }, [activeAttachmentId, attachments, initialPageIndex]);
 
-  // Reset zoom & rotation on page/attachment switch
+  // Reset zoom, pan & rotation on page/attachment switch
   useEffect(() => {
     setZoom(1);
+    setPan({ x: 0, y: 0 });
     setRotation(0);
   }, [selectedAttachmentId, selectedPageIndex]);
 
-  // 🌟 Mouse Wheel Zoom inside the viewport (scroll wheel up = zoom in, scroll down = zoom out)
+  // 🌟 Mouse Wheel Zoom inside the viewport with cursor-centered scaling
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const handleWheelZoom = (e) => {
-      // Prevent browser page scrolling when zooming inside the viewer
       e.preventDefault();
       e.stopPropagation();
 
       const delta = e.deltaY;
-      const zoomStep = 0.12;
+      const zoomFactor = delta < 0 ? 1.15 : 0.87;
 
-      setZoom((prev) => {
-        let nextZoom;
-        if (delta < 0) {
-          // Wheel Up: Zoom In
-          nextZoom = Math.min(prev + zoomStep, 4.0);
-        } else {
-          // Wheel Down: Zoom Out
-          nextZoom = Math.max(prev - zoomStep, 0.35);
-        }
-        return Number(nextZoom.toFixed(2));
+      setZoom((prevZoom) => {
+        const nextZoom = Math.min(Math.max(Number((prevZoom * zoomFactor).toFixed(2)), 0.35), 6.0);
+        if (nextZoom === prevZoom) return prevZoom;
+
+        // Calculate cursor relative to viewport center to pan towards cursor
+        const rect = viewport.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+
+        setPan((prevPan) => {
+          if (nextZoom <= 1.05 && prevZoom <= 1.05) {
+            return { x: 0, y: 0 };
+          }
+          const scaleChange = nextZoom / prevZoom;
+          const newPanX = mouseX - (mouseX - prevPan.x) * scaleChange;
+          const newPanY = mouseY - (mouseY - prevPan.y) * scaleChange;
+          return {
+            x: Math.round(newPanX),
+            y: Math.round(newPanY)
+          };
+        });
+
+        return nextZoom;
       });
     };
 
@@ -114,15 +130,37 @@ export const HanulDocumentImageViewer = ({
   const pages = currentAttachment?.pages || [];
   const currentPage = pages[selectedPageIndex] || pages[0] || null;
 
-  const handleZoomIn = () => setZoom(prev => Math.min(Number((prev + 0.2).toFixed(2)), 4.0));
-  const handleZoomOut = () => setZoom(prev => Math.max(Number((prev - 0.2).toFixed(2)), 0.35));
-  const handleResetZoom = () => { setZoom(1); setRotation(0); };
-  const handleFitWidth = () => { setZoom(1.35); setRotation(0); };
-  const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+  const handleZoomIn = () => {
+    setZoom((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 6.0));
+  };
+
+  const handleZoomOut = () => {
+    setZoom((prev) => {
+      const next = Math.max(Number((prev - 0.25).toFixed(2)), 0.35);
+      if (next <= 1) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setRotation(0);
+  };
+
+  const handleFitWidth = () => {
+    setZoom(1.5);
+    setPan({ x: 0, y: 0 });
+    setRotation(0);
+  };
+
+  const handleRotate = () => {
+    setRotation((prev) => (prev + 90) % 360);
+  };
 
   const handlePrevPage = () => {
     if (selectedPageIndex > 0) {
-      setSelectedPageIndex(prev => prev - 1);
+      setSelectedPageIndex((prev) => prev - 1);
     } else {
       const curIdx = attachments.findIndex(a => a.id === selectedAttachmentId);
       if (curIdx > 0) {
@@ -135,7 +173,7 @@ export const HanulDocumentImageViewer = ({
 
   const handleNextPage = () => {
     if (selectedPageIndex < pages.length - 1) {
-      setSelectedPageIndex(prev => prev + 1);
+      setSelectedPageIndex((prev) => prev + 1);
     } else {
       const curIdx = attachments.findIndex(a => a.id === selectedAttachmentId);
       if (curIdx < attachments.length - 1) {
@@ -156,27 +194,63 @@ export const HanulDocumentImageViewer = ({
     document.body.removeChild(a);
   };
 
-  // Drag to Pan Handlers
-  const handleMouseDown = (e) => {
-    if (zoom <= 1) return;
+  // 🌟 Pointer Drag to Pan Handlers (상하좌우 자유 이동)
+  const handlePointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    
     setIsDragging(true);
-    setDragStart({
+    dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
-      scrollLeft: viewportRef.current?.scrollLeft || 0,
-      scrollTop: viewportRef.current?.scrollTop || 0
+      panX: pan.x,
+      panY: pan.y
+    };
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch (err) {
+      // Ignore if pointer capture fails
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+
+    setPan({
+      x: dragStartRef.current.panX + dx,
+      y: dragStartRef.current.panY + dy
     });
   };
 
-  const handleMouseMove = (e) => {
-    if (!isDragging || !viewportRef.current) return;
-    const dx = e.clientX - dragStart.x;
-    const dy = e.clientY - dragStart.y;
-    viewportRef.current.scrollLeft = dragStart.scrollLeft - dx;
-    viewportRef.current.scrollTop = dragStart.scrollTop - dy;
+  const handlePointerUp = (e) => {
+    setIsDragging(false);
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch (err) {
+      // Ignore
+    }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  // Double Click Toggle Zoom & Center Reset
+  const handleDoubleClick = (e) => {
+    if (zoom > 1.1) {
+      handleResetZoom();
+    } else {
+      const rect = viewportRef.current?.getBoundingClientRect();
+      if (rect) {
+        const mouseX = e.clientX - rect.left - rect.width / 2;
+        const mouseY = e.clientY - rect.top - rect.height / 2;
+        setZoom(2.0);
+        setPan({ x: -mouseX * 1.2, y: -mouseY * 1.2 });
+      } else {
+        setZoom(2.0);
+      }
+    }
+  };
 
   const renderTypeIcon = (type) => {
     switch (type) {
@@ -248,7 +322,7 @@ export const HanulDocumentImageViewer = ({
               type="button"
               onClick={handleResetZoom}
               className="px-1.5 text-[10px] font-mono font-black text-emerald-400 hover:text-emerald-300 cursor-pointer"
-              title="100% 원본 크기 리셋"
+              title="100% 원본 크기 및 위치 리셋 (더블클릭)"
             >
               {Math.round(zoom * 100)}%
             </button>
@@ -261,6 +335,20 @@ export const HanulDocumentImageViewer = ({
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Re-center Pan Button */}
+          <button
+            type="button"
+            onClick={() => setPan({ x: 0, y: 0 })}
+            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+              pan.x !== 0 || pan.y !== 0
+                ? "bg-emerald-950/80 text-emerald-400 border-emerald-700 hover:bg-emerald-900"
+                : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700"
+            }`}
+            title="화면 중앙으로 위치 초기화"
+          >
+            <LocateFixed className="w-3.5 h-3.5" />
+          </button>
 
           {/* Rotate Button */}
           <button
@@ -311,31 +399,35 @@ export const HanulDocumentImageViewer = ({
         </div>
       </div>
 
-      {/* Main Image Canvas Viewport with Wheel Zoom & Pan Scroll */}
+      {/* Main Image Canvas Viewport with 2D Drag Pan & Cursor-Centered Wheel Zoom */}
       <div
         ref={viewportRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        className={`flex-1 relative overflow-auto bg-slate-950 flex items-center justify-center p-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent ${
-          zoom > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onDoubleClick={handleDoubleClick}
+        className={`flex-1 relative overflow-hidden bg-slate-950 flex items-center justify-center p-3 select-none touch-none ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
         }`}
         style={{ minHeight: isEmbedded ? "380px" : "480px" }}
       >
         {currentPage?.dataUrl ? (
           <div
-            className="transition-transform duration-75 ease-out origin-center flex items-center justify-center shadow-2xl rounded-lg overflow-hidden bg-white"
+            className="shadow-2xl rounded-lg overflow-hidden bg-white flex items-center justify-center select-none"
             style={{
-              transform: `scale(${zoom}) rotate(${rotation}deg)`,
-              maxWidth: zoom <= 1 ? "100%" : "none",
-              maxHeight: zoom <= 1 ? "100%" : "none"
+              transform: `translate3d(${pan.x}px, ${pan.y}px, 0px) scale(${zoom}) rotate(${rotation}deg)`,
+              transformOrigin: "center center",
+              transition: isDragging ? "none" : "transform 90ms cubic-bezier(0.2, 0, 0, 1)",
+              maxWidth: "94%",
+              maxHeight: "94%",
+              willChange: "transform"
             }}
           >
             <img
               src={currentPage.dataUrl}
               alt={currentPage.title || "증빙 이미지"}
-              className="block max-w-full max-h-full object-contain pointer-events-auto select-none"
+              className="block max-w-full max-h-full object-contain pointer-events-none select-none"
               draggable={false}
             />
           </div>
@@ -346,10 +438,37 @@ export const HanulDocumentImageViewer = ({
           </div>
         )}
 
-        {/* Zoom Tooltip Badge on Hover */}
-        <div className="absolute bottom-3 right-3 px-2 py-1 rounded-md bg-slate-900/80 backdrop-blur-xs border border-slate-700/80 text-[10px] font-mono text-slate-300 pointer-events-none flex items-center gap-1.5">
-          <span>🔍 휠 스크롤 줌</span>
-          <span className="text-emerald-400 font-bold">{Math.round(zoom * 100)}%</span>
+        {/* Floating Controls & Pan Helper Guide Overlay */}
+        <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-slate-900/85 backdrop-blur-xs border border-slate-700/80 text-[11px] text-slate-300 pointer-events-none flex items-center gap-2 shadow-lg">
+          <span className="flex items-center gap-1 text-slate-300">
+            <Move className="w-3 h-3 text-emerald-400" />
+            <span>화면 클릭 후 드래그로 상하좌우 이동</span>
+          </span>
+          <span className="text-slate-500">•</span>
+          <span className="text-slate-400">마우스 휠 확대/축소</span>
+        </div>
+
+        {/* Zoom Tooltip Badge */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 z-10">
+          {(pan.x !== 0 || pan.y !== 0) && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPan({ x: 0, y: 0 });
+              }}
+              className="px-2 py-1 rounded-md bg-slate-900/90 hover:bg-emerald-600 text-[10px] font-bold text-emerald-400 hover:text-white border border-slate-700 transition-all cursor-pointer shadow-lg flex items-center gap-1"
+              title="화면 중앙으로 정렬"
+            >
+              <LocateFixed className="w-3 h-3" />
+              <span>위치 초기화</span>
+            </button>
+          )}
+
+          <div className="px-2.5 py-1 rounded-md bg-slate-900/90 backdrop-blur-xs border border-slate-700/80 text-[11px] font-mono text-slate-300 flex items-center gap-1.5 shadow-lg">
+            <span>🔍</span>
+            <span className="text-emerald-400 font-bold">{Math.round(zoom * 100)}%</span>
+          </div>
         </div>
 
         {/* Floating Prev / Next Navigation Arrows */}
@@ -357,18 +476,24 @@ export const HanulDocumentImageViewer = ({
           <>
             <button
               type="button"
-              onClick={handlePrevPage}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrevPage();
+              }}
               disabled={selectedPageIndex === 0 && attachments.findIndex(a => a.id === selectedAttachmentId) === 0}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/80 hover:bg-emerald-600 text-white shadow-lg backdrop-blur-xs disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer z-10"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-900/85 hover:bg-emerald-600 text-white shadow-xl backdrop-blur-xs disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer z-10 border border-slate-700"
               title="이전 페이지"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               type="button"
-              onClick={handleNextPage}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleNextPage();
+              }}
               disabled={selectedPageIndex === pages.length - 1 && attachments.findIndex(a => a.id === selectedAttachmentId) === attachments.length - 1}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-slate-900/80 hover:bg-emerald-600 text-white shadow-lg backdrop-blur-xs disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer z-10"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-900/85 hover:bg-emerald-600 text-white shadow-xl backdrop-blur-xs disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer z-10 border border-slate-700"
               title="다음 페이지"
             >
               <ChevronRight className="w-4 h-4" />
