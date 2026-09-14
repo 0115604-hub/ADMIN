@@ -745,16 +745,12 @@ export const ElectronicApprovalView = () => {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold">
-                  <th className="hidden sm:table-cell py-3 px-3 w-28 whitespace-nowrap">문서번호</th>
-                  <th className="hidden sm:table-cell py-3 px-2.5 w-24 whitespace-nowrap">양식구분</th>
-                  <th className="py-3 px-2 w-20 whitespace-nowrap">공장</th>
-                  <th className="py-3 px-3 min-w-[200px]">문서 제목</th>
-                  <th className="py-3 px-2.5 w-28 whitespace-nowrap">기안자(담당)</th>
-                  <th className="hidden md:table-cell py-3 px-2.5 w-28 whitespace-nowrap">기안일시</th>
-                  <th className="hidden sm:table-cell py-3 px-2.5 w-24 whitespace-nowrap">소요금액</th>
-                  <th className="py-3 px-3 w-48 text-center whitespace-nowrap">결재선 (담당/책임/이사/대표)</th>
-                  <th className="py-3 px-2.5 w-24 text-center whitespace-nowrap">문서상태</th>
-                  <th className="py-3 px-3 w-28 text-center whitespace-nowrap">관리</th>
+                  <th className="py-3 px-3 w-20 whitespace-nowrap text-center">공장</th>
+                  <th className="py-3 px-4 min-w-[240px]">문서제목</th>
+                  <th className="py-3 px-3 w-28 whitespace-nowrap">기안자</th>
+                  <th className="py-3 px-3 w-28 whitespace-nowrap text-right">소요금액</th>
+                  <th className="py-3 px-3 w-28 text-center whitespace-nowrap">문서상태</th>
+                  <th className="py-3 px-3 w-24 text-center whitespace-nowrap">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -772,125 +768,65 @@ export const ElectronicApprovalView = () => {
                         isPending ? "bg-rose-50/20 dark:bg-rose-950/10" : isHold ? "bg-amber-50/20 dark:bg-amber-950/10" : ""
                       }`}
                     >
-                      {/* 1. 문서번호 (모바일 숨김) */}
-                      <td className="hidden sm:table-cell py-2.5 px-3 font-mono text-[11px] font-bold text-slate-500 whitespace-nowrap">
-                        {doc.docNumber}
-                      </td>
-
-                      {/* 2. 양식구분 (모바일 숨김) */}
-                      <td className="hidden sm:table-cell py-2.5 px-2.5 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black ${
-                          doc.type === "OVERTIME"
-                            ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
-                            : doc.type === "LEAVE"
-                            ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-                            : doc.type === "EXPENSE"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                            : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300"
+                      {/* 1. 공장 */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                          doc.plant === "삼랑진공장"
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                            : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                         }`}>
-                          {doc.typeName}
+                          {doc.plant === "삼랑진공장" ? "삼랑진" : doc.plant === "한림공장" ? "한림" : (doc.plant || "전사")}
                         </span>
                       </td>
 
-                      {/* 3. 공장 */}
-                      <td className="py-2.5 px-2 text-slate-600 dark:text-slate-300 font-bold whitespace-nowrap text-[11px]">
-                        {doc.plant === "삼랑진공장" ? "삼랑진" : "한림"}
-                      </td>
-
-                      {/* 4. 문서 제목 (특근보고서 간결 표기: 특근보고서결재(**공장)) */}
-                      <td className="py-2.5 px-3 font-black text-slate-900 dark:text-white max-w-[340px] truncate">
-                        <span className="hover:underline text-slate-900 dark:text-white">
-                          {doc.type === "OVERTIME" || (doc.title && doc.title.includes("특근"))
-                            ? `특근보고서결재(${doc.plant || "삼랑진공장"})`
-                            : doc.title}
-                        </span>
-                      </td>
-
-                      {/* 5. 기안자(담당: 전작업자) */}
-                      <td className="py-2.5 px-2.5 whitespace-nowrap text-slate-700 dark:text-slate-300 font-bold text-[11px]">
-                        {doc.drafter} <span className="text-slate-400 font-normal">{doc.drafterTitle}</span>
-                      </td>
-
-                      {/* 6. 기안일시 (모바일 숨김) */}
-                      <td className="hidden md:table-cell py-2.5 px-2.5 whitespace-nowrap font-mono text-slate-500 text-[10.5px]">
-                        {doc.createdAt?.slice(5)}
-                      </td>
-
-                      {/* 7. 소요금액 (모바일 숨김) */}
-                      <td className="hidden sm:table-cell py-2.5 px-2.5 whitespace-nowrap font-mono font-bold text-[11px] text-emerald-600 dark:text-emerald-400">
-                        {doc.amount || "-"}
-                      </td>
-
-                      {/* 8. 4단계 결재선 도장 미니 배지 */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
-                          {doc.steps.map((st, idx) => (
-                            <div
-                              key={idx}
-                              title={`[${st.role}] ${st.name} : ${idx === 0 ? "기안완료" : st.status === "APPROVED" ? ((st.role === "대표" || st.name === "권태형") ? "대표이사 친필서명 승인완료" : "승인완료") : st.status === "HOLD" ? "보류중" : st.status === "REJECTED" ? "반려" : st.status === "PENDING" ? "결재대기" : "대기"}`}
-                              className={`w-6 h-6 rounded-md flex items-center justify-center text-[9.5px] font-black border transition-all ${
-                                idx === 0
-                                  ? "bg-blue-600 text-white border-blue-700"
-                                  : st.status === "APPROVED"
-                                  ? (st.role === "대표" || st.name === "권태형")
-                                    ? "bg-amber-500 text-slate-950 border-amber-600 shadow-2xs font-black"
-                                    : "bg-emerald-500 text-white border-emerald-600"
-                                  : st.status === "HOLD"
-                                  ? "bg-amber-400 text-slate-950 border-amber-500 animate-pulse font-bold"
-                                  : st.status === "REJECTED"
-                                  ? "bg-rose-500 text-white border-rose-600"
-                                  : st.status === "PENDING"
-                                  ? "bg-rose-100 text-rose-800 border-rose-400 animate-pulse font-bold"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700"
-                              }`}
-                            >
-                              {idx === 0
-                                ? "기"
-                                : st.status === "APPROVED"
-                                ? (st.role === "대표" || st.name === "권태형")
-                                  ? "✍️"
-                                  : "인"
-                                : st.status === "HOLD"
-                                ? "류"
-                                : st.status === "REJECTED"
-                                ? "반"
-                                : st.status === "PENDING"
-                                ? "대"
-                                : st.role?.slice(0, 1)}
-                            </div>
-                          ))}
+                      {/* 2. 문서제목 */}
+                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                        <div className="flex items-center gap-2">
+                          <span className="hover:underline text-slate-900 dark:text-white text-xs sm:text-sm font-black">
+                            {doc.title}
+                          </span>
                         </div>
                       </td>
 
-                      {/* 9. 문서 상태 */}
-                      <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
+                      {/* 3. 기안자 */}
+                      <td className="py-3 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300 font-bold text-xs">
+                        {doc.drafter} <span className="text-slate-400 font-normal text-[11px]">{doc.drafterTitle}</span>
+                      </td>
+
+                      {/* 4. 소요금액 */}
+                      <td className="py-3 px-3 whitespace-nowrap font-mono font-black text-xs text-right text-emerald-600 dark:text-emerald-400">
+                        {doc.amount || "-"}
+                      </td>
+
+                      {/* 5. 문서상태 */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
                         {isApproved ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                            ✓ 승인완료
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                            ✓ 결재완료
                           </span>
                         ) : isHold ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 animate-pulse">
                             ⏸️ 보류중
                           </span>
                         ) : isRejected ? (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300">
                             ✕ 반려됨
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
-                            <Clock className="w-2.5 h-2.5" />
-                            <span>미결({doc.steps.find((s) => s.status === "PENDING")?.role || "결재"})</span>
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
+                            <Clock className="w-3 h-3 text-rose-500 animate-pulse" />
+                            <span>결재대기 ({doc.steps.find((s) => s.status === "PENDING")?.role || "책임"})</span>
                           </span>
                         )}
                       </td>
 
-                      {/* 10. 관리/삭제 버튼 */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      {/* 6. 관리 */}
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => handleOpenDocModal(doc)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all shadow-xs"
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white dark:bg-slate-800 dark:hover:bg-white dark:hover:text-slate-950 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all shadow-xs"
                             title="상세 열람 및 결재"
                           >
                             상세
@@ -899,7 +835,7 @@ export const ElectronicApprovalView = () => {
                             <button
                               type="button"
                               onClick={(e) => handleDelete(doc.id, e)}
-                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800"
+                              className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold transition-all shadow-xs flex items-center gap-1 border border-rose-200 dark:border-rose-800"
                               title="결재 문서 삭제 (ADMIN 전용)"
                             >
                               <Trash2 className="w-3 h-3" />
