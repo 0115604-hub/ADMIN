@@ -446,7 +446,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       "유성": { workers: 5, attended: 5, otWorkers: 3, otHours: 6, totalHours: 44, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
     };
 
-    return ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"].map((name) => {
+    const companies = ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"].map((name) => {
       const meta = defaultMeta[name];
       const b = daily?.companyBreakdown?.[name];
       const calcOtWorkers = b ? ((b.ot19 || 0) + (b.ot21 || 0) + (b.ot22 || 0) + (b.specialNight || 0)) : meta.otWorkers;
@@ -459,9 +459,31 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         totalHours: b?.totalHours ?? meta.totalHours,
         dot: meta.dot,
         borderHover: meta.borderHover,
-        badgeColor: meta.badgeColor
+        badgeColor: meta.badgeColor,
+        isTotal: false
       };
     });
+
+    const totalWorkers = companies.reduce((acc, c) => acc + (c.workers || 0), 0);
+    const totalAttended = companies.reduce((acc, c) => acc + (c.attended || 0), 0);
+    const totalOtWorkers = companies.reduce((acc, c) => acc + (c.otWorkers || 0), 0);
+    const totalOtHours = companies.reduce((acc, c) => acc + (c.otHours || 0), 0);
+    const totalHours = companies.reduce((acc, c) => acc + (c.totalHours || 0), 0);
+
+    const totalItem = {
+      name: "전회사 TOTAL",
+      workers: totalWorkers,
+      attended: totalAttended,
+      otWorkers: totalOtWorkers,
+      otHours: totalOtHours,
+      totalHours: totalHours,
+      dot: "bg-rose-500",
+      borderHover: "hover:border-cyan-500 dark:hover:border-cyan-400 ring-1 ring-cyan-400/40 dark:ring-cyan-500/30",
+      badgeColor: "text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950 border-cyan-300 dark:border-cyan-800",
+      isTotal: true
+    };
+
+    return [...companies, totalItem];
   }, [smartOvertimeData]);
 
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
@@ -3085,30 +3107,53 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           )}
         </div>
 
-        {/* 5 Company Today Overview Cards - Simple & Slim 2-Metric Design */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+        {/* 5 Company + TOTAL Today Overview Cards - Simple & Slim 2-Metric Design */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
           {companyOverviewStats.map((comp) => (
             <div
               key={comp.name}
               onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
-              className={`p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800 ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
-              title="클릭 시 5개사 근태/잔업 대장 상세관리로 이동"
+              className={`p-2 sm:p-2.5 rounded-xl ${
+                comp.isTotal
+                  ? "bg-cyan-50/50 dark:bg-cyan-950/30 border border-cyan-300/90 dark:border-cyan-700/80 shadow-xs"
+                  : "bg-slate-50 dark:bg-slate-950/90 border border-slate-200/90 dark:border-slate-800"
+              } ${comp.borderHover} transition-all duration-200 shadow-2xs hover:shadow-xs cursor-pointer group flex flex-col justify-between space-y-1.5 min-w-0`}
+              title={comp.isTotal ? "클릭 시 전회사 근태/잔업 상세대장으로 이동" : "클릭 시 5개사 근태/잔업 대장 상세관리로 이동"}
             >
               {/* Header: Company Name */}
-              <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-200/70 dark:border-slate-800/80">
+              <div className={`flex items-center justify-between gap-1 pb-1 border-b ${
+                comp.isTotal
+                  ? "border-cyan-200/80 dark:border-cyan-800/80"
+                  : "border-slate-200/70 dark:border-slate-800/80"
+              }`}>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className={`w-2 h-2 rounded-full ${comp.dot} shrink-0`}></span>
-                  <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors truncate">
+                  <span className={`font-black text-xs sm:text-sm truncate transition-colors ${
+                    comp.isTotal
+                      ? "text-cyan-900 dark:text-cyan-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
+                      : "text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-300"
+                  }`}>
                     {comp.name}
                   </span>
                 </div>
+                {comp.isTotal && (
+                  <span className="text-[9px] font-black px-1 py-0.2 rounded bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-700 shrink-0">
+                    합계
+                  </span>
+                )}
               </div>
 
               {/* 2 Simple & Slim Metrics: 1. 전체 근로 대비 출근 인원 / 2. 잔업 투입 인원 */}
               <div className="grid grid-cols-2 gap-1.5">
                 {/* 1. 출근 현황 */}
-                <div className="bg-white dark:bg-slate-900/90 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800/90 text-center flex flex-col justify-center">
-                  <div className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400">출근 현황</div>
+                <div className={`p-1.5 rounded-lg border text-center flex flex-col justify-center ${
+                  comp.isTotal
+                    ? "bg-white dark:bg-slate-900/90 border-cyan-200 dark:border-cyan-800"
+                    : "bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800/90"
+                }`}>
+                  <div className={`text-[9.5px] font-bold ${comp.isTotal ? "text-cyan-700 dark:text-cyan-300" : "text-slate-500 dark:text-slate-400"}`}>
+                    출근 현황
+                  </div>
                   <div className="font-mono font-black text-xs sm:text-sm text-cyan-600 dark:text-cyan-300 leading-tight mt-0.5">
                     {comp.attended}<span className="text-[10px] text-slate-400 font-bold">/{comp.workers}</span>
                     <span className="text-[9.5px] font-bold ml-0.5 text-slate-500">명</span>
@@ -3116,8 +3161,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
 
                 {/* 2. 잔업 투입 인원 */}
-                <div className="bg-white dark:bg-slate-900/90 p-1.5 rounded-lg border border-slate-200/80 dark:border-slate-800/90 text-center flex flex-col justify-center">
-                  <div className="text-[9.5px] font-bold text-slate-500 dark:text-slate-400">잔업 투입</div>
+                <div className={`p-1.5 rounded-lg border text-center flex flex-col justify-center ${
+                  comp.isTotal
+                    ? "bg-white dark:bg-slate-900/90 border-cyan-200 dark:border-cyan-800"
+                    : "bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800/90"
+                }`}>
+                  <div className={`text-[9.5px] font-bold ${comp.isTotal ? "text-amber-700 dark:text-amber-300" : "text-slate-500 dark:text-slate-400"}`}>
+                    잔업 투입
+                  </div>
                   <div className="font-mono font-black text-xs sm:text-sm text-amber-600 dark:text-amber-400 leading-tight mt-0.5">
                     {comp.otWorkers}
                     <span className="text-[9.5px] font-bold ml-0.5 text-slate-500">명</span>
