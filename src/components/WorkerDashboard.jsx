@@ -3091,8 +3091,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </span>
                   </div>
 
-                  {/* Right Side: 월별 가동율 & LOSS율 추이 (긴막대: 월가동율, 내부 작은막대: LOSS율) */}
-                  <div className="flex flex-col justify-center space-y-1 min-w-0">
+                  {/* Right Side: 월별 가동율 & LOSS율 추이 (큰막대: 월가동율, 내부 작은막대: LOSS율) */}
+                  <div className="flex flex-col justify-center space-y-1.5 min-w-0">
                     <div className="flex items-center justify-between text-[9.5px] font-extrabold text-slate-500 dark:text-slate-400">
                       <span>월별 추이 (7~9월)</span>
                       <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
@@ -3101,60 +3101,68 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </span>
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       {ex.monthlyTrend.map((mItem) => {
-                        // 긴막대: 월가동율 (0~100% 기준)
-                        const opPct = Math.min(100, Math.max(10, mItem.opNum));
-                        // 긴막대 내부 작은 막대: LOSS율 (긴막대 폭 기준 비례)
-                        const innerLossPct = Math.min(100, Math.max(12, (mItem.lossNum / opPct) * 100));
+                        // 큰막대: 월가동율 (0~100% 기준)
+                        const opPct = Math.min(100, Math.max(20, mItem.opNum));
+                        // 작은막대: 0.5~6% 데이터가 육안상 명확히 구분되도록 전용 비례 스케일 적용 (16%~60%)
+                        const lossVisualPct = Math.min(65, Math.max(16, mItem.lossNum * 7));
 
                         return (
-                          <div key={mItem.month} className="flex items-center gap-1 text-[9.5px]">
-                            {/* 월 표기 (7월, 8월, 9월) */}
-                            <span
-                              className={`w-5 text-center shrink-0 ${
-                                mItem.isCurrent
-                                  ? "text-amber-600 dark:text-amber-400 font-black"
-                                  : "text-slate-500 dark:text-slate-400 font-bold"
-                              }`}
-                            >
-                              {mItem.month}
-                            </span>
+                          <div
+                            key={mItem.month}
+                            className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded-lg border border-slate-200/70 dark:border-slate-700/60 space-y-1"
+                          >
+                            {/* 1. 상단 정보: 월 라벨 + 가동율 + LOSS율 수치 */}
+                            <div className="flex items-center justify-between text-[10px]">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className={`px-1.5 py-0.2 rounded font-black text-[9.5px] shrink-0 ${
+                                    mItem.isCurrent
+                                      ? "bg-amber-400 text-slate-900 shadow-xs"
+                                      : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                                  }`}
+                                >
+                                  {mItem.month}
+                                </span>
+                                <span className="font-black text-emerald-700 dark:text-emerald-400 truncate">
+                                  가동 {mItem.opRate}
+                                </span>
+                              </div>
+                              <span className="px-1.5 py-0.2 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black text-[9.5px] border border-rose-200 dark:border-rose-800 shrink-0">
+                                LOSS {mItem.lossRate}
+                              </span>
+                            </div>
 
-                            {/* 긴막대 (월가동율) + 긴막대 안의 작은 막대 (LOSS율) */}
-                            <div className="flex-1 bg-slate-200/90 dark:bg-slate-900 rounded-md h-3.5 p-0.2 relative overflow-hidden min-w-0">
-                              {/* 1. 긴막대: 월가동율 */}
+                            {/* 2. 시각적 바: 큰막대(월가동율) + 큰막대 안의 작은막대(LOSS율) */}
+                            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-3.5 relative overflow-hidden flex items-center p-0.5">
+                              {/* 큰막대: 월가동율 */}
                               <div
-                                className={`h-full rounded relative transition-all duration-500 flex items-center ${
+                                className={`h-full rounded-full transition-all duration-500 relative flex items-center ${
                                   mItem.isCurrent
                                     ? "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 shadow-xs"
-                                    : "bg-teal-600/75 dark:bg-teal-700/75"
+                                    : "bg-teal-600/80 dark:bg-teal-700/80"
                                 }`}
                                 style={{ width: `${opPct}%` }}
-                                title={`${mItem.month} 월가동율: ${mItem.opRate}`}
+                                title={`${mItem.month} 가동율: ${mItem.opRate}`}
                               >
-                                {/* 2. 긴막대 안의 작은 막대: LOSS율 */}
+                                {/* 큰막대 안의 작은막대: LOSS율 (명확한 육안 구분 전용 스케일) */}
                                 <div
-                                  className="h-full rounded-l bg-gradient-to-r from-rose-500 to-amber-500 shadow-xs flex items-center justify-center shrink-0 border-r border-white/50"
-                                  style={{ width: `${innerLossPct}%`, minWidth: "18px" }}
+                                  className="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 shadow-xs flex items-center justify-center shrink-0 border border-white/70"
+                                  style={{ width: `${lossVisualPct}%` }}
                                   title={`${mItem.month} LOSS율: ${mItem.lossRate}`}
                                 >
-                                  <span className="text-[7px] font-black text-white px-0.5 leading-none truncate">
+                                  <span className="text-[7.5px] font-black text-white px-1 leading-none drop-shadow-xs whitespace-nowrap">
                                     {mItem.lossRate}
                                   </span>
                                 </div>
 
-                                {/* 긴막대 우측 끝 월가동율 텍스트 */}
-                                <span className="text-[7.5px] font-black text-white ml-auto pr-0.5 leading-none drop-shadow-xs truncate">
+                                {/* 가동율 표시 */}
+                                <span className="text-[7.5px] font-black text-white ml-auto pr-1 leading-none drop-shadow-xs truncate">
                                   {mItem.opRate}
                                 </span>
                               </div>
                             </div>
-
-                            {/* 우측 수치 요약 */}
-                            <span className="w-10 text-right font-black text-[9px] text-emerald-700 dark:text-emerald-400 shrink-0">
-                              {mItem.opRate}
-                            </span>
                           </div>
                         );
                       })}
