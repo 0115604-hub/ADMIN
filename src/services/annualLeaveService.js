@@ -51,7 +51,7 @@ const sanitizeLeave = (leave) => {
   return clean;
 };
 
-// Real-time Cloud Subscription
+// Real-time Cloud Subscription with Automatic Orphan Pruning
 export const subscribeAnnualLeaves = (callback) => {
   try {
     const colRef = collection(db, COLLECTION_NAME);
@@ -59,13 +59,44 @@ export const subscribeAnnualLeaves = (callback) => {
       colRef,
       (snapshot) => {
         if (!snapshot.empty) {
-          const cloudLeaves = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data()
+          const rawDocs = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...docSnap.data()
           }));
-          cloudLeaves.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
-          saveLocalAnnualLeaves(cloudLeaves);
-          callback(cloudLeaves);
+
+          const allDocIds = new Set(rawDocs.map((d) => String(d.id)));
+          const validCloudLeaves = [];
+          const orphanIdsToDelete = [];
+
+          rawDocs.forEach((docItem) => {
+            const isRecipient = Boolean(docItem.isSharedRecipient || docItem.sharedBy);
+            const origId = docItem.originLeaveId ? String(docItem.originLeaveId) : null;
+
+            // 💡 고아 문서(Orphan) 자동 탐지:
+            // 작성자가 원본 문서를 삭제하여 originLeaveId 문서가 Firestore에 더 이상 존재하지 않는 경우
+            if (isRecipient && origId && !allDocIds.has(origId)) {
+              orphanIdsToDelete.push(String(docItem.id));
+              return; // 수신자 목록 및 화면에서 즉시 제외
+            }
+
+            validCloudLeaves.push(docItem);
+          });
+
+          // 고아 문서가 발견되면 Firestore 클라우드에서 즉시 영구 삭제
+          if (orphanIdsToDelete.length > 0) {
+            orphanIdsToDelete.forEach(async (orphId) => {
+              try {
+                await deleteDoc(doc(db, COLLECTION_NAME, orphId));
+                console.log("Auto-pruned orphaned shared leave from Firestore:", orphId);
+              } catch (e) {
+                console.warn("Orphan leave prune error:", e);
+              }
+            });
+          }
+
+          validCloudLeaves.sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+          saveLocalAnnualLeaves(validCloudLeaves);
+          callback(validCloudLeaves);
         } else {
           // If Firestore collection is empty, update local cache to empty array
           saveLocalAnnualLeaves([]);
@@ -137,40 +168,41 @@ export const saveAnnualLeave = async (newLeave) => {
 export const deleteAnnualLeave = async (id, cascadeAll = true) => {
   const leaveId = String(id);
   const current = getLocalAnnualLeaves();
-  const targetItem = current.find((l) => String(l.id) === leaveId);
-  const isRecipient = Boolean(targetItem?.isSharedRecipient && !targetItem?.isSharedOrigin);
-  const rootOriginId = targetItem?.originLeaveId ? String(targetItem.originLeaveId) : leaveId;
-  const authorName = targetItem?.userName || targetItem?.sharedBy || "";
-  const authorId = targetItem?.userId || targetItem?.sharedById || "";
-  const targetDate = targetItem?.startDate || targetItem?.date || "";
-  const targetType = targetItem?.leaveType || "";
+  let targetItem = current.find((l) => String(l.id) === leaveId);
+
+  let rootOriginId = targetItem?.originLeaveId ? String(targetItem.originLeaveId) : leaveId;
+  let authorName = targetItem?.userName || targetItem?.sharedBy || "";
+  let authorId = targetItem?.userId || targetItem?.sharedById || "";
+  let targetDate = targetItem?.startDate || targetItem?.date || "";
+  let targetType = targetItem?.leaveType || "";
+  let isRecipient = Boolean(targetItem?.isSharedRecipient && !targetItem?.isSharedOrigin);
 
   // 1. Collect all matching local IDs
   const idsToDelete = new Set();
   idsToDelete.add(leaveId);
 
-  if (cascadeAll && !isRecipient) {
-    if (rootOriginId) idsToDelete.add(rootOriginId);
-    current.forEach((l) => {
-      if (!l) return;
-      const lId = String(l.id);
-      const lOrigId = l.originLeaveId ? String(l.originLeaveId) : null;
-      if (
-        lId === leaveId ||
-        lId === rootOriginId ||
-        lOrigId === leaveId ||
-        lOrigId === rootOriginId ||
-        (authorName && targetDate && targetType && (l.sharedBy === authorName || l.userName === authorName) && (l.startDate === targetDate || l.date === targetDate) && l.leaveType === targetType) ||
-        (authorId && targetDate && targetType && (l.sharedById === authorId || l.userId === authorId) && (l.startDate === targetDate || l.date === targetDate) && l.leaveType === targetType)
-      ) {
-        idsToDelete.add(lId);
-      }
-    });
-  }
-
   // 2. Direct Query to Firestore to find and collect ALL matching cloud docs (even if not yet in local cache)
   try {
     const snap = await getDocs(collection(db, COLLECTION_NAME));
+    
+    // If targetItem wasn't found in local cache, extract metadata from Firestore cloud
+    if (!targetItem) {
+      const foundInCloud = snap.docs.find((d) => d.id === leaveId);
+      if (foundInCloud) {
+        const cData = foundInCloud.data();
+        rootOriginId = cData.originLeaveId ? String(cData.originLeaveId) : leaveId;
+        authorName = cData.userName || cData.sharedBy || "";
+        authorId = cData.userId || cData.sharedById || "";
+        targetDate = cData.startDate || cData.date || "";
+        targetType = cData.leaveType || "";
+        isRecipient = Boolean(cData.isSharedRecipient && !cData.isSharedOrigin);
+      }
+    }
+
+    if (cascadeAll && !isRecipient && rootOriginId) {
+      idsToDelete.add(rootOriginId);
+    }
+
     snap.docs.forEach((d) => {
       const data = d.data() || {};
       const dId = d.id;
@@ -196,6 +228,25 @@ export const deleteAnnualLeave = async (id, cascadeAll = true) => {
     });
   } catch (err) {
     console.error("Error querying Firestore for cascade delete:", err);
+  }
+
+  // Also collect matching IDs from local storage
+  if (cascadeAll && !isRecipient) {
+    current.forEach((l) => {
+      if (!l) return;
+      const lId = String(l.id);
+      const lOrigId = l.originLeaveId ? String(l.originLeaveId) : null;
+      if (
+        lId === leaveId ||
+        (rootOriginId && lId === rootOriginId) ||
+        lOrigId === leaveId ||
+        (rootOriginId && lOrigId === rootOriginId) ||
+        (authorName && targetDate && targetType && (l.sharedBy === authorName || l.userName === authorName) && (l.startDate === targetDate || l.date === targetDate) && l.leaveType === targetType) ||
+        (authorId && targetDate && targetType && (l.sharedById === authorId || l.userId === authorId) && (l.startDate === targetDate || l.date === targetDate) && l.leaveType === targetType)
+      ) {
+        idsToDelete.add(lId);
+      }
+    });
   }
 
   // 3. Immediately update local storage
