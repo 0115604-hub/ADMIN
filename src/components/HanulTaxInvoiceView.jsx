@@ -203,9 +203,10 @@ export const HanulTaxInvoiceView = () => {
   }, [totalSalesAmount, totalSalesQty]);
 
   // 🌟 한울 {N}월 매출금액 (정산표 등록 데이터 및 세금계산서 실시간 연동)
+  // 공제내역등록의 공제내역 총액(totalExpense)이 우선적으로 매출금액에 연동됩니다.
   const prevMonthSales = useMemo(() => {
-    if (settlementData?.supplyAmount && Number(settlementData.supplyAmount) > 0) {
-      return Number(settlementData.supplyAmount);
+    if (settlementData?.totalExpense !== undefined && Number(settlementData.totalExpense) > 0) {
+      return Number(settlementData.totalExpense);
     }
     if (monthData?.prevMonthSales !== undefined && Number(monthData.prevMonthSales) > 0) {
       return Number(monthData.prevMonthSales);
@@ -250,10 +251,8 @@ export const HanulTaxInvoiceView = () => {
     if (settlementData) {
       const updatedSettlement = {
         ...settlementData,
-        supplyAmount: amount,
-        taxAmount: Math.round(amount * 0.1),
-        totalWithTax: Math.round(amount * 1.1),
-        netSettlement: Math.round(amount * 1.1) - (Number(settlementData.totalExpense) || 0)
+        totalExpense: amount,
+        netSettlement: (Number(settlementData.totalWithTax) || 0) - amount
       };
       setSettlementData(updatedSettlement);
       saveHanulSettlementMonthData(activeMonth, updatedSettlement);
@@ -642,18 +641,15 @@ export const HanulTaxInvoiceView = () => {
         {/* 🌟 한울 실시간 정산/지출공제 연동 정보 표시 & 상세보기 뱃지 */}
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {Number(settlementData?.totalExpense) > 0 ? (
-            <div className="flex items-center gap-2 bg-rose-500/20 border border-rose-400/40 px-3 py-1.5 rounded-xl text-xs">
-              <span className="text-rose-200 font-medium">지출공제:</span>
-              <strong className="text-rose-300 font-mono font-black">-₩{Number(settlementData.totalExpense).toLocaleString()}</strong>
+            <div className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/40 px-3 py-1.5 rounded-xl text-xs">
+              <span className="text-emerald-200 font-medium">공제내역 총액:</span>
+              <strong className="text-emerald-300 font-mono font-black">₩{Number(settlementData.totalExpense).toLocaleString()}</strong>
               <span className="text-white/40">|</span>
-              <span className="text-emerald-200 font-medium">실정산액:</span>
-              <strong className="text-emerald-300 font-mono font-black">
-                ₩{(Number(prevMonthSales || 0) - Number(settlementData.totalExpense || 0)).toLocaleString()}
-              </strong>
+              <span className="text-blue-200 font-medium">매출금액 연동완료</span>
             </div>
           ) : (
             <span className="text-[11px] text-indigo-200/70 hidden lg:inline">
-              ✓ 한울 지출공제 등록 시 실시간 연동
+              ✓ 한울 공제내역 등록 시 실시간 매출 연동
             </span>
           )}
 
@@ -661,10 +657,10 @@ export const HanulTaxInvoiceView = () => {
             type="button"
             onClick={() => setIsAdminSettlementModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-            title="한울 공통비 및 지출 공제내역 상세 열기"
+            title="한울 공제내역 등록 및 상세내역 열기"
           >
             <Receipt className="w-3.5 h-3.5" />
-            <span>지출공제 상세내역</span>
+            <span>공제내역 등록/상세</span>
           </button>
         </div>
       </div>

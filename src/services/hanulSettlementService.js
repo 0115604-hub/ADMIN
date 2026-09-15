@@ -207,15 +207,17 @@ export const saveHanulSettlementMonthData = async (yearMonth, monthData) => {
   store[yearMonth] = updatedSettlement;
   saveLocalSettlementStore(store);
 
-  // 🌟 Cross-sync: Share Hanul Sales Amount & Deductions with Admin Hanul Tax Invoice View
+  // 🌟 Cross-sync: User requirement - Share Hanul Sales Amount & Deductions with Admin Hanul Tax Invoice View
+  // Deduction total (공제내역 총액: totalExpense) becomes the Hanul Sales Amount in Admin Hanul Tax Invoice View
   try {
     const taxStore = getLocalHanulStore();
     const currentTaxMonth = taxStore[yearMonth] || createDefaultHanulMonthData(yearMonth);
-    
-    // Determine sales amount: if supplyAmount > 0 use it, else keep or update
-    const salesAmt = Number(monthData.supplyAmount) > 0 
-      ? Number(monthData.supplyAmount) 
-      : (Number(currentTaxMonth.prevMonthSales) || Number(currentTaxMonth.invoiceConfig?.invoiceAmount) || 0);
+    const deductionTotal = Number(monthData.totalExpense) || 0;
+    const salesAmt = deductionTotal > 0
+      ? deductionTotal
+      : (Number(monthData.supplyAmount) > 0
+          ? Number(monthData.supplyAmount)
+          : (Number(currentTaxMonth.prevMonthSales) || Number(currentTaxMonth.invoiceConfig?.invoiceAmount) || 0));
 
     taxStore[yearMonth] = {
       ...currentTaxMonth,
@@ -230,9 +232,9 @@ export const saveHanulSettlementMonthData = async (yearMonth, monthData) => {
       },
       invoiceConfig: {
         ...(currentTaxMonth.invoiceConfig || {}),
-        invoiceAmount: salesAmt > 0 ? salesAmt : currentTaxMonth.invoiceConfig?.invoiceAmount,
-        vatAmount: Math.round((salesAmt > 0 ? salesAmt : currentTaxMonth.invoiceConfig?.invoiceAmount) * 0.1),
-        totalInvoiceAmount: Math.round((salesAmt > 0 ? salesAmt : currentTaxMonth.invoiceConfig?.invoiceAmount) * 1.1)
+        invoiceAmount: salesAmt,
+        vatAmount: Math.round(salesAmt * 0.1),
+        totalInvoiceAmount: Math.round(salesAmt * 1.1)
       },
       updatedAt: new Date().toISOString()
     };

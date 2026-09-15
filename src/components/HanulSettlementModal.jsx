@@ -49,15 +49,72 @@ export const renumberExpenses = (items) => {
   });
 };
 
-export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08" }) => {
+/**
+ * Get current year-month in KST (e.g. "2026-09")
+ */
+export const getCurrentYearMonthKST = () => {
+  const d = new Date();
+  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+  const kst = new Date(utc + (9 * 3600000));
+  const y = kst.getFullYear();
+  const m = String(kst.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+};
+
+/**
+ * Get previous year-month (전월) based on baseMonth or current KST date (e.g. "2026-08")
+ */
+export const getPreviousYearMonth = (baseMonth) => {
+  const target = baseMonth || getCurrentYearMonthKST();
+  const [y, m] = target.split("-").map(Number);
+  if (!y || !m) return "2026-08";
+  const prevDate = new Date(y, m - 2, 1);
+  const prevY = prevDate.getFullYear();
+  const prevM = String(prevDate.getMonth() + 1).padStart(2, "0");
+  return `${prevY}-${prevM}`;
+};
+
+/**
+ * Generate 12-month dropdown options around current date
+ */
+export const getHanulSettlementMonthOptions = () => {
+  const currYM = getCurrentYearMonthKST();
+  const prevYM = getPreviousYearMonth(currYM);
+
+  const allMonths = [
+    "2026-12", "2026-11", "2026-10", "2026-09", "2026-08",
+    "2026-07", "2026-06", "2026-05", "2026-04", "2026-03", "2026-02", "2026-01"
+  ];
+
+  return allMonths.map((ym) => {
+    const [y, m] = ym.split("-");
+    const code = `${y.slice(2)}${m}`;
+    let note = "";
+    if (ym === prevYM) {
+      note = ` (${code}, 전월)`;
+    } else if (ym === currYM) {
+      note = ` (${code}, 당월)`;
+    } else {
+      note = ` (${code})`;
+    }
+    return {
+      ym,
+      label: `${y}년 ${m}월${note}`
+    };
+  });
+};
+
+export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
   const { formatAmount } = useCurrency() || { formatAmount: (v) => `₩${Number(v || 0).toLocaleString()}` };
 
-  const [selectedMonth, setSelectedMonth] = useState(initialMonth || "2026-08");
+  // 🌟 입력시점의 전월 데이터를 기본으로 표시 (Default: Previous Month)
+  const defaultPrevMonth = useMemo(() => getPreviousYearMonth(), []);
+  const [selectedMonth, setSelectedMonth] = useState(initialMonth || defaultPrevMonth);
 
   // Sync initialMonth on modal open
   useEffect(() => {
-    if (isOpen && initialMonth) {
-      setSelectedMonth(initialMonth);
+    if (isOpen) {
+      setSelectedMonth(initialMonth || getPreviousYearMonth());
     }
   }, [isOpen, initialMonth]);
 
@@ -108,17 +165,8 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     };
   }, [selectedMonth, products, expenses, attachments, settlementDate]);
 
-  // Available Month Dropdown Options
-  const monthDropdownOptions = [
-    { ym: "2026-08", label: "2026년 08월 (2608, 전월 정산등록)" },
-    { ym: "2026-07", label: "2026년 07월 (2607, 7월 실적)" },
-    { ym: "2026-09", label: "2026년 09월 (2609, 9월 정산대기)" },
-    { ym: "2026-10", label: "2026년 10월 (2610, 10월 정산대기)" },
-    { ym: "2026-11", label: "2026년 11월 (2611, 11월 정산대기)" },
-    { ym: "2026-12", label: "2026년 12월 (2612, 12월 정산대기)" },
-    { ym: "2026-06", label: "2026년 06월 (2606)" },
-    { ym: "2026-05", label: "2026년 05월 (2605)" }
-  ];
+  // Available Month Dropdown Options (동적 월 목록 및 전월/당월 표기)
+  const monthDropdownOptions = useMemo(() => getHanulSettlementMonthOptions(), []);
 
   // Load Month Data
   useEffect(() => {
@@ -417,7 +465,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const handleExportExcel = () => {
     const sheetData = [
       [`협력업체 (주)한울 ${selectedMonth} 공통비 및 지출 공제내역서`],
-      [`기준년월: ${selectedMonth}`, `정산일자: ${settlementDate}`, `업체명: (주)한울`],
+      [`정산월: ${selectedMonth}`, `정산일자: ${settlementDate}`, `업체명: (주)한울`],
       [],
       ["[공통비 및 지출 공제내역]"],
       ["No", "지출/공제 항목", "금액(원)", "세부내역/비고"],
@@ -453,7 +501,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-xs sm:text-sm md:text-base font-black text-white tracking-tight truncate">
-                  (주)한울 전월 정산표 • 공통비 및 지출 공제내역 등록
+                  (주)한울 공제내역등록 • 공통비 및 지출 공제
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-slate-950 shrink-0">
                   {status === "CONFIRMED" ? "✓ 등록완료" : "✏️ 작성중"}
@@ -477,7 +525,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
           <div className="flex items-center gap-2 min-w-0">
             <label className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
               <Building2 className="w-4 h-4 text-emerald-600" />
-              <span>정산 기준월 :</span>
+              <span>정산월 :</span>
             </label>
             <select
               value={selectedMonth}
