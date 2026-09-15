@@ -7,6 +7,8 @@ import {
   Minimize2,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Download,
   Trash2,
   FileText,
@@ -21,7 +23,11 @@ import {
   Move,
   Maximize,
   LocateFixed,
-  RotateCcw
+  RotateCcw,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 
 export const HanulDocumentImageViewer = ({
@@ -40,10 +46,26 @@ export const HanulDocumentImageViewer = ({
   const [rotation, setRotation] = useState(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
 
-  // Drag to pan state
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  // Refs to always have the latest values synchronously without state lag
+  const panRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const rotationRef = useRef(0);
+  const isDraggingRef = useRef(false);
   const viewportRef = useRef(null);
+
+  // Drag state for cursor styling
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Keep refs in sync
+  useEffect(() => {
+    panRef.current = pan;
+  }, [pan]);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+  useEffect(() => {
+    rotationRef.current = rotation;
+  }, [rotation]);
 
   // Sync selected attachment
   useEffect(() => {
@@ -63,6 +85,9 @@ export const HanulDocumentImageViewer = ({
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setRotation(0);
+    panRef.current = { x: 0, y: 0 };
+    zoomRef.current = 1;
+    rotationRef.current = 0;
   }, [selectedAttachmentId, selectedPageIndex]);
 
   // 🌟 Mouse Wheel Zoom inside the viewport with cursor-centered scaling
@@ -75,7 +100,7 @@ export const HanulDocumentImageViewer = ({
       e.stopPropagation();
 
       const delta = e.deltaY;
-      const zoomFactor = delta < 0 ? 1.15 : 0.87;
+      const zoomFactor = delta < 0 ? 1.18 : 0.85;
 
       setZoom((prevZoom) => {
         const nextZoom = Math.min(Math.max(Number((prevZoom * zoomFactor).toFixed(2)), 0.35), 6.0);
@@ -88,17 +113,21 @@ export const HanulDocumentImageViewer = ({
 
         setPan((prevPan) => {
           if (nextZoom <= 1.05 && prevZoom <= 1.05) {
+            panRef.current = { x: 0, y: 0 };
             return { x: 0, y: 0 };
           }
           const scaleChange = nextZoom / prevZoom;
           const newPanX = mouseX - (mouseX - prevPan.x) * scaleChange;
           const newPanY = mouseY - (mouseY - prevPan.y) * scaleChange;
-          return {
+          const res = {
             x: Math.round(newPanX),
             y: Math.round(newPanY)
           };
+          panRef.current = res;
+          return res;
         });
 
+        zoomRef.current = nextZoom;
         return nextZoom;
       });
     };
@@ -109,35 +138,74 @@ export const HanulDocumentImageViewer = ({
     };
   }, []);
 
-  if (!isOpen && !isEmbedded) return null;
-  if (!attachments || attachments.length === 0) {
-    return (
-      <div className={`flex flex-col items-center justify-center p-6 text-center rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/60 text-slate-300 h-full min-h-[360px]`}>
-        <div className="w-12 h-12 rounded-2xl bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 flex items-center justify-center mb-2.5">
-          <ImageIcon className="w-6 h-6" />
-        </div>
-        <h3 className="text-xs sm:text-sm font-black text-white mb-1">
-          변환된 정산 증빙 이미지가 없습니다
-        </h3>
-        <p className="text-[11px] text-slate-400 max-w-xs leading-relaxed">
-          상단의 <strong>[증빙 파일 업로드]</strong> 버튼을 눌러 PDF, 엑셀, 영수증 사진을 올려주시면 이곳에 고화질 이미지로 표시됩니다.
-        </p>
-      </div>
-    );
-  }
+  // 🌟 Keyboard Arrow Keys for Smooth Panning
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!viewportRef.current) return;
+      const isHovered = viewportRef.current.matches(":hover");
+      if (!isHovered) return;
 
-  const currentAttachment = attachments.find(a => a.id === selectedAttachmentId) || attachments[0];
-  const pages = currentAttachment?.pages || [];
-  const currentPage = pages[selectedPageIndex] || pages[0] || null;
+      const step = 80;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setPan((p) => {
+          const np = { ...p, x: p.x + step };
+          panRef.current = np;
+          return np;
+        });
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setPan((p) => {
+          const np = { ...p, x: p.x - step };
+          panRef.current = np;
+          return np;
+        });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setPan((p) => {
+          const np = { ...p, y: p.y + step };
+          panRef.current = np;
+          return np;
+        });
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setPan((p) => {
+          const np = { ...p, y: p.y - step };
+          panRef.current = np;
+          return np;
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // 🌟 Direct Pan Adjustment Helpers (버튼으로 상하좌우 이동)
+  const panBy = (dx, dy) => {
+    setPan((p) => {
+      const np = { x: p.x + dx, y: p.y + dy };
+      panRef.current = np;
+      return np;
+    });
+  };
 
   const handleZoomIn = () => {
-    setZoom((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 6.0));
+    setZoom((prev) => {
+      const next = Math.min(Number((prev + 0.25).toFixed(2)), 6.0);
+      zoomRef.current = next;
+      return next;
+    });
   };
 
   const handleZoomOut = () => {
     setZoom((prev) => {
       const next = Math.max(Number((prev - 0.25).toFixed(2)), 0.35);
-      if (next <= 1) setPan({ x: 0, y: 0 });
+      if (next <= 1) {
+        setPan({ x: 0, y: 0 });
+        panRef.current = { x: 0, y: 0 };
+      }
+      zoomRef.current = next;
       return next;
     });
   };
@@ -146,93 +214,65 @@ export const HanulDocumentImageViewer = ({
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setRotation(0);
+    panRef.current = { x: 0, y: 0 };
+    zoomRef.current = 1;
+    rotationRef.current = 0;
   };
 
   const handleFitWidth = () => {
     setZoom(1.5);
     setPan({ x: 0, y: 0 });
     setRotation(0);
+    panRef.current = { x: 0, y: 0 };
+    zoomRef.current = 1.5;
   };
 
   const handleRotate = () => {
-    setRotation((prev) => (prev + 90) % 360);
-  };
-
-  const handlePrevPage = () => {
-    if (selectedPageIndex > 0) {
-      setSelectedPageIndex((prev) => prev - 1);
-    } else {
-      const curIdx = attachments.findIndex(a => a.id === selectedAttachmentId);
-      if (curIdx > 0) {
-        const prevAtt = attachments[curIdx - 1];
-        setSelectedAttachmentId(prevAtt.id);
-        setSelectedPageIndex(prevAtt.pages.length - 1);
-      }
-    }
-  };
-
-  const handleNextPage = () => {
-    if (selectedPageIndex < pages.length - 1) {
-      setSelectedPageIndex((prev) => prev + 1);
-    } else {
-      const curIdx = attachments.findIndex(a => a.id === selectedAttachmentId);
-      if (curIdx < attachments.length - 1) {
-        const nextAtt = attachments[curIdx + 1];
-        setSelectedAttachmentId(nextAtt.id);
-        setSelectedPageIndex(0);
-      }
-    }
-  };
-
-  const handleDownloadImage = () => {
-    if (!currentPage?.dataUrl) return;
-    const a = document.createElement("a");
-    a.href = currentPage.dataUrl;
-    a.download = `${currentAttachment.fileName}_page${selectedPageIndex + 1}_변환이미지.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  // 🌟 Pointer Drag to Pan Handlers (상하좌우 자유 이동)
-  const handlePointerDown = (e) => {
-    if (e.button !== undefined && e.button !== 0) return;
-    
-    setIsDragging(true);
-    dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      panX: pan.x,
-      panY: pan.y
-    };
-
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch (err) {
-      // Ignore if pointer capture fails
-    }
-  };
-
-  const handlePointerMove = (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-
-    setPan({
-      x: dragStartRef.current.panX + dx,
-      y: dragStartRef.current.panY + dy
+    setRotation((prev) => {
+      const next = (prev + 90) % 360;
+      rotationRef.current = next;
+      return next;
     });
   };
 
-  const handlePointerUp = (e) => {
-    setIsDragging(false);
-    try {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      }
-    } catch (err) {
-      // Ignore
-    }
+  // 🌟 Bulletproof Window-Level Pointer Drag to Pan (마우스 클릭 홀딩 상하좌우 완전 자유 이동)
+  const handlePointerDown = (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    isDraggingRef.current = true;
+    setIsDragging(true);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startPanX = panRef.current.x;
+    const startPanY = panRef.current.y;
+
+    const handleWindowPointerMove = (moveEvt) => {
+      if (!isDraggingRef.current) return;
+      moveEvt.preventDefault();
+      const dx = moveEvt.clientX - startX;
+      const dy = moveEvt.clientY - startY;
+      const nextPan = {
+        x: startPanX + dx,
+        y: startPanY + dy
+      };
+      panRef.current = nextPan;
+      setPan(nextPan);
+    };
+
+    const handleWindowPointerUp = (upEvt) => {
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      window.removeEventListener("pointermove", handleWindowPointerMove);
+      window.removeEventListener("pointerup", handleWindowPointerUp);
+      window.removeEventListener("pointercancel", handleWindowPointerUp);
+    };
+
+    window.addEventListener("pointermove", handleWindowPointerMove, { passive: false });
+    window.addEventListener("pointerup", handleWindowPointerUp);
+    window.addEventListener("pointercancel", handleWindowPointerUp);
   };
 
   // Double Click Toggle Zoom & Center Reset
@@ -306,8 +346,44 @@ export const HanulDocumentImageViewer = ({
           )}
         </div>
 
-        {/* Right: Zoom Controls with Wheel Helper */}
+        {/* Right: Zoom & Pan Navigation Controls */}
         <div className="flex items-center gap-1 shrink-0 ml-auto">
+          {/* Quick Pan Buttons Group */}
+          <div className="flex items-center bg-slate-800/90 rounded-lg p-0.5 border border-slate-700">
+            <button
+              type="button"
+              onClick={() => panBy(120, 0)}
+              className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              title="왼쪽으로 시점 이동 (좌측 보기)"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => panBy(-120, 0)}
+              className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              title="오른쪽으로 시점 이동 (우측 보기)"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => panBy(0, 120)}
+              className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              title="위쪽으로 시점 이동 (상단 보기)"
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => panBy(0, -120)}
+              className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+              title="아래쪽으로 시점 이동 (하단 보기)"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Zoom Buttons Group */}
           <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
             <button
@@ -339,7 +415,10 @@ export const HanulDocumentImageViewer = ({
           {/* Re-center Pan Button */}
           <button
             type="button"
-            onClick={() => setPan({ x: 0, y: 0 })}
+            onClick={() => {
+              setPan({ x: 0, y: 0 });
+              panRef.current = { x: 0, y: 0 };
+            }}
             className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
               pan.x !== 0 || pan.y !== 0
                 ? "bg-emerald-950/80 text-emerald-400 border-emerald-700 hover:bg-emerald-900"
@@ -402,10 +481,8 @@ export const HanulDocumentImageViewer = ({
       {/* Main Image Canvas Viewport with 2D Drag Pan & Cursor-Centered Wheel Zoom */}
       <div
         ref={viewportRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onMouseDown={handlePointerDown}
+        onTouchStart={handlePointerDown}
         onDoubleClick={handleDoubleClick}
         className={`flex-1 relative overflow-hidden bg-slate-950 flex items-center justify-center p-3 select-none touch-none ${
           isDragging ? "cursor-grabbing" : "cursor-grab"
@@ -442,10 +519,72 @@ export const HanulDocumentImageViewer = ({
         <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-slate-900/85 backdrop-blur-xs border border-slate-700/80 text-[11px] text-slate-300 pointer-events-none flex items-center gap-2 shadow-lg">
           <span className="flex items-center gap-1 text-slate-300">
             <Move className="w-3 h-3 text-emerald-400" />
-            <span>화면 클릭 후 드래그로 상하좌우 이동</span>
+            <span>마우스 홀딩 드래그 또는 방향키(← → ↑ ↓)로 상하좌우 이동</span>
           </span>
           <span className="text-slate-500">•</span>
-          <span className="text-slate-400">마우스 휠 확대/축소</span>
+          <span className="text-slate-400">휠 확대/축소</span>
+        </div>
+
+        {/* Floating Mini Directional Pad on Canvas */}
+        <div className="absolute top-3 right-3 flex flex-col items-center bg-slate-900/85 backdrop-blur-md p-1 rounded-xl border border-slate-700/80 shadow-xl z-20">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              panBy(0, 100);
+            }}
+            className="p-1 rounded-md hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="위로 이동 (상단 보기)"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                panBy(100, 0);
+              }}
+              className="p-1 rounded-md hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="왼쪽으로 이동 (좌측 보기)"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPan({ x: 0, y: 0 });
+                panRef.current = { x: 0, y: 0 };
+              }}
+              className="p-1 rounded-md hover:bg-emerald-600 text-emerald-400 hover:text-white transition-colors cursor-pointer text-[10px] font-bold"
+              title="중앙 정렬"
+            >
+              <LocateFixed className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                panBy(-100, 0);
+              }}
+              className="p-1 rounded-md hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="오른쪽으로 이동 (우측 보기)"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              panBy(0, -100);
+            }}
+            className="p-1 rounded-md hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title="아래로 이동 (하단 보기)"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Zoom Tooltip Badge */}
@@ -456,6 +595,7 @@ export const HanulDocumentImageViewer = ({
               onClick={(e) => {
                 e.stopPropagation();
                 setPan({ x: 0, y: 0 });
+                panRef.current = { x: 0, y: 0 };
               }}
               className="px-2 py-1 rounded-md bg-slate-900/90 hover:bg-emerald-600 text-[10px] font-bold text-emerald-400 hover:text-white border border-slate-700 transition-all cursor-pointer shadow-lg flex items-center gap-1"
               title="화면 중앙으로 정렬"
