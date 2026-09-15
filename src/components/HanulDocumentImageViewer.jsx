@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X,
@@ -46,6 +46,21 @@ export const HanulDocumentImageViewer = ({
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Current Attachment & Page resolution with complete safety
+  const currentAttachment = useMemo(() => {
+    if (!attachments || attachments.length === 0) return null;
+    return attachments.find((a) => a.id === selectedAttachmentId) || attachments[0] || null;
+  }, [attachments, selectedAttachmentId]);
+
+  const pages = useMemo(() => {
+    return currentAttachment?.pages || [];
+  }, [currentAttachment]);
+
+  const currentPage = useMemo(() => {
+    if (pages.length === 0) return null;
+    return pages[selectedPageIndex] || pages[0] || null;
+  }, [pages, selectedPageIndex]);
 
   // Refs to always have the latest values synchronously without state lag
   const panRef = useRef({ x: 0, y: 0 });
@@ -143,7 +158,12 @@ export const HanulDocumentImageViewer = ({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!viewportRef.current) return;
-      const isHovered = viewportRef.current.matches(":hover");
+      let isHovered = false;
+      try {
+        isHovered = viewportRef.current.matches && viewportRef.current.matches(":hover");
+      } catch (err) {
+        isHovered = false;
+      }
       if (!isHovered) return;
 
       const step = 80;
@@ -181,6 +201,44 @@ export const HanulDocumentImageViewer = ({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // 🌟 Page Navigation Handlers
+  const handlePrevPage = useCallback(() => {
+    if (selectedPageIndex > 0) {
+      setSelectedPageIndex((prev) => prev - 1);
+    } else {
+      const curAttIdx = attachments.findIndex((a) => a.id === selectedAttachmentId);
+      if (curAttIdx > 0) {
+        const prevAtt = attachments[curAttIdx - 1];
+        setSelectedAttachmentId(prevAtt.id);
+        setSelectedPageIndex((prevAtt.pages?.length || 1) - 1);
+      }
+    }
+  }, [selectedPageIndex, attachments, selectedAttachmentId]);
+
+  const handleNextPage = useCallback(() => {
+    if (selectedPageIndex < pages.length - 1) {
+      setSelectedPageIndex((prev) => prev + 1);
+    } else {
+      const curAttIdx = attachments.findIndex((a) => a.id === selectedAttachmentId);
+      if (curAttIdx >= 0 && curAttIdx < attachments.length - 1) {
+        const nextAtt = attachments[curAttIdx + 1];
+        setSelectedAttachmentId(nextAtt.id);
+        setSelectedPageIndex(0);
+      }
+    }
+  }, [selectedPageIndex, pages.length, attachments, selectedAttachmentId]);
+
+  // 🌟 Download Converted Image
+  const handleDownloadImage = useCallback(() => {
+    if (!currentPage?.dataUrl) return;
+    const link = document.createElement("a");
+    link.href = currentPage.dataUrl;
+    link.download = `${currentAttachment?.fileName || "증빙"}_p${selectedPageIndex + 1}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [currentPage, currentAttachment, selectedPageIndex]);
 
   // 🌟 Direct Pan Adjustment Helpers (버튼으로 상하좌우 이동)
   const panBy = (dx, dy) => {
@@ -508,6 +566,16 @@ export const HanulDocumentImageViewer = ({
               className="block max-w-full max-h-full object-contain pointer-events-none select-none"
               draggable={false}
             />
+          </div>
+        ) : attachments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-slate-500 gap-2 p-6 text-center">
+            <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700 text-slate-400">
+              <ImageIcon className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-xs font-bold text-slate-300 mt-1">등록된 증빙 문서가 없습니다</p>
+            <p className="text-[11px] text-slate-500 max-w-xs">
+              상단 [증빙 파일 업로드] 버튼을 눌러 PDF, 엑셀, 영수증 사진을 첨부하면 자동으로 고화질 이미지로 변환되어 이곳에 표시됩니다.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center text-slate-500 gap-2">
