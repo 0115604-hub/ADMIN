@@ -1517,19 +1517,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40">
-                <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
+              <span className="p-1.5 sm:p-2 rounded-xl bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
               </span>
-              <h1 className="text-lg sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-base sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
                 <span>근태현황 및 관리</span>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40">
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40">
                   5개사 잔업 스마트 대장
                 </span>
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium">
-              (주)오륙 • (주)조영산업 • 한울 • 부림텍 • <strong className="text-cyan-300 font-black">유성</strong> 5개사 | 부서: <strong className="text-white font-bold">관리부 • 가공동 • 압출동</strong>
-            </p>
           </div>
         </div>
 
@@ -1666,14 +1663,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🧭 MAIN TAB NAVIGATION (Clean 4 Tabs - 근태/잔업/특근 등록 & 관리) */}
+      {/* 🧭 MAIN TAB NAVIGATION (Clean 4 Tabs - 근태등록 / 일자별 / 종합현황 / 관리) */}
       {/* ========================================================================= */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar border-b-2 border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-b border-slate-200 dark:border-slate-800">
         {[
-          { id: "daily_input", label: "📝 근태/잔업/특근 등록", icon: Zap, badge: hasUnsavedChanges ? "미저장 있음" : "등록", highlight: true },
-          { id: "daily_summary", label: "📋 일자별 종합 집계", icon: FileSpreadsheet },
-          { id: "monthly_matrix", label: "📊 9월 전사 종합현황판", icon: CalendarDays },
-          { id: "legacy_reports", label: "📑 근태/특근 관리", icon: FileText, badge: `${legacyReports.length}건 등록` }
+          { id: "daily_input", label: "근태등록", icon: Zap, badge: hasUnsavedChanges ? "미저장" : null, highlight: true },
+          { id: "daily_summary", label: "일자별", icon: FileSpreadsheet },
+          { id: "monthly_matrix", label: "종합현황", icon: CalendarDays },
+          { id: "legacy_reports", label: "관리", icon: FileText, badge: `${legacyReports.length}건` }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1681,21 +1678,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-bold text-xs whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                 isActive
                   ? tab.highlight
-                    ? "bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 scale-102 ring-2 ring-cyan-400"
-                    : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md"
+                    ? "bg-cyan-600 text-white shadow-sm ring-1 ring-cyan-400"
+                    : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs"
                   : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? (tab.highlight ? "text-white" : "text-cyan-400") : "text-slate-400"}`} />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? (tab.highlight ? "text-white" : "text-cyan-400") : "text-slate-400"}`} />
               <span>{tab.label}</span>
               {tab.badge && (
-                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
                   isActive 
                     ? "bg-white/20 text-white" 
-                    : tab.badge === "미저장 있음"
+                    : tab.badge === "미저장"
                     ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"
                     : "bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300"
                 }`}>
