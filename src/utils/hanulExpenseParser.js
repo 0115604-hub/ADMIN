@@ -283,7 +283,130 @@ export async function parseHanulExpensesFromFile(file) {
     }
   }
 
+  // 3. Image Files (PNG, JPG, JPEG, WEBP, BMP, TIF, TIFF) - OCR Analysis
+  if (["png", "jpg", "jpeg", "webp", "bmp", "tif", "tiff"].includes(ext)) {
+    try {
+      const { createWorker } = await import("tesseract.js");
+      const worker = await createWorker(["kor", "eng"]);
+      const ret = await worker.recognize(file);
+      await worker.terminate();
+
+      const ocrText = ret?.data?.text || "";
+      if (ocrText && ocrText.trim()) {
+        const res = parseOCRTextToExpenseItems(ocrText, fileName);
+        if (res && res.items.length > 0) {
+          return res;
+        }
+      }
+    } catch (err) {
+      console.warn(`Image OCR parsing error on ${fileName}:`, err);
+    }
+  }
+
   return null;
+}
+
+/**
+ * Robust parser that converts raw OCR text from an image into structured expense items
+ */
+export function parseOCRTextToExpenseItems(text, fileName = "image.png") {
+  if (!text || typeof text !== "string") return null;
+
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const items = [];
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const rawLine = lines[idx];
+
+    // Filter out obvious metadata lines
+    if (
+      /(사업자번호|등록번호|전화|TEL|FAX|작성일자|발행일자|통장입금)/i.test(rawLine) &&
+      !/(인건비|보험|식대|차량|급여|소계|합계)/.test(rawLine)
+    ) {
+      continue;
+    }
+
+    // Check if summary line
+    const isSummary = /^(합계|소계|총계|총액|지출총계|공제총액|총합계|TOTAL|Total)/i.test(rawLine);
+    if (isSummary) continue;
+
+    // Filter out pure table header lines
+    if (
+      /^(No|NO|순번|번호|구분|항목|품목|품명|금액|단가|수량|비고)/i.test(rawLine) &&
+      !rawLine.match(/\b\d{4,}\b/)
+    ) {
+      continue;
+    }
+
+    // Mask business numbers (xxx-xx-xxxxx), phone numbers (xxx-xxx-xxxx), dates (xxxx-xx-xx)
+    let sanitizedLine = rawLine
+      .replace(/\b\d{3}-\d{2}-\d{5}\b/g, "")
+      .replace(/\b\d{2,4}-\d{3,4}-\d{4}\b/g, "")
+      .replace(/\b20\d{2}[-./]\d{1,2}[-./]\d{1,2}\b/g, "");
+
+    // Match numeric candidates (comma separated numbers or 4+ digits)
+    const numMatches = sanitizedLine.match(/\b\d{1,3}(?:,\d{3})+\b|\b\d{5,10}\b/g);
+    if (!numMatches || numMatches.length === 0) continue;
+
+    // Find valid expense amount (exclude years 2024~2027, 2607~2609)
+    const validAmounts = numMatches
+      .map((n) => {
+        const clean = Number(n.replace(/,/g, ""));
+        return isNaN(clean) ? 0 : clean;
+      })
+      .filter(
+        (amt) =>
+          amt >= 1000 &&
+          amt !== 2024 &&
+          amt !== 2025 &&
+          amt !== 2026 &&
+          amt !== 2027 &&
+          amt !== 2607 &&
+          amt !== 2608 &&
+          amt !== 2609
+      );
+
+    if (validAmounts.length === 0) continue;
+
+    // Select the largest number as the line's expense amount
+    const amount = Math.max(...validAmounts);
+
+    // Remove the numeric strings from the line to extract the category and note
+    let textPart = sanitizedLine;
+    for (const nStr of numMatches) {
+      textPart = textPart.replace(nStr, " ");
+    }
+    // Clean punctuation and units
+    textPart = textPart.replace(/원/g, "").replace(/[|:\-\[\]\(\)]/g, " ").trim();
+    textPart = textPart.replace(/^\d+[\.\)\s]+/, "").trim();
+
+    const textTokens = textPart.split(/\s+/).filter(Boolean);
+    if (textTokens.length === 0) continue;
+
+    const category = textTokens[0];
+    const note = textTokens.slice(1).join(" ");
+
+    if (category.length >= 2 && !/^(합계|소계|총액|총계|총합계|순번|번호|항목)/.test(category)) {
+      items.push({
+        id: `ocr_item_${idx}_${Date.now()}`,
+        rawCategory: category,
+        category: category,
+        amount: amount,
+        note: note
+      });
+    }
+  }
+
+  const totalExpense = items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+  return {
+    success: items.length > 0,
+    fileName,
+    sheetName: "사진(OCR) 자동분석",
+    fileType: "image",
+    totalExpense,
+    items,
+    itemCount: items.length
+  };
 }
 
 /**
