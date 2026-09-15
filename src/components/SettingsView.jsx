@@ -221,7 +221,7 @@ export const SettingsView = ({ transactions, onRefresh, dataSource }) => {
             </p>
             <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600 dark:text-slate-400 pl-1">
               <li><strong>품질경보 등록</strong>: 🟥 신규 품질경보 등록 즉시 발송 (사진 최대 3장)</li>
-              <li><strong>품질경보 의견등록</strong>: 🟥 조치 의견(댓글) 등록 즉시 발송</li>
+              <li><strong>품질경보 조치완료</strong>: 🟢 조치결과 등록 즉시 발송</li>
               <li><strong>품질경보 종결/삭제</strong>: 🟥 품질경보 확인 후 종결 및 삭제 시 즉시 발송</li>
               <li><strong>매일 아침 07:40</strong>: 🌅 <strong>일일 근태/미결재/오픈이슈 모닝브리핑</strong> 자동 발송 (오륙 통합방)</li>
               <li><strong>매일 오후 17:30</strong>: 📢 <strong>일일마감브리핑</strong> 자동 발송 (월~토)</li>

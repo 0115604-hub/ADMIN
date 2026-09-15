@@ -594,7 +594,7 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
 ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 • <b>발령일시:</b> ${dateStr} ${timeStr}${photoCount}
 ━━━━━━━━━━━━━━━━━━━━━
-※ 조치 완료 후 시스템에서 [의견]을 등록해 주세요.
+※ 조치 완료 후 시스템에서 [조치결과]를 등록해 주세요.
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();
 
@@ -606,17 +606,17 @@ ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2. 품질경보 조치 의견(댓글) 등록 즉시 알림 (오륙 통합방 단 1회 발송)
+ * 2. 품질경보 조치완료(조치결과) 등록 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetChatId = null) => {
   if (issueItem?.category !== "품질경보") {
     return { success: true, skipped: true, reason: "NOT_QUALITY_OPINION" };
   }
 
-  // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 조치의견 중복 발송 방지)
-  const opinionFingerprint = `quality_opinion_${issueItem?.id || ""}_${opinionItem?.id || opinionItem?.createdAt || ""}`;
-  if (isDuplicateMessage(opinionFingerprint, 60000)) {
-    console.log(`[Telegram] 품질경보 의견 1회 발송 원칙 적용: 중복 발송 차단 (${opinionFingerprint})`);
+  // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 조치완료 중복 발송 방지)
+  const actionFingerprint = `quality_action_${issueItem?.id || ""}_${opinionItem?.id || opinionItem?.createdAt || opinionItem?.content || ""}`;
+  if (isDuplicateMessage(actionFingerprint, 60000)) {
+    console.log(`[Telegram] 품질경보 조치완료 1회 발송 원칙 적용: 중복 발송 차단 (${actionFingerprint})`);
     return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
@@ -624,9 +624,9 @@ export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetC
   const writer = opinionItem?.author || opinionItem?.writer || "담당자";
   const writerTitle = opinionItem?.authorTitle ? ` ${opinionItem.authorTitle}` : "";
   const title = issueItem?.title || issueItem?.content || "품질경보";
-  const content = opinionItem?.content || opinionItem?.text || opinionItem?.actionResult || "의견 등록";
+  const content = opinionItem?.content || opinionItem?.text || opinionItem?.actionResult || "조치 완료";
   const dateStr = opinionItem?.actionDate || opinionItem?.createdAt?.slice(0, 10) || getKSTDateString();
-  const timeStr = opinionItem?.createdAt && opinionItem.createdAt.length > 10 ? opinionItem.createdAt.slice(11) : getKSTTimeString();
+  const timeStr = opinionItem?.createdAt && opinionItem.createdAt.length > 10 ? opinionItem.createdAt.slice(11, 16) : getKSTTimeString();
 
   const rawFiles = opinionItem?.files || opinionItem?.images || [];
   const images = rawFiles
@@ -644,16 +644,16 @@ export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetC
   const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 관련 사진 ${images.length}장 첨부됨` : "";
 
   const message = `
-<b>🟥 [품질경보 조치 의견 등록]</b>
+<b>🟢 [품질경보 조치완료]</b>
 ━━━━━━━━━━━━━━━━━━━━━
 • <b>공장:</b> ${plant}
 • <b>불량제목:</b> <b>${title}</b>
-• <b>의견작성자:</b> <b>${writer}${writerTitle}</b>
+• <b>조치자:</b> <b>${writer}${writerTitle}</b>
 
-<b>[조치 및 의견 내용]</b>
+<b>[조치결과]</b>
 ${content}
 
-• <b>등록일시:</b> ${dateStr} ${timeStr}${photoCount}
+• <b>조치일시:</b> ${dateStr} ${timeStr}${photoCount}
 ━━━━━━━━━━━━━━━━━━━━━
 <a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
 `.trim();

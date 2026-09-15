@@ -284,7 +284,7 @@ export const saveUrgentIssue = async (issueData) => {
   return fullItem;
 };
 
-// Add a Reply / Attendance Response (회신란 / 의견등록)
+// Add a Reply / Attendance Response (회신란 / 조치결과 등록)
 export const addIssueReply = async (issueId, replyData) => {
   const current = getLocalUrgentIssues();
   const target = current.find((i) => i.id === issueId);
@@ -306,26 +306,34 @@ export const addIssueReply = async (issueId, replyData) => {
     plant: replyData.plant || target.plant || "삼랑진공장",
     attendanceStatus: replyData.attendanceStatus || "확인",
     actionDate: replyData.actionDate || replyData.date || nowStr.slice(0, 10),
-    content: replyData.content ? replyData.content.trim() : (replyData.files?.length > 0 ? "파일이 첨부되었습니다." : "확인했습니다."),
+    content: replyData.content ? replyData.content.trim() : (replyData.files?.length > 0 ? "파일이 첨부되었습니다." : "조치 완료"),
     files: replyData.files || replyData.images || [],
     createdAt: nowStr
   };
 
   const updatedReplies = [...(target.replies || []), newReply];
+  const isQuality = target.category === "품질경보";
+
   const updatedItem = {
     ...target,
-    replies: updatedReplies
+    replies: updatedReplies,
+    ...(isQuality
+      ? {
+          actionResult: newReply.content,
+          actionAuthor: newReply.author,
+          actionAt: newReply.actionDate || nowStr,
+          isResolved: true
+        }
+      : {})
   };
 
   const saved = await saveUrgentIssue(updatedItem);
 
-  // Trigger real-time Telegram notification for opinion/reply (품질경보만 발송, 8번 오픈이슈/10번 회의공지 댓글은 정책상 발송 중지)
-  if (saved) {
-    if (target.category === "품질경보") {
-      sendQualityOpinionTelegram(target, newReply).catch((err) => {
-        console.warn("Telegram opinion notification error:", err);
-      });
-    }
+  // Trigger real-time Telegram notification for quality action completion
+  if (saved && isQuality) {
+    sendQualityOpinionTelegram(updatedItem, newReply).catch((err) => {
+      console.warn("Telegram quality action completion error:", err);
+    });
   }
 
   return saved;
@@ -338,9 +346,20 @@ export const deleteIssueReply = async (issueId, replyId) => {
   if (!target) return null;
 
   const updatedReplies = (target.replies || []).filter((r) => r.id !== replyId);
+  const isQuality = target.category === "품질경보";
+  const lastReply = updatedReplies[updatedReplies.length - 1];
+
   const updatedItem = {
     ...target,
-    replies: updatedReplies
+    replies: updatedReplies,
+    ...(isQuality
+      ? {
+          actionResult: lastReply ? lastReply.content : "",
+          actionAuthor: lastReply ? lastReply.author : "",
+          actionAt: lastReply ? lastReply.actionDate || lastReply.createdAt : "",
+          isResolved: Boolean(lastReply)
+        }
+      : {})
   };
 
   return await saveUrgentIssue(updatedItem);

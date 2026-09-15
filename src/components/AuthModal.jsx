@@ -797,8 +797,9 @@ export const AuthModal = () => {
     if (e) e.preventDefault();
     const content = actionOpinionForm.content.trim();
     const opinionFiles = actionOpinionForm.files || [];
+    const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보";
     if (!content && opinionFiles.length === 0) {
-      alert("조치 의견 내용 또는 첨부파일을 입력해 주세요.");
+      alert(isQualityAlert ? "조치결과 내용 또는 첨부파일을 입력해 주세요." : "조치 의견 내용 또는 첨부파일을 입력해 주세요.");
       return;
     }
     const authorName = actionOpinionForm.author || currentProfile?.name || allWorkers[0]?.name || "설유철";
@@ -819,12 +820,14 @@ export const AuthModal = () => {
         if (updated) {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
-          setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [] }));
+          setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [], isResolved: updated.isResolved, actionResult: updated.actionResult }));
           setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
+          setRestoreToast(isQualityAlert ? "✅ 품질경보 조치결과가 성공적으로 등록되었습니다." : "✅ 의견이 성공적으로 등록되었습니다.");
+          setTimeout(() => setRestoreToast(""), 3500);
         }
       } catch (err) {
         console.error("Add opinion error:", err);
-        alert("의견 등록 중 오류가 발생했습니다.");
+        alert(isQualityAlert ? "조치결과 등록 중 오류가 발생했습니다." : "의견 등록 중 오류가 발생했습니다.");
       }
     } else {
       const nowStr = new Date().toLocaleString("ko-KR", {
@@ -843,21 +846,26 @@ export const AuthModal = () => {
         createdAt: nowStr
       };
 
-      setNewIssueForm((prev) => ({ ...prev, replies: [...(prev.replies || []), newOp] }));
+      setNewIssueForm((prev) => ({
+        ...prev,
+        replies: [...(prev.replies || []), newOp],
+        ...(isQualityAlert ? { actionResult: newOp.content, actionAuthor: newOp.author, actionAt: targetDate, isResolved: true } : {})
+      }));
       setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
     }
   };
 
   const handleModalDeleteOpinion = async (opId, e) => {
     if (e) e.stopPropagation();
-    if (!confirm("해당 의견을 삭제하시겠습니까?")) return;
+    const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보";
+    if (!confirm(isQualityAlert ? "해당 조치결과를 삭제하시겠습니까?" : "해당 의견을 삭제하시겠습니까?")) return;
     if (editingIssue?.id) {
       try {
         const updated = await deleteIssueReply(editingIssue.id, opId);
         if (updated) {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
-          setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [] }));
+          setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [], isResolved: updated.isResolved, actionResult: updated.actionResult }));
         }
       } catch (err) {
         console.error("Delete opinion error:", err);

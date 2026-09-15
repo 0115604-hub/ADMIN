@@ -370,9 +370,9 @@ export const IssueLedgerModal = ({
                         </>
                       ) : (
                         <>
-                          {/* 조치완료 상태 표시 (품질경보는 제외) */}
-                          {isItResolved && !isItQualityAlert && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shrink-0">
+                          {/* 조치완료 상태 표시 */}
+                          {isItResolved && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shrink-0">
                               {isItMeeting ? "회의종결" : "조치완료"}
                             </span>
                           )}

@@ -296,7 +296,7 @@ export const TelegramView = () => {
         return `<b>🟥 [품질경보] 긴급 확인 및 점검 요망</b>\n━━━━━━━━━━━━━━━━━━━━━\n• <b>공장:</b> 삼랑진공장\n• <b>작성자:</b> <b>${currentProfile?.name || "이명재 이사"}</b>\n• <b>불량제목:</b> <b>[긴급] 소폭 원단 표면 이물 혼입 및 폭 치수 편차 발생</b>\n\n<b>[전달 내용]</b>\n압출 2라인 생산 중 폭 편차(±3mm 초과) 및 미세 흑점 이물 발견되어 즉시 점검 요망\n\n• <b>발령일시:</b> ${todayDateStr} ${nowTime}\n━━━━━━━━━━━━━━━━━━━━━\n※ 조치 완료 후 시스템에서 [조치결과]를 등록해 주세요.\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
       }
       if (qualityStage === "2") {
-        return `<b>🟥 [품질경보 조치완료 보고]</b>\n━━━━━━━━━━━━━━━━━━━━━\n• <b>공장:</b> 삼랑진공장\n• <b>대상:</b> <b>소폭 원단 표면 이물 혼입 및 폭 치수 편차</b>\n• <b>조치자:</b> <b>${currentProfile?.name || "이명재 이사"}</b>\n\n<b>[조치 내용]</b>\n압출 2라인 다이스 클리닝 및 스크류 필터 80mesh 교체 완료, 치수 정상 범위 복구됨 (조치율 100%)\n\n• <b>완료일시:</b> ${todayDateStr} ${nowTime}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
+        return `<b>🟢 [품질경보 조치완료]</b>\n━━━━━━━━━━━━━━━━━━━━━\n• <b>공장:</b> 삼랑진공장\n• <b>불량제목:</b> <b>소폭 원단 표면 이물 혼입 및 폭 치수 편차</b>\n• <b>조치자:</b> <b>${currentProfile?.name || "이명재 이사"}</b>\n\n<b>[조치결과]</b>\n압출 2라인 다이스 클리닝 및 스크류 필터 80mesh 교체 완료, 치수 정상 범위 복구됨 (조치율 100%)\n\n• <b>조치일시:</b> ${todayDateStr} ${nowTime}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
       }
       return `<b>🟥 [품질경보 종결/삭제 알림]</b>\n━━━━━━━━━━━━━━━━━━━━━\n• <b>공장:</b> 삼랑진공장\n• <b>대상:</b> <b>소폭 원단 표면 이물 혼입 및 폭 치수 편차</b>\n• <b>삭제권한자:</b> <b>${currentProfile?.name || "이명재 이사"}</b>\n• <b>종결사유:</b> 현장 정상화 확인 및 최종 검사 통과로 종결 처리\n• <b>삭제일시:</b> ${todayDateStr} ${nowTime}\n━━━━━━━━━━━━━━━━━━━━━\n<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>`;
     }
@@ -727,7 +727,7 @@ export const TelegramView = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               { id: "briefing", label: "📋 07:40 모닝브리핑", desc: "근태/미결재/오픈이슈" },
-              { id: "quality", label: "🟥 품질경보 서식", desc: "신규발령/조치의견" },
+              { id: "quality", label: "🚨 품질경보 서식", desc: "신규발령/조치완료" },
               { id: "notice_meeting", label: "🟩 공지 & 🟪 회의", desc: "사내공지/회의일정" },
               { id: "approval", label: "🟦 전자결재/일지", desc: "정책상 발송중지" }
             ].map((t) => (
@@ -754,7 +754,7 @@ export const TelegramView = () => {
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { key: "1", label: "1단계 (신규 발령) [발송중]" },
-                  { key: "2", label: "2단계 (조치의견) [발송중]" },
+                  { key: "2", label: "2단계 (조치완료) [발송중]" },
                   { key: "3", label: "3단계 (종결/삭제) [6번 발송중지]" }
                 ].map((st) => (
                   <button
