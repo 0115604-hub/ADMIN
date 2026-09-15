@@ -355,14 +355,39 @@ export function parseSheetRowsForExpenses(rows, sheetName = "") {
   const finalItems = [...uniqueMap.values(), ...customItems];
   const totalExpense = finalItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
-  // 🌟 User Requirement: Prioritize the breakdown file containing 10~20 expense items
+  // 🌟 Signature Core Categories Detection (인건비, 4대보험, 삼성화재 등)
+  let hasLabor = false;
+  let hasFourInsurances = false;
+  let hasSamsungInsurance = false;
+  let hasMeals = false;
+  let hasVehicle = false;
+  let hasSubcontract = false;
+
+  for (const it of finalItems) {
+    const cat = (it.category || it.rawCategory || "").toLowerCase();
+    if (cat.includes("인건비") || cat.includes("급여") || cat.includes("노무비") || cat.includes("월급")) hasLabor = true;
+    if (cat.includes("4대보험") || cat.includes("사회보험") || cat.includes("국민연금") || cat.includes("건강보험") || cat.includes("사업주분")) hasFourInsurances = true;
+    if (cat.includes("삼성화재") || cat.includes("외국인보험")) hasSamsungInsurance = true;
+    if (cat.includes("식대") || cat.includes("큰상")) hasMeals = true;
+    if (cat.includes("차량") || cat.includes("자동차") || cat.includes("통근")) hasVehicle = true;
+    if (cat.includes("부업") || cat.includes("외주") || cat.includes("임가공")) hasSubcontract = true;
+  }
+
+  const signatureCount = [hasLabor, hasFourInsurances, hasSamsungInsurance, hasMeals, hasVehicle, hasSubcontract].filter(Boolean).length;
+  const isSignatureMasterExpenseFile = (hasLabor && hasFourInsurances) || (hasLabor && hasSamsungInsurance) || (signatureCount >= 3);
+
+  // Score sheet suitability: Massive priority for the signature expense master file!
   const itemCount = finalItems.length;
   let score = foundCategoryCount * 25;
 
+  if (isSignatureMasterExpenseFile) {
+    score += 10000; // 🌟 10,000 points guarantee this file is picked above all other random files!
+  }
+
   if (itemCount >= 8 && itemCount <= 25) {
-    score += 250;
+    score += 300;
     if (itemCount >= 10 && itemCount <= 20) {
-      score += 200; // Strong bonus for exactly 10~20 items!
+      score += 200;
     }
   } else if (itemCount > 0 && itemCount < 8) {
     score += itemCount * 10;
@@ -378,6 +403,8 @@ export function parseSheetRowsForExpenses(rows, sheetName = "") {
     items: finalItems,
     totalExpense,
     foundCategoryCount,
+    signatureCount,
+    isSignatureMasterExpenseFile,
     itemCount,
     score
   };
@@ -424,6 +451,8 @@ export async function parseHanulExpensesFromFile(file) {
           items: bestSheetResult.items,
           totalExpense: bestSheetResult.totalExpense,
           matchedCount: bestSheetResult.foundCategoryCount,
+          signatureCount: bestSheetResult.signatureCount || 0,
+          isSignatureMasterExpenseFile: !!bestSheetResult.isSignatureMasterExpenseFile,
           itemCount: bestSheetResult.items.length
         };
       }
@@ -475,6 +504,8 @@ export async function parseHanulExpensesFromFile(file) {
           items: res.items,
           totalExpense: res.totalExpense,
           matchedCount: res.foundCategoryCount,
+          signatureCount: res.signatureCount || 0,
+          isSignatureMasterExpenseFile: !!res.isSignatureMasterExpenseFile,
           itemCount: res.items.length
         };
       }
@@ -487,7 +518,7 @@ export async function parseHanulExpensesFromFile(file) {
 }
 
 /**
- * Analyzes multiple uploaded files and identifies the one containing the expense breakdown table (10~20 items).
+ * Analyzes multiple uploaded files and identifies the one containing the expense breakdown table (인건비, 4대보험, 삼성화재 등).
  * Returns the best parsing result or null.
  */
 export async function parseHanulExpensesFromMultipleFiles(files = []) {
@@ -504,17 +535,27 @@ export async function parseHanulExpensesFromMultipleFiles(files = []) {
 
   if (results.length === 0) return null;
 
-  // Sort: prioritize files with 10~20 items, highest score, and highest valid expense total
+  // 🌟 Rank 1: Files with signature categories (인건비, 4대보험, 삼성화재 등)
+  // Rank 2: Files with highest signature matches count
+  // Rank 3: Overall Score & 10~20 items sweet spot
   results.sort((a, b) => {
-    // 1. Highest score
+    // 1. Signature master file (인건비, 4대보험, 삼성화재 등 핵심 항목 포함 여부)
+    if (b.isSignatureMasterExpenseFile !== a.isSignatureMasterExpenseFile) {
+      return (b.isSignatureMasterExpenseFile ? 1 : 0) - (a.isSignatureMasterExpenseFile ? 1 : 0);
+    }
+    // 2. Highest signature matches count
+    if ((b.signatureCount || 0) !== (a.signatureCount || 0)) {
+      return (b.signatureCount || 0) - (a.signatureCount || 0);
+    }
+    // 3. Highest overall score
     if (b.score !== a.score) return b.score - a.score;
-    // 2. Sweet spot (10~20 items)
+    // 4. Sweet spot (10~20 items)
     const aInSweetSpot = a.itemCount >= 10 && a.itemCount <= 20 ? 1 : 0;
     const bInSweetSpot = b.itemCount >= 10 && b.itemCount <= 20 ? 1 : 0;
     if (bInSweetSpot !== aInSweetSpot) return bInSweetSpot - aInSweetSpot;
-    // 3. Matched categories count
+    // 5. Matched categories count
     if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
-    // 4. Total expense
+    // 6. Total expense
     return b.totalExpense - a.totalExpense;
   });
 
