@@ -368,7 +368,7 @@ export const App = () => {
                     <DailyQualityView />
                   )}
                   {activeTab === "overtime_status" && (
-                    <OvertimeStatusView />
+                    <OvertimeStatusView onNavigateTab={(tabId) => setActiveTab(tabId)} />
                   )}
                   {activeTab === "operator_workspace" && (
                     <OperatorWorkspace onBulkUpload={handleBulkUpload} />
@@ -441,7 +441,7 @@ export const App = () => {
                   )}
 
                   {activeTab === "overtime_status" && (
-                    <OvertimeStatusView />
+                    <OvertimeStatusView onNavigateTab={(tabId) => setActiveTab(tabId)} />
                   )}
 
                   {activeTab === "operator_workspace" && (

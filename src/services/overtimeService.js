@@ -146,6 +146,35 @@ export const INITIAL_OVERTIME_REPORTS = [
     ]
   },
   {
+    id: "report_joyoung_2026_09_08",
+    plant: "한림공장",
+    company: "(주)조영산업",
+    companies: ["(주)조영산업"],
+    title: "9월 8일(화) 한림공장 (주)조영산업 근태보고서",
+    reportType: "근태보고서",
+    workDate: "2026-09-08",
+    workDateFormatted: "2026-09-08 (화)",
+    author: "오상민 선임",
+    authorTitle: "선임",
+    updatedAt: "2026-09-08T17:00:00.000Z",
+    approval: [
+      { role: "담당", name: "오상민", title: "선임", status: "완료" },
+      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "완료" },
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
+    ],
+    totalWorkers: 3,
+    totalHours: 24,
+    cost: 360000,
+    items: [
+      { id: 1, category: "가공동", workContent: "조영 가공 1라인 가동 및 조립", names: "황수현, 박종미, 마이클", hours: 8, count: 3 }
+    ],
+    reasons: [
+      "1. 9월 8일(화) 한림공장 (주)조영산업 정상 가동",
+      "2. 총 3명 투입 (공수: 24 M/H, 노무비: ₩360,000)"
+    ]
+  },
+  {
     id: "report_oryuk_2026_09_05",
     plant: "삼랑진공장",
     company: "(주)오륙",

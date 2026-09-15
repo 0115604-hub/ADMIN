@@ -240,7 +240,7 @@ export const INITIAL_APPROVAL_DOCS = [
     docNumber: "ORYUK-2026-0912-SAM",
     type: "OVERTIME",
     typeName: "특근보고서 (취합)",
-    title: "[삼랑진공장] 9월 12일(토) 특근보고서 취합 ((주)오륙)",
+    title: "[특근보고서] 9월 12일(토) 삼랑진공장 특근보고서 ((주)오륙)",
     plant: "삼랑진공장",
     department: "생산총괄 ((주)오륙 + 유성)",
     drafter: "양인나",
@@ -254,7 +254,7 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-12 18:00", comment: "특근 취합 기안 상신" },
       { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -264,7 +264,7 @@ export const INITIAL_APPROVAL_DOCS = [
     docNumber: "ORYUK-2026-0912-HAL",
     type: "OVERTIME",
     typeName: "특근보고서 (취합)",
-    title: "[한림공장] 9월 12일(토) 특근보고서 취합 ((주)조영산업, 한울)",
+    title: "[특근보고서] 9월 12일(토) 한림공장 특근보고서 ((주)조영산업, 한울)",
     plant: "한림공장",
     department: "생산총괄 ((주)조영산업 + 한울 + 부림텍)",
     drafter: "오상민",
@@ -278,7 +278,7 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-12 18:00", comment: "특근 취합 기안 상신" },
       { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -288,7 +288,7 @@ export const INITIAL_APPROVAL_DOCS = [
     docNumber: "ORYUK-2026-0913-HAL",
     type: "OVERTIME",
     typeName: "특근보고서 (취합)",
-    title: "[한림공장] 9월 13일(일) 특근보고서 취합 ((주)조영산업, 한울)",
+    title: "[특근보고서] 9월 13일(일) 한림공장 특근보고서 ((주)조영산업, 한울)",
     plant: "한림공장",
     department: "생산총괄 ((주)조영산업 + 한울 + 부림텍)",
     drafter: "오상민",
@@ -302,7 +302,7 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-13 18:00", comment: "특근 취합 기안 상신" },
       { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -312,7 +312,7 @@ export const INITIAL_APPROVAL_DOCS = [
     docNumber: "ORYUK-2026-0905-SAM",
     type: "OVERTIME",
     typeName: "특근보고서 (결재완료)",
-    title: "[삼랑진공장] 9월 5일(토) 특근보고서 취합 ((주)오륙, 유성)",
+    title: "[특근보고서] 9월 5일(토) 삼랑진공장 특근보고서 ((주)오륙, 유성)",
     plant: "삼랑진공장",
     department: "생산총괄 ((주)오륙 + 유성)",
     drafter: "양인나",
@@ -1274,7 +1274,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
       const titleCompList = participatingCompanies.length > 0 ? participatingCompanies : targetCompanies;
-      const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) ${reportCategoryName} 취합 (${titleCompList.join(", ")})`;
+      const title = `[특근보고서] 9월 ${dayNum}일(${dayLabel}) ${targetPlant} 특근보고서 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
         ? "생산총괄 ((주)오륙 + 유성)"
         : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
