@@ -36,6 +36,29 @@ const BRIEFING_DOC_PATH = ["system_config", "daily_briefing"];
 const TEMPLATES_DOC_PATH = ["system_config", "telegram_templates"];
 const TELEGRAM_TEMPLATES_KEY = "oryuk_telegram_templates_v1";
 
+/**
+ * 🔒 In-Memory Message Deduplication Cache
+ * 조건 충족 시 단 1회 발송 원칙 (중복 발송 완전 방지)
+ */
+const sentMessageCache = new Map();
+
+export const isDuplicateMessage = (fingerprint, ttlMs = 60000) => {
+  if (!fingerprint) return false;
+  const now = Date.now();
+  // 오래된 캐시 정리
+  for (const [key, timestamp] of sentMessageCache.entries()) {
+    if (now - timestamp > ttlMs) {
+      sentMessageCache.delete(key);
+    }
+  }
+  if (sentMessageCache.has(fingerprint)) {
+    console.log(`[Telegram 1회 발송 원칙] 중복 발송 차단: ${fingerprint}`);
+    return true;
+  }
+  sentMessageCache.set(fingerprint, now);
+  return false;
+};
+
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
@@ -278,6 +301,14 @@ export const sendTelegramMessage = async (text, customConfig = null) => {
   const sanitizedText = sanitizeTelegramMessageText(text);
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
+
+  // 🔒 1회 발송 원칙: 동일 수신처 & 동일 내용 15초 이내 중복 발송 차단
+  const msgFingerprint = `msg_${chatId}_${sanitizedText.slice(0, 100)}`;
+  if (isDuplicateMessage(msgFingerprint, 15000)) {
+    console.log(`[Telegram] 동일 메시지 15초 이내 중복 발송 방지 차단 (${chatId})`);
+    return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
+  }
+
   const endpoint = `https://api.telegram.org/bot${token}/sendMessage`;
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -349,6 +380,14 @@ export const sendTelegramPhoto = async (photoDataUrl, caption = "", customConfig
   const sanitizedCaption = sanitizeTelegramMessageText(caption);
   const token = config.botToken.trim();
   const chatId = String(config.chatId).trim();
+
+  // 🔒 1회 발송 원칙: 동일 사진/캡션 15초 이내 중복 발송 차단
+  const photoFingerprint = `photo_${chatId}_${sanitizedCaption.slice(0, 100)}_${photoDataUrl.slice(0, 60)}`;
+  if (isDuplicateMessage(photoFingerprint, 15000)) {
+    console.log(`[Telegram] 동일 사진 15초 이내 중복 발송 방지 차단 (${chatId})`);
+    return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
+  }
+
   const endpoint = `https://api.telegram.org/bot${token}/sendPhoto`;
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -504,7 +543,7 @@ export const formatKoreanCurrency = (amount) => {
 };
 
 /**
- * Helper to dispatch message to both primary chat room and management PnL room
+ * Helper to dispatch factory alerts strictly to primary chat room (오륙 통합방 단 1회 발송 원칙)
  */
 export const dispatchToTelegramRooms = async (message, images = [], customConfig = null) => {
   const config = customConfig || getLocalTelegramConfig();
@@ -512,29 +551,29 @@ export const dispatchToTelegramRooms = async (message, images = [], customConfig
     return { success: false, skipped: true, reason: "PAUSED" };
   }
 
-  const dests = [
-    config.chatId || "-4186792536",
-    config.pnlChatId || "-1003939516875"
-  ].filter((id, idx, arr) => id && arr.indexOf(id) === idx);
+  // 🔒 1회 발송 원칙: 오륙 통합방 단톡방(-4186792536)으로만 단 1회 발송 (경영방 중복 발송 완전 차단)
+  const targetChatId = config.chatId || "-4186792536";
+  const cfg = { ...config, chatId: targetChatId };
 
-  let lastRes = { success: true };
-  for (const cid of dests) {
-    const cfg = { ...config, chatId: cid };
-    if (images && images.length > 0) {
-      lastRes = await sendTelegramMediaGroup(images, message, cfg);
-    } else {
-      lastRes = await sendTelegramMessage(message, cfg);
-    }
+  if (images && images.length > 0) {
+    return await sendTelegramMediaGroup(images, message, cfg);
   }
-  return lastRes;
+  return await sendTelegramMessage(message, cfg);
 };
 
 /**
- * 1. 품질경보 등록 즉시 알림 (통합방 & 경영방 동시 발송)
+ * 1. 품질경보 등록 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) => {
   if (issueItem?.category !== "품질경보") {
     return { success: true, skipped: true, reason: "NOT_QUALITY_ALERT" };
+  }
+
+  // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 품질경보 중복 발송 방지)
+  const alertFingerprint = `quality_alert_${issueItem?.id || ""}_${issueItem?.title || ""}_${issueItem?.createdAt || ""}`;
+  if (isDuplicateMessage(alertFingerprint, 60000)) {
+    console.log(`[Telegram] 품질경보 1회 발송 원칙 적용: 중복 발송 차단 (${alertFingerprint})`);
+    return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
   const plant = issueItem?.plant || "삼랑진공장";
@@ -567,11 +606,18 @@ ${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2. 품질경보 조치 의견(댓글) 등록 즉시 알림 (통합방 & 경영방 동시 발송)
+ * 2. 품질경보 조치 의견(댓글) 등록 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetChatId = null) => {
   if (issueItem?.category !== "품질경보") {
     return { success: true, skipped: true, reason: "NOT_QUALITY_OPINION" };
+  }
+
+  // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 조치의견 중복 발송 방지)
+  const opinionFingerprint = `quality_opinion_${issueItem?.id || ""}_${opinionItem?.id || opinionItem?.createdAt || ""}`;
+  if (isDuplicateMessage(opinionFingerprint, 60000)) {
+    console.log(`[Telegram] 품질경보 의견 1회 발송 원칙 적용: 중복 발송 차단 (${opinionFingerprint})`);
+    return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
   }
 
   const plant = opinionItem?.plant || issueItem?.plant || "삼랑진공장";
@@ -634,9 +680,16 @@ export const sendQualityActionTelegram = async (issueItem, actionResult = null, 
 };
 
 /**
- * 2-2. 🌟 오픈이슈 등록 / 진행상태 변경 즉시 알림 (경영방 & 통합방 실시간 모니터링)
+ * 2-2. 🌟 오픈이슈 등록 / 진행상태 변경 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendOpenIssueAlertTelegram = async (issueItem, actionType = "CREATE", targetChatId = null) => {
+  // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 오픈이슈 상태변경 중복 발송 방지)
+  const openFingerprint = `open_issue_${issueItem?.id || ""}_${actionType}_${issueItem?.progress || ""}`;
+  if (isDuplicateMessage(openFingerprint, 60000)) {
+    console.log(`[Telegram] 오픈이슈 1회 발송 원칙 적용: 중복 발송 차단 (${openFingerprint})`);
+    return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
+  }
+
   const plant = issueItem?.plant || "삼랑진공장";
   const writer = issueItem?.author || issueItem?.writer || "담당자";
   const writerTitle = issueItem?.authorTitle ? ` ${issueItem.authorTitle}` : "";
@@ -677,52 +730,24 @@ ${content ? `\n<b>[상세 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2-3. 🌟 오픈이슈 의견(댓글) 등록 즉시 알림 (경영방 & 통합방 실시간 모니터링)
+ * 2-3. 🌟 [8번] 오픈이슈 의견(댓글) 등록 알림 (발송 중지 정책 적용)
  */
 export const sendOpenIssueReplyTelegram = async (issueItem, replyItem, targetChatId = null) => {
-  const plant = issueItem?.plant || "삼랑진공장";
-  const title = issueItem?.title || issueItem?.content || "오픈이슈";
-  const writer = replyItem?.author || "담당자";
-  const writerTitle = replyItem?.authorTitle ? ` ${replyItem.authorTitle}` : "";
-  const content = replyItem?.content || replyItem?.text || "확인";
-  const dateStr = replyItem?.actionDate || getKSTDateString();
-  const timeStr = getKSTTimeString();
-
-  const rawFiles = replyItem?.files || replyItem?.images || [];
-  const images = rawFiles
-    .map((f) => {
-      if (typeof f === "string" && (f.startsWith("data:") || f.startsWith("http"))) return { dataUrl: f };
-      if (f && (f.dataUrl || f.url)) return { dataUrl: f.dataUrl || f.url };
-      return null;
-    })
-    .filter(Boolean)
-    .slice(0, 3);
-
-  const message = `
-<b>💬 [오픈이슈 의견/댓글 등록]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>대상 이슈:</b> <b>${title}</b> (${plant})
-• <b>의견작성자:</b> <b>${writer}${writerTitle}</b>
-
-<b>[의견 내용]</b>
-${content}
-
-• <b>등록일시:</b> ${dateStr} ${timeStr}${images.length > 0 ? `\n• <b>첨부파일:</b> ${images.length}장 첨부됨` : ""}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-
-  if (targetChatId) {
-    const cfg = { ...getLocalTelegramConfig(), chatId: targetChatId };
-    return images.length > 0 ? await sendTelegramMediaGroup(images, message, cfg) : await sendTelegramMessage(message, cfg);
-  }
-  return await dispatchToTelegramRooms(message, images);
+  console.log("[Telegram 8번 발송중지] 오픈이슈 의견(댓글) 등록 알림은 발송 중지 정책에 따라 비활성화되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**
- * 2-4. 🌟 회의일정 소집 및 사내공지 등록 즉시 알림 (경영방 & 통합방 실시간 모니터링)
+ * 2-4. 🌟 회의일정 소집 및 사내공지 등록 즉시 알림 (오륙 통합방 단 1회 발송)
  */
 export const sendMeetingNoticeAlertTelegram = async (item, actionType = "CREATE", targetChatId = null) => {
+  // 🔒 1회 발송 원칙 중복 차단 가드 (60초 이내 동일 회의/공지 등록 중복 발송 방지)
+  const noticeFingerprint = `meeting_notice_${item?.id || ""}_${actionType}`;
+  if (isDuplicateMessage(noticeFingerprint, 60000)) {
+    console.log(`[Telegram] 회의/공지 1회 발송 원칙 적용: 중복 발송 차단 (${noticeFingerprint})`);
+    return { success: true, skipped: true, reason: "DUPLICATE_GUARD_ACTIVATED" };
+  }
+
   const isMeeting = item.category === "회의일정";
   const plant = item?.plant || "삼랑진공장";
   const writer = item?.author || item?.writer || "주관자";
@@ -775,67 +800,21 @@ ${content ? `\n<b>[공지 내용]</b>\n${content}\n` : ""}
 };
 
 /**
- * 2-5. 🌟 회의/공지 의견(댓글) 등록 즉시 알림 (경영방 & 통합방 실시간 모니터링)
+ * 2-5. 🌟 [10번] 회의/공지 의견 및 회신 알림 (발송 중지 정책 적용)
  */
 export const sendMeetingNoticeReplyTelegram = async (item, replyItem, targetChatId = null) => {
-  const isMeeting = item.category === "회의일정";
-  const title = item?.title || item?.content || (isMeeting ? "회의" : "사내공지");
-  const writer = replyItem?.author || "작성자";
-  const writerTitle = replyItem?.authorTitle ? ` ${replyItem.authorTitle}` : "";
-  const content = replyItem?.content || replyItem?.text || "확인";
-  const dateStr = replyItem?.actionDate || getKSTDateString();
-  const timeStr = getKSTTimeString();
-
-  const message = `
-<b>💬 [${isMeeting ? "회의 의견/참석 회신" : "사내공지 의견 등록"}]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>대상:</b> <b>${title}</b> (${item.category || "회의/공지"})
-• <b>작성자:</b> <b>${writer}${writerTitle}</b>
-
-<b>[의견 내용]</b>
-${content}
-
-• <b>등록일시:</b> ${dateStr} ${timeStr}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-
-  if (targetChatId) {
-    const cfg = { ...getLocalTelegramConfig(), chatId: targetChatId };
-    return await sendTelegramMessage(message, cfg);
-  }
-  return await dispatchToTelegramRooms(message);
+  console.log("[Telegram 10번 발송중지] 회의/공지 의견 및 회신 알림은 발송 중지 정책에 따라 비활성화되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 export const sendMeetingReplyTelegram = sendMeetingNoticeReplyTelegram;
 
 /**
- * 4. 품질경보/이슈 종결 및 삭제 즉시 알림 (통합방 & 경영방 발송)
+ * 4. 🌟 [6번] 품질경보/이슈 종결 및 삭제 알림 (발송 중지 정책 적용)
  */
 export const sendQualityDeleteTelegram = async (deletedIssue, deleterProfile, targetChatId = null) => {
-  const deleterName = typeof deleterProfile === "string"
-    ? (deleterProfile || "총괄관리자")
-    : (deleterProfile?.name ? `${deleterProfile.name} ${deleterProfile.title || ""}`.trim() : "총괄관리자");
-
-  const nowStr = getKSTFormattedString();
-
-  const message = `
-<b>🟥 [품질경보/이슈 종결 처리 알림]</b>
-━━━━━━━━━━━━━━━━━━━━━
-• <b>공장:</b> ${deletedIssue?.plant || "삼랑진공장"}
-• <b>항목제목:</b> <b>${deletedIssue?.title || deletedIssue?.content || "품질경보"}</b> (${deletedIssue?.category || "이슈"})
-• <b>처리권한자:</b> <b>${deleterName}</b>
-• <b>종결사유:</b> ${deletedIssue?.deleteReason || "정상 조치 및 확인 후 종결 처리"}
-• <b>처리일시:</b> ${nowStr}
-━━━━━━━━━━━━━━━━━━━━━
-<a href="https://profit-and-loss-7d09b.web.app">생산관리시스템 바로가기</a>
-`.trim();
-
-  if (targetChatId) {
-    const cfg = { ...getLocalTelegramConfig(), chatId: targetChatId };
-    return await sendTelegramMessage(message, cfg);
-  }
-  return await dispatchToTelegramRooms(message);
+  console.log("[Telegram 6번 발송중지] 품질경보/이슈 종결 및 삭제 알림은 발송 중지 정책에 따라 비활성화되었습니다.");
+  return { success: true, skipped: true, reason: "CANCELLED_BY_POLICY" };
 };
 
 /**

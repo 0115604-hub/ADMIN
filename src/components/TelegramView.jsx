@@ -727,9 +727,9 @@ export const TelegramView = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               { id: "briefing", label: "📋 07:40 모닝브리핑", desc: "근태/미결재/오픈이슈" },
-              { id: "quality", label: "🟥 품질경보 3단계", desc: "발령/의견/종결" },
+              { id: "quality", label: "🟥 품질경보 서식", desc: "신규발령/조치의견" },
               { id: "notice_meeting", label: "🟩 공지 & 🟪 회의", desc: "사내공지/회의일정" },
-              { id: "approval", label: "🟦 전자결재/일지", desc: "기안/승인/반려" }
+              { id: "approval", label: "🟦 전자결재/일지", desc: "정책상 발송중지" }
             ].map((t) => (
               <button
                 key={t.id}
@@ -751,11 +751,11 @@ export const TelegramView = () => {
           {unifiedMsgType === "quality" && (
             <div className="p-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-xs font-bold text-rose-800 dark:text-rose-300">품질경보 알림 단계 서식:</span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {[
-                  { key: "1", label: "1단계 (신규 발령)" },
-                  { key: "2", label: "2단계 (조치의견 등록)" },
-                  { key: "3", label: "3단계 (종결/삭제 알림)" }
+                  { key: "1", label: "1단계 (신규 발령) [발송중]" },
+                  { key: "2", label: "2단계 (조치의견) [발송중]" },
+                  { key: "3", label: "3단계 (종결/삭제) [6번 발송중지]" }
                 ].map((st) => (
                   <button
                     key={st.key}
@@ -779,10 +779,10 @@ export const TelegramView = () => {
               <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">공지/회의 서식:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
-                  { key: "notice", label: "🟩 사내 공지사항" },
-                  { key: "meeting", label: "🟪 사내 회의일정" },
+                  { key: "notice", label: "🟩 사내 공지사항 [발송중]" },
+                  { key: "meeting", label: "🟪 사내 회의일정 [발송중]" },
                   { key: "meeting_result", label: "🟪 회의결과 보고" },
-                  { key: "meeting_reply", label: "🟪 회의일정 회신" }
+                  { key: "meeting_reply", label: "🟪 회의회신 [10번 발송중지]" }
                 ].map((nt) => (
                   <button
                     key={nt.key}
@@ -803,7 +803,7 @@ export const TelegramView = () => {
 
           {unifiedMsgType === "approval" && (
             <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">전자결재/일지 서식:</span>
+              <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">전자결재/일지 서식 (정책상 발송 제외):</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { key: "draft", label: "🟦 기안 상신" },

@@ -319,19 +319,11 @@ export const addIssueReply = async (issueId, replyData) => {
 
   const saved = await saveUrgentIssue(updatedItem);
 
-  // Trigger real-time Telegram notification for opinion/reply (경영방 및 통합방 실시간 모니터링)
+  // Trigger real-time Telegram notification for opinion/reply (품질경보만 발송, 8번 오픈이슈/10번 회의공지 댓글은 정책상 발송 중지)
   if (saved) {
     if (target.category === "품질경보") {
       sendQualityOpinionTelegram(target, newReply).catch((err) => {
         console.warn("Telegram opinion notification error:", err);
-      });
-    } else if (target.category === "오픈이슈" || target.category === "open_issue" || target.category === "품질이슈") {
-      sendOpenIssueReplyTelegram(target, newReply).catch((err) => {
-        console.warn("Telegram open issue reply error:", err);
-      });
-    } else if (target.category === "회의일정" || target.category === "공지사항" || target.category === "사내공지" || target.category === "공유사항") {
-      sendMeetingNoticeReplyTelegram(target, newReply).catch((err) => {
-        console.warn("Telegram meeting/notice reply error:", err);
       });
     }
   }
@@ -423,17 +415,7 @@ export const deleteUrgentIssue = async (id, deleterName = "") => {
       console.warn("Firestore soft delete error fallback to local:", e);
     }
 
-    // 3. Send Telegram Notification (Only for 품질경보 삭제/종결)
-    if (!activeDeletes.has(strId)) {
-      activeDeletes.add(strId);
-      setTimeout(() => activeDeletes.delete(strId), 10000);
-      if (archivedItem.category === "품질경보") {
-        sendQualityDeleteTelegram(archivedItem, deleterName).catch((err) => {
-          console.warn("Telegram delete alert error:", err);
-        });
-      }
-    }
-
+    // 3. 6번 정책에 따라 품질경보 종결/삭제 텔레그램 알림은 비활성화됨
     return sorted;
   } catch (err) {
     console.error("deleteUrgentIssue error:", err);
