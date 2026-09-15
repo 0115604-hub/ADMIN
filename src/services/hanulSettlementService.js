@@ -81,7 +81,7 @@ export const getInitialSettlementStore = () => ({
     totalWithTax: 130148040,
     totalExpense: 115922497,
     netSettlement: 14225543,
-    attachments: DEFAULT_HANUL_ATTACHMENTS["2026-07"] || []
+    attachments: []
   },
   "2026-08": {
     yearMonth: "2026-08",
@@ -131,9 +131,6 @@ export const getLocalSettlementStore = () => {
           parsed["2026-07"].expenses.length < 16
         ) {
           parsed["2026-07"] = initial["2026-07"];
-          saveLocalSettlementStore(parsed);
-        } else if (!parsed["2026-07"].attachments || parsed["2026-07"].attachments.length === 0) {
-          parsed["2026-07"].attachments = initial["2026-07"].attachments || [];
           saveLocalSettlementStore(parsed);
         }
         return { ...initial, ...parsed };
