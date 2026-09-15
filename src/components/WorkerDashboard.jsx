@@ -753,9 +753,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setSelectedWorkerForLogs(null);
       setQualityPopupItem(null);
       setPreviewImageModal(null);
+      setIsHanulSettlementModalOpen(false);
     });
     return () => unsub();
   }, []);
+
+  const handleOpenHanulSettlementModal = () => {
+    pushModalHistory("hanul_settlement_modal");
+    setIsHanulSettlementModalOpen(true);
+  };
 
   const handleOpenWorkLogModal = () => {
     pushModalHistory("worklog_write");
@@ -3139,7 +3145,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 🌟 한울 전용 전월정산표 등록 (상태정보패널과 1번패널 사이 1줄 패널) */}
       {/* ========================================================================= */}
       {(isHanul || isAdmin) && (
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-emerald-500/60 shadow-md shadow-emerald-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn">
+        <div
+          onClick={handleOpenHanulSettlementModal}
+          className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-emerald-500/60 shadow-md shadow-emerald-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
+        >
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 overflow-hidden">
             <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-600 text-white shadow-xs shrink-0 flex items-center justify-center">
               <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-100" />
@@ -3148,13 +3157,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <span className="font-black text-xs sm:text-sm text-white tracking-tight">
                 전월정산표 등록
               </span>
+              <span className="hidden sm:inline text-[11px] text-emerald-300/80 font-semibold truncate">
+                (공통비 및 지출 공제내역 항목별 등록 / 영수증 증빙 확인)
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              onClick={() => setIsHanulSettlementModalOpen(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenHanulSettlementModal();
+              }}
               className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black ring-2 ring-emerald-300/60 shadow-sm shadow-emerald-500/30 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
               title="탭하여 공통비 및 지출 공제내역 항목별 등록 팝업 열기"
             >
@@ -8567,7 +8582,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       <HanulSettlementModal
         isOpen={isHanulSettlementModalOpen}
         onClose={() => setIsHanulSettlementModalOpen(false)}
-        initialMonth="2026-08"
+        initialMonth={selectedMonth || "2026-08"}
       />
 
     </div>

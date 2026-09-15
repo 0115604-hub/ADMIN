@@ -70,6 +70,7 @@ export const HanulTaxInvoiceView = () => {
   useEffect(() => {
     const unsub = subscribeCloseAllModals(() => {
       setIsSummaryModalOpen(false);
+      setIsAdminSettlementModalOpen(false);
     });
     return () => unsub();
   }, []);
@@ -451,7 +452,20 @@ export const HanulTaxInvoiceView = () => {
           </div>
 
           {/* Excel Export & Saved Status */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                pushModalHistory("hanul_settlement_modal");
+                setIsAdminSettlementModalOpen(true);
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 active:scale-95 transition-all cursor-pointer"
+              title="한울 전월 정산표 공통비/지출공제 등록 및 증빙 확인 팝업 열기"
+            >
+              <Receipt className="w-3.5 h-3.5 text-emerald-200" />
+              <span>정산표 등록 (지출공제)</span>
+            </button>
+
             <button
               onClick={handleExportCSV}
               className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-750 active:scale-95 transition-all cursor-pointer shadow-2xs"

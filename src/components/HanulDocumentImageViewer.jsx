@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   ZoomIn,
@@ -677,12 +678,15 @@ export const HanulDocumentImageViewer = ({
     return content;
   }
 
-  return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-6xl h-[90vh] flex flex-col">
         {content}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 export default HanulDocumentImageViewer;

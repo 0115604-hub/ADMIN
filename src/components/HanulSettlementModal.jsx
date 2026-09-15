@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   Save,
@@ -52,6 +53,13 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const { formatAmount } = useCurrency() || { formatAmount: (v) => `₩${Number(v || 0).toLocaleString()}` };
 
   const [selectedMonth, setSelectedMonth] = useState(initialMonth || "2026-08");
+
+  // Sync initialMonth on modal open
+  useEffect(() => {
+    if (isOpen && initialMonth) {
+      setSelectedMonth(initialMonth);
+    }
+  }, [isOpen, initialMonth]);
 
   // Current Month State
   const [products, setProducts] = useState([]);
@@ -357,8 +365,8 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn overflow-y-auto">
       <div className={`relative w-full ${viewMode === "split" ? "max-w-[96vw] xl:max-w-7xl" : "max-w-5xl"} bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border-2 border-emerald-500/50 flex flex-col max-h-[95vh] h-[92vh] overflow-hidden transition-all duration-200`}>
         {/* Top Header */}
         <div className="flex items-center justify-between px-3.5 py-2.5 sm:px-4 bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-500/30 shrink-0">
@@ -750,7 +758,8 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
         initialPageIndex={activeViewerPageIndex}
         onDeleteAttachment={handleDeleteAttachment}
       />
-    </div>
+    </div>,
+    document.body
   );
 };
 export default HanulSettlementModal;
