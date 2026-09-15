@@ -579,15 +579,15 @@ export const ElectronicApprovalView = () => {
       {/* ========================================================================= */}
       {/* 1. Header & Quick Stat Bar */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20">
-              <FileSignature className="w-5 h-5 sm:w-6 sm:h-6" />
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-600 text-white shadow-md shadow-emerald-500/20 shrink-0">
+              <FileSignature className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
                   (주)오륙 스마트 전자결재 목록 현황
                 </h1>
                 {isAdmin && (
@@ -597,7 +597,7 @@ export const ElectronicApprovalView = () => {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                 담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 자동결재선 적용
               </p>
             </div>
@@ -606,105 +606,105 @@ export const ElectronicApprovalView = () => {
           <button
             type="button"
             onClick={handleOpenDraftModal}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0"
           >
             <span>새 결재 기안서 작성</span>
           </button>
         </div>
 
-        {/* 5 KPI Summary Status Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {/* 5 KPI Summary Status Cards (시인성 극대화 및 컴팩트 최소화) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
           <div
             onClick={() => setSelectedTab("PENDING")}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer ${
               selectedTab === "PENDING"
                 ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 ring-2 ring-rose-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
               <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 <span>미결 (결재대기)</span>
               </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 font-mono">
+            <div className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5 font-mono">
               {stats.pending}건
             </div>
           </div>
 
           <div
             onClick={() => setSelectedTab("HOLD")}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer ${
               selectedTab === "HOLD"
                 ? "bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-700 ring-2 ring-amber-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
               <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <PauseCircle className="w-3.5 h-3.5" />
                 <span>보류 문서</span>
               </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 font-mono">
+            <div className="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400 mt-0.5 font-mono">
               {stats.hold}건
             </div>
           </div>
 
           <div
             onClick={() => setSelectedTab("APPROVED")}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer ${
               selectedTab === "APPROVED"
                 ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 ring-2 ring-emerald-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
               <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>최종 승인 완료</span>
               </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
+            <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">
               {stats.approved}건
             </div>
           </div>
 
           <div
             onClick={() => setSelectedTab("REJECTED")}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer ${
               selectedTab === "REJECTED"
                 ? "bg-slate-200 dark:bg-slate-700 border-slate-400 ring-2 ring-slate-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
               <span className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                 <XCircle className="w-3.5 h-3.5" />
                 <span>반려 문서</span>
               </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-slate-700 dark:text-slate-300 mt-1 font-mono">
+            <div className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-300 mt-0.5 font-mono">
               {stats.rejected}건
             </div>
           </div>
 
           <div
             onClick={() => setSelectedTab("ALL")}
-            className={`p-3 rounded-2xl border transition-all cursor-pointer col-span-2 sm:col-span-1 ${
+            className={`p-2 sm:p-2.5 rounded-xl border transition-all cursor-pointer col-span-2 sm:col-span-1 ${
               selectedTab === "ALL"
                 ? "bg-blue-50 dark:bg-blue-950/40 border-blue-400 dark:border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
                 : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100"
             }`}
           >
-            <div className="flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center justify-between text-[11px] text-slate-500">
               <span className="font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5" />
                 <span>전체 문서 목록</span>
               </span>
             </div>
-            <div className="text-xl sm:text-2xl font-black text-blue-600 dark:text-blue-400 mt-1 font-mono">
+            <div className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 mt-0.5 font-mono">
               {stats.total}건
             </div>
           </div>
@@ -712,10 +712,10 @@ export const ElectronicApprovalView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. Filter Navigation & Plant Filter / Search */}
+      {/* 2. Filter Navigation (전체공장/검색 뱃지 제거 및 탭 바 컴팩트화) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+      <div className="bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center overflow-x-auto">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full">
           {[
             { id: "ALL", label: `전체 목록 (${stats.total})` },
             { id: "PENDING", label: `🔴 미결/대기 (${stats.pending})`, highlight: stats.pending > 0 },
@@ -727,9 +727,9 @@ export const ElectronicApprovalView = () => {
             <button
               key={tab.id}
               onClick={() => setSelectedTab(tab.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 active:scale-95 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all shrink-0 active:scale-95 cursor-pointer ${
                 selectedTab === tab.id
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm"
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-xs"
                   : tab.highlight
                   ? "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300"
                   : tab.holdLight
@@ -741,35 +741,12 @@ export const ElectronicApprovalView = () => {
             </button>
           ))}
         </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select
-            value={selectedPlant}
-            onChange={(e) => setSelectedPlant(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
-          >
-            <option value="ALL">전체 공장</option>
-            <option value="삼랑진공장">삼랑진공장</option>
-            <option value="한림공장">한림공장</option>
-          </select>
-
-          <div className="relative flex-1 sm:w-48">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="제목, 기안자 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        </div>
       </div>
 
       {/* ========================================================================= */}
       {/* 3. 1-Line Row Approval Table List */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         {filteredDocs.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400 space-y-2">
             <FileText className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
@@ -814,10 +791,10 @@ export const ElectronicApprovalView = () => {
                         </span>
                       </td>
 
-                      {/* 2. 문서제목 */}
+                      {/* 2. 문서제목 (기안자 텍스트 크기 text-xs와 동일하게 일치) */}
                       <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
-                          <span className="hover:underline text-slate-900 dark:text-white text-[9.5px] sm:text-[10.5px] font-black leading-tight">
+                          <span className="hover:underline text-slate-900 dark:text-white text-xs font-bold leading-tight">
                             {formatConciseApprovalTitle(doc.title)}
                           </span>
                         </div>
