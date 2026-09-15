@@ -2788,86 +2788,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       )}
 
-      {/* 📑 전자결재 대기 현황 (1줄 완벽 바 • 탭 시 결재함으로 즉시 이동) */}
-      <div
-        onClick={() => onNavigateTab && onNavigateTab("electronic_approval")}
-        className="bg-white dark:bg-slate-900 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 border border-emerald-500/40 dark:border-emerald-600/40 shadow-2xs flex items-center justify-between gap-2 min-w-0 max-w-full cursor-pointer hover:border-emerald-500 hover:shadow-md hover:bg-emerald-50/30 dark:hover:bg-emerald-950/30 transition-all active:scale-[0.99] group"
-        title="클릭하여 전자결재함으로 바로 이동"
-      >
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-hidden">
-          <div className="p-1 rounded-lg bg-emerald-600 text-white shadow-xs shrink-0 group-hover:scale-105 transition-transform">
-            <FileSignature className="w-3.5 h-3.5" />
-          </div>
-          <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
-            전자결재 대기
-          </span>
-
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {pendingCount > 0 && (
-              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 animate-pulse flex items-center gap-0.5 sm:gap-1">
-                <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                <span>미결 {pendingCount}건</span>
-              </span>
-            )}
-            {holdCount > 0 && (
-              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-black bg-amber-50 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 flex items-center gap-0.5 sm:gap-1">
-                <PauseCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                <span>보류 {holdCount}건</span>
-              </span>
-            )}
-            {pendingOrHoldDocs.length === 0 && (
-              <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 flex items-center gap-0.5 sm:gap-1">
-                <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600" />
-                <span>대기 없음</span>
-              </span>
-            )}
-          </div>
-
-          {pendingOrHoldDocs.length > 0 && (
-            <div className="hidden lg:flex items-center gap-2 min-w-0 flex-1 pl-2 border-l border-slate-200 dark:border-slate-800">
-              <span className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 shrink-0">최근 대기:</span>
-              <div
-                className="flex items-center gap-1.5 truncate text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors"
-              >
-                <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-700 dark:text-slate-300">
-                  {pendingOrHoldDocs[0].plant === "한림공장" ? "한림" : "삼랑진"}
-                </span>
-                <span className="truncate">{pendingOrHoldDocs[0].title}</span>
-                <span className="text-slate-400 text-[10px] shrink-0">({pendingOrHoldDocs[0].drafter})</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onNavigateTab && onNavigateTab("electronic_approval");
-            }}
-            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-950 text-[11px] sm:text-xs font-black transition-all shadow-2xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap group-hover:bg-emerald-600 group-hover:text-white dark:group-hover:bg-emerald-500 dark:group-hover:text-slate-950"
-          >
-            <span>결재함</span>
-            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-          </button>
-        </div>
-      </div>
-
       {/* 🌟 작업자 일정/연차 및 스마트 캘린더 센터 (전작업자 공통 적용) */}
       {!isAdmin && (
         <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
           {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-            {/* Left: Worker Name and Title (Executive Luxury VIP Tab Design) */}
+            {/* Left: Worker Name and Title with Embedded Mini Electronic Approval Panel */}
             <div className="lg:col-span-3 min-w-0">
               <div className="relative overflow-hidden rounded-xl sm:rounded-2xl px-3 py-2 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white border-2 border-indigo-500/40 dark:border-indigo-400/40 shadow-md shadow-indigo-950/40 ring-1 ring-white/10 group transition-all">
                 {/* Ambient Soft Glow Highlights */}
                 <div className="absolute -top-6 -right-6 w-20 h-20 bg-gradient-to-br from-blue-500/20 via-indigo-500/20 to-transparent rounded-full blur-xl pointer-events-none" />
                 <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-tr from-cyan-500/15 to-transparent rounded-full blur-lg pointer-events-none" />
 
-                <div className="relative flex items-center justify-between gap-2 min-w-0">
-                  <div className="flex items-center gap-2.5 min-w-0 truncate">
+                <div className="relative flex items-center justify-between gap-1.5 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 truncate">
                     {/* Dynamic Glowing Avatar with Online Status Indicator */}
                     <div className="relative shrink-0">
                       <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 p-[1.5px] shadow-sm shadow-cyan-500/30">
@@ -2884,7 +2818,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <div className="flex flex-col min-w-0 truncate leading-tight">
                       <span className="text-[9px] font-extrabold text-cyan-400/90 tracking-wider flex items-center gap-1 uppercase">
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
-                        LOGIN USER
+                        {workerPlant.replace("공장", "")}
                       </span>
                       <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs truncate">
                         {workerFullName}
@@ -2892,10 +2826,40 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </div>
                   </div>
 
-                  {/* Sleek Jewel Title Badge */}
-                  <span className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
-                    {officialTitle}
-                  </span>
+                  {/* Right: Embedded Electronic Approval Mini Panel + Title Badge */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigateTab && onNavigateTab("electronic_approval");
+                      }}
+                      className={`px-2 py-1 rounded-lg border text-[10.5px] font-black transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1 group/appr ${
+                        pendingCount > 0
+                          ? "bg-rose-500/25 hover:bg-rose-500/40 border-rose-400/70 text-rose-200 ring-1 ring-rose-500/40 animate-pulse"
+                          : holdCount > 0
+                          ? "bg-amber-500/25 hover:bg-amber-500/40 border-amber-400/70 text-amber-200"
+                          : "bg-emerald-500/20 hover:bg-emerald-500/35 border-emerald-400/60 text-emerald-200"
+                      }`}
+                      title="클릭하여 전자결재함으로 바로 이동"
+                    >
+                      <FileSignature className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover/appr:scale-110 transition-transform" />
+                      <span className="whitespace-nowrap font-black">전자결재</span>
+                      {pendingCount > 0 ? (
+                        <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">
+                          {pendingCount}
+                        </span>
+                      ) : (
+                        <span className="px-1 py-0.2 rounded-full bg-emerald-600/80 text-white text-[9px] font-bold">
+                          0
+                        </span>
+                      )}
+                    </button>
+
+                    <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
+                      {officialTitle}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

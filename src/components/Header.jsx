@@ -75,11 +75,8 @@ export const Header = ({
             </div>
             <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 truncate">
               <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
-                <span className="hidden sm:inline">(주)오륙 </span>
-                <span className="text-blue-600 dark:text-blue-400">{currentProfile?.name || "작업자"}</span>
-                <span className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium ml-1">
-                  ({currentProfile?.plant ? currentProfile.plant.replace("공장", "") : "현장"} • {currentProfile?.title || "선임"})
-                </span>
+                <span className="text-slate-900 dark:text-white font-black">(주)오륙 </span>
+                <span className="text-blue-600 dark:text-blue-400 font-black">생산관리시스템</span>
               </h2>
             </div>
           </div>
