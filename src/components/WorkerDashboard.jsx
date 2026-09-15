@@ -1391,7 +1391,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     // 1. 공유받은 일정인 경우 (받은 작업자는 보낸 작업자에게 답장을 보내거나 직접 삭제 가능)
     if (item.isSharedRecipient || item.sharedBy) {
-      if (actionType === "direct_delete") {
+      if (actionType === "direct_delete" || actionType === "delete") {
         handleDeleteLeave(item.id);
         return;
       }
@@ -1400,24 +1400,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return;
     }
 
-    // 2. 작성자(보낸 사람)인 경우: 삭제 시 공유된 대상자들의 일정까지 모두 자동 삭제
-    if (actionType === "delete" || actionType === "direct_delete") {
-      handleDeleteLeave(item.id, item.originLeaveId);
-      return;
-    }
-
-    // 3. 다른 작업자에게 공유한 원본 일정인 경우 (보낸 작업자는 대상자 회신 확인 후 삭제 가능)
-    const hasSharedTargets =
-      item.isSharedOrigin ||
-      (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
-      (Array.isArray(item.sharedWith) && item.sharedWith.length > 0);
-
-    if (hasSharedTargets) {
-      setSharedSenderConfirmModalItem({ ...item, requestedAction: actionType });
-      return;
-    }
-
-    // 4. 일반 개인 일정인 경우: 완전 삭제 처리
+    // 2. 작성자(보낸 사람)인 경우: X 버튼 또는 삭제 시 공유된 대상자들의 일정까지 모두 자동 삭제
     handleDeleteLeave(item.id, item.originLeaveId);
   };
 
@@ -3335,7 +3318,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         className={`p-0.5 rounded transition-all cursor-pointer ${
                           isToday ? "hover:bg-blue-700 text-white/80 hover:text-white" : "hover:bg-blue-200 dark:hover:bg-blue-900 text-slate-400 hover:text-slate-700"
                         }`}
-                        title={isRecipient ? "답장 작성 후 삭제" : isOrigin ? "회신 확인 후 삭제" : "완료 / 목록에서 삭제"}
+                        title={isRecipient ? "답장 작성 후 삭제" : "일정 삭제 (공유 작업자 포함 자동 삭제)"}
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>

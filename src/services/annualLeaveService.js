@@ -67,16 +67,9 @@ export const subscribeAnnualLeaves = (callback) => {
           saveLocalAnnualLeaves(cloudLeaves);
           callback(cloudLeaves);
         } else {
-          // Initialize cloud with local/initial data if cloud collection is empty
-          const local = getLocalAnnualLeaves();
-          local.forEach(async (leave) => {
-            try {
-              await setDoc(doc(db, COLLECTION_NAME, String(leave.id)), sanitizeLeave(leave));
-            } catch (err) {
-              console.warn("Init cloud leave doc error:", err);
-            }
-          });
-          callback(local);
+          // If Firestore collection is empty, update local cache to empty array
+          saveLocalAnnualLeaves([]);
+          callback([]);
         }
       },
       (error) => {
@@ -140,18 +133,23 @@ export const saveAnnualLeave = async (newLeave) => {
   return updatedLocal;
 };
 
-// Delete an annual leave record (Cascades to all shared recipient copies if origin is deleted)
+// Delete an annual leave record (Cascades to all shared recipient copies across Firestore and local cache)
 export const deleteAnnualLeave = async (id, cascadeAll = true) => {
   const leaveId = String(id);
   const current = getLocalAnnualLeaves();
   const targetItem = current.find((l) => String(l.id) === leaveId);
+  const isRecipient = Boolean(targetItem?.isSharedRecipient && !targetItem?.isSharedOrigin);
   const rootOriginId = targetItem?.originLeaveId ? String(targetItem.originLeaveId) : leaveId;
+  const authorName = targetItem?.userName || targetItem?.sharedBy || "";
+  const authorId = targetItem?.userId || targetItem?.sharedById || "";
+  const targetDate = targetItem?.startDate || targetItem?.date || "";
+  const targetType = targetItem?.leaveType || "";
 
-  // Find all associated IDs (the record itself + any recipient leaves linked by originLeaveId)
+  // 1. Collect all matching local IDs
   const idsToDelete = new Set();
   idsToDelete.add(leaveId);
 
-  if (cascadeAll) {
+  if (cascadeAll && !isRecipient) {
     if (rootOriginId) idsToDelete.add(rootOriginId);
     current.forEach((l) => {
       if (!l) return;
@@ -161,21 +159,56 @@ export const deleteAnnualLeave = async (id, cascadeAll = true) => {
         lId === leaveId ||
         lId === rootOriginId ||
         lOrigId === leaveId ||
-        lOrigId === rootOriginId
+        lOrigId === rootOriginId ||
+        (authorName && targetDate && targetType && (l.sharedBy === authorName || l.userName === authorName) && (l.startDate === targetDate || l.date === targetDate) && l.leaveType === targetType) ||
+        (authorId && targetDate && targetType && (l.sharedById === authorId || l.userId === authorId) && (l.startDate === targetDate || l.date === targetDate) && l.leaveType === targetType)
       ) {
         idsToDelete.add(lId);
       }
     });
   }
 
+  // 2. Direct Query to Firestore to find and collect ALL matching cloud docs (even if not yet in local cache)
+  try {
+    const snap = await getDocs(collection(db, COLLECTION_NAME));
+    snap.docs.forEach((d) => {
+      const data = d.data() || {};
+      const dId = d.id;
+      const dOrigId = data.originLeaveId ? String(data.originLeaveId) : null;
+      const dSharedBy = data.sharedBy || "";
+      const dSharedById = data.sharedById || "";
+      const dUserName = data.userName || "";
+      const dUserId = data.userId || "";
+      const dDate = data.startDate || data.date || "";
+      const dType = data.leaveType || "";
+
+      const isDirectMatch = dId === leaveId || (cascadeAll && !isRecipient && rootOriginId && dId === rootOriginId);
+      const isOriginMatch = cascadeAll && !isRecipient && (dOrigId === leaveId || (rootOriginId && dOrigId === rootOriginId));
+      const isAuthorScheduleMatch = cascadeAll && !isRecipient && targetDate && targetType && (
+        ((authorName && (dSharedBy === authorName || dUserName === authorName)) || (authorId && (dSharedById === authorId || dUserId === authorId))) &&
+        dDate === targetDate &&
+        dType === targetType
+      );
+
+      if (isDirectMatch || isOriginMatch || isAuthorScheduleMatch) {
+        idsToDelete.add(dId);
+      }
+    });
+  } catch (err) {
+    console.error("Error querying Firestore for cascade delete:", err);
+  }
+
+  // 3. Immediately update local storage
   const filteredLocal = current.filter((l) => !idsToDelete.has(String(l.id)));
   saveLocalAnnualLeaves(filteredLocal);
 
+  // 4. Batch delete all matched documents from Firestore Cloud
   try {
-    for (const dId of idsToDelete) {
-      await deleteDoc(doc(db, COLLECTION_NAME, dId));
-      console.log("Annual leave deleted from Firestore cloud:", dId);
-    }
+    const deletePromises = Array.from(idsToDelete).map((dId) =>
+      deleteDoc(doc(db, COLLECTION_NAME, dId))
+    );
+    await Promise.allSettled(deletePromises);
+    console.log("Annual leaves cascade deleted successfully from Firestore:", Array.from(idsToDelete));
   } catch (e) {
     console.error("Firestore delete annual leave error:", e);
   }
