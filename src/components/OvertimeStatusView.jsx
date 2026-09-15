@@ -144,7 +144,29 @@ export const getDayOfWeekFullKorean = (dateStrOrDay) => {
   return short ? `${short}요일` : "";
 };
 
-// ⭐ 보고서 제목 내 날짜/요일 및 보고서 유형(평일=근태보고서, 주말=특근실시보고서) 100% 자동 동기화 함수
+// ⭐ 보고서 일자 정렬 키 추출 함수 (날짜순 정렬)
+export const getReportDateSortKey = (report) => {
+  if (!report) return "0000-00-00";
+  if (report.workDate) {
+    const match = String(report.workDate).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+    if (match) {
+      const y = match[1] || "2026";
+      const m = String(parseInt(match[2], 10)).padStart(2, "0");
+      const d = String(parseInt(match[3], 10)).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+  }
+  const raw = String(report.workDateFormatted || report.title || "");
+  const match2 = raw.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (match2) {
+    const m = String(parseInt(match2[1], 10)).padStart(2, "0");
+    const d = String(parseInt(match2[2], 10)).padStart(2, "0");
+    return `2026-${m}-${d}`;
+  }
+  return "2026-09-01";
+};
+
+// ⭐ 보고서 제목 내 날짜/요일 및 보고서 유형(평일=근태보고서, 주말=특근보고서) 100% 자동 동기화 함수
 export const formatShortMonthDay = (dateStrOrDay) => {
   let month = 9;
   let day = 8;
@@ -535,6 +557,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
   const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
+  const [dateSortOrder, setDateSortOrder] = useState("ASC"); // "ASC" (1일->30일 날짜순), "DESC" (최신순)
   const [reportListSearch, setReportListSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -2317,6 +2340,28 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               return true;
             });
 
+            const sortedFiltered = [...filtered].sort((a, b) => {
+              const dateA = getReportDateSortKey(a);
+              const dateB = getReportDateSortKey(b);
+              if (dateSortOrder === "ASC") {
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+              } else {
+                if (dateB !== dateA) return dateB.localeCompare(dateA);
+              }
+
+              // Same date secondary sort: Samrangjin first, then Hallim
+              const plantOrder = { "삼랑진공장": 1, "한림공장": 2 };
+              const plantA = plantOrder[a.plant] || 3;
+              const plantB = plantOrder[b.plant] || 3;
+              if (plantA !== plantB) return plantA - plantB;
+
+              // Synthesized reports first, then individual reports
+              if (a.isSynthesized && !b.isSynthesized) return -1;
+              if (!a.isSynthesized && b.isSynthesized) return 1;
+
+              return (a.company || "").localeCompare(b.company || "");
+            });
+
             const totalHeadcount = filtered.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
             const totalHours = filtered.reduce((sum, r) => sum + (r.totalHours || 0), 0);
             const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
@@ -2416,7 +2461,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </div>
                 </div>
 
-                {/* 🧭 Tier 2: 소속 공장/협력사 필터 & 검색창 */}
+                {/* 🧭 Tier 2: 소속 공장/협력사 필터 & 날짜정렬 & 검색창 */}
                 <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
                   {/* Left: 소속 필터 버튼군 (공장/회사 체계 분리) */}
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2497,21 +2542,35 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     </div>
                   </div>
 
-                  {/* Right: 검색창 */}
-                  <div className="relative w-full sm:w-56 shrink-0">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="보고서 검색 (일자/업체/작업자)..."
-                      value={reportListSearch}
-                      onChange={(e) => setReportListSearch(e.target.value)}
-                      className="w-full pl-7 pr-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 outline-hidden"
-                    />
+                  {/* Right: 날짜 정렬 버튼 + 검색창 */}
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    {/* 날짜 정렬 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => setDateSortOrder((prev) => (prev === "ASC" ? "DESC" : "ASC"))}
+                      className="px-2.5 py-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 active:scale-95 shadow-xs"
+                      title="날짜순서 정렬 전환"
+                    >
+                      <CalendarDays className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>{dateSortOrder === "ASC" ? "📅 날짜순 (1일→30일) ▲" : "📅 최신순 (30일→1일) ▼"}</span>
+                    </button>
+
+                    {/* 검색창 */}
+                    <div className="relative w-full sm:w-52 shrink-0">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input
+                        type="text"
+                        placeholder="보고서 검색 (일자/업체)..."
+                        value={reportListSearch}
+                        onChange={(e) => setReportListSearch(e.target.value)}
+                        className="w-full pl-7 pr-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 outline-hidden"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 {/* 📋 Registered & Synthesized Reports List Cards */}
-                {filtered.length === 0 ? (
+                {sortedFiltered.length === 0 ? (
                   <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
                     <FileText className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
                     <div className="space-y-1">
@@ -2532,7 +2591,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {filtered.map((report, idx) => {
+                    {sortedFiltered.map((report, idx) => {
                       const isSynthesized = !!report.isSynthesized;
                       const plantName = report.plant || getPlantForCompany(report.company || "");
                       let companyName = report.company || "";
