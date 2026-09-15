@@ -477,6 +477,16 @@ export const INITIAL_APPROVAL_DOCS = [
   }
 ];
 
+// Filter out unwanted weekday attendance synthesis documents so the CEO approval box is not flooded with weekday attendance logs
+export const isWeekdayAttSynthDoc = (d) => {
+  if (!d) return false;
+  if (d.id && d.id.startsWith("appr_att_")) return true;
+  if (d.type === "ATTENDANCE" && d.typeName && d.typeName.includes("취합")) return true;
+  if (d.title && d.title.includes("근태보고서 취합")) return true;
+  if (d.title && /\((월|화|수|목|금)\)/.test(d.title) && d.title.includes("특근보고서 취합")) return true;
+  return false;
+};
+
 // Helper: Read local storage with normalization, initial docs and permanent deletion filtering
 export const getLocalApprovalDocs = () => {
   try {
@@ -501,7 +511,7 @@ export const getLocalApprovalDocs = () => {
     const docMap = new Map();
     // 1. Load initial authoritative docs (excluding permanently deleted IDs)
     INITIAL_APPROVAL_DOCS.forEach((d) => {
-      if (!deletedIds.has(d.id)) {
+      if (!deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
         docMap.set(d.id, d);
       }
     });
@@ -509,7 +519,7 @@ export const getLocalApprovalDocs = () => {
     // 2. Overlay existing stored items (excluding permanently deleted IDs)
     if (Array.isArray(parsed)) {
       parsed.forEach((d) => {
-        if (d && d.id && !deletedIds.has(d.id)) {
+        if (d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
           docMap.set(d.id, d);
         }
       });
@@ -521,7 +531,7 @@ export const getLocalApprovalDocs = () => {
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
     const deletedIds = getDeletedApprovalIds();
-    return INITIAL_APPROVAL_DOCS.filter((d) => !deletedIds.has(d.id));
+    return INITIAL_APPROVAL_DOCS.filter((d) => !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
   }
 };
 
@@ -529,7 +539,7 @@ export const getLocalApprovalDocs = () => {
 export const saveLocalApprovalDocs = (docs) => {
   try {
     const deletedIds = getDeletedApprovalIds();
-    const cleanDocs = docs.filter((d) => d && !deletedIds.has(d.id));
+    const cleanDocs = docs.filter((d) => d && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
     const normalized = cleanDocs.map(normalizeApprovalDoc);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
@@ -574,6 +584,10 @@ export const subscribeApprovalDocs = (onUpdate) => {
               return;
             }
             const rawDoc = { id: d.id, ...d.data() };
+            if (isWeekdayAttSynthDoc(rawDoc)) {
+              deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
+              return;
+            }
             const normalized = normalizeApprovalDoc(rawDoc);
             remoteDocs.push(normalized);
 
@@ -1105,18 +1119,28 @@ export const syncPlantOvertimeToApprovalBox = async ({
         (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
       );
       const isActualOvertime = isWeekend || hasSpecialOvertimeReport;
-      const reportCategoryName = isActualOvertime ? "특근보고서" : "근태보고서";
-      const docTypeName = isActualOvertime ? "특근보고서 (취합)" : "근태보고서 (취합)";
-      const docType = isActualOvertime ? "OVERTIME" : "ATTENDANCE";
-      const draftComment = isActualOvertime ? "특근 취합 기안 상신" : "근태 취합 기안 상신";
-      const summaryHeader = isActualOvertime ? "1. 특근 요약" : "1. 근태 요약";
-      const taskHeader = isActualOvertime
-        ? `• 현대/기아 긴급 납품 물량 대응 및 ${targetPlant} 주말 가동 완료`
-        : `• ${targetPlant} 정규 생산 라인 가동 및 주간 근태 일일 현황 취합`;
 
-      const canonicalDocId = isActualOvertime
-        ? `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`
-        : `appr_att_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+      // ⭐ 평일 근태보고서는 전자결재함에 등록하지 않고(근태/특근관리 탭에서 전담 관리), 주말 특근보고서만 전자결재함에 연동
+      if (!isActualOvertime) {
+        // Clean up any previously created weekday synthesis document from approval box
+        const oldIds = [
+          `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`,
+          `appr_att_${plantKey}_${workDateStr.replace(/-/g, "")}`
+        ];
+        for (const oldId of oldIds) {
+          await removeApprovalDocSilently(oldId);
+        }
+        continue;
+      }
+
+      const reportCategoryName = "특근보고서";
+      const docTypeName = "특근보고서 (취합)";
+      const docType = "OVERTIME";
+      const draftComment = "특근 취합 기안 상신";
+      const summaryHeader = "1. 특근 요약";
+      const taskHeader = `• 현대/기아 긴급 납품 물량 대응 및 ${targetPlant} 주말 가동 완료`;
+
+      const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
 
       // ⭐ If permanently deleted by ADMIN, never resurrect
       if (deletedIds.has(canonicalDocId)) {
@@ -1262,7 +1286,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         return `• ${cs.company} (${cs.workerCount}명)\n  - 관리자: ${mgrText}\n  - 작업자: ${wrkText}`;
       }).join("\n");
 
-      // ⭐ 초간결 근태/특근 취합 결재 문서 내용
+      // ⭐ 초간결 특근 취합 결재 문서 내용
       const content = `■ 9월 ${dayNum}일(${dayLabel}) [${targetPlant}] ${reportCategoryName} 취합
 
 ${summaryHeader}
@@ -1289,7 +1313,7 @@ ${taskHeader}`;
           { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: nowStr, comment: draftComment },
           { role: "책임", name: leadName, title: "책임", status: "PENDING", date: "", comment: "" },
           { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-          { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
+          { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
         ];
       }
 
@@ -1326,7 +1350,7 @@ ${taskHeader}`;
 };
 
 /**
- * 🌟 Auto-scan and sync all reports in Firestore to the approval box (both weekday attendance and weekend overtime)
+ * 🌟 Auto-scan and sync all weekend overtime reports in Firestore to the approval box
  */
 export const syncAllOvertimeReportsToApprovalBox = async () => {
   try {
@@ -1334,15 +1358,21 @@ export const syncAllOvertimeReportsToApprovalBox = async () => {
     const allReports = [];
     snap.forEach((d) => allReports.push({ id: d.id, ...d.data() }));
 
-    const reportDates = new Set();
+    const weekendDates = new Set();
     allReports.forEach((r) => {
       if (r.workDate) {
-        reportDates.add(r.workDate);
+        const dayNum = parseInt(r.workDate.slice(-2), 10);
+        const dt = new Date(2026, 8, isNaN(dayNum) ? 5 : dayNum);
+        const dow = dt.getDay();
+        const isWk = dow === 0 || dow === 6;
+        if (isWk || r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))) {
+          weekendDates.add(r.workDate);
+        }
       }
     });
 
     const results = [];
-    for (const workDate of Array.from(reportDates)) {
+    for (const workDate of Array.from(weekendDates)) {
       const res = await syncPlantOvertimeToApprovalBox({
         workDate,
         reports: allReports

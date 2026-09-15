@@ -382,15 +382,19 @@ export const saveOvertimeReport = async (report) => {
     console.warn("Firestore overtime save error:", e);
   }
 
-  // ⭐ Auto-sync to Electronic Approval Box
-  try {
-    await syncPlantOvertimeToApprovalBox({
-      plant: cleanReport.plant,
-      company: cleanReport.company,
-      workDate: cleanReport.workDate
-    });
-  } catch (e) {
-    console.warn("syncPlantOvertimeToApprovalBox error on save:", e);
+  // ⭐ Auto-sync to Electronic Approval Box ONLY for weekend overtime
+  const isWeekendReport = cleanReport.workDate ? isWeekendByDate(cleanReport.workDate) : false;
+  const isExplicitOvertime = cleanReport.reportType === "특근보고서" || (cleanReport.title && cleanReport.title.includes("특근") && !cleanReport.title.includes("근태"));
+  if (isWeekendReport || isExplicitOvertime) {
+    try {
+      await syncPlantOvertimeToApprovalBox({
+        plant: cleanReport.plant,
+        company: cleanReport.company,
+        workDate: cleanReport.workDate
+      });
+    } catch (e) {
+      console.warn("syncPlantOvertimeToApprovalBox error on save:", e);
+    }
   }
 
   return cleanReport;
@@ -409,17 +413,21 @@ export const deleteOvertimeReport = async (reportId) => {
     console.warn("Firestore overtime delete error:", e);
   }
 
-  // ⭐ Auto-sync to Electronic Approval Box on deletion
+  // ⭐ Auto-sync to Electronic Approval Box on deletion (주말 특근인 경우)
   if (deletedRep) {
-    try {
-      await syncPlantOvertimeToApprovalBox({
-        plant: deletedRep.plant,
-        company: deletedRep.company,
-        workDate: deletedRep.workDate,
-        isDeleteAction: true
-      });
-    } catch (e) {
-      console.warn("syncPlantOvertimeToApprovalBox error on delete:", e);
+    const isWeekendReport = deletedRep.workDate ? isWeekendByDate(deletedRep.workDate) : false;
+    const isExplicitOvertime = deletedRep.reportType === "특근보고서" || (deletedRep.title && deletedRep.title.includes("특근") && !deletedRep.title.includes("근태"));
+    if (isWeekendReport || isExplicitOvertime) {
+      try {
+        await syncPlantOvertimeToApprovalBox({
+          plant: deletedRep.plant,
+          company: deletedRep.company,
+          workDate: deletedRep.workDate,
+          isDeleteAction: true
+        });
+      } catch (e) {
+        console.warn("syncPlantOvertimeToApprovalBox error on delete:", e);
+      }
     }
   }
 

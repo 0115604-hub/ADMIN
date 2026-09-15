@@ -378,6 +378,89 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
   };
 };
 
+// ⭐ 공장별 소속 협력사 근태/특근 보고서 일자별 자동 취합 생성 함수 (Plant-Level Synthesis Engine)
+export const generateSynthesizedPlantReports = (reports = []) => {
+  const map = new Map();
+
+  (reports || []).forEach((r) => {
+    if (!r || !r.workDate || r.isSynthesized) return;
+    const plant = r.plant || getPlantForCompany(r.company || "");
+    const key = `${r.workDate}_${plant}`;
+    if (!map.has(key)) {
+      map.set(key, []);
+    }
+    map.get(key).push(r);
+  });
+
+  const synthList = [];
+
+  map.forEach((reps, key) => {
+    const [workDate, plant] = key.split("_");
+    const isWk = isWeekendByDate(workDate);
+    const dayLabel = getDayOfWeekKorean(workDate);
+    const dayNumMatch = workDate.match(/-(\d{1,2})$/);
+    const dayNum = dayNumMatch ? parseInt(dayNumMatch[1], 10) : 8;
+
+    const companies = Array.from(new Set(reps.map((r) => r.company).filter(Boolean)));
+    const totalWorkers = reps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+    const totalHours = reps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+    const cost = reps.reduce((sum, r) => sum + (r.cost || 0), 0);
+    const allItems = reps.flatMap((r) => r.items || []);
+
+    const hasSpecialOvertime = reps.some(
+      (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
+    );
+    const isActualOvertime = isWk || hasSpecialOvertime;
+    const reportCategory = isActualOvertime ? "특근보고서" : "근태보고서";
+
+    const drafterName = plant === "삼랑진공장" ? "양인나" : "오상민";
+    const drafterTitle = "선임";
+    const leadName = plant === "한림공장" ? "김동욱" : "윤경수";
+
+    const compBreakdownText = reps.map((cr) => {
+      const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
+      const hCount = cr.totalHours || (wCount * 8);
+      const cAmt = cr.cost || (hCount * 15000);
+      return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
+    }).join("\n");
+
+    synthList.push({
+      id: `synth_${plant === "삼랑진공장" ? "sam" : "hal"}_${workDate.replace(/-/g, "")}`,
+      isSynthesized: true,
+      plant,
+      company: `${companies.join(", ")} 취합`,
+      companies,
+      title: `[${plant}] 9월 ${dayNum}일(${dayLabel}) ${reportCategory} 취합 (${companies.join(", ")})`,
+      reportType: `${reportCategory} (취합)`,
+      workDate,
+      workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
+      author: drafterName,
+      authorTitle: drafterTitle,
+      updatedAt: reps[0]?.updatedAt || new Date().toISOString(),
+      status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
+      approval: [
+        { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: `${reportCategory} 취합 기안` },
+        { role: "책임", name: leadName, title: "책임", status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
+        { role: "이사", name: "이명재", title: "이사", status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
+        { role: "대표", name: "권태형", title: "대표", status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
+      ],
+      totalWorkers,
+      totalHours,
+      cost,
+      items: allItems,
+      childReports: reps,
+      reasons: [
+        `■ 9월 ${dayNum}일(${dayLabel}) [${plant}] ${reportCategory} 취합`,
+        `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
+        `2. 협력사별 투입 현황:\n${compBreakdownText}`,
+        `3. 작업 내용: ${isActualOvertime ? "현대/기아 긴급 납품 물량 대응 및 주말 가동" : `${plant} 정규 생산 라인 가동 및 일일 근태 현황 취합`}`
+      ]
+    });
+  });
+
+  return synthList;
+};
+
 export const OvertimeStatusView = () => {
   const { currentProfile, isAdmin } = useAuth();
 
@@ -444,6 +527,7 @@ export const OvertimeStatusView = () => {
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("(주)오륙");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
+  const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
   const [reportListSearch, setReportListSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -2157,14 +2241,41 @@ export const OvertimeStatusView = () => {
       {/* ========================================================================= */}
       {/* 📑 TAB 4: 특근보고서 관리 (SATURDAY OVERTIME & OFFICIAL REPORTS) */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* 📑 TAB 4: 근태/특근보고서 관리 (WEEKDAY ATTENDANCE, WEEKEND OVERTIME & PLANT SYNTHESIS) */}
+      {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-          {/* 🔍 초간결 1줄 컨트롤 & 요약 툴바 (소속 필터 + 요약 인디케이터 + 검색창) */}
           {(() => {
-            const filtered = (legacyReports || []).filter((r) => {
+            const synthReports = generateSynthesizedPlantReports(legacyReports);
+            const weekdayReports = (legacyReports || []).filter((r) => !isWeekendByDate(r.workDate || r.title));
+            const weekendReports = (legacyReports || []).filter((r) => isWeekendByDate(r.workDate || r.title));
+
+            const catCounts = {
+              all: (legacyReports || []).length + synthReports.length,
+              weekday: weekdayReports.length,
+              weekend: weekendReports.length,
+              synth: synthReports.length
+            };
+
+            let baseList = [];
+            if (reportTypeCategoryFilter === "ALL") {
+              baseList = [...synthReports, ...(legacyReports || [])];
+            } else if (reportTypeCategoryFilter === "WEEKDAY") {
+              baseList = weekdayReports;
+            } else if (reportTypeCategoryFilter === "WEEKEND") {
+              baseList = weekendReports;
+            } else if (reportTypeCategoryFilter === "SYNTHESIS") {
+              baseList = synthReports;
+            }
+
+            const filtered = baseList.filter((r) => {
               if (reportListFilter !== "전체") {
                 const matchPlant = r.plant === reportListFilter;
-                const matchComp = r.company === reportListFilter || (r.companies && r.companies.includes(reportListFilter));
+                const matchComp =
+                  r.company === reportListFilter ||
+                  (Array.isArray(r.companies) && r.companies.includes(reportListFilter)) ||
+                  (typeof r.company === "string" && r.company.includes(reportListFilter));
                 if (!matchPlant && !matchComp) return false;
               }
               if (reportListSearch.trim()) {
@@ -2176,9 +2287,12 @@ export const OvertimeStatusView = () => {
                   r.author,
                   r.plant,
                   r.company,
-                  ...(r.companies || []),
-                  ...(r.reasons || [])
-                ].filter(Boolean).join(" ").toLowerCase();
+                  ...(Array.isArray(r.companies) ? r.companies : []),
+                  ...(Array.isArray(r.reasons) ? r.reasons.map((rs) => (typeof rs === "string" ? rs : rs.text || "")) : [])
+                ]
+                  .filter(Boolean)
+                  .join(" ")
+                  .toLowerCase();
                 if (!matchText.includes(q)) return false;
               }
               return true;
@@ -2189,88 +2303,84 @@ export const OvertimeStatusView = () => {
             const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
 
             return (
-              <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
-                {/* Left: 소속 필터 버튼군 (공장/회사 체계 분리) */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-bold text-slate-400 mr-0.5 flex items-center gap-1 shrink-0">
-                    <Filter className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>필터:</span>
-                  </span>
+              <div className="space-y-3">
+                {/* 🧭 Tier 1: Category Filter Tabs (전체 / 평일 근태 / 주말 특근 / 공장별 취합) */}
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
+                      <Layers className="w-3.5 h-3.5 text-purple-400" />
+                      <span>분류:</span>
+                    </span>
 
-                  {/* 전체 */}
-                  <button
-                    type="button"
-                    onClick={() => setReportListFilter("전체")}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      reportListFilter === "전체"
-                        ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400"
-                        : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
-                    }`}
-                  >
-                    전체
-                  </button>
-
-                  {/* 삼랑진공장 그룹 */}
-                  <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-amber-700/60 rounded-xl">
+                    {/* 전체 */}
                     <button
                       type="button"
-                      onClick={() => setReportListFilter("삼랑진공장")}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                        reportListFilter === "삼랑진공장"
-                          ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                          : "text-amber-300 hover:bg-amber-950"
+                      onClick={() => setReportTypeCategoryFilter("ALL")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        reportTypeCategoryFilter === "ALL"
+                          ? "bg-purple-600 text-white shadow-md ring-2 ring-purple-400"
+                          : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
                       }`}
                     >
-                      삼랑진공장
+                      <span>📋 전체 보고서</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-purple-300 font-mono">
+                        {catCounts.all}
+                      </span>
                     </button>
-                    {["(주)오륙", "유성"].map((comp) => (
-                      <button
-                        key={comp}
-                        type="button"
-                        onClick={() => setReportListFilter(comp)}
-                        className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
-                          reportListFilter === comp
-                            ? "bg-amber-400 text-slate-950 font-black shadow-xs"
-                            : "text-slate-300 hover:text-white hover:bg-slate-800"
-                        }`}
-                      >
-                        {comp}
-                      </button>
-                    ))}
-                  </div>
 
-                  {/* 한림공장 그룹 */}
-                  <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-emerald-700/60 rounded-xl">
+                    {/* 평일 근태보고서 */}
                     <button
                       type="button"
-                      onClick={() => setReportListFilter("한림공장")}
-                      className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                        reportListFilter === "한림공장"
-                          ? "bg-emerald-500 text-slate-950 font-black shadow-xs"
-                          : "text-emerald-300 hover:bg-emerald-950"
+                      onClick={() => setReportTypeCategoryFilter("WEEKDAY")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        reportTypeCategoryFilter === "WEEKDAY"
+                          ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-400"
+                          : "bg-slate-900 text-slate-400 hover:text-cyan-300 hover:bg-slate-800 border border-slate-800"
                       }`}
                     >
-                      한림공장
+                      <Sun className="w-3.5 h-3.5 text-amber-400" />
+                      <span>☀️ 평일 근태보고서</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-cyan-300 font-mono">
+                        {catCounts.weekday}
+                      </span>
                     </button>
-                    {["(주)조영산업", "한울", "부림텍"].map((comp) => (
-                      <button
-                        key={comp}
-                        type="button"
-                        onClick={() => setReportListFilter(comp)}
-                        className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
-                          reportListFilter === comp
-                            ? "bg-emerald-400 text-slate-950 font-black shadow-xs"
-                            : "text-slate-300 hover:text-white hover:bg-slate-800"
-                        }`}
-                      >
-                        {comp}
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Right: 1줄 초간결 실시간 통계 뱃지 & 검색창 */}
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+                    {/* 주말 특근보고서 */}
+                    <button
+                      type="button"
+                      onClick={() => setReportTypeCategoryFilter("WEEKEND")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        reportTypeCategoryFilter === "WEEKEND"
+                          ? "bg-rose-600 text-white shadow-md ring-2 ring-rose-400"
+                          : "bg-slate-900 text-slate-400 hover:text-rose-300 hover:bg-slate-800 border border-slate-800"
+                      }`}
+                    >
+                      <Moon className="w-3.5 h-3.5 text-rose-400" />
+                      <span>🌙 주말 특근보고서</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-rose-300 font-mono">
+                        {catCounts.weekend}
+                      </span>
+                    </button>
+
+                    {/* 공장별 취합 보고서 */}
+                    <button
+                      type="button"
+                      onClick={() => setReportTypeCategoryFilter("SYNTHESIS")}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                        reportTypeCategoryFilter === "SYNTHESIS"
+                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md ring-2 ring-indigo-400"
+                          : "bg-slate-900 text-slate-400 hover:text-indigo-300 hover:bg-slate-800 border border-slate-800"
+                      }`}
+                    >
+                      <Factory className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>🏭 공장별 취합 보고서</span>
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-indigo-300 font-mono">
+                        {catCounts.synth}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Right: 실시간 통계 요약 */}
                   <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold shrink-0">
                     <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-purple-300">
                       총 {filtered.length}건
@@ -2285,293 +2395,377 @@ export const OvertimeStatusView = () => {
                       ₩{totalCost.toLocaleString()}
                     </span>
                   </div>
+                </div>
 
-                  <div className="relative w-full sm:w-48 shrink-0">
+                {/* 🧭 Tier 2: 소속 공장/협력사 필터 & 검색창 */}
+                <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+                  {/* Left: 소속 필터 버튼군 (공장/회사 체계 분리) */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400 mr-0.5 flex items-center gap-1 shrink-0">
+                      <Filter className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>소속:</span>
+                    </span>
+
+                    {/* 전체 */}
+                    <button
+                      type="button"
+                      onClick={() => setReportListFilter("전체")}
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        reportListFilter === "전체"
+                          ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400"
+                          : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
+                      }`}
+                    >
+                      전체
+                    </button>
+
+                    {/* 삼랑진공장 그룹 */}
+                    <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-amber-700/60 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setReportListFilter("삼랑진공장")}
+                        className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          reportListFilter === "삼랑진공장"
+                            ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                            : "text-amber-300 hover:bg-amber-950"
+                        }`}
+                      >
+                        삼랑진공장
+                      </button>
+                      {["(주)오륙", "유성"].map((comp) => (
+                        <button
+                          key={comp}
+                          type="button"
+                          onClick={() => setReportListFilter(comp)}
+                          className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
+                            reportListFilter === comp
+                              ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                              : "text-slate-300 hover:text-white hover:bg-slate-800"
+                          }`}
+                        >
+                          {comp}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* 한림공장 그룹 */}
+                    <div className="flex items-center gap-1 p-0.5 bg-slate-900 border border-emerald-700/60 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setReportListFilter("한림공장")}
+                        className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                          reportListFilter === "한림공장"
+                            ? "bg-emerald-500 text-slate-950 font-black shadow-xs"
+                            : "text-emerald-300 hover:bg-emerald-950"
+                        }`}
+                      >
+                        한림공장
+                      </button>
+                      {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                        <button
+                          key={comp}
+                          type="button"
+                          onClick={() => setReportListFilter(comp)}
+                          className={`px-2 py-0.5 rounded-lg text-[11.5px] font-bold transition-all cursor-pointer ${
+                            reportListFilter === comp
+                              ? "bg-emerald-400 text-slate-950 font-black shadow-xs"
+                              : "text-slate-300 hover:text-white hover:bg-slate-800"
+                          }`}
+                        >
+                          {comp}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right: 검색창 */}
+                  <div className="relative w-full sm:w-56 shrink-0">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input
                       type="text"
-                      placeholder="보고서 검색..."
+                      placeholder="보고서 검색 (일자/업체/작업자)..."
                       value={reportListSearch}
                       onChange={(e) => setReportListSearch(e.target.value)}
                       className="w-full pl-7 pr-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-medium placeholder:text-slate-500 focus:border-purple-400 outline-hidden"
                     />
                   </div>
                 </div>
-              </div>
-            );
-          })()}
 
-          {/* 📋 Registered Reports List Cards */}
-          {(() => {
-            const filtered = (legacyReports || []).filter((r) => {
-              if (reportListFilter !== "전체") {
-                const matchPlant = r.plant === reportListFilter;
-                const matchComp = r.company === reportListFilter || (r.companies && r.companies.includes(reportListFilter));
-                if (!matchPlant && !matchComp) return false;
-              }
-              if (reportListSearch.trim()) {
-                const q = reportListSearch.toLowerCase().trim();
-                const matchText = [
-                  r.title,
-                  r.workDate,
-                  r.workDateFormatted,
-                  r.author,
-                  r.plant,
-                  r.company,
-                  ...(r.companies || []),
-                  ...(r.reasons || [])
-                ].filter(Boolean).join(" ").toLowerCase();
-                if (!matchText.includes(q)) return false;
-              }
-              return true;
-            });
-
-            if (filtered.length === 0) {
-              return (
-                <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
-                  <FileText className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
-                  <div className="space-y-1">
-                    <h4 className="font-black text-base text-white">등록된 근태/특근 보고서가 없습니다</h4>
-                    <p className="text-xs text-slate-400">
-                      {reportListFilter !== "전체" || reportListSearch
-                        ? "검색 조건에 일치하는 보고서가 없습니다. 필터를 변경해보세요."
-                        : "'📝 근태/잔업/특근 등록' 탭에서 인원 근태를 작성한 후 보고서를 등록해보세요."}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab("daily_input")}
-                    className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs inline-flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>근태/잔업/특근 등록하러 가기</span>
-                  </button>
-                </div>
-              );
-            }
-
-            return (
-              <div className="space-y-3">
-                {filtered.map((report, idx) => {
-                  const plantName = report.plant || getPlantForCompany(report.company || "");
-                  const isSam = plantName === "삼랑진공장" || report.company === "(주)오륙" || report.company === "유성";
-                  const badgeColor = isSam
-                    ? "bg-amber-950/80 text-amber-300 border-amber-700/70"
-                    : "bg-emerald-950/80 text-emerald-300 border-emerald-700/70";
-
-                  // ⭐ 평일: 근태보고서 / 주말: 특근보고서
-                  const isWeekend = isWeekendByDate(report.workDate || report.title);
-                  const reportCategory = isWeekend ? "특근보고서" : "근태보고서";
-                  const reportSummary = getCleanReportSummary(report);
-
-                  // ⭐ 실시간 전자결재 상태 및 결재선 연동
-                  const liveApproval = getLiveApprovalForReport(report, approvalDocs);
-                  const isApproved = liveApproval.status === "APPROVED";
-                  const isHold = liveApproval.status === "HOLD";
-                  const isRejected = liveApproval.status === "REJECTED";
-                  const pendingStep = liveApproval.steps.find((s) => s.status === "PENDING");
-
-                  const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
-                  const totalManHours = report.totalHours || (workersCount * 8);
-                  const cost = report.cost || (totalManHours * 15000);
-
-                  // Extract worker attendance status counts if available
-                  const otCounts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "야간": 0, "연차": 0, "결근": 0, "특근": 0 };
-                  if (report.items && Array.isArray(report.items)) {
-                    report.items.forEach((it) => {
-                      const code = String(it.attendanceCode || it.category || "").trim();
-                      if (code === "🟢" || code === "정시" || code === "17") otCounts["정시"]++;
-                      else if (code === "19" || code === "19시") otCounts["19시"]++;
-                      else if (code === "21" || code === "21시") otCounts["21시"]++;
-                      else if (code === "22" || code === "22시") otCounts["22시"]++;
-                      else if (code === "야간") otCounts["야간"]++;
-                      else if (code === "연차") otCounts["연차"]++;
-                      else if (code === "결근") otCounts["결근"]++;
-                      else if (code === "특근" || code === "주말특근") otCounts["특근"]++;
-                    });
-                  }
-
-                  return (
-                    <div
-                      key={report.id || idx}
-                      onClick={() => {
-                        handleOpenLegacyReport(report);
-                      }}
-                      className={`px-3 py-2 sm:py-2.5 rounded-xl transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-2.5 group cursor-pointer ${
-                        isWeekend
-                          ? "border-2 border-rose-500 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-400 shadow-sm ring-1 ring-rose-500/30"
-                          : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
-                      }`}
-                    >
-                      {/* Left: No, Category Badge, Company Badge, Date (월/일), Approval Badge, Summary Note */}
-                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
-                        <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
-                          #{idx + 1}
-                        </span>
-
-                        {/* Category Badge (평일: 근태보고서 / 주말: 특근보고서) */}
-                        <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
-                          isWeekend
-                            ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
-                            : "bg-cyan-950 text-cyan-300 border-cyan-800 shadow-xs"
-                        }`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"}`}></span>
-                          <span>{reportCategory}</span>
-                        </span>
-
-                        {/* Company / Plant Badge (삼랑진공장 (주)오륙, 삼랑진공장 유성, 한림공장 (주)조영산업 등) */}
-                        <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${badgeColor}`}>
-                          <Factory className="w-3 h-3 shrink-0" />
-                          <span>{getFullCompanyPlantLabel(report)}</span>
-                        </span>
-
-                        {/* Work Date Badge (월과 일만 간단히 표기: 📅 9월 8일 (화)) */}
-                        <span className="px-2 py-0.5 rounded-md bg-slate-900 text-cyan-300 border border-slate-800 font-mono text-[11px] font-bold shrink-0">
-                          📅 {formatShortMonthDay(report.workDate || report.workDateFormatted || report.title)}
-                        </span>
-
-                        {/* Electronic Approval Live Status Badge */}
-                        <span
-                          className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
-                            isApproved
-                              ? "bg-emerald-950 text-emerald-300 border-emerald-700 shadow-xs"
-                              : isHold
-                              ? "bg-amber-950 text-amber-300 border-amber-700 shadow-xs animate-pulse"
-                              : isRejected
-                              ? "bg-rose-950 text-rose-300 border-rose-700 shadow-xs"
-                              : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80 shadow-xs"
-                          }`}
-                          title={
-                            isApproved
-                              ? "전자결재 최종 승인 완료"
-                              : isHold
-                              ? "전자결재 보류 중"
-                              : isRejected
-                              ? "전자결재 반려됨"
-                              : `전자결재 진행 중 (${pendingStep ? `${pendingStep.role} ${pendingStep.name} 결재 대기` : "책임 결재 대기"})`
-                          }
-                        >
-                          {isApproved ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                              <span>결재완료</span>
-                            </>
-                          ) : isHold ? (
-                            <>
-                              <PauseCircle className="w-3 h-3 text-amber-400" />
-                              <span>보류중</span>
-                            </>
-                          ) : isRejected ? (
-                            <>
-                              <X className="w-3 h-3 text-rose-400" />
-                              <span>반려됨</span>
-                            </>
-                          ) : (
-                            <>
-                              <Clock className="w-3 h-3 text-yellow-400 animate-pulse" />
-                              <span>결재진행중 ({pendingStep ? `${pendingStep.role}` : "책임"}대기)</span>
-                            </>
-                          )}
-                        </span>
-
-                        {/* Mini 4-Step Approver Seals */}
-                        <div className="hidden lg:flex items-center gap-0.5 shrink-0 bg-slate-900/90 px-1 py-0.5 rounded-md border border-slate-800">
-                          {liveApproval.steps.map((st, sIdx) => {
-                            const isStepDone = st.status === "APPROVED";
-                            const isStepPending = st.status === "PENDING";
-                            const isStepHold = st.status === "HOLD";
-                            const isStepReject = st.status === "REJECTED";
-
-                            return (
-                              <span
-                                key={sIdx}
-                                title={`[${st.role}] ${st.name} : ${isStepDone ? "승인완료" : isStepPending ? "결재대기" : isStepHold ? "보류" : isStepReject ? "반려" : "대기"}`}
-                                className={`w-4.5 h-4.5 rounded text-[8.5px] font-black flex items-center justify-center border ${
-                                  isStepDone
-                                    ? (st.role === "대표" || st.name === "권태형")
-                                      ? "bg-amber-500 text-slate-950 border-amber-600 font-black"
-                                      : sIdx === 0
-                                      ? "bg-blue-600 text-white border-blue-700"
-                                      : "bg-emerald-600 text-white border-emerald-700"
-                                    : isStepPending
-                                    ? "bg-rose-950 text-rose-300 border-rose-500 animate-pulse font-bold"
-                                    : isStepHold
-                                    ? "bg-amber-950 text-amber-300 border-amber-600"
-                                    : isStepReject
-                                    ? "bg-slate-800 text-slate-400 border-slate-700"
-                                    : "bg-slate-900 text-slate-600 border-slate-800"
-                                }`}
-                              >
-                                {isStepDone ? (st.role === "대표" ? "✍️" : sIdx === 0 ? "기" : "인") : isStepPending ? "대" : st.role?.slice(0, 1)}
-                              </span>
-                            );
-                          })}
-                        </div>
-
-                        {/* Summary Note / Work Description (중복 없는 깔끔한 내용 요약) */}
-                        <span className={`font-bold text-xs sm:text-sm truncate transition-colors ${
-                          isWeekend ? "text-rose-200 group-hover:text-rose-300" : "text-slate-300 group-hover:text-cyan-300"
-                        }`}>
-                          {reportSummary}
-                        </span>
-                      </div>
-
-                      {/* Right: Quick Attendance Breakdown + Cost/Headcount + Compact Actions */}
-                      <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap justify-between md:justify-end">
-                        {/* Compact Attendance Breakdown Pills */}
-                        <div className="flex items-center gap-1 font-mono text-[10px] font-bold">
-                          {otCounts["정시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">🟢 {otCounts["정시"]}</span>}
-                          {otCounts["19시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">🟡 {otCounts["19시"]}</span>}
-                          {otCounts["21시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/60">🟠 {otCounts["21시"]}</span>}
-                          {otCounts["22시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">🔴 {otCounts["22시"]}</span>}
-                          {otCounts["야간"] > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">🌌 {otCounts["야간"]}</span>}
-                          {otCounts["특근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">🌙 {otCounts["특근"]}</span>}
-                          {otCounts["연차"] > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60">🌴 {otCounts["연차"]}</span>}
-                          {otCounts["결근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60">❌ {otCounts["결근"]}</span>}
-                        </div>
-
-                        {/* Headcount & Cost */}
-                        <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
-                          <span className="font-black text-rose-400">₩{cost.toLocaleString()}</span>
-                          <span className="text-[11px] text-slate-400 font-bold">({workersCount}명 • {totalManHours}H)</span>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleOpenLegacyReport(report);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                            title="보고서 상세 및 결재 확인"
-                          >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">상세</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleEditReport(report)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                            title="해당 일자 및 소속업체로 이동하여 수정/재입력"
-                          >
-                            <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
-                            <span className="hidden sm:inline">수정</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteReport(report.id, e)}
-                            className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                            title="보고서 삭제"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+                {/* 📋 Registered & Synthesized Reports List Cards */}
+                {filtered.length === 0 ? (
+                  <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
+                    <FileText className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
+                    <div className="space-y-1">
+                      <h4 className="font-black text-base text-white">조건에 해당하는 근태/특근 보고서가 없습니다</h4>
+                      <p className="text-xs text-slate-400">
+                        {reportListFilter !== "전체" || reportListSearch || reportTypeCategoryFilter !== "ALL"
+                          ? "선택된 분류 또는 검색 조건에 일치하는 보고서가 없습니다. 필터를 변경해보세요."
+                          : "'📝 근태/잔업/특근 등록' 탭에서 인원 근태를 작성한 후 보고서를 등록해보세요."}
+                      </p>
                     </div>
-                  );
-                })}
+                    <button
+                      onClick={() => setActiveTab("daily_input")}
+                      className="px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs inline-flex items-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>근태/잔업/특근 등록하러 가기</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filtered.map((report, idx) => {
+                      const isSynthesized = !!report.isSynthesized;
+                      const plantName = report.plant || getPlantForCompany(report.company || "");
+                      const isSam = plantName === "삼랑진공장" || (report.companies && report.companies.includes("(주)오륙")) || report.company === "(주)오륙" || report.company === "유성";
+                      const badgeColor = isSam
+                        ? "bg-amber-950/80 text-amber-300 border-amber-700/70"
+                        : "bg-emerald-950/80 text-emerald-300 border-emerald-700/70";
+
+                      // 평일: 근태보고서 / 주말: 특근보고서 / 취합: 공장별 취합 보고서
+                      const isWeekend = isWeekendByDate(report.workDate || report.title);
+                      const reportCategory = isSynthesized
+                        ? (isWeekend ? "주말특근 취합" : "일일근태 취합")
+                        : (isWeekend ? "특근보고서" : "근태보고서");
+                      const reportSummary = isSynthesized
+                        ? (report.companies ? `소속 협력사 (${report.companies.join(", ")}) 통합 취합 보고` : "공장별 통합 취합 보고")
+                        : getCleanReportSummary(report);
+
+                      // 실시간 전자결재 상태 및 결재선 연동
+                      const liveApproval = getLiveApprovalForReport(report, approvalDocs);
+                      const isApproved = liveApproval.status === "APPROVED";
+                      const isHold = liveApproval.status === "HOLD";
+                      const isRejected = liveApproval.status === "REJECTED";
+                      const pendingStep = liveApproval.steps.find((s) => s.status === "PENDING");
+
+                      const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
+                      const totalManHours = report.totalHours || (workersCount * 8);
+                      const cost = report.cost || (totalManHours * 15000);
+
+                      // Extract worker attendance status counts if available
+                      const otCounts = { "정시": 0, "19시": 0, "21시": 0, "22시": 0, "야간": 0, "연차": 0, "결근": 0, "특근": 0 };
+                      if (report.items && Array.isArray(report.items)) {
+                        report.items.forEach((it) => {
+                          const code = String(it.attendanceCode || it.category || "").trim();
+                          if (code === "🟢" || code === "정시" || code === "17") otCounts["정시"]++;
+                          else if (code === "19" || code === "19시") otCounts["19시"]++;
+                          else if (code === "21" || code === "21시") otCounts["21시"]++;
+                          else if (code === "22" || code === "22시") otCounts["22시"]++;
+                          else if (code === "야간") otCounts["야간"]++;
+                          else if (code === "연차") otCounts["연차"]++;
+                          else if (code === "결근") otCounts["결근"]++;
+                          else if (code === "특근" || code === "주말특근") otCounts["특근"]++;
+                        });
+                      }
+
+                      return (
+                        <div
+                          key={report.id || idx}
+                          onClick={() => {
+                            handleOpenLegacyReport(report);
+                          }}
+                          className={`px-3 py-2.5 sm:py-3 rounded-xl transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-2.5 group cursor-pointer ${
+                            isSynthesized
+                              ? "border-2 border-indigo-500/80 bg-gradient-to-r from-indigo-950/40 via-slate-950 to-purple-950/30 hover:bg-indigo-950/60 hover:border-indigo-400 shadow-md ring-1 ring-indigo-500/30"
+                              : isWeekend
+                              ? "border-2 border-rose-500/80 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-400 shadow-sm ring-1 ring-rose-500/30"
+                              : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
+                          }`}
+                        >
+                          {/* Left: No, Category Badge, Company Badge, Date (월/일), Approval Badge, Summary Note */}
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
+                            <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
+                              #{idx + 1}
+                            </span>
+
+                            {/* Category Badge */}
+                            <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
+                              isSynthesized
+                                ? "bg-indigo-950 text-indigo-300 border-indigo-500 shadow-xs ring-1 ring-indigo-500/40"
+                                : isWeekend
+                                ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
+                                : "bg-cyan-950 text-cyan-300 border-cyan-800 shadow-xs"
+                            }`}>
+                              {isSynthesized ? (
+                                <>
+                                  <Sparkles className="w-3 h-3 text-indigo-400 animate-pulse" />
+                                  <span>🏭 {reportCategory}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"}`}></span>
+                                  <span>{reportCategory}</span>
+                                </>
+                              )}
+                            </span>
+
+                            {/* Company / Plant Badge */}
+                            <span className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${badgeColor}`}>
+                              <Factory className="w-3 h-3 shrink-0" />
+                              <span>{isSynthesized ? `[${plantName}] ${report.company}` : getFullCompanyPlantLabel(report)}</span>
+                            </span>
+
+                            {/* Work Date Badge */}
+                            <span className="px-2 py-0.5 rounded-md bg-slate-900 text-cyan-300 border border-slate-800 font-mono text-[11px] font-bold shrink-0">
+                              📅 {formatShortMonthDay(report.workDate || report.workDateFormatted || report.title)}
+                            </span>
+
+                            {/* Electronic Approval Live Status Badge */}
+                            <span
+                              className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
+                                isApproved
+                                  ? "bg-emerald-950 text-emerald-300 border-emerald-700 shadow-xs"
+                                  : isHold
+                                  ? "bg-amber-950 text-amber-300 border-amber-700 shadow-xs animate-pulse"
+                                  : isRejected
+                                  ? "bg-rose-950 text-rose-300 border-rose-700 shadow-xs"
+                                  : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80 shadow-xs"
+                              }`}
+                            >
+                              {isApproved ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                  <span>결재완료</span>
+                                </>
+                              ) : isHold ? (
+                                <>
+                                  <PauseCircle className="w-3 h-3 text-amber-400" />
+                                  <span>보류중</span>
+                                </>
+                              ) : isRejected ? (
+                                <>
+                                  <X className="w-3 h-3 text-rose-400" />
+                                  <span>반려됨</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-3 h-3 text-yellow-400 animate-pulse" />
+                                  <span>결재진행중 ({pendingStep ? `${pendingStep.role}` : "책임"}대기)</span>
+                                </>
+                              )}
+                            </span>
+
+                            {/* Mini 4-Step Approver Seals */}
+                            <div className="hidden lg:flex items-center gap-0.5 shrink-0 bg-slate-900/90 px-1 py-0.5 rounded-md border border-slate-800">
+                              {liveApproval.steps.map((st, sIdx) => {
+                                const isStepDone = st.status === "APPROVED";
+                                const isStepPending = st.status === "PENDING";
+                                const isStepHold = st.status === "HOLD";
+                                const isStepReject = st.status === "REJECTED";
+
+                                return (
+                                  <span
+                                    key={sIdx}
+                                    title={`[${st.role}] ${st.name} : ${isStepDone ? "승인완료" : isStepPending ? "결재대기" : isStepHold ? "보류" : isStepReject ? "반려" : "대기"}`}
+                                    className={`w-4.5 h-4.5 rounded text-[8.5px] font-black flex items-center justify-center border ${
+                                      isStepDone
+                                        ? (st.role === "대표" || st.name === "권태형")
+                                          ? "bg-amber-500 text-slate-950 border-amber-600 font-black"
+                                          : sIdx === 0
+                                          ? "bg-blue-600 text-white border-blue-700"
+                                          : "bg-emerald-600 text-white border-emerald-700"
+                                        : isStepPending
+                                        ? "bg-rose-950 text-rose-300 border-rose-500 animate-pulse font-bold"
+                                        : isStepHold
+                                        ? "bg-amber-950 text-amber-300 border-amber-600"
+                                        : isStepReject
+                                        ? "bg-slate-800 text-slate-400 border-slate-700"
+                                        : "bg-slate-900 text-slate-600 border-slate-800"
+                                    }`}
+                                  >
+                                    {isStepDone ? (st.role === "대표" ? "✍️" : sIdx === 0 ? "기" : "인") : isStepPending ? "대" : st.role?.slice(0, 1)}
+                                  </span>
+                                );
+                              })}
+                            </div>
+
+                            {/* Summary Note / Work Description */}
+                            <span className={`font-bold text-xs sm:text-sm truncate transition-colors ${
+                              isSynthesized
+                                ? "text-indigo-200 group-hover:text-indigo-300 font-black"
+                                : isWeekend
+                                ? "text-rose-200 group-hover:text-rose-300"
+                                : "text-slate-300 group-hover:text-cyan-300"
+                            }`}>
+                              {reportSummary}
+                            </span>
+                          </div>
+
+                          {/* Right: Quick Attendance Breakdown + Cost/Headcount + Compact Actions */}
+                          <div className="flex items-center gap-2.5 shrink-0 flex-wrap sm:flex-nowrap justify-between md:justify-end">
+                            {/* Child Reports pills for Synthesized Cards */}
+                            {isSynthesized && Array.isArray(report.childReports) && (
+                              <div className="hidden xl:flex items-center gap-1 text-[10px] font-bold">
+                                {report.childReports.map((cr, cIdx) => (
+                                  <span key={cIdx} className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 font-mono">
+                                    {cr.company}: {cr.totalWorkers || (cr.items ? cr.items.length : 0)}명
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Compact Attendance Breakdown Pills (for individual reports) */}
+                            {!isSynthesized && (
+                              <div className="flex items-center gap-1 font-mono text-[10px] font-bold">
+                                {otCounts["정시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">🟢 {otCounts["정시"]}</span>}
+                                {otCounts["19시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">🟡 {otCounts["19시"]}</span>}
+                                {otCounts["21시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/60">🟠 {otCounts["21시"]}</span>}
+                                {otCounts["22시"] > 0 && <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">🔴 {otCounts["22시"]}</span>}
+                                {otCounts["야간"] > 0 && <span className="px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">🌌 {otCounts["야간"]}</span>}
+                                {otCounts["특근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">🌙 {otCounts["특근"]}</span>}
+                                {otCounts["연차"] > 0 && <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60">🌴 {otCounts["연차"]}</span>}
+                                {otCounts["결근"] > 0 && <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60">❌ {otCounts["결근"]}</span>}
+                              </div>
+                            )}
+
+                            {/* Headcount & Cost */}
+                            <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
+                              <span className="font-black text-rose-400">₩{cost.toLocaleString()}</span>
+                              <span className="text-[11px] text-slate-400 font-bold">({workersCount}명 • {totalManHours}H)</span>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleOpenLegacyReport(report);
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                title="보고서 상세 및 결재 확인"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">상세</span>
+                              </button>
+
+                              {!isSynthesized && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditReport(report)}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                    title="해당 일자 및 소속업체로 이동하여 수정/재입력"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+                                    <span className="hidden sm:inline">수정</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleDeleteReport(report.id, e)}
+                                    className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                    title="보고서 삭제"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -3222,7 +3416,7 @@ export const OvertimeStatusView = () => {
         </div>
       )}
 
-      {/* 📑 MODAL: 근태/특근보고서 상세 확인 및 결재 모달 (등록 모달과 100% 동일한 정식 서식) */}
+      {/* 📑 MODAL: 근태/특근보고서 상세 확인 및 결재 모달 (등록 모달과 100% 동일한 정식 서식 + 공장별 취합 세부 내역 지원) */}
       {/* ========================================================================= */}
       {isLegacyModalOpen && selectedLegacyReport && (
         <div
@@ -3230,40 +3424,55 @@ export const OvertimeStatusView = () => {
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
         >
           {(() => {
+            const isSynthesized = !!selectedLegacyReport.isSynthesized;
             const isWk = isWeekendByDate(selectedLegacyReport.workDate || selectedLegacyReport.title);
             const rawTitle = selectedLegacyReport.title || "";
-            const repType = isWk ? "특근실시보고서" : "근태보고서";
+            const repType = isSynthesized
+              ? (isWk ? "주말특근보고서 (취합)" : "근태보고서 (취합)")
+              : (isWk ? "특근실시보고서" : "근태보고서");
 
             // ⭐ 실시간 전자결재 상태 및 결재선 연동
             const liveApproval = getLiveApprovalForReport(selectedLegacyReport, approvalDocs);
 
             let cleanTitle = rawTitle;
-            if (isWk) {
-              cleanTitle = cleanTitle
-                .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
-                .replace(/특근실시 보고서/g, "특근실시보고서");
-              if (!cleanTitle.includes("특근실시보고서")) cleanTitle += " 특근실시보고서";
-            } else {
-              cleanTitle = cleanTitle
-                .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
-              if (!cleanTitle.includes("근태보고서")) cleanTitle += " 근태보고서";
+            if (!isSynthesized) {
+              if (isWk) {
+                cleanTitle = cleanTitle
+                  .replace(/근태 및 특근실시 보고서|근태보고서|근태 및 특근보고서/g, "특근실시보고서")
+                  .replace(/특근실시 보고서/g, "특근실시보고서");
+                if (!cleanTitle.includes("특근실시보고서")) cleanTitle += " 특근실시보고서";
+              } else {
+                cleanTitle = cleanTitle
+                  .replace(/근태 및 특근실시 보고서|특근실시보고서|특근실시 보고서|근태 및 특근보고서/g, "근태보고서");
+                if (!cleanTitle.includes("근태보고서")) cleanTitle += " 근태보고서";
+              }
             }
 
             return (
           <div
             onClick={(e) => e.stopPropagation()}
             className={`bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[92vh] cursor-default ${
-            isWk ? "border-2 border-rose-500 shadow-rose-950/40" : "border-2 border-cyan-400"
+            isSynthesized
+              ? "border-2 border-indigo-500 shadow-indigo-950/50"
+              : isWk
+              ? "border-2 border-rose-500 shadow-rose-950/40"
+              : "border-2 border-cyan-400"
           }`}>
             {/* Modal Header */}
             <div className="px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
               <div className="flex items-center gap-2.5">
-                <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                  <FileText className="w-5 h-5" />
+                <span className={`p-1.5 rounded-lg border ${
+                  isSynthesized
+                    ? "bg-indigo-500/20 text-indigo-400 border-indigo-500/30"
+                    : isWk
+                    ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                    : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+                }`}>
+                  {isSynthesized ? <Sparkles className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                 </span>
                 <div>
                   <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
-                    <span>근태 및 특근실시 보고서 상세 내역</span>
+                    <span>{isSynthesized ? "공장별 통합 취합 보고서 상세 내역" : "근태 및 특근실시 보고서 상세 내역"}</span>
                     <span className="text-xs px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-800 font-mono">
                       {selectedLegacyReport.workDateFormatted || selectedLegacyReport.workDate}
                     </span>
@@ -3406,7 +3615,7 @@ export const OvertimeStatusView = () => {
                 return (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
-                      <span className="text-[10.5px] text-slate-400 font-bold block">출근/투입 인원</span>
+                      <span className="text-[10.5px] text-slate-400 font-bold block">총 출근/투입 인원</span>
                       <span className="font-mono font-black text-sm text-emerald-400">{workersCount}명</span>
                     </div>
                     <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center">
@@ -3425,12 +3634,52 @@ export const OvertimeStatusView = () => {
                 );
               })()}
 
+              {/* ⭐ If Synthesized: Render Child Reports Breakdown by Company */}
+              {isSynthesized && selectedLegacyReport.childReports && selectedLegacyReport.childReports.length > 0 && (
+                <div className="space-y-2">
+                  <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>소속 협력사별 개별 보고서 취합 내역 ({selectedLegacyReport.childReports.length}개사)</span>
+                  </span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    {selectedLegacyReport.childReports.map((cr, crIdx) => {
+                      const crWorkers = cr.totalWorkers || (cr.items ? cr.items.length : 0);
+                      const crHours = cr.totalHours || (crWorkers * 8);
+                      const crCost = cr.cost || (crHours * 15000);
+                      return (
+                        <div key={crIdx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-indigo-300 text-xs flex items-center gap-1">
+                              <Factory className="w-3.5 h-3.5 text-indigo-400" />
+                              <span>{cr.company}</span>
+                            </span>
+                            <span className="text-[11px] font-bold text-slate-400">
+                              작성: {cr.author || "선임"}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] font-mono text-slate-300 bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/60">
+                            <span className="text-emerald-300 font-bold">{crWorkers}명 출근</span>
+                            <span className="text-cyan-300 font-bold">{crHours} M/H</span>
+                            <span className="text-rose-300 font-black">₩{crCost.toLocaleString()}</span>
+                          </div>
+                          {cr.items && cr.items.length > 0 && (
+                            <div className="text-[10.5px] text-slate-400 truncate">
+                              작업자: {cr.items.map(it => it.workerName || it.names).filter(Boolean).join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Reason / Notes Area */}
               {selectedLegacyReport.reasons && selectedLegacyReport.reasons.length > 0 && (
                 <div className="space-y-1 p-3 rounded-xl bg-slate-950 border border-slate-800">
                   <span className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-purple-400" />
-                    <span>특근 사유 및 주요 작업 내용</span>
+                    <span>{isSynthesized ? "취합 사유 및 주요 작업 내용" : "특근 사유 및 주요 작업 내용"}</span>
                   </span>
                   <div className="space-y-1 text-slate-300 font-medium text-xs leading-relaxed whitespace-pre-wrap">
                     {selectedLegacyReport.reasons.map((rs, rIdx) => (
@@ -3455,7 +3704,7 @@ export const OvertimeStatusView = () => {
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-purple-400" />
-                        <span>투입 작업자 명단 ({displayItems.length}명)</span>
+                        <span>{isSynthesized ? "전체 투입 작업자 통합 명단" : "투입 작업자 명단"} ({displayItems.length}명)</span>
                       </span>
                     </div>
 
@@ -3510,14 +3759,21 @@ export const OvertimeStatusView = () => {
 
             {/* Modal Footer Actions */}
             <div className="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDeleteReport(selectedLegacyReport.id)}
-                className="px-4 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>보고서 삭제</span>
-              </button>
+              {!isSynthesized ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteReport(selectedLegacyReport.id)}
+                  className="px-4 py-2 rounded-xl bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>보고서 삭제</span>
+                </button>
+              ) : (
+                <div className="text-xs text-slate-500 font-bold flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>소속 협력사 실시간 통합 취합 보고서</span>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* 1-Click Approval Action if User Has Authority */}
