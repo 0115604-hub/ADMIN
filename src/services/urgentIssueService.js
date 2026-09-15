@@ -22,6 +22,8 @@ import {
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 
+const todayDateStrFallback = () => new Date().toLocaleDateString("sv-SE");
+
 // Initial urgent issue samples (Empty by default to prevent zombie deleted items)
 export const INITIAL_URGENT_ISSUES = [];
 
@@ -184,7 +186,7 @@ export const subscribeUrgentIssues = (onUpdate) => {
 // Add or update an urgent issue
 export const saveUrgentIssue = async (issueData) => {
   const current = getLocalUrgentIssues();
-  const id = issueData.id || `issue_${Date.now()}`;
+  const id = issueData.id || issueData._docId || issueData.customId || `issue_${Date.now()}`;
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -197,25 +199,41 @@ export const saveUrgentIssue = async (issueData) => {
   const fullItem = {
     ...issueData,
     id,
-    category: issueData.category || "품질경보",
-    expireDate: issueData.expireDate || issueData.targetDate || "",
-    targetDate: issueData.targetDate || issueData.expireDate || "",
+    _docId: id,
+    category: issueData.category || "오픈이슈",
+    plant: issueData.plant || "삼랑진공장",
+    author: issueData.author || "",
+    authorTitle: issueData.authorTitle || "",
+    title: issueData.title || "",
+    content: issueData.content || "",
+    startDate: issueData.startDate || issueData.expireDate || todayDateStrFallback(),
+    expireDate: issueData.expireDate || issueData.targetDate || todayDateStrFallback(),
+    targetDate: issueData.targetDate || issueData.expireDate || todayDateStrFallback(),
     meetingTime: issueData.meetingTime || "",
-    images: issueData.images || [],
-    actionImages: issueData.actionImages || [],
+    images: Array.isArray(issueData.images) ? issueData.images : [],
+    actionImages: Array.isArray(issueData.actionImages) ? issueData.actionImages : [],
     actionResult: issueData.actionResult || "",
     actionAuthor: issueData.actionAuthor || "",
     actionAt: issueData.actionAt || "",
-    replies: issueData.replies || [],
-    isResolved: issueData.isResolved !== undefined ? issueData.isResolved : (Boolean(issueData.actionResult && issueData.actionResult.trim())),
-    isDeleted: issueData.isDeleted === true,
-    isManuallyRestored: issueData.isManuallyRestored !== undefined ? issueData.isManuallyRestored : false,
+    replies: Array.isArray(issueData.replies) ? issueData.replies : [],
+    isResolved: issueData.isResolved !== undefined ? Boolean(issueData.isResolved) : Boolean(issueData.actionResult && issueData.actionResult.trim()),
+    isDeleted: Boolean(issueData.isDeleted === true),
+    isManuallyRestored: issueData.isManuallyRestored !== undefined ? Boolean(issueData.isManuallyRestored) : true,
     deletedAt: issueData.deletedAt || "",
     deletedBy: issueData.deletedBy || "",
     createdAt: issueData.createdAt || nowStr
   };
 
-  const existingIdx = current.findIndex((i) => i.id === id);
+  // Strip any undefined keys so Firestore setDoc does not throw
+  Object.keys(fullItem).forEach((key) => {
+    if (fullItem[key] === undefined) {
+      delete fullItem[key];
+    }
+  });
+
+  const existingIdx = current.findIndex(
+    (i) => i.id === id || (i._docId && i._docId === id) || (i.customId && i.customId === id)
+  );
   let updated;
   if (existingIdx >= 0) {
     updated = [...current];
@@ -611,7 +629,7 @@ export const restoreUrgentIssue = async (id) => {
     console.warn("Firestore restore fallback to local:", e);
   }
 
-  return sorted;
+  return restoredItem;
 };
 
 // Update action result (조치결과 입력 및 조치완료 처리 - 품질경보만 텔레그램 발송)

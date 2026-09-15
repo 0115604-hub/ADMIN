@@ -21,7 +21,8 @@ import {
   cancelRestoreUrgentIssue,
   updateUrgentIssueActionResult,
   addIssueReply,
-  deleteIssueReply
+  deleteIssueReply,
+  sortIssuesByCustomPriority
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
 import {
@@ -548,28 +549,40 @@ export const AuthModal = () => {
     const itemToSave = {
       ...(editingIssue || {}),
       ...newIssueForm,
-      id: editingIssue?.id || `issue_${Date.now()}`,
-      createdAt: editingIssue?.createdAt || undefined,
-      isDeleted: editingIssue ? Boolean(editingIssue.isDeleted) : false,
-      deletedBy: editingIssue?.deletedBy || "",
-      deletedAt: editingIssue?.deletedAt || "",
-      isManuallyRestored: editingIssue?.isManuallyRestored !== undefined ? editingIssue.isManuallyRestored : false
+      id: editingIssue?.id || editingIssue?._docId || `issue_${Date.now()}`,
+      category: newIssueForm.category || editingIssue?.category || "오픈이슈",
+      isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
+      deletedBy: "",
+      deletedAt: "",
+      isManuallyRestored: true // 🌟 수정/등록된 항목은 첫화면에 활성화
     };
+    if (editingIssue?.createdAt) {
+      itemToSave.createdAt = editingIssue.createdAt;
+    } else if (!itemToSave.createdAt) {
+      delete itemToSave.createdAt;
+    }
 
     const saved = await saveUrgentIssue(itemToSave);
     if (saved) {
       setUrgentIssues((prev) => {
-        const idx = prev.findIndex((i) => i.id === saved.id);
+        const targetId = saved.id || saved._docId;
+        const idx = prev.findIndex((i) => i.id === targetId || (saved._docId && i._docId === saved._docId));
         if (idx >= 0) {
           const up = [...prev];
           up[idx] = saved;
-          return up;
+          return sortIssuesByCustomPriority(up);
         }
-        return [saved, ...prev];
+        return sortIssuesByCustomPriority([saved, ...prev]);
       });
     }
 
-    handleCloseIssueModal();
+    // Modal close handling: close both edit and list modal so the user sees the updated item immediately on the first screen
+    setIsIssueModalOpen(false);
+    setEditingIssue(null);
+    setIsIssueDetailMode(true);
+    setIsListModalOpen(false);
+    setOpenedEditFromListModal(false);
+
     setRestoreToast(editingIssue ? "✅ 항목이 성공적으로 수정되었습니다." : "✅ 새로운 항목이 등록되었습니다.");
     setTimeout(() => setRestoreToast(""), 3500);
   };
@@ -579,8 +592,16 @@ export const AuthModal = () => {
     if (e) e.stopPropagation();
     try {
       const updated = await restoreUrgentIssue(id);
-      if (updated) {
-        setUrgentIssues((prev) => prev.map((it) => (it.id === id ? updated : it)));
+      if (updated && updated.id) {
+        setUrgentIssues((prev) => {
+          const idx = prev.findIndex((it) => it.id === id || it._docId === id);
+          if (idx >= 0) {
+            const up = [...prev];
+            up[idx] = updated;
+            return sortIssuesByCustomPriority(up);
+          }
+          return sortIssuesByCustomPriority([updated, ...prev]);
+        });
         setRestoreToast(`✅ [${updated.title || updated.content}] 항목이 첫 화면에 복구되었습니다.`);
         setTimeout(() => setRestoreToast(""), 3500);
       }

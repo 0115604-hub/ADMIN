@@ -808,7 +808,7 @@ export const IssueEditModal = ({
                       title="오픈이슈 등록 및 저장"
                     >
                       <Check className="w-3.5 h-3.5" />
-                      <span>등록</span>
+                      <span>{editingIssue ? "최종등록" : "등록"}</span>
                     </button>
                   </div>
                 </div>
