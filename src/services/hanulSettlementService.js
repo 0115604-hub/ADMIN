@@ -142,13 +142,30 @@ export const getLocalSettlementStore = () => {
   return initial;
 };
 
-// Local Storage Save & Event Dispatch
+// Local Storage Save & Event Dispatch (with safe quota handling)
 export const saveLocalSettlementStore = (store) => {
   try {
     localStorage.setItem(STORAGE_KEY_SETTLEMENT, JSON.stringify(store));
     window.dispatchEvent(new CustomEvent("hanul_settlement_updated", { detail: store }));
   } catch (e) {
-    console.error("Failed to save local settlement store:", e);
+    console.warn("Local storage quota warning, saving with optimized payload:", e);
+    try {
+      const sanitized = {};
+      for (const k of Object.keys(store || {})) {
+        const item = store[k];
+        sanitized[k] = {
+          ...item,
+          attachments: (item.attachments || []).map(att => ({
+            ...att,
+            pages: (att.pages || []).map(p => ({ ...p, dataUrl: "" }))
+          }))
+        };
+      }
+      localStorage.setItem(STORAGE_KEY_SETTLEMENT, JSON.stringify(sanitized));
+      window.dispatchEvent(new CustomEvent("hanul_settlement_updated", { detail: store }));
+    } catch (e2) {
+      console.error("Failed to save local settlement store:", e2);
+    }
   }
 };
 
@@ -205,7 +222,6 @@ export const saveHanulSettlementMonthData = async (yearMonth, monthData) => {
   saveLocalSettlementStore(store);
 
   // 🌟 Cross-sync: User requirement - Share Hanul Sales Amount & Deductions with Admin Hanul Tax Invoice View
-  // Deduction total (공제내역 총액: totalExpense) becomes the Hanul Sales Amount in Admin Hanul Tax Invoice View
   try {
     const taxStore = getLocalHanulStore();
     const currentTaxMonth = taxStore[yearMonth] || createDefaultHanulMonthData(yearMonth);
@@ -252,11 +268,10 @@ export const saveHanulSettlementMonthData = async (yearMonth, monthData) => {
         fileSize: att.fileSize,
         uploadedAt: att.uploadedAt,
         summary: att.summary,
-        pages: (att.pages || []).slice(0, 4).map(p => ({
+        pages: (att.pages || []).slice(0, 2).map(p => ({
           pageNumber: p.pageNumber,
           title: p.title,
-          // Only sync lightweight image data or truncate to prevent Firestore 1MB quota issues
-          dataUrl: p.dataUrl && p.dataUrl.length < 400000 ? p.dataUrl : ""
+          dataUrl: p.dataUrl && p.dataUrl.length < 50000 ? p.dataUrl : ""
         }))
       }))
     };

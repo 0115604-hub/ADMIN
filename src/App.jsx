@@ -74,13 +74,14 @@ export const App = () => {
     } catch (e) {}
 
     if (currentProfile) {
-      setActiveTab("worker_dashboard");
+      const isHanul = currentProfile.id === "hal_hu" || currentProfile.name === "한울" || currentProfile.name?.includes("한울");
+      const targetTab = isHanul ? "hanul_tax_invoice" : "worker_dashboard";
+      setActiveTab(targetTab);
       if (resetToCurrentMonth) {
         resetToCurrentMonth();
       }
       try {
-        // When user logs in, push summary dashboard on top of main entry
-        window.history.pushState({ screen: "worker_dashboard", isSummary: true }, "");
+        window.history.pushState({ screen: targetTab, isSummary: true }, "");
       } catch (e) {}
     } else {
       try {

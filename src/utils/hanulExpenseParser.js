@@ -1,124 +1,9 @@
 import * as XLSX from "xlsx";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Keywords dictionary for matching 16 standard categories with specificity ranking
-export const CATEGORY_MATCH_RULES = [
-  {
-    id: "exp_1",
-    code: 1,
-    standardName: "1. 인건비",
-    keywords: ["1. 인건비", "인건비", "인건비(총액)", "인건비합계", "총인건비", "노무비", "급여총액", "급여합계", "인건비 총계", "세전월급", "세전 월급"],
-    defaultNote: "세전 월급(등록,미등록),교통비,식비지원포함(근태파일참조)"
-  },
-  {
-    id: "exp_2",
-    code: 2,
-    standardName: "2. 4대보험(사업주분)",
-    keywords: ["2. 4대보험", "4대보험(사업주분)", "4대보험", "4대 보험", "사업주분", "사업주분 4대보험", "4대보험(회사부담금)", "사회보험(회사부담)", "사업주 4대보험"],
-    defaultNote: "파일 참조"
-  },
-  {
-    id: "exp_3",
-    code: 3,
-    standardName: "3. 삼성화재외국인보험",
-    keywords: ["3. 삼성화재", "삼성화재외국인보험", "삼성화재", "외국인보험", "삼성화재(외국인)", "외국인전용보험", "외국인상해보험", "출국만기보험"],
-    defaultNote: "e-9 (12명) 근태파일 참조"
-  },
-  {
-    id: "exp_4",
-    code: 4,
-    standardName: "4. 비품",
-    keywords: ["4. 비품", "비품", "소모품", "사무용품", "잡자재", "비품대"],
-    defaultNote: "파일참조"
-  },
-  {
-    id: "exp_5",
-    code: 5,
-    standardName: "5. 식대(큰상웰빙푸드)",
-    keywords: ["5. 식대", "식대(큰상웰빙푸드)", "큰상웰빙푸드", "식대", "식비", "큰상", "웰빙푸드", "급식", "중식", "석식", "기사식대"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_6",
-    code: 6,
-    standardName: "6. 자동차(한울)",
-    keywords: ["6. 자동차", "자동차(한울)", "자동차", "차량(한울)", "차량유지비", "유류비", "주유비", "차량수리"],
-    excludeKeywords: ["통근", "셔틀", "버스"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_7",
-    code: 7,
-    standardName: "7. 통근차량",
-    keywords: ["7. 통근차량", "통근차량", "통근버스", "통근", "셔틀버스", "셔틀", "통근비"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_8",
-    code: 8,
-    standardName: "8. 기장수수료",
-    keywords: ["8. 기장수수료", "기장수수료", "세무기장", "기장료", "기장", "세무사수수료", "세무대리"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_9",
-    code: 9,
-    standardName: "9. 인터넷통신비",
-    keywords: ["9. 인터넷통신비", "인터넷통신비", "통신비", "인터넷", "통신료", "전화요금", "KT", "SKT", "LGU+"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_10",
-    code: 10,
-    standardName: "10. 노무법인",
-    keywords: ["10. 노무법인", "노무법인", "노무자문", "노무사", "노무컨설팅", "노무비용"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_11",
-    code: 11,
-    standardName: "11. 퇴직금",
-    keywords: ["11. 퇴직금", "퇴직금", "퇴직급여", "퇴직연금", "퇴직추계"],
-    defaultNote: ""
-  },
-  {
-    id: "exp_12",
-    code: 12,
-    standardName: "12. 비닐",
-    keywords: ["12. 비닐", "비닐", "포장비닐", "비닐봉투", "포장재", "스트레치필름", "랩"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_13",
-    code: 13,
-    standardName: "13. 작업환경측정비",
-    keywords: ["13. 작업환경측정비", "작업환경측정비", "작업환경측정", "작업환경", "환경측정", "측정비"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_14",
-    code: 14,
-    standardName: "14. 부업장",
-    keywords: ["14. 부업장", "부업장", "부업", "외주가공", "임가공비", "외주비", "조립부업"],
-    defaultNote: "전자세금계산서(有)"
-  },
-  {
-    id: "exp_15",
-    code: 15,
-    standardName: "15. 성실신고용역비",
-    keywords: ["15. 성실신고용역비", "성실신고용역비", "성실신고", "성실신고용역", "성실신고확인", "성실신고비용"],
-    defaultNote: ""
-  },
-  {
-    id: "exp_16",
-    code: 16,
-    standardName: "16. 개인결산조정료",
-    keywords: ["16. 개인결산조정료", "개인결산조정료", "개인결산", "결산조정", "조정료", "결산수수료", "세무조정료"],
-    defaultNote: ""
-  }
-];
-
-// Clean and extract numeric amount from cell
+/**
+ * Clean and extract numeric integer amount from a cell
+ */
 export function cleanNumericAmount(val) {
   if (typeof val === "number") {
     if (isNaN(val) || !isFinite(val)) return 0;
@@ -131,7 +16,10 @@ export function cleanNumericAmount(val) {
   return isNaN(num) || !isFinite(num) ? 0 : Math.round(num);
 }
 
-// Check if a string looks like a total/header row to skip
+/**
+ * Check if a cell string looks like a summary total or header row
+ * (Used to avoid double-counting the total row or taking column headers as items)
+ */
 export function isSummaryOrHeaderRow(text) {
   if (!text || typeof text !== "string") return false;
   const clean = text.trim();
@@ -147,377 +35,164 @@ export function isSummaryOrHeaderRow(text) {
     clean === "정산 차인지급액" ||
     clean === "매출합계" ||
     clean === "공급가액" ||
+    clean === "TAX" ||
+    clean === "TOTAL" ||
     clean.includes("지출 공제내역") ||
     clean.includes("지출공제내역") ||
     clean.startsWith("[") ||
     clean === "No" ||
+    clean === "NO." ||
     clean === "순번" ||
     clean === "번호" ||
+    clean === "순서" ||
+    clean === "구분" ||
+    clean === "품목" ||
+    clean === "품명" ||
+    clean === "품명 및 규격" ||
     clean === "지출/공제 항목" ||
     clean === "지출항목" ||
-    clean === "항목"
+    clean === "항목" ||
+    clean === "금액" ||
+    clean === "비고" ||
+    clean === "단가" ||
+    clean === "수량"
   );
 }
 
-// Guard: Identify person names or employee labels to prevent worker names from becoming expense items
-export function isLikelyPersonOrEmployeeName(str) {
-  if (!str || typeof str !== "string") return false;
-  const clean = str.trim();
-  if (clean === "") return false;
-
-  // Foreign worker names
-  const foreignNamePatterns = [
-    /NGUYEN/i, /TRAN/i, /LE/i, /PHAM/i, /HOANG/i, /DANG/i, /BUIT/i, /VO/i, /VU/i, /DUONG/i, /DINH/i,
-    /ALI/i, /MOHAMMAD/i, /KHAN/i, /SINGH/i, /SHARMA/i, /E-9/i, /E9/i, /외국인근로자/
-  ];
-  if (foreignNamePatterns.some((p) => p.test(clean))) return true;
-
-  // Job title suffix (사원, 반장, 팀장, 주임, 대리, 과장 등)
-  const jobSuffixes = ["사원", "반장", "팀장", "주임", "대리", "과장", "차장", "부장", "조장", "기사"];
-  if (jobSuffixes.some((s) => clean.endsWith(s) && clean.length <= 6)) return true;
-
-  // Pure Korean 2~4 character names (e.g. 홍길동, 김철수) without valid expense words
-  const isKoreanName = /^[가-힣]{2,4}$/.test(clean);
-  const validExpenseWords = [
-    "인건비", "보험", "비품", "식대", "차량", "통근", "기장", "통신", "노무", "퇴직", "비닐", "측정",
-    "부업", "용역", "결산", "수수료", "식비", "유류비", "공통비", "지출", "공제", "합계", "총액", "관리비",
-    "소모품", "월세", "임차료", "세무", "조정료", "주유비"
-  ];
-  if (isKoreanName && !validExpenseWords.some((w) => clean.includes(w))) {
-    return true;
-  }
-
-  return false;
-}
-
-// Check if a sheet is an individual employee payroll or attendance sheet (strictly disqualify)
-export function isEmployeePayrollOrAttendanceSheet(rows, sheetName = "", fileName = "") {
-  const combinedName = `${sheetName} ${fileName}`.toLowerCase();
-
-  // 1. Explicit sheet / file name check
-  const payrollKeywords = [
-    "임금대장", "급여대장", "급여명세", "임금명세", "노임대장", "노임",
-    "출근부", "근태", "근태현황", "근태기록", "출근현황", "일용직",
-    "직원명단", "외국인명단", "사원별", "개인별", "시급", "월급대장"
-  ];
-  for (const kw of payrollKeywords) {
-    if (combinedName.includes(kw)) return true;
-  }
-
-  if (!rows || rows.length === 0) return false;
-
-  // 2. Individual employee column markers
-  const employeeMarkers = [
-    "주민번호", "주민등록번호", "생년월일", "외국인등록번호", "사번",
-    "입사일", "퇴사일", "직책", "직급", "부서명", "성명", "근로자명",
-    "통상시급", "주휴수당", "연장근로", "야간근로", "휴일근로", "연장수당", "야간수당",
-    "실수령액", "차인지급액", "소득세", "지방소득세",
-    "출근일수", "잔업시간", "특근시간", "총근무시간"
-  ];
-
-  let markerCount = 0;
-  const scannedLimit = Math.min(rows.length, 25);
-
-  for (let i = 0; i < scannedLimit; i++) {
-    const rowStr = (rows[i] || []).map((c) => String(c || "")).join(" ");
-    for (const m of employeeMarkers) {
-      if (rowStr.includes(m)) {
-        markerCount++;
-      }
-    }
-    if (markerCount >= 2) return true;
-  }
-
-  return false;
-}
-
-// Match category name against standard rules with high precision
-export function matchStandardCategory(rawCategoryText) {
-  if (!rawCategoryText || typeof rawCategoryText !== "string") return null;
-  const trimmed = rawCategoryText.trim();
-  if (isSummaryOrHeaderRow(trimmed)) return null;
-
-  // 1. Direct number code match (e.g. "1. 인건비", "7. 통근차량")
-  const leadingNumMatch = trimmed.match(/^(\d+)[\.\)\s]/);
-  if (leadingNumMatch) {
-    const code = Number(leadingNumMatch[1]);
-    const matchedRule = CATEGORY_MATCH_RULES.find((r) => r.code === code);
-    if (matchedRule) {
-      const clean = trimmed.replace(/^\d+[\.\)\s]+/, "").trim();
-      const pureStandard = matchedRule.standardName.replace(/^\d+\.\s*/, "").split("(")[0].trim();
-      if (clean === "" || clean.includes(pureStandard) || matchedRule.keywords.some((kw) => clean.includes(kw))) {
-        return matchedRule;
-      }
-    }
-  }
-
-  const clean = trimmed.replace(/^\d+[\.\)\s]+/, "").trim();
-
-  // 2. Exact standard name match
-  for (const rule of CATEGORY_MATCH_RULES) {
-    const pureFull = rule.standardName.replace(/^\d+\.\s*/, "").trim();
-    const pureShort = pureFull.split("(")[0].trim();
-    if (clean === pureFull || clean === pureShort) {
-      return rule;
-    }
-  }
-
-  // 3. Keyword matching (prioritizing longer keywords first)
-  let bestMatch = null;
-  let maxMatchedLen = -1;
-
-  for (const rule of CATEGORY_MATCH_RULES) {
-    if (rule.excludeKeywords && rule.excludeKeywords.some((ex) => clean.includes(ex) || trimmed.includes(ex))) {
-      continue;
-    }
-
-    for (const kw of rule.keywords) {
-      if (clean.includes(kw) || trimmed.includes(kw)) {
-        if (kw.length > maxMatchedLen) {
-          maxMatchedLen = kw.length;
-          bestMatch = rule;
-        }
-      }
-    }
-  }
-
-  return bestMatch;
-}
-
 /**
- * Parses an Excel / CSV 2D row array for expense items.
- * Returns { items: Array, totalExpense: Number, score: Number }
+ * Parses a 2D row array (single sheet or document table) for expense line items.
+ * Extracts line items and calculates the total sum (합산금액).
  */
 export function parseSheetRowsForExpenses(rows, sheetName = "", fileName = "") {
-  // 🌟 Strictly Disqualify Worker Payroll / Timecard / Attendance Sheets
-  if (isEmployeePayrollOrAttendanceSheet(rows, sheetName, fileName)) {
-    return {
-      items: [],
-      totalExpense: 0,
-      score: -100000,
-      isPayroll: true,
-      foundCategoryCount: 0
-    };
+  if (!rows || rows.length === 0) {
+    return { items: [], totalExpense: 0, sheetName, fileName, itemCount: 0 };
   }
-
-  if (!rows || rows.length === 0) return { items: [], totalExpense: 0, score: 0 };
 
   const cleanRows = rows.filter(
     (r) => Array.isArray(r) && r.some((c) => c !== null && c !== undefined && String(c).trim() !== "")
   );
 
-  if (cleanRows.length === 0) return { items: [], totalExpense: 0, score: 0 };
+  if (cleanRows.length === 0) {
+    return { items: [], totalExpense: 0, sheetName, fileName, itemCount: 0 };
+  }
 
   const extractedItems = [];
-  let foundCategoryCount = 0;
-  let codeMatchCount = 0;
-  let hasExpenseHeaderSection = false;
 
-  // Scan for section headers e.g. "공통비", "지출내역", "공제"
   for (let rIdx = 0; rIdx < cleanRows.length; rIdx++) {
     const row = cleanRows[rIdx];
-    const rowStr = row.map((c) => String(c || "")).join(" ");
-    if (
-      rowStr.includes("공통비") ||
-      rowStr.includes("지출") ||
-      rowStr.includes("공제내역") ||
-      rowStr.includes("차감")
-    ) {
-      hasExpenseHeaderSection = true;
+    const firstStr = String(row[0] || "").trim();
+    const secondStr = String(row[1] || "").trim();
+
+    // Skip header or summary rows
+    if (isSummaryOrHeaderRow(firstStr) || isSummaryOrHeaderRow(secondStr)) {
+      continue;
     }
 
-    // Try to detect column positions for (Category, Amount, Note)
-    let catIdx = -1;
-    let amtIdx = -1;
-    let noteIdx = -1;
-
-    // Check cells in this row
-    for (let cIdx = 0; cIdx < row.length; cIdx++) {
-      const cellVal = row[cIdx];
-      const cellStr = String(cellVal || "").trim();
-
-      // Check if cell is a valid category name and not a worker/employee name
-      const matchedCat = matchStandardCategory(cellStr);
-      if (matchedCat && !isSummaryOrHeaderRow(cellStr) && !isLikelyPersonOrEmployeeName(cellStr)) {
-        catIdx = cIdx;
-        if (/^\d+[\.\)\s]/.test(cellStr)) codeMatchCount++;
-
-        // Search adjacent cells for amount
-        for (let targetCol = 0; targetCol < row.length; targetCol++) {
-          if (targetCol === catIdx) continue;
-          const targetVal = row[targetCol];
-          const amt = cleanNumericAmount(targetVal);
-          if (amt > 0 && targetCol !== 0 && targetCol !== catIdx) {
-            if (amt !== 2026 && amt !== 2607 && amt !== 2608 && amt !== 2609) {
-              amtIdx = targetCol;
-              break;
-            }
-          }
-        }
-
-        // Search for note
-        for (let targetCol = 0; targetCol < row.length; targetCol++) {
-          if (targetCol === catIdx || targetCol === amtIdx) continue;
-          const targetVal = String(row[targetCol] || "").trim();
-          if (
-            targetVal &&
-            !isSummaryOrHeaderRow(targetVal) &&
-            isNaN(cleanNumericAmount(targetVal)) &&
-            targetVal.length > 1
-          ) {
-            noteIdx = targetCol;
-          }
-        }
-
-        if (catIdx !== -1) {
-          const rawAmount = amtIdx !== -1 ? cleanNumericAmount(row[amtIdx]) : 0;
-          const rawNote = noteIdx !== -1 ? String(row[noteIdx] || "").trim() : "";
-
-          extractedItems.push({
-            id: `parsed_${Date.now()}_${rIdx}`,
-            rawCategory: cellStr,
-            matchedRule: matchedCat,
-            category: matchedCat ? matchedCat.standardName : cellStr,
-            amount: rawAmount,
-            note: rawNote || (matchedCat ? matchedCat.defaultNote : "")
-          });
-          foundCategoryCount++;
-          break; // proceed to next row
-        }
-      }
-    }
-
-    // Pattern 2: Explicit [No, Category, Amount, Note] layout
-    if (catIdx === -1 && row.length >= 3) {
-      const firstCellNum = cleanNumericAmount(row[0]);
-      const secCellStr = String(row[1] || "").trim();
-      const thirdCellNum = cleanNumericAmount(row[2]);
-
-      // Guard: Ensure secCellStr is a valid business/expense keyword and NOT an employee name
-      const isValidExpenseTerm =
-        matchStandardCategory(secCellStr) !== null ||
-        [
-          "인건비", "급여", "보험", "비품", "식대", "식비", "차량", "자동차", "유류비", "통근",
-          "기장", "통신", "노무", "퇴직", "비닐", "포장", "측정", "부업", "임가공", "용역",
-          "결산", "수수료", "세금", "공과금", "임차료", "월세", "소모품", "잡비", "비용",
-          "지출", "공제", "관리비"
-        ].some((w) => secCellStr.includes(w));
+    // Pattern 1: [No, CategoryName, Amount, Note] (e.g. [1, "1. 인건비", 91071530, "메모"])
+    if (row.length >= 3) {
+      const firstNum = cleanNumericAmount(row[0]);
+      const secText = String(row[1] || "").trim();
+      const thirdNum = cleanNumericAmount(row[2]);
 
       if (
-        firstCellNum >= 1 &&
-        firstCellNum <= 50 &&
-        secCellStr !== "" &&
-        !isSummaryOrHeaderRow(secCellStr) &&
-        !isLikelyPersonOrEmployeeName(secCellStr) &&
-        isValidExpenseTerm &&
-        thirdCellNum >= 0
+        firstNum >= 1 &&
+        firstNum <= 100 &&
+        secText.length > 0 &&
+        !isSummaryOrHeaderRow(secText) &&
+        thirdNum > 0
       ) {
-        const matched = matchStandardCategory(secCellStr);
-        const rawNote = row[3] !== undefined ? String(row[3]).trim() : "";
-
-        extractedItems.push({
-          id: `parsed_${Date.now()}_${rIdx}`,
-          rawCategory: secCellStr,
-          matchedRule: matched,
-          category: matched ? matched.standardName : `${firstCellNum}. ${secCellStr}`,
-          amount: thirdCellNum,
-          note: rawNote || (matched ? matched.defaultNote : "")
-        });
-        if (matched) foundCategoryCount++;
-        codeMatchCount++;
+        // Exclude year constants
+        if (thirdNum !== 2026 && thirdNum !== 2607 && thirdNum !== 2608 && thirdNum !== 2609) {
+          const rawNote = row[3] !== undefined ? String(row[3]).trim() : "";
+          const cleanName = secText.replace(/^\d+[\.\)\s]+/, "").trim();
+          extractedItems.push({
+            id: `item_${rIdx}_${Date.now()}`,
+            rawCategory: secText,
+            category: cleanName || secText,
+            amount: thirdNum,
+            note: rawNote
+          });
+          continue;
+        }
       }
     }
-  }
 
-  // Deduplicate by standard category rule if multiple matches occurred
-  const uniqueMap = new Map();
-  const customItems = [];
+    // Pattern 2: [CategoryName, Amount, Note] (e.g. ["식대(큰상웰빙푸드)", 2981200, "전자세금계산서"])
+    if (row.length >= 2) {
+      const catText = String(row[0] || "").trim();
+      const amtNum = cleanNumericAmount(row[1]);
 
-  for (const item of extractedItems) {
-    if (item.matchedRule) {
-      const key = item.matchedRule.id;
-      if (!uniqueMap.has(key) || (item.amount > 0 && uniqueMap.get(key).amount === 0)) {
-        uniqueMap.set(key, item);
+      if (
+        catText.length > 0 &&
+        !isSummaryOrHeaderRow(catText) &&
+        isNaN(Number(catText)) &&
+        amtNum > 0
+      ) {
+        if (amtNum !== 2026 && amtNum !== 2607 && amtNum !== 2608 && amtNum !== 2609) {
+          const rawNote = row[2] !== undefined ? String(row[2]).trim() : "";
+          const cleanName = catText.replace(/^\d+[\.\)\s]+/, "").trim();
+          extractedItems.push({
+            id: `item_${rIdx}_${Date.now()}`,
+            rawCategory: catText,
+            category: cleanName || catText,
+            amount: amtNum,
+            note: rawNote
+          });
+          continue;
+        }
       }
-    } else {
-      customItems.push(item);
+    }
+
+    // Pattern 3: Shifted columns - scan cells for (Text, Amount) pair
+    let foundCat = "";
+    let foundAmt = 0;
+    let foundNote = "";
+
+    for (let c = 0; c < row.length; c++) {
+      const val = row[c];
+      const strVal = String(val || "").trim();
+      if (!strVal) continue;
+
+      if (isNaN(Number(strVal.replace(/,/g, ""))) && !isSummaryOrHeaderRow(strVal) && strVal.length >= 2) {
+        if (!foundCat) {
+          foundCat = strVal;
+        } else if (!foundNote && isNaN(cleanNumericAmount(strVal))) {
+          foundNote = strVal;
+        }
+      } else {
+        const numVal = cleanNumericAmount(val);
+        if (numVal > 0 && numVal !== 2026 && numVal !== 2607 && numVal !== 2608 && numVal !== 2609 && !foundAmt) {
+          foundAmt = numVal;
+        }
+      }
+    }
+
+    if (foundCat && foundAmt > 0) {
+      const cleanName = foundCat.replace(/^\d+[\.\)\s]+/, "").trim();
+      extractedItems.push({
+        id: `item_${rIdx}_${Date.now()}`,
+        rawCategory: foundCat,
+        category: cleanName || foundCat,
+        amount: foundAmt,
+        note: foundNote
+      });
     }
   }
 
-  const finalItems = [...uniqueMap.values(), ...customItems];
-  const totalExpense = finalItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
-
-  // 🌟 Signature Company Vendor & Operational Categories Detection
-  let hasLabor = false;
-  let hasFourInsurances = false;
-  let hasSamsungInsurance = false;
-  let hasMeals = false;
-  let hasVehicle = false;
-  let hasCommute = false;
-  let hasTaxFee = false;
-  let hasLaborFee = false;
-  let hasSubcontract = false;
-
-  for (const it of finalItems) {
-    const cat = (it.category || it.rawCategory || "").toLowerCase();
-    if (cat.includes("인건비") || cat.includes("급여총액") || cat.includes("노무비")) hasLabor = true;
-    if (cat.includes("4대보험") || cat.includes("사회보험") || cat.includes("사업주분")) hasFourInsurances = true;
-    if (cat.includes("삼성화재") || cat.includes("외국인보험")) hasSamsungInsurance = true;
-    if (cat.includes("식대") || cat.includes("큰상") || cat.includes("웰빙푸드")) hasMeals = true;
-    if (cat.includes("자동차") || cat.includes("차량(한울)")) hasVehicle = true;
-    if (cat.includes("통근")) hasCommute = true;
-    if (cat.includes("기장") || cat.includes("세무")) hasTaxFee = true;
-    if (cat.includes("노무법인") || cat.includes("노무사")) hasLaborFee = true;
-    if (cat.includes("부업") || cat.includes("외주") || cat.includes("임가공")) hasSubcontract = true;
-  }
-
-  const vendorCount = [hasSamsungInsurance, hasMeals, hasVehicle, hasCommute, hasTaxFee, hasLaborFee, hasSubcontract].filter(Boolean).length;
-  const signatureCount = [hasLabor, hasFourInsurances, hasSamsungInsurance, hasMeals, (hasVehicle || hasCommute), hasTaxFee, hasLaborFee, hasSubcontract].filter(Boolean).length;
-
-  // A true master expense sheet contains company labor/insurance alongside external vendor services (식대, 차량, 기장, 노무, 부업장 등)
-  const isTrueMasterExpenseTable = (hasLabor || hasFourInsurances) && vendorCount >= 2;
-
-  // Score sheet suitability: Massive priority for the true company master expense settlement table!
-  const itemCount = finalItems.length;
-  let score = foundCategoryCount * 30 + codeMatchCount * 50;
-
-  if (isTrueMasterExpenseTable) {
-    score += 50000; // 🌟 50,000 points guarantee this master table is selected over all random files
-  } else if (signatureCount >= 3) {
-    score += 15000;
-  }
-
-  if (itemCount >= 8 && itemCount <= 25) {
-    score += 500;
-    if (itemCount >= 10 && itemCount <= 20) {
-      score += 500;
-    }
-  } else if (itemCount > 0 && itemCount < 8) {
-    score += itemCount * 15;
-  }
-
-  const cleanSheetName = (sheetName || "").toLowerCase();
-  if (cleanSheetName.includes("지출") || cleanSheetName.includes("공제") || cleanSheetName.includes("공통비") || cleanSheetName.includes("정산")) score += 200;
-  if (cleanSheetName.includes("260") || cleanSheetName.includes("마스터") || cleanSheetName.includes("명세")) score += 100;
-  if (hasExpenseHeaderSection) score += 150;
-  if (totalExpense > 0) score += 100;
+  // Calculate sum of all extracted expense items in this sheet
+  const totalExpense = extractedItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
   return {
-    items: finalItems,
+    items: extractedItems,
     totalExpense,
-    foundCategoryCount,
-    codeMatchCount,
-    vendorCount,
-    signatureCount,
-    isTrueMasterExpenseTable,
-    isSignatureMasterExpenseFile: isTrueMasterExpenseTable || signatureCount >= 3,
-    itemCount,
-    score
+    sheetName,
+    fileName,
+    itemCount: extractedItems.length
   };
 }
 
 /**
- * Parses a single File (Excel, CSV, or PDF) for Hanul expense data.
+ * Parses a single File (Excel, CSV, or PDF) and finds the sheet/table with the highest total expense sum.
  */
 export async function parseHanulExpensesFromFile(file) {
   if (!file) return null;
@@ -532,18 +207,16 @@ export async function parseHanulExpensesFromFile(file) {
       const sheetNames = workbook.SheetNames || [];
 
       let bestSheetResult = null;
-      let highestScore = -1;
-      let bestSheetName = "";
+      let maxTotalExpense = -1;
 
       for (const sName of sheetNames) {
         const ws = workbook.Sheets[sName];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
         const res = parseSheetRowsForExpenses(rows, sName, fileName);
 
-        if (res.score > highestScore && res.items.length > 0) {
-          highestScore = res.score;
+        if (res.totalExpense > maxTotalExpense && res.items.length > 0) {
+          maxTotalExpense = res.totalExpense;
           bestSheetResult = res;
-          bestSheetName = sName;
         }
       }
 
@@ -551,15 +224,10 @@ export async function parseHanulExpensesFromFile(file) {
         return {
           success: true,
           fileName,
-          sheetName: bestSheetName,
+          sheetName: bestSheetResult.sheetName,
           fileType: "excel",
-          score: highestScore,
-          items: bestSheetResult.items,
           totalExpense: bestSheetResult.totalExpense,
-          matchedCount: bestSheetResult.foundCategoryCount,
-          signatureCount: bestSheetResult.signatureCount || 0,
-          isSignatureMasterExpenseFile: !!bestSheetResult.isSignatureMasterExpenseFile,
-          isTrueMasterExpenseTable: !!bestSheetResult.isTrueMasterExpenseTable,
+          items: bestSheetResult.items,
           itemCount: bestSheetResult.items.length
         };
       }
@@ -573,7 +241,7 @@ export async function parseHanulExpensesFromFile(file) {
     try {
       const arrayBuffer = await file.arrayBuffer();
       const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const numPages = pdfDoc.numPages;
+      const numPages = Math.min(pdfDoc.numPages, 5);
       const extractedLines = [];
 
       for (let p = 1; p <= numPages; p++) {
@@ -581,7 +249,6 @@ export async function parseHanulExpensesFromFile(file) {
         const textContent = await page.getTextContent();
         const textItems = textContent.items || [];
 
-        // Group text items roughly by Y position to reconstruct table lines
         const linesMap = new Map();
         for (const it of textItems) {
           const y = Math.round(it.transform[5]);
@@ -589,7 +256,6 @@ export async function parseHanulExpensesFromFile(file) {
           linesMap.get(y).push({ x: it.transform[4], str: it.str });
         }
 
-        // Sort lines top to bottom (descending Y in PDF coordinates)
         const sortedY = Array.from(linesMap.keys()).sort((a, b) => b - a);
         for (const y of sortedY) {
           const rowItems = linesMap.get(y).sort((a, b) => a.x - b.x);
@@ -600,20 +266,15 @@ export async function parseHanulExpensesFromFile(file) {
         }
       }
 
-      const res = parseSheetRowsForExpenses(extractedLines, fileName, fileName);
+      const res = parseSheetRowsForExpenses(extractedLines, "PDF", fileName);
       if (res && res.items.length > 0) {
         return {
           success: true,
           fileName,
           sheetName: "PDF 본문",
           fileType: "pdf",
-          score: res.score,
-          items: res.items,
           totalExpense: res.totalExpense,
-          matchedCount: res.foundCategoryCount,
-          signatureCount: res.signatureCount || 0,
-          isSignatureMasterExpenseFile: !!res.isSignatureMasterExpenseFile,
-          isTrueMasterExpenseTable: !!res.isTrueMasterExpenseTable,
+          items: res.items,
           itemCount: res.items.length
         };
       }
@@ -626,8 +287,8 @@ export async function parseHanulExpensesFromFile(file) {
 }
 
 /**
- * Analyzes multiple uploaded files and identifies the one containing the expense breakdown table (인건비, 4대보험, 삼성화재 등).
- * Returns the best parsing result or null.
+ * 🌟 User Requirement: "무작위로 올리는 파일중 합산금액이 가장 큰 금액이 있는 파일이 맞습니다."
+ * Analyzes all uploaded files and picks the one with the LARGEST total sum (합산금액이 가장 큰 파일).
  */
 export async function parseHanulExpensesFromMultipleFiles(files = []) {
   if (!files || files.length === 0) return null;
@@ -636,47 +297,27 @@ export async function parseHanulExpensesFromMultipleFiles(files = []) {
 
   for (const file of files) {
     const res = await parseHanulExpensesFromFile(file);
-    if (res && res.success && res.items.length > 0) {
+    if (res && res.success && res.items.length > 0 && res.totalExpense > 0) {
       results.push(res);
     }
   }
 
   if (results.length === 0) return null;
 
-  // 🌟 Rank 1: True Master Expense Settlement Table (인건비, 4대보험 + 식대, 차량, 기장, 노무, 부업장 등)
-  // Rank 2: Files with signature categories (인건비, 4대보험, 삼성화재 등)
-  // Rank 3: Overall Score & 10~20 items sweet spot
+  // 🌟 Sort strictly by totalExpense descending: The file with the LARGEST combined sum is the Winner!
   results.sort((a, b) => {
-    // 1. True master table
-    if (b.isTrueMasterExpenseTable !== a.isTrueMasterExpenseTable) {
-      return (b.isTrueMasterExpenseTable ? 1 : 0) - (a.isTrueMasterExpenseTable ? 1 : 0);
+    if (b.totalExpense !== a.totalExpense) {
+      return b.totalExpense - a.totalExpense;
     }
-    // 2. Signature master file
-    if (b.isSignatureMasterExpenseFile !== a.isSignatureMasterExpenseFile) {
-      return (b.isSignatureMasterExpenseFile ? 1 : 0) - (a.isSignatureMasterExpenseFile ? 1 : 0);
-    }
-    // 3. Highest signature matches count
-    if ((b.signatureCount || 0) !== (a.signatureCount || 0)) {
-      return (b.signatureCount || 0) - (a.signatureCount || 0);
-    }
-    // 4. Highest overall score
-    if (b.score !== a.score) return b.score - a.score;
-    // 5. Sweet spot (10~20 items)
-    const aInSweetSpot = a.itemCount >= 10 && a.itemCount <= 20 ? 1 : 0;
-    const bInSweetSpot = b.itemCount >= 10 && b.itemCount <= 20 ? 1 : 0;
-    if (bInSweetSpot !== aInSweetSpot) return bInSweetSpot - aInSweetSpot;
-    // 6. Matched categories count
-    if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
-    // 7. Total expense
-    return b.totalExpense - a.totalExpense;
+    return (b.itemCount || 0) - (a.itemCount || 0);
   });
 
   return results[0];
 }
 
 /**
- * 🌟 User Requirement: "그 파일의 내용만 왼쪽항목에 정리되면 됩니다."
- * Populates the left-hand expense list using ONLY the extracted items from the 10~20 item breakdown file.
+ * Populates the left-hand expense list using ONLY the extracted items from the winning largest-sum file.
+ * Automatically formats items with clean sequential numbering (1. ..., 2. ...).
  */
 export function mergeExtractedExpensesWithState(parsedResult, currentExpenses = []) {
   if (!parsedResult || !parsedResult.items || parsedResult.items.length === 0) {
@@ -685,9 +326,9 @@ export function mergeExtractedExpensesWithState(parsedResult, currentExpenses = 
 
   const parsedItems = parsedResult.items;
 
-  // Format ONLY the items from the extracted 10~20 item breakdown file with sequential numbering
+  // Format with clean sequential numbering
   const finalExpenses = parsedItems
-    .filter((it) => it && (it.category || it.rawCategory) && (Number(it.amount) > 0 || String(it.note || "").trim() !== ""))
+    .filter((it) => it && (it.category || it.rawCategory) && Number(it.amount) > 0)
     .map((item, idx) => {
       const raw = (item.rawCategory || item.category || `항목 ${idx + 1}`).trim();
       const cleanName = raw.replace(/^\d+\s*[\.\)]\s*/, "").trim();
@@ -695,7 +336,7 @@ export function mergeExtractedExpensesWithState(parsedResult, currentExpenses = 
         id: `exp_parsed_${idx + 1}_${Date.now()}`,
         category: `${idx + 1}. ${cleanName || "공통비/공제 항목"}`,
         amount: Number(item.amount) || 0,
-        note: item.note || (item.matchedRule ? item.matchedRule.defaultNote : "")
+        note: item.note || ""
       };
     });
 
@@ -720,3 +361,4 @@ export function mergeExtractedExpensesWithState(parsedResult, currentExpenses = 
     sourceSheetName: parsedResult.sheetName
   };
 }
+

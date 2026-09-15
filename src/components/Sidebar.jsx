@@ -41,6 +41,7 @@ export const ADMIN_TABS = [
 export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const isInjoo = currentProfile?.name === "조인주";
+  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || currentProfile?.name?.includes("한울");
 
   // Operator navigation tabs - strictly 1 line, no badges/annotations
   const operatorTabs = [
@@ -52,6 +53,18 @@ export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) 
       activeClass: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 ring-1 ring-blue-500/30",
       iconColor: "text-blue-600 dark:text-blue-400"
     },
+    ...(isHanul
+      ? [
+          {
+            id: "hanul_tax_invoice",
+            label: "한울 정산 및 세금계산서",
+            icon: Receipt,
+            color: "emerald",
+            activeClass: "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 ring-1 ring-emerald-500/30",
+            iconColor: "text-emerald-600 dark:text-emerald-400"
+          }
+        ]
+      : []),
     {
       id: "electronic_approval",
       label: "전자결재",
