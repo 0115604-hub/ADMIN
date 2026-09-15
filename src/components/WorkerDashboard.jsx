@@ -1158,10 +1158,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   };
 
-  const handleDeleteLeave = async (leaveId) => {
-    if (!window.confirm("이 연차 일정을 취소/삭제하시겠습니까?")) return;
-    await deleteAnnualLeave(leaveId);
-    setToastMessage("연차 일정이 삭제되었습니다.");
+  const handleDeleteLeave = async (leaveId, originLeaveId) => {
+    if (!window.confirm("이 일정을 삭제하시겠습니까?\n(공유된 모든 작업자의 일정에서도 함께 자동 삭제됩니다)")) return;
+    const targetId = originLeaveId || leaveId;
+    await deleteAnnualLeave(targetId, true);
+    setToastMessage("일정이 삭제되었습니다. (공유 작업자 일정에서도 자동 삭제 완료)");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
   };
@@ -1178,6 +1179,70 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [showMiniCalendar, setShowMiniCalendar] = useState(false);
   const [scheduleDetailModal, setScheduleDetailModal] = useState(null); // { selectedDate, dayName, filterTab: 'day'|'week'|'all' }
+
+  // 📸 & 📁 일정 등록 사진/파일 첨부 State & Handlers
+  const [scheduleAttachedFiles, setScheduleAttachedFiles] = useState([]); // [{ id, name, size, dataUrl, fileType: 'image'|'file' }]
+  const [isProcessingScheduleFiles, setIsProcessingScheduleFiles] = useState(false);
+  const scheduleCameraInputRef = useRef(null);
+  const scheduleFileInputRef = useRef(null);
+
+  const handleScheduleFiles = async (e) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    if (scheduleAttachedFiles.length >= 10) {
+      alert("일정 첨부 파일은 최대 10개까지 등록 가능합니다.");
+      return;
+    }
+
+    const remainingSlots = 10 - scheduleAttachedFiles.length;
+    const filesToProcess = Array.from(selectedFiles).slice(0, remainingSlots);
+
+    setIsProcessingScheduleFiles(true);
+    try {
+      const processedList = [];
+      for (const file of filesToProcess) {
+        if (file.type.startsWith("image/")) {
+          // 사진 압축 (카메라 촬영 / 앨범 사진)
+          const compressed = await compressImage(file, 1200, 1200, 0.75);
+          processedList.push({
+            id: compressed.id,
+            name: compressed.name || file.name,
+            size: compressed.size,
+            dataUrl: compressed.dataUrl,
+            fileType: "image"
+          });
+        } else {
+          // 문서 및 일반 파일 (PDF, Excel, Word 등)
+          const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          processedList.push({
+            id: `file_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name,
+            size: (file.size / 1024).toFixed(1) + " KB",
+            dataUrl: base64Data,
+            fileType: "file"
+          });
+        }
+      }
+
+      setScheduleAttachedFiles((prev) => [...prev, ...processedList].slice(0, 10));
+    } catch (err) {
+      console.error("일정 첨부파일 처리 오류:", err);
+      alert("파일을 처리하는 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsProcessingScheduleFiles(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveScheduleFile = (idx) => {
+    setScheduleAttachedFiles((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   // 💬 공유 일정 답장(회신) 및 확인 모달 States
   const [sharedReplyModalItem, setSharedReplyModalItem] = useState(null); // 받은 작업자 답장 모달
@@ -1324,14 +1389,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleRequestDismissOrDelete = (item, actionType = "dismiss") => {
     if (!item) return;
 
-    // 1. 공유받은 일정인 경우 (받은 작업자는 보낸 작업자에게 답장을 보내야만 삭제 가능)
+    // 1. 공유받은 일정인 경우 (받은 작업자는 보낸 작업자에게 답장을 보내거나 직접 삭제 가능)
     if (item.isSharedRecipient || item.sharedBy) {
+      if (actionType === "direct_delete") {
+        handleDeleteLeave(item.id);
+        return;
+      }
       setReplyTextInput("확인했습니다 👍");
       setSharedReplyModalItem(item);
       return;
     }
 
-    // 2. 다른 작업자에게 공유한 원본 일정인 경우 (보낸 작업자는 대상자 회신 확인 후 삭제 가능)
+    // 2. 작성자(보낸 사람)인 경우: 삭제 시 공유된 대상자들의 일정까지 모두 자동 삭제
+    if (actionType === "delete" || actionType === "direct_delete") {
+      handleDeleteLeave(item.id, item.originLeaveId);
+      return;
+    }
+
+    // 3. 다른 작업자에게 공유한 원본 일정인 경우 (보낸 작업자는 대상자 회신 확인 후 삭제 가능)
     const hasSharedTargets =
       item.isSharedOrigin ||
       (Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0) ||
@@ -1342,12 +1417,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return;
     }
 
-    // 3. 일반 개인 일정인 경우: 완료/삭제 모두 즉시 완전 삭제 처리
-    if (actionType === "delete") {
-      handleDeleteLeave(item.id);
-    } else {
-      handleDismissMyLeave(item.id);
-    }
+    // 4. 일반 개인 일정인 경우: 완전 삭제 처리
+    handleDeleteLeave(item.id, item.originLeaveId);
   };
 
   // 💬 받은 작업자: 답장 전송 및 내 일정 삭제/완료 처리
@@ -1374,13 +1445,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   };
 
-  // ✓ 보낸 작업자: 회신 확인 완료 및 최종 삭제/완료 처리
+  // ✓ 보낸 작업자: 회신 확인 완료 및 최종 삭제/완료 처리 (공유 작업자 일정에서도 자동 삭제)
   const handleConfirmSenderDismiss = async (actionType = "delete") => {
     if (!sharedSenderConfirmModalItem) return;
     setConfirmSubmitting(true);
     try {
       await confirmSharedLeaveReplies(sharedSenderConfirmModalItem.id, currentProfile, "delete");
-      setToastMessage("공유 일정 회신을 확인하고 일정을 완료(삭제)하였습니다.");
+      setToastMessage("공유 일정이 삭제되었습니다. (공유 작업자 일정에서도 자동 삭제 완료)");
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3500);
       setSharedSenderConfirmModalItem(null);
@@ -1471,6 +1542,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         replyAt: null
       }));
 
+      // 첨부된 사진/파일 데이터 복사
+      const attachedFiles = [...scheduleAttachedFiles];
+      const attachedImages = attachedFiles.filter(
+        (f) => f.fileType === "image" || f.dataUrl?.startsWith("data:image")
+      );
+
       // 1. 현재 로그인한 작업자(보낸이) 원본 일정 등록
       const newLeave = {
         id: originLeaveId,
@@ -1486,6 +1563,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         sharedWith: sharedWorkers.map((w) => w.name),
         sharedWithDetails: sharedWithDetails,
         replies: [],
+        files: attachedFiles,
+        images: attachedImages,
         isSharedOrigin: sharedWorkers.length > 0,
         hasNewReply: false,
         createdAt: nowIso,
@@ -1518,6 +1597,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             replyStatus: "PENDING",
             replyText: "",
             replyAt: null,
+            files: attachedFiles,
+            images: attachedImages,
             createdAt: nowIso,
             createdDate: todayDateStr,
             isCompleted: false,
@@ -1528,15 +1609,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       }
 
       const shareNames = sharedWorkers.map((w) => w.name).join(", ");
+      const attachCountMsg = attachedFiles.length > 0 ? ` (사진/파일 ${attachedFiles.length}개 첨부)` : "";
       setToastMessage(
         `[${myName} ${myTitle}] ${scheduleSelectedDate} ${scheduleLeaveType} 일정이 등록되었습니다.${
           shareNames ? ` (공유 작업자: ${shareNames} 자동 등록)` : ""
-        }`
+        }${attachCountMsg}`
       );
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3500);
       setScheduleReasonInput("");
       setSharedWorkers([]);
+      setScheduleAttachedFiles([]);
       setIsShareDropdownOpen(false);
     } catch (err) {
       alert("일정 등록 중 오류가 발생했습니다: " + err.message);
@@ -2836,261 +2919,353 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             {/* Right: Quick Schedule Register Form (9 cols) */}
             <div className="lg:col-span-9 min-w-0">
-              <form onSubmit={handleRegisterSchedule} className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
-                {/* 1. Leave Type Selector (2 cols) */}
-                <div className="sm:col-span-2 min-w-0">
-                  <select
-                    value={scheduleLeaveType}
-                    onChange={(e) => setScheduleLeaveType(e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                  >
-                    <option value="연차(하루)">🌴 연차(하루)</option>
-                    <option value="오전반차">🌤️ 오전반차</option>
-                    <option value="오후반차">⛅ 오후반차</option>
-                    <option value="할일">📝 할일</option>
-                    <option value="삼랑진공장">🏭 삼랑진공장</option>
-                    <option value="한림공장">🏭 한림공장</option>
-                    <option value="RNA 회의">👔 RNA 회의</option>
-                    <option value="외출">🚶 외출</option>
-                    <option value="특근(휴일근무)">⚡ 특근(휴일)</option>
-                    <option value="출장/외부교육">🚄 출장/교육</option>
-                  </select>
-                </div>
+              <form onSubmit={handleRegisterSchedule} className="space-y-1.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
+                  {/* 1. Leave Type Selector (2 cols) */}
+                  <div className="sm:col-span-2 min-w-0">
+                    <select
+                      value={scheduleLeaveType}
+                      onChange={(e) => setScheduleLeaveType(e.target.value)}
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                    >
+                      <option value="연차(하루)">🌴 연차(하루)</option>
+                      <option value="오전반차">🌤️ 오전반차</option>
+                      <option value="오후반차">⛅ 오후반차</option>
+                      <option value="할일">📝 할일</option>
+                      <option value="삼랑진공장">🏭 삼랑진공장</option>
+                      <option value="한림공장">🏭 한림공장</option>
+                      <option value="RNA 회의">👔 RNA 회의</option>
+                      <option value="외출">🚶 외출</option>
+                      <option value="특근(휴일근무)">⚡ 특근(휴일)</option>
+                      <option value="출장/외부교육">🚄 출장/교육</option>
+                    </select>
+                  </div>
 
-                {/* 2. Date Picker (2 cols) */}
-                <div className="sm:col-span-2 min-w-0">
-                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
-                    <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
+                  {/* 2. Date Picker (2 cols) */}
+                  <div className="sm:col-span-2 min-w-0">
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
+                      <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
+                      <input
+                        type="date"
+                        required
+                        value={scheduleSelectedDate}
+                        onChange={(e) => setScheduleSelectedDate(e.target.value)}
+                        className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer py-0.5"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3. Reason/Memo Input (3 cols) */}
+                  <div className="sm:col-span-3 min-w-0">
                     <input
-                      type="date"
-                      required
-                      value={scheduleSelectedDate}
-                      onChange={(e) => setScheduleSelectedDate(e.target.value)}
-                      className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer py-0.5"
+                      type="text"
+                      value={scheduleReasonInput}
+                      onChange={(e) => setScheduleReasonInput(e.target.value)}
+                      placeholder="내용 입력"
+                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
                     />
+                  </div>
+
+                  {/* 4. 사진촬영 우선 & 파일/앨범 첨부 버튼 (2 cols) */}
+                  <div className="sm:col-span-2 min-w-0 flex items-center gap-1">
+                    {/* Hidden inputs for camera capture & file picker */}
+                    <input
+                      type="file"
+                      ref={scheduleCameraInputRef}
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleScheduleFiles}
+                    />
+                    <input
+                      type="file"
+                      ref={scheduleFileInputRef}
+                      accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.hwp,.txt"
+                      multiple
+                      className="hidden"
+                      onChange={handleScheduleFiles}
+                    />
+
+                    {/* 📸 Camera capture button (촬영 우선) */}
+                    <button
+                      type="button"
+                      onClick={() => scheduleCameraInputRef.current?.click()}
+                      disabled={isProcessingScheduleFiles}
+                      className="flex-1 px-1.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800/80 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
+                      title="카메라 사진 촬영 (촬영 우선)"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span className="truncate">촬영</span>
+                    </button>
+
+                    {/* 📁 File / Album attachment button */}
+                    <button
+                      type="button"
+                      onClick={() => scheduleFileInputRef.current?.click()}
+                      disabled={isProcessingScheduleFiles}
+                      className="flex-1 px-1.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
+                      title="앨범 사진 또는 파일 첨부"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span className="truncate">첨부</span>
+                    </button>
+                  </div>
+
+                  {/* 5. 전작업자 선택창 (단수/복수 선택) (2 cols) */}
+                  <div className="sm:col-span-2 relative min-w-0" ref={shareDropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setIsShareDropdownOpen((prev) => !prev)}
+                      className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between gap-1 shadow-2xs cursor-pointer ${
+                        sharedWorkers.length > 0
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
+                          : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
+                      }`}
+                      title="원하는 공유 작업자: 선택 시 해당 작업자의 일정에도 함께 등록됩니다"
+                    >
+                      <div className="flex items-center gap-1 truncate min-w-0">
+                        <Users className={`w-3.5 h-3.5 shrink-0 ${sharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
+                        <span className="truncate text-[11px]">
+                          {sharedWorkers.length === 0
+                            ? "공유작업자"
+                            : sharedWorkers.length === 1
+                            ? sharedWorkers[0].name
+                            : `${sharedWorkers[0].name} 외 ${sharedWorkers.length - 1}명`}
+                        </span>
+                      </div>
+                      {sharedWorkers.length > 0 ? (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSharedWorkers([]);
+                          }}
+                          className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-900 rounded text-slate-400 hover:text-slate-700"
+                          title="선택 초기화"
+                        >
+                          <X className="w-3 h-3" />
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">▼</span>
+                      )}
+                    </button>
+
+                    {/* 전작업자 드롭다운 팝업 */}
+                    {isShareDropdownOpen && (
+                      <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-300 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
+                          <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-blue-500" />
+                            <span>원하는 공유 작업자 선택</span>
+                          </span>
+                          {sharedWorkers.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setSharedWorkers([])}
+                              className="text-[10.5px] font-bold text-rose-500 hover:underline cursor-pointer"
+                            >
+                              전체해제
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
+                          {/* 한림공장 작업자 */}
+                          <div>
+                            {(() => {
+                              const plantWorkers =
+                                PLANTS[1]?.workers?.filter(
+                                  (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+                                ) || [];
+                              const isAllPlantSelected =
+                                plantWorkers.length > 0 &&
+                                plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
+
+                              return (
+                                <div
+                                  onClick={() => togglePlantSharedWorkers(1)}
+                                  className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
+                                  title="한림공장 작업자 전체 선택 / 해제"
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-emerald-600" />
+                                    <span className="group-hover:underline">한림공장</span>
+                                    <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                      ({plantWorkers.length}명)
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                      isAllPlantSelected
+                                        ? "bg-emerald-600 text-white shadow-2xs"
+                                        : "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                                    }`}
+                                  >
+                                    {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                            <div className="grid grid-cols-2 gap-1">
+                              {PLANTS[1]?.workers
+                                ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
+                                .map((w) => {
+                                  const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
+                                  return (
+                                    <button
+                                      key={w.id}
+                                      type="button"
+                                      onClick={() => toggleSharedWorker(w)}
+                                      className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                        isSelected
+                                          ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs ring-1 ring-emerald-400/50"
+                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                      }`}
+                                    >
+                                      <span>{w.name}</span>
+                                      <span className="text-[9.5px] opacity-70">
+                                        {isSelected ? "✓" : w.title || "선임"}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+
+                          {/* 삼랑진공장 작업자 */}
+                          <div>
+                            {(() => {
+                              const plantWorkers =
+                                PLANTS[0]?.workers?.filter(
+                                  (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+                                ) || [];
+                              const isAllPlantSelected =
+                                plantWorkers.length > 0 &&
+                                plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
+
+                              return (
+                                <div
+                                  onClick={() => togglePlantSharedWorkers(0)}
+                                  className="text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
+                                  title="삼랑진공장 작업자 전체 선택 / 해제"
+                                >
+                                  <div className="flex items-center gap-1.5">
+                                    <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
+                                    <span className="group-hover:underline">삼랑진공장</span>
+                                    <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                      ({plantWorkers.length}명)
+                                    </span>
+                                  </div>
+                                  <span
+                                    className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                      isAllPlantSelected
+                                        ? "bg-amber-600 text-white shadow-2xs"
+                                        : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                                    }`}
+                                  >
+                                    {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                            <div className="grid grid-cols-2 gap-1">
+                              {PLANTS[0]?.workers
+                                ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
+                                .map((w) => {
+                                  const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
+                                  return (
+                                    <button
+                                      key={w.id}
+                                      type="button"
+                                      onClick={() => toggleSharedWorker(w)}
+                                      className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                        isSelected
+                                          ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs ring-1 ring-amber-400/50"
+                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                      }`}
+                                    >
+                                      <span>{w.name}</span>
+                                      <span className="text-[9.5px] opacity-70">
+                                        {isSelected ? "✓" : w.title || "선임"}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                          <span className="text-[10.5px] font-bold text-slate-500">
+                            {sharedWorkers.length > 0 ? `${sharedWorkers.length}명 선택됨` : "작업자 선택 안함"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsShareDropdownOpen(false)}
+                            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] cursor-pointer"
+                          >
+                            선택 완료
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 6. Submit Button (1 col) */}
+                  <div className="sm:col-span-1 min-w-0">
+                    <button
+                      type="submit"
+                      disabled={scheduleSaving || isProcessingScheduleFiles}
+                      className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-2xs shadow-blue-500/25 transition-all flex items-center justify-center gap-0.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <span>{scheduleSaving ? "..." : "등록"}</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* 3. Reason/Memo Input (3 cols) */}
-                <div className="sm:col-span-3 min-w-0">
-                  <input
-                    type="text"
-                    value={scheduleReasonInput}
-                    onChange={(e) => setScheduleReasonInput(e.target.value)}
-                    placeholder="내용"
-                    className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
-                  />
-                </div>
-
-                {/* 4. 전작업자 선택창 (단수/복수 선택) (3 cols) */}
-                <div className="sm:col-span-3 relative min-w-0" ref={shareDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsShareDropdownOpen((prev) => !prev)}
-                    className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between gap-1 shadow-2xs cursor-pointer ${
-                      sharedWorkers.length > 0
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
-                        : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
-                    }`}
-                    title="원하는 공유 작업자: 선택 시 해당 작업자의 일정에도 함께 등록됩니다"
-                  >
-                    <div className="flex items-center gap-1 truncate min-w-0">
-                      <Users className={`w-3.5 h-3.5 shrink-0 ${sharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
-                      <span className="truncate text-[11px]">
-                        {sharedWorkers.length === 0
-                          ? "원하는 공유 작업자"
-                          : sharedWorkers.length === 1
-                          ? sharedWorkers[0].name
-                          : `${sharedWorkers[0].name} 외 ${sharedWorkers.length - 1}명`}
+                {/* Attached files preview strip */}
+                {(scheduleAttachedFiles.length > 0 || isProcessingScheduleFiles) && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[10.5px] font-black text-slate-500 dark:text-slate-400 shrink-0 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>첨부 파일 ({scheduleAttachedFiles.length}개):</span>
+                    </span>
+                    {isProcessingScheduleFiles && (
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold animate-pulse">
+                        파일 압축/처리 중...
                       </span>
-                    </div>
-                    {sharedWorkers.length > 0 ? (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSharedWorkers([]);
-                        }}
-                        className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-900 rounded text-slate-400 hover:text-slate-700"
-                        title="선택 초기화"
-                      >
-                        <X className="w-3 h-3" />
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-slate-400">▼</span>
                     )}
-                  </button>
-
-                  {/* 전작업자 드롭다운 팝업 */}
-                  {isShareDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-300 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
-                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
-                        <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-blue-500" />
-                          <span>원하는 공유 작업자 선택</span>
-                        </span>
-                        {sharedWorkers.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setSharedWorkers([])}
-                            className="text-[10.5px] font-bold text-rose-500 hover:underline cursor-pointer"
-                          >
-                            전체해제
-                          </button>
+                    {scheduleAttachedFiles.map((file, idx) => (
+                      <div
+                        key={file.id || idx}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10.5px] font-bold shadow-2xs"
+                      >
+                        {file.fileType === "image" || file.dataUrl?.startsWith("data:image") ? (
+                          <img
+                            src={file.dataUrl}
+                            alt={file.name}
+                            onClick={() => setPreviewImageModal({ url: file.dataUrl, name: file.name })}
+                            className="w-4 h-4 object-cover rounded shrink-0 cursor-pointer hover:opacity-80"
+                            title="클릭하여 사진 크게보기"
+                          />
+                        ) : (
+                          <FileText className="w-3 h-3 text-blue-500 shrink-0" />
                         )}
-                      </div>
-
-                      <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
-                        {/* 한림공장 작업자 */}
-                        <div>
-                          {(() => {
-                            const plantWorkers =
-                              PLANTS[1]?.workers?.filter(
-                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
-                              ) || [];
-                            const isAllPlantSelected =
-                              plantWorkers.length > 0 &&
-                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
-
-                            return (
-                              <div
-                                onClick={() => togglePlantSharedWorkers(1)}
-                                className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
-                                title="한림공장 작업자 전체 선택 / 해제"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-emerald-600" />
-                                  <span className="group-hover:underline">한림공장</span>
-                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                    ({plantWorkers.length}명)
-                                  </span>
-                                </div>
-                                <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
-                                    isAllPlantSelected
-                                      ? "bg-emerald-600 text-white shadow-2xs"
-                                      : "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                                  }`}
-                                >
-                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                          <div className="grid grid-cols-2 gap-1">
-                            {PLANTS[1]?.workers
-                              ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
-                              .map((w) => {
-                                const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                return (
-                                  <button
-                                    key={w.id}
-                                    type="button"
-                                    onClick={() => toggleSharedWorker(w)}
-                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                      isSelected
-                                        ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs ring-1 ring-emerald-400/50"
-                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                    }`}
-                                  >
-                                    <span>{w.name}</span>
-                                    <span className="text-[9.5px] opacity-70">
-                                      {isSelected ? "✓" : w.title || "선임"}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        </div>
-
-                        {/* 삼랑진공장 작업자 */}
-                        <div>
-                          {(() => {
-                            const plantWorkers =
-                              PLANTS[0]?.workers?.filter(
-                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
-                              ) || [];
-                            const isAllPlantSelected =
-                              plantWorkers.length > 0 &&
-                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
-
-                            return (
-                              <div
-                                onClick={() => togglePlantSharedWorkers(0)}
-                                className="text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
-                                title="삼랑진공장 작업자 전체 선택 / 해제"
-                              >
-                                <div className="flex items-center gap-1.5">
-                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
-                                  <span className="group-hover:underline">삼랑진공장</span>
-                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                    ({plantWorkers.length}명)
-                                  </span>
-                                </div>
-                                <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
-                                    isAllPlantSelected
-                                      ? "bg-amber-600 text-white shadow-2xs"
-                                      : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                                  }`}
-                                >
-                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                          <div className="grid grid-cols-2 gap-1">
-                            {PLANTS[0]?.workers
-                              ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
-                              .map((w) => {
-                                const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                return (
-                                  <button
-                                    key={w.id}
-                                    type="button"
-                                    onClick={() => toggleSharedWorker(w)}
-                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                      isSelected
-                                        ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs ring-1 ring-amber-400/50"
-                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                    }`}
-                                  >
-                                    <span>{w.name}</span>
-                                    <span className="text-[9.5px] opacity-70">
-                                      {isSelected ? "✓" : w.title || "선임"}
-                                    </span>
-                                  </button>
-                                );
-                              })}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                        <span className="text-[10.5px] font-bold text-slate-500">
-                          {sharedWorkers.length > 0 ? `${sharedWorkers.length}명 선택됨` : "작업자 선택 안함"}
+                        <span className="max-w-[90px] truncate text-slate-800 dark:text-slate-200" title={file.name}>
+                          {file.name}
                         </span>
+                        <span className="text-[9px] text-slate-400 font-normal">({file.size})</span>
                         <button
                           type="button"
-                          onClick={() => setIsShareDropdownOpen(false)}
-                          className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] cursor-pointer"
+                          onClick={() => handleRemoveScheduleFile(idx)}
+                          className="p-0.5 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
+                          title="첨부 파일 삭제"
                         >
-                          선택 완료
+                          <X className="w-2.5 h-2.5" />
                         </button>
                       </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 5. Submit Button (2 cols) */}
-                <div className="sm:col-span-2 min-w-0">
-                  <button
-                    type="submit"
-                    disabled={scheduleSaving}
-                    className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs shadow-2xs shadow-blue-500/25 transition-all flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
-                  >
-                    <span>{scheduleSaving ? "등록중..." : "등록"}</span>
-                  </button>
-                </div>
+                    ))}
+                  </div>
+                )}
               </form>
             </div>
           </div>
@@ -7637,18 +7812,29 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                   </span>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => handleReactivateLeave(item)}
-                                  className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
-                                  title="일정을 다시 '진행중' 상태로 복구합니다"
-                                >
-                                  <RotateCcw className="w-3 h-3" />
-                                  <span>진행중으로 복구</span>
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReactivateLeave(item)}
+                                    className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                                    title="일정을 다시 '진행중' 상태로 복구합니다"
+                                  >
+                                    <RotateCcw className="w-3 h-3" />
+                                    <span>진행중으로 복구</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLeave(item.id, item.originLeaveId)}
+                                    className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 shadow-2xs transition-all cursor-pointer"
+                                    title="일정 완전 삭제 (공유된 작업자의 일정에서도 자동 삭제)"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
 
-                              <div className="p-2 rounded-lg bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100">
+                              <div className="p-2 rounded-lg bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
                                 <div>
                                   <span className="text-slate-400 font-normal mr-1.5">내용:</span>
                                   <span>{item.reason || item.leaveType}</span>
@@ -7656,6 +7842,48 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                 {isRecipient && item.replyText && (
                                   <div className="mt-1 pt-1 border-t border-slate-100 dark:border-slate-800 text-purple-800 dark:text-purple-300 text-[11px]">
                                     내가 보낸 답장: <strong className="font-black">"{item.replyText}"</strong>
+                                  </div>
+                                )}
+
+                                {/* 첨부 사진 & 파일 목록 */}
+                                {((item.files && item.files.length > 0) || (item.images && item.images.length > 0)) && (
+                                  <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                                    <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                      <Camera className="w-3 h-3 text-rose-500" />
+                                      <span>첨부 파일 / 사진:</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                      {(item.images || item.files?.filter((f) => f.fileType === "image" || f.dataUrl?.startsWith("data:image")) || []).map((img, imgIdx) => {
+                                        const url = img.dataUrl || img;
+                                        const name = img.name || `사진 ${imgIdx + 1}`;
+                                        return (
+                                          <div
+                                            key={img.id || imgIdx}
+                                            onClick={() => setPreviewImageModal({ url, name })}
+                                            className="group relative w-11 h-11 rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden cursor-pointer shadow-2xs hover:border-blue-500 transition-all shrink-0"
+                                            title="클릭하여 크게보기"
+                                          >
+                                            <img src={url} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                              <Eye className="w-3 h-3" />
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                      {(item.files?.filter((f) => f.fileType !== "image" && !f.dataUrl?.startsWith("data:image")) || []).map((f, fIdx) => (
+                                        <a
+                                          key={f.id || fIdx}
+                                          href={f.dataUrl}
+                                          download={f.name || "첨부파일"}
+                                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-800 dark:text-slate-200 text-[10.5px] font-bold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                                          title="클릭하여 다운로드"
+                                        >
+                                          <Download className="w-3 h-3 text-blue-500 shrink-0" />
+                                          <span className="max-w-[100px] truncate">{f.name}</span>
+                                          <span className="text-[9px] text-slate-400 font-normal">({f.size})</span>
+                                        </a>
+                                      ))}
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -7795,6 +8023,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                             <span>완료</span>
                                           </button>
                                         )}
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteLeave(item.id, item.originLeaveId)}
+                                          className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 shadow-2xs transition-all cursor-pointer"
+                                          title="일정 완전 삭제 (공유된 작업자의 일정에서도 자동 삭제)"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
                                       </div>
                                     </div>
 
@@ -7803,6 +8040,48 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                         <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
                                         <span>{item.reason || item.leaveType}</span>
                                       </div>
+
+                                      {/* 첨부 사진 & 파일 목록 */}
+                                      {((item.files && item.files.length > 0) || (item.images && item.images.length > 0)) && (
+                                        <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1">
+                                          <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                            <Camera className="w-3 h-3 text-rose-500" />
+                                            <span>첨부 파일 / 사진:</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1.5 items-center">
+                                            {(item.images || item.files?.filter((f) => f.fileType === "image" || f.dataUrl?.startsWith("data:image")) || []).map((img, imgIdx) => {
+                                              const url = img.dataUrl || img;
+                                              const name = img.name || `사진 ${imgIdx + 1}`;
+                                              return (
+                                                <div
+                                                  key={img.id || imgIdx}
+                                                  onClick={() => setPreviewImageModal({ url, name })}
+                                                  className="group relative w-11 h-11 rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden cursor-pointer shadow-2xs hover:border-blue-500 transition-all shrink-0"
+                                                  title="클릭하여 크게보기"
+                                                >
+                                                  <img src={url} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                    <Eye className="w-3 h-3" />
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                            {(item.files?.filter((f) => f.fileType !== "image" && !f.dataUrl?.startsWith("data:image")) || []).map((f, fIdx) => (
+                                              <a
+                                                key={f.id || fIdx}
+                                                href={f.dataUrl}
+                                                download={f.name || "첨부파일"}
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-800 dark:text-slate-200 text-[10.5px] font-bold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                                                title="클릭하여 다운로드"
+                                              >
+                                                <Download className="w-3 h-3 text-blue-500 shrink-0" />
+                                                <span className="max-w-[100px] truncate">{f.name}</span>
+                                                <span className="text-[9px] text-slate-400 font-normal">({f.size})</span>
+                                              </a>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
 
                                       {isOrigin && Array.isArray(item.sharedWithDetails) && item.sharedWithDetails.length > 0 && (
                                         <div className="mt-1 pt-1.5 border-t border-indigo-200/60 dark:border-indigo-900/40 text-[11px] space-y-1">
@@ -7894,15 +8173,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                         </span>
                                       </div>
 
-                                      <button
-                                        type="button"
-                                        onClick={() => handleReactivateLeave(item)}
-                                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
-                                        title="일정을 다시 '진행중' 상태로 복구합니다"
-                                      >
-                                        <RotateCcw className="w-3 h-3" />
-                                        <span>진행중으로 복구</span>
-                                      </button>
+                                      <div className="flex items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleReactivateLeave(item)}
+                                          className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950 text-blue-600 dark:text-blue-300 text-[11px] font-bold border border-blue-200 dark:border-blue-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1"
+                                          title="일정을 다시 '진행중' 상태로 복구합니다"
+                                        >
+                                          <RotateCcw className="w-3 h-3" />
+                                          <span>진행중으로 복구</span>
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteLeave(item.id, item.originLeaveId)}
+                                          className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 shadow-2xs transition-all cursor-pointer"
+                                          title="일정 완전 삭제 (공유된 작업자의 일정에서도 자동 삭제)"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
 
                                     <div className="p-2 rounded-lg bg-white dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 space-y-1">
@@ -7922,6 +8212,48 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                               {d.name}: <strong>"{d.replyText || "확인"}"</strong>
                                             </span>
                                           ))}
+                                        </div>
+                                      )}
+
+                                      {/* 첨부 사진 & 파일 목록 */}
+                                      {((item.files && item.files.length > 0) || (item.images && item.images.length > 0)) && (
+                                        <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1">
+                                          <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                            <Camera className="w-3 h-3 text-rose-500" />
+                                            <span>첨부 파일 / 사진:</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1.5 items-center">
+                                            {(item.images || item.files?.filter((f) => f.fileType === "image" || f.dataUrl?.startsWith("data:image")) || []).map((img, imgIdx) => {
+                                              const url = img.dataUrl || img;
+                                              const name = img.name || `사진 ${imgIdx + 1}`;
+                                              return (
+                                                <div
+                                                  key={img.id || imgIdx}
+                                                  onClick={() => setPreviewImageModal({ url, name })}
+                                                  className="group relative w-11 h-11 rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden cursor-pointer shadow-2xs hover:border-blue-500 transition-all shrink-0"
+                                                  title="클릭하여 크게보기"
+                                                >
+                                                  <img src={url} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                    <Eye className="w-3 h-3" />
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                            {(item.files?.filter((f) => f.fileType !== "image" && !f.dataUrl?.startsWith("data:image")) || []).map((f, fIdx) => (
+                                              <a
+                                                key={f.id || fIdx}
+                                                href={f.dataUrl}
+                                                download={f.name || "첨부파일"}
+                                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-800 dark:text-slate-200 text-[10.5px] font-bold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                                                title="클릭하여 다운로드"
+                                              >
+                                                <Download className="w-3 h-3 text-blue-500 shrink-0" />
+                                                <span className="max-w-[100px] truncate">{f.name}</span>
+                                                <span className="text-[9px] text-slate-400 font-normal">({f.size})</span>
+                                              </a>
+                                            ))}
+                                          </div>
                                         </div>
                                       )}
                                     </div>
@@ -8076,6 +8408,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                         <span>완료</span>
                                       </button>
                                     )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteLeave(item.id, item.originLeaveId)}
+                                      className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-600 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 shadow-2xs transition-all cursor-pointer"
+                                      title="일정 완전 삭제 (공유된 작업자의 일정에서도 자동 삭제)"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                 </div>
 
@@ -8085,6 +8426,48 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                                     <span className="text-slate-400 font-normal mr-1.5">일정 내용:</span>
                                     <span>{item.reason || item.leaveType}</span>
                                   </div>
+
+                                  {/* 첨부 사진 & 파일 목록 */}
+                                  {((item.files && item.files.length > 0) || (item.images && item.images.length > 0)) && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1">
+                                      <div className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                        <Camera className="w-3 h-3 text-rose-500" />
+                                        <span>첨부 파일 / 사진:</span>
+                                      </div>
+                                      <div className="flex flex-wrap gap-1.5 items-center">
+                                        {(item.images || item.files?.filter((f) => f.fileType === "image" || f.dataUrl?.startsWith("data:image")) || []).map((img, imgIdx) => {
+                                          const url = img.dataUrl || img;
+                                          const name = img.name || `사진 ${imgIdx + 1}`;
+                                          return (
+                                            <div
+                                              key={img.id || imgIdx}
+                                              onClick={() => setPreviewImageModal({ url, name })}
+                                              className="group relative w-11 h-11 rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden cursor-pointer shadow-2xs hover:border-blue-500 transition-all shrink-0"
+                                              title="클릭하여 크게보기"
+                                            >
+                                              <img src={url} alt={name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                                <Eye className="w-3 h-3" />
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                        {(item.files?.filter((f) => f.fileType !== "image" && !f.dataUrl?.startsWith("data:image")) || []).map((f, fIdx) => (
+                                          <a
+                                            key={f.id || fIdx}
+                                            href={f.dataUrl}
+                                            download={f.name || "첨부파일"}
+                                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 text-slate-800 dark:text-slate-200 text-[10.5px] font-bold border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-2xs"
+                                            title="클릭하여 다운로드"
+                                          >
+                                            <Download className="w-3 h-3 text-blue-500 shrink-0" />
+                                            <span className="max-w-[100px] truncate">{f.name}</span>
+                                            <span className="text-[9px] text-slate-400 font-normal">({f.size})</span>
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
 
                                   {/* Recipient Reply Display */}
                                   {isRecipient && isReplied && (

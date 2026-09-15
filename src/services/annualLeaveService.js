@@ -141,18 +141,32 @@ export const saveAnnualLeave = async (newLeave) => {
 };
 
 // Delete an annual leave record (Cascades to all shared recipient copies if origin is deleted)
-export const deleteAnnualLeave = async (id) => {
+export const deleteAnnualLeave = async (id, cascadeAll = true) => {
   const leaveId = String(id);
   const current = getLocalAnnualLeaves();
+  const targetItem = current.find((l) => String(l.id) === leaveId);
+  const rootOriginId = targetItem?.originLeaveId ? String(targetItem.originLeaveId) : leaveId;
 
   // Find all associated IDs (the record itself + any recipient leaves linked by originLeaveId)
   const idsToDelete = new Set();
   idsToDelete.add(leaveId);
-  current.forEach((l) => {
-    if (l && (String(l.id) === leaveId || String(l.originLeaveId) === leaveId)) {
-      idsToDelete.add(String(l.id));
-    }
-  });
+
+  if (cascadeAll) {
+    if (rootOriginId) idsToDelete.add(rootOriginId);
+    current.forEach((l) => {
+      if (!l) return;
+      const lId = String(l.id);
+      const lOrigId = l.originLeaveId ? String(l.originLeaveId) : null;
+      if (
+        lId === leaveId ||
+        lId === rootOriginId ||
+        lOrigId === leaveId ||
+        lOrigId === rootOriginId
+      ) {
+        idsToDelete.add(lId);
+      }
+    });
+  }
 
   const filteredLocal = current.filter((l) => !idsToDelete.has(String(l.id)));
   saveLocalAnnualLeaves(filteredLocal);
@@ -383,9 +397,12 @@ export const replyToSharedLeave = async (recipientLeaveId, replyText, recipientP
   return updatedLocal;
 };
 
-// ✓ 보낸 작업자: 회신(답변) 확인 완료 및 최종 마무리 처리 (보낸이 및 공유받은 작업자 기록 보존)
+// ✓ 보낸 작업자: 회신(답변) 확인 완료 및 최종 마무리 처리 (보낸이 및 공유받은 작업자 기록 보존 또는 완전 삭제)
 export const confirmSharedLeaveReplies = async (originLeaveId, senderProfile, actionType = "complete") => {
   const origId = String(originLeaveId);
+  if (actionType === "delete") {
+    return await deleteAnnualLeave(origId, true);
+  }
   const nowIso = new Date().toISOString();
   const sName = senderProfile?.name || "보낸작업자";
 
