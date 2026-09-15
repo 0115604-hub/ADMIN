@@ -1137,13 +1137,27 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   };
 
   // ⭐ USER ACTION: 특근보고서 삭제 핸들러
-  const handleDeleteReport = async (reportId, e) => {
+  // ⭐ USER ACTION: 보고서 삭제 핸들러 (개별 및 취합 보고서 모두 지원)
+  const handleDeleteReport = async (reportOrId, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm("정말로 이 특근보고서를 삭제하시겠습니까?")) return;
+    const isSynth = typeof reportOrId === "object" && reportOrId?.isSynthesized;
+    const reportId = typeof reportOrId === "object" ? reportOrId.id : reportOrId;
+    const targetRep = typeof reportOrId === "object" ? reportOrId : legacyReports.find((r) => r.id === reportId);
+    const repName = targetRep?.title || "선택한 보고서";
+
+    if (!window.confirm(`정말로 이 보고서를 삭제하시겠습니까?\n(${repName})`)) return;
     try {
-      const targetRep = legacyReports.find((r) => r.id === reportId);
-      await deleteOvertimeReport(reportId);
-      const nextReports = legacyReports.filter((r) => r.id !== reportId);
+      let nextReports = legacyReports;
+      if (isSynth && targetRep?.childReports && targetRep.childReports.length > 0) {
+        for (const cr of targetRep.childReports) {
+          await deleteOvertimeReport(cr.id);
+        }
+        const childIds = new Set(targetRep.childReports.map(cr => cr.id));
+        nextReports = legacyReports.filter((r) => !childIds.has(r.id));
+      } else {
+        await deleteOvertimeReport(reportId);
+        nextReports = legacyReports.filter((r) => r.id !== reportId);
+      }
       setLegacyReports(nextReports);
       
       // ⭐ 삭제 즉시 근태/특근관리 기준 4개 탭 전사 동기화 (해당 일자/업체 자동 초기화)
@@ -1167,11 +1181,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         });
       }
 
-      if (selectedLegacyReport && selectedLegacyReport.id === reportId) {
+      if (selectedLegacyReport && (selectedLegacyReport.id === reportId || (isSynth && targetRep.childReports?.some(cr => cr.id === selectedLegacyReport.id)))) {
         setIsLegacyModalOpen(false);
         setSelectedLegacyReport(null);
       }
-      triggerToast("🗑️ 특근보고서가 정상적으로 삭제되었습니다.");
+      triggerToast("🗑️ 보고서가 정상적으로 삭제되었습니다.");
     } catch (err) {
       console.error(err);
       alert("삭제 중 오류가 발생했습니다: " + err.message);
@@ -2761,29 +2775,24 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       return (
                         <div
                           key={group.dateKey || gIdx}
-                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-2xl bg-slate-950 border border-slate-800/90 shadow-xs"
+                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 sm:p-2.5 rounded-xl bg-slate-950 border border-slate-800/90 shadow-xs"
                         >
-                          {/* 📅 Left: Single Date Box (간단 명료한 일자 표시) */}
-                          <div
-                            className={`sm:w-36 shrink-0 flex sm:flex-col items-center sm:items-start justify-between sm:justify-center gap-1 p-2 sm:p-2.5 rounded-xl border ${
-                              isGroupWeekend
-                                ? "bg-rose-950/20 border-rose-900/60"
-                                : "bg-emerald-950/20 border-emerald-900/60"
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-2 h-2 rounded-full shrink-0 ${isGroupWeekend ? "bg-rose-400" : "bg-emerald-400"}`} />
-                              <span className={`font-mono font-black text-sm ${isGroupWeekend ? "text-rose-400" : "text-emerald-400"}`}>
-                                {formattedDate}
-                              </span>
-                            </div>
-                            <span className="text-[10.5px] font-bold text-slate-400">
-                              {isGroupWeekend ? "특근일" : "평일"} • {group.reports.length}건
+                          {/* 📅 Left: Ultra-compact Minimized Date Pill Badge (공간 극대화 초소형 뱃지) */}
+                          <div className="shrink-0 flex items-center justify-start sm:justify-center">
+                            <span
+                              className={`px-2 py-1 rounded-lg text-xs font-mono font-black border tracking-tight flex items-center gap-1.5 shrink-0 ${
+                                isGroupWeekend
+                                  ? "bg-rose-950/80 text-rose-300 border-rose-700/80 shadow-2xs"
+                                  : "bg-emerald-950/80 text-emerald-300 border-emerald-700/80 shadow-2xs"
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isGroupWeekend ? "bg-rose-400" : "bg-emerald-400"}`} />
+                              <span>{formattedDate}</span>
                             </span>
                           </div>
 
                           {/* 📋 Right: Simple List of Reports */}
-                          <div className="flex-1 min-w-0 space-y-1.5">
+                          <div className="flex-1 min-w-0 space-y-1">
                             {group.reports.map((report, rIdx) => {
                               const isSynthesized = !!report.isSynthesized;
                               let plantName = report.plant;
@@ -2813,12 +2822,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                 ? (isWeekend ? "특근보고서 (취합)" : "근태보고서 (취합)")
                                 : (isWeekend ? "특근보고서" : "근태보고서");
 
-                              const companyLabel = isSynthesized
-                                ? (report.companies && report.companies.length > 0
-                                    ? report.companies.join(", ")
-                                    : (plantName === "삼랑진공장" ? "(주)오륙, 유성" : "(주)조영산업, 한울, 부림텍"))
-                                : companyName;
-
                               const cost = report.cost || (report.totalHours ? report.totalHours * 15000 : 0);
                               const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
 
@@ -2826,7 +2829,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                 <div
                                   key={report.id || rIdx}
                                   onClick={() => handleOpenLegacyReport(report)}
-                                  className={`px-3 py-2 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 group cursor-pointer border ${
+                                  className={`px-2.5 py-1.5 rounded-lg transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 group cursor-pointer border ${
                                     isSynthesized
                                       ? "border-indigo-600/60 bg-indigo-950/30 hover:border-indigo-400 hover:bg-indigo-950/50 shadow-xs"
                                       : isWeekend
@@ -2866,66 +2869,36 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     )}
                                   </div>
 
-                                  {/* Right: 금액 + 수정/삭제 (또는 결재함이동/상세) */}
+                                  {/* Right: 금액 + 초소형 미니멀 수정/삭제 뱃지 */}
                                   <div
-                                    className="flex items-center gap-2.5 shrink-0 justify-between sm:justify-end"
+                                    className="flex items-center gap-2 shrink-0 justify-between sm:justify-end"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    {/* 3. 금액 및 인원 */}
-                                    <span className="text-xs sm:text-sm font-mono font-black text-white shrink-0 tracking-tight">
-                                      ₩{cost.toLocaleString()} <span className="text-xs text-slate-400 font-normal">({workersCount}명)</span>
+                                    {/* 금액 및 인원 */}
+                                    <span className="text-xs font-mono font-black text-white shrink-0 tracking-tight">
+                                      ₩{cost.toLocaleString()} <span className="text-[10.5px] text-slate-400 font-normal">({workersCount}명)</span>
                                     </span>
 
-                                    {/* 4. 액션 버튼 */}
+                                    {/* 초소형 미니멀 액션 뱃지 버튼 (수정 / 삭제) */}
                                     <div className="flex items-center gap-1 shrink-0">
-                                      {isSynthesized ? (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              if (onNavigateTab) {
-                                                onNavigateTab("electronic_approval");
-                                              } else {
-                                                handleOpenLegacyReport(report);
-                                              }
-                                            }}
-                                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                            title="전자결재함으로 이동하여 특근 취합 결재 문서 확인"
-                                          >
-                                            <ArrowRight className="w-3.5 h-3.5" />
-                                            <span>결재함</span>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleOpenLegacyReport(report)}
-                                            className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                            title="상세 보기"
-                                          >
-                                            <span>상세</span>
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleEditReport(report)}
-                                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-200 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                            title="해당 일자 및 소속업체로 이동하여 수정"
-                                          >
-                                            <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
-                                            <span>수정</span>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => handleDeleteReport(report.id, e)}
-                                            className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                            title="보고서 삭제"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                            <span>삭제</span>
-                                          </button>
-                                        </>
-                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditReport(report)}
+                                        className="px-1.5 py-0.5 rounded-md bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-[10.5px] flex items-center gap-0.5 cursor-pointer active:scale-95 transition-all shadow-2xs"
+                                        title="해당 일자 및 업체 근태/특근 수정 화면으로 이동"
+                                      >
+                                        <Edit3 className="w-2.5 h-2.5 text-cyan-400" />
+                                        <span>수정</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleDeleteReport(report, e)}
+                                        className="px-1.5 py-0.5 rounded-md bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-600 font-bold text-[10.5px] flex items-center gap-0.5 cursor-pointer active:scale-95 transition-all shadow-2xs"
+                                        title="보고서 삭제"
+                                      >
+                                        <Trash2 className="w-2.5 h-2.5 text-rose-400" />
+                                        <span>삭제</span>
+                                      </button>
                                     </div>
                                   </div>
                                 </div>
