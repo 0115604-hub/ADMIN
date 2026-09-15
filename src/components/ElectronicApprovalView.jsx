@@ -815,9 +815,9 @@ export const ElectronicApprovalView = () => {
                       </td>
 
                       {/* 2. 문서제목 */}
-                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                      <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
-                          <span className="hover:underline text-slate-900 dark:text-white text-xs sm:text-sm font-black">
+                          <span className="hover:underline text-slate-900 dark:text-white text-[9.5px] sm:text-[10.5px] font-black leading-tight">
                             {formatConciseApprovalTitle(doc.title)}
                           </span>
                         </div>
