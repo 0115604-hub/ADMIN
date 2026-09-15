@@ -39,6 +39,11 @@ export const saveDeletedApprovalIds = (setOrArr) => {
   } catch (e) {}
 };
 
+export const PLANT_COMPANIES_MAP = {
+  "삼랑진공장": ["(주)오륙", "오륙", "유성", "유성산업"],
+  "한림공장": ["(주)조영산업", "조영", "조영산업", "한울", "부림텍"]
+};
+
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
   LEADS: [
@@ -1011,10 +1016,6 @@ export const removeApprovalDocSilently = async (id) => {
 // 한림공장: (주)조영산업, 한울, 부림텍 취합 ➔ 결재함 자동 등록
 // 평일 (월~금): 근태보고서 취합 (Attendance)
 // 주말 (토~일) 또는 특근 지정: 특근보고서 취합 (Overtime)
-const PLANT_COMPANIES_MAP = {
-  "삼랑진공장": ["(주)오륙", "유성"],
-  "한림공장": ["(주)조영산업", "한울", "부림텍"]
-};
 
 const KNOWN_MANAGERS = [
   "이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "우창용", "오상민", "권태형", "최미영"

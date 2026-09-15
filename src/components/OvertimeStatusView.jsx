@@ -467,33 +467,30 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
 };
 
 // ⭐ 공장별 소속 협력사 근태/특근 보고서 일자별 자동 취합 생성 함수 (Plant-Level Synthesis Engine)
+// 취합 조건:
+// - 평일 근태: 취합하지 않고 협력사별 개별 보고서 유지
+// - 주말/공휴일 특근:
+//   1) 삼랑진공장: (주)오륙, 유성을 모아서 삼랑진공장 특근보고서 1개로 취합
+//   2) 한림공장: (주)조영산업, 한울, 부림텍을 모아서 한림공장 특근보고서 1개로 취합
 export const generateSynthesizedPlantReports = (reports = []) => {
-  const map = new Map();
+  const dateMap = new Map();
 
   (reports || []).forEach((r) => {
     if (!r || !r.workDate || r.isSynthesized) return;
-    const plant = r.plant || getPlantForCompany(r.company || "");
-    const key = `${r.workDate}_${plant}`;
-    if (!map.has(key)) {
-      map.set(key, []);
+    const dateKey = r.workDate;
+    if (!dateMap.has(dateKey)) {
+      dateMap.set(dateKey, []);
     }
-    map.get(key).push(r);
+    dateMap.get(dateKey).push(r);
   });
 
   const synthList = [];
 
-  map.forEach((reps, key) => {
-    const [workDate, plant] = key.split("_");
+  dateMap.forEach((reps, workDate) => {
     const isWk = isWeekendByDate(workDate);
     const dayLabel = getDayOfWeekKorean(workDate);
     const dayNumMatch = workDate.match(/-(\d{1,2})$/);
-    const dayNum = dayNumMatch ? parseInt(dayNumMatch[1], 10) : 8;
-
-    const companies = Array.from(new Set(reps.map((r) => r.company).filter(Boolean)));
-    const totalWorkers = reps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
-    const totalHours = reps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-    const cost = reps.reduce((sum, r) => sum + (r.cost || 0), 0);
-    const allItems = reps.flatMap((r) => r.items || []);
+    const dayNum = dayNumMatch ? parseInt(dayNumMatch[1], 10) : 5;
 
     const hasSpecialOvertime = reps.some(
       (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
@@ -505,51 +502,127 @@ export const generateSynthesizedPlantReports = (reports = []) => {
       return;
     }
 
-    const reportCategory = "특근보고서";
-
-    const drafterName = plant === "삼랑진공장" ? "양인나" : "오상민";
-    const drafterTitle = "선임";
-    const leadName = plant === "한림공장" ? "김동욱" : "윤경수";
-
-    const compBreakdownText = reps.map((cr) => {
-      const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
-      const hCount = cr.totalHours || (wCount * 8);
-      const cAmt = cr.cost || (hCount * 15000);
-      return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
-    }).join("\n");
-
-    synthList.push({
-      id: `synth_${plant === "삼랑진공장" ? "sam" : "hal"}_${workDate.replace(/-/g, "")}`,
-      isSynthesized: true,
-      plant,
-      company: `${companies.join(", ")} 취합`,
-      companies,
-      title: `[${plant}] 9월 ${dayNum}일(${dayLabel}) ${reportCategory} 취합 (${companies.join(", ")})`,
-      reportType: `${reportCategory} (취합)`,
-      workDate,
-      workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
-      author: drafterName,
-      authorTitle: drafterTitle,
-      updatedAt: reps[0]?.updatedAt || new Date().toISOString(),
-      status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
-      approval: [
-        { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: `${reportCategory} 취합 기안` },
-        { role: "책임", name: leadName, title: "책임", status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
-        { role: "이사", name: "이명재", title: "이사", status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
-        { role: "대표", name: "권태형", title: "대표", status: reps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
-      ],
-      totalWorkers,
-      totalHours,
-      cost,
-      items: allItems,
-      childReports: reps,
-      reasons: [
-        `■ 9월 ${dayNum}일(${dayLabel}) [${plant}] ${reportCategory} 취합`,
-        `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
-        `2. 협력사별 투입 현황:\n${compBreakdownText}`,
-        `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 주말 특근 가동 현황 취합`
-      ]
+    // 🏭 1. 삼랑진공장 그룹 (오륙, 유성)
+    const samrangjinReps = reps.filter((r) => {
+      const comp = r.company || "";
+      const plant = r.plant || "";
+      return comp.includes("오륙") || comp.includes("유성") || plant === "삼랑진공장";
     });
+
+    // 🏭 2. 한림공장 그룹 (조영, 한울, 부림텍)
+    const hanlimReps = reps.filter((r) => {
+      const comp = r.company || "";
+      const plant = r.plant || "";
+      return comp.includes("조영") || comp.includes("한울") || comp.includes("부림") || plant === "한림공장";
+    });
+
+    // 1) 삼랑진공장 특근 취합 보고서 생성 (오륙, 유성 ➔ 삼랑진공장 1개)
+    if (samrangjinReps.length > 0) {
+      const plant = "삼랑진공장";
+      const companies = Array.from(new Set(samrangjinReps.map((r) => r.company).filter(Boolean)));
+      const totalWorkers = samrangjinReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+      const totalHours = samrangjinReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+      const cost = samrangjinReps.reduce((sum, r) => sum + (r.cost || 0), 0);
+      const allItems = samrangjinReps.flatMap((r) => r.items || []);
+
+      const drafterName = "양인나";
+      const drafterTitle = "선임";
+      const leadName = "윤경수";
+
+      const compBreakdownText = samrangjinReps.map((cr) => {
+        const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
+        const hCount = cr.totalHours || (wCount * 8);
+        const cAmt = cr.cost || (hCount * 15000);
+        return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
+      }).join("\n");
+
+      synthList.push({
+        id: `synth_sam_${workDate.replace(/-/g, "")}`,
+        isSynthesized: true,
+        plant,
+        company: `${companies.join(", ")} 취합`,
+        companies: ["(주)오륙", "유성"],
+        title: `[삼랑진공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (오륙, 유성)`,
+        reportType: "특근보고서 (취합)",
+        workDate,
+        workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
+        author: drafterName,
+        authorTitle: drafterTitle,
+        updatedAt: samrangjinReps[0]?.updatedAt || new Date().toISOString(),
+        status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
+        approval: [
+          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: "특근보고서 취합 기안" },
+          { role: "책임", name: leadName, title: "책임", status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
+          { role: "이사", name: "이명재", title: "이사", status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
+          { role: "대표", name: "권태형", title: "대표", status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
+        ],
+        totalWorkers,
+        totalHours,
+        cost,
+        items: allItems,
+        childReports: samrangjinReps,
+        reasons: [
+          `■ 9월 ${dayNum}일(${dayLabel}) [삼랑진공장] 특근보고서 취합 (오륙, 유성)`,
+          `1. 대상: (주)오륙, 유성 (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
+          `2. 협력사별 투입 현황:\n${compBreakdownText}`,
+          `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 삼랑진공장 주말 특근 가동 현황 취합`
+        ]
+      });
+    }
+
+    // 2) 한림공장 특근 취합 보고서 생성 (조영, 한울, 부림텍 ➔ 한림공장 1개)
+    if (hanlimReps.length > 0) {
+      const plant = "한림공장";
+      const companies = Array.from(new Set(hanlimReps.map((r) => r.company).filter(Boolean)));
+      const totalWorkers = hanlimReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+      const totalHours = hanlimReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+      const cost = hanlimReps.reduce((sum, r) => sum + (r.cost || 0), 0);
+      const allItems = hanlimReps.flatMap((r) => r.items || []);
+
+      const drafterName = "오상민";
+      const drafterTitle = "선임";
+      const leadName = "김동욱";
+
+      const compBreakdownText = hanlimReps.map((cr) => {
+        const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
+        const hCount = cr.totalHours || (wCount * 8);
+        const cAmt = cr.cost || (hCount * 15000);
+        return `• ${cr.company}: ${wCount}명 (${hCount} M/H, ₩${cAmt.toLocaleString()})`;
+      }).join("\n");
+
+      synthList.push({
+        id: `synth_hal_${workDate.replace(/-/g, "")}`,
+        isSynthesized: true,
+        plant,
+        company: `${companies.join(", ")} 취합`,
+        companies: ["(주)조영산업", "한울", "부림텍"],
+        title: `[한림공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (조영, 한울, 부림텍)`,
+        reportType: "특근보고서 (취합)",
+        workDate,
+        workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
+        author: drafterName,
+        authorTitle: drafterTitle,
+        updatedAt: hanlimReps[0]?.updatedAt || new Date().toISOString(),
+        status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
+        approval: [
+          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: "특근보고서 취합 기안" },
+          { role: "책임", name: leadName, title: "책임", status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
+          { role: "이사", name: "이명재", title: "이사", status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
+          { role: "대표", name: "권태형", title: "대표", status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
+        ],
+        totalWorkers,
+        totalHours,
+        cost,
+        items: allItems,
+        childReports: hanlimReps,
+        reasons: [
+          `■ 9월 ${dayNum}일(${dayLabel}) [한림공장] 특근보고서 취합 (조영, 한울, 부림텍)`,
+          `1. 대상: (주)조영산업, 한울, 부림텍 (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
+          `2. 협력사별 투입 현황:\n${compBreakdownText}`,
+          `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 특근 가동 현황 취합`
+        ]
+      });
+    }
   });
 
   return synthList;
@@ -2356,33 +2429,39 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           {(() => {
             const synthReports = generateSynthesizedPlantReports(legacyReports);
             const weekdayReports = (legacyReports || []).filter((r) => !isWeekendByDate(r.workDate || r.title));
-            const weekendReports = (legacyReports || []).filter((r) => isWeekendByDate(r.workDate || r.title));
 
             const catCounts = {
-              all: (legacyReports || []).length + synthReports.length,
+              all: weekdayReports.length + synthReports.length,
               weekday: weekdayReports.length,
-              weekend: weekendReports.length,
+              weekend: synthReports.length,
               synth: synthReports.length
             };
 
             let baseList = [];
             if (reportTypeCategoryFilter === "ALL") {
-              baseList = [...synthReports, ...(legacyReports || [])];
+              baseList = [...weekdayReports, ...synthReports];
             } else if (reportTypeCategoryFilter === "WEEKDAY") {
               baseList = weekdayReports;
-            } else if (reportTypeCategoryFilter === "WEEKEND") {
-              baseList = weekendReports;
-            } else if (reportTypeCategoryFilter === "SYNTHESIS") {
+            } else if (reportTypeCategoryFilter === "WEEKEND" || reportTypeCategoryFilter === "SYNTHESIS") {
               baseList = synthReports;
             }
 
             const filtered = baseList.filter((r) => {
               if (reportListFilter !== "전체") {
                 const matchPlant = r.plant === reportListFilter;
-                const matchComp =
-                  r.company === reportListFilter ||
-                  (Array.isArray(r.companies) && r.companies.includes(reportListFilter)) ||
-                  (typeof r.company === "string" && r.company.includes(reportListFilter));
+                let matchComp = false;
+                if (r.isSynthesized) {
+                  matchComp = Array.isArray(r.companies) && r.companies.some((c) => 
+                    c === reportListFilter || 
+                    c.includes(reportListFilter.replace(/\(주\)/g, "").trim()) ||
+                    reportListFilter.includes(c.replace(/\(주\)/g, "").trim())
+                  );
+                } else {
+                  matchComp =
+                    r.company === reportListFilter ||
+                    (Array.isArray(r.companies) && r.companies.includes(reportListFilter)) ||
+                    (typeof r.company === "string" && r.company.includes(reportListFilter.replace(/\(주\)/g, "").trim()));
+                }
                 if (!matchPlant && !matchComp) return false;
               }
               if (reportListSearch.trim()) {

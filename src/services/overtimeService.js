@@ -233,6 +233,93 @@ export const INITIAL_OVERTIME_REPORTS = [
       "1. 9월 5일(토) 삼랑진공장 유성 토요 특근 가동",
       "2. 총 2명 투입 (공수: 20 M/H, 총 노무비: ₩300,000)"
     ]
+  },
+  {
+    id: "report_joyoung_2026_09_05",
+    plant: "한림공장",
+    company: "(주)조영산업",
+    companies: ["(주)조영산업"],
+    title: "9월 5일(토) 한림공장 (주)조영산업 특근보고서",
+    reportType: "특근보고서",
+    workDate: "2026-09-05",
+    workDateFormatted: "2026-09-05 (토)",
+    author: "오상민 선임",
+    authorTitle: "선임",
+    updatedAt: "2026-09-05T18:00:00.000Z",
+    approval: [
+      { role: "담당", name: "오상민", title: "선임", status: "완료" },
+      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "완료" },
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
+    ],
+    totalWorkers: 3,
+    totalHours: 24,
+    cost: 360000,
+    items: [
+      { id: 1, category: "가공동", workContent: "조영 가공 1라인 가동 및 조립", names: "황수현, 박종미, 마이클", hours: 8, count: 3 }
+    ],
+    reasons: [
+      "1. 9월 5일(토) 한림공장 (주)조영산업 토요 특근 가동",
+      "2. 총 3명 투입 (공수: 24 M/H, 총 노무비: ₩360,000)"
+    ]
+  },
+  {
+    id: "report_hanul_2026_09_05",
+    plant: "한림공장",
+    company: "한울",
+    companies: ["한울"],
+    title: "9월 5일(토) 한림공장 한울 특근보고서",
+    reportType: "특근보고서",
+    workDate: "2026-09-05",
+    workDateFormatted: "2026-09-05 (토)",
+    author: "오상민 선임",
+    authorTitle: "선임",
+    updatedAt: "2026-09-05T18:00:00.000Z",
+    approval: [
+      { role: "담당", name: "오상민", title: "선임", status: "완료" },
+      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "완료" },
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
+    ],
+    totalWorkers: 2,
+    totalHours: 16,
+    cost: 240000,
+    items: [
+      { id: 1, category: "가공동", workContent: "NX4/NX4a/HR G-RUN 가공 및 포장", names: "우창용, 오상민", hours: 8, count: 2 }
+    ],
+    reasons: [
+      "1. 9월 5일(토) 한림공장 한울 토요 특근 가동",
+      "2. 총 2명 투입 (공수: 16 M/H, 총 노무비: ₩240,000)"
+    ]
+  },
+  {
+    id: "report_burim_2026_09_05",
+    plant: "한림공장",
+    company: "부림텍",
+    companies: ["부림텍"],
+    title: "9월 5일(토) 한림공장 부림텍 특근보고서",
+    reportType: "특근보고서",
+    workDate: "2026-09-05",
+    workDateFormatted: "2026-09-05 (토)",
+    author: "김동욱 책임",
+    authorTitle: "책임",
+    updatedAt: "2026-09-05T18:00:00.000Z",
+    approval: [
+      { role: "담당", name: "김동욱", title: "책임", status: "완료" },
+      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
+      { role: "이사", name: "이명재", title: "이사", status: "완료" },
+      { role: "대표", name: "권태형", title: "대표", status: "완료" }
+    ],
+    totalWorkers: 1,
+    totalHours: 8,
+    cost: 120000,
+    items: [
+      { id: 1, category: "관리부", workContent: "한림 총괄 관리 및 출하 지시", names: "김동욱", hours: 8, count: 1 }
+    ],
+    reasons: [
+      "1. 9월 5일(토) 한림공장 부림텍 토요 특근 가동",
+      "2. 총 1명 투입 (공수: 8 M/H, 총 노무비: ₩120,000)"
+    ]
   }
 ];
 
