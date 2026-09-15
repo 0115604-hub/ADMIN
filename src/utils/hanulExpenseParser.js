@@ -5,15 +5,21 @@ import * as pdfjsLib from "pdfjs-dist";
  * Clean and extract numeric integer amount from a cell
  */
 export function cleanNumericAmount(val) {
+  if (val === null || val === undefined) return 0;
+  let num = 0;
   if (typeof val === "number") {
     if (isNaN(val) || !isFinite(val)) return 0;
-    return Math.round(val);
+    num = Math.round(val);
+  } else {
+    const str = String(val).replace(/[^0-9.-]/g, "").trim();
+    if (str === "" || str === "-" || str === ".") return 0;
+    num = Number(str);
+    if (isNaN(num) || !isFinite(num)) return 0;
+    num = Math.round(num);
   }
-  if (!val) return 0;
-  const str = String(val).replace(/[^0-9.-]/g, "").trim();
-  if (str === "" || str === "-" || str === ".") return 0;
-  const num = Number(str);
-  return isNaN(num) || !isFinite(num) ? 0 : Math.round(num);
+  // 🌟 Sanity Guard: Exclude business numbers, insurance numbers, account numbers (e.g. >= 11 digits or > 500,000,000)
+  if (num > 500000000 || String(Math.abs(num)).length >= 11) return 0;
+  return num;
 }
 
 /**
@@ -55,7 +61,8 @@ export function isSummaryOrHeaderRow(text) {
     clean === "금액" ||
     clean === "비고" ||
     clean === "단가" ||
-    clean === "수량"
+    clean === "수량" ||
+    /^(사업장|사용자|사업자|관리번호|납부자|납부번호|주민등록|계좌번호|통장|전화|팩스|TEL|FAX|고지번호|전자납부|발행일자|납부기한|사업장관리번호|납부자번호)/i.test(clean)
   );
 }
 

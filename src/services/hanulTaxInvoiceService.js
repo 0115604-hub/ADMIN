@@ -192,9 +192,9 @@ export const createDefaultHanulMonthData = (yearMonth = "2026-09") => {
 
   // Default Tax invoice issuance amount presets by month
   let defaultIssuedAmount = totalSalesSupply;
-  if (yearMonth === "2026-07") defaultIssuedAmount = 132975480;
-  if (yearMonth === "2026-08") defaultIssuedAmount = 108295000;
-  if (yearMonth === "2026-09") defaultIssuedAmount = totalSalesSupply;
+  if (yearMonth === "2026-07") defaultIssuedAmount = 115922497;
+  if (yearMonth === "2026-08") defaultIssuedAmount = 115922497;
+  if (yearMonth === "2026-09") defaultIssuedAmount = 115922497;
 
   const defaultVat = Math.round(defaultIssuedAmount * 0.1);
 

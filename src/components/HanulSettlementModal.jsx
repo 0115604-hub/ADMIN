@@ -26,7 +26,8 @@ import {
   STANDARD_EXPENSE_CATEGORIES,
   STANDARD_6_PRODUCTS,
   getHanulSettlementMonthData,
-  saveHanulSettlementMonthData
+  saveHanulSettlementMonthData,
+  subscribeHanulSettlementStore
 } from "../services/hanulSettlementService";
 import { convertFileToImages } from "../utils/fileToImageConverter";
 import {
@@ -86,8 +87,8 @@ export const getHanulSettlementMonthOptions = () => {
   const [currY, currM] = currYM.split("-").map(Number);
 
   const options = [];
-  // 전월부터 과거 12개월 목록 생성 (괄호 없이 순수 'YYYY년 MM월' 형태로 표시)
-  for (let i = 1; i <= 12; i++) {
+  // 당월부터 과거 12개월 목록 생성
+  for (let i = 0; i <= 12; i++) {
     const d = new Date(currY, currM - 1 - i, 1);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -166,7 +167,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
   // Available Month Dropdown Options (동적 월 목록 및 전월/당월 표기)
   const monthDropdownOptions = useMemo(() => getHanulSettlementMonthOptions(), []);
 
-  // Load Month Data
+  // Load Month Data & Subscribe to real-time updates
   useEffect(() => {
     if (!isOpen) return;
     const data = getHanulSettlementMonthData(selectedMonth);
@@ -177,6 +178,19 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
       setSettlementDate(data.settlementDate || `${selectedMonth}-28`);
       setStatus(data.status || "DRAFT");
     }
+
+    const unsub = subscribeHanulSettlementStore((store) => {
+      if (store && store[selectedMonth]) {
+        const d = store[selectedMonth];
+        setProducts(d.products || []);
+        setExpenses(renumberExpenses(d.expenses || []));
+        setAttachments(d.attachments || []);
+        setSettlementDate(d.settlementDate || `${selectedMonth}-28`);
+        setStatus(d.status || "DRAFT");
+      }
+    });
+
+    return () => unsub();
   }, [isOpen, selectedMonth]);
 
   // UI Filter: 금액이 없는 항목 숨김 (기본값: true - 금액 있는 항목만 표시)
@@ -244,15 +258,6 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
     await saveHanulSettlementMonthData(targetMonth, monthData);
     return monthData;
   }, [selectedMonth]);
-
-  // Debounced Auto-Save: Whenever user stops typing for 600ms, automatically persist the latest values
-  useEffect(() => {
-    if (!isOpen) return;
-    const timer = setTimeout(async () => {
-      await persistCurrentData(selectedMonth);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [expenses, attachments, products, settlementDate, selectedMonth, isOpen, persistCurrentData]);
 
   // Handle Expense Change with thousands separator support
   const handleExpenseChange = (id, field, value) => {

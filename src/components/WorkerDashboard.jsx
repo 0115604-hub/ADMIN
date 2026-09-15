@@ -9444,7 +9444,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       <HanulSettlementModal
         isOpen={isHanulSettlementModalOpen}
         onClose={() => setIsHanulSettlementModalOpen(false)}
-        initialMonth={selectedMonth || "2026-08"}
+        initialMonth={getPreviousYearMonth(selectedMonth || "2026-09")}
       />
 
     </div>

@@ -87,29 +87,80 @@ export const getInitialSettlementStore = () => ({
     yearMonth: "2026-08",
     sheetCode: "2608",
     settlementDate: "2026-08-31",
-    status: "DRAFT",
-    updatedAt: "2026-09-14 18:30",
-    products: STANDARD_6_PRODUCTS.map(p => ({
-      id: p.id,
-      name: p.name,
-      unitPrice: p.defaultPrice,
-      qty: 0,
-      amount: 0,
-      vat: 0,
-      total: 0
-    })),
-    expenses: STANDARD_EXPENSE_CATEGORIES.map(c => ({
-      id: c.id,
-      category: c.name,
-      amount: 0,
-      note: c.defaultNote
-    })),
-    totalQty: 0,
-    supplyAmount: 0,
-    taxAmount: 0,
-    totalWithTax: 0,
-    totalExpense: 0,
-    netSettlement: 0,
+    status: "CONFIRMED",
+    updatedAt: "2026-09-16 08:30",
+    products: [
+      { id: "p1", name: "9BQC FRT LH", unitPrice: 1170, qty: 17800, amount: 20826000, vat: 2082600, total: 22908600 },
+      { id: "p2", name: "9BQC FRT RH", unitPrice: 1170, qty: 17800, amount: 20826000, vat: 2082600, total: 22908600 },
+      { id: "p3", name: "9BQC RR LH(PRI)", unitPrice: 1530, qty: 16560, amount: 25336800, vat: 2533680, total: 27870480 },
+      { id: "p4", name: "9BQC RR RH(PRI)", unitPrice: 1530, qty: 16560, amount: 25336800, vat: 2533680, total: 27870480 },
+      { id: "p5", name: "9BQC RR LH(TIN)", unitPrice: 1610, qty: 720, amount: 1159200, vat: 115920, total: 1275120 },
+      { id: "p6", name: "9BQC RR RH(TIN)", unitPrice: 1610, qty: 780, amount: 1255800, vat: 125580, total: 1381380 }
+    ],
+    expenses: [
+      { id: "exp_1", category: "1. 인건비", amount: 91071530, note: "세전 월급(등록,미등록),교통비,식비지원포함(근태파일참조)" },
+      { id: "exp_2", category: "2. 4대보험(사업주분)", amount: 6928900, note: "파일 참조" },
+      { id: "exp_3", category: "3. 삼성화재외국인보험", amount: 2119600, note: "e-9 (12명) 근태파일 참조" },
+      { id: "exp_4", category: "4. 비품", amount: 305730, note: "파일참조" },
+      { id: "exp_5", category: "5. 식대(큰상웰빙푸드)", amount: 2981200, note: "전자세금계산서(有)" },
+      { id: "exp_6", category: "6. 자동차(한울)", amount: 599500, note: "전자세금계산서(有)" },
+      { id: "exp_7", category: "7. 통근차량", amount: 2348000, note: "전자세금계산서(有)" },
+      { id: "exp_8", category: "8. 기장수수료", amount: 150000, note: "전자세금계산서(有)" },
+      { id: "exp_9", category: "9. 인터넷통신비", amount: 73037, note: "전자세금계산서(有)" },
+      { id: "exp_10", category: "10. 노무법인", amount: 200000, note: "전자세금계산서(有)" },
+      { id: "exp_11", category: "11. 퇴직금", amount: 0, note: "" },
+      { id: "exp_12", category: "12. 비닐", amount: 0, note: "전자세금계산서(有)" },
+      { id: "exp_13", category: "13. 작업환경측정비", amount: 0, note: "전자세금계산서(有)" },
+      { id: "exp_14", category: "14. 부업장", amount: 9145000, note: "전자세금계산서(有)" },
+      { id: "exp_15", category: "15. 성실신고용역비", amount: 0, note: "" },
+      { id: "exp_16", category: "16. 개인결산조정료", amount: 0, note: "" }
+    ],
+    totalQty: 70220,
+    supplyAmount: 94740600,
+    taxAmount: 9474060,
+    totalWithTax: 104214660,
+    totalExpense: 115922497,
+    netSettlement: -11707837,
+    attachments: []
+  },
+  "2026-09": {
+    yearMonth: "2026-09",
+    sheetCode: "2609",
+    settlementDate: "2026-09-30",
+    status: "CONFIRMED",
+    updatedAt: "2026-09-16 08:30",
+    products: [
+      { id: "p1", name: "9BQC FRT LH", unitPrice: 1170, qty: 4800, amount: 5616000, vat: 561600, total: 6177600 },
+      { id: "p2", name: "9BQC FRT RH", unitPrice: 1170, qty: 4800, amount: 5616000, vat: 561600, total: 6177600 },
+      { id: "p3", name: "9BQC RR LH(PRI)", unitPrice: 1530, qty: 3660, amount: 5599800, vat: 559980, total: 6159780 },
+      { id: "p4", name: "9BQC RR RH(PRI)", unitPrice: 1530, qty: 3660, amount: 5599800, vat: 559980, total: 6159780 },
+      { id: "p5", name: "9BQC RR LH(TIN)", unitPrice: 1610, qty: 120, amount: 193200, vat: 19320, total: 212520 },
+      { id: "p6", name: "9BQC RR RH(TIN)", unitPrice: 1610, qty: 120, amount: 193200, vat: 19320, total: 212520 }
+    ],
+    expenses: [
+      { id: "exp_1", category: "1. 인건비", amount: 91071530, note: "세전 월급(등록,미등록),교통비,식비지원포함(근태파일참조)" },
+      { id: "exp_2", category: "2. 4대보험(사업주분)", amount: 6928900, note: "파일 참조" },
+      { id: "exp_3", category: "3. 삼성화재외국인보험", amount: 2119600, note: "e-9 (12명) 근태파일 참조" },
+      { id: "exp_4", category: "4. 비품", amount: 305730, note: "파일참조" },
+      { id: "exp_5", category: "5. 식대(큰상웰빙푸드)", amount: 2981200, note: "전자세금계산서(有)" },
+      { id: "exp_6", category: "6. 자동차(한울)", amount: 599500, note: "전자세금계산서(有)" },
+      { id: "exp_7", category: "7. 통근차량", amount: 2348000, note: "전자세금계산서(有)" },
+      { id: "exp_8", category: "8. 기장수수료", amount: 150000, note: "전자세금계산서(有)" },
+      { id: "exp_9", category: "9. 인터넷통신비", amount: 73037, note: "전자세금계산서(有)" },
+      { id: "exp_10", category: "10. 노무법인", amount: 200000, note: "전자세금계산서(有)" },
+      { id: "exp_11", category: "11. 퇴직금", amount: 0, note: "" },
+      { id: "exp_12", category: "12. 비닐", amount: 0, note: "전자세금계산서(有)" },
+      { id: "exp_13", category: "13. 작업환경측정비", amount: 0, note: "전자세금계산서(有)" },
+      { id: "exp_14", category: "14. 부업장", amount: 9145000, note: "전자세금계산서(有)" },
+      { id: "exp_15", category: "15. 성실신고용역비", amount: 0, note: "" },
+      { id: "exp_16", category: "16. 개인결산조정료", amount: 0, note: "" }
+    ],
+    totalQty: 17160,
+    supplyAmount: 22818000,
+    taxAmount: 2281800,
+    totalWithTax: 25099800,
+    totalExpense: 115922497,
+    netSettlement: -90822697,
     attachments: []
   }
 });
@@ -122,6 +173,7 @@ export const getLocalSettlementStore = () => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object") {
+        let shouldHeal = false;
         // Ensure 2026-07 has the 16 items if empty or outdated
         if (
           !parsed["2026-07"] ||
@@ -131,6 +183,31 @@ export const getLocalSettlementStore = () => {
           parsed["2026-07"].expenses.length < 16
         ) {
           parsed["2026-07"] = initial["2026-07"];
+          shouldHeal = true;
+        }
+        // Ensure 2026-08 has the 16 items if empty, corrupted (> 500M) or 0
+        if (
+          !parsed["2026-08"] ||
+          !parsed["2026-08"].totalExpense ||
+          parsed["2026-08"].totalExpense === 0 ||
+          parsed["2026-08"].totalExpense > 500000000 ||
+          !parsed["2026-08"].expenses ||
+          parsed["2026-08"].expenses.length < 16
+        ) {
+          parsed["2026-08"] = initial["2026-08"];
+          shouldHeal = true;
+        }
+        // Ensure 2026-09 has the 16 items if corrupted (> 500M)
+        if (
+          !parsed["2026-09"] ||
+          parsed["2026-09"].totalExpense > 500000000 ||
+          !parsed["2026-09"].expenses ||
+          parsed["2026-09"].expenses.length < 16
+        ) {
+          parsed["2026-09"] = initial["2026-09"];
+          shouldHeal = true;
+        }
+        if (shouldHeal) {
           saveLocalSettlementStore(parsed);
         }
         return { ...initial, ...parsed };
