@@ -586,12 +586,13 @@ export const sendQualityAlertTelegram = async (issueItem, targetChatId = null) =
   const timeStr = issueItem?.time || getKSTTimeString();
 
   const message = `
-<b>🟥 [품질경보] 긴급 확인 및 점검 요망</b>
+🚨 <b>[품질경보 등록] 긴급 확인 및 점검 요망</b>
 ━━━━━━━━━━━━━━━━━━━━━
+• <b>구분:</b> 🚨 품질경보 신규 등록
 • <b>공장:</b> ${plant}
 • <b>작성자:</b> <b>${writer}</b>
 • <b>불량제목:</b> <b>${title}</b>
-${content ? `\n<b>[전달 내용]</b>\n${content}\n` : ""}
+${content ? `\n<b>[발생 내용]</b>\n${content}\n` : ""}
 • <b>발령일시:</b> ${dateStr} ${timeStr}${photoCount}
 ━━━━━━━━━━━━━━━━━━━━━
 ※ 조치 완료 후 시스템에서 [조치결과]를 등록해 주세요.
@@ -641,16 +642,17 @@ export const sendQualityOpinionTelegram = async (issueItem, opinionItem, targetC
     .filter(Boolean)
     .slice(0, 3);
 
-  const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 관련 사진 ${images.length}장 첨부됨` : "";
+  const photoCount = images.length > 0 ? `\n• <b>첨부사진:</b> 조치 관련 사진 ${images.length}장 첨부됨` : "";
 
   const message = `
-<b>🟢 [품질경보 조치완료]</b>
+🟢 <b>[품질경보 조치결과] 조치완료 안내</b>
 ━━━━━━━━━━━━━━━━━━━━━
+• <b>구분:</b> 🟢 품질경보 조치완료
 • <b>공장:</b> ${plant}
 • <b>불량제목:</b> <b>${title}</b>
-• <b>조치자:</b> <b>${writer}${writerTitle}</b>
+${issueItem?.content && issueItem.content !== title ? `• <b>발생내용:</b> ${issueItem.content}\n` : ""}• <b>조치자:</b> <b>${writer}${writerTitle}</b>
 
-<b>[조치결과]</b>
+<b>[조치결과 내용]</b>
 ${content}
 
 • <b>조치일시:</b> ${dateStr} ${timeStr}${photoCount}

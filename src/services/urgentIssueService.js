@@ -276,11 +276,16 @@ export const saveUrgentIssue = async (issueData) => {
       const actionResultAdded = !prevItem?.actionResult && Boolean(fullItem.actionResult?.trim());
 
       if (fullItem.category === "품질경보") {
-        if (isNewlyResolved || actionResultAdded) {
+        const actionResultChanged = Boolean(fullItem.actionResult?.trim()) && fullItem.actionResult !== prevItem?.actionResult;
+        if (isNewlyResolved || actionResultAdded || actionResultChanged) {
+          const actionImgs = (Array.isArray(fullItem.actionImages) && fullItem.actionImages.length > 0)
+            ? fullItem.actionImages
+            : (fullItem.replies?.[fullItem.replies.length - 1]?.files || []);
+
           sendQualityActionTelegram(fullItem, {
             actionAuthor: fullItem.actionAuthor || fullItem.author,
             actionContent: fullItem.actionResult,
-            images: fullItem.actionImages
+            images: actionImgs
           }).catch((err) => {
             console.warn("Telegram quality action error:", err);
           });
@@ -305,7 +310,9 @@ export const saveUrgentIssue = async (issueData) => {
 // Add a Reply / Attendance Response (회신란 / 조치결과 등록)
 export const addIssueReply = async (issueId, replyData) => {
   const current = getLocalUrgentIssues();
-  const target = current.find((i) => i.id === issueId);
+  const target = current.find(
+    (i) => i.id === issueId || (i._docId && i._docId === issueId) || (i.customId && i.customId === issueId)
+  );
   if (!target) return null;
 
   const nowStr = new Date().toLocaleString("ko-KR", {
@@ -339,28 +346,25 @@ export const addIssueReply = async (issueId, replyData) => {
       ? {
           actionResult: newReply.content,
           actionAuthor: newReply.author,
+          actionImages: newReply.files || [],
           actionAt: newReply.actionDate || nowStr,
-          isResolved: true
+          isResolved: true,
+          isDeleted: false,
+          isManuallyRestored: true
         }
       : {})
   };
 
   const saved = await saveUrgentIssue(updatedItem);
-
-  // Trigger real-time Telegram notification for quality action completion
-  if (saved && isQuality) {
-    sendQualityOpinionTelegram(updatedItem, newReply).catch((err) => {
-      console.warn("Telegram quality action completion error:", err);
-    });
-  }
-
   return saved;
 };
 
 // Delete a Reply
 export const deleteIssueReply = async (issueId, replyId) => {
   const current = getLocalUrgentIssues();
-  const target = current.find((i) => i.id === issueId);
+  const target = current.find(
+    (i) => i.id === issueId || (i._docId && i._docId === issueId) || (i.customId && i.customId === issueId)
+  );
   if (!target) return null;
 
   const updatedReplies = (target.replies || []).filter((r) => r.id !== replyId);
@@ -374,6 +378,7 @@ export const deleteIssueReply = async (issueId, replyId) => {
       ? {
           actionResult: lastReply ? lastReply.content : "",
           actionAuthor: lastReply ? lastReply.author : "",
+          actionImages: lastReply?.files || [],
           actionAt: lastReply ? lastReply.actionDate || lastReply.createdAt : "",
           isResolved: Boolean(lastReply)
         }

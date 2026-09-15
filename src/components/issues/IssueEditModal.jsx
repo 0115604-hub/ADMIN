@@ -174,7 +174,7 @@ export const IssueEditModal = ({
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black shrink-0 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-300" title="조치결과 및 의견 수">
                   💬 {getIssueOpinionCount(editingIssue || newIssueForm)}건
                 </span>
-                {editingIssue && newIssueForm.category !== "품질경보" && (
+                {editingIssue && (
                   <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black shrink-0 ${
                     newIssueForm.isResolved
                       ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300"
@@ -237,21 +237,19 @@ export const IssueEditModal = ({
               </div>
 
               {/* Quick Status Toggle Button */}
-              {newIssueForm.category !== "품질경보" && (
-                <button
-                  type="button"
-                  onClick={onToggleResolvedStatus}
-                  className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0 ${
-                    editingIssue?.isResolved
-                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                      : "bg-amber-500 text-slate-950 hover:bg-amber-600"
-                  }`}
-                  title="클릭 시 조치완료 / 진행중 상태 즉시 전환"
-                >
+              <button
+                type="button"
+                onClick={onToggleResolvedStatus}
+                className={`px-3 py-1.5 rounded-xl font-black text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1 shrink-0 ${
+                  editingIssue?.isResolved
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                    : "bg-amber-500 text-slate-950 hover:bg-amber-600"
+                }`}
+                title="클릭 시 조치완료 / 진행중 상태 즉시 전환"
+              >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>{editingIssue?.isResolved ? "조치완료 ✓" : "진행중 (완료처리 ➜)"}</span>
                 </button>
-              )}
             </div>
 
             {/* 2) 제목 & 상세 전달 내용 */}
@@ -280,8 +278,8 @@ export const IssueEditModal = ({
                 {editingIssue.content || "상세 전달 내용이 없습니다."}
               </div>
 
-              {/* 조치 결과 내용 (회의일정 및 사내공지 전용) */}
-              {editingIssue.actionResult && newIssueForm.category !== "오픈이슈" && newIssueForm.category !== "품질경보" ? (
+              {/* 조치 결과 내용 (회의일정, 품질경보, 사내공지 등) */}
+              {editingIssue.actionResult && newIssueForm.category !== "오픈이슈" ? (
                 <div className={`p-3 rounded-xl border space-y-1 ${
                   newIssueForm.category === "회의일정"
                     ? "bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800/80"
@@ -371,7 +369,7 @@ export const IssueEditModal = ({
               <div className="flex items-center justify-between gap-1 flex-wrap">
                 <span className="font-black text-xs sm:text-sm text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
                   <MessageSquare className="w-4 h-4 text-blue-600" />
-                  <span>의견 ({editingIssue.replies?.length || 0}건)</span>
+                  <span>{newIssueForm.category === "품질경보" ? "조치결과 및 의견" : "의견"} ({editingIssue.replies?.length || 0}건)</span>
                 </span>
                 <span className="text-[10.5px] text-blue-600 dark:text-blue-400 font-semibold">
                   * 첨부파일 없이 텍스트만 작성하거나 사진/엑셀을 함께 등록할 수 있습니다.
@@ -511,14 +509,18 @@ export const IssueEditModal = ({
                 <div>
                   <textarea
                     rows="2"
-                    placeholder="조치 의견 및 진행 상황을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
+                    placeholder={
+                      newIssueForm.category === "품질경보"
+                        ? "품질경보 조치결과 및 개선 내용을 입력해 주세요. (등록 시 조치완료 텔레그램 실시간 1회 발송)"
+                        : "조치 의견 및 진행 상황을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
+                    }
                     value={actionOpinionForm.content}
                     onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
                     className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
                   ></textarea>
                 </div>
 
-                {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [의견등록] */}
+                {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [조치결과 등록 / 의견등록] */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {/* 📸 촬영 */}
@@ -576,13 +578,17 @@ export const IssueEditModal = ({
                     </label>
                   </div>
 
-                  {/* 전용 의견 등록 뱃지 버튼 */}
+                  {/* 전용 의견 / 조치결과 등록 뱃지 버튼 */}
                   <button
                     type="button"
                     onClick={onModalAddOpinion}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md active:scale-95 flex items-center justify-center cursor-pointer shrink-0 transition-all"
+                    className={`px-4 py-2 rounded-xl text-white font-black text-xs shadow-md active:scale-95 flex items-center justify-center cursor-pointer shrink-0 transition-all ${
+                      newIssueForm.category === "품질경보"
+                        ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
+                        : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-blue-500/25"
+                    }`}
                   >
-                    <span>의견등록</span>
+                    <span>{newIssueForm.category === "품질경보" ? "조치결과 등록 🟢" : "의견등록"}</span>
                   </button>
                 </div>
 
@@ -1770,8 +1776,8 @@ export const IssueEditModal = ({
               </div>
             )}
 
-            {/* 6. 회의 결과 / 조치 결과 입력 섹션 (오픈이슈 및 품질경보 제외) */}
-            {newIssueForm.category !== "오픈이슈" && newIssueForm.category !== "품질경보" && (
+            {/* 6. 회의 결과 / 조치 결과 입력 섹션 (오픈이슈 제외, 품질경보 및 기타 카테고리 포함) */}
+            {newIssueForm.category !== "오픈이슈" && (
               <div className={`p-3.5 rounded-2xl border-2 space-y-2.5 transition-all ${
                 newIssueForm.category === "회의일정"
                   ? "bg-purple-50/70 dark:bg-purple-950/30 border-purple-400 dark:border-purple-800/80"
