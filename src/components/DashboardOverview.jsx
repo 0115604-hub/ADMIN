@@ -15,11 +15,13 @@ import {
   Clock,
   ChevronRight,
   ArrowRight,
-  UserCheck
+  UserCheck,
+  Lock,
+  Edit3
 } from "lucide-react";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
-import { getWorkLogs, subscribeWorkLogs } from "../services/workLogService";
+import { getWorkLogs, subscribeWorkLogs, isWorkLogApproved } from "../services/workLogService";
 
 export const DashboardOverview = ({
   onNavigateToVehicles,
@@ -470,13 +472,27 @@ export const DashboardOverview = ({
                   )}
                 </div>
 
-                {/* Card Footer: Shift & Timestamp */}
+                {/* Card Footer: Shift & Timestamp & Approval Badge */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-slate-100 dark:border-slate-800/60">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3 text-slate-400" />
                     <span>{log.shift} 근무</span>
                   </span>
-                  <span className="font-semibold">{log.createdAt}</span>
+
+                  <div className="flex items-center gap-1.5">
+                    {isWorkLogApproved(log) ? (
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-md text-[9.5px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>결재완료 (수정불가)</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.2 rounded-md text-[9.5px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                        <Edit3 className="w-2.5 h-2.5" />
+                        <span>결재대기 (수정가능)</span>
+                      </span>
+                    )}
+                    <span className="font-semibold">{log.createdAt}</span>
+                  </div>
                 </div>
               </div>
             );

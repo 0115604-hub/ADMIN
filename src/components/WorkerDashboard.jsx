@@ -124,6 +124,8 @@ import {
 import {
   getWorkLogs,
   saveWorkLog,
+  updateWorkLog,
+  isWorkLogApproved,
   deleteWorkLog,
   subscribeWorkLogs,
   approveWorkLog,
@@ -532,6 +534,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const [logSavedToast, setLogSavedToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("업무일지가 저장되었습니다.");
   const [approvalCommentInput, setApprovalCommentInput] = useState("");
+  const [editingLog, setEditingLog] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    id: "",
+    date: "",
+    plant: "삼랑진공장",
+    writer: "",
+    title: "",
+    process: "",
+    shift: "주간",
+    line: "",
+    workContent: "",
+    issues: "",
+    images: []
+  });
+  const [editMaintenanceItems, setEditMaintenanceItems] = useState([]);
+  const [isEditProcessingImages, setIsEditProcessingImages] = useState(false);
 
   // Sync approval comment when modal opens/changes
   useEffect(() => {
@@ -749,6 +767,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   useEffect(() => {
     const unsub = subscribeCloseAllModals(() => {
       setIsModalOpen(false);
+      setEditingLog(null);
       setSelectedLogDetail(null);
       setSelectedWorkerForLogs(null);
       setQualityPopupItem(null);
@@ -2259,6 +2278,186 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     await deleteWorkLog(id);
   };
 
+  // ✏️ Open Work Log Edit Modal (Only allowed before approval)
+  const handleOpenEditModal = (log) => {
+    if (!log) return;
+    if (isWorkLogApproved(log)) {
+      alert("결재가 완료된 업무일지는 내용을 수정할 수 없습니다.");
+      return;
+    }
+    pushModalHistory("worklog_edit");
+    setEditingLog(log);
+    setEditFormData({
+      id: log.id,
+      date: log.date || getKSTDateString(),
+      plant: log.plant || "삼랑진공장",
+      writer: log.writer || "",
+      title: log.title || "",
+      process: log.process || "",
+      shift: log.shift || "주간",
+      line: log.line || "",
+      workContent: log.workContent || "",
+      issues: log.issues === "-" ? "" : (log.issues || ""),
+      images: Array.isArray(log.images) ? [...log.images] : []
+    });
+
+    if (Array.isArray(log.maintenanceItems) && log.maintenanceItems.length > 0) {
+      setEditMaintenanceItems(
+        log.maintenanceItems.map((it, idx) => ({
+          id: it.id || idx + 1,
+          category: it.category || "압출기",
+          equipmentName: it.equipmentName || "PCM 1호",
+          customEquipmentName: it.customEquipmentName || "",
+          content: it.content || ""
+        }))
+      );
+    } else {
+      setEditMaintenanceItems([]);
+    }
+  };
+
+  const handleEditLogImageFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    const currentImages = editFormData.images || [];
+    if (currentImages.length >= 5) {
+      alert("현장 사진은 최대 5장까지 첨부할 수 있습니다.");
+      return;
+    }
+    const remainingSlots = 5 - currentImages.length;
+    const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/")).slice(0, remainingSlots);
+    if (validFiles.length === 0) return;
+
+    setIsEditProcessingImages(true);
+    try {
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setEditFormData((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...processed].slice(0, 5)
+      }));
+    } catch (err) {
+      console.error("사진 처리 오류:", err);
+      alert("사진을 불러오거나 압축하는 중 오류가 발생했습니다.");
+    } finally {
+      setIsEditProcessingImages(false);
+    }
+  };
+
+  const handleRemoveEditLogImage = (idx) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      images: (prev.images || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  const handleAddEditMaintenanceItem = () => {
+    setEditMaintenanceItems((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        category: "압출기",
+        equipmentName: "PCM 1호",
+        customEquipmentName: "",
+        content: ""
+      }
+    ]);
+  };
+
+  const handleRemoveEditMaintenanceItem = (id) => {
+    if (editMaintenanceItems.length <= 1) {
+      alert("최소 1개 이상의 설비보전 항목이 필요합니다.");
+      return;
+    }
+    setEditMaintenanceItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleUpdateEditMaintenanceItem = (id, field, value) => {
+    setEditMaintenanceItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        if (field === "category") {
+          const defaultEquips = JAEYUL_CATEGORY_EQUIPMENT_MAP[value] || JAEYUL_EQUIPMENT_OPTIONS;
+          return {
+            ...item,
+            category: value,
+            equipmentName: defaultEquips[0] || "PCM 1호",
+            customEquipmentName: ""
+          };
+        }
+        return { ...item, [field]: value };
+      })
+    );
+  };
+
+  const handleSaveEditedLog = async (e) => {
+    if (e) e.preventDefault();
+    if (!editingLog) return;
+
+    if (isWorkLogApproved(editingLog)) {
+      alert("결재가 완료된 업무일지는 수정할 수 없습니다.");
+      return;
+    }
+
+    let formattedWorkContent = editFormData.workContent;
+    let lineSummary = editFormData.line;
+    let formattedItems = [];
+
+    if (editFormData.process === "설비보전" || editingLog.process === "설비보전" || editMaintenanceItems.length > 0) {
+      formattedItems = editMaintenanceItems.filter((it) => it.content && it.content.trim());
+      if (formattedItems.length > 0) {
+        formattedWorkContent = formattedItems
+          .map((it, idx) => {
+            const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+              ? (it.customEquipmentName?.trim() || "직접입력")
+              : it.equipmentName;
+            return `[${idx + 1}] ${it.category} > ${eqName}\n• 설비보전내용: ${it.content.trim()}`;
+          })
+          .join("\n\n");
+
+        lineSummary = formattedItems
+          .map((it) => {
+            const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+              ? (it.customEquipmentName?.trim() || "직접입력")
+              : it.equipmentName;
+            return `${it.category}(${eqName})`;
+          })
+          .join(", ");
+      }
+    }
+
+    if (!formattedWorkContent || !formattedWorkContent.trim()) {
+      alert("작업 내용을 입력해 주세요.");
+      return;
+    }
+
+    try {
+      const updatedFields = {
+        date: editFormData.date,
+        plant: editFormData.plant,
+        shift: editFormData.shift,
+        line: lineSummary || editFormData.line,
+        workContent: formattedWorkContent,
+        issues: editFormData.issues || "특이사항 없음",
+        images: editFormData.images || [],
+        maintenanceItems: formattedItems.length > 0 ? formattedItems : (editingLog.maintenanceItems || []),
+        approvalStatus: editingLog.approvalStatus === "반려" ? "결재대기" : (editingLog.approvalStatus || "결재대기")
+      };
+
+      const updatedList = await updateWorkLog(editingLog.id, updatedFields);
+      setWorkLogs(updatedList);
+
+      if (selectedLogDetail && String(selectedLogDetail.id) === String(editingLog.id)) {
+        setSelectedLogDetail(updatedList.find((l) => String(l.id) === String(editingLog.id)) || null);
+      }
+
+      setEditingLog(null);
+      setToastMessage("업무일지 내용이 성공적으로 수정되었습니다.");
+      setLogSavedToast(true);
+      setTimeout(() => setLogSavedToast(false), 3000);
+    } catch (err) {
+      alert("업무일지 수정 중 오류: " + err.message);
+    }
+  };
+
   const filteredLogs = useMemo(() => {
     return workLogs
       .filter((log) => {
@@ -3763,11 +3962,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold h-7 text-[10.5px]">
                 <th className="py-1 px-2 w-[10%] text-center">일자</th>
                 <th className="py-1 px-2 w-[8%] text-center">공장</th>
-                <th className="py-1 px-2 w-[13%]">작성자</th>
-                <th className="py-1 px-2 w-[44%]">작업 내용</th>
+                <th className="py-1 px-2 w-[12%]">작성자</th>
+                <th className="py-1 px-2 w-[38%]">작업 내용</th>
                 <th className="py-1 px-2 w-[10%]">특이사항</th>
                 <th className="py-1 px-2 w-[11%] text-center">결재 현황</th>
-                <th className="py-1 px-1 w-[4%] text-center"></th>
+                <th className="py-1 px-2 w-[11%] text-center">수정 / 관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -3861,19 +4060,40 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       )}
                     </td>
 
-                    <td className="py-1 px-1 text-center">
-                      {(currentProfile?.name === log.writer || isAdmin) && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteLog(log.id);
-                          }}
-                          className="p-0.5 text-slate-300 hover:text-rose-600 transition-colors"
-                          title="삭제"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
+                    {/* 수정 / 관리 열 */}
+                    <td className="py-1 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {isWorkLogApproved(log) ? (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9.5px] font-bold bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500 border border-slate-200/80 dark:border-slate-700 cursor-not-allowed select-none shadow-2xs"
+                            title="결재가 완료되어 내용 수정이 불가합니다."
+                          >
+                            <Lock className="w-2.5 h-2.5" />
+                            <span>수정불가</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(log)}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9.5px] font-black bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/70 dark:text-blue-300 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 shadow-2xs active:scale-95 transition-all cursor-pointer ring-1 ring-blue-400/20"
+                            title="결재 전 일지 내용 수정"
+                          >
+                            <Edit3 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                            <span>내용수정</span>
+                          </button>
+                        )}
+
+                        {(currentProfile?.name === log.writer || isAdmin) && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLog(log.id)}
+                            className="p-1 text-slate-300 hover:text-rose-600 transition-colors rounded hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                   );
@@ -4095,6 +4315,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     }`}>
                       {selectedLogDetail.plant}
                     </span>
+                    {isWorkLogApproved(selectedLogDetail) ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>결재완료 (수정불가)</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const logToEdit = selectedLogDetail;
+                          setSelectedLogDetail(null);
+                          handleOpenEditModal(logToEdit);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/70 dark:text-blue-300 dark:hover:bg-blue-900 border border-blue-300 dark:border-blue-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                        title="결재 전 일지 내용 수정"
+                      >
+                        <Edit3 className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                        <span>내용수정</span>
+                      </button>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {selectedLogDetail.date} ({selectedLogDetail.shift || "주간"}) • {selectedLogDetail.createdAt || "최근 작성"}
@@ -4411,7 +4651,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
             {/* Footer Buttons */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-              <div>
+              <div className="flex items-center gap-2">
+                {!isWorkLogApproved(selectedLogDetail) && (
+                  <button
+                    onClick={() => {
+                      const logToEdit = selectedLogDetail;
+                      setSelectedLogDetail(null);
+                      handleOpenEditModal(logToEdit);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-xs font-black transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>내용수정</span>
+                  </button>
+                )}
+
                 {(currentProfile?.name === selectedLogDetail.writer || isAdmin) && (
                   <button
                     onClick={() => {
@@ -4435,6 +4689,275 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 닫기
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ✏️ 일일업무일지 내용 수정 모달 (등록 이후 ~ 결재 완료 전까지만 수정 가능) */}
+      {/* ========================================================================= */}
+      {editingLog && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditingLog(null);
+          }}
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn overflow-y-auto cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-6 border-2 border-blue-500/40 dark:border-blue-600/40 shadow-2xl space-y-4 my-6 animate-scaleUp cursor-default"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
+                      일일업무일지 내용 수정
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      결재 전 수정
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {editFormData.plant} • {editFormData.writer} {editFormData.title || ""} [{editFormData.process || "생산"}]
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setEditingLog(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Alert banner */}
+            <div className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/60 flex items-center gap-2 text-xs text-blue-900 dark:text-blue-200">
+              <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>
+                결재 완료 이전이므로 일지 내용 수정이 가능합니다. (결재 완료 후에는 수정이 엄격히 제한됩니다.)
+              </span>
+            </div>
+
+            {/* Form Content */}
+            <form onSubmit={handleSaveEditedLog} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">작성일자</label>
+                  <input
+                    type="date"
+                    value={editFormData.date}
+                    onChange={(e) => setEditFormData({ ...editFormData, date: e.target.value })}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">소속공장</label>
+                  <select
+                    value={editFormData.plant}
+                    onChange={(e) => setEditFormData({ ...editFormData, plant: e.target.value })}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  >
+                    <option value="삼랑진공장">삼랑진공장</option>
+                    <option value="한림공장">한림공장</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">근무형태</label>
+                  <select
+                    value={editFormData.shift}
+                    onChange={(e) => setEditFormData({ ...editFormData, shift: e.target.value })}
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  >
+                    <option value="주간">주간</option>
+                    <option value="야간">야간</option>
+                    <option value="특근">주말 특근</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">작성자 / 공정</label>
+                  <input
+                    type="text"
+                    value={`${editFormData.writer} ${editFormData.title || ""} (${editFormData.process || "생산"})`}
+                    disabled
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 text-xs font-bold text-slate-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">담당 라인 / 설비</label>
+                  <input
+                    type="text"
+                    value={editFormData.line}
+                    onChange={(e) => setEditFormData({ ...editFormData, line: e.target.value })}
+                    placeholder="예: PCM 1호, JA 가공 2호기 등"
+                    className="w-full px-2.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+              </div>
+
+              {/* 설비보전 항목 편집 (설비보전 일지인 경우) */}
+              {editMaintenanceItems && editMaintenanceItems.length > 0 && (
+                <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
+                    <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Wrench className="w-3.5 h-3.5 text-blue-600" />
+                      <span>설비보전 항목 ({editMaintenanceItems.length}건)</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddEditMaintenanceItem}
+                      className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10.5px] font-bold transition-all"
+                    >
+                      + 항목 추가
+                    </button>
+                  </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {editMaintenanceItems.map((item, idx) => (
+                      <div key={item.id || idx} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-[10.5px] text-slate-400">#{idx + 1}</span>
+                          <select
+                            value={item.category}
+                            onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "category", e.target.value)}
+                            className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold"
+                          >
+                            {JAEYUL_EQUIPMENT_CATEGORIES.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                          <select
+                            value={item.equipmentName}
+                            onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "equipmentName", e.target.value)}
+                            className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold flex-1"
+                          >
+                            {(JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category] || JAEYUL_EQUIPMENT_OPTIONS).map((eq) => (
+                              <option key={eq} value={eq}>{eq}</option>
+                            ))}
+                          </select>
+                          {editMaintenanceItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditMaintenanceItem(item.id)}
+                              className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          rows="2"
+                          value={item.content}
+                          onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "content", e.target.value)}
+                          placeholder="설비보전 작업 및 조치 내용 입력..."
+                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 작업 내용 전문 (표준) */}
+              {(!editMaintenanceItems || editMaintenanceItems.length === 0) && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    주요 작업 실적 및 상세 내용
+                  </label>
+                  <textarea
+                    rows="5"
+                    value={editFormData.workContent}
+                    onChange={(e) => setEditFormData({ ...editFormData, workContent: e.target.value })}
+                    placeholder="작업 실적, 생산 수량, 공정 진행 내용 등을 수정해 주세요."
+                    className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs leading-relaxed text-slate-900 dark:text-white"
+                  ></textarea>
+                </div>
+              )}
+
+              {/* 특이사항 */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  특이사항 및 전달사항
+                </label>
+                <input
+                  type="text"
+                  value={editFormData.issues}
+                  onChange={(e) => setEditFormData({ ...editFormData, issues: e.target.value })}
+                  placeholder="설비 이상, 원료 교체, 품질 이슈 등 (없을 시 특이사항 없음)"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* 사진 첨부 관리 */}
+              <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>현장 사진 증빙 ({(editFormData.images || []).length}/5장)</span>
+                  </span>
+                  {(editFormData.images || []).length < 5 && (
+                    <label className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 text-[10.5px] font-bold cursor-pointer transition-all">
+                      <Plus className="w-3 h-3" />
+                      <span>사진 추가</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleEditLogImageFiles(e.target.files)}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {Array.isArray(editFormData.images) && editFormData.images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    {editFormData.images.map((img, idx) => (
+                      <div key={img.id || idx} className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 aspect-square">
+                        <img
+                          src={img.dataUrl}
+                          alt={`사진 ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveEditLogImage(idx)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white shadow-sm hover:bg-rose-700 transition-all cursor-pointer"
+                          title="사진 삭제"
+                        >
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingLog(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="flex items-center gap-1.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black shadow-lg shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>수정 내용 저장</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

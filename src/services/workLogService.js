@@ -190,9 +190,28 @@ export const getWorkLogs = () => {
   return getLocalWorkLogs();
 };
 
+// Check if a work log has already been approved
+export const isWorkLogApproved = (log) => {
+  if (!log) return false;
+  return (
+    log.approvalStatus === "결재완료" ||
+    log.approvalStatus === "APPROVED" ||
+    log.status === "APPROVED"
+  );
+};
+
 // Save a work log (Cloud Firestore + Local Cache)
 export const saveWorkLog = async (newLog) => {
   const logId = String(newLog.id || Date.now());
+  const current = getLocalWorkLogs();
+  const existingLog = current.find((l) => String(l.id) === logId);
+
+  // Guard: If already approved and this is an edit attempt, reject
+  if (existingLog && isWorkLogApproved(existingLog) && !newLog._isApprovalAction) {
+    console.warn("Cannot edit an already approved work log:", logId);
+    throw new Error("결재가 완료된 업무일지는 수정할 수 없습니다.");
+  }
+
   const cleanData = sanitizeLog(newLog);
   const logData = {
     ...cleanData,
@@ -207,7 +226,6 @@ export const saveWorkLog = async (newLog) => {
   };
 
   // 1. Update local cache immediately
-  const current = getLocalWorkLogs();
   const updatedLocal = [logData, ...current.filter((l) => String(l.id) !== logId)];
   saveLocalWorkLogs(updatedLocal);
 
@@ -217,6 +235,39 @@ export const saveWorkLog = async (newLog) => {
     console.log("Work log successfully synced to Firestore cloud:", logId);
   } catch (e) {
     console.error("Firestore cloud sync error:", e);
+  }
+
+  return updatedLocal;
+};
+
+// Update an existing work log before approval
+export const updateWorkLog = async (id, updatedFields = {}) => {
+  const logId = String(id);
+  const current = getLocalWorkLogs();
+  const target = current.find((l) => String(l.id) === logId);
+  if (!target) throw new Error("수정할 업무일지를 찾을 수 없습니다.");
+
+  if (isWorkLogApproved(target)) {
+    throw new Error("결재가 완료된 업무일지는 수정할 수 없습니다.");
+  }
+
+  const merged = {
+    ...target,
+    ...updatedFields,
+    id: logId,
+    updatedAt: new Date().toISOString()
+  };
+
+  const cleanData = sanitizeLog(merged);
+  const parsedClean = parseLogFields(cleanData);
+  const updatedLocal = current.map((l) => (String(l.id) === logId ? parsedClean : l));
+  saveLocalWorkLogs(updatedLocal);
+
+  try {
+    await setDoc(doc(db, COLLECTION_NAME, logId), cleanData, { merge: true });
+    console.log("Work log updated & synced to Firestore:", logId);
+  } catch (e) {
+    console.error("Firestore update sync error:", e);
   }
 
   return updatedLocal;
