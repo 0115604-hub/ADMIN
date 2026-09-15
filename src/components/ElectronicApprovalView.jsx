@@ -99,6 +99,38 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
   });
 };
 
+// Helper: Format concise approval document title for clean table view
+export const formatConciseApprovalTitle = (rawTitle) => {
+  if (!rawTitle) return "";
+  let str = String(rawTitle).trim();
+
+  // 1. Remove bracket tags like [특근보고서], [근태보고서], [삼랑진공장], [한림공장], [통합]
+  str = str.replace(/^\[(특근보고서|근태보고서|삼랑진공장|한림공장|공장취합|통합)\]\s*/g, "");
+
+  // 2. Remove redundant factory names inside title (plant is already in plant column)
+  str = str.replace(/삼랑진공장\s*/g, "");
+  str = str.replace(/한림공장\s*/g, "");
+
+  // 3. Simplify corporate names (e.g. (주)조영산업 -> 조영, (주)오륙 -> 오륙)
+  str = str.replace(/\(주\)조영산업/g, "조영");
+  str = str.replace(/\(주\)오륙/g, "오륙");
+  str = str.replace(/\(주\)/g, "");
+  str = str.replace(/조영산업/g, "조영");
+  str = str.replace(/유성산업/g, "유성");
+
+  // 4. Simplify repetitive report keywords
+  str = str.replace(/특근실시보고서|특근실시 보고서/g, "특근보고서");
+  str = str.replace(/근태 및 특근보고서|근태 및 특근실시 보고서/g, "근태보고서");
+
+  // 5. Remove trailing "의 건", "의건"
+  str = str.replace(/\s*의\s*건$/, "");
+
+  // Clean excessive spaces
+  str = str.replace(/\s{2,}/g, " ").trim();
+
+  return str;
+};
+
 export const ElectronicApprovalView = () => {
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
@@ -576,8 +608,7 @@ export const ElectronicApprovalView = () => {
             onClick={handleOpenDraftModal}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0"
           >
-            <Plus className="w-4 h-4" />
-            <span>+ 새 결재 기안서 작성</span>
+            <span>새 결재 기안서 작성</span>
           </button>
         </div>
 
@@ -787,7 +818,7 @@ export const ElectronicApprovalView = () => {
                       <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           <span className="hover:underline text-slate-900 dark:text-white text-xs sm:text-sm font-black">
-                            {doc.title}
+                            {formatConciseApprovalTitle(doc.title)}
                           </span>
                         </div>
                       </td>
