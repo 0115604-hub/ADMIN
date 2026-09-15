@@ -194,8 +194,16 @@ export const formatShortMonthDay = (dateStrOrDay) => {
 
 // ⭐ 공장 뱃지 렌더링 함수
 export const renderPlantBadge = (plantName) => {
-  const isSam = plantName === "삼랑진공장";
-  const isHal = plantName === "한림공장";
+  let displayPlant = String(plantName || "").trim();
+  if (displayPlant.includes("한림") && !displayPlant.includes("삼랑진")) {
+    displayPlant = "한림공장";
+  } else if (displayPlant.includes("삼랑진") && !displayPlant.includes("한림")) {
+    displayPlant = "삼랑진공장";
+  } else if (!displayPlant || displayPlant.includes("전체") || displayPlant.includes("삼랑진/한림") || displayPlant.includes("삼랑진한림")) {
+    displayPlant = "한림공장";
+  }
+  const isSam = displayPlant === "삼랑진공장";
+  const isHal = displayPlant === "한림공장";
   return (
     <span
       className={`px-2 py-0.5 rounded-md text-[11px] font-black border shadow-xs shrink-0 ${
@@ -206,14 +214,16 @@ export const renderPlantBadge = (plantName) => {
           : "bg-slate-800 text-slate-300 border-slate-700"
       }`}
     >
-      {plantName || "삼랑진공장"}
+      {displayPlant || "삼랑진공장"}
     </span>
   );
 };
 
 // ⭐ 협력사 뱃지 렌더링 함수 (오륙, 유성, 조영, 한울, 부림텍 개별 전용 컬러 뱃지)
 export const renderCompanyBadge = (compName) => {
-  const clean = String(compName || "").replace(/\(주\)/g, "").trim();
+  let clean = String(compName || "").replace(/\(주\)/g, "").trim();
+  if (clean === "조영산업") clean = "조영";
+  if (clean === "유성산업") clean = "유성";
   let badgeStyle = "bg-slate-800 text-slate-200 border-slate-700";
   if (clean.includes("오륙")) {
     badgeStyle = "bg-blue-950/90 text-blue-300 border-blue-700/80";
@@ -245,7 +255,15 @@ export const getFullCompanyPlantLabel = (report) => {
       comp = "(주)오륙";
     }
   }
-  const plant = report.plant || getPlantForCompany(comp);
+  let plant = report.plant;
+  if (!plant || plant.includes("삼랑진/한림") || plant.includes("전체") || plant.includes("삼랑진한림")) {
+    plant = getPlantForCompany(comp);
+  }
+  if (comp.includes("조영") || comp.includes("한울") || comp.includes("부림")) {
+    plant = "한림공장";
+  } else if (comp.includes("오륙") || comp.includes("유성")) {
+    plant = "삼랑진공장";
+  }
   return `${plant} ${comp}`;
 };
 
@@ -2689,7 +2707,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           <div className="flex-1 min-w-0 space-y-1.5">
                             {group.reports.map((report, rIdx) => {
                               const isSynthesized = !!report.isSynthesized;
-                              const plantName = report.plant || getPlantForCompany(report.company || "");
+                              let plantName = report.plant;
+                              if (!plantName || plantName.includes("삼랑진/한림") || plantName.includes("삼랑진한림") || plantName.includes("전체")) {
+                                plantName = getPlantForCompany(report.company || "");
+                              }
+                              if (report.company?.includes("조영") || report.company?.includes("한울") || report.company?.includes("부림")) {
+                                plantName = "한림공장";
+                              } else if (report.company?.includes("오륙") || report.company?.includes("유성")) {
+                                plantName = "삼랑진공장";
+                              }
                               let companyName = report.company || "";
                               if (!companyName || companyName === "전체") {
                                 if (Array.isArray(report.companies) && report.companies.length === 1) {

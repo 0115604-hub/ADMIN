@@ -53,6 +53,45 @@ export const COMPANY_APPROVAL_MANAGERS = {
     ceo: "권태형",
     ceoRole: "대표"
   },
+  "(주)조영산업": {
+    company: "(주)조영산업",
+    plant: "한림공장",
+    author: "김동욱 책임",
+    drafter: "김동욱",
+    drafterRole: "선임",
+    lead: "김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "권태형",
+    ceoRole: "대표"
+  },
+  "조영": {
+    company: "(주)조영산업",
+    plant: "한림공장",
+    author: "김동욱 책임",
+    drafter: "김동욱",
+    drafterRole: "선임",
+    lead: "김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "권태형",
+    ceoRole: "대표"
+  },
+  "조영산업": {
+    company: "(주)조영산업",
+    plant: "한림공장",
+    author: "김동욱 책임",
+    drafter: "김동욱",
+    drafterRole: "선임",
+    lead: "김동욱",
+    leadRole: "책임",
+    director: "이명재",
+    directorRole: "이사",
+    ceo: "권태형",
+    ceoRole: "대표"
+  },
   "한울": {
     company: "한울",
     plant: "한림공장",

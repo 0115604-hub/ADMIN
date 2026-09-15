@@ -21,7 +21,8 @@ export const PLANT_COMPANIES = {
 };
 
 export const getPlantForCompany = (companyName) => {
-  if (companyName === "(주)오륙" || companyName === "유성" || companyName === "오륙" || companyName === "유성산업") {
+  const str = String(companyName || "").trim();
+  if (str.includes("오륙") || str.includes("유성")) {
     return "삼랑진공장";
   }
   return "한림공장";
