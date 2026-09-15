@@ -29,6 +29,10 @@ import {
   saveHanulSettlementMonthData
 } from "../services/hanulSettlementService";
 import { convertFileToImages } from "../utils/fileToImageConverter";
+import {
+  parseHanulExpensesFromMultipleFiles,
+  mergeExtractedExpensesWithState
+} from "../utils/hanulExpenseParser";
 import HanulDocumentImageViewer from "./HanulDocumentImageViewer";
 import * as XLSX from "xlsx";
 
@@ -126,6 +130,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
   const [status, setStatus] = useState("DRAFT");
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [autoParsedBanner, setAutoParsedBanner] = useState(null); // { fileName, sheetName, appliedCount, totalExpense }
 
   // UI View Modes: "split" (기본: 좌측 항목입력 / 우측 증빙뷰어), "form" (항목만 크게), "imageOnly" (이미지만 크게)
   const [viewMode, setViewMode] = useState("split");
@@ -291,7 +296,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
     await persistCurrentData(selectedMonth, { expenses: reordered });
   };
 
-  // Handle File Upload & Conversion to Image with Multi-File Progress & Non-Blocking Yields
+  // Handle File Upload, Expense Auto-Parsing & Conversion to Image
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -303,15 +308,24 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
       currentFileIndex: 1,
       totalFiles: files.length,
       currentFileName: files[0].name,
-      statusText: `총 ${files.length}개 파일 업로드 및 분석 준비 중...`,
+      statusText: `총 ${files.length}개 파일 업로드 및 지출내역 분석 준비 중...`,
       stage: "converting"
     });
 
     // Give browser time to paint the modal and progress bar
     await new Promise((r) => setTimeout(r, 60));
 
+    // 🌟 1. Concurrently start analyzing files for expense breakdown table
+    let autoParsedExpenseResult = null;
+    try {
+      autoParsedExpenseResult = await parseHanulExpensesFromMultipleFiles(files);
+    } catch (parseErr) {
+      console.warn("Auto-parsing expenses error:", parseErr);
+    }
+
     const newAttachments = [];
 
+    // 🌟 2. Convert all files into high-quality preview images for document viewer
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const basePercent = Math.round((i / files.length) * 85);
@@ -321,7 +335,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
         currentFileIndex: i + 1,
         totalFiles: files.length,
         currentFileName: file.name,
-        statusText: `[${i + 1}/${files.length}] '${file.name}' 이미지 변환 시작...`,
+        statusText: `[${i + 1}/${files.length}] '${file.name}' 이미지 변환 중...`,
         stage: "converting"
       });
 
@@ -359,7 +373,9 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
       setUploadProgress((prev) => ({
         ...prev,
         percent: 90,
-        statusText: `총 ${newAttachments.length}개 파일 안전 저장 및 화면 동기화 중...`,
+        statusText: autoParsedExpenseResult
+          ? `[${autoParsedExpenseResult.fileName}] 지출내역 자동 추출 및 왼쪽 항목 입력 중...`
+          : `총 ${newAttachments.length}개 파일 안전 저장 및 화면 동기화 중...`,
         stage: "saving"
       }));
 
@@ -370,18 +386,43 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
       setActiveViewerAttId(newAttachments[0].id);
       setActiveViewerPageIndex(0);
 
-      await persistCurrentData(selectedMonth, { attachments: mergedAttachments });
+      // 🌟 3. Auto-populate left items with the parsed expense breakdown
+      let finalExpenses = latestStateRef.current.expenses;
+      if (autoParsedExpenseResult && autoParsedExpenseResult.items && autoParsedExpenseResult.items.length > 0) {
+        const merged = mergeExtractedExpensesWithState(autoParsedExpenseResult, latestStateRef.current.expenses);
+        finalExpenses = merged.expenses;
+        setExpenses(finalExpenses);
+        setAutoParsedBanner({
+          fileName: merged.sourceFileName,
+          sheetName: merged.sourceSheetName,
+          appliedCount: merged.appliedCount,
+          totalExpense: merged.totalExpense
+        });
+      }
+
+      await persistCurrentData(selectedMonth, {
+        attachments: mergedAttachments,
+        expenses: finalExpenses
+      });
+
+      const completionMsg = autoParsedExpenseResult
+        ? `✨ [${autoParsedExpenseResult.fileName}${autoParsedExpenseResult.sheetName ? ` • ${autoParsedExpenseResult.sheetName}` : ""}]에서 ${autoParsedExpenseResult.items.length}개 지출 항목(총 ₩${autoParsedExpenseResult.totalExpense.toLocaleString()})이 자동 입력되었습니다!`
+        : `✅ 총 ${newAttachments.length}개 파일 이미지 변환 및 업로드 완료!`;
 
       setUploadProgress({
         percent: 100,
         currentFileIndex: files.length,
         totalFiles: files.length,
         currentFileName: "",
-        statusText: `✅ 총 ${newAttachments.length}개 파일 이미지 변환 및 업로드 완료!`,
+        statusText: completionMsg,
         stage: "completed"
       });
 
-      // Show 100% completion for 2.2 seconds before closing progress bar
+      // Show completion toast
+      setIsSavedToast(true);
+      setTimeout(() => setIsSavedToast(false), 4000);
+
+      // Show 100% completion for 2.4 seconds before closing progress bar
       setTimeout(() => {
         setIsConverting(false);
         setUploadProgress({
@@ -392,7 +433,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
           statusText: "",
           stage: "idle"
         });
-      }, 2200);
+      }, 2400);
     } else {
       setIsConverting(false);
     }
@@ -435,6 +476,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
     if (newMonth === selectedMonth) return;
     await persistCurrentData(selectedMonth);
     setSelectedMonth(newMonth);
+    setAutoParsedBanner(null);
   };
 
   // Explicit Save Current Month Data
@@ -596,14 +638,14 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
               onClick={() => fileInputRef.current?.click()}
               disabled={isConverting}
               className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black flex items-center gap-1 shadow-sm shadow-emerald-600/30 cursor-pointer active:scale-95 transition-all disabled:opacity-50"
-              title="PDF, 엑셀, 영수증 사진을 업로드하면 자동으로 고화질 이미지로 변환되어 우측 뷰어에 표시됩니다"
+              title="엑셀, PDF, 영수증 파일을 업로드하면 지출내역을 자동 분석하여 왼쪽 항목에 즉시 입력하고 우측 뷰어에 고화질 이미지로 표시합니다"
             >
               {isConverting ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <UploadCloud className="w-3.5 h-3.5 text-emerald-200" />
               )}
-              <span>{isConverting ? "변환중..." : "증빙 파일 업로드"}</span>
+              <span>{isConverting ? "분석 및 변환중..." : "지출/증빙 파일 업로드 (자동분석)"}</span>
             </button>
 
             <button
@@ -787,6 +829,39 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
           {/* 🌟 1. [LEFT PANEL]: Expense Input Grid (항목 패널이 왼쪽) - Slim & Compact for High Visibility */}
           <div className={`${viewMode === "split" ? "w-full md:w-[50%] lg:w-[48%] border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800" : "w-full"} p-2.5 sm:p-3 overflow-y-auto flex flex-col space-y-1.5 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700`}>
+            
+            {/* 🌟 Auto-Parsed Notification Banner */}
+            {autoParsedBanner && (
+              <div className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 dark:from-emerald-950/70 dark:via-teal-950/50 dark:to-indigo-950/50 border-2 border-emerald-500/80 dark:border-emerald-500 shadow-sm flex items-center justify-between gap-2 animate-fadeIn shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-emerald-600 text-white shadow-xs shrink-0">
+                    <Sparkles className="w-4 h-4 text-emerald-100" />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-black text-emerald-950 dark:text-emerald-100 truncate">
+                        ✨ [{autoParsedBanner.fileName}{autoParsedBanner.sheetName ? ` • ${autoParsedBanner.sheetName}` : ""}] 지출내역 자동 분석 완료!
+                      </span>
+                      <span className="px-2 py-0.2 rounded-full text-[10.5px] font-black bg-emerald-500 text-slate-950 shadow-2xs">
+                        총 {autoParsedBanner.appliedCount}개 항목 입력됨
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold mt-0.5">
+                      공제총액: <strong className="font-mono font-black text-slate-950 dark:text-white">₩{autoParsedBanner.totalExpense.toLocaleString()}</strong> 이 왼쪽 항목에 자동 반영 및 저장되었습니다.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoParsedBanner(null)}
+                  className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer shrink-0"
+                  title="배너 닫기"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             {/* List of Compact Expense Item Rows */}
             <div className={`grid grid-cols-1 ${viewMode === "form" ? "md:grid-cols-2" : "grid-cols-1"} gap-1.5`}>
               {expenses.map((exp, idx) => {
