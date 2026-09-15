@@ -355,17 +355,30 @@ export function parseSheetRowsForExpenses(rows, sheetName = "") {
   const finalItems = [...uniqueMap.values(), ...customItems];
   const totalExpense = finalItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
 
-  // Score sheet suitability
-  let score = foundCategoryCount * 10;
-  if (sheetName.includes("지출") || sheetName.includes("공제") || sheetName.includes("공통비")) score += 50;
-  if (sheetName.includes("260") || sheetName.includes("정산")) score += 30;
-  if (hasExpenseHeaderSection) score += 40;
-  if (totalExpense > 0) score += 30;
+  // 🌟 User Requirement: Prioritize the breakdown file containing 10~20 expense items
+  const itemCount = finalItems.length;
+  let score = foundCategoryCount * 25;
+
+  if (itemCount >= 8 && itemCount <= 25) {
+    score += 250;
+    if (itemCount >= 10 && itemCount <= 20) {
+      score += 200; // Strong bonus for exactly 10~20 items!
+    }
+  } else if (itemCount > 0 && itemCount < 8) {
+    score += itemCount * 10;
+  }
+
+  const cleanSheetName = (sheetName || "").toLowerCase();
+  if (cleanSheetName.includes("지출") || cleanSheetName.includes("공제") || cleanSheetName.includes("공통비")) score += 120;
+  if (cleanSheetName.includes("260") || cleanSheetName.includes("정산") || cleanSheetName.includes("명세") || cleanSheetName.includes("마스터")) score += 80;
+  if (hasExpenseHeaderSection) score += 100;
+  if (totalExpense > 0) score += 50;
 
   return {
     items: finalItems,
     totalExpense,
     foundCategoryCount,
+    itemCount,
     score
   };
 }
@@ -410,7 +423,8 @@ export async function parseHanulExpensesFromFile(file) {
           score: highestScore,
           items: bestSheetResult.items,
           totalExpense: bestSheetResult.totalExpense,
-          matchedCount: bestSheetResult.foundCategoryCount
+          matchedCount: bestSheetResult.foundCategoryCount,
+          itemCount: bestSheetResult.items.length
         };
       }
     } catch (err) {
@@ -460,7 +474,8 @@ export async function parseHanulExpensesFromFile(file) {
           score: res.score,
           items: res.items,
           totalExpense: res.totalExpense,
-          matchedCount: res.foundCategoryCount
+          matchedCount: res.foundCategoryCount,
+          itemCount: res.items.length
         };
       }
     } catch (err) {
@@ -472,7 +487,7 @@ export async function parseHanulExpensesFromFile(file) {
 }
 
 /**
- * Analyzes multiple uploaded files and identifies the one containing the expense breakdown.
+ * Analyzes multiple uploaded files and identifies the one containing the expense breakdown table (10~20 items).
  * Returns the best parsing result or null.
  */
 export async function parseHanulExpensesFromMultipleFiles(files = []) {
@@ -489,10 +504,17 @@ export async function parseHanulExpensesFromMultipleFiles(files = []) {
 
   if (results.length === 0) return null;
 
-  // Sort by highest score / most extracted categories / total amount
+  // Sort: prioritize files with 10~20 items, highest score, and highest valid expense total
   results.sort((a, b) => {
+    // 1. Highest score
     if (b.score !== a.score) return b.score - a.score;
+    // 2. Sweet spot (10~20 items)
+    const aInSweetSpot = a.itemCount >= 10 && a.itemCount <= 20 ? 1 : 0;
+    const bInSweetSpot = b.itemCount >= 10 && b.itemCount <= 20 ? 1 : 0;
+    if (bInSweetSpot !== aInSweetSpot) return bInSweetSpot - aInSweetSpot;
+    // 3. Matched categories count
     if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
+    // 4. Total expense
     return b.totalExpense - a.totalExpense;
   });
 
@@ -500,8 +522,8 @@ export async function parseHanulExpensesFromMultipleFiles(files = []) {
 }
 
 /**
- * Merges extracted expense items into the standard 16 category structure.
- * Guaranteed to preserve all standard categories while applying extracted values & adding custom items.
+ * 🌟 User Requirement: "그 파일의 내용만 왼쪽항목에 정리되면 됩니다."
+ * Populates the left-hand expense list using ONLY the extracted items from the 10~20 item breakdown file.
  */
 export function mergeExtractedExpensesWithState(parsedResult, currentExpenses = []) {
   if (!parsedResult || !parsedResult.items || parsedResult.items.length === 0) {
@@ -510,63 +532,37 @@ export function mergeExtractedExpensesWithState(parsedResult, currentExpenses = 
 
   const parsedItems = parsedResult.items;
 
-  // Base list initialized from standard 16 categories
-  const baseCategories = CATEGORY_MATCH_RULES.map((rule) => {
-    const existing = currentExpenses.find(
-      (e) => e.id === rule.id || e.category?.includes(rule.standardName.replace(/^\d+\.\s*/, ""))
-    );
+  // Format ONLY the items from the extracted 10~20 item breakdown file with sequential numbering
+  const finalExpenses = parsedItems
+    .filter((it) => it && (it.category || it.rawCategory) && (Number(it.amount) > 0 || String(it.note || "").trim() !== ""))
+    .map((item, idx) => {
+      const raw = (item.rawCategory || item.category || `항목 ${idx + 1}`).trim();
+      const cleanName = raw.replace(/^\d+\s*[\.\)]\s*/, "").trim();
+      return {
+        id: `exp_parsed_${idx + 1}_${Date.now()}`,
+        category: `${idx + 1}. ${cleanName || "공통비/공제 항목"}`,
+        amount: Number(item.amount) || 0,
+        note: item.note || (item.matchedRule ? item.matchedRule.defaultNote : "")
+      };
+    });
+
+  const resultList = finalExpenses.length > 0 ? finalExpenses : parsedItems.map((item, idx) => {
+    const raw = (item.rawCategory || item.category || `항목 ${idx + 1}`).trim();
+    const cleanName = raw.replace(/^\d+\s*[\.\)]\s*/, "").trim();
     return {
-      id: rule.id,
-      category: rule.standardName,
-      amount: existing?.amount || 0,
-      note: existing?.note || rule.defaultNote
+      id: `exp_parsed_${idx + 1}_${Date.now()}`,
+      category: `${idx + 1}. ${cleanName || "공통비/공제 항목"}`,
+      amount: Number(item.amount) || 0,
+      note: item.note || ""
     };
   });
 
-  let appliedCount = 0;
-  const customItems = [];
-
-  for (const pItem of parsedItems) {
-    if (pItem.matchedRule) {
-      const idx = baseCategories.findIndex((b) => b.id === pItem.matchedRule.id);
-      if (idx !== -1) {
-        baseCategories[idx] = {
-          ...baseCategories[idx],
-          amount: Number(pItem.amount) || 0,
-          note: pItem.note || baseCategories[idx].note || pItem.matchedRule.defaultNote
-        };
-        appliedCount++;
-      }
-    } else {
-      // Custom / Extra Item
-      customItems.push({
-        id: `exp_custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        category: pItem.rawCategory || pItem.category || "기타 공제 항목",
-        amount: Number(pItem.amount) || 0,
-        note: pItem.note || ""
-      });
-      appliedCount++;
-    }
-  }
-
-  const combined = [...baseCategories, ...customItems];
-
-  // Renumber sequentially
-  const renumbered = combined.map((item, idx) => {
-    const newNum = idx + 1;
-    const cleanName = (item.category || "").replace(/^\d+\s*[\.\)]\s*/, "").trim();
-    return {
-      ...item,
-      category: `${newNum}. ${cleanName || "공통비/공제 항목"}`
-    };
-  });
-
-  const totalExpense = renumbered.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  const totalExpense = resultList.reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
   return {
-    expenses: renumbered,
+    expenses: resultList,
     totalExpense,
-    appliedCount,
+    appliedCount: resultList.length,
     sourceFileName: parsedResult.fileName,
     sourceSheetName: parsedResult.sheetName
   };
