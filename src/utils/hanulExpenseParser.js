@@ -307,6 +307,19 @@ export async function parseHanulExpensesFromFile(file) {
 }
 
 /**
+ * Helper to clean OCR numeric amounts (handles commas, periods used as thousands separators, etc.)
+ */
+function cleanOCRAmount(str) {
+  if (!str) return 0;
+  let clean = String(str).trim();
+  // Handle dot as thousands separator: e.g. 6928.900 -> 6928900, 150.000 -> 150000
+  clean = clean.replace(/(\d+)\.(\d{3})\b/g, "$1$2");
+  clean = clean.replace(/[^0-9]/g, "");
+  const num = Number(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
  * Robust parser that converts raw OCR text from an image into structured expense items
  */
 export function parseOCRTextToExpenseItems(text, fileName = "image.png") {
@@ -321,7 +334,7 @@ export function parseOCRTextToExpenseItems(text, fileName = "image.png") {
     // Filter out obvious metadata lines
     if (
       /(사업자번호|등록번호|전화|TEL|FAX|작성일자|발행일자|통장입금)/i.test(rawLine) &&
-      !/(인건비|보험|식대|차량|급여|소계|합계)/.test(rawLine)
+      !/(인건비|보험|식대|차량|급여|소계|합계|비품|부업장)/.test(rawLine)
     ) {
       continue;
     }
@@ -344,49 +357,75 @@ export function parseOCRTextToExpenseItems(text, fileName = "image.png") {
       .replace(/\b\d{2,4}-\d{3,4}-\d{4}\b/g, "")
       .replace(/\b20\d{2}[-./]\d{1,2}[-./]\d{1,2}\b/g, "");
 
-    // Match numeric candidates (comma separated numbers or 4+ digits)
-    const numMatches = sanitizedLine.match(/\b\d{1,3}(?:,\d{3})+\b|\b\d{5,10}\b/g);
-    if (!numMatches || numMatches.length === 0) continue;
+    // Match numeric candidates (comma or dot separated numbers or 4+ digits)
+    const numMatches = sanitizedLine.match(/\b\d+(?:[,\.]\d{3})+\b|\b\d{4,12}\b/g);
 
     // Find valid expense amount (exclude years 2024~2027, 2607~2609)
-    const validAmounts = numMatches
-      .map((n) => {
-        const clean = Number(n.replace(/,/g, ""));
-        return isNaN(clean) ? 0 : clean;
-      })
-      .filter(
-        (amt) =>
-          amt >= 1000 &&
-          amt !== 2024 &&
-          amt !== 2025 &&
-          amt !== 2026 &&
-          amt !== 2027 &&
-          amt !== 2607 &&
-          amt !== 2608 &&
-          amt !== 2609
-      );
-
-    if (validAmounts.length === 0) continue;
-
-    // Select the largest number as the line's expense amount
-    const amount = Math.max(...validAmounts);
-
-    // Remove the numeric strings from the line to extract the category and note
-    let textPart = sanitizedLine;
-    for (const nStr of numMatches) {
-      textPart = textPart.replace(nStr, " ");
+    let amount = 0;
+    if (numMatches && numMatches.length > 0) {
+      const validAmounts = numMatches
+        .map(cleanOCRAmount)
+        .filter(
+          (amt) =>
+            amt >= 1000 &&
+            amt !== 2024 &&
+            amt !== 2025 &&
+            amt !== 2026 &&
+            amt !== 2027 &&
+            amt !== 2607 &&
+            amt !== 2608 &&
+            amt !== 2609
+        );
+      if (validAmounts.length > 0) {
+        amount = Math.max(...validAmounts);
+      }
     }
-    // Clean punctuation and units
-    textPart = textPart.replace(/원/g, "").replace(/[|:\-\[\]\(\)]/g, " ").trim();
-    textPart = textPart.replace(/^\d+[\.\)\s]+/, "").trim();
 
-    const textTokens = textPart.split(/\s+/).filter(Boolean);
-    if (textTokens.length === 0) continue;
+    // Remove numeric strings from line to extract category and note
+    let textPart = sanitizedLine;
+    if (numMatches) {
+      for (const nStr of numMatches) {
+        textPart = textPart.replace(nStr, " ");
+      }
+    }
+    // Clean symbols, currency marks, parentheses
+    textPart = textPart.replace(/[¥\\₩wW|\[\]\(\)\{\}\-~?]/g, " ").replace(/\s+/g, " ").trim();
 
-    const category = textTokens[0];
-    const note = textTokens.slice(1).join(" ");
+    // Check if line starts with an item number like "1.", "2.", "10"
+    const leadMatch = textPart.match(/^(\d{1,2})\s*[\.,\s]?\s*(.+)/);
+    let category = "";
+    let note = "";
+
+    if (leadMatch) {
+      const rest = leadMatch[2].trim();
+      const tokens = rest.split(" ").filter(Boolean);
+      category = tokens[0] || "";
+      note = tokens.slice(1).join(" ");
+    } else {
+      const tokens = textPart.split(" ").filter(Boolean);
+      category = tokens[0] || "";
+      note = tokens.slice(1).join(" ");
+    }
 
     if (category.length >= 2 && !/^(합계|소계|총액|총계|총합계|순번|번호|항목)/.test(category)) {
+      // Standardize known Hanul categories for clean presentation
+      if (category.includes("노루법인") || category.includes("노무")) category = "노무법인";
+      else if (category.includes("자동차")) category = "자동차(한울)";
+      else if (category.includes("통근")) category = "통근차량";
+      else if (category.includes("기장")) category = "기장수수료";
+      else if (category.includes("인터넷")) category = "인터넷통신비";
+      else if (category.includes("성실신고")) category = "성실신고용역비";
+      else if (category.includes("개인결산")) category = "개인결산조정료";
+      else if (category.includes("비품")) category = "비품";
+      else if (category.includes("식대")) category = "식대(큰상웰빙푸드)";
+      else if (category.includes("인건비")) category = "인건비";
+      else if (category.includes("4대보험")) category = "4대보험(사업주분)";
+      else if (category.includes("외국인보험") || category.includes("삼성화재")) category = "삼성화재외국인보험";
+      else if (category.includes("비닐")) category = "비닐";
+      else if (category.includes("작업환경")) category = "작업환경측정비";
+      else if (category.includes("부업장")) category = "부업장";
+      else if (category.includes("퇴직금")) category = "퇴직금";
+
       items.push({
         id: `ocr_item_${idx}_${Date.now()}`,
         rawCategory: category,
