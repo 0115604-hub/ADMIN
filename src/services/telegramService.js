@@ -1038,18 +1038,71 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       approvalDocLines = lines.join("\n") + more;
     }
 
-    // 3. 전일 업무일지 미결 (공장별 미승인 일지)
+    // 3. 전일 업무일지 미결 & 미등록
     const workLogs = getLocalWorkLogs();
-    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
-    let workLogLines = "• 없음 (전건 승인완료)";
+    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려" && !l.isDeleted);
+
+    // 전일(이전 근무일) 날짜 계산 (월요일이면 토요일/금요일, 평일이면 어제)
+    const [curY, curM, curD] = todayStr.split("-").map(Number);
+    const curDateObj = new Date(curY, curM - 1, curD);
+    const dayOfWeek = curDateObj.getDay();
+    let daysBack = 1;
+    if (dayOfWeek === 1) daysBack = 2; // 월요일 기준 토요일
+    else if (dayOfWeek === 0) daysBack = 1; // 일요일 기준 토요일
+    const prevDateObj = new Date(curDateObj);
+    prevDateObj.setDate(curDateObj.getDate() - daysBack);
+    const prevDayStr = `${prevDateObj.getFullYear()}-${String(prevDateObj.getMonth() + 1).padStart(2, "0")}-${String(prevDateObj.getDate()).padStart(2, "0")}`;
+
+    // 전일 작성된 일지 목록
+    const prevDayLogs = workLogs.filter(
+      (l) => !l.isDeleted && (l.date === prevDayStr || (l.createdAt && l.createdAt.startsWith(prevDayStr)))
+    );
+    const registeredWriters = new Set(
+      prevDayLogs.map((l) => (l.writer || l.author || l.userName || "").trim()).filter(Boolean)
+    );
+
+    // 전일 연차/휴가자 (연차자는 미등록에서 제외)
+    const prevDayLeaves = leaves.filter((l) => {
+      if (!l.startDate || l.isCompleted || l.isDismissed) return false;
+      const start = l.startDate;
+      const end = l.endDate || l.startDate;
+      return start <= prevDayStr && prevDayStr <= end;
+    });
+    const onLeaveUsers = new Set(prevDayLeaves.map((l) => (l.userName || "").trim()).filter(Boolean));
+
+    // 미등록 검사 대상 작업자 (이명재, 김동욱 제외, 협력사 제외)
+    const samTargetWorkers = ["설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"];
+    const halTargetWorkers = ["우창용", "오상민"];
+
+    const samUnregistered = samTargetWorkers.filter((name) => !registeredWriters.has(name) && !onLeaveUsers.has(name));
+    const halUnregistered = halTargetWorkers.filter((name) => !registeredWriters.has(name) && !onLeaveUsers.has(name));
+    const totalUnregistered = samUnregistered.length + halUnregistered.length;
+
+    // 결재대기 라인
+    let pendingLineStr = "• <b>결재대기:</b> 없음 (전건 승인완료)";
     if (pendingLogs.length > 0) {
-      const lines = pendingLogs.slice(0, 5).map((l) => {
+      const pLines = pendingLogs.slice(0, 5).map((l) => {
         const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-        return `• ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
+        return `  - ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
       });
-      const more = pendingLogs.length > 5 ? `\n• 외 ${pendingLogs.length - 5}건` : "";
-      workLogLines = lines.join("\n") + more;
+      const more = pendingLogs.length > 5 ? `\n  - 외 ${pendingLogs.length - 5}건` : "";
+      pendingLineStr = `• <b>결재대기 (${pendingLogs.length}건):</b>\n${pLines.join("\n")}${more}`;
     }
+
+    // 미등록 라인
+    let unregisteredLineStr = "• <b>일지 미등록:</b> 없음 (전원 등록완료)";
+    if (totalUnregistered > 0) {
+      const uParts = [];
+      if (samUnregistered.length > 0) {
+        uParts.push(`  - 삼랑진: ${samUnregistered.join(", ")}`);
+      }
+      if (halUnregistered.length > 0) {
+        uParts.push(`  - 한림: ${halUnregistered.join(", ")}`);
+      }
+      unregisteredLineStr = `• <b>일지 미등록 (${totalUnregistered}명):</b>\n${uParts.join("\n")}`;
+    }
+
+    const workLogLines = `${pendingLineStr}\n${unregisteredLineStr}`;
 
     // 4. 진행중인 오픈이슈 (미해결 & 미삭제) - 마감일 가까운 순(오름차순) 정렬
     const allUrgent = getLocalUrgentIssues();
@@ -1146,7 +1199,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 📑 <b>[2] 전일 전자결재 미결 ${pendingDocs.length > 0 ? `(${pendingDocs.length}건)` : ""}</b>
 ${approvalDocLines}
 
-📝 <b>[3] 전일 업무일지 미결 ${pendingLogs.length > 0 ? `(${pendingLogs.length}건)` : ""}</b>
+📝 <b>[3] 전일 업무일지 미결 & 미등록</b>
 ${workLogLines}
 
 📌 <b>[4] 진행중인 오픈이슈 ${activeOpenIssues.length > 0 ? `(${activeOpenIssues.length}건)` : ""}</b>
