@@ -167,6 +167,46 @@ export function renderExcelSheetToCanvasImage(sheetName, rows, maxRenderRows = 1
 
 /**
  * Converts any uploaded File into an array of Image Page Data URLs.
+/**
+ * Helper to compress and downscale large image files to prevent memory spikes & UI blocking
+ */
+async function compressImageFile(file, maxWidth = 1600, maxHeight = 1600, quality = 0.82) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve({ dataUrl, width, height });
+      };
+      img.onerror = () => reject(new Error("이미지 파일을 읽고 디코딩하지 못했습니다."));
+      img.src = e.target.result;
+    };
+    reader.onerror = (err) => reject(new Error("이미지 파일을 읽는 중 오류: " + err.message));
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Converts any uploaded File into an array of Image Page Data URLs.
  * Supports: PDF (.pdf), Excel (.xlsx, .xls, .csv), Images (.png, .jpg, .jpeg, .webp, .gif)
  */
 export async function convertFileToImages(file, onProgress) {
@@ -176,48 +216,66 @@ export async function convertFileToImages(file, onProgress) {
   const fileType = file.type || "";
   const ext = fileName.split(".").pop().toLowerCase();
 
-  onProgress?.({ status: "start", message: `파일 '${fileName}' 분석 중...` });
+  onProgress?.({ status: "start", percent: 10, message: `파일 '${fileName}' 분석 중...` });
+  await new Promise((r) => setTimeout(r, 20)); // Yield to keep UI smooth
 
   // 1. Image Files
   if (fileType.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target.result;
-        resolve({
-          id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          fileName,
-          fileType: "image",
-          fileExt: ext,
-          fileSize: file.size,
-          uploadedAt: new Date().toISOString(),
-          pages: [
-            {
-              pageNumber: 1,
-              title: `${fileName} (1/1)`,
-              dataUrl
-            }
-          ],
-          summary: `이미지 파일 (${fileName})`
-        });
-      };
-      reader.onerror = (err) => reject(new Error("이미지 파일을 읽는 중 오류가 발생했습니다: " + err.message));
-      reader.readAsDataURL(file);
-    });
+    onProgress?.({ status: "converting", percent: 40, message: `'${fileName}' 고화질 최적화 및 이미지 변환 중...` });
+    await new Promise((r) => setTimeout(r, 30));
+
+    const { dataUrl, width, height } = await compressImageFile(file);
+
+    onProgress?.({ status: "converting", percent: 90, message: `'${fileName}' 이미지 최적화 완료` });
+    await new Promise((r) => setTimeout(r, 20));
+
+    return {
+      id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      fileName,
+      fileType: "image",
+      fileExt: ext,
+      fileSize: file.size,
+      uploadedAt: new Date().toISOString(),
+      pages: [
+        {
+          pageNumber: 1,
+          title: `${fileName} (1/1)`,
+          dataUrl,
+          width,
+          height
+        }
+      ],
+      summary: `이미지 파일 (${fileName})`
+    };
   }
 
   // 2. PDF Files
   if (fileType === "application/pdf" || ext === "pdf") {
-    onProgress?.({ status: "parsing", message: "PDF 문서 페이지를 렌더링하고 이미지로 변환 중..." });
+    onProgress?.({ status: "parsing", percent: 15, message: `'${fileName}' PDF 구조 분석 중...` });
+    await new Promise((r) => setTimeout(r, 30));
+
     const arrayBuffer = await file.arrayBuffer();
     const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const numPages = pdfDoc.numPages;
     const pages = [];
 
     for (let i = 1; i <= numPages; i++) {
-      onProgress?.({ status: "converting", message: `PDF ${numPages}개 페이지 중 ${i}번째 페이지 이미지 변환 중...`, current: i, total: numPages });
+      const pagePercent = Math.round(15 + ((i - 0.5) / numPages) * 80);
+      onProgress?.({
+        status: "converting",
+        percent: pagePercent,
+        current: i,
+        total: numPages,
+        message: `PDF ${numPages}개 페이지 중 ${i}번째 페이지 고화질 변환 중 (${pagePercent}%)...`
+      });
+
+      // Yield before heavy canvas rendering
+      await new Promise((r) => setTimeout(r, 35));
+
       const page = await pdfDoc.getPage(i);
-      const viewport = page.getViewport({ scale: 1.8 });
+      const unscaledViewport = page.getViewport({ scale: 1 });
+      const targetScale = Math.min(1.8, Math.max(1.2, 1600 / unscaledViewport.width));
+      const viewport = page.getViewport({ scale: targetScale });
 
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
@@ -229,7 +287,7 @@ export async function convertFileToImages(file, onProgress) {
         viewport
       }).promise;
 
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
       pages.push({
         pageNumber: i,
         title: `PDF 페이지 ${i} / ${numPages}`,
@@ -237,7 +295,12 @@ export async function convertFileToImages(file, onProgress) {
         width: viewport.width,
         height: viewport.height
       });
+
+      // Yield after each page
+      await new Promise((r) => setTimeout(r, 20));
     }
+
+    onProgress?.({ status: "done", percent: 98, message: `PDF 총 ${numPages}페이지 이미지 변환 완료` });
 
     return {
       id: `pdf_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -260,7 +323,9 @@ export async function convertFileToImages(file, onProgress) {
     fileType.includes("excel") ||
     fileType.includes("csv")
   ) {
-    onProgress?.({ status: "parsing", message: "엑셀 시트 데이터를 분석하여 이미지로 렌더링 중..." });
+    onProgress?.({ status: "parsing", percent: 15, message: `'${fileName}' 엑셀 시트 분석 중...` });
+    await new Promise((r) => setTimeout(r, 30));
+
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const pages = [];
@@ -268,11 +333,22 @@ export async function convertFileToImages(file, onProgress) {
     const sheetNames = workbook.SheetNames || [];
     for (let sIdx = 0; sIdx < sheetNames.length; sIdx++) {
       const sheetName = sheetNames[sIdx];
+      const sheetPercent = Math.round(15 + ((sIdx + 1) / sheetNames.length) * 80);
+      onProgress?.({
+        status: "converting",
+        percent: sheetPercent,
+        current: sIdx + 1,
+        total: sheetNames.length,
+        message: `엑셀 시트 [${sheetName}] (${sIdx + 1}/${sheetNames.length}) 이미지 생성 중...`
+      });
+
+      // Yield before canvas generation
+      await new Promise((r) => setTimeout(r, 35));
+
       const ws = workbook.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
       if (rows && rows.length > 0) {
-        onProgress?.({ status: "converting", message: `엑셀 시트 [${sheetName}] 이미지 생성 중...` });
         const dataUrl = renderExcelSheetToCanvasImage(sheetName, rows);
         if (dataUrl) {
           pages.push({
@@ -284,11 +360,16 @@ export async function convertFileToImages(file, onProgress) {
           });
         }
       }
+
+      // Yield after each sheet
+      await new Promise((r) => setTimeout(r, 20));
     }
 
     if (pages.length === 0) {
       throw new Error("엑셀 파일에 유효한 시트 데이터가 없습니다.");
     }
+
+    onProgress?.({ status: "done", percent: 98, message: `엑셀 총 ${pages.length}개 시트 이미지 변환 완료` });
 
     return {
       id: `excel_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,

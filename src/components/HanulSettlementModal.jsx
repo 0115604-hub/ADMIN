@@ -76,9 +76,16 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
   const [activeViewerAttId, setActiveViewerAttId] = useState(null);
   const [activeViewerPageIndex, setActiveViewerPageIndex] = useState(0);
 
-  // File Upload & Conversion State
+  // File Upload & Conversion Progress State
   const [isConverting, setIsConverting] = useState(false);
-  const [conversionStatus, setConversionStatus] = useState("");
+  const [uploadProgress, setUploadProgress] = useState({
+    percent: 0,
+    currentFileIndex: 0,
+    totalFiles: 0,
+    currentFileName: "",
+    statusText: "",
+    stage: "idle" // "converting" | "saving" | "completed" | "idle"
+  });
   const [conversionError, setConversionError] = useState("");
   const fileInputRef = useRef(null);
 
@@ -236,24 +243,58 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
     await persistCurrentData(selectedMonth, { expenses: reordered });
   };
 
-  // Handle File Upload & Conversion to Image
+  // Handle File Upload & Conversion to Image with Multi-File Progress & Non-Blocking Yields
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     setIsConverting(true);
     setConversionError("");
-    setConversionStatus("업로드된 파일을 분석하고 이미지로 변환 중입니다...");
+    setUploadProgress({
+      percent: 5,
+      currentFileIndex: 1,
+      totalFiles: files.length,
+      currentFileName: files[0].name,
+      statusText: `총 ${files.length}개 파일 업로드 및 분석 준비 중...`,
+      stage: "converting"
+    });
+
+    // Give browser time to paint the modal and progress bar
+    await new Promise((r) => setTimeout(r, 60));
 
     const newAttachments = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const basePercent = Math.round((i / files.length) * 85);
+
+      setUploadProgress({
+        percent: Math.max(5, basePercent),
+        currentFileIndex: i + 1,
+        totalFiles: files.length,
+        currentFileName: file.name,
+        statusText: `[${i + 1}/${files.length}] '${file.name}' 이미지 변환 시작...`,
+        stage: "converting"
+      });
+
       try {
-        setConversionStatus(`[${i + 1}/${files.length}] '${file.name}' 이미지 변환 중...`);
         const converted = await convertFileToImages(file, (progress) => {
-          setConversionStatus(progress.message || "변환 진행 중...");
+          const fileInternalRatio = (progress.percent || 0) / 100;
+          const currentOverallPercent = Math.min(
+            85,
+            Math.round(((i + fileInternalRatio) / files.length) * 85)
+          );
+          setUploadProgress((prev) => ({
+            ...prev,
+            percent: currentOverallPercent,
+            currentFileIndex: i + 1,
+            totalFiles: files.length,
+            currentFileName: file.name,
+            statusText: `[${i + 1}/${files.length}] '${file.name}' : ${progress.message || "변환 중..."}`,
+            stage: "converting"
+          }));
         });
+
         if (converted && converted.pages?.length > 0) {
           newAttachments.push(converted);
         }
@@ -261,18 +302,53 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
         console.error("File conversion error:", err);
         setConversionError(`'${file.name}' 변환 실패: ${err.message}`);
       }
+
+      // Yield after each file to keep the browser responsive
+      await new Promise((r) => setTimeout(r, 50));
     }
 
     if (newAttachments.length > 0) {
+      setUploadProgress((prev) => ({
+        ...prev,
+        percent: 90,
+        statusText: `총 ${newAttachments.length}개 파일 안전 저장 및 화면 동기화 중...`,
+        stage: "saving"
+      }));
+
+      await new Promise((r) => setTimeout(r, 60));
+
       const mergedAttachments = [...attachments, ...newAttachments];
       setAttachments(mergedAttachments);
       setActiveViewerAttId(newAttachments[0].id);
       setActiveViewerPageIndex(0);
+
       await persistCurrentData(selectedMonth, { attachments: mergedAttachments });
+
+      setUploadProgress({
+        percent: 100,
+        currentFileIndex: files.length,
+        totalFiles: files.length,
+        currentFileName: "",
+        statusText: `✅ 총 ${newAttachments.length}개 파일 이미지 변환 및 업로드 완료!`,
+        stage: "completed"
+      });
+
+      // Show 100% completion for 2.2 seconds before closing progress bar
+      setTimeout(() => {
+        setIsConverting(false);
+        setUploadProgress({
+          percent: 0,
+          currentFileIndex: 0,
+          totalFiles: 0,
+          currentFileName: "",
+          statusText: "",
+          stage: "idle"
+        });
+      }, 2200);
+    } else {
+      setIsConverting(false);
     }
 
-    setIsConverting(false);
-    setConversionStatus("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -504,11 +580,53 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth = "2026-08"
           </div>
         </div>
 
-        {/* Conversion Status / Progress Banner */}
+        {/* 🌟 Multi-File Upload & Real-Time Progress Bar Banner (숫자 + 진행률 그래프) */}
         {isConverting && (
-          <div className="px-4 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 border-b border-emerald-300 dark:border-emerald-800 flex items-center gap-2 text-xs font-bold text-emerald-800 dark:text-emerald-200 animate-pulse shrink-0">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
-            <span>{conversionStatus}</span>
+          <div className="px-4 py-2 bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white border-b border-emerald-500/40 flex flex-col gap-1.5 shrink-0 animate-fadeIn shadow-inner">
+            {/* Row 1: File Info & Percentage Badge */}
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                <div className="p-1 rounded-lg bg-emerald-500 text-slate-950 shrink-0 shadow-xs flex items-center justify-center">
+                  {uploadProgress.stage === "completed" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-slate-950 font-black" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 min-w-0 truncate">
+                  <span className="text-xs font-black text-white truncate">
+                    {uploadProgress.statusText}
+                  </span>
+                </div>
+              </div>
+
+              {/* Progress Percentage & File Counter Badge */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-black bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/40 flex items-center gap-1">
+                  <span>{uploadProgress.percent}%</span>
+                  {uploadProgress.totalFiles > 1 && (
+                    <span className="text-[10px] font-bold text-slate-900/80">
+                      ({uploadProgress.currentFileIndex}/{uploadProgress.totalFiles} 파일)
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Row 2: Animated Progress Bar Graph */}
+            <div className="w-full h-2 rounded-full bg-slate-800 border border-slate-700/80 overflow-hidden relative shadow-inner">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ease-out relative ${
+                  uploadProgress.stage === "completed"
+                    ? "bg-gradient-to-r from-emerald-400 to-teal-300 shadow-md shadow-emerald-400/50"
+                    : "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-400"
+                }`}
+                style={{ width: `${Math.max(4, uploadProgress.percent)}%` }}
+              >
+                {/* Shimmer light reflection effect */}
+                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+              </div>
+            </div>
           </div>
         )}
 
