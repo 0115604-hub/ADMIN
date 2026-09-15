@@ -1513,270 +1513,7 @@ export const IssueEditModal = ({
               </div>
             )}
 
-            {/* 5. 품질경보 조치결과 등록 및 이력 패널 */}
-            {newIssueForm.category === "품질경보" && (
-              <div className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-50/70 via-amber-50/30 to-slate-50 dark:from-rose-950/40 dark:via-amber-950/20 dark:to-slate-900 border-2 border-rose-200 dark:border-rose-900/80 space-y-3 shadow-xs">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <div className="p-1 rounded-lg bg-rose-600 text-white shadow-2xs">
-                      <MessageSquare className="w-3.5 h-3.5" />
-                    </div>
-                    <span className="font-black text-xs sm:text-sm text-rose-950 dark:text-rose-200">
-                      품질경보 조치결과 ({newIssueForm.replies?.length || 0}건)
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-[10.5px] text-rose-600 dark:text-rose-400 font-semibold">
-                  * 품질경보에 대한 조치결과를 등록할 수 있습니다. (첨부파일 없이 텍스트만 또는 사진/엑셀과 함께 등록 가능)
-                </p>
-
-                {/* Registered Action Results List */}
-                {newIssueForm.replies && newIssueForm.replies.length > 0 ? (
-                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {newIssueForm.replies.map((rep) => (
-                      <div
-                        key={rep.id}
-                        className="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-900/80 space-y-1.5 shadow-2xs"
-                      >
-                        {/* 상단 메타데이터 */}
-                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                            <span className="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-bold bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0 flex items-center gap-0.5">
-                              <Calendar className="w-2.5 h-2.5" />
-                              <span>{rep.actionDate || rep.createdAt?.slice(0, 10)}</span>
-                            </span>
-                            <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                              조치자: {rep.author} {rep.authorTitle || ""}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0 ml-auto">
-                            <span className="text-[9.5px] text-slate-400 font-mono">
-                              {rep.createdAt?.slice(11, 16) || ""}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => onModalDeleteOpinion(rep.id, e)}
-                              className="text-slate-400 hover:text-rose-600 p-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer transition-colors"
-                              title="조치결과 삭제"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 본문 내용 */}
-                        <div className="p-2 rounded-lg bg-white/95 dark:bg-slate-900/95 border border-rose-100 dark:border-rose-900/50 text-xs sm:text-[13px] font-bold text-slate-950 dark:text-white leading-relaxed whitespace-pre-wrap break-words shadow-2xs">
-                          {rep.content}
-                        </div>
-
-                        {/* Attached files/images */}
-                        {rep.files && rep.files.length > 0 && (
-                          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-                            {rep.files.map((f, fIdx) => {
-                              const isImg = f.fileType === "image" || f.dataUrl?.startsWith("data:image/") || (!f.fileType && !f.name?.match(/\.(xlsx|xls|csv)$/i));
-                              return isImg ? (
-                                <img
-                                  key={`rep_f_${fIdx}`}
-                                  src={f.dataUrl}
-                                  alt={f.name || `조치사진_${fIdx + 1}`}
-                                  onClick={() => onPreviewImage({ url: f.dataUrl, name: f.name || `조치사진_${fIdx + 1}` })}
-                                  className="w-10 h-10 rounded-lg object-cover border border-rose-300 dark:border-rose-700 cursor-pointer hover:scale-105 transition-all shadow-2xs"
-                                  title="클릭하여 사진 보기"
-                                />
-                              ) : (
-                                <a
-                                  key={`rep_f_${fIdx}`}
-                                  href={f.dataUrl}
-                                  download={f.name || "조치첨부.xlsx"}
-                                  className="flex items-center gap-1 px-2 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-200 text-[10.5px] font-bold shadow-2xs"
-                                  title="클릭하여 엑셀 다운로드"
-                                >
-                                  <FileSpreadsheet className="w-3 h-3 text-emerald-600 shrink-0" />
-                                  <span className="truncate max-w-[120px]">{f.name || "엑셀파일.xlsx"}</span>
-                                </a>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-3 text-center text-xs font-semibold text-slate-400 bg-white/70 dark:bg-slate-900/70 rounded-xl border border-dashed border-rose-200 dark:border-rose-900">
-                    등록된 조치결과가 없습니다. 아래에서 조치결과를 등록해 주세요.
-                  </div>
-                )}
-
-                {/* Quick Action Result Input Box */}
-                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 space-y-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="font-bold text-[10.5px] text-slate-600 dark:text-slate-400 block mb-1">
-                        📅 조치일자
-                      </label>
-                      <input
-                        type="date"
-                        value={actionOpinionForm.actionDate || todayDateStr}
-                        onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, actionDate: e.target.value })}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-mono font-bold text-xs text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="font-bold text-[10.5px] text-slate-600 dark:text-slate-400 block mb-1">
-                        👤 조치자 (직접 선택)
-                      </label>
-                      <select
-                        value={actionOpinionForm.author || ""}
-                        onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, author: e.target.value })}
-                        className={`w-full px-2.5 py-1.5 rounded-lg border-2 text-xs font-bold transition-all ${
-                          !actionOpinionForm.author
-                            ? "border-rose-400 bg-rose-50/60 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 ring-1 ring-rose-400/40"
-                            : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                        }`}
-                      >
-                        <option value="">-- 조치자 선택 --</option>
-                        <optgroup label="👑 본사 임원진">
-                          {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
-                            <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="🏢 삼랑진공장">
-                          {allWorkers?.filter((w) => w.plantName === "삼랑진공장" && !w.isPartner).map((w) => (
-                            <option key={w.id} value={w.name}>삼랑진 • {w.name} {w.title || ""}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="🏢 한림공장">
-                          {allWorkers?.filter((w) => w.plantName === "한림공장" && !w.isPartner).map((w) => (
-                            <option key={w.id} value={w.name}>한림 • {w.name} {w.title || ""}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="🤝 협력업체">
-                          {allWorkers?.filter((w) => w.isPartner).map((w) => (
-                            <option key={w.id} value={w.name}>협력 • {w.name} ({w.plantName})</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Multi-line textarea */}
-                  <div>
-                    <textarea
-                      rows="2"
-                      placeholder="품질경보 조치결과 내용을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
-                      value={actionOpinionForm.content}
-                      onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-rose-400 focus:outline-hidden"
-                    ></textarea>
-                  </div>
-
-                  {/* Buttons Bar: [📸 촬영] [📁 앨범] [📊 엑셀] ──── [조치결과 등록] */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* 📸 촬영 */}
-                      <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-rose-100 shrink-0" title="카메라로 즉시 촬영">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              onOpinionFiles(e.target.files);
-                              e.target.value = "";
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <Camera className="w-3.5 h-3.5 text-rose-600" />
-                        <span>📸 촬영</span>
-                      </label>
-
-                      {/* 📁 앨범 */}
-                      <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-blue-100 shrink-0" title="갤러리/앨범에서 사진 선택">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              onOpinionFiles(e.target.files);
-                              e.target.value = "";
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                        <span>📁 앨범</span>
-                      </label>
-
-                      {/* 📊 엑셀 */}
-                      <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs hover:bg-emerald-100 shrink-0" title="엑셀 파일 첨부">
-                        <input
-                          type="file"
-                          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                          multiple
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              onOpinionFiles(e.target.files);
-                              e.target.value = "";
-                            }
-                          }}
-                          className="hidden"
-                        />
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>📊 엑셀</span>
-                      </label>
-                    </div>
-
-                    {/* 전용 조치결과 등록 뱃지 버튼 */}
-                    <button
-                      type="button"
-                      onClick={onModalAddOpinion}
-                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-black text-xs shadow-md active:scale-95 flex items-center justify-center cursor-pointer shrink-0 transition-all"
-                    >
-                      <span>조치결과 등록</span>
-                    </button>
-                  </div>
-
-                  {/* Preview of pending opinion files */}
-                  {actionOpinionForm.files && actionOpinionForm.files.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-rose-100 dark:border-rose-900/60">
-                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">첨부 예정:</span>
-                      {actionOpinionForm.files.map((f, idx) => {
-                        const isImg = f.fileType === "image" || f.dataUrl?.startsWith("data:image/") || (!f.fileType && !f.name?.match(/\.(xlsx|xls|csv)$/i));
-                        return isImg ? (
-                          <div key={idx} className="relative group w-8 h-8 rounded-lg overflow-hidden border border-slate-300 dark:border-slate-700 shrink-0">
-                            <img src={f.dataUrl} alt={f.name} className="w-full h-full object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => onRemoveOpinionFile(idx)}
-                              className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 text-[10px] font-bold cursor-pointer"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div key={idx} className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-800 text-[10px] font-bold">
-                            <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
-                            <span className="truncate max-w-[100px]">{f.name}</span>
-                            <button
-                              type="button"
-                              onClick={() => onRemoveOpinionFile(idx)}
-                              className="text-slate-400 hover:text-rose-600 ml-0.5 cursor-pointer font-bold"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 6. 회의 결과 / 조치 결과 입력 섹션 (오픈이슈 제외, 품질경보 및 기타 카테고리 포함) */}
+            {/* 6. 회의 결과 / 조치 결과 입력 섹션 (오픈이슈 제외) */}
             {newIssueForm.category !== "오픈이슈" && (
               <div className={`p-3.5 rounded-2xl border-2 space-y-2.5 transition-all ${
                 newIssueForm.category === "회의일정"
@@ -1791,34 +1528,36 @@ export const IssueEditModal = ({
                     </strong>
                   </div>
 
-                  {/* Status Toggle Button */}
-                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <button
-                      type="button"
-                      onClick={() => setNewIssueForm({ ...newIssueForm, isResolved: false })}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                        !newIssueForm.isResolved
-                          ? "bg-amber-500 text-slate-950 shadow-xs"
-                          : "text-slate-400 hover:text-slate-700"
-                      }`}
-                    >
-                      조치대기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewIssueForm({ ...newIssueForm, isResolved: true })}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                        newIssueForm.isResolved
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "text-slate-400 hover:text-slate-700"
-                      }`}
-                    >
-                      조치완료
-                    </button>
-                  </div>
+                  {/* Status Toggle Button (회의일정 전용 유지, 품질경보 등은 뱃지 제거 요청 반영) */}
+                  {newIssueForm.category === "회의일정" && (
+                    <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => setNewIssueForm({ ...newIssueForm, isResolved: false })}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                          !newIssueForm.isResolved
+                            ? "bg-amber-500 text-slate-950 shadow-xs"
+                            : "text-slate-400 hover:text-slate-700"
+                        }`}
+                      >
+                        진행대기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewIssueForm({ ...newIssueForm, isResolved: true })}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                          newIssueForm.isResolved
+                            ? "bg-emerald-600 text-white shadow-xs"
+                            : "text-slate-400 hover:text-slate-700"
+                        }`}
+                      >
+                        회의종결
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className={newIssueForm.category === "회의일정" ? "grid grid-cols-1 sm:grid-cols-2 gap-2" : ""}>
                   <div>
                     <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
                       {newIssueForm.category === "회의일정" ? "보고자 / 작성자" : "조치자"} (직접 선택)
@@ -1856,17 +1595,17 @@ export const IssueEditModal = ({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                      조치/종결 상태
-                    </label>
-                    <div className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                      <span>{newIssueForm.isResolved ? "✅ 조치 완료 상태" : "⏳ 조치 진행/대기중"}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        {newIssueForm.category === "회의일정" ? "회의종결" : "완료처리"}
-                      </span>
+                  {newIssueForm.category === "회의일정" && (
+                    <div>
+                      <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                        회의 상태
+                      </label>
+                      <div className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                        <span>{newIssueForm.isResolved ? "✅ 회의 완료/종결" : "⏳ 진행/대기중"}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">회의종결</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div>
