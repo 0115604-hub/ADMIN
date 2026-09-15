@@ -62,15 +62,15 @@ export const isDuplicateMessage = (fingerprint, ttlMs = 60000) => {
 export const DEFAULT_TELEGRAM_CONFIG = {
   enabled: true,
   botToken: "8544872588:AAFbGy0D-0kplFp-Vor-CIxg0v1pggPFNjE",
-  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보/오픈이슈/회의/공지 알림, 07:30 모닝브리핑, 17:30 일일마감브리핑)
-  pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (07:30 손익결산 P&L + 07:30 모닝브리핑 + 17:30 일일마감 + 실시간 변경 모니터링)
+  chatId: "-4186792536", // '오륙 통합방' 단톡방 (품질경보/오픈이슈/회의/공지 알림, 07:30 일일 모닝브리핑, 17:30 일일마감브리핑)
+  pnlChatId: "-1003939516875", // '경영총괄' 단톡방 (07:30 매출 & 일정공유 P&L 결산 브리핑, 공통일정 의견 알림 전용 - ※ 모닝브리핑 제외)
   ceoChatId: "290615483", // 권태형 대표님 1:1 개인톡
   sendQualityAlerts: true,
   sendActionReports: true,
   sendApprovals: false, // 단톡방 알림 취소 (정책)
-  sendDailyLeaveBriefing: true, // 07:30 모닝브리핑 (오륙 통합방 & 경영총괄)
-  sendDailyPnLBriefing: true, // 07:30 손익결산 브리핑 (경영총괄)
-  sendDailyClosingBriefing: true // 17:30 일일마감브리핑 (오륙 통합방 & 경영총괄, 월~토)
+  sendDailyLeaveBriefing: true, // 07:30 일일 모닝브리핑 (오륙 통합방 전용 - 경영방 발송 제외)
+  sendDailyPnLBriefing: true, // 07:30 매출 & 일정공유 브리핑 (경영총괄 전용)
+  sendDailyClosingBriefing: true // 17:30 일일마감브리핑 (오륙 통합방 전용, 월~토)
 };
 
 let cachedConfig = { ...DEFAULT_TELEGRAM_CONFIG };
@@ -1466,7 +1466,7 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
   const results = {};
 
   try {
-    // 1. Check & send General Morning Briefing (오륙 통합방 & 경영총괄)
+    // 1. Check & send General Morning Briefing (오륙 통합방 전용 - 경영방 발송 제외)
     if (needGeneral) {
       console.log(`[07:30 Daily Briefing] Auto-sending morning summary for ${todayStr}...`);
       results.general = await sendDailyMorningBriefingTelegram(todayStr);
