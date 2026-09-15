@@ -557,7 +557,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
   const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
-  const [dateSortOrder, setDateSortOrder] = useState("ASC"); // "ASC" (1일->30일 날짜순), "DESC" (최신순)
+  const [dateSortOrder, setDateSortOrder] = useState("DESC"); // "DESC" (가까운 날 / 최신순), "ASC" (과거순 1일->30일)
   const [reportListSearch, setReportListSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -2362,6 +2362,24 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               return (a.company || "").localeCompare(b.company || "");
             });
 
+            // 날짜별 그룹화 (같은 날짜면 좌측에 날짜 1개만 사용)
+            const dateGroups = [];
+            const dateGroupMap = new Map();
+
+            sortedFiltered.forEach((report) => {
+              const dateKey = getReportDateSortKey(report);
+              if (!dateGroupMap.has(dateKey)) {
+                const groupObj = {
+                  dateKey,
+                  workDate: report.workDate || report.workDateFormatted || report.title,
+                  reports: []
+                };
+                dateGroupMap.set(dateKey, groupObj);
+                dateGroups.push(groupObj);
+              }
+              dateGroupMap.get(dateKey).reports.push(report);
+            });
+
             const totalHeadcount = filtered.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
             const totalHours = filtered.reduce((sum, r) => sum + (r.totalHours || 0), 0);
             const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
@@ -2552,7 +2570,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       title="날짜순서 정렬 전환"
                     >
                       <CalendarDays className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>{dateSortOrder === "ASC" ? "📅 날짜순 (1일→30일) ▲" : "📅 최신순 (30일→1일) ▼"}</span>
+                      <span>{dateSortOrder === "DESC" ? "📅 가까운 날순 (최신순) ▼" : "📅 과거순 (1일→30일) ▲"}</span>
                     </button>
 
                     {/* 검색창 */}
@@ -2569,7 +2587,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </div>
                 </div>
 
-                {/* 📋 Registered & Synthesized Reports List Cards */}
+                {/* 📋 Registered & Synthesized Reports List Cards (Grouped by Date) */}
                 {sortedFiltered.length === 0 ? (
                   <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-4">
                     <FileText className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
@@ -2590,356 +2608,406 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {sortedFiltered.map((report, idx) => {
-                      const isSynthesized = !!report.isSynthesized;
-                      const plantName = report.plant || getPlantForCompany(report.company || "");
-                      const isSam =
-                        plantName === "삼랑진공장" ||
-                        (report.companies && report.companies.includes("(주)오륙")) ||
-                        report.company === "(주)오륙" ||
-                        report.company === "유성";
-                      const badgeColor = isSam
-                        ? "bg-amber-950/80 text-amber-300 border-amber-700/70"
-                        : "bg-emerald-950/80 text-emerald-300 border-emerald-700/70";
-
-                      // 평일: 근태보고서 / 주말: 특근보고서 / 취합: 공장별 취합 보고서
-                      const isWeekend = isWeekendByDate(report.workDate || report.title);
-                      const reportCategory = isSynthesized
-                        ? isWeekend
-                          ? "주말특근 취합"
-                          : "일일근태 취합"
-                        : isWeekend
-                        ? "특근보고서"
-                        : "근태보고서";
-                      const reportSummary = isSynthesized
-                        ? report.companies
-                          ? `소속 협력사 (${report.companies.join(", ")}) 통합 취합 보고`
-                          : "공장별 통합 취합 보고"
-                        : getCleanReportSummary(report);
-
-                      // 실시간 전자결재 상태 및 결재선 연동
-                      const liveApproval = getLiveApprovalForReport(report, approvalDocs);
-                      const isApproved = liveApproval.status === "APPROVED";
-                      const isHold = liveApproval.status === "HOLD";
-                      const isRejected = liveApproval.status === "REJECTED";
-                      const pendingStep = liveApproval.steps.find((s) => s.status === "PENDING");
-
-                      const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
-                      const totalManHours = report.totalHours || (workersCount * 8);
-                      const cost = report.cost || (totalManHours * 15000);
-
-                      // Extract worker attendance status counts if available
-                      const otCounts = { 정시: 0, "19시": 0, "21시": 0, "22시": 0, 야간: 0, 연차: 0, 결근: 0, 특근: 0 };
-                      if (report.items && Array.isArray(report.items)) {
-                        report.items.forEach((it) => {
-                          const code = String(it.attendanceCode || it.category || "").trim();
-                          if (code === "🟢" || code === "정시" || code === "17") otCounts["정시"]++;
-                          else if (code === "19" || code === "19시") otCounts["19시"]++;
-                          else if (code === "21" || code === "21시") otCounts["21시"]++;
-                          else if (code === "22" || code === "22시") otCounts["22시"]++;
-                          else if (code === "야간") otCounts["야간"]++;
-                          else if (code === "연차") otCounts["연차"]++;
-                          else if (code === "결근") otCounts["결근"]++;
-                          else if (code === "특근" || code === "주말특근") otCounts["특근"]++;
-                        });
-                      }
+                  <div className="space-y-4">
+                    {dateGroups.map((group, gIdx) => {
+                      const sampleDateStr = group.workDate;
+                      const formattedDate = formatShortMonthDay(sampleDateStr);
+                      const isGroupWeekend = isWeekendByDate(sampleDateStr);
+                      const groupWorkersCount = group.reports.reduce(
+                        (sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)),
+                        0
+                      );
+                      const groupCost = group.reports.reduce(
+                        (sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)),
+                        0
+                      );
 
                       return (
                         <div
-                          key={report.id || idx}
-                          onClick={() => {
-                            handleOpenLegacyReport(report);
-                          }}
-                          className={`px-3 py-2.5 sm:py-3 rounded-xl transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-2.5 group cursor-pointer ${
-                            isSynthesized
-                              ? "border-2 border-indigo-500/80 bg-gradient-to-r from-indigo-950/40 via-slate-950 to-purple-950/30 hover:bg-indigo-950/60 hover:border-indigo-400 shadow-md ring-1 ring-indigo-500/30"
-                              : isWeekend
-                              ? "border-2 border-rose-500/80 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-400 shadow-sm ring-1 ring-rose-500/30"
-                              : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
-                          }`}
+                          key={group.dateKey || gIdx}
+                          className="flex flex-col md:flex-row items-stretch gap-3 p-3 rounded-2xl bg-slate-900/40 border border-slate-800/80 hover:border-slate-700/80 transition-all shadow-xs"
                         >
-                          {/* Left: No, Category Badge, Company Badge, Date (월/일), Approval Badge, Summary Note */}
-                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
-                            <span className="font-mono text-xs font-bold text-slate-500 w-5 shrink-0 text-center">
-                              #{idx + 1}
-                            </span>
-
-                            {/* Category Badge */}
-                            <span
-                              className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
-                                isSynthesized
-                                  ? "bg-indigo-950 text-indigo-300 border-indigo-500 shadow-xs ring-1 ring-indigo-500/40"
-                                  : isWeekend
-                                  ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
-                                  : "bg-cyan-950 text-cyan-300 border-cyan-800 shadow-xs"
-                              }`}
-                            >
-                              {isSynthesized ? (
-                                <>
-                                  <Sparkles className="w-3 h-3 text-indigo-400 animate-pulse" />
-                                  <span>🏭 {reportCategory}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                      isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"
-                                    }`}
-                                  ></span>
-                                  <span>{reportCategory}</span>
-                                </>
-                              )}
-                            </span>
-
-                            {/* Company / Plant Badge */}
-                            <span
-                              className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${badgeColor}`}
-                            >
-                              <Factory className="w-3 h-3 shrink-0" />
-                              <span>
-                                {isSynthesized
-                                  ? `[${plantName}] ${report.company}`
-                                  : getFullCompanyPlantLabel(report)}
+                          {/* 📅 Left: Single Date Box (같은 날짜면 날짜는 1개만 사용) */}
+                          <div
+                            className={`md:w-36 shrink-0 flex md:flex-col items-center md:items-start justify-between md:justify-center gap-1.5 p-3 rounded-xl border ${
+                              isGroupWeekend
+                                ? "bg-gradient-to-b from-rose-950/60 to-slate-950 border-rose-800/60 shadow-xs"
+                                : "bg-gradient-to-b from-cyan-950/60 to-slate-950 border-cyan-800/60 shadow-xs"
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className={`w-4 h-4 shrink-0 ${isGroupWeekend ? "text-rose-400" : "text-cyan-400"}`} />
+                              <span className={`font-mono font-black text-sm sm:text-base tracking-tight ${
+                                isGroupWeekend ? "text-rose-300" : "text-cyan-300"
+                              }`}>
+                                {formattedDate}
                               </span>
-                            </span>
-
-                            {/* Work Date Badge */}
-                            <span className="px-2 py-0.5 rounded-md bg-slate-900 text-cyan-300 border border-slate-800 font-mono text-[11px] font-bold shrink-0">
-                              📅 {formatShortMonthDay(report.workDate || report.workDateFormatted || report.title)}
-                            </span>
-
-                            {/* Electronic Approval Live Status Badge */}
-                            <span
-                              className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
-                                isApproved
-                                  ? "bg-emerald-950 text-emerald-300 border-emerald-700 shadow-xs"
-                                  : isHold
-                                  ? "bg-amber-950 text-amber-300 border-amber-700 shadow-xs animate-pulse"
-                                  : isRejected
-                                  ? "bg-rose-950 text-rose-300 border-rose-700 shadow-xs"
-                                  : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80 shadow-xs"
-                              }`}
-                            >
-                              {isApproved ? (
-                                <>
-                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                                  <span>결재완료</span>
-                                </>
-                              ) : isHold ? (
-                                <>
-                                  <PauseCircle className="w-3 h-3 text-amber-400" />
-                                  <span>보류중</span>
-                                </>
-                              ) : isRejected ? (
-                                <>
-                                  <X className="w-3 h-3 text-rose-400" />
-                                  <span>반려됨</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Clock className="w-3 h-3 text-yellow-400 animate-pulse" />
-                                  <span>
-                                    결재진행중 ({pendingStep ? `${pendingStep.role}` : "책임"}대기)
-                                  </span>
-                                </>
-                              )}
-                            </span>
-
-                            {/* Mini 4-Step Approver Seals */}
-                            <div className="hidden lg:flex items-center gap-0.5 shrink-0 bg-slate-900/90 px-1 py-0.5 rounded-md border border-slate-800">
-                              {liveApproval.steps.map((st, sIdx) => {
-                                const isStepDone = st.status === "APPROVED";
-                                const isStepPending = st.status === "PENDING";
-                                const isStepHold = st.status === "HOLD";
-                                const isStepReject = st.status === "REJECTED";
-
-                                return (
-                                  <span
-                                    key={sIdx}
-                                    title={`[${st.role}] ${st.name} : ${
-                                      isStepDone
-                                        ? "승인완료"
-                                        : isStepPending
-                                        ? "결재대기"
-                                        : isStepHold
-                                        ? "보류"
-                                        : isStepReject
-                                        ? "반려"
-                                        : "대기"
-                                    }`}
-                                    className={`w-4.5 h-4.5 rounded text-[8.5px] font-black flex items-center justify-center border ${
-                                      isStepDone
-                                        ? st.role === "대표" || st.name === "권태형"
-                                          ? "bg-amber-500 text-slate-950 border-amber-600 font-black"
-                                          : sIdx === 0
-                                          ? "bg-blue-600 text-white border-blue-700"
-                                          : "bg-emerald-600 text-white border-emerald-700"
-                                        : isStepPending
-                                        ? "bg-rose-950 text-rose-300 border-rose-500 animate-pulse font-bold"
-                                        : isStepHold
-                                        ? "bg-amber-950 text-amber-300 border-amber-600"
-                                        : isStepReject
-                                        ? "bg-slate-800 text-slate-400 border-slate-700"
-                                        : "bg-slate-900 text-slate-600 border-slate-800"
-                                    }`}
-                                  >
-                                    {isStepDone
-                                      ? st.role === "대표"
-                                        ? "✍️"
-                                        : sIdx === 0
-                                        ? "기"
-                                        : "인"
-                                      : isStepPending
-                                      ? "대"
-                                      : st.role?.slice(0, 1)}
-                                  </span>
-                                );
-                              })}
                             </div>
 
-                            {/* Summary Note / Work Description */}
-                            <span
-                              className={`font-bold text-xs sm:text-sm truncate transition-colors ${
-                                isSynthesized
-                                  ? "text-indigo-200 group-hover:text-indigo-300 font-black"
-                                  : isWeekend
-                                  ? "text-rose-200 group-hover:text-rose-300"
-                                  : "text-slate-300 group-hover:text-cyan-300"
-                              }`}
-                            >
-                              {reportSummary}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black border ${
+                                isGroupWeekend
+                                  ? "bg-rose-950 text-rose-300 border-rose-600/80 shadow-xs"
+                                  : "bg-cyan-950 text-cyan-300 border-cyan-700/80 shadow-xs"
+                              }`}>
+                                {isGroupWeekend ? "🌙 특근" : "☀️ 평일"}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-[10.5px] font-mono font-bold text-slate-300">
+                                {group.reports.length}건 등록
+                              </span>
+                            </div>
+
+                            <div className="hidden md:flex flex-col text-[10.5px] font-mono text-slate-400 pt-1 border-t border-slate-800/80 w-full mt-1">
+                              <span className="text-slate-300 font-bold">{groupWorkersCount}명 투입</span>
+                              <span className="text-rose-400 font-black">₩{groupCost.toLocaleString()}</span>
+                            </div>
                           </div>
 
-                          {/* Right: Quick Attendance Breakdown + Cost/Headcount + Compact Actions */}
-                          <div
-                            className="flex items-center gap-2.5 shrink-0 justify-between md:justify-end"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {/* Child Reports pills for Synthesized Cards */}
-                            {isSynthesized && Array.isArray(report.childReports) && (
-                              <div className="hidden xl:flex items-center gap-1 text-[10px] font-bold">
-                                {report.childReports.map((cr, cIdx) => (
-                                  <span
-                                    key={cIdx}
-                                    className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 font-mono"
-                                  >
-                                    {cr.company}: {cr.totalWorkers || (cr.items ? cr.items.length : 0)}명
-                                  </span>
-                                ))}
-                              </div>
-                            )}
+                          {/* 📋 Right: Reports for this date */}
+                          <div className="flex-1 min-w-0 space-y-2">
+                            {group.reports.map((report, rIdx) => {
+                              const isSynthesized = !!report.isSynthesized;
+                              const plantName = report.plant || getPlantForCompany(report.company || "");
+                              const isSam =
+                                plantName === "삼랑진공장" ||
+                                (report.companies && report.companies.includes("(주)오륙")) ||
+                                report.company === "(주)오륙" ||
+                                report.company === "유성";
+                              const badgeColor = isSam
+                                ? "bg-amber-950/80 text-amber-300 border-amber-700/70"
+                                : "bg-emerald-950/80 text-emerald-300 border-emerald-700/70";
 
-                            {/* Compact Attendance Breakdown Pills (for individual reports) */}
-                            {!isSynthesized && (
-                              <div className="flex items-center gap-1 font-mono text-[10px] font-bold">
-                                {otCounts["정시"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                                    🟢 {otCounts["정시"]}
-                                  </span>
-                                )}
-                                {otCounts["19시"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">
-                                    🟡 {otCounts["19시"]}
-                                  </span>
-                                )}
-                                {otCounts["21시"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/60">
-                                    🟠 {otCounts["21시"]}
-                                  </span>
-                                )}
-                                {otCounts["22시"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">
-                                    🔴 {otCounts["22시"]}
-                                  </span>
-                                )}
-                                {otCounts["야간"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
-                                    🌌 {otCounts["야간"]}
-                                  </span>
-                                )}
-                                {otCounts["특근"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">
-                                    🌙 {otCounts["특근"]}
-                                  </span>
-                                )}
-                                {otCounts["연차"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60">
-                                    🌴 {otCounts["연차"]}
-                                  </span>
-                                )}
-                                {otCounts["결근"] > 0 && (
-                                  <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60">
-                                    ❌ {otCounts["결근"]}
-                                  </span>
-                                )}
-                              </div>
-                            )}
+                              const isWeekend = isWeekendByDate(report.workDate || report.title);
+                              const reportCategory = isSynthesized
+                                ? isWeekend
+                                  ? "주말특근 취합"
+                                  : "일일근태 취합"
+                                : isWeekend
+                                ? "특근보고서"
+                                : "근태보고서";
+                              const reportSummary = isSynthesized
+                                ? report.companies
+                                  ? `소속 협력사 (${report.companies.join(", ")}) 통합 취합 보고`
+                                  : "공장별 통합 취합 보고"
+                                : getCleanReportSummary(report);
 
-                            {/* Headcount & Cost */}
-                            <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
-                              <span className="font-black text-rose-400">₩{cost.toLocaleString()}</span>
-                              <span className="text-[11px] text-slate-400 font-bold">
-                                ({workersCount}명 • {totalManHours}H)
-                              </span>
-                            </div>
+                              // 실시간 전자결재 상태 및 결재선 연동
+                              const liveApproval = getLiveApprovalForReport(report, approvalDocs);
+                              const isApproved = liveApproval.status === "APPROVED";
+                              const isHold = liveApproval.status === "HOLD";
+                              const isRejected = liveApproval.status === "REJECTED";
+                              const pendingStep = liveApproval.steps.find((s) => s.status === "PENDING");
 
-                            {/* Action Buttons */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              {isSynthesized && (
-                                <button
-                                  type="button"
+                              const workersCount = report.totalWorkers || (report.items ? report.items.length : 0);
+                              const totalManHours = report.totalHours || (workersCount * 8);
+                              const cost = report.cost || (totalManHours * 15000);
+
+                              // Extract worker attendance status counts if available
+                              const otCounts = { 정시: 0, "19시": 0, "21시": 0, "22시": 0, 야간: 0, 연차: 0, 결근: 0, 특근: 0 };
+                              if (report.items && Array.isArray(report.items)) {
+                                report.items.forEach((it) => {
+                                  const code = String(it.attendanceCode || it.category || "").trim();
+                                  if (code === "🟢" || code === "정시" || code === "17") otCounts["정시"]++;
+                                  else if (code === "19" || code === "19시") otCounts["19시"]++;
+                                  else if (code === "21" || code === "21시") otCounts["21시"]++;
+                                  else if (code === "22" || code === "22시") otCounts["22시"]++;
+                                  else if (code === "야간") otCounts["야간"]++;
+                                  else if (code === "연차") otCounts["연차"]++;
+                                  else if (code === "결근") otCounts["결근"]++;
+                                  else if (code === "특근" || code === "주말특근") otCounts["특근"]++;
+                                });
+                              }
+
+                              return (
+                                <div
+                                  key={report.id || rIdx}
                                   onClick={() => {
-                                    if (onNavigateTab) {
-                                      onNavigateTab("electronic_approval");
-                                    } else {
-                                      handleOpenLegacyReport(report);
-                                    }
+                                    handleOpenLegacyReport(report);
                                   }}
-                                  className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                  title="전자결재함으로 이동하여 특근 취합 결재 문서 확인"
+                                  className={`px-3 py-2.5 sm:py-3 rounded-xl transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-2.5 group cursor-pointer ${
+                                    isSynthesized
+                                      ? "border-2 border-indigo-500/80 bg-gradient-to-r from-indigo-950/40 via-slate-950 to-purple-950/30 hover:bg-indigo-950/60 hover:border-indigo-400 shadow-md ring-1 ring-indigo-500/30"
+                                      : isWeekend
+                                      ? "border-2 border-rose-500/80 bg-rose-950/20 hover:bg-rose-950/40 hover:border-rose-400 shadow-sm ring-1 ring-rose-500/30"
+                                      : "border border-slate-800 bg-slate-950/80 hover:bg-slate-900 hover:border-cyan-500/60 shadow-xs"
+                                  }`}
                                 >
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                  <span className="hidden sm:inline">결재함이동</span>
-                                </button>
-                              )}
+                                  {/* Left: Category Badge, Company Badge, Approval Badge, Seals, Summary Note */}
+                                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0 flex-1">
+                                    {/* Category Badge */}
+                                    <span
+                                      className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
+                                        isSynthesized
+                                          ? "bg-indigo-950 text-indigo-300 border-indigo-500 shadow-xs ring-1 ring-indigo-500/40"
+                                          : isWeekend
+                                          ? "bg-rose-950 text-rose-300 border-rose-600 shadow-xs"
+                                          : "bg-cyan-950 text-cyan-300 border-cyan-800 shadow-xs"
+                                      }`}
+                                    >
+                                      {isSynthesized ? (
+                                        <>
+                                          <Sparkles className="w-3 h-3 text-indigo-400 animate-pulse" />
+                                          <span>🏭 {reportCategory}</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span
+                                            className={`w-1.5 h-1.5 rounded-full ${
+                                              isWeekend ? "bg-rose-500 animate-pulse" : "bg-cyan-400"
+                                            }`}
+                                          ></span>
+                                          <span>{reportCategory}</span>
+                                        </>
+                                      )}
+                                    </span>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleOpenLegacyReport(report);
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                title="보고서 상세 및 결재 확인"
-                              >
-                                <FileText className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">상세</span>
-                              </button>
+                                    {/* Company / Plant Badge */}
+                                    <span
+                                      className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${badgeColor}`}
+                                    >
+                                      <Factory className="w-3 h-3 shrink-0" />
+                                      <span>
+                                        {isSynthesized
+                                          ? `[${plantName}] ${report.company}`
+                                          : getFullCompanyPlantLabel(report)}
+                                      </span>
+                                    </span>
 
-                              {!isSynthesized && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEditReport(report)}
-                                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                    title="해당 일자 및 소속업체로 이동하여 수정/재입력"
+                                    {/* Electronic Approval Live Status Badge */}
+                                    <span
+                                      className={`px-2 py-0.5 rounded-md font-black text-[11px] border shrink-0 flex items-center gap-1 ${
+                                        isApproved
+                                          ? "bg-emerald-950 text-emerald-300 border-emerald-700 shadow-xs"
+                                          : isHold
+                                          ? "bg-amber-950 text-amber-300 border-amber-700 shadow-xs animate-pulse"
+                                          : isRejected
+                                          ? "bg-rose-950 text-rose-300 border-rose-700 shadow-xs"
+                                          : "bg-yellow-950/90 text-yellow-300 border-yellow-700/80 shadow-xs"
+                                      }`}
+                                    >
+                                      {isApproved ? (
+                                        <>
+                                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                          <span>결재완료</span>
+                                        </>
+                                      ) : isHold ? (
+                                        <>
+                                          <PauseCircle className="w-3 h-3 text-amber-400" />
+                                          <span>보류중</span>
+                                        </>
+                                      ) : isRejected ? (
+                                        <>
+                                          <X className="w-3 h-3 text-rose-400" />
+                                          <span>반려됨</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Clock className="w-3 h-3 text-yellow-400 animate-pulse" />
+                                          <span>
+                                            결재진행중 ({pendingStep ? `${pendingStep.role}` : "책임"}대기)
+                                          </span>
+                                        </>
+                                      )}
+                                    </span>
+
+                                    {/* Mini 4-Step Approver Seals */}
+                                    <div className="hidden lg:flex items-center gap-0.5 shrink-0 bg-slate-900/90 px-1 py-0.5 rounded-md border border-slate-800">
+                                      {liveApproval.steps.map((st, sIdx) => {
+                                        const isStepDone = st.status === "APPROVED";
+                                        const isStepPending = st.status === "PENDING";
+                                        const isStepHold = st.status === "HOLD";
+                                        const isStepReject = st.status === "REJECTED";
+
+                                        return (
+                                          <span
+                                            key={sIdx}
+                                            title={`[${st.role}] ${st.name} : ${
+                                              isStepDone
+                                                ? "승인완료"
+                                                : isStepPending
+                                                ? "결재대기"
+                                                : isStepHold
+                                                ? "보류"
+                                                : isStepReject
+                                                ? "반려"
+                                                : "대기"
+                                            }`}
+                                            className={`w-4.5 h-4.5 rounded text-[8.5px] font-black flex items-center justify-center border ${
+                                              isStepDone
+                                                ? st.role === "대표" || st.name === "권태형"
+                                                  ? "bg-amber-500 text-slate-950 border-amber-600 font-black"
+                                                  : sIdx === 0
+                                                  ? "bg-blue-600 text-white border-blue-700"
+                                                  : "bg-emerald-600 text-white border-emerald-700"
+                                                : isStepPending
+                                                ? "bg-rose-950 text-rose-300 border-rose-500 animate-pulse font-bold"
+                                                : isStepHold
+                                                ? "bg-amber-950 text-amber-300 border-amber-600"
+                                                : isStepReject
+                                                ? "bg-slate-800 text-slate-400 border-slate-700"
+                                                : "bg-slate-900 text-slate-600 border-slate-800"
+                                            }`}
+                                          >
+                                            {isStepDone
+                                              ? st.role === "대표"
+                                                ? "✍️"
+                                                : sIdx === 0
+                                                ? "기"
+                                                : "인"
+                                              : isStepPending
+                                              ? "대"
+                                              : st.role?.slice(0, 1)}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* Summary Note / Work Description */}
+                                    <span
+                                      className={`font-bold text-xs sm:text-sm truncate transition-colors ${
+                                        isSynthesized
+                                          ? "text-indigo-200 group-hover:text-indigo-300 font-black"
+                                          : isWeekend
+                                          ? "text-rose-200 group-hover:text-rose-300"
+                                          : "text-slate-300 group-hover:text-cyan-300"
+                                      }`}
+                                    >
+                                      {reportSummary}
+                                    </span>
+                                  </div>
+
+                                  {/* Right: Quick Attendance Breakdown + Cost/Headcount + Compact Actions */}
+                                  <div
+                                    className="flex items-center gap-2.5 shrink-0 justify-between md:justify-end"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
-                                    <span className="hidden sm:inline">수정</span>
-                                  </button>
+                                    {/* Child Reports pills for Synthesized Cards */}
+                                    {isSynthesized && Array.isArray(report.childReports) && (
+                                      <div className="hidden xl:flex items-center gap-1 text-[10px] font-bold">
+                                        {report.childReports.map((cr, cIdx) => (
+                                          <span
+                                            key={cIdx}
+                                            className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 font-mono"
+                                          >
+                                            {cr.company}: {cr.totalWorkers || (cr.items ? cr.items.length : 0)}명
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
 
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleDeleteReport(report.id, e)}
-                                    className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
-                                    title="보고서 삭제"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                                    {/* Compact Attendance Breakdown Pills (for individual reports) */}
+                                    {!isSynthesized && (
+                                      <div className="flex items-center gap-1 font-mono text-[10px] font-bold">
+                                        {otCounts["정시"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                                            🟢 {otCounts["정시"]}
+                                          </span>
+                                        )}
+                                        {otCounts["19시"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                                            🟡 {otCounts["19시"]}
+                                          </span>
+                                        )}
+                                        {otCounts["21시"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-orange-950/80 text-orange-300 border border-orange-800/60">
+                                            🟠 {otCounts["21시"]}
+                                          </span>
+                                        )}
+                                        {otCounts["22시"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-rose-950/80 text-rose-300 border border-rose-800/60">
+                                            🔴 {otCounts["22시"]}
+                                          </span>
+                                        )}
+                                        {otCounts["야간"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
+                                            🌌 {otCounts["야간"]}
+                                          </span>
+                                        )}
+                                        {otCounts["특근"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60">
+                                            🌙 {otCounts["특근"]}
+                                          </span>
+                                        )}
+                                        {otCounts["연차"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-sky-950/80 text-sky-300 border border-sky-800/60">
+                                            🌴 {otCounts["연차"]}
+                                          </span>
+                                        )}
+                                        {otCounts["결근"] > 0 && (
+                                          <span className="px-1.5 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60">
+                                            ❌ {otCounts["결근"]}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Headcount & Cost */}
+                                    <div className="flex items-center gap-1.5 font-mono text-xs shrink-0">
+                                      <span className="font-black text-rose-400">₩{cost.toLocaleString()}</span>
+                                      <span className="text-[11px] text-slate-400 font-bold">
+                                        ({workersCount}명 • {totalManHours}H)
+                                      </span>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {isSynthesized && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (onNavigateTab) {
+                                              onNavigateTab("electronic_approval");
+                                            } else {
+                                              handleOpenLegacyReport(report);
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                          title="전자결재함으로 이동하여 특근 취합 결재 문서 확인"
+                                        >
+                                          <ArrowRight className="w-3.5 h-3.5" />
+                                          <span className="hidden sm:inline">결재함이동</span>
+                                        </button>
+                                      )}
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleOpenLegacyReport(report);
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                        title="보고서 상세 및 결재 확인"
+                                      >
+                                        <FileText className="w-3.5 h-3.5" />
+                                        <span className="hidden sm:inline">상세</span>
+                                      </button>
+
+                                      {!isSynthesized && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleEditReport(report)}
+                                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700 hover:border-cyan-500 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                            title="해당 일자 및 소속업체로 이동하여 수정/재입력"
+                                          >
+                                            <Edit3 className="w-3.5 h-3.5 text-cyan-400" />
+                                            <span className="hidden sm:inline">수정</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteReport(report.id, e)}
+                                            className="px-2 py-1 rounded-lg bg-rose-950/80 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-800/80 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                                            title="보고서 삭제"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
