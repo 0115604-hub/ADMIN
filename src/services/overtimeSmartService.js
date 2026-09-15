@@ -263,6 +263,9 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
       ot21: 0,
       ot22: 0,
       specialNight: 0,
+      absent: 0,
+      leave: 0,
+      otWorkers: 0,
       otHours: 0,
       totalHours: 0
     };
@@ -289,6 +292,9 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
         ot21: 0,
         ot22: 0,
         specialNight: 0,
+        absent: 0,
+        leave: 0,
+        otWorkers: 0,
         otHours: 0,
         totalHours: 0
       };
@@ -320,6 +326,14 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
     } else if (str === "특근" || str === "주말특근" || str === "야간" || str === "주야") {
       specialNightCount++;
       companyBreakdown[comp].specialNight++;
+    } else if (str === "결근") {
+      companyBreakdown[comp].absent = (companyBreakdown[comp].absent || 0) + 1;
+    } else if (str === "연차" || str === "반차") {
+      companyBreakdown[comp].leave = (companyBreakdown[comp].leave || 0) + 1;
+    }
+
+    if (ot > 0) {
+      companyBreakdown[comp].otWorkers = (companyBreakdown[comp].otWorkers || 0) + 1;
     }
 
     dayOtHours += ot;

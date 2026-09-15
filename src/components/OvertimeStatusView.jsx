@@ -1349,27 +1349,16 @@ export const OvertimeStatusView = () => {
               (주)오륙 • (주)조영산업 • 한울 • 부림텍 • <strong className="text-cyan-300 font-black">유성</strong> 5개사 | 부서: <strong className="text-white font-bold">관리부 • 가공동 • 압출동</strong>
             </p>
           </div>
-
-          {/* Clean Quick Action Button (Excel Export Only) */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-900/30 active:scale-95 transition-all cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Excel 6개시트 다운로드</span>
-            </button>
-          </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 조영산업, 한울, 부림텍, 유성) - 모바일 숨김 처리 */}
+        {/* ⭐ TOP 5 COMPANY SUMMARY CARDS (오륙, 조영산업, 한울, 부림텍, 유성) - 미니멀 패널 */}
         {/* ========================================================================= */}
-        <div className="hidden md:block pt-2">
+        <div className="hidden md:block pt-1">
           <div className="flex items-center justify-between pb-2">
             <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-cyan-400" />
-              <span>5개 협력사별 근태 현황 (9월 {selectedDay}일 기준) • 패널 클릭 시 상세 팝업</span>
+              <span>5개 협력사별 근태 현황 (9월 {selectedDay}일 기준)</span>
             </h3>
             <span className="text-[11px] font-bold text-slate-400">
               전체 총원: <strong className="text-white font-mono">{smartData.attendanceMatrix?.length || 0}명</strong>
@@ -1378,7 +1367,6 @@ export const OvertimeStatusView = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {COMPANIES.map((compName) => {
-              const theme = COMPANY_THEMES[compName] || COMPANY_THEMES["(주)오륙"];
               const breakdown = dailySummary.companyBreakdown?.[compName] || {
                 total: 0,
                 attended: 0,
@@ -1387,6 +1375,9 @@ export const OvertimeStatusView = () => {
                 ot21: 0,
                 ot22: 0,
                 specialNight: 0,
+                absent: 0,
+                leave: 0,
+                otWorkers: 0,
                 otHours: 0,
                 totalHours: 0
               };
@@ -1394,6 +1385,12 @@ export const OvertimeStatusView = () => {
                 compName === "(주)조영산업" ? "bg-purple-400" :
                 compName === "한울" ? "bg-emerald-400" :
                 compName === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
+
+              const otWorkersCount = breakdown.otWorkers !== undefined
+                ? breakdown.otWorkers
+                : (breakdown.ot19 + breakdown.ot21 + breakdown.ot22 + (breakdown.specialNight || 0));
+
+              const absentCount = breakdown.absent || 0;
 
               return (
                 <div
@@ -1403,37 +1400,52 @@ export const OvertimeStatusView = () => {
                     setPopupShowAddWorker(false);
                     setQuickNewWorkerDept("가공동");
                   }}
-                  className="bg-slate-950/90 hover:bg-slate-900 rounded-2xl p-3 border-2 border-slate-700/80 hover:border-cyan-400 transition-all duration-200 space-y-2 shadow-lg flex flex-col justify-between cursor-pointer group active:scale-98"
+                  className="bg-slate-950/90 hover:bg-slate-900 rounded-2xl p-3 border border-slate-700/80 hover:border-cyan-400 transition-all duration-200 shadow-md flex flex-col justify-between cursor-pointer group active:scale-98 space-y-2"
                   title="클릭 시 오늘자 근태/인원 현황 팝업 보기"
                 >
-                  {/* Top: Company Name + Attendance Rate */}
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                  {/* 상단: 회사명 */}
+                  <div className="flex items-center justify-between">
                     <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5 group-hover:text-cyan-300 transition-colors">
-                      <span className={`w-2 h-2 rounded-full ${dotColor} animate-pulse`}></span>
+                      <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
                       {compName}
                     </span>
-                    <span className="text-[11px] font-mono font-black px-2 py-0.5 rounded-md bg-slate-800 text-emerald-400 border border-slate-700 shrink-0">
-                      {breakdown.attended}/{breakdown.total}명
+                  </div>
+
+                  {/* 🎯 포인트 작은 패널: [총원 N명] & [결근 N명] */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="bg-slate-900/90 py-1.5 px-2 rounded-xl border border-slate-800 flex items-center justify-between shadow-xs">
+                      <span className="text-[10.5px] font-bold text-slate-400">총원</span>
+                      <span className="font-mono font-black text-xs text-white">{breakdown.total}명</span>
+                    </div>
+                    <div className={`py-1.5 px-2 rounded-xl border flex items-center justify-between shadow-xs ${
+                      absentCount > 0
+                        ? "bg-rose-950/90 border-rose-600 text-rose-300 animate-pulse"
+                        : "bg-slate-900/90 border-slate-800 text-slate-400"
+                    }`}>
+                      <span className="text-[10.5px] font-bold">결근</span>
+                      <span className={`font-mono font-black text-xs ${
+                        absentCount > 0 ? "text-rose-400 font-black" : "text-slate-400"
+                      }`}>
+                        {absentCount}명
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ⏱️ 당일 잔업투입인원 (미니멀 표시) */}
+                  <div className="bg-slate-900/70 py-1.5 px-2.5 rounded-xl border border-slate-800/80 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                      <span>당일 잔업투입</span>
                     </span>
-                  </div>
-
-                  {/* 2 Big Bold KPI Boxes */}
-                  <div className="grid grid-cols-2 gap-1.5 text-center">
-                    <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-800/90">
-                      <div className="text-[10px] font-bold text-slate-400">당일 잔업</div>
-                      <div className="font-mono font-black text-base sm:text-lg text-amber-400 leading-tight mt-0.5">
-                        +{breakdown.otHours}<span className="text-[10px] font-bold text-amber-500/80 ml-0.5">H</span>
-                      </div>
-                    </div>
-                    <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-800/90">
-                      <div className="text-[10px] font-bold text-slate-400">투입 공수</div>
-                      <div className="font-mono font-black text-base sm:text-lg text-cyan-300 leading-tight mt-0.5">
-                        {breakdown.totalHours}<span className="text-[10px] font-bold text-cyan-500/80 ml-0.5">H</span>
-                      </div>
+                    <div className="flex items-center gap-1 font-mono font-black text-xs">
+                      <span className="text-amber-400 font-bold">{otWorkersCount}명</span>
+                      {breakdown.otHours > 0 && (
+                        <span className="text-[10px] text-amber-500/90 font-normal">(+{breakdown.otHours}H)</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* 2 Bottom Action Badges: [인원 관리] & [상세] */}
+                  {/* 🔘 하단 액션 버튼: [인원관리] & [상세] */}
                   <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                     <button
                       type="button"
@@ -1444,11 +1456,11 @@ export const OvertimeStatusView = () => {
                         setQuickNewWorkerLine("");
                         setManageWorkerSearch("");
                       }}
-                      className="w-full flex items-center justify-center gap-1 py-1 px-1.5 rounded-xl bg-slate-800/90 hover:bg-purple-950 text-slate-300 hover:text-purple-300 border border-slate-700/80 hover:border-purple-500 font-bold text-[11px] transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-slate-800/90 hover:bg-purple-950 text-slate-300 hover:text-purple-300 border border-slate-700/80 hover:border-purple-500 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95"
                       title="근로자 추가 및 삭제 관리"
                     >
                       <UserPlus className="w-3.5 h-3.5 text-purple-400" />
-                      <span>인원 관리</span>
+                      <span>인원관리</span>
                     </button>
 
                     <button
@@ -1457,7 +1469,7 @@ export const OvertimeStatusView = () => {
                         e.stopPropagation();
                         handleOpenCompanyPopup(compName);
                       }}
-                      className="w-full flex items-center justify-center gap-1 py-1 px-1.5 rounded-xl bg-slate-800/90 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700/80 hover:border-cyan-500 font-bold text-[11px] transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-slate-800/90 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700/80 hover:border-cyan-500 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95"
                       title="오늘자 근태 현황 상세 보기"
                     >
                       <Eye className="w-3.5 h-3.5 text-cyan-400" />
