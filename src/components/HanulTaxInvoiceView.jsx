@@ -438,15 +438,11 @@ export const HanulTaxInvoiceView = () => {
               className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-100 px-1 py-0.5 cursor-pointer focus:outline-none"
               title="정산 대상 월 선택"
             >
-              {availableMonths.map((m) => {
-                const isPrev = m === getPreviousYearMonth(globalMonth);
-                const isCurr = m === globalMonth;
-                return (
-                  <option key={m} value={m} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
-                    {m.replace("-", "년 ")}월 {isPrev ? "(전월)" : isCurr ? "(당월)" : ""}
-                  </option>
-                );
-              })}
+              {availableMonths.map((m) => (
+                <option key={m} value={m} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold">
+                  {m.replace("-", "년 ")}월
+                </option>
+              ))}
             </select>
           </div>
 

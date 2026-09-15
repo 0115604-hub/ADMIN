@@ -79,33 +79,26 @@ export const getPreviousYearMonth = (baseMonth) => {
 };
 
 /**
- * Generate 12-month dropdown options around current date
+ * Generate month dropdown options starting from previous month (전월부터) without parentheses
  */
 export const getHanulSettlementMonthOptions = () => {
   const currYM = getCurrentYearMonthKST();
-  const prevYM = getPreviousYearMonth(currYM);
+  const [currY, currM] = currYM.split("-").map(Number);
 
-  const allMonths = [
-    "2026-12", "2026-11", "2026-10", "2026-09", "2026-08",
-    "2026-07", "2026-06", "2026-05", "2026-04", "2026-03", "2026-02", "2026-01"
-  ];
-
-  return allMonths.map((ym) => {
-    const [y, m] = ym.split("-");
-    const code = `${y.slice(2)}${m}`;
-    let note = "";
-    if (ym === prevYM) {
-      note = ` (${code}, 전월)`;
-    } else if (ym === currYM) {
-      note = ` (${code}, 당월)`;
-    } else {
-      note = ` (${code})`;
-    }
-    return {
+  const options = [];
+  // 전월부터 과거 12개월 목록 생성 (괄호 없이 순수 'YYYY년 MM월' 형태로 표시)
+  for (let i = 1; i <= 12; i++) {
+    const d = new Date(currY, currM - 1 - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const ym = `${y}-${m}`;
+    options.push({
       ym,
-      label: `${y}년 ${m}월${note}`
-    };
-  });
+      label: `${y}년 ${m}월`
+    });
+  }
+
+  return options;
 };
 
 export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
