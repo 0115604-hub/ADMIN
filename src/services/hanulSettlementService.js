@@ -243,10 +243,28 @@ export const saveHanulSettlementMonthData = async (yearMonth, monthData) => {
     console.warn("Cross-sync to tax invoice store error:", err);
   }
 
-  // Firestore Sync - Settlement Master
+  // Firestore Sync - Settlement Master (Sanitize heavy attachments for ultra-fast sync)
   try {
+    const rawMonthData = store[yearMonth] || {};
+    const sanitizedMonthData = {
+      ...rawMonthData,
+      attachments: (rawMonthData.attachments || []).map(att => ({
+        id: att.id,
+        fileName: att.fileName,
+        fileType: att.fileType,
+        fileSize: att.fileSize,
+        uploadedAt: att.uploadedAt,
+        summary: att.summary,
+        pages: (att.pages || []).slice(0, 4).map(p => ({
+          pageNumber: p.pageNumber,
+          title: p.title,
+          // Only sync lightweight image data or truncate to prevent Firestore 1MB quota issues
+          dataUrl: p.dataUrl && p.dataUrl.length < 400000 ? p.dataUrl : ""
+        }))
+      }))
+    };
     const docRef = doc(db, ...FIRESTORE_PATH);
-    await setDoc(docRef, { [yearMonth]: store[yearMonth] }, { merge: true });
+    await setDoc(docRef, { [yearMonth]: sanitizedMonthData }, { merge: true });
   } catch (e) {
     console.warn("Firestore sync warning (Settlement):", e);
   }

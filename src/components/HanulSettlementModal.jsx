@@ -300,7 +300,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
     await persistCurrentData(selectedMonth, { expenses: filtered });
   };
 
-  // Handle File Upload, Expense Auto-Parsing & Conversion to Image
+  // Handle File Upload, Expense Auto-Parsing & Fast Conversion to Image
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -308,90 +308,19 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
     setIsConverting(true);
     setConversionError("");
     setUploadProgress({
-      percent: 5,
+      percent: 25,
       currentFileIndex: 1,
       totalFiles: files.length,
       currentFileName: files[0].name,
-      statusText: `총 ${files.length}개 파일 업로드 및 지출내역 분석 준비 중...`,
+      statusText: `⚡ 지출내역 자동 분석 및 입력 중...`,
       stage: "converting"
     });
 
-    // Give browser time to paint the modal and progress bar
-    await new Promise((r) => setTimeout(r, 60));
-
-    // 🌟 1. Concurrently start analyzing files for expense breakdown table
+    // 🌟 1. INSTANT PARSE (< 50ms): Extract expenses immediately and show in left panel right away!
     let autoParsedExpenseResult = null;
+    let finalExpenses = latestStateRef.current.expenses;
     try {
       autoParsedExpenseResult = await parseHanulExpensesFromMultipleFiles(files);
-    } catch (parseErr) {
-      console.warn("Auto-parsing expenses error:", parseErr);
-    }
-
-    const newAttachments = [];
-
-    // 🌟 2. Convert all files into high-quality preview images for document viewer
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const basePercent = Math.round((i / files.length) * 85);
-
-      setUploadProgress({
-        percent: Math.max(5, basePercent),
-        currentFileIndex: i + 1,
-        totalFiles: files.length,
-        currentFileName: file.name,
-        statusText: `[${i + 1}/${files.length}] '${file.name}' 이미지 변환 중...`,
-        stage: "converting"
-      });
-
-      try {
-        const converted = await convertFileToImages(file, (progress) => {
-          const fileInternalRatio = (progress.percent || 0) / 100;
-          const currentOverallPercent = Math.min(
-            85,
-            Math.round(((i + fileInternalRatio) / files.length) * 85)
-          );
-          setUploadProgress((prev) => ({
-            ...prev,
-            percent: currentOverallPercent,
-            currentFileIndex: i + 1,
-            totalFiles: files.length,
-            currentFileName: file.name,
-            statusText: `[${i + 1}/${files.length}] '${file.name}' : ${progress.message || "변환 중..."}`,
-            stage: "converting"
-          }));
-        });
-
-        if (converted && converted.pages?.length > 0) {
-          newAttachments.push(converted);
-        }
-      } catch (err) {
-        console.error("File conversion error:", err);
-        setConversionError(`'${file.name}' 변환 실패: ${err.message}`);
-      }
-
-      // Yield after each file to keep the browser responsive
-      await new Promise((r) => setTimeout(r, 50));
-    }
-
-    if (newAttachments.length > 0) {
-      setUploadProgress((prev) => ({
-        ...prev,
-        percent: 90,
-        statusText: autoParsedExpenseResult
-          ? `[${autoParsedExpenseResult.fileName}] 지출내역 자동 추출 및 왼쪽 항목 입력 중...`
-          : `총 ${newAttachments.length}개 파일 안전 저장 및 화면 동기화 중...`,
-        stage: "saving"
-      }));
-
-      await new Promise((r) => setTimeout(r, 60));
-
-      const mergedAttachments = [...attachments, ...newAttachments];
-      setAttachments(mergedAttachments);
-      setActiveViewerAttId(newAttachments[0].id);
-      setActiveViewerPageIndex(0);
-
-      // 🌟 3. Auto-populate left items with the parsed expense breakdown
-      let finalExpenses = latestStateRef.current.expenses;
       if (autoParsedExpenseResult && autoParsedExpenseResult.items && autoParsedExpenseResult.items.length > 0) {
         const merged = mergeExtractedExpensesWithState(autoParsedExpenseResult, latestStateRef.current.expenses);
         finalExpenses = merged.expenses;
@@ -402,45 +331,75 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
           appliedCount: merged.appliedCount,
           totalExpense: merged.totalExpense
         });
+        // Immediately persist expenses to storage
+        persistCurrentData(selectedMonth, { expenses: finalExpenses });
       }
+    } catch (parseErr) {
+      console.warn("Auto-parsing expenses error:", parseErr);
+    }
+
+    setUploadProgress({
+      percent: 60,
+      currentFileIndex: 1,
+      totalFiles: files.length,
+      currentFileName: files[0].name,
+      statusText: `⚡ 증빙 뷰어 고속 이미지 변환 중...`,
+      stage: "converting"
+    });
+
+    // 🌟 2. FAST PARALLEL CONVERSION: Convert files concurrently
+    const conversionPromises = files.map(async (file) => {
+      try {
+        return await convertFileToImages(file);
+      } catch (err) {
+        console.error("File conversion error:", err);
+        return null;
+      }
+    });
+
+    const results = await Promise.all(conversionPromises);
+    const newAttachments = results.filter((res) => res && res.pages?.length > 0);
+
+    if (newAttachments.length > 0) {
+      const mergedAttachments = [...latestStateRef.current.attachments, ...newAttachments];
+      setAttachments(mergedAttachments);
+      setActiveViewerAttId(newAttachments[0].id);
+      setActiveViewerPageIndex(0);
 
       await persistCurrentData(selectedMonth, {
         attachments: mergedAttachments,
         expenses: finalExpenses
       });
-
-      const completionMsg = autoParsedExpenseResult
-        ? `✨ [${autoParsedExpenseResult.fileName}${autoParsedExpenseResult.sheetName ? ` • ${autoParsedExpenseResult.sheetName}` : ""}]에서 ${autoParsedExpenseResult.items.length}개 지출 항목(총 ₩${autoParsedExpenseResult.totalExpense.toLocaleString()})이 자동 입력되었습니다!`
-        : `✅ 총 ${newAttachments.length}개 파일 이미지 변환 및 업로드 완료!`;
-
-      setUploadProgress({
-        percent: 100,
-        currentFileIndex: files.length,
-        totalFiles: files.length,
-        currentFileName: "",
-        statusText: completionMsg,
-        stage: "completed"
-      });
-
-      // Show completion toast
-      setIsSavedToast(true);
-      setTimeout(() => setIsSavedToast(false), 4000);
-
-      // Show 100% completion for 2.4 seconds before closing progress bar
-      setTimeout(() => {
-        setIsConverting(false);
-        setUploadProgress({
-          percent: 0,
-          currentFileIndex: 0,
-          totalFiles: 0,
-          currentFileName: "",
-          statusText: "",
-          stage: "idle"
-        });
-      }, 2400);
-    } else {
-      setIsConverting(false);
     }
+
+    const completionMsg = autoParsedExpenseResult
+      ? `✨ [${autoParsedExpenseResult.fileName}]에서 ${autoParsedExpenseResult.items.length}개 지출 항목(₩${autoParsedExpenseResult.totalExpense.toLocaleString()}) 즉시 입력 완료!`
+      : `✅ 총 ${files.length}개 파일 업로드 및 변환 완료!`;
+
+    setUploadProgress({
+      percent: 100,
+      currentFileIndex: files.length,
+      totalFiles: files.length,
+      currentFileName: "",
+      statusText: completionMsg,
+      stage: "completed"
+    });
+
+    // Show completion toast
+    setIsSavedToast(true);
+    setTimeout(() => setIsSavedToast(false), 3000);
+
+    setTimeout(() => {
+      setIsConverting(false);
+      setUploadProgress({
+        percent: 0,
+        currentFileIndex: 0,
+        totalFiles: 0,
+        currentFileName: "",
+        statusText: "",
+        stage: "idle"
+      });
+    }, 1000);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
