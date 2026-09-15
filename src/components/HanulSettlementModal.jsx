@@ -186,6 +186,10 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
     }
   }, [isOpen, selectedMonth]);
 
+  // UI Filter: 금액이 없는 항목 숨김 (기본값: true - 금액 있는 항목만 표시)
+  const [showOnlyWithAmount, setShowOnlyWithAmount] = useState(true);
+  const [focusedExpenseId, setFocusedExpenseId] = useState(null);
+
   // Calculations
   const calculatedTotals = useMemo(() => {
     const totalQty = products.reduce((s, p) => s + (Number(p.qty) || 0), 0);
@@ -205,6 +209,14 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
       netSettlement
     };
   }, [products, expenses]);
+
+  // 🌟 Visible Expenses: 금액이 없는 항목(0원/빈값)은 왼쪽 패널에서 숨김 (금액 > 0, 신규 추가 항목, 또는 현재 포커스/입력중인 항목 표시)
+  const visibleExpenses = useMemo(() => {
+    if (showOnlyWithAmount) {
+      return expenses.filter((exp) => Number(exp.amount) > 0 || exp.isNewlyAdded || exp.id === focusedExpenseId);
+    }
+    return expenses;
+  }, [expenses, showOnlyWithAmount, focusedExpenseId]);
 
   // Core Persistence Function: Always guarantees saving the latest data to storage & Firestore
   const persistCurrentData = useCallback(async (targetMonth = selectedMonth, overrides = {}) => {
@@ -273,27 +285,26 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
   // Add Custom Expense Item (No + icon on button)
   const handleAddExpenseItem = async () => {
     const newId = `exp_custom_${Date.now()}`;
-    const nextCode = expenses.length + 1;
+    const nextCode = visibleExpenses.length + 1;
     const newItem = {
       id: newId,
       category: `${nextCode}. 신규 공통비/공제 항목`,
       amount: 0,
-      note: ""
+      note: "",
+      isNewlyAdded: true
     };
     const updated = [...expenses, newItem];
     setExpenses(updated);
     await persistCurrentData(selectedMonth, { expenses: updated });
   };
 
-  // Delete Expense Item & Auto-Renumber Sequentially
+  // Delete Expense Item
   const handleDeleteExpenseItem = async (id) => {
-    if (!window.confirm("이 지출/공제 항목을 삭제하시겠습니까?\n(삭제 후 나머지 항목들이 자동으로 재정렬 및 재번호 부여됩니다.)")) return;
+    if (!window.confirm("이 지출/공제 항목을 삭제하시겠습니까?")) return;
     
     const filtered = expenses.filter((e) => e.id !== id);
-    const reordered = renumberExpenses(filtered);
-    
-    setExpenses(reordered);
-    await persistCurrentData(selectedMonth, { expenses: reordered });
+    setExpenses(filtered);
+    await persistCurrentData(selectedMonth, { expenses: filtered });
   };
 
   // Handle File Upload, Expense Auto-Parsing & Conversion to Image
@@ -505,13 +516,16 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
 
   // Export to Excel
   const handleExportExcel = () => {
+    const exportItems = expenses.filter(e => Number(e.amount) > 0);
+    const targetItems = exportItems.length > 0 ? exportItems : expenses;
+
     const sheetData = [
       [`협력업체 (주)한울 ${selectedMonth} 공통비 및 지출 공제내역서`],
       [`정산월: ${selectedMonth}`, `정산일자: ${settlementDate}`, `업체명: (주)한울`],
       [],
       ["[공통비 및 지출 공제내역]"],
       ["No", "지출/공제 항목", "금액(원)", "세부내역/비고"],
-      ...expenses.map((e, idx) => [
+      ...targetItems.map((e, idx) => [
         idx + 1,
         e.category,
         e.amount,
@@ -802,17 +816,27 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
           </div>
         )}
 
-        {/* KPI Summary Card: Total Expense */}
+        {/* KPI Summary Card: Total Expense & Active Items Filter */}
         <div className="px-3.5 py-2 bg-rose-50/60 dark:bg-rose-950/20 border-b border-rose-200/80 dark:border-rose-800/60 flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-              {selectedMonth} 등록 항목: <strong className="text-slate-900 dark:text-white font-black">{expenses.length}개</strong>
-              {expenses.filter(e => e.amount > 0).length > 0 && (
-                <span className="text-rose-600 dark:text-rose-400 ml-1">
-                  ({expenses.filter(e => e.amount > 0).length}개 입력됨)
-                </span>
-              )}
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              {selectedMonth} 지출/공제 항목: <strong className="text-slate-950 dark:text-white font-black">{visibleExpenses.length}개</strong>
             </span>
+            <button
+              type="button"
+              onClick={() => setShowOnlyWithAmount((prev) => !prev)}
+              className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold border transition-all cursor-pointer flex items-center gap-1 ${
+                showOnlyWithAmount
+                  ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 shadow-2xs"
+                  : "bg-white text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 shadow-2xs"
+              }`}
+              title={showOnlyWithAmount ? "금액 0원 항목 숨김 상태 (클릭 시 전체 항목 표시)" : "전체 항목 표시 상태 (클릭 시 금액 있는 항목만 표시)"}
+            >
+              <span>{showOnlyWithAmount ? "금액 있는 항목만 표시" : "전체 항목 표시"}</span>
+              <span className="opacity-75 font-mono text-[10px]">
+                ({showOnlyWithAmount ? `${visibleExpenses.length}개` : `${expenses.length}개`})
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
@@ -863,75 +887,117 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
             )}
 
             {/* List of Compact Expense Item Rows */}
-            <div className={`grid grid-cols-1 ${viewMode === "form" ? "md:grid-cols-2" : "grid-cols-1"} gap-1.5`}>
-              {expenses.map((exp, idx) => {
-                const isFilled = Number(exp.amount) > 0;
-                return (
-                  <div
-                    key={exp.id || idx}
-                    className={`px-2.5 py-1.5 rounded-xl border transition-all ${
-                      isFilled
-                        ? "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 shadow-2xs ring-1 ring-rose-400/30"
-                        : "bg-slate-50/90 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 hover:border-slate-300"
-                    }`}
+            {visibleExpenses.length === 0 ? (
+              <div className="py-10 px-4 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center gap-2 bg-slate-50/50 dark:bg-slate-900/50 my-auto">
+                <Receipt className="w-8 h-8 text-slate-400 dark:text-slate-600" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  현재 금액이 입력된 지출/공제 항목이 없습니다.
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-sm">
+                  상단의 <strong>[지출/증빙 파일 업로드]</strong> 버튼으로 파일을 올리면 항목이 자동 분석되어 입력되며, 아래 <strong>[항목 직접 추가]</strong>를 눌러 직접 등록할 수도 있습니다.
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleAddExpenseItem}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer active:scale-95 transition-all"
                   >
-                    {/* Line 1: Item Number Badge + Category Name + Delete Button */}
-                    <div className="flex items-center justify-between gap-1.5 mb-1">
-                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <span className="w-4 h-4 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-[10px] flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={exp.category}
-                          onBlur={handleInputBlur}
-                          onChange={(e) => handleExpenseChange(exp.id, "category", e.target.value)}
-                          className="w-full px-1 py-0.5 rounded bg-transparent font-black text-xs text-slate-900 dark:text-white border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900"
-                        />
+                    항목 직접 추가
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowOnlyWithAmount(false)}
+                    className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 text-xs font-bold cursor-pointer transition-all"
+                  >
+                    전체 기본 항목 보기 ({expenses.length}개)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className={`grid grid-cols-1 ${viewMode === "form" ? "md:grid-cols-2" : "grid-cols-1"} gap-1.5`}>
+                {visibleExpenses.map((exp, idx) => {
+                  const isFilled = Number(exp.amount) > 0;
+                  return (
+                    <div
+                      key={exp.id || idx}
+                      className={`px-2.5 py-1.5 rounded-xl border transition-all ${
+                        isFilled
+                          ? "bg-rose-50/70 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 shadow-2xs ring-1 ring-rose-400/30"
+                          : "bg-amber-50/70 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 shadow-2xs"
+                      }`}
+                    >
+                      {/* Line 1: Item Number Badge + Category Name + Delete Button */}
+                      <div className="flex items-center justify-between gap-1.5 mb-1">
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <span className="w-4 h-4 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-[10px] flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={exp.category}
+                            onFocus={() => setFocusedExpenseId(exp.id)}
+                            onBlur={() => {
+                              setFocusedExpenseId(null);
+                              handleInputBlur();
+                            }}
+                            onChange={(e) => handleExpenseChange(exp.id, "category", e.target.value)}
+                            className="w-full px-1 py-0.5 rounded bg-transparent font-black text-xs text-slate-900 dark:text-white border border-transparent hover:border-slate-300 focus:border-emerald-500 focus:bg-white dark:focus:bg-slate-900"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExpenseItem(exp.id)}
+                          className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
+                          title="항목 삭제"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteExpenseItem(exp.id)}
-                        className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer shrink-0"
-                        title="항목 삭제 (삭제 시 순서가 자동 재정렬됩니다)"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {/* Line 2: Slim Amount Input + Note Input */}
+                      <div className="flex items-center gap-1.5">
+                        {/* Amount Input with Thousands Separator */}
+                        <div className="w-32 sm:w-36 shrink-0 relative flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500">
+                          <span className="pl-1.5 text-[10px] font-bold text-slate-400">₩</span>
+                          <input
+                            type="text"
+                            value={Number(exp.amount) > 0 ? Number(exp.amount).toLocaleString() : ""}
+                            placeholder="0"
+                            onFocus={(e) => {
+                              e.target.select();
+                              setFocusedExpenseId(exp.id);
+                            }}
+                            onBlur={() => {
+                              setFocusedExpenseId(null);
+                              handleInputBlur();
+                            }}
+                            onChange={(e) => handleExpenseChange(exp.id, "amount", e.target.value)}
+                            className="w-full px-1.5 py-1 text-right font-mono font-black text-xs text-slate-900 dark:text-white focus:outline-none bg-transparent"
+                          />
+                        </div>
+
+                        {/* Note / Evidence Input */}
+                        <div className="flex-1 min-w-0">
+                          <input
+                            type="text"
+                            value={exp.note || ""}
+                            placeholder="비고 / 증빙 (예: 세금계산서)"
+                            onFocus={() => setFocusedExpenseId(exp.id)}
+                            onBlur={() => {
+                              setFocusedExpenseId(null);
+                              handleInputBlur();
+                            }}
+                            onChange={(e) => handleExpenseChange(exp.id, "note", e.target.value)}
+                            className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 truncate"
+                          />
+                        </div>
+                      </div>
                     </div>
-
-                    {/* Line 2: Slim Amount Input + Note Input */}
-                    <div className="flex items-center gap-1.5">
-                      {/* Amount Input with Thousands Separator */}
-                      <div className="w-32 sm:w-36 shrink-0 relative flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden focus-within:border-rose-500 focus-within:ring-1 focus-within:ring-rose-500">
-                        <span className="pl-1.5 text-[10px] font-bold text-slate-400">₩</span>
-                        <input
-                          type="text"
-                          value={Number(exp.amount) > 0 ? Number(exp.amount).toLocaleString() : ""}
-                          placeholder="0"
-                          onFocus={(e) => e.target.select()}
-                          onBlur={handleInputBlur}
-                          onChange={(e) => handleExpenseChange(exp.id, "amount", e.target.value)}
-                          className="w-full px-1.5 py-1 text-right font-mono font-black text-xs text-slate-900 dark:text-white focus:outline-none bg-transparent"
-                        />
-                      </div>
-
-                      {/* Note / Evidence Input */}
-                      <div className="flex-1 min-w-0">
-                        <input
-                          type="text"
-                          value={exp.note || ""}
-                          placeholder="비고 / 증빙 (예: 세금계산서)"
-                          onBlur={handleInputBlur}
-                          onChange={(e) => handleExpenseChange(exp.id, "note", e.target.value)}
-                          className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-[11px] text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400 truncate"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Bottom Placement: 항목 직접 추가 Button (No + icon) */}
             <div className="pt-1">
