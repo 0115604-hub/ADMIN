@@ -192,6 +192,47 @@ export const formatShortMonthDay = (dateStrOrDay) => {
   return `${month}월 ${day}일 (${dayOfWeek})`;
 };
 
+// ⭐ 공장 뱃지 렌더링 함수
+export const renderPlantBadge = (plantName) => {
+  const isSam = plantName === "삼랑진공장";
+  const isHal = plantName === "한림공장";
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-md text-[11px] font-black border shadow-xs shrink-0 ${
+        isSam
+          ? "bg-amber-950/90 text-amber-300 border-amber-700/80"
+          : isHal
+          ? "bg-emerald-950/90 text-emerald-300 border-emerald-700/80"
+          : "bg-slate-800 text-slate-300 border-slate-700"
+      }`}
+    >
+      {plantName || "삼랑진공장"}
+    </span>
+  );
+};
+
+// ⭐ 협력사 뱃지 렌더링 함수 (오륙, 유성, 조영, 한울, 부림텍 개별 전용 컬러 뱃지)
+export const renderCompanyBadge = (compName) => {
+  const clean = String(compName || "").replace(/\(주\)/g, "").trim();
+  let badgeStyle = "bg-slate-800 text-slate-200 border-slate-700";
+  if (clean.includes("오륙")) {
+    badgeStyle = "bg-blue-950/90 text-blue-300 border-blue-700/80";
+  } else if (clean.includes("유성")) {
+    badgeStyle = "bg-cyan-950/90 text-cyan-300 border-cyan-700/80";
+  } else if (clean.includes("조영")) {
+    badgeStyle = "bg-teal-950/90 text-teal-300 border-teal-700/80";
+  } else if (clean.includes("한울")) {
+    badgeStyle = "bg-purple-950/90 text-purple-300 border-purple-700/80";
+  } else if (clean.includes("부림")) {
+    badgeStyle = "bg-rose-950/90 text-rose-300 border-rose-700/80";
+  }
+  return (
+    <span key={clean} className={`px-2 py-0.5 rounded-md text-[11px] font-black border shadow-xs shrink-0 ${badgeStyle}`}>
+      {clean}
+    </span>
+  );
+};
+
 export const getFullCompanyPlantLabel = (report) => {
   if (!report) return "삼랑진공장 (주)오륙";
   let comp = report.company || "";
@@ -440,7 +481,13 @@ export const generateSynthesizedPlantReports = (reports = []) => {
       (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
     );
     const isActualOvertime = isWk || hasSpecialOvertime;
-    const reportCategory = isActualOvertime ? "특근보고서" : "근태보고서";
+
+    // ⭐ 평일 근태는 취합하지 않고, 주말/공휴일 특근 보고서만 취합 생성!
+    if (!isActualOvertime) {
+      return;
+    }
+
+    const reportCategory = "특근보고서";
 
     const drafterName = plant === "삼랑진공장" ? "양인나" : "오상민";
     const drafterTitle = "선임";
@@ -482,7 +529,7 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         `■ 9월 ${dayNum}일(${dayLabel}) [${plant}] ${reportCategory} 취합`,
         `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
         `2. 협력사별 투입 현황:\n${compBreakdownText}`,
-        `3. 작업 내용: ${isActualOvertime ? "현대/기아 긴급 납품 물량 대응 및 주말 가동" : `${plant} 정규 생산 라인 가동 및 일일 근태 현황 취합`}`
+        `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 주말 특근 가동 현황 취합`
       ]
     });
   });
@@ -2682,8 +2729,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       : "border-slate-800 bg-slate-900/60 hover:border-emerald-500/60 hover:bg-slate-900"
                                   }`}
                                 >
-                                  {/* Left: 뱃지 + <해당공장><해당회사> */}
-                                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap min-w-0">
+                                  {/* Left: 보고서 뱃지 + 공장 뱃지 + 회사 뱃지 */}
+                                  <div className="flex items-center gap-1.5 flex-wrap sm:flex-nowrap min-w-0">
                                     {/* 1. 보고서 뱃지 */}
                                     <span
                                       className={`px-2 py-0.5 rounded-md text-[11px] font-black shrink-0 border ${
@@ -2697,10 +2744,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {reportBadgeText}
                                     </span>
 
-                                    {/* 2. <해당공장><해당회사> */}
-                                    <span className="text-xs sm:text-sm font-black text-slate-200 shrink-0 font-mono tracking-tight">
-                                      &lt;{plantName}&gt;&lt;{companyLabel}&gt;
-                                    </span>
+                                    {/* 2. 공장 뱃지 (삼랑진공장, 한림공장) */}
+                                    {renderPlantBadge(plantName)}
+
+                                    {/* 3. 회사 뱃지 (오륙, 유성, 조영, 한울, 부림텍) */}
+                                    {isSynthesized ? (
+                                      Array.isArray(report.companies) && report.companies.length > 0 ? (
+                                        <div className="flex items-center gap-1 flex-wrap shrink-0">
+                                          {report.companies.map((c) => renderCompanyBadge(c))}
+                                        </div>
+                                      ) : (
+                                        renderCompanyBadge(plantName === "삼랑진공장" ? "오륙, 유성" : "조영, 한울, 부림텍")
+                                      )
+                                    ) : (
+                                      renderCompanyBadge(companyName)
+                                    )}
                                   </div>
 
                                   {/* Right: 금액 + 수정/삭제 (또는 결재함이동/상세) */}
