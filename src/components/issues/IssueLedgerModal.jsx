@@ -21,11 +21,9 @@ import {
 const getIssueOpinionCount = (item) => {
   if (!item) return 0;
   const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
-  if (item.category === "품질경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
-    return replyCount;
-  }
   const hasAction = typeof item.actionResult === "string" && item.actionResult.trim().length > 0;
-  return replyCount + (hasAction ? 1 : 0);
+  if (replyCount > 0) return replyCount;
+  return hasAction ? 1 : 0;
 };
 
 export const IssueLedgerModal = ({
@@ -272,7 +270,8 @@ export const IssueLedgerModal = ({
                 const isItNotice = it.category === "공지사항" || it.category === "사내공지" || it.category === "공유사항";
                 const isItQualityAlert = it.category === "품질경보";
                 const isItDeleted = Boolean(it.isDeleted);
-                const isItResolved = Boolean(it.isResolved);
+                const hasAction = typeof it.actionResult === "string" && it.actionResult.trim().length > 0;
+                const isItResolved = Boolean(it.isResolved || hasAction);
                 const isItUnresolved = !isItDeleted && !isItResolved;
                 const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
 

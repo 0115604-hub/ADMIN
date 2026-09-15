@@ -5,7 +5,8 @@ import {
   Plus,
   ChevronUp,
   ChevronDown,
-  Trash2
+  Trash2,
+  CheckCircle2
 } from "lucide-react";
 
 const formatMonthDayWithDayOfWeek = (dateStr) => {
@@ -32,11 +33,9 @@ const formatMonthDayWithDayOfWeek = (dateStr) => {
 const getIssueOpinionCount = (item) => {
   if (!item) return 0;
   const replyCount = Array.isArray(item.replies) ? item.replies.length : 0;
-  if (item.category === "품질경보" || item.category === "오픈이슈" || item.category === "품질이슈") {
-    return replyCount;
-  }
   const hasAction = typeof item.actionResult === "string" && item.actionResult.trim().length > 0;
-  return replyCount + (hasAction ? 1 : 0);
+  if (replyCount > 0) return replyCount;
+  return hasAction ? 1 : 0;
 };
 
 export const RealtimeIssueBoard = ({
@@ -216,15 +215,39 @@ export const RealtimeIssueBoard = ({
             const isOpenIssue = item.category === "오픈이슈" || item.category === "품질이슈";
             const isQualityAlert = item.category === "품질경보";
 
+            const actionContent =
+              (typeof item.actionResult === "string" && item.actionResult.trim().length > 0)
+                ? item.actionResult.trim()
+                : Array.isArray(item.replies) && item.replies.length > 0
+                ? item.replies[item.replies.length - 1].content?.trim() || ""
+                : "";
+
+            const actionAuthor =
+              item.actionAuthor ||
+              (Array.isArray(item.replies) && item.replies.length > 0
+                ? item.replies[item.replies.length - 1].author || ""
+                : "");
+
+            const actionDate =
+              item.actionAt ||
+              (Array.isArray(item.replies) && item.replies.length > 0
+                ? item.replies[item.replies.length - 1].actionDate || item.replies[item.replies.length - 1].createdAt || ""
+                : "");
+
+            const hasAction = Boolean(actionContent);
+            const isResolvedOrActioned = Boolean(item.isResolved || hasAction);
+
             return (
               <div
                 key={item.id}
                 onClick={() => onSelectCardCategory(item)}
                 className={`p-3 sm:p-3.5 rounded-xl sm:rounded-2xl border-2 transition-all flex flex-col gap-2 shadow-2xs cursor-pointer hover:shadow-md hover:border-blue-400 dark:hover:border-blue-700 active:scale-[0.99] group ${
-                  item.isResolved
+                  isQualityAlert
+                    ? isResolvedOrActioned
+                      ? "bg-rose-50/40 dark:bg-rose-950/20 border-rose-300 dark:border-rose-900/70 ring-1 ring-emerald-400/30"
+                      : "bg-rose-50/60 dark:bg-rose-950/30 border-rose-400 dark:border-rose-900 ring-2 ring-rose-400/30"
+                    : item.isResolved
                     ? "bg-white/95 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800"
-                    : isQualityAlert
-                    ? "bg-rose-50/50 dark:bg-rose-950/25 border-rose-300 dark:border-rose-900/80 ring-1 ring-rose-400/20"
                     : isMeeting
                     ? "bg-purple-50/50 dark:bg-purple-950/25 border-purple-300 dark:border-purple-800/80 ring-1 ring-purple-400/20"
                     : isNotice
@@ -237,21 +260,45 @@ export const RealtimeIssueBoard = ({
                 <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-200/60 dark:border-slate-800/60 flex-wrap">
                   <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                     {isQualityAlert ? (
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
-                        🚨 품질경보
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-600 text-white shrink-0 shadow-2xs">
+                          🚨 품질경보
+                        </span>
+                        {isResolvedOrActioned && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>조치완료</span>
+                          </span>
+                        )}
+                      </div>
                     ) : isMeeting ? (
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
-                        📅 회의일정
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-purple-600 text-white shrink-0 shadow-2xs">
+                          📅 회의일정
+                        </span>
+                        {isResolvedOrActioned && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-purple-700 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>회의종결</span>
+                          </span>
+                        )}
+                      </div>
                     ) : isNotice ? (
                       <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs">
                         📢 사내공지
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs">
-                        📌 오픈이슈
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-gradient-to-r from-blue-600 to-indigo-600 text-white shrink-0 shadow-2xs">
+                          📌 오픈이슈
+                        </span>
+                        {isResolvedOrActioned && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-emerald-600 text-white shrink-0 shadow-2xs flex items-center gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>조치완료</span>
+                          </span>
+                        )}
+                      </div>
                     )}
                     <span className={`px-1.5 py-0.5 rounded-md text-[11px] font-black shrink-0 ${
                       item.plant === "한림공장"
@@ -318,6 +365,63 @@ export const RealtimeIssueBoard = ({
                     </p>
                   )}
                 </div>
+
+                {/* 3단: 조치 결과 (품질경보 등 조치결과가 입력되었을 때 항상 첫화면에 표시) */}
+                {hasAction && (
+                  <div className="mt-1 p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-emerald-50/95 to-teal-50/90 dark:from-emerald-950/50 dark:to-teal-950/40 border border-emerald-300 dark:border-emerald-700/80 space-y-1.5 shadow-2xs">
+                    <div className="flex items-center justify-between gap-1 text-[11px] font-black pb-1.5 border-b border-emerald-200/80 dark:border-emerald-800/70">
+                      <span className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span className="font-extrabold">{isMeeting ? "회의 결과 및 결정 사항" : "조치결과"}</span>
+                        <span className="px-1.5 py-0.2 rounded text-[9.5px] bg-emerald-600 text-white font-black shadow-2xs">
+                          {isMeeting ? "종결" : "조치완료"}
+                        </span>
+                      </span>
+                      {Array.isArray(item.replies) && item.replies.length > 1 ? (
+                        <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold">
+                          총 {item.replies.length}건의 조치내용
+                        </span>
+                      ) : (actionAuthor || actionDate) ? (
+                        <span className="text-[10px] sm:text-[10.5px] text-slate-600 dark:text-slate-300 font-medium">
+                          {actionAuthor ? `👤 ${actionAuthor}` : ""}
+                          {actionAuthor && actionDate ? " • " : ""}
+                          {actionDate ? `${actionDate}` : ""}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* 조치 내용 상세 출력 */}
+                    {Array.isArray(item.replies) && item.replies.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {item.replies.map((rep, rIdx) => (
+                          <div key={rep.id || rIdx} className="space-y-0.5">
+                            {item.replies.length > 1 && (
+                              <div className="flex items-center justify-between text-[10px] text-emerald-800 dark:text-emerald-300 font-bold">
+                                <span>👤 {rep.author || "담당자"} {rep.authorTitle || ""}</span>
+                                <span className="font-mono text-[9.5px] text-slate-500 dark:text-slate-400">{rep.actionDate || rep.createdAt || ""}</span>
+                              </div>
+                            )}
+                            <p className="text-[10.5px] sm:text-[11px] font-medium leading-relaxed whitespace-pre-wrap break-words text-slate-800 dark:text-slate-200 bg-white/90 dark:bg-slate-900/80 p-2 sm:p-2.5 rounded-lg border border-emerald-200/80 dark:border-emerald-900/60 shadow-2xs">
+                              {rep.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {(actionAuthor || actionDate) && (
+                          <div className="flex items-center justify-between text-[10px] text-emerald-800 dark:text-emerald-300 font-bold">
+                            <span>👤 {actionAuthor}</span>
+                            <span className="font-mono text-[9.5px] text-slate-500 dark:text-slate-400">{actionDate}</span>
+                          </div>
+                        )}
+                        <p className="text-[10.5px] sm:text-[11px] font-medium leading-relaxed whitespace-pre-wrap break-words text-slate-800 dark:text-slate-200 bg-white/90 dark:bg-slate-900/80 p-2 sm:p-2.5 rounded-lg border border-emerald-200/80 dark:border-emerald-900/60 shadow-2xs">
+                          {actionContent}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
