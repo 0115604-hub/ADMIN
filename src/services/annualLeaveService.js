@@ -558,9 +558,9 @@ export const getLeaveTypeMeta = (typeStr = "") => {
   }
   if (type.includes("삼랑진")) {
     return {
-      type: "삼랑진공장",
+      type: "삼랑진방문",
       emoji: "🏭",
-      activeLabel: "삼랑진공장",
+      activeLabel: "삼랑진방문",
       scheduledLabelPrefix: "삼랑진",
       activeBadge: "bg-amber-600 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-amber-500 text-white font-black shadow-2xs"
@@ -568,9 +568,9 @@ export const getLeaveTypeMeta = (typeStr = "") => {
   }
   if (type.includes("한림")) {
     return {
-      type: "한림공장",
+      type: "한림방문",
       emoji: "🏭",
-      activeLabel: "한림공장",
+      activeLabel: "한림방문",
       scheduledLabelPrefix: "한림",
       activeBadge: "bg-emerald-600 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-emerald-500 text-white font-black shadow-2xs"
@@ -586,12 +586,12 @@ export const getLeaveTypeMeta = (typeStr = "") => {
       scheduledBadge: "bg-indigo-500 text-white font-black shadow-2xs"
     };
   }
-  if (type.includes("RNA 회의") || type.includes("RNA") || type.includes("회의")) {
+  if (type.includes("R&A") || type.includes("RNA") || type.includes("회의")) {
     return {
-      type: "RNA 회의",
+      type: "R&A회의",
       emoji: "👔",
-      activeLabel: "회의중",
-      scheduledLabelPrefix: "회의",
+      activeLabel: "R&A회의",
+      scheduledLabelPrefix: "R&A회의",
       activeBadge: "bg-purple-600 text-white font-black animate-pulse shadow-xs",
       scheduledBadge: "bg-purple-500 text-white font-black shadow-2xs"
     };
@@ -738,7 +738,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
       let line2 = "";
 
       if (t.includes("한림") || r.includes("한림")) {
-        line1 = "한림공장";
+        line1 = "한림방문";
         if (r.includes("클립") || t.includes("클립") || r.includes("MC") || r.includes("M/C")) {
           line2 = "클립MC";
         } else if (r && r !== t && !r.includes("한림")) {
@@ -747,7 +747,7 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
           line2 = "클립MC";
         }
       } else if (t.includes("삼랑진") || r.includes("삼랑진")) {
-        line1 = "삼랑진공장";
+        line1 = "삼랑진방문";
         if (r && r !== t && !r.includes("삼랑진")) {
           line2 = r.length > 6 ? r.slice(0, 6) : r;
         }
@@ -776,8 +776,8 @@ export const getUserLeaveStatus = (userId, userName, allLeaves = [], options = {
         if (r && r !== t && !r.includes("외출")) {
           line2 = r.length > 6 ? r.slice(0, 6) : r;
         }
-      } else if (t.includes("RNA") || t.includes("회의")) {
-        line1 = "RNA 회의";
+      } else if (t.includes("R&A") || t.includes("RNA") || t.includes("회의")) {
+        line1 = "R&A회의";
         if (r && r !== t && !r.includes("회의") && !r.includes("RNA")) {
           line2 = r.length > 6 ? r.slice(0, 6) : r;
         }
