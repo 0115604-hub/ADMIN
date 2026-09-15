@@ -97,8 +97,51 @@ export const normalizeApprovalDoc = (d) => {
     computedStep = Math.max(1, approvedCount + 1);
   }
 
+  // ⭐ Weekday Attendance vs Weekend Overtime Auto-Normalization
+  // If document title or id indicates a weekday (월, 화, 수, 목, 금) and was labeled as '특근보고서 취합', convert it to '근태보고서 취합'
+  let normalizedTitle = d.title || "";
+  let normalizedTypeName = d.typeName || "";
+  let normalizedType = d.type || "OVERTIME";
+  let normalizedContent = d.content || "";
+
+  const isWeekdayDocument =
+    /\((월|화|수|목|금)\)/.test(normalizedTitle) ||
+    /202609(0[1-4]|0[7-9]|1[01]|1[4-8]|2[1-5]|2[8-9]|30)/.test(d.id || "") ||
+    /2026-09-(0[1-4]|0[7-9]|1[01]|1[4-8]|2[1-5]|2[8-9]|30)/.test(d.workDate || "");
+
+  const hasSynthesisOvertimeLabel =
+    normalizedTitle.includes("특근보고서 취합") ||
+    normalizedTitle.includes("특근실시보고서 취합") ||
+    normalizedTypeName.includes("특근보고서 (취합)");
+
+  if (isWeekdayDocument && hasSynthesisOvertimeLabel && !normalizedTitle.includes("주말 특근 승인")) {
+    normalizedTitle = normalizedTitle
+      .replace(/특근실시보고서 취합/g, "근태보고서 취합")
+      .replace(/특근보고서 취합/g, "근태보고서 취합");
+
+    if (normalizedTypeName.includes("특근보고서")) {
+      normalizedTypeName = normalizedTypeName.replace(/특근보고서/g, "근태보고서");
+    }
+
+    if (normalizedType === "OVERTIME") {
+      normalizedType = "ATTENDANCE";
+    }
+
+    if (normalizedContent) {
+      normalizedContent = normalizedContent
+        .replace(/특근보고서 취합/g, "근태보고서 취합")
+        .replace(/특근실시보고서 취합/g, "근태보고서 취합")
+        .replace(/1\. 특근 요약/g, "1. 근태 요약")
+        .replace(/주말 가동 완료/g, "정규 생산 라인 가동 및 일일 근태 현황 취합");
+    }
+  }
+
   return {
     ...d,
+    title: normalizedTitle,
+    typeName: normalizedTypeName,
+    type: normalizedType,
+    content: normalizedContent,
     currentStep: computedStep,
     status: computedStatus,
     steps: fixedSteps
@@ -938,9 +981,22 @@ export const deleteApprovalDocument = async (id) => {
   return updated;
 };
 
-// ⭐ 공장별 소속 협력사 특근보고서 결재함 자동 취합 및 등록 연동 (Plant-Level Weekend Overtime Approval Synthesis)
+// 🧹 Silent Remove Approval Doc (Used during aggregation sync without adding to user-deleted blacklist)
+export const removeApprovalDocSilently = async (id) => {
+  if (!id) return;
+  const current = getLocalApprovalDocs();
+  const updated = current.filter((d) => d.id !== id);
+  saveLocalApprovalDocs(updated);
+  try {
+    await deleteDoc(doc(db, COLLECTION_NAME, id));
+  } catch (e) {}
+};
+
+// ⭐ 공장별 소속 협력사 근태/특근보고서 결재함 자동 취합 및 등록 연동 (Plant-Level Attendance & Overtime Approval Synthesis)
 // 삼랑진공장: (주)오륙, 유성 취합 ➔ 결재함 자동 등록
 // 한림공장: (주)조영산업, 한울, 부림텍 취합 ➔ 결재함 자동 등록
+// 평일 (월~금): 근태보고서 취합 (Attendance)
+// 주말 (토~일) 또는 특근 지정: 특근보고서 취합 (Overtime)
 const PLANT_COMPANIES_MAP = {
   "삼랑진공장": ["(주)오륙", "유성"],
   "한림공장": ["(주)조영산업", "한울", "부림텍"]
@@ -985,7 +1041,9 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
     const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
     const dt = new Date(2026, 8, dayNum);
-    const dayLabel = dayOfWeekNames[dt.getDay()] || "토";
+    const dayOfWeekIndex = dt.getDay(); // 0 = 일, 6 = 토
+    const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6;
+    const dayLabel = dayOfWeekNames[dayOfWeekIndex] || (isWeekend ? "토" : "화");
 
     let allReports = Array.isArray(reports) ? reports : null;
     if (allReports === null) {
@@ -1035,17 +1093,40 @@ export const syncPlantOvertimeToApprovalBox = async ({
     for (const targetPlant of targetPlants) {
       const targetCompanies = PLANT_COMPANIES_MAP[targetPlant] || [];
       const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
-      const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
+
+      // Filter reports for this plant and date
+      const plantReports = allReports.filter(r => 
+        (r.plant === targetPlant || targetCompanies.includes(r.company) || (r.plant && r.plant.includes(targetPlant.replace("공장", "")))) && 
+        (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
+      );
+
+      // Check whether this is weekend overtime or weekday attendance
+      const hasSpecialOvertimeReport = plantReports.some(
+        (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
+      );
+      const isActualOvertime = isWeekend || hasSpecialOvertimeReport;
+      const reportCategoryName = isActualOvertime ? "특근보고서" : "근태보고서";
+      const docTypeName = isActualOvertime ? "특근보고서 (취합)" : "근태보고서 (취합)";
+      const docType = isActualOvertime ? "OVERTIME" : "ATTENDANCE";
+      const draftComment = isActualOvertime ? "특근 취합 기안 상신" : "근태 취합 기안 상신";
+      const summaryHeader = isActualOvertime ? "1. 특근 요약" : "1. 근태 요약";
+      const taskHeader = isActualOvertime
+        ? `• 현대/기아 긴급 납품 물량 대응 및 ${targetPlant} 주말 가동 완료`
+        : `• ${targetPlant} 정규 생산 라인 가동 및 주간 근태 일일 현황 취합`;
+
+      const canonicalDocId = isActualOvertime
+        ? `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`
+        : `appr_att_${plantKey}_${workDateStr.replace(/-/g, "")}`;
 
       // ⭐ If permanently deleted by ADMIN, never resurrect
       if (deletedIds.has(canonicalDocId)) {
         continue;
       }
 
-      // 🧹 1. Clean any duplicate overtime approval documents for this plant and date
+      // 🧹 1. Clean any duplicate or opposing (ot vs att) approval documents for this plant and date
       const duplicateDocs = currentApprovalDocs.filter(d => 
         d.id !== canonicalDocId &&
-        d.type === "OVERTIME" &&
+        (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
         d.plant === targetPlant &&
         (
           (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
@@ -1055,19 +1136,13 @@ export const syncPlantOvertimeToApprovalBox = async ({
       );
 
       for (const dup of duplicateDocs) {
-        await deleteApprovalDocument(dup.id);
+        await removeApprovalDocSilently(dup.id);
       }
 
-      // Filter reports for this plant and date
-      const plantReports = allReports.filter(r => 
-        (r.plant === targetPlant || targetCompanies.includes(r.company) || (r.plant && r.plant.includes(targetPlant.replace("공장", "")))) && 
-        (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
-      );
-
-      // ⭐ If no explicit overtime reports exist for this plant on this date (e.g. user deleted them):
+      // ⭐ If no reports exist for this plant on this date (e.g. user deleted them):
       if (plantReports.length === 0) {
         const allMatchingDocs = getLocalApprovalDocs().filter(d => 
-          d.type === "OVERTIME" &&
+          (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
           d.plant === targetPlant &&
           (
             d.id === canonicalDocId ||
@@ -1077,7 +1152,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
           )
         );
         for (const d of allMatchingDocs) {
-          await deleteApprovalDocument(d.id);
+          await removeApprovalDocSilently(d.id);
         }
         continue;
       }
@@ -1146,7 +1221,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       // If no workers or no valid companies for this plant on this date:
       if (totalPlantWorkers === 0 || companySummaries.length === 0) {
         const allMatchingDocs = getLocalApprovalDocs().filter(d => 
-          d.type === "OVERTIME" &&
+          (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
           d.plant === targetPlant &&
           (
             d.id === canonicalDocId ||
@@ -1156,18 +1231,26 @@ export const syncPlantOvertimeToApprovalBox = async ({
           )
         );
         for (const d of allMatchingDocs) {
-          await deleteApprovalDocument(d.id);
+          await removeApprovalDocSilently(d.id);
         }
         continue;
       }
 
-      const existingDoc = getLocalApprovalDocs().find(d => d.id === canonicalDocId);
+      const existingDoc = getLocalApprovalDocs().find(d => 
+        d.id === canonicalDocId ||
+        (d.plant === targetPlant && (d.type === "OVERTIME" || d.type === "ATTENDANCE") && (
+          (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
+          (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+          (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+        ))
+      );
+
       const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "오상민";
       const drafterTitle = "선임";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
       const titleCompList = participatingCompanies.length > 0 ? participatingCompanies : targetCompanies;
-      const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) 특근보고서 취합 (${titleCompList.join(", ")})`;
+      const title = `[${targetPlant}] 9월 ${dayNum}일(${dayLabel}) ${reportCategoryName} 취합 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
         ? "생산총괄 ((주)오륙 + 유성)"
         : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
@@ -1179,18 +1262,18 @@ export const syncPlantOvertimeToApprovalBox = async ({
         return `• ${cs.company} (${cs.workerCount}명)\n  - 관리자: ${mgrText}\n  - 작업자: ${wrkText}`;
       }).join("\n");
 
-      // ⭐ 초간결 특근 취합 결재 문서 내용
-      const content = `■ 9월 ${dayNum}일(${dayLabel}) [${targetPlant}] 특근보고서 취합
+      // ⭐ 초간결 근태/특근 취합 결재 문서 내용
+      const content = `■ 9월 ${dayNum}일(${dayLabel}) [${targetPlant}] ${reportCategoryName} 취합
 
-1. 특근 요약
-• 대상: ${targetPlant} (${targetCompanies.join(", ")})
+${summaryHeader}
+• 대상: ${targetPlant} (${titleCompList.join(", ")})
 • 총 투입: ${totalPlantWorkers}명 (${totalPlantHours} M/H) | 총 노무비: ₩${totalPlantCost.toLocaleString()}
 
 2. 회사별 세부 투입 현황
 ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
 
 3. 주요 작업 내용
-• 현대/기아 긴급 납품 물량 대응 및 ${targetPlant} 주말 가동 완료`;
+${taskHeader}`;
 
       // Build or preserve steps
       let steps;
@@ -1203,7 +1286,7 @@ ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
         });
       } else {
         steps = [
-          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: nowStr, comment: "특근 취합 기안 상신" },
+          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: nowStr, comment: draftComment },
           { role: "책임", name: leadName, title: "책임", status: "PENDING", date: "", comment: "" },
           { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
           { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
@@ -1213,8 +1296,8 @@ ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
       const approvalDoc = normalizeApprovalDoc({
         id: canonicalDocId,
         docNumber: `ORYUK-2026-09${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
-        type: "OVERTIME",
-        typeName: "특근보고서 (취합)",
+        type: docType,
+        typeName: docTypeName,
         title,
         plant: targetPlant,
         department,
@@ -1230,7 +1313,7 @@ ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
         holdReason: existingDoc?.holdReason || ""
       });
 
-      // Always suppress telegram during background overtime aggregation sync
+      // Always suppress telegram during background aggregation sync
       const saved = await saveApprovalDocument(approvalDoc, { suppressTelegram: true });
       syncedDocs.push(saved);
     }
@@ -1243,7 +1326,7 @@ ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
 };
 
 /**
- * 🌟 Auto-scan and sync all weekend overtime reports in Firestore to the approval box
+ * 🌟 Auto-scan and sync all reports in Firestore to the approval box (both weekday attendance and weekend overtime)
  */
 export const syncAllOvertimeReportsToApprovalBox = async () => {
   try {
@@ -1251,15 +1334,15 @@ export const syncAllOvertimeReportsToApprovalBox = async () => {
     const allReports = [];
     snap.forEach((d) => allReports.push({ id: d.id, ...d.data() }));
 
-    const weekendDates = new Set();
+    const reportDates = new Set();
     allReports.forEach((r) => {
-      if (r.workDate && (r.reportType === "특근보고서" || (r.title && r.title.includes("특근")))) {
-        weekendDates.add(r.workDate);
+      if (r.workDate) {
+        reportDates.add(r.workDate);
       }
     });
 
     const results = [];
-    for (const workDate of Array.from(weekendDates)) {
+    for (const workDate of Array.from(reportDates)) {
       const res = await syncPlantOvertimeToApprovalBox({
         workDate,
         reports: allReports

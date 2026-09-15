@@ -1037,7 +1037,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     const approvalDocs = getLocalApprovalDocs();
     const pendingDocs = approvalDocs.filter((d) => {
       if (d.status !== "IN_PROGRESS" && d.status !== "HOLD") return false;
-      if (d.type === "OVERTIME") {
+      if (d.type === "OVERTIME" || d.type === "ATTENDANCE") {
         return isThisWeek(d.workDate || d.createdAt || d.id || d.title);
       }
       return true;

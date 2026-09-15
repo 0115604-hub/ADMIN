@@ -875,10 +875,18 @@ export const ElectronicApprovalView = () => {
             {/* 1. Header: Clean Title + Status Badge + Actions (Print / Delete / Close) */}
             {(() => {
               const isOvertimeDoc =
-                selectedDoc.type === "OVERTIME" ||
-                (selectedDoc.typeName && selectedDoc.typeName.includes("특근")) ||
-                (selectedDoc.title && selectedDoc.title.includes("특근"));
-              const cleanTitle = isOvertimeDoc
+                (selectedDoc.type === "OVERTIME" ||
+                  (selectedDoc.typeName && selectedDoc.typeName.includes("특근")) ||
+                  (selectedDoc.title && selectedDoc.title.includes("특근"))) &&
+                !selectedDoc.title?.includes("근태") &&
+                !selectedDoc.typeName?.includes("근태");
+              const isAttendanceDoc =
+                selectedDoc.type === "ATTENDANCE" ||
+                (selectedDoc.typeName && selectedDoc.typeName.includes("근태")) ||
+                (selectedDoc.title && selectedDoc.title.includes("근태"));
+              const cleanTitle = isAttendanceDoc
+                ? `근태보고서결재(${selectedDoc.plant || "삼랑진공장"})`
+                : isOvertimeDoc
                 ? `특근보고서결재(${selectedDoc.plant || "삼랑진공장"})`
                 : selectedDoc.title;
 
