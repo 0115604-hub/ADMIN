@@ -221,7 +221,17 @@ export const renderPlantBadge = (plantName) => {
 
 // ⭐ 협력사 뱃지 렌더링 함수 (오륙, 유성, 조영, 한울, 부림텍 개별 전용 컬러 뱃지)
 export const renderCompanyBadge = (compName) => {
-  let clean = String(compName || "").replace(/\(주\)/g, "").trim();
+  if (!compName) return null;
+  const raw = String(compName).replace(/취합/g, "").trim();
+  if (raw.includes(",")) {
+    const splitNames = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    return (
+      <div className="flex items-center gap-1 flex-wrap shrink-0">
+        {splitNames.map((n) => renderCompanyBadge(n))}
+      </div>
+    );
+  }
+  let clean = raw.replace(/\(주\)/g, "").trim();
   if (clean === "조영산업") clean = "조영";
   if (clean === "유성산업") clean = "유성";
   let badgeStyle = "bg-slate-800 text-slate-200 border-slate-700";
@@ -470,8 +480,8 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
 // 취합 조건:
 // - 평일 근태: 취합하지 않고 협력사별 개별 보고서 유지
 // - 주말/공휴일 특근:
-//   1) 삼랑진공장: (주)오륙, 유성을 모아서 삼랑진공장 특근보고서 1개로 취합
-//   2) 한림공장: (주)조영산업, 한울, 부림텍을 모아서 한림공장 특근보고서 1개로 취합
+//   1) 삼랑진공장: (주)오륙, 유성을 모아서 삼랑진공장 특근보고서 1개로 취합 (내용이 있는 업체만 뱃지/명단 포함)
+//   2) 한림공장: (주)조영산업, 한울, 부림텍을 모아서 한림공장 특근보고서 1개로 취합 (내용이 있는 업체만 뱃지/명단 포함)
 export const generateSynthesizedPlantReports = (reports = []) => {
   const dateMap = new Map();
 
@@ -485,6 +495,18 @@ export const generateSynthesizedPlantReports = (reports = []) => {
   });
 
   const synthList = [];
+
+  const checkHasContent = (r) => {
+    if (!r) return false;
+    const w = r.totalWorkers || (r.items ? r.items.length : 0);
+    const h = r.totalHours || 0;
+    const c = r.cost || 0;
+    if (w > 0 || h > 0 || c > 0) return true;
+    if (Array.isArray(r.items) && r.items.length > 0) {
+      return r.items.some((it) => (Number(it.count) || 0) > 0 || (it.names && String(it.names).trim() !== ""));
+    }
+    return false;
+  };
 
   dateMap.forEach((reps, workDate) => {
     const isWk = isWeekendByDate(workDate);
@@ -516,20 +538,22 @@ export const generateSynthesizedPlantReports = (reports = []) => {
       return comp.includes("조영") || comp.includes("한울") || comp.includes("부림") || plant === "한림공장";
     });
 
-    // 1) 삼랑진공장 특근 취합 보고서 생성 (오륙, 유성 ➔ 삼랑진공장 1개)
+    // 1) 삼랑진공장 특근 취합 보고서 생성 (오륙, 유성 중 실제 내용이 있는 업체만 뱃지/내역 포함)
     if (samrangjinReps.length > 0) {
       const plant = "삼랑진공장";
-      const companies = Array.from(new Set(samrangjinReps.map((r) => r.company).filter(Boolean)));
-      const totalWorkers = samrangjinReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
-      const totalHours = samrangjinReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-      const cost = samrangjinReps.reduce((sum, r) => sum + (r.cost || 0), 0);
-      const allItems = samrangjinReps.flatMap((r) => r.items || []);
+      const activeReps = samrangjinReps.filter(checkHasContent);
+      const targetReps = activeReps.length > 0 ? activeReps : samrangjinReps;
+      const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
+      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+      const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+      const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
+      const allItems = targetReps.flatMap((r) => r.items || []);
 
       const drafterName = "양인나";
       const drafterTitle = "선임";
       const leadName = "윤경수";
 
-      const compBreakdownText = samrangjinReps.map((cr) => {
+      const compBreakdownText = targetReps.map((cr) => {
         const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
         const hCount = cr.totalHours || (wCount * 8);
         const cAmt = cr.cost || (hCount * 15000);
@@ -541,49 +565,51 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         isSynthesized: true,
         plant,
         company: `${companies.join(", ")} 취합`,
-        companies: ["(주)오륙", "유성"],
-        title: `[삼랑진공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (오륙, 유성)`,
+        companies: companies,
+        title: `[삼랑진공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
         reportType: "특근보고서 (취합)",
         workDate,
         workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
         author: drafterName,
         authorTitle: drafterTitle,
-        updatedAt: samrangjinReps[0]?.updatedAt || new Date().toISOString(),
-        status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
+        updatedAt: targetReps[0]?.updatedAt || new Date().toISOString(),
+        status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
         approval: [
           { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: "특근보고서 취합 기안" },
-          { role: "책임", name: leadName, title: "책임", status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
-          { role: "이사", name: "이명재", title: "이사", status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
-          { role: "대표", name: "권태형", title: "대표", status: samrangjinReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
+          { role: "책임", name: leadName, title: "책임", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
+          { role: "이사", name: "이명재", title: "이사", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
+          { role: "대표", name: "권태형", title: "대표", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
         ],
         totalWorkers,
         totalHours,
         cost,
         items: allItems,
-        childReports: samrangjinReps,
+        childReports: targetReps,
         reasons: [
-          `■ 9월 ${dayNum}일(${dayLabel}) [삼랑진공장] 특근보고서 취합 (오륙, 유성)`,
-          `1. 대상: (주)오륙, 유성 (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
+          `■ 9월 ${dayNum}일(${dayLabel}) [삼랑진공장] 특근보고서 취합 (${companies.join(", ")})`,
+          `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
           `2. 협력사별 투입 현황:\n${compBreakdownText}`,
           `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 삼랑진공장 주말 특근 가동 현황 취합`
         ]
       });
     }
 
-    // 2) 한림공장 특근 취합 보고서 생성 (조영, 한울, 부림텍 ➔ 한림공장 1개)
+    // 2) 한림공장 특근 취합 보고서 생성 (조영, 한울, 부림텍 중 실제 내용이 있는 업체만 뱃지/내역 포함)
     if (hanlimReps.length > 0) {
       const plant = "한림공장";
-      const companies = Array.from(new Set(hanlimReps.map((r) => r.company).filter(Boolean)));
-      const totalWorkers = hanlimReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
-      const totalHours = hanlimReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-      const cost = hanlimReps.reduce((sum, r) => sum + (r.cost || 0), 0);
-      const allItems = hanlimReps.flatMap((r) => r.items || []);
+      const activeReps = hanlimReps.filter(checkHasContent);
+      const targetReps = activeReps.length > 0 ? activeReps : hanlimReps;
+      const companies = Array.from(new Set(targetReps.map((r) => r.company).filter(Boolean)));
+      const totalWorkers = targetReps.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
+      const totalHours = targetReps.reduce((sum, r) => sum + (r.totalHours || 0), 0);
+      const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
+      const allItems = targetReps.flatMap((r) => r.items || []);
 
       const drafterName = "오상민";
       const drafterTitle = "선임";
       const leadName = "김동욱";
 
-      const compBreakdownText = hanlimReps.map((cr) => {
+      const compBreakdownText = targetReps.map((cr) => {
         const wCount = cr.totalWorkers || (cr.items ? cr.items.length : 0);
         const hCount = cr.totalHours || (wCount * 8);
         const cAmt = cr.cost || (hCount * 15000);
@@ -595,29 +621,29 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         isSynthesized: true,
         plant,
         company: `${companies.join(", ")} 취합`,
-        companies: ["(주)조영산업", "한울", "부림텍"],
-        title: `[한림공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (조영, 한울, 부림텍)`,
+        companies: companies,
+        title: `[한림공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
         reportType: "특근보고서 (취합)",
         workDate,
         workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
         author: drafterName,
         authorTitle: drafterTitle,
-        updatedAt: hanlimReps[0]?.updatedAt || new Date().toISOString(),
-        status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
+        updatedAt: targetReps[0]?.updatedAt || new Date().toISOString(),
+        status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "IN_PROGRESS",
         approval: [
           { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: workDate, comment: "특근보고서 취합 기안" },
-          { role: "책임", name: leadName, title: "책임", status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
-          { role: "이사", name: "이명재", title: "이사", status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
-          { role: "대표", name: "권태형", title: "대표", status: hanlimReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
+          { role: "책임", name: leadName, title: "책임", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "PENDING", date: "", comment: "" },
+          { role: "이사", name: "이명재", title: "이사", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "", comment: "" },
+          { role: "대표", name: "권태형", title: "대표", status: targetReps.every((r) => r.status === "APPROVED") ? "APPROVED" : "WAITING", date: "" }
         ],
         totalWorkers,
         totalHours,
         cost,
         items: allItems,
-        childReports: hanlimReps,
+        childReports: targetReps,
         reasons: [
-          `■ 9월 ${dayNum}일(${dayLabel}) [한림공장] 특근보고서 취합 (조영, 한울, 부림텍)`,
-          `1. 대상: (주)조영산업, 한울, 부림텍 (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
+          `■ 9월 ${dayNum}일(${dayLabel}) [한림공장] 특근보고서 취합 (${companies.join(", ")})`,
+          `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
           `2. 협력사별 투입 현황:\n${compBreakdownText}`,
           `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 특근 가동 현황 취합`
         ]
@@ -2440,22 +2466,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           {(() => {
             const synthReports = generateSynthesizedPlantReports(legacyReports);
             const weekdayReports = (legacyReports || []).filter((r) => !isWeekendByDate(r.workDate || r.title));
-
-            const catCounts = {
-              all: weekdayReports.length + synthReports.length,
-              weekday: weekdayReports.length,
-              weekend: synthReports.length,
-              synth: synthReports.length
-            };
-
-            let baseList = [];
-            if (reportTypeCategoryFilter === "ALL") {
-              baseList = [...weekdayReports, ...synthReports];
-            } else if (reportTypeCategoryFilter === "WEEKDAY") {
-              baseList = weekdayReports;
-            } else if (reportTypeCategoryFilter === "WEEKEND" || reportTypeCategoryFilter === "SYNTHESIS") {
-              baseList = synthReports;
-            }
+            const baseList = [...weekdayReports, ...synthReports];
 
             const filtered = baseList.filter((r) => {
               if (reportListFilter !== "전체") {
@@ -2535,106 +2546,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               dateGroupMap.get(dateKey).reports.push(report);
             });
 
-            const totalHeadcount = filtered.reduce((sum, r) => sum + (r.totalWorkers || (r.items ? r.items.length : 0)), 0);
-            const totalHours = filtered.reduce((sum, r) => sum + (r.totalHours || 0), 0);
-            const totalCost = filtered.reduce((sum, r) => sum + (r.cost || (r.totalHours ? r.totalHours * 15000 : 0)), 0);
-
             return (
               <div className="space-y-3">
-                {/* 🧭 Tier 1: Category Filter Tabs (전체 / 평일 근태 / 주말 특근 / 공장별 취합) */}
-                <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
-                      <Layers className="w-3.5 h-3.5 text-purple-400" />
-                      <span>분류:</span>
-                    </span>
-
-                    {/* 전체 */}
-                    <button
-                      type="button"
-                      onClick={() => setReportTypeCategoryFilter("ALL")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        reportTypeCategoryFilter === "ALL"
-                          ? "bg-purple-600 text-white shadow-md ring-2 ring-purple-400"
-                          : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
-                      }`}
-                    >
-                      <span>📋 전체 보고서</span>
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-purple-300 font-mono">
-                        {catCounts.all}
-                      </span>
-                    </button>
-
-                    {/* 평일 근태보고서 */}
-                    <button
-                      type="button"
-                      onClick={() => setReportTypeCategoryFilter("WEEKDAY")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        reportTypeCategoryFilter === "WEEKDAY"
-                          ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-400"
-                          : "bg-slate-900 text-slate-400 hover:text-cyan-300 hover:bg-slate-800 border border-slate-800"
-                      }`}
-                    >
-                      <Sun className="w-3.5 h-3.5 text-amber-400" />
-                      <span>☀️ 평일 근태보고서</span>
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-cyan-300 font-mono">
-                        {catCounts.weekday}
-                      </span>
-                    </button>
-
-                    {/* 주말 특근보고서 */}
-                    <button
-                      type="button"
-                      onClick={() => setReportTypeCategoryFilter("WEEKEND")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        reportTypeCategoryFilter === "WEEKEND"
-                          ? "bg-rose-600 text-white shadow-md ring-2 ring-rose-400"
-                          : "bg-slate-900 text-slate-400 hover:text-rose-300 hover:bg-slate-800 border border-slate-800"
-                      }`}
-                    >
-                      <Moon className="w-3.5 h-3.5 text-rose-400" />
-                      <span>🌙 주말 특근보고서</span>
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-rose-300 font-mono">
-                        {catCounts.weekend}
-                      </span>
-                    </button>
-
-                    {/* 공장별 취합 보고서 */}
-                    <button
-                      type="button"
-                      onClick={() => setReportTypeCategoryFilter("SYNTHESIS")}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-                        reportTypeCategoryFilter === "SYNTHESIS"
-                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md ring-2 ring-indigo-400"
-                          : "bg-slate-900 text-slate-400 hover:text-indigo-300 hover:bg-slate-800 border border-slate-800"
-                      }`}
-                    >
-                      <Factory className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>🏭 공장별 취합 보고서</span>
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-800 text-indigo-300 font-mono">
-                        {catCounts.synth}
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Right: 실시간 통계 요약 */}
-                  <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold shrink-0">
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-purple-300">
-                      총 {filtered.length}건
-                    </span>
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-emerald-300">
-                      {totalHeadcount}명
-                    </span>
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-cyan-300">
-                      {totalHours} M/H
-                    </span>
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-rose-300">
-                      ₩{totalCost.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* 🧭 Tier 2: 소속 공장/협력사 필터 & 날짜정렬 & 검색창 */}
+                {/* 🧭 소속 공장/협력사 필터 & 날짜정렬 & 검색창 (단일 깔끔 제어바) */}
                 <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
                   {/* Left: 소속 필터 버튼군 (공장/회사 체계 분리) */}
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2653,7 +2567,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800"
                       }`}
                     >
-                      전체
+                      전체 ({filtered.length}건)
                     </button>
 
                     {/* 삼랑진공장 그룹 */}
@@ -2749,8 +2663,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <div className="space-y-1">
                       <h4 className="font-black text-base text-white">조건에 해당하는 근태/특근 보고서가 없습니다</h4>
                       <p className="text-xs text-slate-400">
-                        {reportListFilter !== "전체" || reportListSearch || reportTypeCategoryFilter !== "ALL"
-                          ? "선택된 분류 또는 검색 조건에 일치하는 보고서가 없습니다. 필터를 변경해보세요."
+                        {reportListFilter !== "전체" || reportListSearch
+                          ? "선택된 소속 또는 검색 조건에 일치하는 보고서가 없습니다. 필터를 변경해보세요."
                           : "'📝 근태/잔업/특근 등록' 탭에서 인원 근태를 작성한 후 보고서를 등록해보세요."}
                       </p>
                     </div>
@@ -2852,15 +2766,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     {/* 2. 공장 뱃지 (삼랑진공장, 한림공장) */}
                                     {renderPlantBadge(plantName)}
 
-                                    {/* 3. 회사 뱃지 (오륙, 유성, 조영, 한울, 부림텍) */}
+                                    {/* 3. 회사 뱃지 (실제 내용이 있는 업체만 렌더링) */}
                                     {isSynthesized ? (
                                       Array.isArray(report.companies) && report.companies.length > 0 ? (
                                         <div className="flex items-center gap-1 flex-wrap shrink-0">
                                           {report.companies.map((c) => renderCompanyBadge(c))}
                                         </div>
-                                      ) : (
-                                        renderCompanyBadge(plantName === "삼랑진공장" ? "오륙, 유성" : "조영, 한울, 부림텍")
-                                      )
+                                      ) : report.company ? (
+                                        renderCompanyBadge(report.company)
+                                      ) : null
                                     ) : (
                                       renderCompanyBadge(companyName)
                                     )}
