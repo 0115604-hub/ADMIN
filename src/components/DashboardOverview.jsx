@@ -22,6 +22,7 @@ import {
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
 import { getWorkLogs, subscribeWorkLogs, isWorkLogApproved } from "../services/workLogService";
+import { RecentWorkLogsSummaryModal } from "./RecentWorkLogsSummaryModal";
 
 export const DashboardOverview = ({
   onNavigateToVehicles,
@@ -34,6 +35,7 @@ export const DashboardOverview = ({
 
   const [selectedPlantFilter, setSelectedPlantFilter] = useState("all"); // 'all' | '삼랑진공장' | '한림공장'
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
+  const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
 
   // Real-time Cloud Sync for Work Logs on Admin Dashboard
   useEffect(() => {
@@ -392,15 +394,15 @@ export const DashboardOverview = ({
               </button>
             </div>
 
-            {onNavigateToWorkLogs && (
-              <button
-                onClick={onNavigateToWorkLogs}
-                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
-              >
-                <span>일일업무일지 상세</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setIsWorkLogsSummaryModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black border border-slate-200 dark:border-slate-700 shadow-2xs transition-all active:scale-95 cursor-pointer shrink-0"
+              title="최근일 기준 전작업자 업무일지 종합 요약보기"
+            >
+              <span>일일업무일지 상세</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
@@ -499,6 +501,14 @@ export const DashboardOverview = ({
           })}
         </div>
       </div>
+
+      {/* 🌟 최근일 기준 전작업자 일일 업무일지 종합 요약 팝업 모달 */}
+      <RecentWorkLogsSummaryModal
+        isOpen={isWorkLogsSummaryModalOpen}
+        onClose={() => setIsWorkLogsSummaryModalOpen(false)}
+        workLogs={workLogs}
+        onNavigateTab={onNavigateToWorkLogs}
+      />
     </div>
   );
 };

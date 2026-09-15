@@ -37,6 +37,7 @@ import {
   saveHanulSettlementMonthData
 } from "../services/hanulSettlementService";
 import HanulSettlementModal from "./HanulSettlementModal";
+import HanulExpenseSummaryModal from "./HanulExpenseSummaryModal";
 
 // 🌟 FRT & RR 대상 품목 인덱스 정의
 // FRT 대상: 3번(idx 2: FRT LH), 4번(idx 3: FRT RH)
@@ -64,12 +65,14 @@ export const HanulTaxInvoiceView = () => {
 
   // 🌟 정리본 팝업 모달 & 지출공제 모달 상태
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [isExpenseSummaryModalOpen, setIsExpenseSummaryModalOpen] = useState(false);
   const [isAdminSettlementModalOpen, setIsAdminSettlementModalOpen] = useState(false);
 
   // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기)
   useEffect(() => {
     const unsub = subscribeCloseAllModals(() => {
       setIsSummaryModalOpen(false);
+      setIsExpenseSummaryModalOpen(false);
       setIsAdminSettlementModalOpen(false);
     });
     return () => unsub();
@@ -651,9 +654,9 @@ export const HanulTaxInvoiceView = () => {
 
           <button
             type="button"
-            onClick={() => setIsAdminSettlementModalOpen(true)}
+            onClick={() => setIsExpenseSummaryModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
-            title="한울 공제내역 등록 및 상세내역 열기"
+            title="한울 공제내역 요약보기"
           >
             <Receipt className="w-3.5 h-3.5" />
             <span>공제내역 등록/상세</span>
@@ -1025,6 +1028,14 @@ export const HanulTaxInvoiceView = () => {
           </div>
         </div>
       )}
+
+      {/* 🌟 한울 공제내역 간단 요약 모달 */}
+      <HanulExpenseSummaryModal
+        isOpen={isExpenseSummaryModalOpen}
+        onClose={() => setIsExpenseSummaryModalOpen(false)}
+        month={activeMonth}
+        onOpenFullModal={() => setIsAdminSettlementModalOpen(true)}
+      />
 
       {/* 🌟 Admin용 한울 정산/지출공제 팝업 모달 */}
       <HanulSettlementModal

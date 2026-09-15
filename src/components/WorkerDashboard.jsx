@@ -173,6 +173,7 @@ import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegr
 import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 import HanulSettlementModal from "./HanulSettlementModal";
+import RecentWorkLogsSummaryModal from "./RecentWorkLogsSummaryModal";
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -407,6 +408,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isChangyong = currentProfile?.name === "우창용" || currentProfile?.id === "hal_cy";
   const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울");
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
+  const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
 
   // General Manager Identification
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
@@ -3468,9 +3470,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🌟 한울 전용 전월정산표 등록 (상태정보패널과 1번패널 사이 1줄 패널) */}
-      {/* ========================================================================= */}
-      {(isHanul || isAdmin) && (
+      {/* 🌟 한울 전용 전월정산표 등록 (한울 로그인 시에만 표시, admin은 표시 안 함) */}
+      {(isHanul && !isAdmin) && (
         <div
           onClick={handleOpenHanulSettlementModal}
           className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 border-2 border-emerald-500/60 shadow-md shadow-emerald-950/40 flex items-center justify-between gap-2 min-w-0 max-w-full animate-fadeIn cursor-pointer hover:border-emerald-400 transition-all active:scale-[0.99]"
@@ -4066,19 +4067,22 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               <option value="삼랑진공장">삼랑진 ({workLogs.filter((l) => l.plant === "삼랑진공장").length})</option>
               <option value="한림공장">한림 ({workLogs.filter((l) => l.plant === "한림공장").length})</option>
             </select>
-            {onNavigateTab && (
-              <button
-                onClick={() => onNavigateTab("electronic_approval")}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
-              >
-                <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
-                </span>
-                <span>업무일지 상세</span>
-                <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                pushModalHistory("recent_work_logs_summary_modal");
+                setIsWorkLogsSummaryModalOpen(true);
+              }}
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs font-black border border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-400/50 shadow-xs shadow-emerald-500/20 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+              title="최근일 기준 전작업자 업무일지 종합 요약보기"
+            >
+              <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 sm:h-2 sm:w-2 bg-emerald-500"></span>
+              </span>
+              <span>업무일지 상세</span>
+              <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600 dark:text-emerald-400" />
+            </button>
           </div>
         </div>
 
@@ -9439,6 +9443,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
+
+      {/* 🌟 최근일 기준 전작업자 일일 업무일지 종합 요약 팝업 모달 */}
+      <RecentWorkLogsSummaryModal
+        isOpen={isWorkLogsSummaryModalOpen}
+        onClose={() => setIsWorkLogsSummaryModalOpen(false)}
+        workLogs={workLogs}
+        onOpenIndividualLog={(log) => {
+          setIsWorkLogsSummaryModalOpen(false);
+          handleOpenLogDetail(log);
+        }}
+        onNavigateTab={onNavigateTab}
+      />
 
       {/* 🌟 한울 전월 정산표 및 공통비/지출공제 등록 모달 */}
       <HanulSettlementModal
