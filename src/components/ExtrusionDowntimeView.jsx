@@ -159,8 +159,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v9 for clean analyzed downtime data
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v9_perfect";
+// Storage key with v10 for clean concise analyzed downtime data
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v10_concise";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -747,34 +747,32 @@ export const ExtrusionDowntimeView = () => {
 
   const handleExportExcel = () => {
     const rows = [
-      [`오륙산업 삼랑진공장 - ${currentLineName} 주간 비가동 및 생산 일지`],
+      [`오륙산업 삼랑진공장 - ${currentLineName} 주간 비가동 및 작업 일지`],
       [`주차: ${selectedWeek} (${currentWeekData.period})   |   담당: 설유철 책임`],
       [],
-      ["일자 / 요일", "근무조", "구분", "품명 및 상세 작업내용", "비가동(분)", "중량(Kg)", "LOSS율 / 비고", "조치사항 및 결과"]
+      ["일자 / 요일", "근무조", "구분", "품명 및 작업내용", "비가동(분)", "비고 및 조치사항"]
     ];
 
     (currentWeekData.rows || []).forEach((r) => {
+      const remark = r.note && r.note !== "-" ? r.note : r.action && r.action !== "정상 가동 완료" ? r.action : "-";
       rows.push([
         r.day || r.parentDay,
         r.shift,
         r.category,
         r.task,
         r.minutes > 0 ? r.minutes : "",
-        r.weight > 0 ? r.weight : "",
-        r.note,
-        r.action
+        remark
       ]);
     });
 
+    rows.push([]);
     rows.push([
-      "■ 주간 총 비가동 및 LOSS 합계",
+      "■ 주간 총 비가동 합계",
       "",
       "",
       "",
-      weeklyTotals.totalMin,
-      weeklyTotals.totalKg,
-      `총 ${weeklyTotals.totalHours}시간`,
-      "(=SUM 실시간 자동 연동)"
+      `${weeklyTotals.totalMin}분 (${weeklyTotals.totalHours}시간)`,
+      `총 ${currentWeekData.rows?.length || 0}건 등록 완료`
     ]);
 
     rows.push([
@@ -1256,13 +1254,11 @@ export const ExtrusionDowntimeView = () => {
             <thead>
               <tr className="bg-slate-900 text-white text-xs font-black border-b border-slate-800">
                 <th className="py-3 px-3.5 text-center w-[12%]">일자 / 요일</th>
-                <th className="py-3 px-2 text-center w-[8%]">근무조</th>
-                <th className="py-3 px-2 text-center w-[10%]">구분</th>
-                <th className="py-3 px-3.5 text-left w-[30%]">품명 및 상세 작업내용</th>
-                <th className="py-3 px-3.5 text-right w-[10%]">비가동(분)</th>
-                <th className="py-3 px-3.5 text-right w-[9%]">중량(Kg)</th>
-                <th className="py-3 px-3 text-center w-[11%]">LOSS율 / 비고</th>
-                <th className="py-3 px-3.5 text-left w-[20%]">조치사항 및 결과</th>
+                <th className="py-3 px-2 text-center w-[10%]">근무조</th>
+                <th className="py-3 px-2 text-center w-[12%]">구분</th>
+                <th className="py-3 px-3.5 text-left w-[36%]">품명 및 작업내용</th>
+                <th className="py-3 px-3.5 text-right w-[12%]">비가동(분)</th>
+                <th className="py-3 px-3.5 text-left w-[22%]">비고 및 조치사항</th>
                 <th className="py-3 px-2 text-center w-[6%]">관리</th>
               </tr>
             </thead>
@@ -1271,17 +1267,18 @@ export const ExtrusionDowntimeView = () => {
                 currentWeekData.rows.map((r, idx) => {
                   const isFirstOfDay = r.isNewDay;
                   const catColor = CATEGORY_COLORS[r.category] || "bg-slate-100 text-slate-700";
+                  const remarkText = r.note && r.note !== "-" ? r.note : r.action && r.action !== "정상 가동 완료" ? r.action : "-";
 
                   return (
                     <tr
                       key={r.id || idx}
                       className={`hover:bg-teal-50/40 transition ${
-                        isFirstOfDay ? "border-t-2 border-slate-300 bg-slate-50/20" : ""
+                        isFirstOfDay ? "border-t-2 border-slate-300 bg-slate-50/30" : ""
                       }`}
                     >
                       <td className="py-2.5 px-3.5 text-center font-black text-slate-900 whitespace-nowrap bg-slate-50/50">
                         {r.day ? (
-                          <span className="px-2 py-1 rounded-md bg-slate-200/70 text-slate-900 font-black">
+                          <span className="px-2 py-1 rounded-md bg-slate-200/80 text-slate-900 font-black">
                             {r.day}
                           </span>
                         ) : (
@@ -1307,19 +1304,15 @@ export const ExtrusionDowntimeView = () => {
                         </span>
                       </td>
 
-                      <td className="py-2.5 px-3.5 text-slate-900 font-bold">{r.task}</td>
+                      <td className="py-2.5 px-3.5 text-slate-900 font-black text-[12.5px]">{r.task}</td>
 
                       <td className="py-2.5 px-3.5 text-right font-black text-rose-600 text-sm">
-                        {r.minutes > 0 ? r.minutes.toLocaleString() : "-"}
+                        {r.minutes > 0 ? `${r.minutes.toLocaleString()}분` : "-"}
                       </td>
 
-                      <td className="py-2.5 px-3.5 text-right font-black text-blue-700 text-sm">
-                        {r.weight > 0 ? r.weight.toFixed(1) : "-"}
+                      <td className="py-2.5 px-3.5 text-slate-600 text-xs font-medium">
+                        {remarkText}
                       </td>
-
-                      <td className="py-2.5 px-3 text-center text-slate-700 font-medium">{r.note}</td>
-
-                      <td className="py-2.5 px-3.5 text-slate-600 text-[11.5px] font-medium">{r.action}</td>
 
                       <td className="py-2.5 px-2 text-center">
                         <button
@@ -1335,8 +1328,8 @@ export const ExtrusionDowntimeView = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400 text-xs font-bold">
-                    등록된 비가동 및 생산 내역이 없습니다. 상단 입력창에서 데이터를 등록해 주세요.
+                  <td colSpan={7} className="py-12 text-center text-slate-400 text-xs font-bold">
+                    등록된 비가동 및 작업 내역이 없습니다.
                   </td>
                 </tr>
               )}
@@ -1344,16 +1337,13 @@ export const ExtrusionDowntimeView = () => {
             <tfoot>
               <tr className="bg-slate-100 border-t-2 border-slate-300 font-black text-xs text-slate-900">
                 <td colSpan={4} className="py-3 px-4 text-center font-black text-sm">
-                  ■ 주간 총 비가동 및 LOSS 합계 (실시간 자동 연동)
+                  ■ 주간 총 비가동 합계 (실시간 연동)
                 </td>
                 <td className="py-3 px-3.5 text-right text-rose-600 text-base font-black">
-                  {weeklyTotals.totalMin.toLocaleString()}
+                  {weeklyTotals.totalMin.toLocaleString()}분 ({weeklyTotals.totalHours}h)
                 </td>
-                <td className="py-3 px-3.5 text-right text-blue-700 text-base font-black">
-                  {weeklyTotals.totalKg}
-                </td>
-                <td colSpan={3} className="py-3 px-3 text-slate-500 italic text-xs">
-                  (=SUM 실시간 자동 계산 연동)
+                <td colSpan={2} className="py-3 px-3 text-slate-500 italic text-xs">
+                  (총 {currentWeekData.rows?.length || 0}건 등록 완료)
                 </td>
               </tr>
             </tfoot>
