@@ -132,10 +132,6 @@ export const WorkerLoginSection = ({
                         )
                       ) : isPartner ? (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
-                      ) : worker.name === "전재율" ? (
-                        <span className="text-[10.5px] sm:text-[11.5px] font-black tracking-wider text-slate-800 dark:text-slate-200">
-                          {worker.pin || "11"}
-                        </span>
                       ) : (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">{worker.title || "선임"}</span>
                       )}
