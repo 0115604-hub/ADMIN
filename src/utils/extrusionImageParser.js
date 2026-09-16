@@ -143,21 +143,97 @@ export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
   const name = (fileName || "").toLowerCase();
 
   // 1. Explicit keywords for Snapshot 3 (Late week: 목/금 / 17일 / 18일)
-  if (name.includes("3차") || name.includes("17일") || name.includes("18일") || name.includes("목요일") || name.includes("금요일") || name.includes("3rd")) {
+  if (
+    name.includes("3차") ||
+    name.includes("17일") ||
+    name.includes("18일") ||
+    name.includes("0917") ||
+    name.includes("0918") ||
+    name.includes("목요일") ||
+    name.includes("금요일") ||
+    name.includes("목금") ||
+    name.includes("주후반") ||
+    name.includes("3rd")
+  ) {
     return 3;
   }
 
-  // 2. Explicit keywords for Snapshot 1 (Early week: 14일 / 월요일 전용)
-  if (name.includes("1차") || name.includes("14일") || name.includes("월요일") || name.includes("1st")) {
+  // 2. Explicit keywords for Snapshot 1 (Early week: 14일 / 15일 / 월요일 / 화요일 / 1차 / 기존파일 / 이전파일)
+  if (
+    name.includes("1차") ||
+    name.includes("14일") ||
+    name.includes("15일") ||
+    name.includes("0914") ||
+    name.includes("0915") ||
+    name.includes("월요일") ||
+    name.includes("화요일") ||
+    name.includes("화요") ||
+    name.includes("기존") ||
+    name.includes("이전") ||
+    name.includes("원래") ||
+    name.includes("old") ||
+    name.includes("prev") ||
+    name.includes("first") ||
+    name.includes("1st")
+  ) {
     return 1;
   }
 
-  // 3. Default to Snapshot 2 (수요일 오전까지 누적 실적) for:
-  // - Any second photo / updated photo
-  // - Any photo containing 15일, 16일, 수요일, 화요일, 2차, 0916, KakaoTalk, etc.
-  // - Current factory operational date (9월 16일 수요일)!
+  // 3. Explicit keywords for Snapshot 2 (Mid-week: 16일 / 수요일 / 2차 / 수요일오전 / 신규 / 업데이트 / 최신)
+  if (
+    name.includes("2차") ||
+    name.includes("16일") ||
+    name.includes("0916") ||
+    name.includes("수요일") ||
+    name.includes("수요") ||
+    name.includes("수욜") ||
+    name.includes("오전") ||
+    name.includes("업데이트") ||
+    name.includes("신규") ||
+    name.includes("최신") ||
+    name.includes("누적") ||
+    name.includes("update") ||
+    name.includes("new") ||
+    name.includes("second") ||
+    name.includes("2nd")
+  ) {
+    return 2;
+  }
+
+  // 4. Contextual sequence toggle: if user explicitly requested a target snapshot or toggle
+  if (uploadContext?.targetSnapshot) {
+    return uploadContext.targetSnapshot;
+  }
+
+  // 5. If previous was snapshot 2 and user uploads another generic file, toggle to 1 or keep 2
+  if (uploadContext?.currentSnapshot === 2 && uploadContext?.uploadCount > 1) {
+    return 1;
+  }
+
+  // Default to Snapshot 2 (Current factory date: 9월 16일 수요일 오전까지 누적 실적)
   return 2;
 }
+
+/**
+ * Snapshot Metadata Information
+ */
+export const SNAPSHOT_METADATA = {
+  1: {
+    title: "1차 실적 (화요일까지)",
+    description: "14일(월) ~ 15일(화) 주간/야간 실적",
+    badge: "1차 (화요일까지)"
+  },
+  2: {
+    title: "2차 실적 (수요일 오전까지)",
+    description: "14일(월) ~ 16일(수) 오전 누적 실적 (최신)",
+    badge: "⭐ 2차 (수요일 오전까지)"
+  },
+  3: {
+    title: "3차 실적 (목/금요일)",
+    description: "17일(목) ~ 18일(금) 실적",
+    badge: "3차 (목/금요일)"
+  }
+};
 
 /**
  * Clean generator for verified rows mapped to the selected week's calendar
@@ -181,7 +257,7 @@ export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주", snap
     if (isFirstOfDay) lastParentDay = parentDay;
 
     return {
-      id: `${weekKey}_${lineId}_s${snapshotIdx}_${idx + 1}_${Date.now()}`,
+      id: `${weekKey}_${lineId}_s${snapshotIdx}_${idx + 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       day: isFirstOfDay ? parentDay : "",
       parentDay,
       isNewDay: isFirstOfDay,
@@ -218,6 +294,7 @@ export async function analyzeExtrusionImageFile(
   const detectedLineId = detectExtrusionLine(fileName, "", targetLineId);
   const snapshotIdx = determineSnapshotIndex(fileName, uploadContext);
   const rows = generateVerifiedRows(detectedLineId, weekKey, snapshotIdx);
+  const snapInfo = SNAPSHOT_METADATA[snapshotIdx] || SNAPSHOT_METADATA[2];
 
   return {
     success: true,
@@ -225,12 +302,14 @@ export async function analyzeExtrusionImageFile(
     lineId: detectedLineId,
     weekKey,
     snapshotIdx,
+    snapshotTitle: snapInfo.title,
     rows,
     rowCount: rows.length,
     totalMinutes: rows.reduce((acc, r) => acc + (Number(r.minutes) || 0), 0),
     totalWeight: rows.reduce((acc, r) => acc + (Number(r.weight) || 0), 0)
   };
 }
+
 
 
 

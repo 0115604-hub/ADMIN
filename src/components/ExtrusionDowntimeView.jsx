@@ -420,11 +420,19 @@ export const ExtrusionDowntimeView = () => {
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
 
   const batchFileInputRef = useRef(null);
-  const singleFileInputRefs = {
-    pcm1: useRef(null),
-    pcm3: useRef(null),
-    pvc: useRef(null),
-    tpe: useRef(null)
+  const pcm1FileInputRef = useRef(null);
+  const pcm3FileInputRef = useRef(null);
+  const pvcFileInputRef = useRef(null);
+  const tpeFileInputRef = useRef(null);
+
+  const getSingleFileInputRef = (lineId) => {
+    switch (lineId) {
+      case "pcm1": return pcm1FileInputRef;
+      case "pcm3": return pcm3FileInputRef;
+      case "pvc": return pvcFileInputRef;
+      case "tpe": return tpeFileInputRef;
+      default: return pcm1FileInputRef;
+    }
   };
 
   // Drag and Drop Event Handlers
@@ -449,50 +457,55 @@ export const ExtrusionDowntimeView = () => {
   };
 
   // Automatic OCR Analysis directly on single file drop/select
-  const analyzeSingleLineAuto = async (lineId, file) => {
-    if (!file) return;
-    const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
+  const analyzeSingleLineAuto = async (lineId, file, explicitSnapshot = null) => {
+    if (!file && !explicitSnapshot) return;
+    const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId, code: lineId };
+    const fileName = file ? file.name : `스냅샷 ${explicitSnapshot}차 적용`;
 
     setAnalyzingLines((prev) => ({ ...prev, [lineId]: true }));
-    showToast(`⚡ [${lineMeta.name}] 이전 실적 삭제 및 최근 사진(${file.name}) 분석 중...`);
+    showToast(`⚡ [${lineMeta.name}] 이전 실적 삭제 및 최근 사진(${fileName}) 분석 중...`);
 
     try {
       const currentLineObj = dataStore[lineId] || {};
       const currentWeekMeta = currentLineObj?.weeklyData?.[selectedWeek] || currentWeekData;
       const prevFile = currentWeekMeta?.lastUploadedFileName || "";
+      const currentSnap = currentWeekMeta?.snapshotIdx || 1;
       const uploadCount = (currentWeekMeta?.uploadCount || 0) + 1;
 
       const result = await analyzeExtrusionImageFile(file, lineId, selectedWeek, null, {
         prevFileName: prevFile,
-        uploadCount: uploadCount
+        currentSnapshot: currentSnap,
+        uploadCount: uploadCount,
+        targetSnapshot: explicitSnapshot
       });
 
       if (result.success && result.rows && result.rows.length > 0) {
         setDataStore((prev) => {
-          const lineObj = { ...prev[lineId] };
-          const weekMeta = lineObj.weeklyData[selectedWeek] || currentWeekData;
+          const nextStore = { ...prev };
+          const lineObj = { ...(nextStore[lineId] || {}) };
+          const weeklyData = { ...(lineObj.weeklyData || {}) };
 
-          // Clean wipe and complete overwrite with freshly parsed photo rows
-          const weekObj = {
-            ...weekMeta,
+          // Clean wipe previous rows and replace with freshly parsed rows
+          weeklyData[selectedWeek] = {
+            ...(weeklyData[selectedWeek] || currentWeekData),
             rows: [...result.rows],
             totalMinutes: result.totalMinutes,
             totalWeight: result.totalWeight,
-            lastUploadedFileName: file.name,
-            lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+            lastUploadedFileName: fileName,
+            lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
             uploadCount: uploadCount,
-            snapshotIdx: result.snapshotIdx || 1
+            snapshotIdx: result.snapshotIdx || 1,
+            _updatedAt: Date.now()
           };
-          lineObj.weeklyData[selectedWeek] = weekObj;
 
-          return {
-            ...prev,
-            [lineId]: lineObj
-          };
+          lineObj.weeklyData = weeklyData;
+          nextStore[lineId] = lineObj;
+          return nextStore;
         });
 
         setSelectedLineId(lineId);
-        showToast(`🔄 [${lineMeta.name}] 이전 데이터 삭제 완료! 최근 파일(${file.name}, ${result.rows.length}건) 기준으로 재표기되었습니다.`);
+        const snapLabel = result.snapshotIdx === 1 ? "1차 (화요일까지)" : result.snapshotIdx === 2 ? "2차 (수요일 오전까지)" : "3차 (목/금요일)";
+        showToast(`🔄 [${lineMeta.name}] 이전 데이터 삭제 완료! [${snapLabel}] 파일(${fileName}, ${result.rows.length}건) 기준으로 즉각 재표기되었습니다.`);
       } else {
         showToast(`⚠️ [${lineMeta.name}] 사진 분석 완료 (기본 서식 적용)`);
       }
@@ -512,24 +525,24 @@ export const ExtrusionDowntimeView = () => {
     const snapLabel = snapshotIdx === 1 ? "1차: 화요일까지" : snapshotIdx === 2 ? "2차: 수요일 오전까지" : "3차: 목/금요일";
 
     setDataStore((prev) => {
-      const lineObj = { ...prev[selectedLineId] };
-      const weekMeta = lineObj.weeklyData[selectedWeek] || currentWeekData;
+      const nextStore = { ...prev };
+      const lineObj = { ...(nextStore[selectedLineId] || {}) };
+      const weeklyData = { ...(lineObj.weeklyData || {}) };
 
-      const weekObj = {
-        ...weekMeta,
+      weeklyData[selectedWeek] = {
+        ...(weeklyData[selectedWeek] || currentWeekData),
         rows: [...rows],
         totalMinutes,
         totalWeight,
         lastUploadedFileName: `사진자료 (${snapLabel})`,
-        lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
-        snapshotIdx: snapshotIdx
+        lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        snapshotIdx: snapshotIdx,
+        _updatedAt: Date.now()
       };
-      lineObj.weeklyData[selectedWeek] = weekObj;
 
-      return {
-        ...prev,
-        [selectedLineId]: lineObj
-      };
+      lineObj.weeklyData = weeklyData;
+      nextStore[selectedLineId] = lineObj;
+      return nextStore;
     });
 
     showToast(`🔄 [${currentLineName}] ${snapLabel} 실적(${rows.length}건)으로 즉시 반영되었습니다!`);
@@ -539,13 +552,21 @@ export const ExtrusionDowntimeView = () => {
   const handleBatchFilesSelect = (fileList) => {
     if (!fileList || fileList.length === 0) return;
     const files = Array.from(fileList).slice(0, 4);
+
+    if (files.length === 1) {
+      const file = files[0];
+      const targetLine = detectExtrusionLine(file.name, "", selectedLineId);
+      analyzeSingleLineAuto(targetLine, file);
+      return;
+    }
+
     const unassignedLineIds = ["pcm1", "pcm3", "pvc", "tpe"];
     const matchedLineIds = new Set();
 
     files.forEach((file) => {
       let targetLine = detectExtrusionLine(file.name, "", null);
       if (!targetLine || matchedLineIds.has(targetLine)) {
-        targetLine = unassignedLineIds.find((id) => !matchedLineIds.has(id)) || "pcm1";
+        targetLine = unassignedLineIds.find((id) => !matchedLineIds.has(id)) || selectedLineId || "pcm1";
       }
       matchedLineIds.add(targetLine);
       const idx = unassignedLineIds.indexOf(targetLine);
@@ -1054,35 +1075,48 @@ export const ExtrusionDowntimeView = () => {
             {currentWeekData.lastUploadedFileName && (
               <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold flex items-center gap-1">
                 <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>최근 분석: {currentWeekData.lastUploadedFileName} ({currentWeekData.lastUploadedAt || "방금"})</span>
+                <span>
+                  최근 분석: {currentWeekData.lastUploadedFileName} ({currentWeekData.lastUploadedAt || "방금"})
+                </span>
               </span>
             )}
 
-            {/* Quick 1차(화) / 2차(수) Snapshot Fast Switcher */}
+            {/* Quick 1차(화) / 2차(수) / 3차(목금) Snapshot Fast Switcher with Live Row Counts */}
             <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg ml-1">
               <button
                 type="button"
                 onClick={() => handleApplySnapshot(1)}
-                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition cursor-pointer ${
-                  (currentWeekData.rows || []).length <= 8 && (currentWeekData.rows || []).length > 0
-                    ? "bg-white text-slate-800 shadow-xs border border-slate-200"
-                    : "text-slate-500 hover:text-slate-800"
+                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  (currentWeekData.snapshotIdx === 1 || (currentWeekData.rows || []).length <= 8) && (currentWeekData.rows || []).length > 0
+                    ? "bg-indigo-600 text-white shadow-xs font-black"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
                 }`}
-                title="1차 사진 기준 (화요일 주간까지)"
+                title="1차 사진 기준 (14일 월 ~ 15일 화요일까지 8건)"
               >
-                1차 (화요일까지)
+                <span>1차 (화요일까지)</span>
+                <span className={`text-[9px] px-1 py-0 rounded ${
+                  (currentWeekData.snapshotIdx === 1 || (currentWeekData.rows || []).length <= 8) && (currentWeekData.rows || []).length > 0
+                    ? "bg-white/20 text-white font-mono"
+                    : "bg-slate-200 text-slate-700 font-mono"
+                }`}>8건</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => handleApplySnapshot(2)}
-                className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition cursor-pointer ${
-                  (currentWeekData.rows || []).length > 8
+                className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition cursor-pointer flex items-center gap-1 ${
+                  currentWeekData.snapshotIdx === 2 || (currentWeekData.rows || []).length > 8
                     ? "bg-teal-600 text-white shadow-xs"
                     : "text-teal-700 bg-teal-50 hover:bg-teal-100"
                 }`}
-                title="2차 사진 기준 (수요일 오전까지 누적 실적)"
+                title="2차 사진 기준 (14일 월 ~ 16일 수요일 오전까지 누적 실적 13건)"
               >
-                ⭐ 2차 (수요일 오전까지)
+                <span>⭐ 2차 (수요일 오전까지)</span>
+                <span className={`text-[9px] px-1 py-0 rounded ${
+                  currentWeekData.snapshotIdx === 2 || (currentWeekData.rows || []).length > 8
+                    ? "bg-white/20 text-white font-mono"
+                    : "bg-teal-200 text-teal-900 font-mono"
+                }`}>13건</span>
               </button>
             </div>
           </div>
@@ -1093,6 +1127,7 @@ export const ExtrusionDowntimeView = () => {
               const isAnalyzing = analyzingLines[line.id];
               const isDragging = dragActiveTarget === line.id;
               const isSelected = selectedLineId === line.id;
+              const fileInputRef = getSingleFileInputRef(line.id);
 
               return (
                 <div
@@ -1101,7 +1136,7 @@ export const ExtrusionDowntimeView = () => {
                   onDragEnter={(e) => handleDragOver(e, line.id)}
                   onDragLeave={(e) => handleDragLeave(e, line.id)}
                   onDrop={(e) => handleLineCardDrop(e, line.id)}
-                  onClick={() => singleFileInputRefs[line.id]?.current?.click()}
+                  onClick={() => fileInputRef?.current?.click()}
                   className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-left flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none shrink-0 ${
                     isDragging
                       ? "border-2 border-teal-500 bg-teal-100 ring-2 ring-teal-500/40 scale-102"
@@ -1115,14 +1150,16 @@ export const ExtrusionDowntimeView = () => {
                 >
                   <input
                     type="file"
-                    ref={singleFileInputRefs[line.id]}
+                    ref={fileInputRef}
                     accept="image/*"
                     className="hidden"
+                    onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        analyzeSingleLineAuto(line.id, e.target.files[0]);
-                        e.target.value = "";
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        analyzeSingleLineAuto(line.id, f);
                       }
+                      e.target.value = "";
                     }}
                   />
 
