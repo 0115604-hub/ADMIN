@@ -757,13 +757,60 @@ ${commonSchedules}
 <a href="https://profit-and-loss-7d09b.web.app">손익관리시스템 바로가기</a>
 `.trim();
 
-        const res = await sendTelegramMessage(config.botToken, config.pnlChatId || "-1003939516875", pnlMessage);
-        console.log("[경영총괄 손익브리핑] Send Result:", res);
-
         if (res.ok) {
           await completeBriefingLock("pnl", todayStr, true);
         } else {
           await completeBriefingLock("pnl", todayStr, false, res.error || "TELEGRAM_SEND_FAILED");
+        }
+
+        // ⭐ 2-1. 오늘 예정된 사내 공통일정 당일 리마인드 메시지 발송 (경영총괄 전용)
+        try {
+          const snapSched = await getDocs(collection(db, "company_common_schedules"));
+          const todaySchedList = [];
+          snapSched.forEach((docSnap) => {
+            const s = docSnap.data();
+            if (s.isCompleted) return;
+            const startDate = s.startDate || s.date;
+            const endDate = s.endDate || startDate;
+            if (startDate && endDate && startDate <= todayStr && todayStr <= endDate) {
+              todaySchedList.push({ id: docSnap.id, ...s });
+            }
+          });
+
+          if (todaySchedList.length > 0) {
+            todaySchedList.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+            const scheduleReminderLines = todaySchedList.map((s, idx) => {
+              const target = s.target;
+              let catBadge = "공통 일정";
+              if (target === "맛집") catBadge = "맛집 탐방";
+              else if (target === "여행") catBadge = "여행 / 힐링";
+              else if (target === "세미나") catBadge = "세미나";
+              else if (target === "교육") catBadge = "교육 / 역량";
+              const timeDisplay = s.time && s.time !== "종일" ? `⏰ ${s.time}` : "🌅 종일";
+              const authorText = s.author ? ` (${s.author})` : "";
+              return `• <b>${idx + 1}. [${catBadge}] ${timeDisplay}</b> - <b>${s.title || "사내 공통일정"}</b>${authorText}`;
+            }).join("\n");
+
+            const scheduleReminderMsg = `
+✨ <b>𝕋𝕒𝕖𝕙𝕪𝕦𝕟𝕘 & 𝕄𝕚𝕪𝕠𝕦𝕟𝕘</b> ✨
+━━━━━━━━━━━━━━━━━━━━━
+🔔 <b>[당일 공통일정 리마인드 알림]</b> 🥂
+━━━━━━━━━━━━━━━━━━━━━
+📅 <b>기준일자:</b> <b>${formatYYYYMMDDWithWeekday(todayStr)}</b>
+
+<b>[오늘 예정된 공통일정 안내 (${todaySchedList.length}건)]</b>
+${scheduleReminderLines}
+
+💌 <i>"오늘 예정된 소중한 일정과 함께 뜻깊고 행복한 하루 되시길 바랍니다 ✨"</i>
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">📌 공통일정 확인 및 의견등록 바로가기</a>
+`.trim();
+
+            const schedRes = await sendTelegramMessage(config.botToken, config.pnlChatId || "-1003939516875", scheduleReminderMsg);
+            console.log(`[경영총괄 당일 공통일정 리마인드] ${todaySchedList.length}건 발송 결과:`, schedRes);
+          }
+        } catch (schedErr) {
+          console.warn("[경영총괄 당일 공통일정 리마인드 발송 오류]:", schedErr.message);
         }
       } catch (err) {
         console.error("[경영총괄 손익브리핑] Error occurred:", err.message);

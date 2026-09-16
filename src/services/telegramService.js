@@ -1430,6 +1430,89 @@ ${comment.text || comment.content || ""}
   });
 };
 
+/**
+ * 13. 당일 사내 공통일정 리마인드 텔레그램 발송 (경영총괄 전용)
+ * 수신처: '경영총괄' (-1003939516875)
+ */
+export const sendTodayCommonScheduleReminderTelegram = async (targetDate = null, customSchedules = null, targetChatId = null, force = false) => {
+  const config = getLocalTelegramConfig();
+  if (!config.enabled && !force) return { success: false, skipped: true, reason: "DISABLED" };
+
+  const destChatId = targetChatId || config.pnlChatId || "-1003939516875";
+  const todayStr = targetDate || getKSTDateString();
+  const clientId = getClientInstanceId();
+
+  // 1-time per day lock (unless force)
+  if (!force) {
+    const lockResult = await acquireBriefingLock("schedule_remind", todayStr, clientId, false);
+    if (!lockResult.acquired) {
+      console.log(`[당일 공통일정 리마인드] Skipping send: ${lockResult.reason}`);
+      return { success: false, skipped: true, reason: lockResult.reason };
+    }
+  }
+
+  try {
+    let todayScheds = customSchedules;
+    if (!todayScheds) {
+      try {
+        await cleanupExpiredCommonSchedules(todayStr);
+      } catch (e) {}
+      todayScheds = getTodayCommonSchedules(todayStr);
+    }
+
+    if (!todayScheds || todayScheds.length === 0) {
+      console.log(`[당일 공통일정 리마인드] 오늘(${todayStr}) 예정된 공통일정이 없어 발송을 생략합니다.`);
+      if (!force) await completeBriefingLock("schedule_remind", todayStr, true, "NO_SCHEDULES_TODAY", clientId);
+      return { success: true, skipped: true, reason: "NO_SCHEDULES_TODAY" };
+    }
+
+    // Sort by time
+    todayScheds.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+    const dateFormatted = getKSTFormattedString(todayStr).split(" ")[0]; // e.g. "2026.09.16(수)"
+
+    // Build schedule lines
+    const scheduleLines = todayScheds.map((s, idx) => {
+      const cat = getScheduleCategoryMeta(s.target);
+      const timeDisplay = s.time && s.time !== "종일" ? `⏰ ${s.time}` : "🌅 종일";
+      const authorText = s.author ? ` (${s.author})` : "";
+      return `• <b>${idx + 1}. [${cat.badge}] ${timeDisplay}</b> - <b>${s.title || "사내 공통일정"}</b>${authorText}`;
+    }).join("\n");
+
+    const message = `
+✨ <b>𝕋𝕒𝕖𝕙𝕪𝕦𝕟𝕘 & 𝕄𝕚𝕪𝕠𝕦𝕟𝕘</b> ✨
+━━━━━━━━━━━━━━━━━━━━━
+🔔 <b>[당일 공통일정 리마인드 알림]</b> 🥂
+━━━━━━━━━━━━━━━━━━━━━
+📅 <b>기준일자:</b> <b>${dateFormatted}</b>
+
+<b>[오늘 예정된 공통일정 안내 (${todayScheds.length}건)]</b>
+${scheduleLines}
+
+💌 <i>"오늘 예정된 소중한 일정과 함께 뜻깊고 행복한 하루 되시길 바랍니다 ✨"</i>
+━━━━━━━━━━━━━━━━━━━━━
+<a href="https://profit-and-loss-7d09b.web.app">📌 공통일정 확인 및 의견등록 바로가기</a>
+`.trim();
+
+    const sendResult = await sendTelegramMessage(message, {
+      ...config,
+      chatId: destChatId
+    });
+
+    if (sendResult.success) {
+      if (!force) await completeBriefingLock("schedule_remind", todayStr, true, null, clientId);
+    } else {
+      if (!force) await completeBriefingLock("schedule_remind", todayStr, false, sendResult.error || "SEND_FAILED", clientId);
+    }
+
+    return sendResult;
+  } catch (err) {
+    console.error("[당일 공통일정 리마인드] Send error:", err);
+    if (!force) await completeBriefingLock("schedule_remind", todayStr, false, err.message, clientId);
+    return { success: false, error: err.message };
+  }
+};
+
 let isCheckingBriefing = false;
 
 /**
@@ -1476,6 +1559,17 @@ export const checkAndAutoSendDailyMorningBriefing = async () => {
     if (needPnL) {
       console.log(`[07:30 Daily PnL Briefing] Auto-sending PnL briefing for ${todayStr}...`);
       results.pnl = await sendDailyPnLMorningBriefingTelegram();
+
+      // ⭐ 오늘 예정된 공통일정이 있을 경우 당일 리마인드 자동 발송
+      try {
+        const todayScheds = getTodayCommonSchedules(todayStr);
+        if (todayScheds && todayScheds.length > 0) {
+          console.log(`[07:30 Daily Schedule Reminder] Sending today's ${todayScheds.length} schedule reminder to 경영방...`);
+          results.scheduleRemind = await sendTodayCommonScheduleReminderTelegram(todayStr, todayScheds);
+        }
+      } catch (remindErr) {
+        console.warn("[당일 공통일정 리마인드 자동 발송 오류]:", remindErr);
+      }
     }
   } finally {
     isCheckingBriefing = false;

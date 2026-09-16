@@ -63,7 +63,8 @@ import {
   subscribeCommonSchedules,
   formatCommonSchedulesForTelegram,
   injectCommonSchedulesIntoPnLTemplate,
-  getUncompletedCommonSchedules
+  getUncompletedCommonSchedules,
+  getScheduleCategoryMeta
 } from "../services/commonScheduleService";
 import { getLocalAnnualLeaves } from "../services/annualLeaveService";
 import { getLocalApprovalDocs } from "../services/approvalService";
@@ -82,6 +83,9 @@ export const TelegramView = () => {
   const [qualityStage, setQualityStage] = useState("1"); // "1": 신규발령, "2": 조치완료, "3": 종결삭제
   const [noticeMeetingType, setNoticeMeetingType] = useState("notice"); // "notice" | "meeting" | "meeting_result" | "meeting_reply"
   const [approvalType, setApprovalType] = useState("draft"); // "draft" | "approve" | "reject" | "worklog"
+
+  // Sub-tab for 경영총괄: "pnl" | "today_schedule"
+  const [managementMsgType, setManagementMsgType] = useState("pnl");
 
   // Preview Mode: "edit" (직접 텍스트 편집) vs "preview" (렌더링 미리보기)
   const [unifiedViewMode, setUnifiedViewMode] = useState("edit");
@@ -137,7 +141,9 @@ export const TelegramView = () => {
     return `unified_approval_${approvalType}`;
   }, [unifiedMsgType, qualityStage, noticeMeetingType, approvalType]);
 
-  const currentManagementTemplateKey = "management_pnl";
+  const currentManagementTemplateKey = useMemo(() => {
+    return managementMsgType === "today_schedule" ? "management_today_schedule" : "management_pnl";
+  }, [managementMsgType]);
 
   // Check if current text has a custom saved template
   const isUnifiedTemplateCustom = Boolean(savedTemplates[currentUnifiedTemplateKey]?.text);
@@ -389,6 +395,22 @@ export const TelegramView = () => {
 
   // Management Default Message Generator
   const generateDefaultManagementText = () => {
+    if (managementMsgType === "today_schedule") {
+      const todaySchedsList = [...todayCommonSchedules].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+      const dateFormattedShort = getKSTFormattedString(todayDateStr).split(" ")[0]; // e.g. "2026.09.16(수)"
+      
+      const scheduleLines = todaySchedsList.length > 0 
+        ? todaySchedsList.map((s, idx) => {
+            const cat = getScheduleCategoryMeta(s.target);
+            const timeDisplay = s.time && s.time !== "종일" ? `⏰ ${s.time}` : "🌅 종일";
+            const authorText = s.author ? ` (${s.author})` : "";
+            return `• <b>${idx + 1}. [${cat.badge}] ${timeDisplay}</b> - <b>${s.title || "사내 공통일정"}</b>${authorText}`;
+          }).join("\n")
+        : "• 오늘 예정된 공통일정이 없습니다.";
+
+      return `✨ <b>𝕋𝕒𝕖𝕙𝕪𝕦𝕟𝕘 & 𝕄𝕚𝕪𝕠𝕦𝕟𝕘</b> ✨\n━━━━━━━━━━━━━━━━━━━━━\n🔔 <b>[당일 공통일정 리마인드 알림]</b> 🥂\n━━━━━━━━━━━━━━━━━━━━━\n📅 <b>기준일자:</b> <b>${dateFormattedShort}</b>\n\n<b>[오늘 예정된 공통일정 안내 (${todaySchedsList.length}건)]</b>\n${scheduleLines}\n\n💌 <i>"오늘 예정된 소중한 일정과 함께 뜻깊고 행복한 하루 되시길 바랍니다 ✨"</i>\n━━━━━━━━━━━━━━━━━━━━━\n📌 <a href="https://profit-and-loss-7d09b.web.app">공통일정 확인 및 의견등록 바로가기</a>`;
+    }
+
     const salesAchTxt = `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`;
     const purchAchTxt = `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`;
 
@@ -399,28 +421,32 @@ export const TelegramView = () => {
   useEffect(() => {
     const saved = savedTemplates[currentManagementTemplateKey]?.text;
     if (saved) {
-      let sanitized = saved
-        .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
-        .replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유")
-        .replace(/일일아침손익결산/g, "매출 & 일정공유")
-        .replace(/손익결산\s*브리핑/g, "매출 & 일정공유")
-        .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
-        .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
-        .replace(/경영정보공유/g, "")
-        .replace(/경영정보/g, "");
-      const livePnL = {
-        salesAmount: Math.round(totalSales),
-        purchaseAmount: Math.round(totalPurchases),
-        costRatio,
-        salesAchievementRate: `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
-        purchaseAchievementRate: `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`
-      };
-      sanitized = injectCommonSchedulesIntoPnLTemplate(sanitized, commonSchedsText, dateFormatted, livePnL);
-      setEditableManagementText(sanitized);
+      if (managementMsgType === "pnl") {
+        let sanitized = saved
+          .replace(/\[오륙\s*(경영정보공유|경영정보|경영진\/임원|경영진)\]/g, "[오륙]")
+          .replace(/일일\s*아침\s*손익결산\s*브리핑/g, "매출 & 일정공유")
+          .replace(/일일아침손익결산/g, "매출 & 일정공유")
+          .replace(/손익결산\s*브리핑/g, "매출 & 일정공유")
+          .replace(/\[3\]\s*태형이랑\s*&\s*미영이랑/g, "[3] 사내 공통일정")
+          .replace(/태형이랑\s*&\s*미영이랑/g, "사내 공통일정")
+          .replace(/경영정보공유/g, "")
+          .replace(/경영정보/g, "");
+        const livePnL = {
+          salesAmount: Math.round(totalSales),
+          purchaseAmount: Math.round(totalPurchases),
+          costRatio,
+          salesAchievementRate: `${salesAchievementPct}% (${Number(salesAchievementPct) >= 100 ? `▲ +${(Number(salesAchievementPct) - 100).toFixed(1)}% 초과` : `▼ ${(Number(salesAchievementPct) - 100).toFixed(1)}%`})`,
+          purchaseAchievementRate: `${purchaseAchievementPct}% (${Number(purchaseAchievementPct) <= 100 ? `▼ ${(100 - Number(purchaseAchievementPct)).toFixed(1)}% 절감` : `▲ +${(Number(purchaseAchievementPct) - 100).toFixed(1)}% 증가`})`
+        };
+        sanitized = injectCommonSchedulesIntoPnLTemplate(sanitized, commonSchedsText, dateFormatted, livePnL);
+        setEditableManagementText(sanitized);
+      } else {
+        setEditableManagementText(saved);
+      }
     } else {
       setEditableManagementText(generateDefaultManagementText());
     }
-  }, [currentManagementTemplateKey, savedTemplates, totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, commonSchedsText, selectedPnLChannel, dateFormatted]);
+  }, [currentManagementTemplateKey, managementMsgType, savedTemplates, totalSales, totalPurchases, salesAchievementPct, purchaseAchievementPct, commonSchedsText, todayCommonSchedules, selectedPnLChannel, dateFormatted]);
 
   // Access Control: Admin only
   if (!isAdmin) {
@@ -1022,6 +1048,35 @@ export const TelegramView = () => {
             </div>
           </div>
 
+          {/* Sub-tabs for 경영총괄: [📊 매출 & 일정공유] vs [🔔 당일 공통일정 리마인드] */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-900/40">
+            <button
+              type="button"
+              onClick={() => setManagementMsgType("pnl")}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                managementMsgType === "pnl"
+                  ? "bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 shadow-sm border border-purple-200 dark:border-purple-800"
+                  : "text-slate-600 dark:text-slate-400 hover:text-purple-600"
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 text-purple-500" />
+              <span>📊 1. 매출 & 일정공유 브리핑 (매일 07:40)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setManagementMsgType("today_schedule")}
+              className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                managementMsgType === "today_schedule"
+                  ? "bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-sm border border-amber-200 dark:border-amber-800"
+                  : "text-slate-600 dark:text-slate-400 hover:text-amber-600"
+              }`}
+            >
+              <Bell className="w-4 h-4 text-amber-500" />
+              <span>🔔 2. 당일 공통일정 리마인드 알림 ({todayCommonSchedules.length}건)</span>
+            </button>
+          </div>
+
           {/* 🌟 예시창 스마트폰 프레임 (직접 편집 가능한 텍스트 상자 & 렌더링 미리보기 탭) */}
           <div className="bg-slate-950 text-slate-100 rounded-3xl p-5 border border-slate-800 shadow-2xl space-y-3 font-sans">
             {/* Top Toolbar in Smartphone frame */}
@@ -1097,7 +1152,9 @@ export const TelegramView = () => {
             {managementViewMode === "edit" ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-                  <span>💡 <strong>매출 & 일정공유 브리핑 텍스트 수정:</strong> 매출액, 매입액, 달성율, 공통일정을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장됩니다.</span>
+                  <span>
+                    💡 <strong>{managementMsgType === "today_schedule" ? "당일 공통일정 리마인드" : "매출 & 일정공유"} 텍스트 수정:</strong> 원하는 내용을 자유롭게 수정한 후, <strong>[위 예시내용을 앞으로도 계속 적용]</strong>을 누르면 저장됩니다.
+                  </span>
                   <span className="font-mono text-slate-500">{editableManagementText.length}자</span>
                 </div>
                 <textarea
@@ -1105,7 +1162,11 @@ export const TelegramView = () => {
                   value={editableManagementText}
                   onChange={(e) => setEditableManagementText(e.target.value)}
                   className="w-full p-4 rounded-2xl bg-slate-900/95 border border-purple-500/50 font-mono text-xs sm:text-sm text-slate-100 leading-relaxed focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-inner"
-                  placeholder="발송할 매출 & 일정공유 브리핑 메시지 내용을 입력하세요..."
+                  placeholder={
+                    managementMsgType === "today_schedule"
+                      ? "발송할 당일 공통일정 리마인드 메시지 내용을 입력하세요..."
+                      : "발송할 매출 & 일정공유 브리핑 메시지 내용을 입력하세요..."
+                  }
                 ></textarea>
               </div>
             ) : (
@@ -1137,7 +1198,7 @@ export const TelegramView = () => {
                 )}
                 {dailyPnLToast && (
                   <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 animate-fadeIn">
-                    <CheckCircle2 className="w-4 h-4" /> 경영방 전송 완료!
+                    <CheckCircle2 className="w-4 h-4" /> 전송 완료!
                   </span>
                 )}
 
@@ -1146,7 +1207,7 @@ export const TelegramView = () => {
                   type="button"
                   onClick={handleSaveManagementTemplate}
                   className="flex items-center gap-1.5 px-4 sm:px-5 py-3 rounded-2xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer"
-                  title="현재 수정된 텍스트를 기본 서식으로 저장하여 매일 07:40 발송 시 계속 적용합니다."
+                  title="현재 수정된 텍스트를 기본 서식으로 저장하여 계속 적용합니다."
                 >
                   <BookmarkCheck className="w-4 h-4 text-amber-400" />
                   <span>💾 위 예시내용을 앞으로도 계속 적용</span>
@@ -1160,7 +1221,11 @@ export const TelegramView = () => {
                   className="flex items-center gap-2 px-5 sm:px-6 py-3 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-900 to-indigo-900 hover:from-black hover:to-purple-950 text-white font-black text-xs sm:text-sm shadow-xl shadow-purple-500/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4 text-purple-300" />
-                  <span>{sendingDailyPnL ? "발송 중..." : "🚀 [경영방]으로 매출 & 일정공유 즉시 발송"}</span>
+                  <span>
+                    {sendingDailyPnL
+                      ? "발송 중..."
+                      : `🚀 [경영방]으로 ${managementMsgType === "today_schedule" ? "당일 공통일정 리마인드" : "매출 & 일정공유"} 즉시 발송`}
+                  </span>
                 </button>
               </div>
             </div>
