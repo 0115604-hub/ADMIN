@@ -1,31 +1,40 @@
-import React, { useEffect, useRef } from "react";
-import { X, Lock, ArrowRight, Delete } from "lucide-react";
-import { ADMIN_USERS } from "../../context/AuthContext";
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  ArrowRight,
+  ShieldAlert,
+  Calendar,
+  Megaphone,
+  Eye
+} from "lucide-react";
+import { ADMIN_USERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus } from "../../services/annualLeaveService";
+import { subscribeSevereDisasterPhotos } from "../../services/severeDisasterService";
+import { ImagePreviewModal } from "../common/ImagePreviewModal";
 
 export const WorkerPinModal = ({
   selectedUser,
   setSelectedUser,
-  pin,
-  setPin,
   rememberMe,
   setRememberMe,
-  loading,
-  errorMsg,
   annualLeaves,
-  onPinSubmit
+  activeIssues = [],
+  urgentIssues = []
 }) => {
-  const inputRef = useRef(null);
+  const { loginWithProfile } = useAuth();
+  const [disasterPhotos, setDisasterPhotos] = useState([]);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Subscribe to Lee Myeong-jae's Severe Disaster photos
   useEffect(() => {
-    if (selectedUser) {
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedUser]);
+    const unsub = subscribeSevereDisasterPhotos((photos) => {
+      setDisasterPhotos(photos || []);
+    });
+    return () => unsub();
+  }, []);
 
+  // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === "Escape") {
@@ -42,100 +51,48 @@ export const WorkerPinModal = ({
   const isMyeongjae = selectedUser.name === "이명재" || selectedUser.assignedProcess === "총괄관리";
   const leaveStatus = getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true });
 
-  const handleKeypadPress = (num) => {
-    setPin((prev) => (prev.length < 8 ? prev + num : prev));
-  };
+  // Filter top relevant active notices/issues
+  const displayNotices = (activeIssues && activeIssues.length > 0 ? activeIssues : urgentIssues || [])
+    .filter((it) => !it.isDeleted)
+    .slice(0, 4);
 
-  const handleKeypadBackspace = () => {
-    setPin((prev) => prev.slice(0, -1));
-  };
-
-  const handleKeypadClear = () => {
-    setPin("");
+  const handleLogin = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setIsLoggingIn(true);
+    try {
+      loginWithProfile(selectedUser, true, rememberMe);
+      setSelectedUser(null);
+    } catch (err) {
+      console.error("Worker login error:", err);
+      alert("로그인 중 오류가 발생했습니다: " + (err.message || ""));
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   return (
-    <div
-      onClick={() => setSelectedUser(null)}
-      className="fixed inset-0 z-[100] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn"
-    >
+    <>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] overflow-hidden animate-scaleUp relative"
+        onClick={() => setSelectedUser(null)}
+        className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn"
       >
-        <div className={`h-1.5 w-full ${
-          isAdmin
-            ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500"
-            : selectedUser.plant === "한림공장"
-            ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
-            : "bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600"
-        }`} />
-
-        <div className="p-4 sm:p-5 pb-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800/80">
-            <div className="flex items-center gap-2">
-              <div className={`p-1.5 rounded-xl text-white ${
-                isAdmin
-                  ? "bg-blue-600 shadow-xs"
-                  : selectedUser.plant === "한림공장"
-                  ? "bg-emerald-600 shadow-xs"
-                  : "bg-amber-600 shadow-xs"
-              }`}>
-                <Lock className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  작업자 PIN 인증
-                </h3>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedUser(null)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              title="닫기 (ESC)"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {isAdmin && (
-            <div className="mt-2.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-1">
-              {ADMIN_USERS.map((admin) => {
-                const isSelected = selectedUser.name === admin.name;
-                return (
-                  <button
-                    key={admin.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedUser(admin);
-                      setPin("");
-                    }}
-                    className={`py-1.5 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                      isSelected
-                        ? "bg-blue-600 text-white shadow-xs"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    <span>{admin.name === "권태형" ? "👑" : "💎"}</span>
-                    <span>{admin.name} {admin.title}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          <div className={`mt-3 p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.5)] overflow-hidden animate-scaleUp relative flex flex-col max-h-[92vh]"
+        >
+          {/* Top Decorative Line */}
+          <div className={`h-1.5 w-full shrink-0 ${
             isAdmin
-              ? "bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60"
-              : isMyeongjae
-              ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800/60"
+              ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500"
               : selectedUser.plant === "한림공장"
-              ? "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60"
-              : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
-          }`}>
+              ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
+              : "bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600"
+          }`} />
+
+          {/* 🌟 1. Header: 작업자 이름과 직책만 명료하게 표현 */}
+          <div className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black text-lg shadow-md shrink-0 ${
+              <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl text-white flex items-center justify-center font-black text-lg shadow-md shrink-0 ${
                 isAdmin
                   ? selectedUser.name === "최미영" ? "bg-indigo-600 ring-2 ring-indigo-400/40" : "bg-blue-600 ring-2 ring-blue-400/40"
                   : selectedUser.plant === "한림공장"
@@ -144,94 +101,207 @@ export const WorkerPinModal = ({
               }`}>
                 {selectedUser.avatar || selectedUser.name?.charAt(0)}
               </div>
+
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="font-black text-base text-slate-900 dark:text-white truncate">
-                    {selectedUser.name}
-                  </h4>
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    {selectedUser.title || (isAdmin ? "대표이사" : "작업자")}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-black text-lg sm:text-xl text-slate-900 dark:text-white tracking-tight truncate">
+                    {selectedUser.name} {selectedUser.title || (isAdmin ? "대표이사" : "작업자")}
+                  </h3>
+                  <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+                    isAdmin
+                      ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      : selectedUser.plant === "한림공장"
+                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                      : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                  }`}>
+                    {selectedUser.plant || "삼랑진공장"}
                   </span>
                 </div>
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 truncate block mt-0.5">
-                  {isAdmin
-                    ? "본사 • 최고 관리자"
-                    : `${selectedUser.plant || "삼랑진공장"} • ${selectedUser.assignedProcess || "작업자"}`}
+
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 block truncate mt-0.5">
+                  {isAdmin ? "본사 • 최고 관리자" : `${selectedUser.assignedProcess || "작업자"} 담당`}
                 </span>
               </div>
             </div>
 
-            {leaveStatus && (
-              <span className="px-2 py-1 rounded-lg bg-rose-500 text-white text-[10px] font-black shrink-0 shadow-xs animate-pulse">
-                {leaveStatus.displayBadge || "근태"}
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={() => setSelectedUser(null)}
+              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer shrink-0"
+              title="닫기 (ESC)"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </div>
 
-        <form onSubmit={onPinSubmit} className="p-4 sm:p-5 pt-0 space-y-3">
-          {errorMsg && (
-            <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1.5 animate-shake">
-              <span className="p-0.5 px-1.5 rounded-full bg-rose-200 dark:bg-rose-800 text-rose-800 dark:text-rose-200 text-[10px] font-black">!</span>
-              <span>{errorMsg}</span>
+          {/* Admin Switcher Pills (If Admin Role) */}
+          {isAdmin && (
+            <div className="px-4 sm:px-5 pt-3 shrink-0">
+              <div className="p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-1">
+                {ADMIN_USERS.map((admin) => {
+                  const isSelected = selectedUser.name === admin.name;
+                  return (
+                    <button
+                      key={admin.id}
+                      type="button"
+                      onClick={() => setSelectedUser(admin)}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        isSelected
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      <span>{admin.name === "권태형" ? "👑" : "💎"}</span>
+                      <span>{admin.name} {admin.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          <div className="space-y-1">
-            <label className="block text-xs font-black text-slate-700 dark:text-slate-300">
-              PIN 번호 입력
-            </label>
-            <div className="relative">
-              <input
-                ref={inputRef}
-                id="popup-worker-pin-input"
-                type="password"
-                inputMode="numeric"
-                autoComplete="current-password"
-                placeholder={isAdmin ? "0090" : "PIN 입력"}
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl border-2 border-blue-400 dark:border-blue-600 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white text-xl font-black text-center tracking-[0.35em] font-mono focus:outline-none focus:ring-4 focus:ring-blue-500/20 shadow-inner"
-              />
+          {/* 🌟 2. Scrollable Body: 이명재 이사 공유 사진 + 사내 공유 내용 패널 */}
+          <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+            {/* 개인 당일 근태 등록 알림 (있을 경우) */}
+            {leaveStatus && (
+              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 flex items-center justify-between gap-2 text-xs shadow-2xs animate-pulse">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Calendar className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span className="font-black text-rose-900 dark:text-rose-200 truncate">
+                    당일 근태 알림: {selectedUser.name} {selectedUser.title} - {leaveStatus.fullLabel || leaveStatus.label}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-lg bg-rose-600 text-white font-black text-[10px] shrink-0">
+                  {leaveStatus.displayBadge || "근태"}
+                </span>
+              </div>
+            )}
+
+            {/* [패널 1] 🚨 이명재 이사 중대재해 및 안전 공유 사진 */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-rose-950/20 dark:to-amber-950/30 border border-amber-300/80 dark:border-amber-700/60 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className="p-1 rounded-lg bg-rose-600 text-white shadow-xs">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                    🚨 중대재해 및 안전 공유판
+                  </span>
+                </div>
+
+                <span className="text-[11px] font-bold text-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700">
+                  {disasterPhotos.length}장 등록됨
+                </span>
+              </div>
+
+              {disasterPhotos.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {disasterPhotos.slice(0, 4).map((photo) => (
+                      <div
+                        key={photo.id}
+                        onClick={() => setPreviewImage(photo.url || photo.dataUrl)}
+                        className="group relative aspect-4/3 rounded-xl overflow-hidden border-2 border-amber-300 dark:border-amber-700 hover:border-rose-500 cursor-pointer shadow-xs transition-all hover:scale-102 bg-slate-900"
+                        title={`${photo.name} (${photo.uploaderName || "이명재 이사"}) - 클릭 시 확대`}
+                      >
+                        <img
+                          src={photo.url || photo.dataUrl}
+                          alt={photo.name}
+                          className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-black/25 group-hover:bg-transparent transition-colors flex items-center justify-center">
+                          <Eye className="w-4 h-4 text-white opacity-0 group-hover:opacity-100 drop-shadow transition-opacity" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {disasterPhotos.length > 4 && (
+                    <div className="text-right">
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                        외 {disasterPhotos.length - 4}장의 안전 사진이 대시보드에 공유되어 있습니다.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-xl border border-dashed border-amber-300 dark:border-amber-700/60">
+                  공유된 중대재해·안전 사진이 없습니다.
+                </div>
+              )}
+            </div>
+
+            {/* [패널 2] 📢 전사 공지 및 실시간 공유 내용 */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
+                    <Megaphone className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                    📢 사내 공유사항 & 품질/회의 공지
+                  </span>
+                </div>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                  {displayNotices.length}건
+                </span>
+              </div>
+
+              {displayNotices.length > 0 ? (
+                <div className="space-y-2">
+                  {displayNotices.map((item) => {
+                    const isQualityAlert = item.category === "품질경보";
+                    const isMeeting = item.category === "회의일정";
+                    const isNotice = item.category === "공지사항" || item.category === "사내공지";
+
+                    const badgeStyle = isQualityAlert
+                      ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300"
+                      : isMeeting
+                      ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
+                      : isNotice
+                      ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
+                      : "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300";
+
+                    return (
+                      <div
+                        key={item.id || item._docId}
+                        className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border shrink-0 ${badgeStyle}`}>
+                              {item.category}
+                            </span>
+                            <h5 className="font-black text-xs text-slate-900 dark:text-white truncate">
+                              {item.title || item.content}
+                            </h5>
+                          </div>
+
+                          <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                            {item.author || "관리자"}
+                          </span>
+                        </div>
+
+                        {item.title && item.content && (
+                          <p className="text-[11.5px] text-slate-600 dark:text-slate-300 line-clamp-2 font-medium leading-tight">
+                            {item.content}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                  등록된 사내 공유사항이 없습니다.
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
-            {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => handleKeypadPress(num)}
-                className="py-2.5 sm:py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-blue-100 dark:active:bg-blue-900/60 text-slate-900 dark:text-white font-black text-base transition-all active:scale-95 cursor-pointer shadow-2xs select-none"
-              >
-                {num}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={handleKeypadClear}
-              className="py-2.5 sm:py-3 rounded-xl bg-slate-200/80 dark:bg-slate-800/80 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-slate-600 dark:text-slate-400 hover:text-rose-600 font-bold text-xs transition-all active:scale-95 cursor-pointer shadow-2xs select-none flex items-center justify-center"
-            >
-              전체삭제
-            </button>
-            <button
-              type="button"
-              onClick={() => handleKeypadPress("0")}
-              className="py-2.5 sm:py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:bg-blue-100 dark:active:bg-blue-900/60 text-slate-900 dark:text-white font-black text-base transition-all active:scale-95 cursor-pointer shadow-2xs select-none"
-            >
-              0
-            </button>
-            <button
-              type="button"
-              onClick={handleKeypadBackspace}
-              className="py-2.5 sm:py-3 rounded-xl bg-slate-200/80 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all active:scale-95 cursor-pointer shadow-2xs select-none flex items-center justify-center"
-              title="한 글자 지우기"
-            >
-              <Delete className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="pt-1">
+          {/* 🌟 3. Footer: 로그인 상태 유지 체크박스 + 즉시 접속 버튼 */}
+          <div className="p-4 sm:p-5 pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 space-y-2.5">
             <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-500 dark:text-slate-400 select-none px-1">
               <input
                 type="checkbox"
@@ -241,27 +311,37 @@ export const WorkerPinModal = ({
               />
               <span>로그인 상태 유지 (개인 기기 전용)</span>
             </label>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setSelectedUser(null)}
-              className="py-3 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold text-xs shadow-2xs transition active:scale-95 cursor-pointer flex items-center justify-center"
-            >
-              취소
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !pin}
-              className="py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md shadow-blue-500/25 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <span>접속하기</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedUser(null)}
+                className="py-3 px-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-xs shadow-2xs transition active:scale-95 cursor-pointer flex items-center justify-center col-span-1"
+              >
+                닫기
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogin}
+                disabled={isLoggingIn}
+                className="py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer col-span-2 disabled:opacity-50"
+              >
+                <span>{selectedUser.name} 작업 대시보드 접속</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+
+      {/* Lightbox Modal for Disaster Images */}
+      {previewImage && (
+        <ImagePreviewModal
+          previewImage={previewImage}
+          onClose={() => setPreviewImage(null)}
+        />
+      )}
+    </>
   );
 };

@@ -18,6 +18,8 @@ export const WorkerLoginSection = ({
   hanlimLeaveCount,
   managerLeaves,
   companyAttendanceStats,
+  activeIssues = [],
+  urgentIssues = [],
   onUserClick,
   onPinSubmit
 }) => {
@@ -348,6 +350,8 @@ export const WorkerLoginSection = ({
         loading={loading}
         errorMsg={errorMsg}
         annualLeaves={annualLeaves}
+        activeIssues={activeIssues}
+        urgentIssues={urgentIssues}
         onPinSubmit={onPinSubmit}
       />
     </div>

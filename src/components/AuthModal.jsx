@@ -1257,6 +1257,8 @@ export const AuthModal = () => {
             hanlimLeaveCount={hanlimLeaveCount}
             managerLeaves={managerLeaves}
             companyAttendanceStats={companyAttendanceStats}
+            activeIssues={activeIssues}
+            urgentIssues={urgentIssues}
             onUserClick={handleUserClick}
             onPinSubmit={handlePinSubmit}
           />
