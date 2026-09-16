@@ -340,13 +340,15 @@ export const WorkerLoginSection = ({
         </div>
 
       {/* 🌟 작업자 이름 탭 시 뜨는 전용 모달 팝업창 */}
-      <WorkerPinModal
-        selectedUser={selectedUser}
-        setSelectedUser={setSelectedUser}
-        annualLeaves={annualLeaves}
-        activeIssues={activeIssues}
-        urgentIssues={urgentIssues}
-      />
+      {selectedUser && (
+        <WorkerPinModal
+          selectedUser={selectedUser}
+          setSelectedUser={setSelectedUser}
+          annualLeaves={annualLeaves}
+          activeIssues={activeIssues}
+          urgentIssues={urgentIssues}
+        />
+      )}
     </div>
   );
 };

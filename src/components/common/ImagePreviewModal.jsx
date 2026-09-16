@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Download, X, ZoomIn, ZoomOut, RotateCw, LocateFixed, Move } from "lucide-react";
+import { useModalHistory } from "../../utils/modalHistory";
 
 export const ImagePreviewModal = ({ previewImage, onClose }) => {
   const [zoom, setZoom] = useState(1);
@@ -9,6 +10,9 @@ export const ImagePreviewModal = ({ previewImage, onClose }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const viewportRef = useRef(null);
+
+  // Register with browser history for Back button
+  useModalHistory(Boolean(previewImage), onClose, "imagePreviewModal");
 
   // Reset zoom & pan when image changes
   useEffect(() => {

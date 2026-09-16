@@ -18,6 +18,7 @@ import { ADMIN_USERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus } from "../../services/annualLeaveService";
 import { subscribeSevereDisasterPhotos } from "../../services/severeDisasterService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
+import { useModalHistory } from "../../utils/modalHistory";
 
 // Process-specific default tasks generator
 const getProcessTasks = (worker) => {
@@ -141,6 +142,9 @@ export const WorkerPinModal = ({
     }
   }, [selectedUser]);
 
+  // Register with browser history for Back button (인터넷 뒤로가기 시 팝업 닫고 첫화면 유지)
+  useModalHistory(Boolean(selectedUser), () => setSelectedUser(null), "workerPinModal");
+
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -154,9 +158,9 @@ export const WorkerPinModal = ({
 
   if (!selectedUser) return null;
 
-  const isAdmin = selectedUser.role === "ADMIN";
-  const expectedPin = selectedUser.pin || (isAdmin ? "0090" : "11");
-  const leaveStatus = getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true });
+  const isAdmin = selectedUser?.role === "ADMIN";
+  const expectedPin = selectedUser?.pin || (isAdmin ? "0090" : "11");
+  const leaveStatus = selectedUser ? getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true }) : null;
 
   // Dismiss virtual keyboard on mobile as soon as PIN is verified
   useEffect(() => {
