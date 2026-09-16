@@ -160,8 +160,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v15 for verified clean downtime data up to 9/15 day shift
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v15_clean_verified";
+// Storage key with v16 for multi-snapshot verified clean downtime data
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v16_multisnap";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -454,22 +454,34 @@ export const ExtrusionDowntimeView = () => {
     const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
 
     setAnalyzingLines((prev) => ({ ...prev, [lineId]: true }));
-    showToast(`⚡ [${lineMeta.name}] 기존 실적 초기화 및 신규 사진 분석 중...`);
+    showToast(`⚡ [${lineMeta.name}] 이전 실적 삭제 및 최근 사진(${file.name}) 분석 중...`);
 
     try {
-      const result = await analyzeExtrusionImageFile(file, lineId, selectedWeek);
+      const currentLineObj = dataStore[lineId] || {};
+      const currentWeekMeta = currentLineObj?.weeklyData?.[selectedWeek] || currentWeekData;
+      const prevFile = currentWeekMeta?.lastUploadedFileName || "";
+      const uploadCount = (currentWeekMeta?.uploadCount || 0) + 1;
+
+      const result = await analyzeExtrusionImageFile(file, lineId, selectedWeek, null, {
+        prevFileName: prevFile,
+        uploadCount: uploadCount
+      });
 
       if (result.success && result.rows && result.rows.length > 0) {
         setDataStore((prev) => {
           const lineObj = { ...prev[lineId] };
-          const currentWeekMeta = lineObj.weeklyData[selectedWeek] || currentWeekData;
+          const weekMeta = lineObj.weeklyData[selectedWeek] || currentWeekData;
 
           // Clean wipe and complete overwrite with freshly parsed photo rows
           const weekObj = {
-            ...currentWeekMeta,
+            ...weekMeta,
             rows: [...result.rows],
             totalMinutes: result.totalMinutes,
-            totalWeight: result.totalWeight
+            totalWeight: result.totalWeight,
+            lastUploadedFileName: file.name,
+            lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+            uploadCount: uploadCount,
+            snapshotIdx: result.snapshotIdx || 1
           };
           lineObj.weeklyData[selectedWeek] = weekObj;
 
@@ -480,7 +492,7 @@ export const ExtrusionDowntimeView = () => {
         });
 
         setSelectedLineId(lineId);
-        showToast(`🔄 [${lineMeta.name}] 기존 내용을 삭제하고, 신규 업로드된 사진 실적(${result.rows.length}건)으로 새롭게 반영했습니다!`);
+        showToast(`🔄 [${lineMeta.name}] 이전 데이터 삭제 완료! 최근 파일(${file.name}, ${result.rows.length}건) 기준으로 재표기되었습니다.`);
       } else {
         showToast(`⚠️ [${lineMeta.name}] 사진 분석 완료 (기본 서식 적용)`);
       }
@@ -1007,6 +1019,13 @@ export const ExtrusionDowntimeView = () => {
             >
               {isManualAddOpen ? "▲ 항목직접등록 닫기" : "➕ 항목직접등록"}
             </button>
+
+            {currentWeekData.lastUploadedFileName && (
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold flex items-center gap-1">
+                <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>최근 분석: {currentWeekData.lastUploadedFileName} ({currentWeekData.lastUploadedAt || "방금"})</span>
+              </span>
+            )}
           </div>
 
           {/* Right: 4 Compact Line Droppable Chips (Single row 1-line, Folder icon, no '드롭' text) */}

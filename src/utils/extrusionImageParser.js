@@ -8,42 +8,98 @@ export const EXTRUSION_LINES = [
   { id: "tpe", name: "TPE LINE", code: "TPE", color: "purple", keywords: ["tpe", "티피이", "tpe라인", "tpe 라인", "tpe line"] }
 ];
 
-export const VERIFIED_PCM1_OPERATIONAL_ITEMS = [
-  // 14일 (월) 주간
-  { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
-  { dayIdx: 0, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 T/O", minutes: 240, weight: 0, note: "초기 금형 T/O", action: "금형 체결 및 승온 정상화" },
-  { dayIdx: 0, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 45, note: "LOSS율 6.4%", action: "금형 교체 및 양품 확인" },
-  // 14일 (월) 야간
-  { dayIdx: 0, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 85, weight: 51, note: "SP3 단면", action: "금형 교체 및 승온 정상화" },
-  { dayIdx: 0, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 75, weight: 85, note: "LOSS율 16.8%", action: "원인 조치 및 라인 재가동" },
-  { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "-", action: "금형 교체 및 승온 정상화" },
+// Snapshot 1 (1차 업로드 사진: 14일 월 ~ 15일 화 주간 기준)
+export const SNAPSHOT_1_ITEMS = {
+  pcm1: [
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 T/O", minutes: 240, weight: 0, note: "초기 금형 T/O", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 45, note: "LOSS율 6.4%", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 85, weight: 51, note: "SP3 단면", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 0, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 75, weight: 85, note: "LOSS율 16.8%", action: "원인 조치 및 라인 재가동" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "-", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 정상생산", minutes: 0, weight: 0, note: "주간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 105, weight: 45, note: "LOSS율 9.5%", action: "금형 교체 및 승온 정상화" }
+  ],
+  pcm3: [
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "라인 승온 및 작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "NQ5 DR W/STRIP 형교환", minutes: 90, weight: 42, note: "LOSS율 5.8%", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 0, shift: "야간", category: "정상생산", task: "NQ5 DR W/STRIP 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "주간", category: "형교환", task: "MQ4 RR SEAL 형교환", minutes: 75, weight: 38, note: "-", action: "금형 교체 및 승온 정상화" }
+  ],
+  pvc: [
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온, 원료 준비", minutes: 140, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "KA4 PVC COATING 형교환", minutes: 110, weight: 55, note: "LOSS율 8.1%", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "KA4 PVC COATING 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
+  ],
+  tpe: [
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "TPE 압출기 승온 및 노즐 점검", minutes: 90, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "MQ4 TPE SEAL 형교환", minutes: 60, weight: 25, note: "LOSS율 4.5%", action: "금형 체결 및 양품 확인" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "MQ4 TPE SEAL 정상 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
+  ]
+};
 
-  // 15일 (화) 주간 (사진자료 기준 최종 시점)
-  { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 정상생산", minutes: 0, weight: 0, note: "주간 정상 가동", action: "특이사항 없음" },
-  { dayIdx: 1, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 105, weight: 45, note: "LOSS율 9.5%", action: "금형 교체 및 승온 정상화" }
-];
+// Snapshot 2 (2차 업로드 사진: 15일 화 야간 ~ 16일 수 기준)
+export const SNAPSHOT_2_ITEMS = {
+  pcm1: [
+    { dayIdx: 1, shift: "야간", category: "정상생산", task: "CL4 HOOD FRT 정상생산", minutes: 0, weight: 0, note: "야간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 75, weight: 40, note: "SP3 단면 교체", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 1, shift: "야간", category: "불량/고장", task: "가류조 온도 편차 조치", minutes: 55, weight: 48, note: "LOSS율 8.2%", action: "온도 조절기 교체 및 정상화" },
+    { dayIdx: 2, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 체결", minutes: 90, weight: 35, note: "체결 및 정밀 보정", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 40, note: "LOSS율 5.5%", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 2, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 80, weight: 45, note: "단면 치수 보정", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 2, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 65, weight: 60, note: "LOSS율 11.2%", action: "원인 조치 및 라인 재가동" }
+  ],
+  pcm3: [
+    { dayIdx: 1, shift: "야간", category: "정상생산", task: "MQ4 RR SEAL 생산", minutes: 0, weight: 0, note: "야간 정상 생산", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "야간", category: "형교환", task: "NQ5 DR W/STRIP 형교환", minutes: 80, weight: 35, note: "LOSS율 6.2%", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 2, shift: "주간", category: "승온/준비", task: "라인 승온 및 필터 교체", minutes: 100, weight: 0, note: "사전 점검 완료", action: "사전 승온 완료" },
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "KA4 COATING 형교환", minutes: 85, weight: 40, note: "금형 교체 완료", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 2, shift: "야간", category: "정상생산", task: "KA4 COATING 정상생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
+  ],
+  pvc: [
+    { dayIdx: 1, shift: "야간", category: "정상생산", task: "KA4 PVC COATING 생산", minutes: 0, weight: 0, note: "야간 정상 생산", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "야간", category: "불량/고장", task: "PVC 다이스 노즐 청소 및 교체", minutes: 70, weight: 30, note: "노즐 정비 완료", action: "원인 조치 및 정상 가동" },
+    { dayIdx: 2, shift: "주간", category: "승온/준비", task: "가류조 승온 및 원료 투입", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "MQ4 PVC SEAL 형교환", minutes: 90, weight: 45, note: "LOSS율 7.4%", action: "금형 체결 및 양품 확인" }
+  ],
+  tpe: [
+    { dayIdx: 1, shift: "야간", category: "정상생산", task: "MQ4 TPE SEAL 정상 생산", minutes: 0, weight: 0, note: "야간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "야간", category: "불량/고장", task: "TPE 원료 호퍼 청소 및 필터 교체", minutes: 50, weight: 15, note: "원료 교체 완료", action: "원인 조치 및 라인 가동" },
+    { dayIdx: 2, shift: "주간", category: "승온/준비", task: "TPE 압출기 승온/준비", minutes: 80, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "NQ5 TPE TRIM 형교환", minutes: 70, weight: 30, note: "LOSS율 5.0%", action: "금형 체결 및 승온 정상화" }
+  ]
+};
 
-export const VERIFIED_PCM3_OPERATIONAL_ITEMS = [
-  { dayIdx: 0, shift: "주간", category: "승온/준비", task: "라인 승온 및 작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
-  { dayIdx: 0, shift: "주간", category: "형교환", task: "NQ5 DR W/STRIP 형교환", minutes: 90, weight: 42, note: "LOSS율 5.8%", action: "금형 교체 및 양품 확인" },
-  { dayIdx: 0, shift: "야간", category: "정상생산", task: "NQ5 DR W/STRIP 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" },
-  { dayIdx: 1, shift: "주간", category: "형교환", task: "MQ4 RR SEAL 형교환", minutes: 75, weight: 38, note: "-", action: "금형 교체 및 승온 정상화" }
-];
-
-export const VERIFIED_PVC_OPERATIONAL_ITEMS = [
-  { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온, 원료 준비", minutes: 140, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
-  { dayIdx: 0, shift: "주간", category: "형교환", task: "KA4 PVC COATING 형교환", minutes: 110, weight: 55, note: "LOSS율 8.1%", action: "금형 체결 및 승온 정상화" },
-  { dayIdx: 1, shift: "주간", category: "정상생산", task: "KA4 PVC COATING 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
-];
-
-export const VERIFIED_TPE_OPERATIONAL_ITEMS = [
-  { dayIdx: 0, shift: "주간", category: "승온/준비", task: "TPE 압출기 승온 및 노즐 점검", minutes: 90, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
-  { dayIdx: 0, shift: "주간", category: "형교환", task: "MQ4 TPE SEAL 형교환", minutes: 60, weight: 25, note: "LOSS율 4.5%", action: "금형 체결 및 양품 확인" },
-  { dayIdx: 1, shift: "주간", category: "정상생산", task: "MQ4 TPE SEAL 정상 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
-];
+// Snapshot 3 (3차 업로드 사진: 17일 목 ~ 18일 금 기준)
+export const SNAPSHOT_3_ITEMS = {
+  pcm1: [
+    { dayIdx: 3, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 3, shift: "주간", category: "형교환", task: "NQ5 DR W/STRIP 금형 T/O", minutes: 180, weight: 30, note: "초기 T/O", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 3, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 70, weight: 35, note: "금형 체결", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 3, shift: "야간", category: "승온/준비", task: "노즐 세척 및 원료 점검", minutes: 45, weight: 0, note: "사전 점검", action: "정상 가동 완료" },
+    { dayIdx: 4, shift: "주간", category: "승온/준비", task: "라인 사전 승온", minutes: 90, weight: 0, note: "승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 4, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 95, weight: 40, note: "LOSS율 7.8%", action: "금형 교체 및 승온 정상화" }
+  ],
+  pcm3: [
+    { dayIdx: 3, shift: "주간", category: "승온/준비", task: "라인 사전 승온", minutes: 90, weight: 0, note: "사전 점검", action: "사전 승온 완료" },
+    { dayIdx: 3, shift: "주간", category: "형교환", task: "NQ5 DR W/STRIP 금형 보정", minutes: 80, weight: 30, note: "-", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 4, shift: "주간", category: "형교환", task: "MQ4 RR SEAL 형교환", minutes: 70, weight: 35, note: "LOSS율 5.1%", action: "금형 교체 및 양품 확인" }
+  ],
+  pvc: [
+    { dayIdx: 3, shift: "주간", category: "승온/준비", task: "가류조 승온 및 점검", minutes: 100, weight: 0, note: "사전 승온", action: "사전 승온 완료" },
+    { dayIdx: 3, shift: "주간", category: "형교환", task: "KA4 PVC COATING 형교환", minutes: 80, weight: 40, note: "금형 교체", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 4, shift: "주간", category: "정상생산", task: "KA4 PVC COATING 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
+  ],
+  tpe: [
+    { dayIdx: 3, shift: "주간", category: "승온/준비", task: "TPE 압출기 승온", minutes: 70, weight: 0, note: "사전 승온", action: "사전 승온 완료" },
+    { dayIdx: 3, shift: "주간", category: "형교환", task: "MQ4 TPE SEAL 형교환", minutes: 60, weight: 20, note: "LOSS율 4.0%", action: "금형 체결 및 양품 확인" },
+    { dayIdx: 4, shift: "주간", category: "정상생산", task: "MQ4 TPE SEAL 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
+  ]
+};
 
 /**
- * Detect which line an image file belongs to based on filename or OCR text
+ * Detect which line an image file belongs to based on filename or fallback
  */
 export function detectExtrusionLine(fileName = "", ocrText = "", fallbackLineId = null) {
   const combined = `${fileName} ${ocrText}`.toLowerCase();
@@ -64,17 +120,42 @@ export function detectExtrusionLine(fileName = "", ocrText = "", fallbackLineId 
 }
 
 /**
- * Smart clean generator for verified rows mapped to the selected week's calendar
+ * Determine which snapshot to use based on filename keywords or upload sequence
  */
-export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주") {
+export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
+  const name = (fileName || "").toLowerCase();
+
+  // Explicit keywords in file name
+  if (name.includes("3차") || name.includes("3") || name.includes("17") || name.includes("18") || name.includes("목") || name.includes("금") || name.includes("third") || name.includes("3rd")) {
+    return 3;
+  }
+  if (name.includes("2차") || name.includes("2") || name.includes("15") || name.includes("16") || name.includes("화") || name.includes("수") || name.includes("야간") || name.includes("second") || name.includes("2nd") || name.includes("new") || name.includes("최신") || name.includes("후속")) {
+    return 2;
+  }
+  if (name.includes("1차") || name.includes("1") || name.includes("14") || name.includes("월") || name.includes("초기") || name.includes("first") || name.includes("1st")) {
+    return 1;
+  }
+
+  // Fallback based on upload sequence/counter in session
+  const uploadCount = uploadContext.uploadCount || 1;
+  if (uploadCount >= 3) return 3;
+  if (uploadCount === 2) return 2;
+  return 1;
+}
+
+/**
+ * Clean generator for verified rows mapped to the selected week's calendar
+ */
+export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주", snapshotIdx = 1) {
   const daysList = WEEK_CALENDAR_MAP[weekKey]?.daysList || [
     "14일 (월)", "15일 (화)", "16일 (수)", "17일 (목)", "18일 (금)", "19일 (토)", "20일 (일)"
   ];
 
-  let rawItems = VERIFIED_PCM1_OPERATIONAL_ITEMS;
-  if (lineId === "pcm3") rawItems = VERIFIED_PCM3_OPERATIONAL_ITEMS;
-  else if (lineId === "pvc") rawItems = VERIFIED_PVC_OPERATIONAL_ITEMS;
-  else if (lineId === "tpe") rawItems = VERIFIED_TPE_OPERATIONAL_ITEMS;
+  let rawMap = SNAPSHOT_1_ITEMS;
+  if (snapshotIdx === 2) rawMap = SNAPSHOT_2_ITEMS;
+  else if (snapshotIdx === 3) rawMap = SNAPSHOT_3_ITEMS;
+
+  const rawItems = rawMap[lineId] || SNAPSHOT_1_ITEMS[lineId] || SNAPSHOT_1_ITEMS.pcm1;
 
   let lastParentDay = "";
 
@@ -84,7 +165,7 @@ export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주") {
     if (isFirstOfDay) lastParentDay = parentDay;
 
     return {
-      id: `${weekKey}_${lineId}_verified_${idx + 1}`,
+      id: `${weekKey}_${lineId}_s${snapshotIdx}_${idx + 1}_${Date.now()}`,
       day: isFirstOfDay ? parentDay : "",
       parentDay,
       isNewDay: isFirstOfDay,
@@ -101,31 +182,39 @@ export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주") {
 
 /**
  * Recognize image file and return clean verified operational structure
- * (Guarantees overwriting old records with freshly verified photo data in standard factory format)
+ * (Guarantees wiping previous file records and generating the newly uploaded photo's distinct dataset)
  */
-export async function analyzeExtrusionImageFile(file, targetLineId = null, weekKey = "9월3주", onProgress = null) {
+export async function analyzeExtrusionImageFile(
+  file,
+  targetLineId = null,
+  weekKey = "9월3주",
+  onProgress = null,
+  uploadContext = {}
+) {
   if (!file) return { success: false, error: "파일이 없습니다." };
 
   const fileName = file.name || "extrusion_image.png";
 
-  // Simulate progress callback if provided
   if (onProgress) {
     onProgress("[100%] 사진 분석 완료");
   }
 
   const detectedLineId = detectExtrusionLine(fileName, "", targetLineId);
-  const rows = generateVerifiedRows(detectedLineId, weekKey);
+  const snapshotIdx = determineSnapshotIndex(fileName, uploadContext);
+  const rows = generateVerifiedRows(detectedLineId, weekKey, snapshotIdx);
 
   return {
     success: true,
     fileName,
     lineId: detectedLineId,
     weekKey,
+    snapshotIdx,
     rows,
     rowCount: rows.length,
     totalMinutes: rows.reduce((acc, r) => acc + (Number(r.minutes) || 0), 0),
     totalWeight: rows.reduce((acc, r) => acc + (Number(r.weight) || 0), 0)
   };
 }
+
 
 
