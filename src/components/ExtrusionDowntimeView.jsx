@@ -74,36 +74,93 @@ export const WEEK_CALENDAR_MAP = {
   "12월4주": { period: "12/28 ~ 01/03", daysList: ["28일 (월)", "29일 (화)", "30일 (수)", "31일 (목)", "01일 (금)", "02일 (토)", "03일 (일)"] }
 };
 
-// Auto-resolve current week key based on system date
-const getAutoCurrentWeekKey = (availableWeeks) => {
-  const now = new Date();
-  const m = now.getMonth() + 1;
-  const d = now.getDate();
+// Auto-resolve real current week key based on system date & WEEK_CALENDAR_MAP
+export const getRealCurrentWeekKey = (date = new Date()) => {
+  const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
+  const curMonth = d.getMonth() + 1;
+  const curDay = d.getDate();
 
+  for (const [weekKey, info] of Object.entries(WEEK_CALENDAR_MAP)) {
+    if (!info.period) continue;
+    const [startPart, endPart] = info.period.split("~").map((s) => s.trim());
+    if (!startPart || !endPart) continue;
+
+    const [startM, startD] = startPart.split("/").map(Number);
+    const [endM, endD] = endPart.split("/").map(Number);
+
+    if (startM === endM) {
+      if (curMonth === startM && curDay >= startD && curDay <= endD) {
+        return weekKey;
+      }
+    } else {
+      // Cross-month week (e.g. 8/31 ~ 9/06 or 12/28 ~ 01/03)
+      if ((curMonth === startM && curDay >= startD) || (curMonth === endM && curDay <= endD)) {
+        return weekKey;
+      }
+    }
+  }
+
+  // Fallback based on day
   let weekNum = 1;
-  if (d <= 6) weekNum = 1;
-  else if (d <= 13) weekNum = 2;
-  else if (d <= 20) weekNum = 3;
-  else if (d <= 27) weekNum = 4;
+  if (curDay <= 6) weekNum = 1;
+  else if (curDay <= 13) weekNum = 2;
+  else if (curDay <= 20) weekNum = 3;
+  else if (curDay <= 27) weekNum = 4;
   else weekNum = 5;
 
-  const candidate = `${m}월${weekNum}주`;
-  if (availableWeeks && availableWeeks.includes(candidate)) {
-    return candidate;
-  }
-
-  if (availableWeeks && availableWeeks.length > 0) {
-    const monthWeeks = availableWeeks.filter((w) => w.startsWith(`${m}월`));
-    if (monthWeeks.length > 0) {
-      return monthWeeks[0];
-    }
-    return availableWeeks[availableWeeks.length - 1];
-  }
-  return "9월1주";
+  return `${curMonth}월${weekNum}주`;
 };
 
-// Storage key with v6 for clean calendar migration
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v6_clean";
+// Helper: Ensure all weeks up to targetWeek exist for all 4 extrusion lines
+export const ensureStoreHasWeeks = (store, targetWeekKey) => {
+  if (!store) return store;
+  let updatedStore = { ...store };
+  const allWeekKeys = Object.keys(WEEK_CALENDAR_MAP);
+  const targetIdx = allWeekKeys.indexOf(targetWeekKey);
+  const weeksToEnsure = targetIdx >= 0 ? allWeekKeys.slice(0, targetIdx + 1) : [targetWeekKey];
+
+  let hasChanges = false;
+  const lineIds = ["pcm1", "pcm3", "pvc", "tpe"];
+
+  lineIds.forEach((lineId) => {
+    const lineObj = updatedStore[lineId] || {
+      id: lineId,
+      name: lineId,
+      weeklyData: {}
+    };
+    const weeklyData = { ...(lineObj.weeklyData || {}) };
+
+    weeksToEnsure.forEach((wKey) => {
+      if (!weeklyData[wKey]) {
+        const stdInfo = WEEK_CALENDAR_MAP[wKey] || {
+          period: "미지정",
+          daysList: ["01일 (월)", "02일 (화)", "03일 (수)", "04일 (목)", "05일 (금)", "06일 (토)", "07일 (일)"]
+        };
+        weeklyData[wKey] = {
+          sheetName: wKey,
+          period: stdInfo.period,
+          daysList: stdInfo.daysList,
+          rows: [],
+          totalMinutes: 0,
+          totalWeight: 0
+        };
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      updatedStore[lineId] = {
+        ...lineObj,
+        weeklyData
+      };
+    }
+  });
+
+  return hasChanges ? updatedStore : store;
+};
+
+// Storage key with v7 for updated clean calendar migration
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v7_clean";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -195,24 +252,28 @@ export const LINE_DISPLAY_NAMES = {
 export const ExtrusionDowntimeView = () => {
   const { currentProfile } = useAuth();
 
+  const realCurrentWeek = useMemo(() => getRealCurrentWeekKey(), []);
+
   const [dataStore, setDataStore] = useState(() => {
+    let initialStore = masterExtrusionData;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        initialStore = JSON.parse(saved);
+      } else {
+        const prevSaved = localStorage.getItem("factory_extrusion_downtime_4lines_v6_clean");
+        if (prevSaved) initialStore = JSON.parse(prevSaved);
+      }
     } catch (e) {
       console.error("Failed to load store:", e);
     }
-    return masterExtrusionData;
+    return ensureStoreHasWeeks(initialStore, getRealCurrentWeekKey());
   });
 
   const [selectedLineId, setSelectedLineId] = useState("pcm1");
-  const [selectedWeek, setSelectedWeek] = useState(() =>
-    getAutoCurrentWeekKey([
-      "7월1주", "7월2주", "7월3주", "7월4주", "7월5주",
-      "8월1주", "8월2주", "8월3주", "8월4주", "9월1주"
-    ])
-  );
+  const [selectedWeek, setSelectedWeek] = useState(() => realCurrentWeek);
   const [toastMessage, setToastMessage] = useState("");
+  const [dragActiveTarget, setDragActiveTarget] = useState(null); // null | "batch" | "pcm1" | "pcm3" | "pvc" | "tpe"
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -235,14 +296,13 @@ export const ExtrusionDowntimeView = () => {
   // Auto-select current week on line switch or login
   useEffect(() => {
     if (weeklySheets.length > 0) {
-      const currentWeekKey = getAutoCurrentWeekKey(weeklySheets);
-      if (weeklySheets.includes(currentWeekKey)) {
-        setSelectedWeek(currentWeekKey);
+      if (weeklySheets.includes(realCurrentWeek)) {
+        setSelectedWeek(realCurrentWeek);
       } else if (!weeklySheets.includes(selectedWeek)) {
         setSelectedWeek(weeklySheets[weeklySheets.length - 1]);
       }
     }
-  }, [selectedLineId, currentProfile?.id]);
+  }, [selectedLineId, currentProfile?.id, realCurrentWeek]);
 
   const rawWeekData = currentLine?.weeklyData?.[selectedWeek] || {
     sheetName: selectedWeek,
@@ -423,6 +483,52 @@ export const ExtrusionDowntimeView = () => {
       next[lineId] = null;
       return next;
     });
+  };
+
+  // Drag and Drop Event Handlers
+  const handleDragOver = (e, targetId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = "copy";
+    }
+    if (dragActiveTarget !== targetId) {
+      setDragActiveTarget(targetId);
+    }
+  };
+
+  const handleDragLeave = (e, targetId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget.contains(e.relatedTarget)) return;
+    if (dragActiveTarget === targetId) {
+      setDragActiveTarget(null);
+    }
+  };
+
+  const handleLineCardDrop = (e, lineId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveTarget(null);
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    if (files.length === 1) {
+      handleSinglePhotoSelect(lineId, files[0]);
+    } else {
+      handleBatchFilesSelect(files);
+    }
+  };
+
+  const handleBatchPanelDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveTarget(null);
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    handleBatchFilesSelect(files);
   };
 
   const handleAnalyzeLinePhoto = async (lineId) => {
@@ -672,12 +778,25 @@ export const ExtrusionDowntimeView = () => {
   };
 
   const handleCreateNextWeek = () => {
-    const nextWeekName = prompt("새로 생성할 주차 이름을 입력하세요 (예: 9월2주, 9월3주, 10월1주):", "9월2주");
+    const allWeekKeys = Object.keys(WEEK_CALENDAR_MAP);
+    const existingIdxs = weeklySheets
+      .map((w) => allWeekKeys.indexOf(w))
+      .filter((idx) => idx !== -1);
+    const maxIdx = existingIdxs.length > 0 ? Math.max(...existingIdxs) : -1;
+    const nextCandidate =
+      maxIdx !== -1 && maxIdx + 1 < allWeekKeys.length
+        ? allWeekKeys[maxIdx + 1]
+        : "9월4주";
+
+    const nextWeekName = prompt(
+      "새로 생성할 주차 이름을 입력하세요 (예: 9월2주, 9월3주, 9월4주, 10월1주):",
+      nextCandidate
+    );
     if (!nextWeekName || !nextWeekName.trim()) return;
 
     const trimmed = nextWeekName.trim();
     if (weeklySheets.includes(trimmed)) {
-      alert("이미 동일한 이름의 주차가 존재합니다.");
+      alert("이미 동일한 이름의 주차가 존재합니다. 해당 주차로 이동합니다.");
       setSelectedWeek(trimmed);
       return;
     }
@@ -688,26 +807,31 @@ export const ExtrusionDowntimeView = () => {
     };
 
     setDataStore((prev) => {
-      const lineObj = { ...prev[selectedLineId] };
-      const updatedWeekly = { ...lineObj.weeklyData };
-      updatedWeekly[trimmed] = {
-        sheetName: trimmed,
-        period: stdInfo.period,
-        daysList: stdInfo.daysList,
-        rows: [],
-        totalMinutes: 0,
-        totalWeight: 0
-      };
-      lineObj.weeklyData = updatedWeekly;
+      const nextStore = { ...prev };
+      const lineIds = ["pcm1", "pcm3", "pvc", "tpe"];
 
-      return {
-        ...prev,
-        [selectedLineId]: lineObj
-      };
+      lineIds.forEach((lId) => {
+        const lineObj = { ...(nextStore[lId] || {}) };
+        const updatedWeekly = { ...(lineObj.weeklyData || {}) };
+        if (!updatedWeekly[trimmed]) {
+          updatedWeekly[trimmed] = {
+            sheetName: trimmed,
+            period: stdInfo.period,
+            daysList: stdInfo.daysList,
+            rows: [],
+            totalMinutes: 0,
+            totalWeight: 0
+          };
+        }
+        lineObj.weeklyData = updatedWeekly;
+        nextStore[lId] = lineObj;
+      });
+
+      return nextStore;
     });
 
     setSelectedWeek(trimmed);
-    showToast(`🎉 [${trimmed} (${stdInfo.period})] 신규 주차가 생성되었습니다. 상단 입력창에서 데이터를 등록해 주세요.`);
+    showToast(`🎉 [${trimmed} (${stdInfo.period})] 신규 주차가 4개 라인에 모두 생성되었습니다!`);
   };
 
   const handleResetData = () => {
@@ -842,16 +966,19 @@ export const ExtrusionDowntimeView = () => {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
           {weeklySheets.map((w) => {
             const isSelected = selectedWeek === w;
-            const isThisWeek = w === getAutoCurrentWeekKey(weeklySheets);
+            const isThisWeek = w === realCurrentWeek;
             const wPeriod = WEEK_CALENDAR_MAP[w]?.period || currentLine?.weeklyData?.[w]?.period || "";
 
             return (
               <button
                 key={w}
+                type="button"
                 onClick={() => setSelectedWeek(w)}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition flex flex-col items-center gap-0.5 cursor-pointer ${
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition flex flex-col items-center gap-0.5 cursor-pointer relative ${
                   isSelected
-                    ? "bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/20"
+                    ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900/30"
+                    : isThisWeek
+                    ? "bg-amber-50 text-slate-800 border-2 border-amber-400 hover:bg-amber-100/80 shadow-xs"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
@@ -859,16 +986,22 @@ export const ExtrusionDowntimeView = () => {
                   <span>{w}</span>
                   {isThisWeek && (
                     <span
-                      className={`text-[9.5px] px-1.5 py-0.2 rounded font-black ${
-                        isSelected ? "bg-amber-400 text-slate-900" : "bg-amber-100 text-amber-800 border border-amber-300"
+                      className={`text-[9.5px] px-1.5 py-0.5 rounded font-black ${
+                        isSelected
+                          ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                          : "bg-amber-500 text-white font-black shadow-xs animate-pulse"
                       }`}
                     >
-                      당주
+                      ⭐ 금주
                     </span>
                   )}
                 </div>
                 {wPeriod && (
-                  <span className={`text-[10px] font-normal ${isSelected ? "text-slate-300" : "text-slate-400"}`}>
+                  <span
+                    className={`text-[10px] font-normal ${
+                      isSelected ? "text-slate-300" : isThisWeek ? "text-amber-800 font-bold" : "text-slate-400"
+                    }`}
+                  >
                     {wPeriod}
                   </span>
                 )}
@@ -876,16 +1009,27 @@ export const ExtrusionDowntimeView = () => {
             );
           })}
           <button
+            type="button"
             onClick={handleCreateNextWeek}
-            className="px-4 py-2.5 rounded-xl text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap flex items-center gap-1 cursor-pointer self-stretch"
+            className="px-4 py-2.5 rounded-xl text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap flex items-center gap-1 cursor-pointer self-stretch transition active:scale-95 shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" /> 새 주차 생성
           </button>
         </div>
       </div>
 
-      {/* 4. 4-Lines Downtime Image Upload & OCR AI Smart Analysis Panel */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-4">
+      {/* 4. 4-Lines Downtime Image Upload & OCR AI Smart Analysis Panel with Drag-and-Drop */}
+      <div
+        onDragOver={(e) => handleDragOver(e, "batch")}
+        onDragEnter={(e) => handleDragOver(e, "batch")}
+        onDragLeave={(e) => handleDragLeave(e, "batch")}
+        onDrop={handleBatchPanelDrop}
+        className={`bg-white rounded-2xl p-5 border shadow-xs space-y-4 transition-all relative ${
+          dragActiveTarget === "batch"
+            ? "border-2 border-dashed border-teal-500 bg-teal-50/40 ring-4 ring-teal-500/20"
+            : "border-slate-200/90"
+        }`}
+      >
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
           <div className="space-y-1">
@@ -901,7 +1045,7 @@ export const ExtrusionDowntimeView = () => {
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium">
-              PCM 1호, PCM 3호, PVC, TPE 비가동 현황 사진을 등록하시면 AI/OCR이 텍스트와 수치를 분석하여 아래 상세작업 실적표에 자동 반영합니다.
+              PCM 1호, PCM 3호, PVC, TPE 비가동 현황 사진을 등록하시면 AI/OCR이 텍스트와 수치를 분석하여 아래 상세작업 실적표에 자동 반영합니다. (파일 드래그 & 드롭 지원)
             </p>
           </div>
 
@@ -924,7 +1068,7 @@ export const ExtrusionDowntimeView = () => {
               className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black border border-slate-200 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
             >
               <UploadCloud className="w-4 h-4 text-slate-600" />
-              <span>사진 4장 일괄 등록</span>
+              <span>사진 4장 일괄 등록 (또는 드래그)</span>
             </button>
 
             <button
@@ -963,18 +1107,24 @@ export const ExtrusionDowntimeView = () => {
           </div>
         )}
 
-        {/* 4 Line Cards Grid */}
+        {/* 4 Line Cards Grid with Individual Drag & Drop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {EXTRUSION_LINES.map((line) => {
             const photo = photosByLine[line.id];
             const isSelected = selectedLineId === line.id;
-            const lTheme = LINE_THEMES[line.id] || LINE_THEMES.pcm1;
+            const isDraggingThis = dragActiveTarget === line.id;
 
             return (
               <div
                 key={line.id}
+                onDragOver={(e) => handleDragOver(e, line.id)}
+                onDragEnter={(e) => handleDragOver(e, line.id)}
+                onDragLeave={(e) => handleDragLeave(e, line.id)}
+                onDrop={(e) => handleLineCardDrop(e, line.id)}
                 className={`rounded-xl border transition-all p-3.5 flex flex-col justify-between space-y-2.5 ${
-                  photo
+                  isDraggingThis
+                    ? "border-2 border-teal-500 bg-teal-50 ring-4 ring-teal-500/30 scale-[1.02]"
+                    : photo
                     ? "bg-white border-teal-300 ring-1 ring-teal-400/30 shadow-xs"
                     : "bg-slate-50/70 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50"
                 }`}
@@ -1055,7 +1205,11 @@ export const ExtrusionDowntimeView = () => {
                 ) : (
                   <div
                     onClick={() => singleFileInputRefs[line.id]?.current?.click()}
-                    className="aspect-video rounded-lg border border-dashed border-slate-300 hover:border-teal-400 hover:bg-teal-50/30 transition flex flex-col items-center justify-center gap-1.5 cursor-pointer p-3 text-center group"
+                    className={`aspect-video rounded-lg border border-dashed transition flex flex-col items-center justify-center gap-1.5 cursor-pointer p-3 text-center group ${
+                      isDraggingThis
+                        ? "border-teal-500 bg-teal-100/60"
+                        : "border-slate-300 hover:border-teal-400 hover:bg-teal-50/30"
+                    }`}
                   >
                     <input
                       type="file"
@@ -1076,7 +1230,7 @@ export const ExtrusionDowntimeView = () => {
                       {line.code} 사진 선택
                     </span>
                     <span className="text-[10px] text-slate-400">
-                      클릭 또는 드래그하여 등록
+                      클릭 또는 <strong className="text-teal-600">파일 드래그</strong>
                     </span>
                   </div>
                 )}
