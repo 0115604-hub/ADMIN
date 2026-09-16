@@ -31,7 +31,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
 import masterExtrusionData from "../data/extrusion4LinesMasterData.json";
-import { analyzeExtrusionImageFile, EXTRUSION_LINES, detectExtrusionLine } from "../utils/extrusionImageParser";
+import { analyzeExtrusionImageFile, EXTRUSION_LINES, detectExtrusionLine, generateVerifiedRows } from "../utils/extrusionImageParser";
 
 // Standard Manufacturing Calendar Mapping (월요일 ~ 일요일 기준)
 export const WEEK_CALENDAR_MAP = {
@@ -160,8 +160,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v16 for multi-snapshot verified clean downtime data
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v16_multisnap";
+// Storage key with v18 for Wednesday morning updated cumulative downtime data
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v18_wed_morning";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -502,6 +502,37 @@ export const ExtrusionDowntimeView = () => {
     } finally {
       setAnalyzingLines((prev) => ({ ...prev, [lineId]: false }));
     }
+  };
+
+  // Direct 1차 (화요일까지) / 2차 (수요일 오전까지) / 3차 스냅샷 수동 적용
+  const handleApplySnapshot = (snapshotIdx) => {
+    const rows = generateVerifiedRows(selectedLineId, selectedWeek, snapshotIdx);
+    const totalMinutes = rows.reduce((acc, r) => acc + (Number(r.minutes) || 0), 0);
+    const totalWeight = rows.reduce((acc, r) => acc + (Number(r.weight) || 0), 0);
+    const snapLabel = snapshotIdx === 1 ? "1차: 화요일까지" : snapshotIdx === 2 ? "2차: 수요일 오전까지" : "3차: 목/금요일";
+
+    setDataStore((prev) => {
+      const lineObj = { ...prev[selectedLineId] };
+      const weekMeta = lineObj.weeklyData[selectedWeek] || currentWeekData;
+
+      const weekObj = {
+        ...weekMeta,
+        rows: [...rows],
+        totalMinutes,
+        totalWeight,
+        lastUploadedFileName: `사진자료 (${snapLabel})`,
+        lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        snapshotIdx: snapshotIdx
+      };
+      lineObj.weeklyData[selectedWeek] = weekObj;
+
+      return {
+        ...prev,
+        [selectedLineId]: lineObj
+      };
+    });
+
+    showToast(`🔄 [${currentLineName}] ${snapLabel} 실적(${rows.length}건)으로 즉시 반영되었습니다!`);
   };
 
   // Batch drop or multi-file selection auto analyzer
@@ -1026,6 +1057,34 @@ export const ExtrusionDowntimeView = () => {
                 <span>최근 분석: {currentWeekData.lastUploadedFileName} ({currentWeekData.lastUploadedAt || "방금"})</span>
               </span>
             )}
+
+            {/* Quick 1차(화) / 2차(수) Snapshot Fast Switcher */}
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg ml-1">
+              <button
+                type="button"
+                onClick={() => handleApplySnapshot(1)}
+                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition cursor-pointer ${
+                  (currentWeekData.rows || []).length <= 8 && (currentWeekData.rows || []).length > 0
+                    ? "bg-white text-slate-800 shadow-xs border border-slate-200"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="1차 사진 기준 (화요일 주간까지)"
+              >
+                1차 (화요일까지)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleApplySnapshot(2)}
+                className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition cursor-pointer ${
+                  (currentWeekData.rows || []).length > 8
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-teal-700 bg-teal-50 hover:bg-teal-100"
+                }`}
+                title="2차 사진 기준 (수요일 오전까지 누적 실적)"
+              >
+                ⭐ 2차 (수요일 오전까지)
+              </button>
+            </div>
           </div>
 
           {/* Right: 4 Compact Line Droppable Chips (Single row 1-line, Folder icon, no '드롭' text) */}

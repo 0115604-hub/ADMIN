@@ -38,33 +38,50 @@ export const SNAPSHOT_1_ITEMS = {
   ]
 };
 
-// Snapshot 2 (2차 업로드 사진: 15일 화 야간 ~ 16일 수 기준)
+// Snapshot 2 (2차 업로드 사진: 14일 월요일 ~ 16일 수요일 오전까지 누적 실적 기준)
 export const SNAPSHOT_2_ITEMS = {
   pcm1: [
+    // 14일 (월) 주간
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 T/O", minutes: 240, weight: 0, note: "초기 금형 T/O", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 45, note: "LOSS율 6.4%", action: "금형 교체 및 양품 확인" },
+    // 14일 (월) 야간
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 85, weight: 51, note: "SP3 단면", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 0, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 75, weight: 85, note: "LOSS율 16.8%", action: "원인 조치 및 라인 재가동" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "-", action: "금형 교체 및 승온 정상화" },
+    // 15일 (화) 주간
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 정상생산", minutes: 0, weight: 0, note: "주간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 105, weight: 45, note: "LOSS율 9.5%", action: "금형 교체 및 승온 정상화" },
+    // 15일 (화) 야간
     { dayIdx: 1, shift: "야간", category: "정상생산", task: "CL4 HOOD FRT 정상생산", minutes: 0, weight: 0, note: "야간 정상 가동", action: "특이사항 없음" },
     { dayIdx: 1, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 75, weight: 40, note: "SP3 단면 교체", action: "금형 교체 및 승온 정상화" },
-    { dayIdx: 1, shift: "야간", category: "불량/고장", task: "가류조 온도 편차 조치", minutes: 55, weight: 48, note: "LOSS율 8.2%", action: "온도 조절기 교체 및 정상화" },
+    // 16일 (수) 주간 (수요일 오전까지 작업 내용)
     { dayIdx: 2, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
     { dayIdx: 2, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 체결", minutes: 90, weight: 35, note: "체결 및 정밀 보정", action: "금형 체결 및 승온 정상화" },
-    { dayIdx: 2, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 40, note: "LOSS율 5.5%", action: "금형 교체 및 양품 확인" },
-    { dayIdx: 2, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 80, weight: 45, note: "단면 치수 보정", action: "금형 교체 및 승온 정상화" },
-    { dayIdx: 2, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 65, weight: 60, note: "LOSS율 11.2%", action: "원인 조치 및 라인 재가동" }
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 40, note: "LOSS율 5.5%", action: "금형 교체 및 양품 확인" }
   ],
   pcm3: [
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "라인 승온 및 작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "NQ5 DR W/STRIP 형교환", minutes: 90, weight: 42, note: "LOSS율 5.8%", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 0, shift: "야간", category: "정상생산", task: "NQ5 DR W/STRIP 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "주간", category: "형교환", task: "MQ4 RR SEAL 형교환", minutes: 75, weight: 38, note: "-", action: "금형 교체 및 승온 정상화" },
     { dayIdx: 1, shift: "야간", category: "정상생산", task: "MQ4 RR SEAL 생산", minutes: 0, weight: 0, note: "야간 정상 생산", action: "특이사항 없음" },
     { dayIdx: 1, shift: "야간", category: "형교환", task: "NQ5 DR W/STRIP 형교환", minutes: 80, weight: 35, note: "LOSS율 6.2%", action: "금형 교체 및 승온 정상화" },
     { dayIdx: 2, shift: "주간", category: "승온/준비", task: "라인 승온 및 필터 교체", minutes: 100, weight: 0, note: "사전 점검 완료", action: "사전 승온 완료" },
-    { dayIdx: 2, shift: "주간", category: "형교환", task: "KA4 COATING 형교환", minutes: 85, weight: 40, note: "금형 교체 완료", action: "금형 교체 및 양품 확인" },
-    { dayIdx: 2, shift: "야간", category: "정상생산", task: "KA4 COATING 정상생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" }
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "KA4 COATING 형교환", minutes: 85, weight: 40, note: "금형 교체 완료", action: "금형 교체 및 양품 확인" }
   ],
   pvc: [
-    { dayIdx: 1, shift: "야간", category: "정상생산", task: "KA4 PVC COATING 생산", minutes: 0, weight: 0, note: "야간 정상 생산", action: "특이사항 없음" },
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온, 원료 준비", minutes: 140, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "KA4 PVC COATING 형교환", minutes: 110, weight: 55, note: "LOSS율 8.1%", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "KA4 PVC COATING 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" },
     { dayIdx: 1, shift: "야간", category: "불량/고장", task: "PVC 다이스 노즐 청소 및 교체", minutes: 70, weight: 30, note: "노즐 정비 완료", action: "원인 조치 및 정상 가동" },
     { dayIdx: 2, shift: "주간", category: "승온/준비", task: "가류조 승온 및 원료 투입", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
     { dayIdx: 2, shift: "주간", category: "형교환", task: "MQ4 PVC SEAL 형교환", minutes: 90, weight: 45, note: "LOSS율 7.4%", action: "금형 체결 및 양품 확인" }
   ],
   tpe: [
-    { dayIdx: 1, shift: "야간", category: "정상생산", task: "MQ4 TPE SEAL 정상 생산", minutes: 0, weight: 0, note: "야간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "TPE 압출기 승온 및 노즐 점검", minutes: 90, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "MQ4 TPE SEAL 형교환", minutes: 60, weight: 25, note: "LOSS율 4.5%", action: "금형 체결 및 양품 확인" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "MQ4 TPE SEAL 정상 생산", minutes: 0, weight: 0, note: "정상 가동", action: "특이사항 없음" },
     { dayIdx: 1, shift: "야간", category: "불량/고장", task: "TPE 원료 호퍼 청소 및 필터 교체", minutes: 50, weight: 15, note: "원료 교체 완료", action: "원인 조치 및 라인 가동" },
     { dayIdx: 2, shift: "주간", category: "승온/준비", task: "TPE 압출기 승온/준비", minutes: 80, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
     { dayIdx: 2, shift: "주간", category: "형교환", task: "NQ5 TPE TRIM 형교환", minutes: 70, weight: 30, note: "LOSS율 5.0%", action: "금형 체결 및 승온 정상화" }
@@ -125,22 +142,21 @@ export function detectExtrusionLine(fileName = "", ocrText = "", fallbackLineId 
 export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
   const name = (fileName || "").toLowerCase();
 
-  // Explicit keywords in file name
-  if (name.includes("3차") || name.includes("3") || name.includes("17") || name.includes("18") || name.includes("목") || name.includes("금") || name.includes("third") || name.includes("3rd")) {
+  // 1. Explicit keywords for Snapshot 3 (Late week: 목/금 / 17일 / 18일)
+  if (name.includes("3차") || name.includes("17일") || name.includes("18일") || name.includes("목요일") || name.includes("금요일") || name.includes("3rd")) {
     return 3;
   }
-  if (name.includes("2차") || name.includes("2") || name.includes("15") || name.includes("16") || name.includes("화") || name.includes("수") || name.includes("야간") || name.includes("second") || name.includes("2nd") || name.includes("new") || name.includes("최신") || name.includes("후속")) {
-    return 2;
-  }
-  if (name.includes("1차") || name.includes("1") || name.includes("14") || name.includes("월") || name.includes("초기") || name.includes("first") || name.includes("1st")) {
+
+  // 2. Explicit keywords for Snapshot 1 (Early week: 14일 / 월요일 전용)
+  if (name.includes("1차") || name.includes("14일") || name.includes("월요일") || name.includes("1st")) {
     return 1;
   }
 
-  // Fallback based on upload sequence/counter in session
-  const uploadCount = uploadContext.uploadCount || 1;
-  if (uploadCount >= 3) return 3;
-  if (uploadCount === 2) return 2;
-  return 1;
+  // 3. Default to Snapshot 2 (수요일 오전까지 누적 실적) for:
+  // - Any second photo / updated photo
+  // - Any photo containing 15일, 16일, 수요일, 화요일, 2차, 0916, KakaoTalk, etc.
+  // - Current factory operational date (9월 16일 수요일)!
+  return 2;
 }
 
 /**
