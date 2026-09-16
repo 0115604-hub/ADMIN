@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Camera,
   Eye,
@@ -167,7 +167,7 @@ export const SevereDisasterBar = () => {
               disabled={isUploading}
               onClick={() => fileInputRef.current?.click()}
               className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-[11px] sm:text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="다수의 중대재해 관련 사진 파일 업로드"
+              title="새로운 중대재해 안전 사진 업로드 (신규 등록 시 이전 사진이 새로 교체됩니다)"
             >
               {isUploading ? (
                 <>

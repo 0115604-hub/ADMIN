@@ -1,9 +1,10 @@
-﻿import { db } from "../firebase";
+import { db } from "../firebase";
 import {
   collection,
   doc,
   setDoc,
   deleteDoc,
+  getDocs,
   onSnapshot,
   query
 } from "firebase/firestore";
@@ -102,6 +103,19 @@ export const uploadSevereDisasterPhotos = async (files, uploaderProfile = null) 
   const uploaderId = uploaderProfile?.id || "sam_mj";
   const nowStr = new Date().toISOString();
 
+  // 1. 🌟 새로운 업로드 시 이전 게시물을 Firestore에서 자동 삭제하여 최신 업로드만 게시
+  try {
+    const colRef = collection(db, COLLECTION_NAME);
+    const existingSnap = await getDocs(query(colRef));
+    if (existingSnap && !existingSnap.empty) {
+      const deletePromises = existingSnap.docs.map((d) => deleteDoc(doc(db, COLLECTION_NAME, d.id)));
+      await Promise.all(deletePromises);
+    }
+  } catch (err) {
+    console.warn("Clearing previous severe disaster photos failed:", err);
+  }
+
+  // 2. 🌟 신규 선택된 사진 업로드 및 저장
   const uploadPromises = Array.from(files).map(async (file, idx) => {
     try {
       const dataUrl = await compressImage(file);
@@ -132,9 +146,8 @@ export const uploadSevereDisasterPhotos = async (files, uploaderProfile = null) 
 
   const uploadedList = (await Promise.all(uploadPromises)).filter(Boolean);
 
-  const existing = getLocalSevereDisasterPhotos();
-  const updated = [...uploadedList, ...existing];
-  saveLocalSevereDisasterPhotos(updated);
+  // 3. 🌟 이전 로컬 캐시를 새로 업로드된 사진 목록으로 전면 교체
+  saveLocalSevereDisasterPhotos(uploadedList);
 
   return uploadedList;
 };
