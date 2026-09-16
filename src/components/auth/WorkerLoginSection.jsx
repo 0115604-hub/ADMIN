@@ -132,6 +132,10 @@ export const WorkerLoginSection = ({
                         )
                       ) : isPartner ? (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
+                      ) : worker.name === "전재율" ? (
+                        <span className="text-[10.5px] sm:text-[11.5px] font-black tracking-wider text-slate-800 dark:text-slate-200">
+                          {worker.pin || "11"}
+                        </span>
                       ) : (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">{worker.title || "선임"}</span>
                       )}
@@ -339,20 +343,13 @@ export const WorkerLoginSection = ({
           </div>
         </div>
 
-      {/* 🌟 작업자 이름 탭 시 뜨는 전용 PIN 입력 팝업창 (기존 화면 위에 모달로 노출) */}
+      {/* 🌟 작업자 이름 탭 시 뜨는 전용 모달 팝업창 */}
       <WorkerPinModal
         selectedUser={selectedUser}
         setSelectedUser={setSelectedUser}
-        pin={pin}
-        setPin={setPin}
-        rememberMe={rememberMe}
-        setRememberMe={setRememberMe}
-        loading={loading}
-        errorMsg={errorMsg}
         annualLeaves={annualLeaves}
         activeIssues={activeIssues}
         urgentIssues={urgentIssues}
-        onPinSubmit={onPinSubmit}
       />
     </div>
   );

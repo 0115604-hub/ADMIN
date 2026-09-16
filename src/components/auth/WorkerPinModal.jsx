@@ -15,8 +15,6 @@ import { ImagePreviewModal } from "../common/ImagePreviewModal";
 export const WorkerPinModal = ({
   selectedUser,
   setSelectedUser,
-  rememberMe,
-  setRememberMe,
   annualLeaves,
   activeIssues = [],
   urgentIssues = []
@@ -60,7 +58,7 @@ export const WorkerPinModal = ({
     if (e && e.preventDefault) e.preventDefault();
     setIsLoggingIn(true);
     try {
-      loginWithProfile(selectedUser, true, rememberMe);
+      loginWithProfile(selectedUser, true, false);
       setSelectedUser(null);
     } catch (err) {
       console.error("Worker login error:", err);
@@ -74,11 +72,11 @@ export const WorkerPinModal = ({
     <>
       <div
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-fadeIn"
+        className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-4 animate-fadeIn overflow-y-auto"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.5)] overflow-hidden animate-scaleUp relative flex flex-col max-h-[92vh]"
+          className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_70px_-15px_rgba(0,0,0,0.5)] overflow-hidden animate-scaleUp relative flex flex-col my-auto max-h-[92vh]"
         >
           {/* Top Decorative Line */}
           <div className={`h-1.5 w-full shrink-0 ${
@@ -90,7 +88,7 @@ export const WorkerPinModal = ({
           }`} />
 
           {/* 🌟 1. Header: 작업자 이름과 직책만 명료하게 표현 */}
-          <div className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
+          <div className="p-3.5 sm:p-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/70 dark:bg-slate-900/70">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl text-white flex items-center justify-center font-black text-lg shadow-md shrink-0 ${
                 isAdmin
@@ -136,7 +134,7 @@ export const WorkerPinModal = ({
 
           {/* Admin Switcher Pills (If Admin Role) */}
           {isAdmin && (
-            <div className="px-4 sm:px-5 pt-3 shrink-0">
+            <div className="px-3.5 sm:px-4 pt-2.5 shrink-0">
               <div className="p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-1">
                 {ADMIN_USERS.map((admin) => {
                   const isSelected = selectedUser.name === admin.name;
@@ -160,11 +158,11 @@ export const WorkerPinModal = ({
             </div>
           )}
 
-          {/* 🌟 2. Scrollable Body: 이명재 이사 공유 사진 + 사내 공유 내용 패널 */}
-          <div className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1">
+          {/* 🌟 2. Body: 이명재 이사 공유 사진 + 사내 공유 내용 패널 */}
+          <div className="p-3.5 sm:p-4 overflow-y-auto space-y-3 flex-1">
             {/* 개인 당일 근태 등록 알림 (있을 경우) */}
             {leaveStatus && (
-              <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 flex items-center justify-between gap-2 text-xs shadow-2xs animate-pulse">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 flex items-center justify-between gap-2 text-xs shadow-2xs animate-pulse">
                 <div className="flex items-center gap-2 min-w-0">
                   <Calendar className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                   <span className="font-black text-rose-900 dark:text-rose-200 truncate">
@@ -178,7 +176,7 @@ export const WorkerPinModal = ({
             )}
 
             {/* [패널 1] 🚨 이명재 이사 중대재해 및 안전 공유 사진 */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-rose-950/20 dark:to-amber-950/30 border border-amber-300/80 dark:border-amber-700/60 space-y-2.5 shadow-2xs">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-rose-950/20 dark:to-amber-950/30 border border-amber-300/80 dark:border-amber-700/60 space-y-2 shadow-2xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <div className="p-1 rounded-lg bg-rose-600 text-white shadow-xs">
@@ -195,8 +193,8 @@ export const WorkerPinModal = ({
               </div>
 
               {disasterPhotos.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                <div className="space-y-1.5">
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                     {disasterPhotos.slice(0, 4).map((photo) => (
                       <div
                         key={photo.id}
@@ -219,21 +217,21 @@ export const WorkerPinModal = ({
 
                   {disasterPhotos.length > 4 && (
                     <div className="text-right">
-                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                      <span className="text-[10.5px] font-bold text-amber-800 dark:text-amber-300">
                         외 {disasterPhotos.length - 4}장의 안전 사진이 대시보드에 공유되어 있습니다.
                       </span>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="py-4 text-center text-xs text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-xl border border-dashed border-amber-300 dark:border-amber-700/60">
+                <div className="py-3 text-center text-xs text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-xl border border-dashed border-amber-300 dark:border-amber-700/60">
                   공유된 중대재해·안전 사진이 없습니다.
                 </div>
               )}
             </div>
 
             {/* [패널 2] 📢 전사 공지 및 실시간 공유 내용 */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-2.5 shadow-2xs">
+            <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 space-y-2 shadow-2xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
@@ -249,7 +247,7 @@ export const WorkerPinModal = ({
               </div>
 
               {displayNotices.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {displayNotices.map((item) => {
                     const isQualityAlert = item.category === "품질경보";
                     const isMeeting = item.category === "회의일정";
@@ -266,7 +264,7 @@ export const WorkerPinModal = ({
                     return (
                       <div
                         key={item.id || item._docId}
-                        className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1"
+                        className="p-2 sm:p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-0.5"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-1.5 min-w-0">
@@ -284,7 +282,7 @@ export const WorkerPinModal = ({
                         </div>
 
                         {item.title && item.content && (
-                          <p className="text-[11.5px] text-slate-600 dark:text-slate-300 line-clamp-2 font-medium leading-tight">
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-medium leading-tight">
                             {item.content}
                           </p>
                         )}
@@ -293,44 +291,24 @@ export const WorkerPinModal = ({
                   })}
                 </div>
               ) : (
-                <div className="py-4 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                <div className="py-3 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
                   등록된 사내 공유사항이 없습니다.
                 </div>
               )}
             </div>
           </div>
 
-          {/* 🌟 3. Footer: 로그인 상태 유지 체크박스 + 즉시 접속 버튼 */}
-          <div className="p-4 sm:p-5 pt-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0 space-y-2.5">
-            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-slate-500 dark:text-slate-400 select-none px-1">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700"
-              />
-              <span>로그인 상태 유지 (개인 기기 전용)</span>
-            </label>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedUser(null)}
-                className="py-3 px-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-black text-xs shadow-2xs transition active:scale-95 cursor-pointer flex items-center justify-center col-span-1"
-              >
-                닫기
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLogin}
-                disabled={isLoggingIn}
-                className="py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer col-span-2 disabled:opacity-50"
-              >
-                <span>{selectedUser.name} 작업 대시보드 접속</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
+          {/* 🌟 3. Footer: 단일 전폭 접속 버튼 (로그인상태유지 및 닫기 버튼 삭제) */}
+          <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 shrink-0">
+            <button
+              type="button"
+              onClick={handleLogin}
+              disabled={isLoggingIn}
+              className="w-full py-3 sm:py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <span>{selectedUser.name} {selectedUser.title || ""} 작업 대시보드 접속</span>
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
           </div>
         </div>
       </div>
