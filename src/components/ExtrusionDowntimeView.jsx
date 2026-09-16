@@ -412,16 +412,13 @@ export const ExtrusionDowntimeView = () => {
     };
   }, [currentWeekData]);
 
-  // 4 Lines Image Upload & OCR Analysis State (PCM 1호, PCM 3호, PVC, TPE)
-  const [photosByLine, setPhotosByLine] = useState({
-    pcm1: null,
-    pcm3: null,
-    pvc: null,
-    tpe: null
+  // 4 Lines Image Upload & Automatic OCR Analysis State
+  const [analyzingLines, setAnalyzingLines] = useState({
+    pcm1: false,
+    pcm3: false,
+    pvc: false,
+    tpe: false
   });
-  const [isAnalyzingPhotos, setIsAnalyzingPhotos] = useState(false);
-  const [analyzingProgressText, setAnalyzingProgressText] = useState("");
-  const [analysisResults, setAnalysisResults] = useState(null);
   const [isManualAddOpen, setIsManualAddOpen] = useState(false);
 
   const batchFileInputRef = useRef(null);
@@ -430,77 +427,6 @@ export const ExtrusionDowntimeView = () => {
     pcm3: useRef(null),
     pvc: useRef(null),
     tpe: useRef(null)
-  };
-
-  const handleSinglePhotoSelect = (lineId, file) => {
-    if (!file) return;
-    const previewUrl = URL.createObjectURL(file);
-    const sizeStr = (file.size / 1024).toFixed(1) + " KB";
-    setPhotosByLine((prev) => ({
-      ...prev,
-      [lineId]: {
-        file,
-        previewUrl,
-        name: file.name,
-        size: sizeStr
-      }
-    }));
-    const lineObj = EXTRUSION_LINES.find((l) => l.id === lineId);
-    showToast(`📷 [${lineObj?.name || lineId}] 비가동 사진이 등록되었습니다.`);
-  };
-
-  const handleBatchFilesSelect = (fileList) => {
-    if (!fileList || fileList.length === 0) return;
-    const files = Array.from(fileList).slice(0, 4);
-    const updated = { ...photosByLine };
-    const unassignedLineIds = ["pcm1", "pcm3", "pvc", "tpe"];
-    const matchedLineIds = new Set();
-
-    // First pass: try keyword detection
-    files.forEach((file) => {
-      const detected = detectExtrusionLine(file.name, "", null);
-      if (detected && !matchedLineIds.has(detected)) {
-        matchedLineIds.add(detected);
-        const idx = unassignedLineIds.indexOf(detected);
-        if (idx !== -1) unassignedLineIds.splice(idx, 1);
-        updated[detected] = {
-          file,
-          previewUrl: URL.createObjectURL(file),
-          name: file.name,
-          size: (file.size / 1024).toFixed(1) + " KB"
-        };
-      }
-    });
-
-    // Second pass: assign remaining files to remaining slots
-    files.forEach((file) => {
-      const alreadyAssigned = Object.values(updated).some((item) => item?.file === file);
-      if (!alreadyAssigned && unassignedLineIds.length > 0) {
-        const lineId = unassignedLineIds.shift();
-        updated[lineId] = {
-          file,
-          previewUrl: URL.createObjectURL(file),
-          name: file.name,
-          size: (file.size / 1024).toFixed(1) + " KB"
-        };
-      }
-    });
-
-    setPhotosByLine(updated);
-    showToast(`📂 ${files.length}장의 비가동 사진이 라인별로 자동 배치되었습니다!`);
-  };
-
-  const handleRemovePhoto = (lineId) => {
-    setPhotosByLine((prev) => {
-      const next = { ...prev };
-      if (next[lineId]?.previewUrl) {
-        try {
-          URL.revokeObjectURL(next[lineId].previewUrl);
-        } catch (e) {}
-      }
-      next[lineId] = null;
-      return next;
-    });
   };
 
   // Drag and Drop Event Handlers
@@ -524,51 +450,18 @@ export const ExtrusionDowntimeView = () => {
     }
   };
 
-  const handleLineCardDrop = (e, lineId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActiveTarget(null);
-
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-
-    if (files.length === 1) {
-      handleSinglePhotoSelect(lineId, files[0]);
-    } else {
-      handleBatchFilesSelect(files);
-    }
-  };
-
-  const handleBatchPanelDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActiveTarget(null);
-
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-    handleBatchFilesSelect(files);
-  };
-
-  const handleAnalyzeLinePhoto = async (lineId) => {
-    const photoObj = photosByLine[lineId];
-    if (!photoObj || !photoObj.file) {
-      alert("해당 라인에 등록된 사진이 없습니다.");
-      return;
-    }
-
+  // Automatic OCR Analysis directly on single file drop/select
+  const analyzeSingleLineAuto = async (lineId, file) => {
+    if (!file) return;
     const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
-    setIsAnalyzingPhotos(true);
-    setAnalyzingProgressText(`[${lineMeta.name}] 비가동 현황 사진 OCR 분석 중...`);
+
+    setAnalyzingLines((prev) => ({ ...prev, [lineId]: true }));
+    showToast(`⚡ [${lineMeta.name}] 사진 자동 분석 중...`);
 
     try {
-      const result = await analyzeExtrusionImageFile(
-        photoObj.file,
-        lineId,
-        selectedWeek,
-        (pText) => setAnalyzingProgressText(`[${lineMeta.name}] ${pText}`)
-      );
+      const result = await analyzeExtrusionImageFile(file, lineId, selectedWeek);
 
-      if (result.success && result.rows.length > 0) {
+      if (result.success && result.rows && result.rows.length > 0) {
         setDataStore((prev) => {
           const lineObj = { ...prev[lineId] };
           const weekObj = { ...(lineObj.weeklyData[selectedWeek] || currentWeekData) };
@@ -582,73 +475,61 @@ export const ExtrusionDowntimeView = () => {
         });
 
         setSelectedLineId(lineId);
-        showToast(`🎉 [${lineMeta.name}] 사진 분석 완료! ${result.rows.length}개 실적 행이 등록되었습니다.`);
+        showToast(`🎉 [${lineMeta.name}] 사진 자동 분석 완료! ${result.rows.length}개 실적이 반영되었습니다.`);
       } else {
-        alert("사진에서 비가동 데이터를 추출하지 못했습니다. 기본 형식으로 자동 변환 등록합니다.");
+        showToast(`⚠️ [${lineMeta.name}] 사진 분석 완료 (기본 서식 적용)`);
       }
     } catch (err) {
-      console.error("OCR Analysis error:", err);
-      showToast("⚠️ 분석 중 오류가 발생했습니다.");
+      console.error("Auto OCR Analysis error:", err);
+      showToast(`⚠️ [${lineMeta.name}] 분석 중 오류가 발생했습니다.`);
     } finally {
-      setIsAnalyzingPhotos(false);
-      setAnalyzingProgressText("");
+      setAnalyzingLines((prev) => ({ ...prev, [lineId]: false }));
     }
   };
 
-  const handleAnalyzeAllPhotos = async () => {
-    const attachedEntries = Object.entries(photosByLine).filter(([_, p]) => p && p.file);
-    if (attachedEntries.length === 0) {
-      alert("분석할 비가동 사진을 최소 1장 이상 업로드해 주세요.");
-      return;
-    }
+  // Batch drop or multi-file selection auto analyzer
+  const handleBatchFilesSelect = (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).slice(0, 4);
+    const unassignedLineIds = ["pcm1", "pcm3", "pvc", "tpe"];
+    const matchedLineIds = new Set();
 
-    setIsAnalyzingPhotos(true);
-    const summary = {};
-
-    try {
-      for (let i = 0; i < attachedEntries.length; i++) {
-        const [lineId, photoObj] = attachedEntries[i];
-        const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
-        setAnalyzingProgressText(`[${i + 1}/${attachedEntries.length}] ${lineMeta.name} OCR 분석 중...`);
-
-        const result = await analyzeExtrusionImageFile(
-          photoObj.file,
-          lineId,
-          selectedWeek,
-          (pText) => setAnalyzingProgressText(`[${i + 1}/${attachedEntries.length}] ${lineMeta.name} ${pText}`)
-        );
-
-        if (result.success && result.rows && result.rows.length > 0) {
-          setDataStore((prev) => {
-            const lineObj = { ...prev[lineId] };
-            const weekObj = { ...(lineObj.weeklyData[selectedWeek] || currentWeekData) };
-            weekObj.rows = result.rows;
-            lineObj.weeklyData[selectedWeek] = weekObj;
-
-            return {
-              ...prev,
-              [lineId]: lineObj
-            };
-          });
-
-          summary[lineId] = {
-            name: lineMeta.name,
-            rowCount: result.rows.length,
-            totalMinutes: result.totalMinutes,
-            totalWeight: result.totalWeight
-          };
-        }
+    files.forEach((file) => {
+      let targetLine = detectExtrusionLine(file.name, "", null);
+      if (!targetLine || matchedLineIds.has(targetLine)) {
+        targetLine = unassignedLineIds.find((id) => !matchedLineIds.has(id)) || "pcm1";
       }
+      matchedLineIds.add(targetLine);
+      const idx = unassignedLineIds.indexOf(targetLine);
+      if (idx !== -1) unassignedLineIds.splice(idx, 1);
 
-      setAnalysisResults(summary);
-      showToast(`🚀 ${attachedEntries.length}개 라인의 비가동 사진 분석 및 실적표 자동 등록이 완료되었습니다!`);
-    } catch (err) {
-      console.error("Batch OCR Analysis error:", err);
-      showToast("⚠️ 사진 일괄 분석 중 일부 오류가 발생했습니다.");
-    } finally {
-      setIsAnalyzingPhotos(false);
-      setAnalyzingProgressText("");
+      analyzeSingleLineAuto(targetLine, file);
+    });
+  };
+
+  const handleLineCardDrop = (e, lineId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveTarget(null);
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+
+    if (files.length === 1) {
+      analyzeSingleLineAuto(lineId, files[0]);
+    } else {
+      handleBatchFilesSelect(files);
     }
+  };
+
+  const handleBatchPanelDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveTarget(null);
+
+    const files = e.dataTransfer?.files;
+    if (!files || files.length === 0) return;
+    handleBatchFilesSelect(files);
   };
 
   // Days list for dropdown: Always guarantee full Monday ~ Sunday days
@@ -1074,39 +955,33 @@ export const ExtrusionDowntimeView = () => {
         </div>
       </div>
 
-      {/* 4. 4-Lines Downtime Image Upload & OCR AI Smart Analysis Panel with Drag-and-Drop */}
+      {/* 4. Minimal Compact Photo Drop & Auto-Analysis Bar (미니멀 & 자동 분석) */}
       <div
         onDragOver={(e) => handleDragOver(e, "batch")}
         onDragEnter={(e) => handleDragOver(e, "batch")}
         onDragLeave={(e) => handleDragLeave(e, "batch")}
         onDrop={handleBatchPanelDrop}
-        className={`bg-white rounded-2xl p-5 border shadow-xs space-y-4 transition-all relative ${
+        className={`bg-white rounded-2xl px-4 py-3 border shadow-xs transition-all ${
           dragActiveTarget === "batch"
-            ? "border-2 border-dashed border-teal-500 bg-teal-50/40 ring-4 ring-teal-500/20"
+            ? "border-2 border-dashed border-teal-500 bg-teal-50/60 ring-4 ring-teal-500/20"
             : "border-slate-200/90"
         }`}
       >
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
-          <div className="space-y-1">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Left Title & Batch File Select Button */}
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-700 border border-teal-500/20 flex items-center justify-center shrink-0">
+              <Camera className="w-4 h-4" />
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 border border-teal-500/20">
-                <Camera className="w-4 h-4" />
-              </div>
-              <h2 className="text-sm sm:text-base font-black text-slate-900">
-                📸 [4개 라인 비가동 현황 사진 업로드 & OCR AI 자동 분석]
-              </h2>
-              <span className="text-[11px] font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200">
-                선택 주차: [{selectedWeek}] ({currentWeekData.period})
+              <span className="text-xs font-black text-slate-800">
+                📷 비가동 사진 드래그 & 자동 분석:
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                사진을 드래그하면 즉시 자동 분석되어 실적표에 반영됩니다.
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">
-              PCM 1호, PCM 3호, PVC, TPE 비가동 현황 사진을 등록하시면 AI/OCR이 텍스트와 수치를 분석하여 아래 상세작업 실적표에 자동 반영합니다. (파일 드래그 & 드롭 지원)
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Hidden Batch Input */}
             <input
               type="file"
               ref={batchFileInputRef}
@@ -1121,185 +996,80 @@ export const ExtrusionDowntimeView = () => {
             <button
               type="button"
               onClick={() => batchFileInputRef.current?.click()}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black border border-slate-200 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black border border-slate-200 flex items-center gap-1.5 transition active:scale-95 cursor-pointer ml-auto md:ml-2"
             >
-              <UploadCloud className="w-4 h-4 text-slate-600" />
-              <span>사진 4장 일괄 등록 (또는 드래그)</span>
-            </button>
-
-            <button
-              type="button"
-              disabled={isAnalyzingPhotos || Object.values(photosByLine).filter(Boolean).length === 0}
-              onClick={handleAnalyzeAllPhotos}
-              className={`px-4 py-2 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition active:scale-95 cursor-pointer ${
-                isAnalyzingPhotos || Object.values(photosByLine).filter(Boolean).length === 0
-                  ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                  : "bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
-              }`}
-            >
-              {isAnalyzingPhotos ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>분석 진행 중...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-300" />
-                  <span>⚡ 비가동 사진 일괄 분석 및 실적표 자동 반영</span>
-                </>
-              )}
+              <UploadCloud className="w-3.5 h-3.5 text-slate-500" />
+              <span>파일 선택</span>
             </button>
           </div>
-        </div>
 
-        {/* Analyzing Progress Alert */}
-        {isAnalyzingPhotos && (
-          <div className="p-3.5 bg-teal-50 border border-teal-200 rounded-xl flex items-center gap-3 animate-pulse">
-            <Loader2 className="w-5 h-5 text-teal-600 animate-spin flex-shrink-0" />
-            <div className="text-xs">
-              <span className="font-black text-teal-900">AI OCR 텍스트 및 수치 정밀 추출 중:</span>{" "}
-              <span className="font-bold text-teal-700">{analyzingProgressText}</span>
-            </div>
-          </div>
-        )}
+          {/* Right: 4 Compact Line Droppable Chips (Minimal size, no manual individual button) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {EXTRUSION_LINES.map((line) => {
+              const isAnalyzing = analyzingLines[line.id];
+              const isDragging = dragActiveTarget === line.id;
+              const isSelected = selectedLineId === line.id;
 
-        {/* 4 Line Cards Grid with Individual Drag & Drop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-          {EXTRUSION_LINES.map((line) => {
-            const photo = photosByLine[line.id];
-            const isSelected = selectedLineId === line.id;
-            const isDraggingThis = dragActiveTarget === line.id;
+              return (
+                <div
+                  key={line.id}
+                  onDragOver={(e) => handleDragOver(e, line.id)}
+                  onDragEnter={(e) => handleDragOver(e, line.id)}
+                  onDragLeave={(e) => handleDragLeave(e, line.id)}
+                  onDrop={(e) => handleLineCardDrop(e, line.id)}
+                  onClick={() => singleFileInputRefs[line.id]?.current?.click()}
+                  className={`px-3 py-2 rounded-xl border text-left flex items-center justify-between gap-2 transition-all cursor-pointer select-none ${
+                    isDragging
+                      ? "border-2 border-teal-500 bg-teal-100 ring-2 ring-teal-500/40 scale-102"
+                      : isAnalyzing
+                      ? "border-indigo-400 bg-indigo-50 ring-2 ring-indigo-400/30"
+                      : isSelected
+                      ? "border-teal-400 bg-teal-50/70 shadow-xs"
+                      : "border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300"
+                  }`}
+                  title={`${line.name}: 사진을 드래그하거나 클릭하여 업로드하면 자동으로 분석됩니다.`}
+                >
+                  <input
+                    type="file"
+                    ref={singleFileInputRefs[line.id]}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) {
+                        analyzeSingleLineAuto(line.id, e.target.files[0]);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
 
-            return (
-              <div
-                key={line.id}
-                onDragOver={(e) => handleDragOver(e, line.id)}
-                onDragEnter={(e) => handleDragOver(e, line.id)}
-                onDragLeave={(e) => handleDragLeave(e, line.id)}
-                onDrop={(e) => handleLineCardDrop(e, line.id)}
-                className={`rounded-xl border transition-all p-3.5 flex flex-col justify-between space-y-2.5 ${
-                  isDraggingThis
-                    ? "border-2 border-teal-500 bg-teal-50 ring-4 ring-teal-500/30 scale-[1.02]"
-                    : photo
-                    ? "bg-white border-teal-300 ring-1 ring-teal-400/30 shadow-xs"
-                    : "bg-slate-50/70 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50"
-                }`}
-              >
-                {/* Card Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-slate-200 text-slate-800">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[10px] font-black text-slate-800 shrink-0">
                       {line.code}
                     </span>
-                    <span className="text-xs font-black text-slate-900">{line.name}</span>
                   </div>
-                  {photo ? (
-                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-0.5">
-                      <Check className="w-3 h-3 text-emerald-600" /> 준비완료
+
+                  {isAnalyzing ? (
+                    <span className="text-[9.5px] font-black px-2 py-0.5 rounded-md bg-indigo-600 text-white flex items-center gap-1 animate-pulse shrink-0">
+                      <Loader2 className="w-2.5 h-2.5 animate-spin text-white" />
+                      <span>분석중...</span>
                     </span>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-400">사진 미등록</span>
+                    <span className="text-[10px] font-bold text-slate-400 shrink-0 flex items-center gap-0.5 hover:text-teal-600">
+                      <UploadCloud className="w-3 h-3 text-slate-400" />
+                      <span>드롭</span>
+                    </span>
                   )}
                 </div>
-
-                {/* Card Body: Preview or Upload Box */}
-                {photo ? (
-                  <div className="space-y-2">
-                    <div className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-900/5 aspect-video flex items-center justify-center">
-                      <img
-                        src={photo.previewUrl}
-                        alt={photo.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => window.open(photo.previewUrl, "_blank")}
-                          className="p-1.5 rounded-lg bg-white/90 text-slate-800 hover:bg-white text-xs font-bold shadow-xs cursor-pointer"
-                          title="크게 보기"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePhoto(line.id)}
-                          className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold shadow-xs cursor-pointer"
-                          title="삭제"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-slate-600">
-                      <span className="truncate max-w-[150px] font-medium" title={photo.name}>
-                        {photo.name}
-                      </span>
-                      <span className="text-slate-400 font-bold">{photo.size}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <button
-                        type="button"
-                        disabled={isAnalyzingPhotos}
-                        onClick={() => handleAnalyzeLinePhoto(line.id)}
-                        className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-black flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer disabled:opacity-50"
-                      >
-                        <Sparkles className="w-3 h-3 text-amber-300" />
-                        <span>개별 분석</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(line.id)}
-                        className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                        title="사진 삭제"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => singleFileInputRefs[line.id]?.current?.click()}
-                    className={`aspect-video rounded-lg border border-dashed transition flex flex-col items-center justify-center gap-1.5 cursor-pointer p-3 text-center group ${
-                      isDraggingThis
-                        ? "border-teal-500 bg-teal-100/60"
-                        : "border-slate-300 hover:border-teal-400 hover:bg-teal-50/30"
-                    }`}
-                  >
-                    <input
-                      type="file"
-                      ref={singleFileInputRefs[line.id]}
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          handleSinglePhotoSelect(line.id, e.target.files[0]);
-                          e.target.value = "";
-                        }
-                      }}
-                    />
-                    <div className="p-2 rounded-full bg-slate-200/60 group-hover:bg-teal-100 text-slate-500 group-hover:text-teal-600 transition">
-                      <UploadCloud className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-bold text-slate-700 group-hover:text-teal-700">
-                      {line.code} 사진 선택
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      클릭 또는 <strong className="text-teal-600">파일 드래그</strong>
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
-        {/* Footer info & Collapsible Manual Form Toggle */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-2 text-slate-500 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>지원 파일: JPG, PNG, WEBP (스마트폰 촬영 사진 즉시 등록 가능)</span>
+        {/* Minimal Footer: Form Toggle */}
+        <div className="flex items-center justify-between pt-2 mt-2 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>JPG, PNG, WEBP (스마트폰 촬영 사진 즉시 자동 분석)</span>
           </div>
 
           <button
