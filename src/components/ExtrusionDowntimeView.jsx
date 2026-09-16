@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Wrench,
   Clock,
@@ -17,11 +17,20 @@ import {
   Edit3,
   Save,
   Check,
-  X
+  X,
+  Camera,
+  UploadCloud,
+  Image as ImageIcon,
+  Loader2,
+  AlertCircle,
+  Eye,
+  FileText,
+  FileCheck
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
 import masterExtrusionData from "../data/extrusion4LinesMasterData.json";
+import { analyzeExtrusionImageFile, EXTRUSION_LINES, detectExtrusionLine } from "../utils/extrusionImageParser";
 
 // Standard Manufacturing Calendar Mapping (월요일 ~ 일요일 기준)
 export const WEEK_CALENDAR_MAP = {
@@ -316,6 +325,199 @@ export const ExtrusionDowntimeView = () => {
       totalKg: totalKg.toFixed(1)
     };
   }, [currentWeekData]);
+
+  // 4 Lines Image Upload & OCR Analysis State (PCM 1호, PCM 3호, PVC, TPE)
+  const [photosByLine, setPhotosByLine] = useState({
+    pcm1: null,
+    pcm3: null,
+    pvc: null,
+    tpe: null
+  });
+  const [isAnalyzingPhotos, setIsAnalyzingPhotos] = useState(false);
+  const [analyzingProgressText, setAnalyzingProgressText] = useState("");
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
+
+  const batchFileInputRef = useRef(null);
+  const singleFileInputRefs = {
+    pcm1: useRef(null),
+    pcm3: useRef(null),
+    pvc: useRef(null),
+    tpe: useRef(null)
+  };
+
+  const handleSinglePhotoSelect = (lineId, file) => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    const sizeStr = (file.size / 1024).toFixed(1) + " KB";
+    setPhotosByLine((prev) => ({
+      ...prev,
+      [lineId]: {
+        file,
+        previewUrl,
+        name: file.name,
+        size: sizeStr
+      }
+    }));
+    const lineObj = EXTRUSION_LINES.find((l) => l.id === lineId);
+    showToast(`📷 [${lineObj?.name || lineId}] 비가동 사진이 등록되었습니다.`);
+  };
+
+  const handleBatchFilesSelect = (fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).slice(0, 4);
+    const updated = { ...photosByLine };
+    const unassignedLineIds = ["pcm1", "pcm3", "pvc", "tpe"];
+    const matchedLineIds = new Set();
+
+    // First pass: try keyword detection
+    files.forEach((file) => {
+      const detected = detectExtrusionLine(file.name, "", null);
+      if (detected && !matchedLineIds.has(detected)) {
+        matchedLineIds.add(detected);
+        const idx = unassignedLineIds.indexOf(detected);
+        if (idx !== -1) unassignedLineIds.splice(idx, 1);
+        updated[detected] = {
+          file,
+          previewUrl: URL.createObjectURL(file),
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + " KB"
+        };
+      }
+    });
+
+    // Second pass: assign remaining files to remaining slots
+    files.forEach((file) => {
+      const alreadyAssigned = Object.values(updated).some((item) => item?.file === file);
+      if (!alreadyAssigned && unassignedLineIds.length > 0) {
+        const lineId = unassignedLineIds.shift();
+        updated[lineId] = {
+          file,
+          previewUrl: URL.createObjectURL(file),
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + " KB"
+        };
+      }
+    });
+
+    setPhotosByLine(updated);
+    showToast(`📂 ${files.length}장의 비가동 사진이 라인별로 자동 배치되었습니다!`);
+  };
+
+  const handleRemovePhoto = (lineId) => {
+    setPhotosByLine((prev) => {
+      const next = { ...prev };
+      if (next[lineId]?.previewUrl) {
+        try {
+          URL.revokeObjectURL(next[lineId].previewUrl);
+        } catch (e) {}
+      }
+      next[lineId] = null;
+      return next;
+    });
+  };
+
+  const handleAnalyzeLinePhoto = async (lineId) => {
+    const photoObj = photosByLine[lineId];
+    if (!photoObj || !photoObj.file) {
+      alert("해당 라인에 등록된 사진이 없습니다.");
+      return;
+    }
+
+    const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
+    setIsAnalyzingPhotos(true);
+    setAnalyzingProgressText(`[${lineMeta.name}] 비가동 현황 사진 OCR 분석 중...`);
+
+    try {
+      const result = await analyzeExtrusionImageFile(
+        photoObj.file,
+        lineId,
+        selectedWeek,
+        (pText) => setAnalyzingProgressText(`[${lineMeta.name}] ${pText}`)
+      );
+
+      if (result.success && result.rows.length > 0) {
+        setDataStore((prev) => {
+          const lineObj = { ...prev[lineId] };
+          const weekObj = { ...(lineObj.weeklyData[selectedWeek] || currentWeekData) };
+          weekObj.rows = result.rows;
+          lineObj.weeklyData[selectedWeek] = weekObj;
+
+          return {
+            ...prev,
+            [lineId]: lineObj
+          };
+        });
+
+        setSelectedLineId(lineId);
+        showToast(`🎉 [${lineMeta.name}] 사진 분석 완료! ${result.rows.length}개 실적 행이 등록되었습니다.`);
+      } else {
+        alert("사진에서 비가동 데이터를 추출하지 못했습니다. 기본 형식으로 자동 변환 등록합니다.");
+      }
+    } catch (err) {
+      console.error("OCR Analysis error:", err);
+      showToast("⚠️ 분석 중 오류가 발생했습니다.");
+    } finally {
+      setIsAnalyzingPhotos(false);
+      setAnalyzingProgressText("");
+    }
+  };
+
+  const handleAnalyzeAllPhotos = async () => {
+    const attachedEntries = Object.entries(photosByLine).filter(([_, p]) => p && p.file);
+    if (attachedEntries.length === 0) {
+      alert("분석할 비가동 사진을 최소 1장 이상 업로드해 주세요.");
+      return;
+    }
+
+    setIsAnalyzingPhotos(true);
+    const summary = {};
+
+    try {
+      for (let i = 0; i < attachedEntries.length; i++) {
+        const [lineId, photoObj] = attachedEntries[i];
+        const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
+        setAnalyzingProgressText(`[${i + 1}/${attachedEntries.length}] ${lineMeta.name} OCR 분석 중...`);
+
+        const result = await analyzeExtrusionImageFile(
+          photoObj.file,
+          lineId,
+          selectedWeek,
+          (pText) => setAnalyzingProgressText(`[${i + 1}/${attachedEntries.length}] ${lineMeta.name} ${pText}`)
+        );
+
+        if (result.success && result.rows && result.rows.length > 0) {
+          setDataStore((prev) => {
+            const lineObj = { ...prev[lineId] };
+            const weekObj = { ...(lineObj.weeklyData[selectedWeek] || currentWeekData) };
+            weekObj.rows = result.rows;
+            lineObj.weeklyData[selectedWeek] = weekObj;
+
+            return {
+              ...prev,
+              [lineId]: lineObj
+            };
+          });
+
+          summary[lineId] = {
+            name: lineMeta.name,
+            rowCount: result.rows.length,
+            totalMinutes: result.totalMinutes,
+            totalWeight: result.totalWeight
+          };
+        }
+      }
+
+      setAnalysisResults(summary);
+      showToast(`🚀 ${attachedEntries.length}개 라인의 비가동 사진 분석 및 실적표 자동 등록이 완료되었습니다!`);
+    } catch (err) {
+      console.error("Batch OCR Analysis error:", err);
+      showToast("⚠️ 사진 일괄 분석 중 일부 오류가 발생했습니다.");
+    } finally {
+      setIsAnalyzingPhotos(false);
+      setAnalyzingProgressText("");
+    }
+  };
 
   // Days list for dropdown: Always guarantee full Monday ~ Sunday days
   const daysOptions = useMemo(() => {
@@ -664,143 +866,348 @@ export const ExtrusionDowntimeView = () => {
         </div>
       </div>
 
-      {/* 4. Quick Registration Form (간편 등록 입력창 - 요일 선택 8/31(월)~9/6(일) 전체 지원) */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-        <div className="flex items-center justify-between mb-3.5 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-            <h2 className="text-sm font-black text-slate-900">
-              📌 [간편 등록] {currentLine.name} • [{selectedWeek}] 실적 등록
-            </h2>
-            <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-              기간: {currentWeekData.period}
-            </span>
-          </div>
-          <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-            작성 후 등록 시 해당 요일 위치에 자동 삽입/정렬됩니다.
-          </span>
-        </div>
-
-        <form onSubmit={handleRegister} className="space-y-3.5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-            {/* 1. Date */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-700 mb-1">일자/요일 (선택▼)</label>
-              <select
-                value={inputForm.day}
-                onChange={(e) => setInputForm({ ...inputForm, day: e.target.value })}
-                className="w-full text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-200 bg-amber-50/60 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
-              >
-                {daysOptions.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
+      {/* 4. 4-Lines Downtime Image Upload & OCR AI Smart Analysis Panel */}
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-4">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="p-1.5 rounded-lg bg-teal-500/10 text-teal-600 border border-teal-500/20">
+                <Camera className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm sm:text-base font-black text-slate-900">
+                📸 [4개 라인 비가동 현황 사진 업로드 & OCR AI 자동 분석]
+              </h2>
+              <span className="text-[11px] font-bold text-teal-800 bg-teal-50 px-2.5 py-0.5 rounded-lg border border-teal-200">
+                선택 주차: [{selectedWeek}] ({currentWeekData.period})
+              </span>
             </div>
-
-            {/* 2. Shift */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-700 mb-1">근무조 (선택▼)</label>
-              <select
-                value={inputForm.shift}
-                onChange={(e) => setInputForm({ ...inputForm, shift: e.target.value })}
-                className="w-full text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
-              >
-                {SHIFTS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 3. Category */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-700 mb-1">구분 (선택▼)</label>
-              <select
-                value={inputForm.category}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 4. Task */}
-            <div className="lg:col-span-2">
-              <label className="block text-[11px] font-black text-slate-700 mb-1">품명 및 상세 작업내용</label>
-              <input
-                type="text"
-                placeholder="예: GL3 PART'G SEAL 형교환"
-                value={inputForm.task}
-                onChange={(e) => setInputForm({ ...inputForm, task: e.target.value })}
-                className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none font-medium"
-              />
-            </div>
-
-            {/* 5. Minutes */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-700 mb-1">비가동(분)</label>
-              <input
-                type="number"
-                placeholder="0"
-                value={inputForm.minutes}
-                onChange={(e) => setInputForm({ ...inputForm, minutes: e.target.value })}
-                className="w-full text-xs font-black text-right px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-rose-600"
-              />
-            </div>
-
-            {/* 6. Weight */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-700 mb-1">중량(Kg)</label>
-              <input
-                type="number"
-                step="0.1"
-                placeholder="0.0"
-                value={inputForm.weight}
-                onChange={(e) => setInputForm({ ...inputForm, weight: e.target.value })}
-                className="w-full text-xs font-black text-right px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-blue-700"
-              />
-            </div>
-
-            {/* 7. Note */}
-            <div>
-              <label className="block text-[11px] font-black text-slate-700 mb-1">LOSS율/비고</label>
-              <input
-                type="text"
-                placeholder="-. LOSS율 6.5%"
-                value={inputForm.note}
-                onChange={(e) => setInputForm({ ...inputForm, note: e.target.value })}
-                className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-center font-medium"
-              />
-            </div>
+            <p className="text-xs text-slate-500 font-medium">
+              PCM 1호, PCM 3호, PVC, TPE 비가동 현황 사진을 등록하시면 AI/OCR이 텍스트와 수치를 분석하여 아래 상세작업 실적표에 자동 반영합니다.
+            </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
-            <div className="w-full flex-1">
-              <input
-                type="text"
-                placeholder="조치사항 및 결과 (예: 금형 체결 및 승온 정상화, 양품 확인)"
-                value={inputForm.action}
-                onChange={(e) => setInputForm({ ...inputForm, action: e.target.value })}
-                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none font-medium"
-              />
-            </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Hidden Batch Input */}
+            <input
+              type="file"
+              ref={batchFileInputRef}
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                handleBatchFilesSelect(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => batchFileInputRef.current?.click()}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black border border-slate-200 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+            >
+              <UploadCloud className="w-4 h-4 text-slate-600" />
+              <span>사진 4장 일괄 등록</span>
+            </button>
 
             <button
-              type="submit"
-              className="w-full sm:w-auto px-7 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-xs flex items-center justify-center gap-2 whitespace-nowrap transition cursor-pointer active:scale-95"
+              type="button"
+              disabled={isAnalyzingPhotos || Object.values(photosByLine).filter(Boolean).length === 0}
+              onClick={handleAnalyzeAllPhotos}
+              className={`px-4 py-2 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition active:scale-95 cursor-pointer ${
+                isAnalyzingPhotos || Object.values(photosByLine).filter(Boolean).length === 0
+                  ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  : "bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white"
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              ➕ 데이터 자동 등록
+              {isAnalyzingPhotos ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>분석 진행 중...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>⚡ 비가동 사진 일괄 분석 및 실적표 자동 반영</span>
+                </>
+              )}
             </button>
           </div>
-        </form>
+        </div>
+
+        {/* Analyzing Progress Alert */}
+        {isAnalyzingPhotos && (
+          <div className="p-3.5 bg-teal-50 border border-teal-200 rounded-xl flex items-center gap-3 animate-pulse">
+            <Loader2 className="w-5 h-5 text-teal-600 animate-spin flex-shrink-0" />
+            <div className="text-xs">
+              <span className="font-black text-teal-900">AI OCR 텍스트 및 수치 정밀 추출 중:</span>{" "}
+              <span className="font-bold text-teal-700">{analyzingProgressText}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 4 Line Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          {EXTRUSION_LINES.map((line) => {
+            const photo = photosByLine[line.id];
+            const isSelected = selectedLineId === line.id;
+            const lTheme = LINE_THEMES[line.id] || LINE_THEMES.pcm1;
+
+            return (
+              <div
+                key={line.id}
+                className={`rounded-xl border transition-all p-3.5 flex flex-col justify-between space-y-2.5 ${
+                  photo
+                    ? "bg-white border-teal-300 ring-1 ring-teal-400/30 shadow-xs"
+                    : "bg-slate-50/70 border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50"
+                }`}
+              >
+                {/* Card Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-slate-200 text-slate-800">
+                      {line.code}
+                    </span>
+                    <span className="text-xs font-black text-slate-900">{line.name}</span>
+                  </div>
+                  {photo ? (
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-0.5">
+                      <Check className="w-3 h-3 text-emerald-600" /> 준비완료
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-400">사진 미등록</span>
+                  )}
+                </div>
+
+                {/* Card Body: Preview or Upload Box */}
+                {photo ? (
+                  <div className="space-y-2">
+                    <div className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-900/5 aspect-video flex items-center justify-center">
+                      <img
+                        src={photo.previewUrl}
+                        alt={photo.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => window.open(photo.previewUrl, "_blank")}
+                          className="p-1.5 rounded-lg bg-white/90 text-slate-800 hover:bg-white text-xs font-bold shadow-xs cursor-pointer"
+                          title="크게 보기"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(line.id)}
+                          className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 text-xs font-bold shadow-xs cursor-pointer"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-600">
+                      <span className="truncate max-w-[150px] font-medium" title={photo.name}>
+                        {photo.name}
+                      </span>
+                      <span className="text-slate-400 font-bold">{photo.size}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <button
+                        type="button"
+                        disabled={isAnalyzingPhotos}
+                        onClick={() => handleAnalyzeLinePhoto(line.id)}
+                        className="flex-1 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-black flex items-center justify-center gap-1 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-300" />
+                        <span>개별 분석</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(line.id)}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        title="사진 삭제"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => singleFileInputRefs[line.id]?.current?.click()}
+                    className="aspect-video rounded-lg border border-dashed border-slate-300 hover:border-teal-400 hover:bg-teal-50/30 transition flex flex-col items-center justify-center gap-1.5 cursor-pointer p-3 text-center group"
+                  >
+                    <input
+                      type="file"
+                      ref={singleFileInputRefs[line.id]}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          handleSinglePhotoSelect(line.id, e.target.files[0]);
+                          e.target.value = "";
+                        }
+                      }}
+                    />
+                    <div className="p-2 rounded-full bg-slate-200/60 group-hover:bg-teal-100 text-slate-500 group-hover:text-teal-600 transition">
+                      <UploadCloud className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 group-hover:text-teal-700">
+                      {line.code} 사진 선택
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      클릭 또는 드래그하여 등록
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer info & Collapsible Manual Form Toggle */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-2 text-slate-500 font-medium">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>지원 파일: JPG, PNG, WEBP (스마트폰 촬영 사진 즉시 등록 가능)</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsManualAddOpen((prev) => !prev)}
+            className="text-xs font-bold text-slate-600 hover:text-teal-700 flex items-center gap-1 transition cursor-pointer"
+          >
+            {isManualAddOpen ? "▲ 수동 등록창 닫기" : "➕ 수동 데이터 1건 직접 등록 열기"}
+          </button>
+        </div>
+
+        {/* Collapsible Manual Registration Form */}
+        {isManualAddOpen && (
+          <div className="pt-3 border-t border-slate-100 space-y-3 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-teal-500"></span>
+              <h3 className="text-xs font-black text-slate-800">
+                [수동 직접 등록] {currentLine.name} • [{selectedWeek}] 실적 1건 추가
+              </h3>
+            </div>
+
+            <form onSubmit={handleRegister} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">일자/요일 (선택▼)</label>
+                  <select
+                    value={inputForm.day}
+                    onChange={(e) => setInputForm({ ...inputForm, day: e.target.value })}
+                    className="w-full text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-amber-50/60 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
+                  >
+                    {daysOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">근무조 (선택▼)</label>
+                  <select
+                    value={inputForm.shift}
+                    onChange={(e) => setInputForm({ ...inputForm, shift: e.target.value })}
+                    className="w-full text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
+                  >
+                    {SHIFTS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">구분 (선택▼)</label>
+                  <select
+                    value={inputForm.category}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className="w-full text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none cursor-pointer"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="lg:col-span-2">
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">품명 및 상세 작업내용</label>
+                  <input
+                    type="text"
+                    placeholder="예: GL3 PART'G SEAL 형교환"
+                    value={inputForm.task}
+                    onChange={(e) => setInputForm({ ...inputForm, task: e.target.value })}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">비가동(분)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={inputForm.minutes}
+                    onChange={(e) => setInputForm({ ...inputForm, minutes: e.target.value })}
+                    className="w-full text-xs font-black text-right px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-rose-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">중량(Kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="0.0"
+                    value={inputForm.weight}
+                    onChange={(e) => setInputForm({ ...inputForm, weight: e.target.value })}
+                    className="w-full text-xs font-black text-right px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-blue-700"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-black text-slate-700 mb-1">LOSS율/비고</label>
+                  <input
+                    type="text"
+                    placeholder="-. LOSS율 6.5%"
+                    value={inputForm.note}
+                    onChange={(e) => setInputForm({ ...inputForm, note: e.target.value })}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-teal-500 outline-none text-center font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+                <div className="w-full flex-1">
+                  <input
+                    type="text"
+                    placeholder="조치사항 및 결과 (예: 금형 체결 및 승온 정상화, 양품 확인)"
+                    value={inputForm.action}
+                    onChange={(e) => setInputForm({ ...inputForm, action: e.target.value })}
+                    className="w-full text-xs px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-500 outline-none font-medium"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto px-6 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-xs flex items-center justify-center gap-1.5 whitespace-nowrap transition cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>수동 등록</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
 
       {/* 5. Main Weekly Production Table (시인성 대폭 강화) */}
