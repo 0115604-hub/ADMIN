@@ -51,6 +51,7 @@ import {
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { ImagePreviewModal } from "./common/ImagePreviewModal";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -1711,43 +1712,10 @@ export const ElectronicApprovalView = () => {
 
       {/* Lightbox / High-Res Image Preview Modal */}
       {previewImageModal && (
-        <div
-          className="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 animate-fadeIn"
-          onClick={() => setPreviewImageModal(null)}
-        >
-          <div
-            className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col items-center justify-center p-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full flex items-center justify-between px-4 py-2 border-b border-slate-800 text-white text-xs">
-              <span className="font-bold truncate max-w-[240px] sm:max-w-md">{previewImageModal.name || "첨부 사진 확대"}</span>
-              <div className="flex items-center gap-2">
-                <a
-                  href={previewImageModal.url}
-                  download={previewImageModal.name || "첨부사진.jpg"}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 transition-all"
-                >
-                  <Download className="w-3 h-3" />
-                  <span>다운로드</span>
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPreviewImageModal(null)}
-                  className="p-1 text-slate-400 hover:text-white text-sm font-black"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="p-2 overflow-auto max-h-[80vh] flex items-center justify-center">
-              <img
-                src={previewImageModal.url}
-                alt={previewImageModal.name}
-                className="max-w-full max-h-[76vh] object-contain rounded-xl shadow-md"
-              />
-            </div>
-          </div>
-        </div>
+        <ImagePreviewModal
+          previewImage={previewImageModal}
+          onClose={() => setPreviewImageModal(null)}
+        />
       )}
     </div>
   );
