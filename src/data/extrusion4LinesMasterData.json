@@ -2883,7 +2883,7 @@
             "task": "가류조 승온, 작업준비",
             "minutes": 150,
             "weight": 0,
-            "note": "-. 단면 사전점검",
+            "note": "사전 승온 준비",
             "action": "사전 승온 완료 및 필터 교체 완료"
           },
           {
@@ -2893,10 +2893,10 @@
             "isNewDay": false,
             "shift": "주간",
             "category": "형교환",
-            "task": "LW WALK THRU B,C단면 T/O",
+            "task": "LW WALK THRU 금형 T/O",
             "minutes": 240,
             "weight": 0,
-            "note": "-. 초기 T/O",
+            "note": "초기 T/O",
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
@@ -2906,7 +2906,7 @@
             "isNewDay": false,
             "shift": "주간",
             "category": "형교환",
-            "task": "LQ2 HOOD SIDE 압개시 및 형교환",
+            "task": "LQ2 HOOD SIDE 형교환",
             "minutes": 60,
             "weight": 45,
             "note": "-. LOSS율 6.4%",
@@ -2918,12 +2918,12 @@
             "parentDay": "14일 (월)",
             "isNewDay": false,
             "shift": "야간",
-            "category": "정상생산",
-            "task": "LQ2 HOOD SIDE 정상 생산",
-            "minutes": 0,
-            "weight": 0,
-            "note": "-",
-            "action": "정상 가동 완료"
+            "category": "형교환",
+            "task": "SP3 DR SIDE D 형교환",
+            "minutes": 85,
+            "weight": 51,
+            "note": "SP3 단면",
+            "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
             "id": "9월3주_pcm1_5",
@@ -2931,28 +2931,15 @@
             "parentDay": "14일 (월)",
             "isNewDay": false,
             "shift": "야간",
-            "category": "형교환",
-            "task": "SP3 DR SIDE D 형교환",
-            "minutes": 85,
-            "weight": 51,
-            "note": "SP3 DR SIDE D 단면",
-            "action": "금형 체결 및 승온 정상화, 양품 확인"
-          },
-          {
-            "id": "9월3주_pcm1_6",
-            "day": "",
-            "parentDay": "14일 (월)",
-            "isNewDay": false,
-            "shift": "야간",
             "category": "불량/고장",
-            "task": "제품 스코치 및 형상 불량 (재압출)",
+            "task": "제품 스코치 재압출 불량",
             "minutes": 75,
             "weight": 85,
             "note": "-. LOSS율 16.8%",
             "action": "원인 조치 및 라인 재가동 완료"
           },
           {
-            "id": "9월3주_pcm1_7",
+            "id": "9월3주_pcm1_6",
             "day": "",
             "parentDay": "14일 (월)",
             "isNewDay": false,
@@ -2965,46 +2952,46 @@
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
-            "id": "9월3주_pcm1_8",
+            "id": "9월3주_pcm1_7",
             "day": "15일 (화)",
             "parentDay": "15일 (화)",
             "isNewDay": true,
             "shift": "주간",
             "category": "정상생산",
-            "task": "DS DR SIDE D 생산 (특이사항없음)",
+            "task": "DS DR SIDE D 정상생산",
             "minutes": 0,
             "weight": 0,
-            "note": "DS DR SIDE D 단면",
-            "action": "정상 가동 완료"
+            "note": "정상 가동",
+            "action": "특이사항 없음 (정상 가동 완료)"
           },
           {
-            "id": "9월3주_pcm1_9",
+            "id": "9월3주_pcm1_8",
             "day": "",
             "parentDay": "15일 (화)",
             "isNewDay": false,
             "shift": "주간",
             "category": "형교환",
-            "task": "CL4 HOOD FRT(SIDE) 형교환",
+            "task": "CL4 HOOD FRT 형교환",
             "minutes": 105,
             "weight": 45,
             "note": "-. LOSS율 9.5%",
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
-            "id": "9월3주_pcm1_10",
+            "id": "9월3주_pcm1_9",
             "day": "",
             "parentDay": "15일 (화)",
             "isNewDay": false,
             "shift": "야간",
             "category": "정상생산",
-            "task": "CL4 HOOD FRT(SIDE) 생산 (특이사항없음)",
+            "task": "CL4 HOOD FRT 정상생산 (야간)",
             "minutes": 0,
             "weight": 0,
             "note": "-. LOSS율 4.0%",
-            "action": "정상 가동 완료"
+            "action": "특이사항 없음 (정상 가동 완료)"
           },
           {
-            "id": "9월3주_pcm1_11",
+            "id": "9월3주_pcm1_10",
             "day": "16일 (수)",
             "parentDay": "16일 (수)",
             "isNewDay": true,
@@ -3017,33 +3004,33 @@
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
-            "id": "9월3주_pcm1_12",
+            "id": "9월3주_pcm1_11",
             "day": "",
             "parentDay": "16일 (수)",
             "isNewDay": false,
             "shift": "주간",
             "category": "불량/고장",
-            "task": "제품 이물질 불량 (재압출)",
+            "task": "원료 이물질 불량 (재압출)",
             "minutes": 80,
             "weight": 90,
             "note": "-. LOSS율 10.1%",
             "action": "원인 조치 및 라인 재가동 완료"
           },
           {
-            "id": "9월3주_pcm1_13",
+            "id": "9월3주_pcm1_12",
             "day": "",
             "parentDay": "16일 (수)",
             "isNewDay": false,
             "shift": "야간",
             "category": "정상생산",
-            "task": "NQ5A, LQ2, OV1K HOOD RR 생산",
+            "task": "NQ5A 정상생산",
             "minutes": 0,
             "weight": 0,
-            "note": "-",
-            "action": "정상 가동 완료"
+            "note": "정상 가동",
+            "action": "특이사항 없음 (정상 가동 완료)"
           },
           {
-            "id": "9월3주_pcm1_14",
+            "id": "9월3주_pcm1_13",
             "day": "",
             "parentDay": "16일 (수)",
             "isNewDay": false,
@@ -3056,7 +3043,7 @@
             "action": "원인 조치 및 라인 재가동 완료"
           },
           {
-            "id": "9월3주_pcm1_15",
+            "id": "9월3주_pcm1_14",
             "day": "17일 (목)",
             "parentDay": "17일 (목)",
             "isNewDay": true,
@@ -3069,7 +3056,7 @@
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
-            "id": "9월3주_pcm1_16",
+            "id": "9월3주_pcm1_15",
             "day": "",
             "parentDay": "17일 (목)",
             "isNewDay": false,
@@ -3082,20 +3069,7 @@
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
-            "id": "9월3주_pcm1_17",
-            "day": "",
-            "parentDay": "17일 (목)",
-            "isNewDay": false,
-            "shift": "야간",
-            "category": "정상생산",
-            "task": "NQ5A HOOD FRT 생산 (특이사항없음)",
-            "minutes": 0,
-            "weight": 0,
-            "note": "-",
-            "action": "정상 가동 완료"
-          },
-          {
-            "id": "9월3주_pcm1_18",
+            "id": "9월3주_pcm1_16",
             "day": "",
             "parentDay": "17일 (목)",
             "isNewDay": false,
@@ -3108,56 +3082,43 @@
             "action": "금형 체결 및 승온 정상화, 양품 확인"
           },
           {
-            "id": "9월3주_pcm1_19",
+            "id": "9월3주_pcm1_17",
             "day": "18일 (금)",
             "parentDay": "18일 (금)",
             "isNewDay": true,
             "shift": "주간",
             "category": "정상생산",
-            "task": "DT SILL SEAL 생산 (특이사항없음)",
+            "task": "DT SILL SEAL 정상생산",
             "minutes": 0,
             "weight": 0,
-            "note": "-",
-            "action": "정상 가동 완료"
+            "note": "정상 가동",
+            "action": "특이사항 없음 (정상 가동 완료)"
           },
           {
-            "id": "9월3주_pcm1_20",
-            "day": "",
-            "parentDay": "18일 (금)",
-            "isNewDay": false,
-            "shift": "야간",
-            "category": "정상생산",
-            "task": "DT SILL SEAL 생산",
-            "minutes": 0,
-            "weight": 0,
-            "note": "DT SILL SEAL 단면",
-            "action": "정상 가동 완료"
-          },
-          {
-            "id": "9월3주_pcm1_21",
+            "id": "9월3주_pcm1_18",
             "day": "",
             "parentDay": "18일 (금)",
             "isNewDay": false,
             "shift": "야간",
             "category": "불량/고장",
-            "task": "제품 스코치 및 코팅 불량",
+            "task": "코팅 불량 조치 및 스코치 불량",
             "minutes": 13,
             "weight": 26,
             "note": "-. LOSS율 2.0%",
             "action": "원인 조치 및 라인 재가동 완료"
           },
           {
-            "id": "9월3주_pcm1_22",
+            "id": "9월3주_pcm1_19",
             "day": "19일 (토)",
             "parentDay": "19일 (토)",
             "isNewDay": true,
             "shift": "주간",
             "category": "정상생산",
-            "task": "DT SILL SEAL 생산 (특이사항없음)",
+            "task": "DT SILL SEAL 주간 정상 가동",
             "minutes": 0,
             "weight": 0,
-            "note": "-",
-            "action": "정상 가동 완료"
+            "note": "정상 가동",
+            "action": "특이사항 없음 (정상 가동 완료)"
           }
         ],
         "totalMinutes": 1283,

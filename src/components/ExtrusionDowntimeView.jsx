@@ -159,8 +159,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v8 for clean analyzed downtime data
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v8_analyzed";
+// Storage key with v9 for clean analyzed downtime data
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v9_perfect";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
