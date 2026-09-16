@@ -34,7 +34,7 @@ import {
   checkAndAutoSendDailyClosingBriefing,
   subscribeTelegramConfig
 } from "./services/telegramService";
-import { pushModalHistory, closeAllModals } from "./utils/modalHistory";
+import { pushModalHistory, closeAllModals, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
@@ -101,16 +101,18 @@ export const App = () => {
   // 상세페이지에서 누르면 요약화면(worker_dashboard), 요약화면에서 누르면 메인화면(AuthModal)으로 이동
   useEffect(() => {
     const handlePopState = () => {
-      // (1) 팝업 / 모달이 열려 있는 경우: 팝업만 닫고 현재 화면 유지
+      // (1) 팝업 / 모달이 열려 있는 경우: 최상단 모달만 닫고 현재 화면 유지
       const hadAppModals = modalOpenRef.current || excelModalOpenRef.current || mobileMenuOpenRef.current || editingItemRef.current !== null;
-      setModalOpen(false);
-      setExcelModalOpen(false);
-      setMobileMenuOpen(false);
-      setEditingItem(null);
+      if (hadAppModals) {
+        setModalOpen(false);
+        setExcelModalOpen(false);
+        setMobileMenuOpen(false);
+        setEditingItem(null);
+        return;
+      }
 
-      const hadComponentModals = closeAllModals();
-
-      if (hadAppModals || hadComponentModals) {
+      // 팝업 스택에서 최상단 모달 1개만 닫기 (다중 모달 중첩 지원: 사진보기 -> 팝업화면 -> 첫화면)
+      if (wasModalJustPopped() || popTopModal()) {
         return;
       }
 

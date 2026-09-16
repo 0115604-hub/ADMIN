@@ -34,7 +34,7 @@ import {
   sendDailyClosingBriefingTelegram
 } from "../services/telegramService";
 import { compressImage } from "../utils/imageCompressor";
-import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
 
 // Modularized Components
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
@@ -163,20 +163,7 @@ export const AuthModal = () => {
     return () => unsub();
   }, []);
 
-  // 🌟 Global Auto-close all modals on popstate (뒤로가기 시 팝업 닫기 및 선택 초기화)
-  useEffect(() => {
-    const unsub = subscribeCloseAllModals(() => {
-      setIsIssueModalOpen(false);
-      setIsListModalOpen(false);
-      setActionModalData((prev) => ({ ...prev, isOpen: false }));
-      setDeleteModalData((prev) => ({ ...prev, isOpen: false }));
-      setIsTelegramModalOpen(false);
-      setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false }));
-      setPreviewImageModal(null);
-      setSelectedUser(null);
-    });
-    return () => unsub();
-  }, []);
+
 
   // Time ticker
   const [currentTimeTick, setCurrentTimeTick] = useState(0);
@@ -1176,6 +1163,19 @@ export const AuthModal = () => {
       setSendingClosingBriefing(false);
     }
   };
+
+  // 🌟 Auto-manage Back button for modals in AuthModal (LIFO stack)
+  useModalHistory(isListModalOpen, () => {
+    setIsListModalOpen(false);
+    setSelectedListItem(null);
+  }, "issueLedgerModal");
+
+  useModalHistory(isIssueModalOpen, handleCloseIssueModal, "issueEditModal");
+  useModalHistory(Boolean(actionModalData?.isOpen), handleCloseActionModal, "issueActionModal");
+  useModalHistory(Boolean(deleteModalData?.isOpen), () => setDeleteModalData((prev) => ({ ...prev, isOpen: false })), "deleteAuthModal");
+  useModalHistory(isTelegramModalOpen, () => setIsTelegramModalOpen(false), "telegramConfigModal");
+  useModalHistory(Boolean(telegramAdminPinModal?.isOpen), () => setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false })), "telegramAdminPinModal");
+  useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
