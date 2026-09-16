@@ -1616,22 +1616,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     </span>
                   </div>
 
-                  {/* 🎯 포인트 작은 패널: [총원 N명] & [결근 N명] */}
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <div className="bg-slate-900/90 py-1.5 px-2 rounded-xl border border-slate-800 flex items-center justify-between shadow-xs">
-                      <span className="text-[10.5px] font-bold text-slate-400">총원</span>
-                      <span className="font-mono font-black text-xs text-white">{breakdown.total}명</span>
-                    </div>
-                    <div className={`py-1.5 px-2 rounded-xl border flex items-center justify-between shadow-xs ${
-                      absentCount > 0
-                        ? "bg-rose-950/90 border-rose-600 text-rose-300 animate-pulse"
-                        : "bg-slate-900/90 border-slate-800 text-slate-400"
-                    }`}>
-                      <span className="text-[10.5px] font-bold">결근</span>
-                      <span className={`font-mono font-black text-xs ${
-                        absentCount > 0 ? "text-rose-400 font-black" : "text-slate-400"
-                      }`}>
-                        {absentCount}명
+                  {/* 🎯 포인트 작은 패널: 출근현황 총원:00명 결근:00명 */}
+                  <div className={`py-1.5 px-2.5 rounded-xl border flex items-center justify-between shadow-xs ${
+                    absentCount > 0
+                      ? "bg-slate-900/95 border-rose-600/70"
+                      : "bg-slate-900/90 border-slate-800"
+                  }`}>
+                    <span className="text-[11px] font-bold text-slate-300">출근현황</span>
+                    <div className="flex items-center gap-2 font-mono text-xs font-black">
+                      <span className="text-white">총원:{breakdown.total}명</span>
+                      <span className={absentCount > 0 ? "text-rose-400 font-black animate-pulse" : "text-slate-400"}>
+                        결근:{absentCount}명
                       </span>
                     </div>
                   </div>
