@@ -6875,7 +6875,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <Plus className="w-3.5 h-3.5" /> 신규 일정 등록
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    등록시점부터 일정일까지 유지 및 관리
+                    지정시간 1시간 경과 시 자동 삭제(보관대장 이관)
                   </span>
                 </div>
 

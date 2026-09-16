@@ -18,11 +18,52 @@ import {
   sendMeetingNoticeAlertTelegram,
   sendMeetingNoticeReplyTelegram
 } from "./telegramService";
+import { getKSTTimeInfo, getKSTDateString } from "../utils/dateUtils";
 
 const COLLECTION_NAME = "urgent_issues";
 const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 
-const todayDateStrFallback = () => new Date().toLocaleDateString("sv-SE");
+const todayDateStrFallback = () => getKSTDateString();
+
+/**
+ * 회의일정이 지정 시간 기준 2시간 경과했는지 판별
+ * @param {Object} item - { category, expireDate, targetDate, meetingTime, isManuallyRestored }
+ * @param {number} graceHours - 경과 기준 시간 (기본 2시간)
+ * @returns {boolean}
+ */
+export const isMeetingExpired = (item, graceHours = 2) => {
+  if (!item) return false;
+  if (item.category !== "회의일정" && !item.category?.includes("회의")) return false;
+  if (item.isManuallyRestored) return false;
+
+  const mDate = item.expireDate || item.targetDate || item.createdAt?.slice(0, 10) || "";
+  if (!mDate) return false;
+
+  const mTime = (item.meetingTime || "14:00").trim();
+  let [hStr, minStr] = mTime.split(":");
+  let h = parseInt(hStr, 10);
+  let min = parseInt(minStr, 10);
+  if (isNaN(h)) h = 14;
+  if (isNaN(min)) min = 0;
+
+  const parts = mDate.slice(0, 10).split("-");
+  if (parts.length < 3) return false;
+  const y = parseInt(parts[0], 10);
+  const mon = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(mon) || isNaN(d)) return false;
+
+  // 회의 지정 시각 Date (KST)
+  const meetingStartTime = new Date(y, mon - 1, d, h, min, 0).getTime();
+  const expireTimeMs = meetingStartTime + (graceHours * 60 * 60 * 1000); // 회의지정시간 + 2시간
+
+  // KST 현재 시각
+  const kstInfo = getKSTTimeInfo();
+  const [currY, currM, currD] = kstInfo.dateStr.split("-").map(Number);
+  const nowKst = new Date(currY, currM - 1, currD, kstInfo.hour, kstInfo.minute, kstInfo.second || 0).getTime();
+
+  return nowKst >= expireTimeMs;
+};
 
 // Initial urgent issue samples (Empty by default to prevent zombie deleted items)
 export const INITIAL_URGENT_ISSUES = [];

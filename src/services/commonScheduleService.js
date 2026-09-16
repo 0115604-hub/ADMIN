@@ -35,10 +35,12 @@ export const getKSTCurrentDateTime = () => {
 
 /**
  * 일정의 날짜 및 시간이 현재 KST 기준 경과(만료)했는지 판별
+ * (지정 시간에서 1시간 지나면 자동 삭제 대상)
  * @param {Object} schedule - { startDate, endDate, date, time }
+ * @param {number} graceHours - 만료 유예 시간 (기본 1시간)
  * @returns {boolean}
  */
-export const isScheduleExpired = (schedule) => {
+export const isScheduleExpired = (schedule, graceHours = 1) => {
   if (!schedule) return false;
 
   const current = getKSTCurrentDateTime();
@@ -50,11 +52,30 @@ export const isScheduleExpired = (schedule) => {
     return targetDate < current.date;
   }
 
-  // 2. 특정 시간(예: '14:00', '09:30')이 지정된 경우: 해당 날짜의 시간 경과 시 즉시 만료
-  const formattedTime = time.length === 5 ? time : time.padStart(5, "0");
-  const targetDateTime = `${targetDate} ${formattedTime}`;
+  // 2. 특정 시간(예: '14:00', '09:30')이 지정된 경우: 해당 날짜의 지정 시간 + 1시간 경과 시 만료
+  const parts = String(targetDate).slice(0, 10).split("-");
+  if (parts.length < 3) return false;
+  const y = parseInt(parts[0], 10);
+  const mon = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (isNaN(y) || isNaN(mon) || isNaN(d)) return false;
 
-  return current.dateTimeStr > targetDateTime;
+  const [hStr, minStr] = time.split(":");
+  let h = parseInt(hStr, 10);
+  let min = parseInt(minStr, 10);
+  if (isNaN(h)) h = 0;
+  if (isNaN(min)) min = 0;
+
+  // 일정 시각 Date (KST)
+  const scheduleTimeMs = new Date(y, mon - 1, d, h, min, 0).getTime();
+  const expireTimeMs = scheduleTimeMs + (graceHours * 60 * 60 * 1000); // 지정시간 + 1시간
+
+  // 현재 KST 시각
+  const [currY, currM, currD] = current.date.split("-").map(Number);
+  const [currH, currMin] = current.time.split(":").map(Number);
+  const nowKstMs = new Date(currY, currM - 1, currD, currH, currMin, 0).getTime();
+
+  return nowKstMs >= expireTimeMs;
 };
 
 /* ========================================================================= */

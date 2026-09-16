@@ -22,7 +22,8 @@ import {
   updateUrgentIssueActionResult,
   addIssueReply,
   deleteIssueReply,
-  sortIssuesByCustomPriority
+  sortIssuesByCustomPriority,
+  isMeetingExpired
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
 import {
@@ -257,21 +258,6 @@ export const AuthModal = () => {
       );
       setNewIssueForm(freshDraft);
     }
-  };
-
-  // Expiration helper
-  const isMeetingExpired = (item) => {
-    if (!item) return false;
-    if (item.category !== "회의일정") return false;
-    if (item.isManuallyRestored) return false;
-    const mDate = item.expireDate || item.targetDate || "";
-    if (!mDate) return false;
-    if (mDate < todayDateStr) return true;
-    if (mDate === todayDateStr) {
-      const mTime = item.meetingTime || "99:99";
-      return currentKstTimeStr >= mTime;
-    }
-    return false;
   };
 
   // Active issues calculation
