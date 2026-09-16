@@ -2,10 +2,10 @@
 import { WEEK_CALENDAR_MAP } from "../components/ExtrusionDowntimeView";
 
 export const EXTRUSION_LINES = [
-  { id: "pcm1", name: "압출 1호 (PCM #1)", code: "PCM #1", color: "teal", keywords: ["pcm1", "pcm #1", "1호", "pcm-1", "pcm_1"] },
-  { id: "pcm3", name: "압출 3호 (PCM #3)", code: "PCM #3", color: "blue", keywords: ["pcm3", "pcm #3", "3호", "pcm-3", "pcm_3"] },
-  { id: "pvc", name: "압출 PVC 라인", code: "PVC", color: "amber", keywords: ["pvc", "피브이씨", "pvc라인", "pvc 라인"] },
-  { id: "tpe", name: "압출 TPE 라인", code: "TPE", color: "purple", keywords: ["tpe", "티피이", "tpe라인", "tpe 라인"] }
+  { id: "pcm1", name: "PCM #1 LINE", code: "PCM #1", color: "teal", keywords: ["pcm1", "pcm #1", "1호", "pcm-1", "pcm_1", "pcm #1 line"] },
+  { id: "pcm3", name: "PCM #3 LINE", code: "PCM #3", color: "blue", keywords: ["pcm3", "pcm #3", "3호", "pcm-3", "pcm_3", "pcm #3 line"] },
+  { id: "pvc", name: "PVC LINE", code: "PVC", color: "amber", keywords: ["pvc", "피브이씨", "pvc라인", "pvc 라인", "pvc line"] },
+  { id: "tpe", name: "TPE LINE", code: "TPE", color: "purple", keywords: ["tpe", "티피이", "tpe라인", "tpe 라인", "tpe line"] }
 ];
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];

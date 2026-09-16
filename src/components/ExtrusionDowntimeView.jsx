@@ -185,6 +185,13 @@ const getLineLossRate = (lineObj, month) => {
   return "6.0%";
 };
 
+export const LINE_DISPLAY_NAMES = {
+  pcm1: "PCM #1 LINE",
+  pcm3: "PCM #3 LINE",
+  pvc: "PVC LINE",
+  tpe: "TPE LINE"
+};
+
 export const ExtrusionDowntimeView = () => {
   const { currentProfile } = useAuth();
 
@@ -221,6 +228,7 @@ export const ExtrusionDowntimeView = () => {
   }, [dataStore]);
 
   const currentLine = dataStore[selectedLineId] || dataStore["pcm1"];
+  const currentLineName = LINE_DISPLAY_NAMES[selectedLineId] || currentLine?.name || "PCM #1 LINE";
   const weeklySheets = Object.keys(currentLine?.weeklyData || {});
   const theme = LINE_THEMES[selectedLineId] || LINE_THEMES.pcm1;
 
@@ -716,7 +724,7 @@ export const ExtrusionDowntimeView = () => {
 
   const handleExportExcel = () => {
     const rows = [
-      [`오륙산업 삼랑진공장 - ${currentLine.name} 주간 비가동 및 생산 일지`],
+      [`오륙산업 삼랑진공장 - ${currentLineName} 주간 비가동 및 생산 일지`],
       [`주차: ${selectedWeek} (${currentWeekData.period})   |   담당: 설유철 책임`],
       [],
       ["일자 / 요일", "근무조", "구분", "품명 및 상세 작업내용", "비가동(분)", "중량(Kg)", "LOSS율 / 비고", "조치사항 및 결과"]
@@ -773,34 +781,44 @@ export const ExtrusionDowntimeView = () => {
         </div>
       )}
 
-      {/* 4 Lines Selector Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {Object.keys(dataStore).map((lineKey) => {
-          const lObj = dataStore[lineKey];
+      {/* 4 Lines Selector Tabs (Simple & Compact: PCM #1 LINE, PCM #3 LINE, PVC LINE, TPE LINE) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {EXTRUSION_LINES.map((lMeta) => {
+          const lineKey = lMeta.id;
           const isSelected = selectedLineId === lineKey;
           const lTheme = LINE_THEMES[lineKey] || LINE_THEMES.pcm1;
+          const lineLabel = LINE_DISPLAY_NAMES[lineKey] || lMeta.name;
 
           return (
             <button
               key={lineKey}
+              type="button"
               onClick={() => setSelectedLineId(lineKey)}
-              className={`p-4 rounded-2xl text-left border transition-all flex flex-col justify-between cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 rounded-xl text-left border transition-all flex items-center justify-between cursor-pointer active:scale-98 ${
                 isSelected
-                  ? `${lTheme.light} ${lTheme.border} border-2 shadow-sm ring-2 ring-teal-500/20`
-                  : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/70"
+                  ? `${lTheme.light} ${lTheme.border} border-2 shadow-xs ring-2 ring-teal-500/20`
+                  : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/80"
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-black tracking-wider text-slate-400 uppercase">{lObj.code}</span>
-                {isSelected && (
-                  <span className="flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-full bg-emerald-500 text-white">
-                    선택됨
-                  </span>
-                )}
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                    isSelected ? "bg-teal-600 ring-2 ring-teal-300" : "bg-slate-300"
+                  }`}
+                ></span>
+                <span className={`font-black text-xs sm:text-sm tracking-tight truncate ${isSelected ? lTheme.text : "text-slate-800"}`}>
+                  {lineLabel}
+                </span>
               </div>
-              <div className={`font-black text-base ${isSelected ? lTheme.text : "text-slate-800"}`}>
-                {lObj.name}
-              </div>
+              {isSelected ? (
+                <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-md bg-teal-600 text-white shrink-0">
+                  선택
+                </span>
+              ) : (
+                <span className="text-[9.5px] font-bold text-slate-400 uppercase shrink-0">
+                  {lMeta.code}
+                </span>
+              )}
             </button>
           );
         })}
@@ -1216,7 +1234,7 @@ export const ExtrusionDowntimeView = () => {
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-slate-700" />
             <span className="font-black text-sm text-slate-900">
-              {currentLine.name} - [{selectedWeek}] 주간 상세 작업 실적표
+              {currentLineName} - [{selectedWeek}] 주간 상세 작업 실적표
             </span>
             <span className="text-xs text-slate-500 font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200">
               {currentWeekData.rows?.length || 0}건 등록
@@ -1368,7 +1386,7 @@ export const ExtrusionDowntimeView = () => {
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-teal-400"></div>
               <span className="text-xs sm:text-sm font-black text-white">
-                📊 [{currentLine.name}] 1~12월 가동율 및 LOSS율 관리 패널
+                📊 [{currentLineName}] 1~12월 가동율 및 LOSS율 관리 패널
               </span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 font-bold">
                 탭 ➔ 수동 입력
@@ -1438,7 +1456,7 @@ export const ExtrusionDowntimeView = () => {
                 </div>
                 <div>
                   <h3 className="font-black text-sm text-slate-900">
-                    [{currentLine.name}] {modalEditMonth} 지표 수동 입력
+                    [{currentLineName}] {modalEditMonth} 지표 수동 입력
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     가동율과 LOSS율을 수동으로 입력해 주세요.

@@ -1050,8 +1050,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const dayLabel = getDayOfWeekKorean(d);
       const reportType = isWk ? "특근보고서" : "근태보고서";
       const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`;
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
+      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`;
 
       const items = filteredAttendanceWorkers.filter(w => {
         const val = w.daily ? w.daily[d] : "";
