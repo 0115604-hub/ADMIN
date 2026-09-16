@@ -103,6 +103,7 @@ export const WorkerPinModal = ({
   const [pinError, setPinError] = useState(false);
   const bodyRef = useRef(null);
   const pinInputRef = useRef(null);
+  const overlayRef = useRef(null);
 
   // Todo tasks state with interactive toggle
   const [todos, setTodos] = useState([]);
@@ -130,7 +131,10 @@ export const WorkerPinModal = ({
             pinInputRef.current.focus();
           }
         }
-      }, 100);
+        if (overlayRef.current) {
+          overlayRef.current.scrollTop = 0;
+        }
+      }, 50);
       if (bodyRef.current) {
         bodyRef.current.scrollTop = 0;
       }
@@ -228,12 +232,13 @@ export const WorkerPinModal = ({
   return (
     <>
       <div
+        ref={overlayRef}
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-start justify-center p-2 sm:p-3 md:p-4 animate-fadeIn overflow-hidden"
+        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-start justify-center p-2 sm:p-3 md:p-4 animate-fadeIn overflow-y-auto"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
+          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col my-2 sm:my-4"
         >
           {/* Top Decorative Accent Line */}
           <div className={`h-1.5 w-full shrink-0 ${
@@ -350,7 +355,7 @@ export const WorkerPinModal = ({
           {/* 🌟 2. Body: 핀번호 입력 전/후 상태 전환 */}
           <div
             ref={bodyRef}
-            className="p-3.5 sm:p-5 md:p-6 overflow-y-auto flex-1 scrollbar-thin space-y-4"
+            className="p-3.5 sm:p-5 md:p-6 space-y-4"
           >
             {!isPinVerified ? (
               /* ========================================================================= */
