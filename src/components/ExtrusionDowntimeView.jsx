@@ -1073,52 +1073,13 @@ export const ExtrusionDowntimeView = () => {
             </button>
 
             {currentWeekData.lastUploadedFileName && (
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold flex items-center gap-1">
-                <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
+                <FileCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>
-                  최근 분석: {currentWeekData.lastUploadedFileName} ({currentWeekData.lastUploadedAt || "방금"})
+                  자동 분석 완료: <strong>{currentWeekData.lastUploadedFileName}</strong> ({currentWeekData.snapshotIdx === 1 ? "1차: 화요일까지 실적 8건" : "2차: 수요일 오전까지 누적 실적 13건"} 자동 정리됨 • {currentWeekData.lastUploadedAt || "방금"})
                 </span>
               </span>
             )}
-
-            {/* Quick 1차(화) / 2차(수) / 3차(목금) Snapshot Fast Switcher with Live Row Counts */}
-            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg ml-1">
-              <button
-                type="button"
-                onClick={() => handleApplySnapshot(1)}
-                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition cursor-pointer flex items-center gap-1 ${
-                  (currentWeekData.snapshotIdx === 1 || (currentWeekData.rows || []).length <= 8) && (currentWeekData.rows || []).length > 0
-                    ? "bg-indigo-600 text-white shadow-xs font-black"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200"
-                }`}
-                title="1차 사진 기준 (14일 월 ~ 15일 화요일까지 8건)"
-              >
-                <span>1차 (화요일까지)</span>
-                <span className={`text-[9px] px-1 py-0 rounded ${
-                  (currentWeekData.snapshotIdx === 1 || (currentWeekData.rows || []).length <= 8) && (currentWeekData.rows || []).length > 0
-                    ? "bg-white/20 text-white font-mono"
-                    : "bg-slate-200 text-slate-700 font-mono"
-                }`}>8건</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleApplySnapshot(2)}
-                className={`px-2 py-0.5 rounded-md text-[10.5px] font-black transition cursor-pointer flex items-center gap-1 ${
-                  currentWeekData.snapshotIdx === 2 || (currentWeekData.rows || []).length > 8
-                    ? "bg-teal-600 text-white shadow-xs"
-                    : "text-teal-700 bg-teal-50 hover:bg-teal-100"
-                }`}
-                title="2차 사진 기준 (14일 월 ~ 16일 수요일 오전까지 누적 실적 13건)"
-              >
-                <span>⭐ 2차 (수요일 오전까지)</span>
-                <span className={`text-[9px] px-1 py-0 rounded ${
-                  currentWeekData.snapshotIdx === 2 || (currentWeekData.rows || []).length > 8
-                    ? "bg-white/20 text-white font-mono"
-                    : "bg-teal-200 text-teal-900 font-mono"
-                }`}>13건</span>
-              </button>
-            </div>
           </div>
 
           {/* Right: 4 Compact Line Droppable Chips (Single row 1-line, Folder icon, no '드롭' text) */}

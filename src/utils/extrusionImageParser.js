@@ -149,6 +149,13 @@ export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
     name.includes("18일") ||
     name.includes("0917") ||
     name.includes("0918") ||
+    name.includes("20260917") ||
+    name.includes("20260918") ||
+    name.includes("09-17") ||
+    name.includes("09-18") ||
+    name.includes("(3)") ||
+    name.includes("_3.") ||
+    name.includes("-3.") ||
     name.includes("목요일") ||
     name.includes("금요일") ||
     name.includes("목금") ||
@@ -165,6 +172,13 @@ export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
     name.includes("15일") ||
     name.includes("0914") ||
     name.includes("0915") ||
+    name.includes("20260914") ||
+    name.includes("20260915") ||
+    name.includes("09-14") ||
+    name.includes("09-15") ||
+    name.includes("(1)") ||
+    name.includes("_1.") ||
+    name.includes("-1.") ||
     name.includes("월요일") ||
     name.includes("화요일") ||
     name.includes("화요") ||
@@ -184,6 +198,11 @@ export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
     name.includes("2차") ||
     name.includes("16일") ||
     name.includes("0916") ||
+    name.includes("20260916") ||
+    name.includes("09-16") ||
+    name.includes("(2)") ||
+    name.includes("_2.") ||
+    name.includes("-2.") ||
     name.includes("수요일") ||
     name.includes("수요") ||
     name.includes("수욜") ||
