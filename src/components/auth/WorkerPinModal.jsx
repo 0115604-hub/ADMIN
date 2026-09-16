@@ -124,7 +124,11 @@ export const WorkerPinModal = ({
       setTodos(getProcessTasks(selectedUser));
       setTimeout(() => {
         if (pinInputRef.current) {
-          pinInputRef.current.focus();
+          try {
+            pinInputRef.current.focus({ preventScroll: true });
+          } catch (e) {
+            pinInputRef.current.focus();
+          }
         }
       }, 100);
       if (bodyRef.current) {
@@ -198,7 +202,13 @@ export const WorkerPinModal = ({
         setIsPinVerified(true);
       } else {
         setPinError(true);
-        if (pinInputRef.current) pinInputRef.current.focus();
+        if (pinInputRef.current) {
+          try {
+            pinInputRef.current.focus({ preventScroll: true });
+          } catch (err) {
+            pinInputRef.current.focus();
+          }
+        }
         return;
       }
     }
@@ -219,11 +229,11 @@ export const WorkerPinModal = ({
     <>
       <div
         onClick={() => setSelectedUser(null)}
-        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fadeIn overflow-y-auto"
+        className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-3 md:p-4 animate-fadeIn overflow-hidden"
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col my-auto max-h-[94vh] md:max-h-[90vh]"
+          className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col max-h-[92vh] sm:max-h-[88vh] md:max-h-[88vh]"
         >
           {/* Top Decorative Accent Line */}
           <div className={`h-1.5 w-full shrink-0 ${
