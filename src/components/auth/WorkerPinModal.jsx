@@ -447,10 +447,15 @@ export const WorkerPinModal = ({
                       {disasterPhotos.length > 0 ? (
                         <div className="space-y-2.5">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-                            {disasterPhotos.slice(0, 4).map((photo) => (
+                            {disasterPhotos.slice(0, 4).map((photo, index) => (
                               <div
                                 key={photo.id}
                                 onClick={() => setPreviewImage({
+                                  list: disasterPhotos.map((p) => ({
+                                    url: p.url || p.dataUrl,
+                                    name: `${p.name || "중대재해·안전 점검 사진"} (${p.uploaderName || "이명재 이사"})`
+                                  })),
+                                  index: index,
                                   url: photo.url || photo.dataUrl,
                                   name: `${photo.name || "중대재해·안전 점검 사진"} (${photo.uploaderName || "이명재 이사"})`
                                 })}
@@ -481,9 +486,20 @@ export const WorkerPinModal = ({
                           </div>
 
                           {disasterPhotos.length > 4 && (
-                            <div className="text-right pt-1">
-                              <span className="text-xs font-bold text-amber-800 dark:text-amber-300">
-                                외 {disasterPhotos.length - 4}장의 안전 사진이 더 등록되어 있습니다.
+                            <div
+                              onClick={() => setPreviewImage({
+                                list: disasterPhotos.map((p) => ({
+                                  url: p.url || p.dataUrl,
+                                  name: `${p.name || "중대재해·안전 점검 사진"} (${p.uploaderName || "이명재 이사"})`
+                                })),
+                                index: 4,
+                                url: disasterPhotos[4]?.url || disasterPhotos[4]?.dataUrl,
+                                name: `${disasterPhotos[4]?.name || "중대재해·안전 점검 사진"} (${disasterPhotos[4]?.uploaderName || "이명재 이사"})`
+                              })}
+                              className="text-right pt-1 cursor-pointer group"
+                            >
+                              <span className="text-xs font-bold text-amber-800 dark:text-amber-300 group-hover:underline group-hover:text-rose-600 transition-colors">
+                                외 {disasterPhotos.length - 4}장의 안전 사진이 더 등록되어 있습니다. (전체 {disasterPhotos.length}장 넘겨보기 ➡️)
                               </span>
                             </div>
                           )}
