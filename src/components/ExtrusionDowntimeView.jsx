@@ -159,8 +159,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v10 for clean concise analyzed downtime data
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v10_concise";
+// Storage key with v12 for clean verified downtime data
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v12_verified";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -260,9 +260,6 @@ export const ExtrusionDowntimeView = () => {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         initialStore = JSON.parse(saved);
-      } else {
-        const prevSaved = localStorage.getItem("factory_extrusion_downtime_4lines_v6_clean");
-        if (prevSaved) initialStore = JSON.parse(prevSaved);
       }
     } catch (e) {
       console.error("Failed to load store:", e);
