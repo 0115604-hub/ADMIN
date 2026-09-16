@@ -97,6 +97,7 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
     };
   });
 };
+import { SevereDisasterBar } from "./SevereDisasterBar";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import { useMonth, DEFAULT_MONTH_LIST } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
@@ -3517,6 +3518,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 🚨 [두번째 배치] 중대재해공유판 (이명재 이사 로그인 시 또는 공유 사진 등록 시 표시) */}
+      {/* ========================================================================= */}
+      <SevereDisasterBar />
 
       {/* ========================================================================= */}
       {/* 1. ⭐ [1위치] 매입매출현황 요약 (주석 삭제 • 깔끔한 핵심 수치만 표시) */}

@@ -20,7 +20,6 @@ import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
-import { SevereDisasterBar } from "./components/SevereDisasterBar";
 import { useAuth } from "./context/AuthContext";
 import { useMonth } from "./context/MonthContext";
 import {
@@ -332,9 +331,6 @@ export const App = () => {
           onRefresh={() => loadData(true)}
           isRefreshing={isRefreshing}
         />
-
-        {/* 중대재해공유판 한줄짜리 패널 (이명재 이사 로그인 시 또는 공유 사진 등록 시 표시) */}
-        <SevereDisasterBar />
 
         <main className="p-2 sm:p-4 lg:p-5 flex-1 min-w-0 max-w-full overflow-x-hidden">
           {loading ? (
