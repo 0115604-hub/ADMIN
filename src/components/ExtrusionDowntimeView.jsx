@@ -159,8 +159,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v7 for updated clean calendar migration
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v7_clean";
+// Storage key with v8 for clean analyzed downtime data
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v8_analyzed";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -272,8 +272,12 @@ export const ExtrusionDowntimeView = () => {
 
   const [selectedLineId, setSelectedLineId] = useState("pcm1");
   const [selectedWeek, setSelectedWeek] = useState(() => realCurrentWeek);
+  const [monthFilter, setMonthFilter] = useState("전체"); // "전체" | "7월" | "8월" | "9월" | "10월" ...
   const [toastMessage, setToastMessage] = useState("");
   const [dragActiveTarget, setDragActiveTarget] = useState(null); // null | "batch" | "pcm1" | "pcm3" | "pvc" | "tpe"
+
+  const activeWeekTabRef = useRef(null);
+  const weekScrollContainerRef = useRef(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -303,6 +307,20 @@ export const ExtrusionDowntimeView = () => {
       }
     }
   }, [selectedLineId, currentProfile?.id, realCurrentWeek]);
+
+  // Auto-scroll the active week badge into view so the user doesn't need to manually scroll
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeWeekTabRef.current) {
+        activeWeekTabRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: "center"
+        });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [selectedWeek, selectedLineId, monthFilter]);
 
   const rawWeekData = currentLine?.weeklyData?.[selectedWeek] || {
     sheetName: selectedWeek,
@@ -948,70 +966,108 @@ export const ExtrusionDowntimeView = () => {
         })}
       </div>
 
-      {/* 3. Week Tabs Navigation with Exact Dates (월요일 ~ 일요일) */}
+      {/* 3. Week Tabs Navigation with Auto-Scroll & Quick Month Jump (스크롤 최소화) */}
       <div className="bg-white rounded-2xl p-3 border border-slate-200/90 shadow-xs space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-4 h-4 text-teal-600" />
-            <span className="text-xs font-black text-slate-700">주차 선택 (월요일~일요일 주간 단위):</span>
+            <span className="text-xs font-black text-slate-700">주차 선택:</span>
+
+            {/* Month Filter Jump Pills */}
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
+              {["전체", "7월", "8월", "9월", "10월"].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMonthFilter(m)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-black transition cursor-pointer ${
+                    monthFilter === m
+                      ? "bg-white text-slate-900 shadow-xs border border-slate-200"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <span>선택된 주간:</span>
+
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 flex-wrap">
+            {/* Quick jump to current week button */}
+            <button
+              type="button"
+              onClick={() => {
+                setMonthFilter("전체");
+                setSelectedWeek(realCurrentWeek);
+              }}
+              className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-black text-[11px] shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1"
+            >
+              <span>⭐ 금주 ({realCurrentWeek}) 바로보기</span>
+            </button>
+
+            <span>선택:</span>
             <span className="px-2.5 py-0.5 rounded-lg bg-teal-50 text-teal-800 font-black border border-teal-200">
               {selectedWeek} ({currentWeekData.period})
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
-          {weeklySheets.map((w) => {
-            const isSelected = selectedWeek === w;
-            const isThisWeek = w === realCurrentWeek;
-            const wPeriod = WEEK_CALENDAR_MAP[w]?.period || currentLine?.weeklyData?.[w]?.period || "";
+        <div
+          ref={weekScrollContainerRef}
+          className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 scroll-smooth"
+        >
+          {weeklySheets
+            .filter((w) => (monthFilter === "전체" ? true : w.startsWith(monthFilter)))
+            .map((w) => {
+              const isSelected = selectedWeek === w;
+              const isThisWeek = w === realCurrentWeek;
+              const wPeriod = WEEK_CALENDAR_MAP[w]?.period || currentLine?.weeklyData?.[w]?.period || "";
 
-            return (
-              <button
-                key={w}
-                type="button"
-                onClick={() => setSelectedWeek(w)}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition flex flex-col items-center gap-0.5 cursor-pointer relative ${
-                  isSelected
-                    ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900/30"
-                    : isThisWeek
-                    ? "bg-amber-50 text-slate-800 border-2 border-amber-400 hover:bg-amber-100/80 shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span>{w}</span>
-                  {isThisWeek && (
+              return (
+                <button
+                  key={w}
+                  ref={isSelected ? activeWeekTabRef : null}
+                  type="button"
+                  onClick={() => setSelectedWeek(w)}
+                  className={`px-3.5 py-2.5 rounded-xl text-xs font-black whitespace-nowrap transition flex flex-col items-center gap-0.5 cursor-pointer relative shrink-0 ${
+                    isSelected
+                      ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900/30 scale-102"
+                      : isThisWeek
+                      ? "bg-amber-50 text-slate-800 border-2 border-amber-400 hover:bg-amber-100/80 shadow-xs"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{w}</span>
+                    {isThisWeek && (
+                      <span
+                        className={`text-[9.5px] px-1.5 py-0.5 rounded font-black ${
+                          isSelected
+                            ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                            : "bg-amber-500 text-white font-black shadow-xs animate-pulse"
+                        }`}
+                      >
+                        ⭐ 금주
+                      </span>
+                    )}
+                  </div>
+                  {wPeriod && (
                     <span
-                      className={`text-[9.5px] px-1.5 py-0.5 rounded font-black ${
-                        isSelected
-                          ? "bg-amber-400 text-slate-950 font-black shadow-xs"
-                          : "bg-amber-500 text-white font-black shadow-xs animate-pulse"
+                      className={`text-[10px] font-normal ${
+                        isSelected ? "text-slate-300" : isThisWeek ? "text-amber-800 font-bold" : "text-slate-400"
                       }`}
                     >
-                      ⭐ 금주
+                      {wPeriod}
                     </span>
                   )}
-                </div>
-                {wPeriod && (
-                  <span
-                    className={`text-[10px] font-normal ${
-                      isSelected ? "text-slate-300" : isThisWeek ? "text-amber-800 font-bold" : "text-slate-400"
-                    }`}
-                  >
-                    {wPeriod}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+
           <button
             type="button"
             onClick={handleCreateNextWeek}
-            className="px-4 py-2.5 rounded-xl text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap flex items-center gap-1 cursor-pointer self-stretch transition active:scale-95 shadow-xs"
+            className="px-4 py-2.5 rounded-xl text-xs font-black bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 whitespace-nowrap flex items-center gap-1 cursor-pointer self-stretch transition active:scale-95 shadow-xs shrink-0"
           >
             <Plus className="w-3.5 h-3.5" /> 새 주차 생성
           </button>
