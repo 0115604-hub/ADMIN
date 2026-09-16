@@ -18,7 +18,7 @@ import { ADMIN_USERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus } from "../../services/annualLeaveService";
 import { subscribeSevereDisasterPhotos } from "../../services/severeDisasterService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
-import { useModalHistory } from "../../utils/modalHistory";
+import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
 
 // Process-specific default tasks generator
 const getProcessTasks = (worker) => {
@@ -243,6 +243,7 @@ export const WorkerPinModal = ({
 
     setIsLoggingIn(true);
     try {
+      clearModalStack();
       loginWithProfile(selectedUser, true, false);
       setSelectedUser(null);
     } catch (err) {

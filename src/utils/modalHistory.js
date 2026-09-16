@@ -85,20 +85,16 @@ export const pushModalToStack = (modalName = "modal", onClose = null) => {
  */
 export const removeModalFromStack = (modalId) => {
   const index = modalStack.findIndex((m) => m.id === modalId);
-  if (index === -1) return;
-
-  const isTop = index === modalStack.length - 1;
-  modalStack.splice(index, 1);
-
-  // If the modal was at the top of the history stack, rewind history without triggering popstate modal close
-  if (isTop && typeof window !== "undefined" && window.history?.state?.modalOpen) {
-    try {
-      isProgrammaticBack = true;
-      window.history.back();
-    } catch (e) {
-      isProgrammaticBack = false;
-    }
+  if (index !== -1) {
+    modalStack.splice(index, 1);
   }
+};
+
+/**
+ * Clear all modals from stack without closing them (used when logging in or navigating)
+ */
+export const clearModalStack = () => {
+  modalStack.length = 0;
 };
 
 /**
