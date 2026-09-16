@@ -514,7 +514,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-xs sm:text-sm md:text-base font-black text-white tracking-tight truncate">
-                  (주)한울 공제내역등록 • 공통비 및 지출 공제
+                  (주)한울 지출내역 등록
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-slate-950 shrink-0">
                   {status === "CONFIRMED" ? "✓ 등록완료" : "✏️ 작성중"}
@@ -988,7 +988,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
             {isSavedToast && (
               <span className="px-2.5 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-black border border-emerald-300 animate-fadeIn flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>지출 공제내역이 안전하게 저장되었습니다!</span>
+                <span>지출내역이 안전하게 등록되었습니다!</span>
               </span>
             )}
           </div>
@@ -1007,7 +1007,7 @@ export const HanulSettlementModal = ({ isOpen, onClose, initialMonth }) => {
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-sm shadow-emerald-600/30 cursor-pointer active:scale-95"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>지출 공제내역 저장</span>
+              <span>지출내역등록</span>
             </button>
           </div>
         </div>

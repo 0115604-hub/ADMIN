@@ -3470,7 +3470,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🌟 한울 전용 전월정산표 등록 (한울 로그인 시에만 표시, admin은 표시 안 함) */}
+      {/* 🌟 한울 전용 전월 지출내역 등록 (한울 로그인 시에만 표시, admin은 표시 안 함) */}
       {(isHanul && !isAdmin) && (
         <div
           onClick={handleOpenHanulSettlementModal}
@@ -3482,7 +3482,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
             <div className="flex items-center gap-2 min-w-0">
               <span className="font-black text-xs sm:text-sm text-white tracking-tight">
-                전월정산표 등록
+                전월 지출내역 등록
               </span>
               <span className="hidden sm:inline text-[11px] text-emerald-300/80 font-semibold truncate">
                 (공통비 및 지출 공제내역 항목별 등록 / 영수증 증빙 확인)
@@ -3498,7 +3498,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 handleOpenHanulSettlementModal();
               }}
               className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black ring-2 ring-emerald-300/60 shadow-sm shadow-emerald-500/30 animate-pulse transition-all active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
-              title="탭하여 공통비 및 지출 공제내역 항목별 등록 팝업 열기"
+              title="탭하여 공통비 및 지출내역 항목별 등록 팝업 열기"
             >
               <span className="relative flex h-2 w-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-950 opacity-75"></span>
