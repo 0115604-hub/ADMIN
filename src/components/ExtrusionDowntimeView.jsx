@@ -454,7 +454,7 @@ export const ExtrusionDowntimeView = () => {
     const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId };
 
     setAnalyzingLines((prev) => ({ ...prev, [lineId]: true }));
-    showToast(`⚡ [${lineMeta.name}] 사진 자동 분석 중...`);
+    showToast(`⚡ [${lineMeta.name}] 기존 실적 초기화 및 신규 사진 분석 중...`);
 
     try {
       const result = await analyzeExtrusionImageFile(file, lineId, selectedWeek);
@@ -462,8 +462,15 @@ export const ExtrusionDowntimeView = () => {
       if (result.success && result.rows && result.rows.length > 0) {
         setDataStore((prev) => {
           const lineObj = { ...prev[lineId] };
-          const weekObj = { ...(lineObj.weeklyData[selectedWeek] || currentWeekData) };
-          weekObj.rows = result.rows;
+          const currentWeekMeta = lineObj.weeklyData[selectedWeek] || currentWeekData;
+
+          // Clean wipe and complete overwrite with freshly parsed photo rows
+          const weekObj = {
+            ...currentWeekMeta,
+            rows: [...result.rows],
+            totalMinutes: result.totalMinutes,
+            totalWeight: result.totalWeight
+          };
           lineObj.weeklyData[selectedWeek] = weekObj;
 
           return {
@@ -473,7 +480,7 @@ export const ExtrusionDowntimeView = () => {
         });
 
         setSelectedLineId(lineId);
-        showToast(`🎉 [${lineMeta.name}] 사진 자동 분석 완료! ${result.rows.length}개 실적이 반영되었습니다.`);
+        showToast(`🔄 [${lineMeta.name}] 기존 내용을 삭제하고, 신규 업로드된 사진 실적(${result.rows.length}건)으로 새롭게 반영했습니다!`);
       } else {
         showToast(`⚠️ [${lineMeta.name}] 사진 분석 완료 (기본 서식 적용)`);
       }
