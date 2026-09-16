@@ -97,28 +97,31 @@ export const ImagePreviewModal = ({ previewImage, onClose }) => {
 
   if (!previewImage || typeof document === "undefined") return null;
 
+  const imageUrl = typeof previewImage === "string" ? previewImage : (previewImage.url || previewImage.dataUrl);
+  const imageName = typeof previewImage === "string" ? "안전 사진 확대" : (previewImage.name || "첨부 사진 확인");
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fadeIn cursor-pointer select-none"
+      className="fixed inset-0 z-[120] bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-0 sm:p-4 md:p-6 animate-fadeIn cursor-pointer select-none overflow-hidden"
       onClick={onClose}
     >
       <div
-        className="relative max-w-5xl max-h-[92vh] w-full h-[85vh] flex flex-col items-center bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-800 cursor-default"
+        className="relative w-full h-full sm:h-[90vh] md:h-[92vh] sm:max-w-5xl md:max-w-6xl xl:max-w-7xl flex flex-col items-center bg-slate-900 sm:rounded-3xl overflow-hidden shadow-2xl border-0 sm:border border-slate-800 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="w-full flex items-center justify-between p-3 px-5 bg-slate-950/90 border-b border-slate-800 text-white text-xs shrink-0 z-10">
-          <span className="font-bold truncate max-w-[200px] sm:max-w-md text-emerald-400">
-            {previewImage.name || "첨부 사진 확인"}
+        <div className="w-full flex items-center justify-between p-2.5 sm:p-3.5 px-3.5 sm:px-6 bg-slate-950/95 border-b border-slate-800 text-white text-xs shrink-0 z-10">
+          <span className="font-bold truncate max-w-[150px] sm:max-w-md text-emerald-400 text-xs sm:text-sm">
+            {imageName}
           </span>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
             {/* Zoom Controls */}
             <div className="flex items-center bg-slate-800 rounded-lg p-0.5 border border-slate-700">
               <button
                 type="button"
                 onClick={() => setZoom((prev) => Math.max(Number((prev - 0.25).toFixed(2)), 0.35))}
-                className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1 sm:p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
                 title="축소"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
@@ -130,7 +133,7 @@ export const ImagePreviewModal = ({ previewImage, onClose }) => {
                   setPan({ x: 0, y: 0 });
                   setRotation(0);
                 }}
-                className="px-1.5 text-[10px] font-mono font-black text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                className="px-1.5 text-[10px] sm:text-xs font-mono font-black text-emerald-400 hover:text-emerald-300 cursor-pointer"
                 title="100% 리셋"
               >
                 {Math.round(zoom * 100)}%
@@ -138,7 +141,7 @@ export const ImagePreviewModal = ({ previewImage, onClose }) => {
               <button
                 type="button"
                 onClick={() => setZoom((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 6.0))}
-                className="p-1 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
+                className="p-1 sm:p-1.5 rounded text-slate-300 hover:text-white hover:bg-slate-700 transition-colors cursor-pointer"
                 title="확대"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
@@ -167,23 +170,24 @@ export const ImagePreviewModal = ({ previewImage, onClose }) => {
 
             {/* Download */}
             <a
-              href={previewImage.url}
-              download={previewImage.name || "사진_다운로드.jpg"}
+              href={imageUrl}
+              download={imageName ? `${imageName}.jpg` : "사진_다운로드.jpg"}
               className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-700 text-slate-200 hover:text-white transition-colors flex items-center gap-1 text-[11px] border border-slate-700"
               title="사진 다운로드"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">다운로드</span>
+              <span className="hidden sm:inline">저장</span>
             </a>
 
             {/* Close */}
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-200 hover:text-white transition-colors cursor-pointer ml-1"
+              className="p-1.5 sm:px-2.5 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white transition-colors cursor-pointer ml-1 font-bold text-xs flex items-center gap-1"
               title="닫기"
             >
               <X className="w-4 h-4" />
+              <span className="hidden sm:inline">닫기</span>
             </button>
           </div>
         </div>
@@ -196,37 +200,35 @@ export const ImagePreviewModal = ({ previewImage, onClose }) => {
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onDoubleClick={handleDoubleClick}
-          className={`flex-1 w-full relative overflow-hidden bg-slate-950 flex items-center justify-center p-3 select-none touch-none ${
+          className={`flex-1 w-full h-full relative overflow-hidden bg-slate-950 flex items-center justify-center p-1 sm:p-4 select-none touch-none ${
             isDragging ? "cursor-grabbing" : "cursor-grab"
           }`}
         >
           <div
-            className="flex items-center justify-center shadow-2xl rounded-xl overflow-hidden bg-black/40"
+            className="w-full h-full flex items-center justify-center overflow-hidden"
             style={{
               transform: `translate3d(${pan.x}px, ${pan.y}px, 0px) scale(${zoom}) rotate(${rotation}deg)`,
               transformOrigin: "center center",
               transition: isDragging ? "none" : "transform 90ms cubic-bezier(0.2, 0, 0, 1)",
-              maxWidth: "92%",
-              maxHeight: "92%",
               willChange: "transform"
             }}
           >
             <img
-              src={previewImage.url}
-              alt={previewImage.name || "미리보기"}
-              className="block max-h-[72vh] max-w-full object-contain rounded-xl shadow-lg pointer-events-none select-none"
+              src={imageUrl}
+              alt={imageName}
+              className="block max-h-[84vh] sm:max-h-[80vh] md:max-h-[82vh] max-w-full w-auto h-auto object-contain sm:rounded-2xl shadow-2xl pointer-events-none select-none"
               draggable={false}
             />
           </div>
 
           {/* Guide Helper */}
-          <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-md bg-slate-900/85 backdrop-blur-xs border border-slate-700/80 text-[11px] text-slate-300 pointer-events-none flex items-center gap-2 shadow-lg">
+          <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3 px-2.5 py-1 rounded-md bg-slate-900/85 backdrop-blur-xs border border-slate-700/80 text-[10px] sm:text-[11px] text-slate-300 pointer-events-none flex items-center gap-2 shadow-lg">
             <span className="flex items-center gap-1 text-slate-300">
               <Move className="w-3 h-3 text-emerald-400" />
-              <span>화면 클릭 후 드래그로 상하좌우 이동</span>
+              <span>드래그 이동</span>
             </span>
             <span className="text-slate-500">•</span>
-            <span className="text-slate-400">마우스 휠 확대/축소</span>
+            <span className="text-slate-400">더블탭/휠 확대</span>
           </div>
         </div>
       </div>

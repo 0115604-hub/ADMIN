@@ -158,6 +158,18 @@ export const WorkerPinModal = ({
   const expectedPin = selectedUser.pin || (isAdmin ? "0090" : "11");
   const leaveStatus = getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true });
 
+  // Dismiss virtual keyboard on mobile as soon as PIN is verified
+  useEffect(() => {
+    if (isPinVerified) {
+      if (pinInputRef.current) {
+        pinInputRef.current.blur();
+      }
+      if (document.activeElement && typeof document.activeElement.blur === "function") {
+        document.activeElement.blur();
+      }
+    }
+  }, [isPinVerified]);
+
   // Filter relevant shared notices / quality alerts / notes from other workers
   const sharedFromOthers = (activeIssues && activeIssues.length > 0 ? activeIssues : urgentIssues || [])
     .filter((it) => !it.isDeleted)
@@ -176,9 +188,13 @@ export const WorkerPinModal = ({
     setPinInput(val);
     setPinError(false);
 
-    // Auto-verify when matching PIN is entered
+    // Auto-verify when matching PIN is entered & dismiss mobile keyboard
     if (checkPinValidity(val)) {
       setIsPinVerified(true);
+      if (pinInputRef.current) pinInputRef.current.blur();
+      if (document.activeElement && typeof document.activeElement.blur === "function") {
+        document.activeElement.blur();
+      }
     }
   };
 
@@ -187,6 +203,10 @@ export const WorkerPinModal = ({
     if (checkPinValidity(pinInput)) {
       setIsPinVerified(true);
       setPinError(false);
+      if (pinInputRef.current) pinInputRef.current.blur();
+      if (document.activeElement && typeof document.activeElement.blur === "function") {
+        document.activeElement.blur();
+      }
     } else {
       setPinError(true);
       setIsPinVerified(false);
@@ -426,7 +446,10 @@ export const WorkerPinModal = ({
                             {disasterPhotos.slice(0, 4).map((photo) => (
                               <div
                                 key={photo.id}
-                                onClick={() => setPreviewImage(photo.url || photo.dataUrl)}
+                                onClick={() => setPreviewImage({
+                                  url: photo.url || photo.dataUrl,
+                                  name: `${photo.name || "중대재해·안전 점검 사진"} (${photo.uploaderName || "이명재 이사"})`
+                                })}
                                 className="group relative aspect-16/10 rounded-2xl overflow-hidden border-2 border-amber-300 dark:border-amber-700 hover:border-rose-500 cursor-pointer shadow-md transition-all hover:scale-102 bg-slate-950"
                                 title={`${photo.name} (${photo.uploaderName || "이명재 이사"}) - 클릭 시 확대`}
                               >
