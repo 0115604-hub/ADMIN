@@ -458,10 +458,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const meta = defaultMeta[name];
       const b = daily?.companyBreakdown?.[name];
       const calcOtWorkers = b ? ((b.ot19 || 0) + (b.ot21 || 0) + (b.ot22 || 0) + (b.specialNight || 0)) : meta.otWorkers;
+      const workers = b?.total ?? meta.workers;
+      const attended = b?.attended ?? meta.attended;
+      const absent = b?.absent ?? Math.max(0, workers - attended);
+
       return {
         name,
-        workers: b?.total ?? meta.workers,
-        attended: b?.attended ?? meta.attended,
+        workers,
+        attended,
+        absent,
         otWorkers: (calcOtWorkers && calcOtWorkers > 0) ? calcOtWorkers : meta.otWorkers,
         otHours: b?.otHours ?? meta.otHours,
         totalHours: b?.totalHours ?? meta.totalHours,
@@ -474,6 +479,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     const totalWorkers = companies.reduce((acc, c) => acc + (c.workers || 0), 0);
     const totalAttended = companies.reduce((acc, c) => acc + (c.attended || 0), 0);
+    const totalAbsent = companies.reduce((acc, c) => acc + (c.absent || 0), 0);
     const totalOtWorkers = companies.reduce((acc, c) => acc + (c.otWorkers || 0), 0);
     const totalOtHours = companies.reduce((acc, c) => acc + (c.otHours || 0), 0);
     const totalHours = companies.reduce((acc, c) => acc + (c.totalHours || 0), 0);
@@ -482,6 +488,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       name: "전회사 TOTAL",
       workers: totalWorkers,
       attended: totalAttended,
+      absent: totalAbsent,
       otWorkers: totalOtWorkers,
       otHours: totalOtHours,
       totalHours: totalHours,
@@ -3638,9 +3645,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <div className={`text-[9.5px] font-bold ${comp.isTotal ? "text-cyan-700 dark:text-cyan-300" : "text-slate-500 dark:text-slate-400"}`}>
                     출근 현황
                   </div>
-                  <div className="font-mono font-black text-xs sm:text-sm text-cyan-600 dark:text-cyan-300 leading-tight mt-0.5">
-                    {comp.attended}<span className="text-[10px] text-slate-400 font-bold">/{comp.workers}</span>
-                    <span className="text-[9.5px] font-bold ml-0.5 text-slate-500">명</span>
+                  <div className="font-mono text-[9.5px] sm:text-[10.5px] leading-tight mt-0.5 flex flex-wrap items-center justify-center gap-1 font-bold">
+                    <span className="text-slate-700 dark:text-slate-200 whitespace-nowrap">총원:{comp.workers}명</span>
+                    <span className={`whitespace-nowrap ${comp.absent > 0 ? "text-rose-600 dark:text-rose-400 font-black animate-pulse" : "text-slate-400 dark:text-slate-500 font-medium"}`}>
+                      결근:{comp.absent}명
+                    </span>
                   </div>
                 </div>
 
