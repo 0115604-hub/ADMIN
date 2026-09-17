@@ -1071,10 +1071,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       ? customComment.trim()
       : (approvalCommentInput.trim() || "확인 및 전자결재 승인 완료");
 
+    const targetLog = workLogs.find((l) => String(l.id) === String(logId));
+    const targetPlant = targetLog?.plant || currentProfile?.plant || workerPlant;
     const approver = {
-      name: currentProfile?.name || "총괄관리자",
-      title: currentProfile?.title || "이사",
-      plant: currentProfile?.plant || "",
+      name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
+      title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
+      plant: currentProfile?.plant || targetPlant,
       comment: finalComment
     };
     const updated = await approveWorkLog(logId, approver);
@@ -1091,10 +1093,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const reason = window.prompt("반려 사유 또는 보완 요청 사항을 입력해주세요:", "내용 보완 후 재상신 요망");
     if (!reason) return;
 
+    const targetLog = workLogs.find((l) => String(l.id) === String(logId));
+    const targetPlant = targetLog?.plant || currentProfile?.plant || workerPlant;
     const approver = {
-      name: currentProfile?.name || "총괄관리자",
-      title: currentProfile?.title || "이사",
-      plant: currentProfile?.plant || ""
+      name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
+      title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
+      plant: currentProfile?.plant || targetPlant
     };
     const updated = await rejectWorkLog(logId, approver, reason);
     setWorkLogs(updated);
