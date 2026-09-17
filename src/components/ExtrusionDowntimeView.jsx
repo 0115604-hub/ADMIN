@@ -591,6 +591,96 @@ export const ExtrusionDowntimeView = () => {
     }
   };
 
+  // 📋 Helper: Extract files or screenshot image items from Clipboard Data (Ctrl+V)
+  const extractClipboardFiles = (clipboardData) => {
+    if (!clipboardData) return [];
+    const extractedFiles = [];
+
+    // 1. Check if files are attached in clipboard (e.g. copied from desktop/folder/explorer)
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      for (let i = 0; i < clipboardData.files.length; i++) {
+        extractedFiles.push(clipboardData.files[i]);
+      }
+    }
+
+    // 2. Check items for images/blobs (e.g. Snipping tool, Win+Shift+S, screen capture, copied image)
+    if (clipboardData.items && clipboardData.items.length > 0) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        const item = clipboardData.items[i];
+        if (item.type.startsWith("image/") || item.kind === "file") {
+          const blob = item.getAsFile();
+          if (blob) {
+            const ext = blob.type ? blob.type.split("/")[1] || "png" : "png";
+            const isGeneric = !blob.name || blob.name === "image.png" || blob.name === "blob";
+            const fileName = isGeneric
+              ? `캡처_비가동사진_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}_${Date.now().toString().slice(-4)}.${ext}`
+              : blob.name;
+            const namedFile = new File([blob], fileName, { type: blob.type || "image/png" });
+            if (!extractedFiles.some((f) => f.size === namedFile.size && f.name === namedFile.name)) {
+              extractedFiles.push(namedFile);
+            }
+          }
+        }
+      }
+    }
+
+    return extractedFiles;
+  };
+
+  // 📋 Direct Panel Paste Handler
+  const handleBatchPanelPaste = (e) => {
+    const files = extractClipboardFiles(e.clipboardData);
+    if (files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      showToast(`📋 클립보드에서 캡처/복사된 비가동 사진(${files.length}건)을 붙여넣어 자동 분석을 시작합니다!`);
+      handleBatchFilesSelect(files);
+    }
+  };
+
+  // 📋 Direct Line Card Paste Handler
+  const handleLineCardPaste = (e, lineId) => {
+    const files = extractClipboardFiles(e.clipboardData);
+    if (files.length > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { code: lineId };
+      showToast(`📋 클립보드에서 캡처/복사된 사진을 [${lineMeta.code}]에 붙여넣어 분석합니다!`);
+      if (files.length === 1) {
+        analyzeSingleLineAuto(lineId, files[0]);
+      } else {
+        handleBatchFilesSelect(files);
+      }
+    }
+  };
+
+  // 📋 Global Paste Event Listener (윈도우 전역 Ctrl+V 지원)
+  useEffect(() => {
+    const handleGlobalPaste = (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+      const isTextInput = activeTag === "input" || activeTag === "textarea" || document.activeElement?.isContentEditable;
+
+      const files = extractClipboardFiles(e.clipboardData);
+
+      // If user is currently focusing a text field and no images/files are in clipboard, let standard text paste proceed
+      if (isTextInput && files.length === 0) {
+        return;
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        showToast(`📋 클립보드에서 캡처/복사된 비가동 사진(${files.length}건)을 붙여넣어 자동 분석을 시작합니다!`);
+        handleBatchFilesSelect(files);
+      }
+    };
+
+    window.addEventListener("paste", handleGlobalPaste);
+    return () => {
+      window.removeEventListener("paste", handleGlobalPaste);
+    };
+  }, [selectedWeek, selectedLineId, dataStore, currentWeekData]);
+
   const handleBatchPanelDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1028,6 +1118,7 @@ export const ExtrusionDowntimeView = () => {
         onDragEnter={(e) => handleDragOver(e, "batch")}
         onDragLeave={(e) => handleDragLeave(e, "batch")}
         onDrop={handleBatchPanelDrop}
+        onPaste={handleBatchPanelPaste}
         className={`bg-white rounded-2xl px-3.5 py-2.5 border shadow-xs transition-all ${
           dragActiveTarget === "batch"
             ? "border-2 border-dashed border-teal-500 bg-teal-50/60 ring-4 ring-teal-500/20"
@@ -1097,6 +1188,10 @@ export const ExtrusionDowntimeView = () => {
                   onDragEnter={(e) => handleDragOver(e, line.id)}
                   onDragLeave={(e) => handleDragLeave(e, line.id)}
                   onDrop={(e) => handleLineCardDrop(e, line.id)}
+                  onPaste={(e) => {
+                    e.stopPropagation();
+                    handleLineCardPaste(e, line.id);
+                  }}
                   onClick={() => fileInputRef?.current?.click()}
                   className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-left flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none shrink-0 ${
                     isDragging
@@ -1107,7 +1202,7 @@ export const ExtrusionDowntimeView = () => {
                       ? "border-teal-400 bg-teal-50/70 shadow-xs ring-1 ring-teal-400/30"
                       : "border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300"
                   }`}
-                  title={`${line.name}: 사진을 드래그하거나 클릭하여 업로드하면 자동으로 분석됩니다.`}
+                  title={`${line.name}: 사진을 드래그하거나 클릭(또는 Ctrl+V 붙여넣기)하여 업로드하면 자동으로 분석됩니다.`}
                 >
                   <input
                     type="file"
