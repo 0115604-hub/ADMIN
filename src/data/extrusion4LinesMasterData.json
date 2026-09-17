@@ -120,7 +120,7 @@
             "isNewDay": true,
             "shift": "주간",
             "category": "승온/준비",
-            "task": "가류조 승온/작업준비",
+            "task": "가류조 승온 작업준비",
             "minutes": 150,
             "weight": 0,
             "note": "사전 승온 완료 및 필터 점검",
@@ -133,11 +133,11 @@
             "isNewDay": false,
             "shift": "주간",
             "category": "형교환",
-            "task": "LW WALK THRU 금형 T/O",
+            "task": "BC4T DR SIDE 단면 T/O 샘플압출",
             "minutes": 240,
             "weight": 0,
-            "note": "초기 금형 T/O",
-            "action": "금형 체결 및 승온 정상화"
+            "note": "샘플 2150*40개 박스포장 100개",
+            "action": "금형 T/O 및 샘플 압출 완료"
           },
           {
             "id": "pcm1_mon_3",
@@ -159,10 +159,10 @@
             "isNewDay": false,
             "shift": "야간",
             "category": "형교환",
-            "task": "SP3 DR SIDE D 형교환",
-            "minutes": 85,
-            "weight": 51,
-            "note": "SP3 단면",
+            "task": "DS DR SIDE D 형교환",
+            "minutes": 70,
+            "weight": 40,
+            "note": "제품형상불량",
             "action": "금형 교체 및 승온 정상화"
           },
           {
@@ -171,25 +171,12 @@
             "parentDay": "14일 (월)",
             "isNewDay": false,
             "shift": "야간",
-            "category": "불량/고장",
-            "task": "제품 스코치 재압출 불량",
-            "minutes": 75,
-            "weight": 85,
-            "note": "LOSS율 16.8%",
-            "action": "원인 조치 및 라인 재가동"
-          },
-          {
-            "id": "pcm1_mon_6",
-            "day": "",
-            "parentDay": "14일 (월)",
-            "isNewDay": false,
-            "shift": "야간",
-            "category": "형교환",
-            "task": "DS DR SIDE D 형교환",
-            "minutes": 70,
-            "weight": 40,
-            "note": "-",
-            "action": "금형 교체 및 승온 정상화"
+            "category": "정상생산",
+            "task": "DS DR SIDE D 생산 (특이사항없음)",
+            "minutes": 0,
+            "weight": 0,
+            "note": "특이사항없음",
+            "action": "정상 가동 완료"
           },
           {
             "id": "pcm1_tue_1",
@@ -198,10 +185,10 @@
             "isNewDay": true,
             "shift": "주간",
             "category": "정상생산",
-            "task": "DS DR SIDE D 정상생산",
+            "task": "DS DR SIDE D 생산 (특이사항없음)",
             "minutes": 0,
             "weight": 0,
-            "note": "주간 정상 가동",
+            "note": "주간 연속 정상 생산",
             "action": "특이사항 없음"
           },
           {
@@ -216,6 +203,19 @@
             "weight": 45,
             "note": "LOSS율 9.5%",
             "action": "금형 교체 및 승온 정상화"
+          },
+          {
+            "id": "pcm1_tue_3",
+            "day": "",
+            "parentDay": "15일 (화)",
+            "isNewDay": false,
+            "shift": "야간",
+            "category": "정상생산",
+            "task": "CL4 HOOD FRT 정상생산",
+            "minutes": 0,
+            "weight": 0,
+            "note": "야간 정상 가동",
+            "action": "특이사항 없음"
           }
         ],
         "totalMinutes": 785,

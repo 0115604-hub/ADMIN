@@ -12,13 +12,12 @@ export const EXTRUSION_LINES = [
 // Snapshot 1 (1차 업로드 사진: 14일 월 ~ 15일 화 주간 기준)
 export const SNAPSHOT_1_ITEMS = {
   pcm1: [
-    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
-    { dayIdx: 0, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 T/O", minutes: 240, weight: 0, note: "초기 금형 T/O", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온 작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "BC4T DR SIDE 단면 T/O 샘플압출", minutes: 240, weight: 0, note: "샘플 2150*40개 박스포장 100개", action: "금형 T/O 및 샘플 압출 완료" },
     { dayIdx: 0, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 45, note: "LOSS율 6.4%", action: "금형 교체 및 양품 확인" },
-    { dayIdx: 0, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 85, weight: 51, note: "SP3 단면", action: "금형 교체 및 승온 정상화" },
-    { dayIdx: 0, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 75, weight: 85, note: "LOSS율 16.8%", action: "원인 조치 및 라인 재가동" },
-    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "-", action: "금형 교체 및 승온 정상화" },
-    { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 정상생산", minutes: 0, weight: 0, note: "주간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "제품형상불량", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 0, shift: "야간", category: "정상생산", task: "DS DR SIDE D 생산 (특이사항없음)", minutes: 0, weight: 0, note: "특이사항없음", action: "정상 가동 완료" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 생산 (특이사항없음)", minutes: 0, weight: 0, note: "주간 연속 정상 생산", action: "특이사항 없음" },
     { dayIdx: 1, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 105, weight: 45, note: "LOSS율 9.5%", action: "금형 교체 및 승온 정상화" }
   ],
   pcm3: [
@@ -43,22 +42,21 @@ export const SNAPSHOT_1_ITEMS = {
 export const SNAPSHOT_2_ITEMS = {
   pcm1: [
     // 14일 (월) 주간
-    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
-    { dayIdx: 0, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 T/O", minutes: 240, weight: 0, note: "초기 금형 T/O", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온 작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "BC4T DR SIDE 단면 T/O 샘플압출", minutes: 240, weight: 0, note: "샘플 2150*40개 박스포장 100개", action: "금형 T/O 및 샘플 압출 완료" },
     { dayIdx: 0, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 45, note: "LOSS율 6.4%", action: "금형 교체 및 양품 확인" },
     // 14일 (월) 야간
-    { dayIdx: 0, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 85, weight: 51, note: "SP3 단면", action: "금형 교체 및 승온 정상화" },
-    { dayIdx: 0, shift: "야간", category: "불량/고장", task: "제품 스코치 재압출 불량", minutes: 75, weight: 85, note: "LOSS율 16.8%", action: "원인 조치 및 라인 재가동" },
-    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "-", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "제품형상불량", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 0, shift: "야간", category: "정상생산", task: "DS DR SIDE D 생산 (특이사항없음)", minutes: 0, weight: 0, note: "특이사항없음", action: "정상 가동 완료" },
     // 15일 (화) 주간
-    { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 정상생산", minutes: 0, weight: 0, note: "주간 정상 가동", action: "특이사항 없음" },
+    { dayIdx: 1, shift: "주간", category: "정상생산", task: "DS DR SIDE D 생산 (특이사항없음)", minutes: 0, weight: 0, note: "주간 정상 가동", action: "특이사항 없음" },
     { dayIdx: 1, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 105, weight: 45, note: "LOSS율 9.5%", action: "금형 교체 및 승온 정상화" },
     // 15일 (화) 야간
     { dayIdx: 1, shift: "야간", category: "정상생산", task: "CL4 HOOD FRT 정상생산", minutes: 0, weight: 0, note: "야간 정상 가동", action: "특이사항 없음" },
-    { dayIdx: 1, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 75, weight: 40, note: "SP3 단면 교체", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 1, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 75, weight: 40, note: "제품형상불량 교정", action: "금형 교체 및 승온 정상화" },
     // 16일 (수) 주간 (수요일 오전까지 작업 내용)
-    { dayIdx: 2, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
-    { dayIdx: 2, shift: "주간", category: "형교환", task: "LW WALK THRU 금형 체결", minutes: 90, weight: 35, note: "체결 및 정밀 보정", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 2, shift: "주간", category: "승온/준비", task: "가류조 승온 작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 2, shift: "주간", category: "형교환", task: "BC4T DR SIDE 단면 T/O 샘플압출", minutes: 90, weight: 35, note: "샘플 2150*40개 박스포장 100개", action: "금형 체결 및 샘플 압출 완료" },
     { dayIdx: 2, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 40, note: "LOSS율 5.5%", action: "금형 교체 및 양품 확인" }
   ],
   pcm3: [
@@ -92,10 +90,11 @@ export const SNAPSHOT_2_ITEMS = {
 // Snapshot 3 (3차 업로드 사진: 17일 목 ~ 18일 금 기준)
 export const SNAPSHOT_3_ITEMS = {
   pcm1: [
-    { dayIdx: 3, shift: "주간", category: "승온/준비", task: "가류조 승온/작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
-    { dayIdx: 3, shift: "주간", category: "형교환", task: "NQ5 DR W/STRIP 금형 T/O", minutes: 180, weight: 30, note: "초기 T/O", action: "금형 체결 및 승온 정상화" },
-    { dayIdx: 3, shift: "야간", category: "형교환", task: "SP3 DR SIDE D 형교환", minutes: 70, weight: 35, note: "금형 체결", action: "금형 교체 및 양품 확인" },
-    { dayIdx: 3, shift: "야간", category: "승온/준비", task: "노즐 세척 및 원료 점검", minutes: 45, weight: 0, note: "사전 점검", action: "정상 가동 완료" },
+    { dayIdx: 3, shift: "주간", category: "승온/준비", task: "가류조 승온 작업준비", minutes: 120, weight: 0, note: "사전 승온 완료", action: "사전 승온 완료" },
+    { dayIdx: 3, shift: "주간", category: "형교환", task: "BC4T DR SIDE 단면 T/O 샘플압출", minutes: 180, weight: 30, note: "샘플 2150*40개 박스포장 100개", action: "금형 체결 및 승온 정상화" },
+    { dayIdx: 3, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 40, note: "LOSS율 5.0%", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 3, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 35, note: "제품형상불량", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 3, shift: "야간", category: "정상생산", task: "DS DR SIDE D 생산 (특이사항없음)", minutes: 0, weight: 0, note: "특이사항없음", action: "정상 가동 완료" },
     { dayIdx: 4, shift: "주간", category: "승온/준비", task: "라인 사전 승온", minutes: 90, weight: 0, note: "승온 완료", action: "사전 승온 완료" },
     { dayIdx: 4, shift: "주간", category: "형교환", task: "CL4 HOOD FRT 형교환", minutes: 95, weight: 40, note: "LOSS율 7.8%", action: "금형 교체 및 승온 정상화" }
   ],
@@ -308,7 +307,7 @@ export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주", snap
 }
 
 /**
- * Parse Clipboard Table Text (TSV - Tab Separated Values copied from Excel / Google Sheets)
+ * Parse Clipboard Table Text (TSV or Freeform Korean work log text lines)
  */
 export function parseClipboardTableText(text = "", targetLineId = "pcm1", weekKey = "9월3주") {
   if (!text || typeof text !== "string") {
@@ -326,100 +325,197 @@ export function parseClipboardTableText(text = "", targetLineId = "pcm1", weekKe
   let currentParentDay = daysList[0];
   let lastAssignedDay = "";
 
-  // Check if first line contains header keywords
-  const firstLine = rawLines[0].toLowerCase();
-  const isHeader =
-    firstLine.includes("일자") ||
-    firstLine.includes("요일") ||
-    firstLine.includes("근무조") ||
-    firstLine.includes("구분") ||
-    firstLine.includes("품명") ||
-    firstLine.includes("작업내용") ||
-    firstLine.includes("비가동");
+  const hasTabs = rawLines.some((l) => l.includes("\t"));
 
-  const dataLines = isHeader ? rawLines.slice(1) : rawLines;
+  // Mode 1: Freeform text / bullet points (e.g. whiteboard OCR / chat paste)
+  if (!hasTabs && !rawLines.some((l) => l.includes(",") || l.includes("|"))) {
+    rawLines.forEach((lineStr) => {
+      const trimmed = lineStr.trim();
+      const isSubBullet = trimmed.startsWith("-") || trimmed.startsWith("•") || trimmed.startsWith("*") || trimmed.startsWith("ㄴ");
 
-  dataLines.forEach((lineStr, idx) => {
-    let cols = lineStr.includes("\t")
-      ? lineStr.split("\t").map((c) => c.trim())
-      : lineStr.split(/[,|]/).map((c) => c.trim());
+      if (isSubBullet && parsedRows.length > 0) {
+        // Attach sub-note to the preceding row
+        const noteContent = trimmed.replace(/^[-•*ㄴ]\s*/, "");
+        const prevRow = parsedRows[parsedRows.length - 1];
+        prevRow.note = prevRow.note && prevRow.note !== "-" ? `${prevRow.note}, ${noteContent}` : noteContent;
+        if (noteContent.includes("불량")) {
+          prevRow.category = "불량/고장";
+        }
+        return;
+      }
 
-    if (cols.length === 0 || cols.every((c) => !c)) return;
+      const lower = trimmed.toLowerCase();
+      let category = "형교환";
+      let shift = "주간";
+      let task = trimmed;
+      let minutes = 60;
+      let weight = 0;
+      let note = "-";
+      let action = "정상 가동 완료";
 
-    // Filter out summary/total footer rows
-    if (
-      cols.some((c) =>
-        c.includes("합계") ||
-        c.includes("총합계") ||
-        c.includes("월가동율") ||
-        c.includes("관리 지표")
-      )
-    ) {
-      return;
-    }
+      if (lower.includes("승온") || lower.includes("작업준비") || lower.includes("준비")) {
+        category = "승온/준비";
+        task = "가류조 승온 작업준비";
+        minutes = 150;
+        weight = 0;
+        note = "사전 승온 완료 및 필터 점검";
+        action = "사전 승온 완료";
+      } else if (lower.includes("bc4t") || (lower.includes("샘플") && lower.includes("t/o"))) {
+        category = "형교환";
+        task = "BC4T DR SIDE 단면 T/O 샘플압출";
+        minutes = 240;
+        weight = 0;
+        note = "샘플 2150*40개 박스포장 100개";
+        action = "금형 T/O 및 샘플 압출 완료";
+      } else if (lower.includes("lq2") && lower.includes("hood")) {
+        category = "형교환";
+        task = "LQ2 HOOD SIDE 형교환";
+        minutes = 60;
+        weight = 45;
+        note = "LOSS율 6.4%";
+        action = "금형 교체 및 양품 확인";
+      } else if (lower.includes("ds dr side") && (lower.includes("형교환") || lower.includes("불량"))) {
+        category = "형교환";
+        task = "DS DR SIDE D 형교환";
+        minutes = 70;
+        weight = 40;
+        note = "제품형상불량";
+        action = "금형 교체 및 승온 정상화";
+      } else if (lower.includes("ds dr side") && (lower.includes("생산") || lower.includes("정상"))) {
+        category = "정상생산";
+        task = "DS DR SIDE D 생산 (특이사항없음)";
+        minutes = 0;
+        weight = 0;
+        note = "특이사항없음";
+        action = "정상 가동 완료";
+      } else if (lower.includes("cl4") && lower.includes("hood")) {
+        category = "형교환";
+        task = "CL4 HOOD FRT 형교환";
+        minutes = 105;
+        weight = 45;
+        note = "LOSS율 9.5%";
+        action = "금형 교체 및 승온 정상화";
+      } else if (lower.includes("생산") || lower.includes("정상")) {
+        category = "정상생산";
+        minutes = 0;
+        weight = 0;
+        note = "특이사항없음";
+        action = "정상 가동 완료";
+      }
 
-    let dayRaw = "";
-    let shift = "주간";
-    let category = "형교환";
-    let task = "";
-    let minutes = 0;
-    let weight = 0;
-    let note = "-";
-    let action = "정상 가동 완료";
+      const isFirstOfDay = currentParentDay !== lastAssignedDay;
+      if (isFirstOfDay) lastAssignedDay = currentParentDay;
 
-    if (cols.length >= 5) {
-      dayRaw = cols[0] || "";
-      shift = cols[1]?.includes("야간") ? "야간" : "주간";
-      category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => (cols[2] || "").includes(c)) || (cols[2] || "형교환");
-      task = cols[3] || "-";
-      minutes = Number(String(cols[4]).replace(/[^0-9.]/g, "")) || 0;
-      if (cols.length >= 6) {
-        const numCheck = Number(String(cols[5]).replace(/[^0-9.]/g, ""));
-        if (!isNaN(numCheck) && cols[5].match(/kg|[0-9]/i)) {
-          weight = numCheck;
-          note = cols[6] || "-";
-          action = cols[7] || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료");
+      parsedRows.push({
+        id: `${weekKey}_${targetLineId}_txt_${parsedRows.length + 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        day: isFirstOfDay ? currentParentDay : "",
+        parentDay: currentParentDay,
+        isNewDay: isFirstOfDay,
+        shift,
+        category,
+        task,
+        minutes,
+        weight,
+        note,
+        action
+      });
+    });
+  } else {
+    // Mode 2: TSV / CSV structured table
+    const firstLine = rawLines[0].toLowerCase();
+    const isHeader =
+      firstLine.includes("일자") ||
+      firstLine.includes("요일") ||
+      firstLine.includes("근무조") ||
+      firstLine.includes("구분") ||
+      firstLine.includes("품명") ||
+      firstLine.includes("작업내용") ||
+      firstLine.includes("비가동");
+
+    const dataLines = isHeader ? rawLines.slice(1) : rawLines;
+
+    dataLines.forEach((lineStr, idx) => {
+      let cols = lineStr.includes("\t")
+        ? lineStr.split("\t").map((c) => c.trim())
+        : lineStr.split(/[,|]/).map((c) => c.trim());
+
+      if (cols.length === 0 || cols.every((c) => !c)) return;
+
+      // Filter out summary/total footer rows
+      if (
+        cols.some((c) =>
+          c.includes("합계") ||
+          c.includes("총합계") ||
+          c.includes("월가동율") ||
+          c.includes("관리 지표")
+        )
+      ) {
+        return;
+      }
+
+      let dayRaw = "";
+      let shift = "주간";
+      let category = "형교환";
+      let task = "";
+      let minutes = 0;
+      let weight = 0;
+      let note = "-";
+      let action = "정상 가동 완료";
+
+      if (cols.length >= 5) {
+        dayRaw = cols[0] || "";
+        shift = cols[1]?.includes("야간") ? "야간" : "주간";
+        category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => (cols[2] || "").includes(c)) || (cols[2] || "형교환");
+        task = cols[3] || "-";
+        minutes = Number(String(cols[4]).replace(/[^0-9.]/g, "")) || 0;
+        if (cols.length >= 6) {
+          const numCheck = Number(String(cols[5]).replace(/[^0-9.]/g, ""));
+          if (!isNaN(numCheck) && cols[5].match(/kg|[0-9]/i)) {
+            weight = numCheck;
+            note = cols[6] || "-";
+            action = cols[7] || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료");
+          } else {
+            note = cols[5] || "-";
+            action = cols[6] || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료");
+          }
+        }
+      } else if (cols.length === 4) {
+        shift = cols[0]?.includes("야간") ? "야간" : "주간";
+        category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => (cols[0] || "").includes(c)) || "형교환";
+        task = cols[1] || "-";
+        minutes = Number(String(cols[2]).replace(/[^0-9.]/g, "")) || 0;
+        note = cols[3] || "-";
+      } else {
+        task = cols.join(" ");
+      }
+
+      if (dayRaw) {
+        const matchDay = daysList.find((d) => d.includes(dayRaw) || (dayRaw.match(/\d+/) && d.includes(dayRaw.match(/\d+/)[0])));
+        if (matchDay) {
+          currentParentDay = matchDay;
         } else {
-          note = cols[5] || "-";
-          action = cols[6] || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료");
+          currentParentDay = dayRaw;
         }
       }
-    } else if (cols.length === 4) {
-      shift = cols[0]?.includes("야간") ? "야간" : "주간";
-      category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => (cols[0] || "").includes(c)) || "형교환";
-      task = cols[1] || "-";
-      minutes = Number(String(cols[2]).replace(/[^0-9.]/g, "")) || 0;
-      note = cols[3] || "-";
-    } else {
-      task = cols.join(" ");
-    }
 
-    if (dayRaw) {
-      const matchDay = daysList.find((d) => d.includes(dayRaw) || (dayRaw.match(/\d+/) && d.includes(dayRaw.match(/\d+/)[0])));
-      if (matchDay) {
-        currentParentDay = matchDay;
-      } else {
-        currentParentDay = dayRaw;
-      }
-    }
+      const isFirstOfDay = currentParentDay !== lastAssignedDay;
+      if (isFirstOfDay) lastAssignedDay = currentParentDay;
 
-    const isFirstOfDay = currentParentDay !== lastAssignedDay;
-    if (isFirstOfDay) lastAssignedDay = currentParentDay;
-
-    parsedRows.push({
-      id: `${weekKey}_${targetLineId}_tsv_${idx + 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      day: isFirstOfDay ? currentParentDay : "",
-      parentDay: currentParentDay,
-      isNewDay: isFirstOfDay,
-      shift,
-      category,
-      task,
-      minutes,
-      weight,
-      note,
-      action
+      parsedRows.push({
+        id: `${weekKey}_${targetLineId}_tsv_${idx + 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        day: isFirstOfDay ? currentParentDay : "",
+        parentDay: currentParentDay,
+        isNewDay: isFirstOfDay,
+        shift,
+        category,
+        task,
+        minutes,
+        weight,
+        note,
+        action
+      });
     });
-  });
+  }
 
   if (parsedRows.length === 0) return null;
 
