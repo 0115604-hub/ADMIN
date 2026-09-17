@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   setDoc,
+  getDoc,
   deleteDoc,
   getDocs,
   onSnapshot
@@ -237,78 +238,6 @@ export const INITIAL_APPROVAL_DOCS = [
       { role: "책임", name: "전재율", title: "책임", status: "PENDING", date: "", comment: "" },
       { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
       { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_ot_samrangjin_20260912",
-    docNumber: "ORYUK-2026-0912-SAM",
-    type: "OVERTIME",
-    typeName: "특근보고서 (취합)",
-    title: "[특근보고서] 9월 12일(토) 삼랑진공장 특근보고서 ((주)오륙)",
-    plant: "삼랑진공장",
-    department: "생산총괄 ((주)오륙 + 유성)",
-    drafter: "양인나",
-    drafterTitle: "선임",
-    createdAt: "2026-09-12 18:00",
-    content: "■ 9월 12일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙)\n• 총 투입: 54명 (443 M/H) | 총 노무비: ₩6,645,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (54명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 손주희, 이은혜, 김지연, 김미선, 정명순, 서성애, 권순미, 이정임, 한옥주, 서효선 외 39명\n\n3. 주요 작업 내용\n• 현대/기아 긴급 납품 물량 대응 및 삼랑진공장 주말 가동 완료",
-    amount: "₩6,645,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
-    steps: [
-      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-12 18:00", comment: "특근 취합 기안 상신" },
-      { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_ot_hanlim_20260912",
-    docNumber: "ORYUK-2026-0912-HAL",
-    type: "OVERTIME",
-    typeName: "특근보고서 (취합)",
-    title: "[특근보고서] 9월 12일(토) 한림공장 특근보고서 ((주)조영산업, 한울)",
-    plant: "한림공장",
-    department: "생산총괄 ((주)조영산업 + 한울 + 부림텍)",
-    drafter: "오상민",
-    drafterTitle: "선임",
-    createdAt: "2026-09-12 18:00",
-    content: "■ 9월 12일(토) [한림공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 한림공장 ((주)조영산업, 한울)\n• 총 투입: 67명 (643 M/H) | 총 노무비: ₩9,645,000\n\n2. 회사별 세부 투입 현황\n• (주)조영산업 (41명)\n  - 관리자: 이명재, 김동욱, 우창용, 오상민\n  - 작업자: 황수현, 박종미, 마이클, 아흐마드, 바하, 알리, 시로즈, 나심, 샤리프, 하산 외 27명\n• 한울 (26명)\n  - 관리자: -\n  - 작업자: 응웬반남, 쩐득토, 레반뚱, 팜반둥, 부이반뚜, 황반타이, 도반히에우, 응웬반롱, 레반득, 팜반훙 외 16명\n\n3. 주요 작업 내용\n• 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 가동 완료",
-    amount: "₩9,645,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
-    steps: [
-      { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-12 18:00", comment: "특근 취합 기안 상신" },
-      { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_ot_hanlim_20260913",
-    docNumber: "ORYUK-2026-0913-HAL",
-    type: "OVERTIME",
-    typeName: "특근보고서 (취합)",
-    title: "[특근보고서] 9월 13일(일) 한림공장 특근보고서 ((주)조영산업, 한울)",
-    plant: "한림공장",
-    department: "생산총괄 ((주)조영산업 + 한울 + 부림텍)",
-    drafter: "오상민",
-    drafterTitle: "선임",
-    createdAt: "2026-09-13 18:00",
-    content: "■ 9월 13일(일) [한림공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 한림공장 ((주)조영산업, 한울)\n• 총 투입: 15명 (122 M/H) | 총 노무비: ₩1,830,000\n\n2. 회사별 세부 투입 현황\n• (주)조영산업 (9명)\n  - 관리자: 이명재, 김동욱, 우창용, 오상민\n  - 작업자: 황수현, 마이클, 아흐마드, 바하, 알리\n• 한울 (6명)\n  - 관리자: -\n  - 작업자: 응웬반남, 쩐득토, 레반뚱, 팜반둥, 부이반뚜, 황반타이\n\n3. 주요 작업 내용\n• 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 가동 완료",
-    amount: "₩1,830,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
-    steps: [
-      { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-13 18:00", comment: "특근 취합 기안 상신" },
-      { role: "책임", name: "김동욱", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
     ],
     rejectReason: "",
     holdReason: ""
@@ -828,8 +757,20 @@ export const saveApprovalDocument = async (docData, options = {}) => {
 // Approve Step
 export const approveDocumentStep = async (docId, stepIndex, approverName, comment = "승인") => {
   const current = getLocalApprovalDocs();
-  const target = current.find((d) => d.id === docId);
-  if (!target) return current;
+  let target = current.find((d) => d.id === docId);
+
+  // If target missing locally or incomplete, fetch live from Firestore
+  if (!target || !target.steps || target.steps.length === 0) {
+    try {
+      const snap = await getDoc(doc(db, COLLECTION_NAME, docId));
+      if (snap.exists()) {
+        target = { id: snap.id, ...snap.data() };
+      }
+    } catch (e) {
+      console.warn("Could not fetch remote doc in approveDocumentStep:", e);
+    }
+  }
+  if (!target || !target.steps) return current;
 
   const nowStr = new Date().toLocaleString("ko-KR", {
     year: "numeric",
@@ -1149,7 +1090,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         continue;
       }
 
-      // 🧹 1. Clean any duplicate or opposing (ot vs att) approval documents for this plant and date
+      // 🧹 1. Clean duplicate approval documents for this plant and date (while preserving approved steps if any)
       const duplicateDocs = currentApprovalDocs.filter(d => 
         d.id !== canonicalDocId &&
         (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
@@ -1161,7 +1102,11 @@ export const syncPlantOvertimeToApprovalBox = async ({
         )
       );
 
+      let duplicateApprovedSteps = null;
       for (const dup of duplicateDocs) {
+        if (Array.isArray(dup.steps) && dup.steps.some(st => st.status === "APPROVED")) {
+          duplicateApprovedSteps = dup.steps;
+        }
         await removeApprovalDocSilently(dup.id);
       }
 
@@ -1262,7 +1207,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         continue;
       }
 
-      const existingDoc = getLocalApprovalDocs().find(d => 
+      // ⭐ 1. Check local cache
+      const localDoc = getLocalApprovalDocs().find(d => 
         d.id === canonicalDocId ||
         (d.plant === targetPlant && (d.type === "OVERTIME" || d.type === "ATTENDANCE") && (
           (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
@@ -1270,6 +1216,24 @@ export const syncPlantOvertimeToApprovalBox = async ({
           (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
         ))
       );
+
+      // ⭐ 2. Fetch live Cloud Firestore doc to prevent overwriting cloud approvals
+      let cloudDoc = null;
+      try {
+        const docSnap = await getDoc(doc(db, COLLECTION_NAME, canonicalDocId));
+        if (docSnap.exists()) {
+          cloudDoc = { id: docSnap.id, ...docSnap.data() };
+        }
+      } catch (e) {
+        console.warn("Could not fetch remote doc in syncPlantOvertimeToApprovalBox:", e);
+      }
+
+      const existingDoc = cloudDoc || localDoc;
+      const priorSteps = Array.isArray(cloudDoc?.steps) && cloudDoc.steps.length > 0
+        ? cloudDoc.steps
+        : (Array.isArray(localDoc?.steps) && localDoc.steps.length > 0
+            ? localDoc.steps
+            : (duplicateApprovedSteps || []));
 
       const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "오상민";
       const drafterTitle = "선임";
@@ -1301,39 +1265,86 @@ ${breakdownText || "• 등록된 근로자 명단 취합 완료"}
 3. 주요 작업 내용
 ${taskHeader}`;
 
-      // Build or preserve steps
-      let steps;
-      if (existingDoc && existingDoc.steps && existingDoc.steps.length === 4) {
-        steps = existingDoc.steps.map(st => {
-          if (st.role === "이사") {
-            return { ...st, name: "이명재", title: "이사" };
-          }
-          return st;
-        });
+      // ⭐ Build 4-Step Approval Seal Line with Strict Preservation of Existing Approvals (김동욱, 윤경수, 이명재, 대표이사 등)
+      const step0 = {
+        role: "담당",
+        name: priorSteps[0]?.name || drafterName,
+        title: priorSteps[0]?.title || drafterTitle,
+        status: "APPROVED",
+        date: priorSteps[0]?.date || nowStr,
+        comment: priorSteps[0]?.comment || draftComment
+      };
+
+      const isStep1Approved = priorSteps[1]?.status === "APPROVED";
+      const isStep1Hold = priorSteps[1]?.status === "HOLD";
+      const isStep1Rejected = priorSteps[1]?.status === "REJECTED";
+      const step1 = {
+        role: "책임",
+        name: priorSteps[1]?.name || leadName,
+        title: priorSteps[1]?.title || "책임",
+        status: isStep1Approved ? "APPROVED" : (isStep1Hold ? "HOLD" : (isStep1Rejected ? "REJECTED" : "PENDING")),
+        date: priorSteps[1]?.date || "",
+        comment: priorSteps[1]?.comment || ""
+      };
+
+      const isStep2Approved = priorSteps[2]?.status === "APPROVED";
+      const isStep2Hold = priorSteps[2]?.status === "HOLD";
+      const isStep2Rejected = priorSteps[2]?.status === "REJECTED";
+      const step2 = {
+        role: "이사",
+        name: "이명재",
+        title: "이사",
+        status: isStep2Approved ? "APPROVED" : (isStep2Hold ? "HOLD" : (isStep2Rejected ? "REJECTED" : (isStep1Approved ? "PENDING" : "WAITING"))),
+        date: priorSteps[2]?.date || "",
+        comment: priorSteps[2]?.comment || ""
+      };
+
+      const isStep3Approved = priorSteps[3]?.status === "APPROVED";
+      const isStep3Hold = priorSteps[3]?.status === "HOLD";
+      const isStep3Rejected = priorSteps[3]?.status === "REJECTED";
+      const step3 = {
+        role: "대표",
+        name: priorSteps[3]?.name === "최미영" ? "최미영" : "대표이사",
+        title: priorSteps[3]?.title || (priorSteps[3]?.name === "최미영" ? "전무" : "대표"),
+        status: isStep3Approved ? "APPROVED" : (isStep3Hold ? "HOLD" : (isStep3Rejected ? "REJECTED" : (isStep2Approved ? "PENDING" : "WAITING"))),
+        date: priorSteps[3]?.date || "",
+        comment: priorSteps[3]?.comment || ""
+      };
+
+      const steps = [step0, step1, step2, step3];
+      const approvedCount = steps.filter(st => st.status === "APPROVED").length;
+
+      let finalDocStatus = "IN_PROGRESS";
+      let finalCurrentStep = 2;
+      if (approvedCount === 4) {
+        finalDocStatus = "APPROVED";
+        finalCurrentStep = 4;
+      } else if (steps.some(st => st.status === "REJECTED")) {
+        finalDocStatus = "REJECTED";
+        finalCurrentStep = steps.findIndex(st => st.status === "REJECTED") + 1;
+      } else if (steps.some(st => st.status === "HOLD")) {
+        finalDocStatus = "HOLD";
+        finalCurrentStep = steps.findIndex(st => st.status === "HOLD") + 1;
       } else {
-        steps = [
-          { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: nowStr, comment: draftComment },
-          { role: "책임", name: leadName, title: "책임", status: "PENDING", date: "", comment: "" },
-          { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-          { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "" }
-        ];
+        finalDocStatus = "IN_PROGRESS";
+        finalCurrentStep = Math.min(approvedCount + 1, 4);
       }
 
       const approvalDoc = normalizeApprovalDoc({
         id: canonicalDocId,
-        docNumber: `ORYUK-2026-09${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
+        docNumber: existingDoc?.docNumber || `ORYUK-2026-09${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
         type: docType,
         typeName: docTypeName,
         title,
         plant: targetPlant,
         department,
-        drafter: drafterName,
-        drafterTitle,
+        drafter: step0.name,
+        drafterTitle: step0.title,
         createdAt: existingDoc?.createdAt || nowStr,
         content,
         amount: `₩${totalPlantCost.toLocaleString()}`,
-        status: existingDoc?.status || "IN_PROGRESS",
-        currentStep: existingDoc?.currentStep || 2,
+        status: finalDocStatus,
+        currentStep: finalCurrentStep,
         steps,
         rejectReason: existingDoc?.rejectReason || "",
         holdReason: existingDoc?.holdReason || ""

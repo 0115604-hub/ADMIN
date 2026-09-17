@@ -212,18 +212,23 @@ export const ElectronicApprovalView = () => {
     images: []
   });
 
+  const selectedDocRef = useRef(selectedDoc);
+  useEffect(() => {
+    selectedDocRef.current = selectedDoc;
+  }, [selectedDoc]);
+
   // Real-time Cloud Synchronization & Overtime Synthesis
   useEffect(() => {
-    syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("Auto-sync overtime approval error:", e));
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
-      if (selectedDoc) {
-        const found = docs.find((d) => d.id === selectedDoc.id);
+      if (selectedDocRef.current) {
+        const found = docs.find((d) => d.id === selectedDocRef.current.id);
         if (found) setSelectedDoc(found);
       }
     });
+    syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("Auto-sync overtime approval error:", e));
     return () => unsub();
-  }, [selectedDoc?.id]);
+  }, []);
 
   // Sync draft form with logged-in user
   useEffect(() => {
