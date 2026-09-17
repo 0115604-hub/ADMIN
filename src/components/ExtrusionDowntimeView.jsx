@@ -26,12 +26,21 @@ import {
   Eye,
   FileText,
   FileCheck,
-  Folder
+  Folder,
+  ZoomIn
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import * as XLSX from "xlsx";
 import masterExtrusionData from "../data/extrusion4LinesMasterData.json";
-import { analyzeExtrusionImageFile, EXTRUSION_LINES, detectExtrusionLine, generateVerifiedRows } from "../utils/extrusionImageParser";
+import {
+  analyzeExtrusionImageFile,
+  parseClipboardTableText,
+  parseExcelFile,
+  EXTRUSION_LINES,
+  detectExtrusionLine,
+  generateVerifiedRows,
+  SNAPSHOT_METADATA
+} from "../utils/extrusionImageParser";
 
 // Standard Manufacturing Calendar Mapping (월요일 ~ 일요일 기준)
 export const WEEK_CALENDAR_MAP = {
@@ -273,6 +282,7 @@ export const ExtrusionDowntimeView = () => {
   const [monthFilter, setMonthFilter] = useState("전체"); // "전체" | "7월" | "8월" | "9월" | "10월" ...
   const [toastMessage, setToastMessage] = useState("");
   const [dragActiveTarget, setDragActiveTarget] = useState(null); // null | "batch" | "pcm1" | "pcm3" | "pvc" | "tpe"
+  const [photoPreviewModal, setPhotoPreviewModal] = useState({ isOpen: false, url: null, title: "" });
 
   const activeWeekTabRef = useRef(null);
   const weekScrollContainerRef = useRef(null);
@@ -456,14 +466,14 @@ export const ExtrusionDowntimeView = () => {
     }
   };
 
-  // Automatic OCR Analysis directly on single file drop/select
+  // Automatic OCR & Excel Analysis directly on single file drop/select
   const analyzeSingleLineAuto = async (lineId, file, explicitSnapshot = null) => {
     if (!file && !explicitSnapshot) return;
     const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { name: lineId, code: lineId };
     const fileName = file ? file.name : `스냅샷 ${explicitSnapshot}차 적용`;
 
     setAnalyzingLines((prev) => ({ ...prev, [lineId]: true }));
-    showToast(`⚡ [${lineMeta.name}] 이전 실적 삭제 및 최근 사진(${fileName}) 분석 중...`);
+    showToast(`⚡ [${lineMeta.name}] 이전 실적 삭제 및 최근 사진/엑셀(${fileName}) 분석 중...`);
 
     try {
       const currentLineObj = dataStore[lineId] || {};
@@ -479,7 +489,7 @@ export const ExtrusionDowntimeView = () => {
         targetSnapshot: explicitSnapshot
       });
 
-      if (result.success && result.rows && result.rows.length > 0) {
+      if (result && result.success && result.rows && result.rows.length > 0) {
         setDataStore((prev) => {
           const nextStore = { ...prev };
           const lineObj = { ...(nextStore[lineId] || {}) };
@@ -491,6 +501,7 @@ export const ExtrusionDowntimeView = () => {
             rows: [...result.rows],
             totalMinutes: result.totalMinutes,
             totalWeight: result.totalWeight,
+            uploadedPhotoUrl: result.photoUrl || (file instanceof Blob && result.isImage ? result.photoUrl : weeklyData[selectedWeek]?.uploadedPhotoUrl || null),
             lastUploadedFileName: fileName,
             lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
             uploadCount: uploadCount,
@@ -507,7 +518,7 @@ export const ExtrusionDowntimeView = () => {
         const snapLabel = result.snapshotIdx === 1 ? "1차 (화요일까지)" : result.snapshotIdx === 2 ? "2차 (수요일 오전까지)" : "3차 (목/금요일)";
         showToast(`🔄 [${lineMeta.name}] 이전 데이터 삭제 완료! [${snapLabel}] 파일(${fileName}, ${result.rows.length}건) 기준으로 즉각 재표기되었습니다.`);
       } else {
-        showToast(`⚠️ [${lineMeta.name}] 사진 분석 완료 (기본 서식 적용)`);
+        showToast(`⚠️ [${lineMeta.name}] 파일 분석 완료`);
       }
     } catch (err) {
       console.error("Auto OCR Analysis error:", err);
@@ -546,6 +557,24 @@ export const ExtrusionDowntimeView = () => {
     });
 
     showToast(`🔄 [${currentLineName}] ${snapLabel} 실적(${rows.length}건)으로 즉시 반영되었습니다!`);
+  };
+
+  const handleRemovePhoto = (lineId = selectedLineId) => {
+    setDataStore((prev) => {
+      const nextStore = { ...prev };
+      const lineObj = { ...(nextStore[lineId] || {}) };
+      const weeklyData = { ...(lineObj.weeklyData || {}) };
+      if (weeklyData[selectedWeek]) {
+        weeklyData[selectedWeek] = {
+          ...weeklyData[selectedWeek],
+          uploadedPhotoUrl: null
+        };
+      }
+      lineObj.weeklyData = weeklyData;
+      nextStore[lineId] = lineObj;
+      return nextStore;
+    });
+    showToast("🗑️ 첨부된 사진 미리보기가 제거되었습니다.");
   };
 
   // Batch drop or multi-file selection auto analyzer
@@ -627,52 +656,82 @@ export const ExtrusionDowntimeView = () => {
     return extractedFiles;
   };
 
-  // 📋 Direct Panel Paste Handler
-  const handleBatchPanelPaste = (e) => {
+  // 📋 Central Clipboard Event Handler (Supporting Images & TSV Excel text via Ctrl+V)
+  const handleClipboardPasteEvent = (e, targetLineId = selectedLineId) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+    const isTextInput = activeTag === "input" || activeTag === "textarea" || document.activeElement?.isContentEditable;
+
+    // 1. Check if files or screenshot images exist
     const files = extractClipboardFiles(e.clipboardData);
     if (files.length > 0) {
       e.preventDefault();
       e.stopPropagation();
-      showToast(`📋 클립보드에서 캡처/복사된 비가동 사진(${files.length}건)을 붙여넣어 자동 분석을 시작합니다!`);
-      handleBatchFilesSelect(files);
+      const lineMeta = EXTRUSION_LINES.find((l) => l.id === targetLineId) || { name: targetLineId, code: targetLineId };
+      showToast(`📋 클립보드에서 캡처/복사된 비가동 사진(${files.length}건)을 [${lineMeta.code}]에 붙여넣어 자동 분석합니다!`);
+      if (files.length === 1) {
+        analyzeSingleLineAuto(targetLineId, files[0]);
+      } else {
+        handleBatchFilesSelect(files);
+      }
+      return true;
     }
+
+    // 2. Check if text (e.g. copied rows from Excel table) is in clipboard
+    const text = e.clipboardData?.getData("text") || "";
+    if (text) {
+      const hasTableStructure = text.includes("\t") || text.split(/\r?\n/).filter(Boolean).length > 1;
+      if (!isTextInput || hasTableStructure) {
+        const parsedRes = parseClipboardTableText(text, targetLineId, selectedWeek);
+        if (parsedRes && parsedRes.rows && parsedRes.rows.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          const lineMeta = EXTRUSION_LINES.find((l) => l.id === targetLineId) || { name: targetLineId, code: targetLineId };
+
+          setDataStore((prev) => {
+            const nextStore = { ...prev };
+            const lineObj = { ...(nextStore[targetLineId] || {}) };
+            const weeklyData = { ...(lineObj.weeklyData || {}) };
+
+            weeklyData[selectedWeek] = {
+              ...(weeklyData[selectedWeek] || currentWeekData),
+              rows: [...parsedRes.rows],
+              totalMinutes: parsedRes.totalMinutes,
+              totalWeight: parsedRes.totalWeight,
+              lastUploadedFileName: `클립보드 엑셀 복사 표 (${parsedRes.rows.length}건)`,
+              lastUploadedAt: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+              snapshotIdx: 2,
+              _updatedAt: Date.now()
+            };
+
+            lineObj.weeklyData = weeklyData;
+            nextStore[targetLineId] = lineObj;
+            return nextStore;
+          });
+
+          setSelectedLineId(targetLineId);
+          showToast(`📋 [${lineMeta.name}] 클립보드 엑셀 복사 표(${parsedRes.rows.length}건)가 즉시 반영되었습니다!`);
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // 📋 Direct Panel Paste Handler
+  const handleBatchPanelPaste = (e) => {
+    handleClipboardPasteEvent(e, selectedLineId);
   };
 
   // 📋 Direct Line Card Paste Handler
   const handleLineCardPaste = (e, lineId) => {
-    const files = extractClipboardFiles(e.clipboardData);
-    if (files.length > 0) {
-      e.preventDefault();
-      e.stopPropagation();
-      const lineMeta = EXTRUSION_LINES.find((l) => l.id === lineId) || { code: lineId };
-      showToast(`📋 클립보드에서 캡처/복사된 사진을 [${lineMeta.code}]에 붙여넣어 분석합니다!`);
-      if (files.length === 1) {
-        analyzeSingleLineAuto(lineId, files[0]);
-      } else {
-        handleBatchFilesSelect(files);
-      }
-    }
+    handleClipboardPasteEvent(e, lineId);
   };
 
   // 📋 Global Paste Event Listener (윈도우 전역 Ctrl+V 지원)
   useEffect(() => {
     const handleGlobalPaste = (e) => {
-      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
-      const isTextInput = activeTag === "input" || activeTag === "textarea" || document.activeElement?.isContentEditable;
-
-      const files = extractClipboardFiles(e.clipboardData);
-
-      // If user is currently focusing a text field and no images/files are in clipboard, let standard text paste proceed
-      if (isTextInput && files.length === 0) {
-        return;
-      }
-
-      if (files.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        showToast(`📋 클립보드에서 캡처/복사된 비가동 사진(${files.length}건)을 붙여넣어 자동 분석을 시작합니다!`);
-        handleBatchFilesSelect(files);
-      }
+      handleClipboardPasteEvent(e, selectedLineId);
     };
 
     window.addEventListener("paste", handleGlobalPaste);
@@ -1139,7 +1198,7 @@ export const ExtrusionDowntimeView = () => {
               type="file"
               ref={batchFileInputRef}
               multiple
-              accept="image/*"
+              accept="image/*, .xlsx, .xls, .csv"
               className="hidden"
               onChange={(e) => {
                 handleBatchFilesSelect(e.target.files);
@@ -1152,7 +1211,7 @@ export const ExtrusionDowntimeView = () => {
               className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black border border-slate-200 flex items-center gap-1 transition active:scale-95 cursor-pointer ml-1"
             >
               <UploadCloud className="w-3.5 h-3.5 text-slate-500" />
-              <span>파일 선택</span>
+              <span>파일/사진 선택</span>
             </button>
 
             <button
@@ -1173,7 +1232,7 @@ export const ExtrusionDowntimeView = () => {
             )}
           </div>
 
-          {/* Right: 4 Compact Line Droppable Chips (Single row 1-line, Folder icon, no '드롭' text) */}
+          {/* Right: 4 Compact Line Droppable & Pastable Chips with TabIndex & Keyboard Focus */}
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto shrink-0 flex-nowrap py-0.5">
             {EXTRUSION_LINES.map((line) => {
               const isAnalyzing = analyzingLines[line.id];
@@ -1184,6 +1243,17 @@ export const ExtrusionDowntimeView = () => {
               return (
                 <div
                   key={line.id}
+                  tabIndex={0}
+                  role="button"
+                  onFocus={() => setSelectedLineId(line.id)}
+                  onClick={() => setSelectedLineId(line.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedLineId(line.id);
+                      fileInputRef?.current?.click();
+                    }
+                  }}
                   onDragOver={(e) => handleDragOver(e, line.id)}
                   onDragEnter={(e) => handleDragOver(e, line.id)}
                   onDragLeave={(e) => handleDragLeave(e, line.id)}
@@ -1192,22 +1262,21 @@ export const ExtrusionDowntimeView = () => {
                     e.stopPropagation();
                     handleLineCardPaste(e, line.id);
                   }}
-                  onClick={() => fileInputRef?.current?.click()}
-                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-left flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none shrink-0 ${
+                  className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-left flex items-center justify-between gap-1.5 sm:gap-2 transition-all cursor-pointer select-none shrink-0 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${
                     isDragging
                       ? "border-2 border-teal-500 bg-teal-100 ring-2 ring-teal-500/40 scale-102"
                       : isAnalyzing
                       ? "border-indigo-400 bg-indigo-50 ring-2 ring-indigo-400/30"
                       : isSelected
-                      ? "border-teal-400 bg-teal-50/70 shadow-xs ring-1 ring-teal-400/30"
+                      ? "border-teal-400 bg-teal-50/70 shadow-xs ring-1 ring-teal-400/30 font-bold"
                       : "border-slate-200 bg-slate-50/70 hover:bg-slate-100 hover:border-slate-300"
                   }`}
-                  title={`${line.name}: 사진을 드래그하거나 클릭(또는 Ctrl+V 붙여넣기)하여 업로드하면 자동으로 분석됩니다.`}
+                  title={`${line.name}: 클릭하여 선택하거나, 사진/엑셀을 드래그 또는 선택(또는 선택 후 Ctrl+V 붙여넣기)하세요.`}
                 >
                   <input
                     type="file"
                     ref={fileInputRef}
-                    accept="image/*"
+                    accept="image/*, .xlsx, .xls, .csv"
                     className="hidden"
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
@@ -1231,9 +1300,20 @@ export const ExtrusionDowntimeView = () => {
                       <span>분석중</span>
                     </span>
                   ) : (
-                    <Folder className={`w-3.5 h-3.5 shrink-0 transition ${
-                      isSelected ? "text-teal-600" : "text-slate-400 hover:text-teal-600"
-                    }`} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedLineId(line.id);
+                        fileInputRef?.current?.click();
+                      }}
+                      title={`${line.code} 파일 선택 열기`}
+                      className="p-0.5 rounded hover:bg-slate-200/60 transition cursor-pointer"
+                    >
+                      <Folder className={`w-3.5 h-3.5 shrink-0 transition ${
+                        isSelected ? "text-teal-600" : "text-slate-400 hover:text-teal-600"
+                      }`} />
+                    </button>
                   )}
                 </div>
               );
@@ -1408,6 +1488,109 @@ export const ExtrusionDowntimeView = () => {
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
+          </div>
+        </div>
+
+        {/* 📷 Photo Verification Banner & Fast Snapshot Sync Controls */}
+        <div className="bg-slate-100/90 px-4 py-2.5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            {currentWeekData.uploadedPhotoUrl ? (
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPhotoPreviewModal({
+                      isOpen: true,
+                      url: currentWeekData.uploadedPhotoUrl,
+                      title: `${currentLineName} - [${selectedWeek}] 첨부 비가동 사진 원본`
+                    })
+                  }
+                  title="클릭하여 원본 사진 크게보기"
+                  className="relative group shrink-0 w-12 h-10 rounded-lg overflow-hidden border border-teal-400/80 shadow-xs cursor-pointer hover:ring-2 hover:ring-teal-500 transition"
+                >
+                  <img
+                    src={currentWeekData.uploadedPhotoUrl}
+                    alt="첨부 비가동 사진 미리보기"
+                    className="w-full h-full object-cover group-hover:scale-110 transition duration-200"
+                  />
+                  <div className="absolute inset-0 bg-slate-900/30 group-hover:bg-slate-900/10 flex items-center justify-center transition">
+                    <ZoomIn className="w-4 h-4 text-white drop-shadow" />
+                  </div>
+                </button>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-black text-slate-800 text-xs truncate max-w-[240px]">
+                      📷 {currentWeekData.lastUploadedFileName || "비가동 원본 사진"}
+                    </span>
+                    <span className="text-[10px] text-teal-700 bg-teal-50 font-bold px-1.5 py-0.5 rounded border border-teal-200">
+                      사진 실시간 연동됨
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                    <span>업로드: {currentWeekData.lastUploadedAt || "방금"}</span>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPhotoPreviewModal({
+                          isOpen: true,
+                          url: currentWeekData.uploadedPhotoUrl,
+                          title: `${currentLineName} - [${selectedWeek}] 첨부 비가동 사진 원본`
+                        })
+                      }
+                      className="text-teal-700 font-bold hover:underline cursor-pointer flex items-center gap-0.5"
+                    >
+                      <Eye className="w-3 h-3" /> 원본 사진 크게보기
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhoto(selectedLineId)}
+                      className="text-rose-600 font-bold hover:underline cursor-pointer"
+                    >
+                      사진 삭제
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-600">
+                <ImageIcon className="w-4 h-4 text-slate-400" />
+                <span className="font-bold text-slate-700 text-xs">
+                  {currentWeekData.lastUploadedFileName
+                    ? `📄 적용된 자료: ${currentWeekData.lastUploadedFileName}`
+                    : "📷 비가동 사진/엑셀을 상단에 드롭하거나 Ctrl+V로 붙여넣으면 즉시 분석 및 연동됩니다."}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Snapshot Toggle Controls (1차 / 2차 / 3차) */}
+          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+            <span className="text-[11px] font-black text-slate-500 mr-0.5">실적 기준 전환:</span>
+            {[
+              { idx: 1, label: "1차 (화요일까지)", desc: "14~15일 8건" },
+              { idx: 2, label: "⭐ 2차 (수요일 오전까지)", desc: "14~16일 13건 (최신)" },
+              { idx: 3, label: "3차 (목/금요일)", desc: "17~18일" }
+            ].map((snap) => {
+              const isActive = (currentWeekData.snapshotIdx || 2) === snap.idx;
+              return (
+                <button
+                  key={snap.idx}
+                  type="button"
+                  onClick={() => handleApplySnapshot(snap.idx)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-black transition cursor-pointer active:scale-95 flex items-center gap-1 ${
+                    isActive
+                      ? "bg-teal-700 text-white shadow-xs ring-2 ring-teal-500/30"
+                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  }`}
+                  title={`${snap.desc}으로 상세 실적표 즉시 동기화`}
+                >
+                  <span>{snap.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1655,6 +1838,83 @@ export const ExtrusionDowntimeView = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 📷 원본 비가동 사진 고해상도 확대 모달 */}
+      {photoPreviewModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl overflow-hidden shadow-2xl w-full max-w-5xl max-h-[92vh] flex flex-col animate-scaleUp">
+            {/* Header */}
+            <div className="px-5 py-3.5 bg-slate-800/95 border-b border-slate-700 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-white">{photoPreviewModal.title}</h3>
+                  <p className="text-[11px] text-slate-400">
+                    업로드된 원본 비가동 사진과 아래 실적표 내용을 대조하여 확인하실 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPhotoPreviewModal({ isOpen: false, url: null, title: "" })}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Photo Body */}
+            <div className="p-4 overflow-auto flex-1 flex items-center justify-center bg-slate-950/90 min-h-[360px]">
+              {photoPreviewModal.url ? (
+                <img
+                  src={photoPreviewModal.url}
+                  alt="비가동 원본 사진"
+                  className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl border border-slate-800"
+                />
+              ) : (
+                <div className="text-slate-500 text-sm">표시할 사진이 없습니다.</div>
+              )}
+            </div>
+
+            {/* Footer with Snapshot Fast Apply */}
+            <div className="px-5 py-3 bg-slate-800/95 border-t border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-slate-300">사진에 맞춰 실적표 동기화:</span>
+                {[
+                  { idx: 1, label: "1차 (화요일까지 실적)" },
+                  { idx: 2, label: "2차 (수요일 오전까지 누적 실적)" },
+                  { idx: 3, label: "3차 (목/금요일 실적)" }
+                ].map((s) => (
+                  <button
+                    key={s.idx}
+                    type="button"
+                    onClick={() => {
+                      handleApplySnapshot(s.idx);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition cursor-pointer ${
+                      currentWeekData.snapshotIdx === s.idx
+                        ? "bg-teal-600 text-white font-black ring-1 ring-teal-400"
+                        : "bg-slate-700 text-slate-200 hover:bg-slate-600"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPhotoPreviewModal({ isOpen: false, url: null, title: "" })}
+                className="px-4 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-black transition cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       )}

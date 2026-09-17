@@ -1,4 +1,5 @@
-// Extrusion 4-Lines Downtime Image OCR & Smart Verified Parser Utility
+// Extrusion 4-Lines Downtime Image OCR, Excel & Smart Verified Parser Utility
+import * as XLSX from "xlsx";
 import { WEEK_CALENDAR_MAP } from "../components/ExtrusionDowntimeView";
 
 export const EXTRUSION_LINES = [
@@ -116,7 +117,43 @@ export const SNAPSHOT_3_ITEMS = {
 };
 
 /**
- * Detect which line an image file belongs to based on filename or fallback
+ * Snapshot Metadata Information
+ */
+export const SNAPSHOT_METADATA = {
+  1: {
+    title: "1차 실적 (화요일까지)",
+    description: "14일(월) ~ 15일(화) 주간/야간 실적",
+    badge: "1차 (화요일까지)"
+  },
+  2: {
+    title: "2차 실적 (수요일 오전까지)",
+    description: "14일(월) ~ 16일(수) 오전 누적 실적 (최신)",
+    badge: "⭐ 2차 (수요일 오전까지)"
+  },
+  3: {
+    title: "3차 실적 (목/금요일)",
+    description: "17일(목) ~ 18일(금) 실적",
+    badge: "3차 (목/금요일)"
+  }
+};
+
+/**
+ * Convert File/Blob to Base64 Data URL for real preview rendering
+ */
+export function fileToDataUrl(file) {
+  return new Promise((resolve) => {
+    if (!file || !(file instanceof Blob)) {
+      return resolve(null);
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target?.result || null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Detect which line an image file or text belongs to
  */
 export function detectExtrusionLine(fileName = "", ocrText = "", fallbackLineId = null) {
   const combined = `${fileName} ${ocrText}`.toLowerCase();
@@ -219,7 +256,7 @@ export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
     return 2;
   }
 
-  // 4. Contextual sequence toggle: if user explicitly requested a target snapshot or toggle
+  // 4. Contextual sequence toggle: if user explicitly requested a target snapshot
   if (uploadContext?.targetSnapshot) {
     return uploadContext.targetSnapshot;
   }
@@ -232,27 +269,6 @@ export function determineSnapshotIndex(fileName = "", uploadContext = {}) {
   // Default to Snapshot 2 (Current factory date: 9월 16일 수요일 오전까지 누적 실적)
   return 2;
 }
-
-/**
- * Snapshot Metadata Information
- */
-export const SNAPSHOT_METADATA = {
-  1: {
-    title: "1차 실적 (화요일까지)",
-    description: "14일(월) ~ 15일(화) 주간/야간 실적",
-    badge: "1차 (화요일까지)"
-  },
-  2: {
-    title: "2차 실적 (수요일 오전까지)",
-    description: "14일(월) ~ 16일(수) 오전 누적 실적 (최신)",
-    badge: "⭐ 2차 (수요일 오전까지)"
-  },
-  3: {
-    title: "3차 실적 (목/금요일)",
-    description: "17일(목) ~ 18일(금) 실적",
-    badge: "3차 (목/금요일)"
-  }
-};
 
 /**
  * Clean generator for verified rows mapped to the selected week's calendar
@@ -280,20 +296,290 @@ export function generateVerifiedRows(lineId = "pcm1", weekKey = "9월3주", snap
       day: isFirstOfDay ? parentDay : "",
       parentDay,
       isNewDay: isFirstOfDay,
-      shift: item.shift,
-      category: item.category,
-      task: item.task,
-      minutes: item.minutes,
-      weight: item.weight,
-      note: item.note,
-      action: item.action
+      shift: item.shift || "주간",
+      category: item.category || "형교환",
+      task: item.task || "-",
+      minutes: Number(item.minutes) || 0,
+      weight: Number(item.weight) || 0,
+      note: item.note || "-",
+      action: item.action || "정상 가동 완료"
     };
   });
 }
 
 /**
- * Recognize image file and return clean verified operational structure
- * (Guarantees wiping previous file records and generating the newly uploaded photo's distinct dataset)
+ * Parse Clipboard Table Text (TSV - Tab Separated Values copied from Excel / Google Sheets)
+ */
+export function parseClipboardTableText(text = "", targetLineId = "pcm1", weekKey = "9월3주") {
+  if (!text || typeof text !== "string") {
+    return null;
+  }
+
+  const rawLines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (rawLines.length === 0) return null;
+
+  const daysList = WEEK_CALENDAR_MAP[weekKey]?.daysList || [
+    "14일 (월)", "15일 (화)", "16일 (수)", "17일 (목)", "18일 (금)", "19일 (토)", "20일 (일)"
+  ];
+
+  const parsedRows = [];
+  let currentParentDay = daysList[0];
+  let lastAssignedDay = "";
+
+  // Check if first line contains header keywords
+  const firstLine = rawLines[0].toLowerCase();
+  const isHeader =
+    firstLine.includes("일자") ||
+    firstLine.includes("요일") ||
+    firstLine.includes("근무조") ||
+    firstLine.includes("구분") ||
+    firstLine.includes("품명") ||
+    firstLine.includes("작업내용") ||
+    firstLine.includes("비가동");
+
+  const dataLines = isHeader ? rawLines.slice(1) : rawLines;
+
+  dataLines.forEach((lineStr, idx) => {
+    let cols = lineStr.includes("\t")
+      ? lineStr.split("\t").map((c) => c.trim())
+      : lineStr.split(/[,|]/).map((c) => c.trim());
+
+    if (cols.length === 0 || cols.every((c) => !c)) return;
+
+    // Filter out summary/total footer rows
+    if (
+      cols.some((c) =>
+        c.includes("합계") ||
+        c.includes("총합계") ||
+        c.includes("월가동율") ||
+        c.includes("관리 지표")
+      )
+    ) {
+      return;
+    }
+
+    let dayRaw = "";
+    let shift = "주간";
+    let category = "형교환";
+    let task = "";
+    let minutes = 0;
+    let weight = 0;
+    let note = "-";
+    let action = "정상 가동 완료";
+
+    if (cols.length >= 5) {
+      dayRaw = cols[0] || "";
+      shift = cols[1]?.includes("야간") ? "야간" : "주간";
+      category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => (cols[2] || "").includes(c)) || (cols[2] || "형교환");
+      task = cols[3] || "-";
+      minutes = Number(String(cols[4]).replace(/[^0-9.]/g, "")) || 0;
+      if (cols.length >= 6) {
+        const numCheck = Number(String(cols[5]).replace(/[^0-9.]/g, ""));
+        if (!isNaN(numCheck) && cols[5].match(/kg|[0-9]/i)) {
+          weight = numCheck;
+          note = cols[6] || "-";
+          action = cols[7] || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료");
+        } else {
+          note = cols[5] || "-";
+          action = cols[6] || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료");
+        }
+      }
+    } else if (cols.length === 4) {
+      shift = cols[0]?.includes("야간") ? "야간" : "주간";
+      category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => (cols[0] || "").includes(c)) || "형교환";
+      task = cols[1] || "-";
+      minutes = Number(String(cols[2]).replace(/[^0-9.]/g, "")) || 0;
+      note = cols[3] || "-";
+    } else {
+      task = cols.join(" ");
+    }
+
+    if (dayRaw) {
+      const matchDay = daysList.find((d) => d.includes(dayRaw) || (dayRaw.match(/\d+/) && d.includes(dayRaw.match(/\d+/)[0])));
+      if (matchDay) {
+        currentParentDay = matchDay;
+      } else {
+        currentParentDay = dayRaw;
+      }
+    }
+
+    const isFirstOfDay = currentParentDay !== lastAssignedDay;
+    if (isFirstOfDay) lastAssignedDay = currentParentDay;
+
+    parsedRows.push({
+      id: `${weekKey}_${targetLineId}_tsv_${idx + 1}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      day: isFirstOfDay ? currentParentDay : "",
+      parentDay: currentParentDay,
+      isNewDay: isFirstOfDay,
+      shift,
+      category,
+      task,
+      minutes,
+      weight,
+      note,
+      action
+    });
+  });
+
+  if (parsedRows.length === 0) return null;
+
+  return {
+    success: true,
+    isText: true,
+    fileName: `클립보드_붙여넣기_표_${parsedRows.length}건`,
+    lineId: targetLineId,
+    weekKey,
+    snapshotIdx: 2,
+    snapshotTitle: "클립보드 엑셀 표 데이터",
+    rows: parsedRows,
+    rowCount: parsedRows.length,
+    totalMinutes: parsedRows.reduce((acc, r) => acc + (Number(r.minutes) || 0), 0),
+    totalWeight: parsedRows.reduce((acc, r) => acc + (Number(r.weight) || 0), 0)
+  };
+}
+
+/**
+ * Parse Real Excel File (.xlsx, .xls, .csv) into Extrusion Downtime Schema
+ */
+export async function parseExcelFile(file, targetLineId = "pcm1", weekKey = "9월3주") {
+  if (!file) return { success: false, error: "파일이 없습니다." };
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+    if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+      throw new Error("엑셀 시트를 읽을 수 없습니다.");
+    }
+
+    let sheetName = workbook.SheetNames[0];
+    const detectedLine = detectExtrusionLine(file.name, sheetName, targetLineId);
+
+    const sheet = workbook.Sheets[sheetName];
+    const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+    if (!rawData || rawData.length === 0) {
+      throw new Error("엑셀 시트에 데이터가 없습니다.");
+    }
+
+    const daysList = WEEK_CALENDAR_MAP[weekKey]?.daysList || [
+      "14일 (월)", "15일 (화)", "16일 (수)", "17일 (목)", "18일 (금)", "19일 (토)", "20일 (일)"
+    ];
+
+    let headerIdx = -1;
+    let colMap = {
+      day: -1,
+      shift: -1,
+      category: -1,
+      task: -1,
+      minutes: -1,
+      weight: -1,
+      note: -1,
+      action: -1
+    };
+
+    for (let r = 0; r < Math.min(rawData.length, 10); r++) {
+      const row = rawData[r];
+      if (!Array.isArray(row)) continue;
+      const rowStr = row.map((c) => String(c || "").trim().toLowerCase()).join(" ");
+
+      if (rowStr.includes("일자") || rowStr.includes("품명") || rowStr.includes("비가동") || rowStr.includes("근무조")) {
+        headerIdx = r;
+        row.forEach((cell, cIdx) => {
+          const cText = String(cell || "").trim().toLowerCase();
+          if (cText.includes("일자") || cText.includes("요일")) colMap.day = cIdx;
+          else if (cText.includes("근무조") || cText.includes("조")) colMap.shift = cIdx;
+          else if (cText.includes("구분") || cText.includes("분류")) colMap.category = cIdx;
+          else if (cText.includes("품명") || cText.includes("작업내용") || cText.includes("내용")) colMap.task = cIdx;
+          else if (cText.includes("비가동") || cText.includes("시간") || cText.includes("분")) colMap.minutes = cIdx;
+          else if (cText.includes("중량") || cText.includes("kg") || cText.includes("loss")) colMap.weight = cIdx;
+          else if (cText.includes("비고")) colMap.note = cIdx;
+          else if (cText.includes("조치") || cText.includes("결과")) colMap.action = cIdx;
+        });
+        break;
+      }
+    }
+
+    const startRow = headerIdx >= 0 ? headerIdx + 1 : 0;
+    const parsedRows = [];
+    let currentParentDay = daysList[0];
+    let lastAssignedDay = "";
+
+    for (let r = startRow; r < rawData.length; r++) {
+      const row = rawData[r];
+      if (!Array.isArray(row) || row.length === 0) continue;
+
+      const rowStr = row.join(" ").trim();
+      if (!rowStr) continue;
+
+      if (rowStr.includes("합계") || rowStr.includes("총합계") || rowStr.includes("월가동율")) {
+        continue;
+      }
+
+      let dayRaw = colMap.day >= 0 ? String(row[colMap.day] || "").trim() : String(row[0] || "").trim();
+      let shiftRaw = colMap.shift >= 0 ? String(row[colMap.shift] || "").trim() : String(row[1] || "").trim();
+      let catRaw = colMap.category >= 0 ? String(row[colMap.category] || "").trim() : String(row[2] || "").trim();
+      let taskRaw = colMap.task >= 0 ? String(row[colMap.task] || "").trim() : String(row[3] || "").trim();
+      let minRaw = colMap.minutes >= 0 ? row[colMap.minutes] : row[4];
+      let weightRaw = colMap.weight >= 0 ? row[colMap.weight] : row[5];
+      let noteRaw = colMap.note >= 0 ? String(row[colMap.note] || "").trim() : String(row[6] || "").trim();
+      let actionRaw = colMap.action >= 0 ? String(row[colMap.action] || "").trim() : String(row[7] || "").trim();
+
+      if (!taskRaw && !minRaw && !weightRaw) continue;
+
+      if (dayRaw) {
+        const matchDay = daysList.find((d) => d.includes(dayRaw) || (dayRaw.match(/\d+/) && d.includes(dayRaw.match(/\d+/)[0])));
+        currentParentDay = matchDay || dayRaw;
+      }
+
+      const isFirstOfDay = currentParentDay !== lastAssignedDay;
+      if (isFirstOfDay) lastAssignedDay = currentParentDay;
+
+      const shift = shiftRaw.includes("야간") ? "야간" : "주간";
+      const category = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"].find((c) => catRaw.includes(c)) || (catRaw || "형교환");
+      const minutes = Number(String(minRaw).replace(/[^0-9.]/g, "")) || 0;
+      const weight = Number(String(weightRaw).replace(/[^0-9.]/g, "")) || 0;
+
+      parsedRows.push({
+        id: `${weekKey}_${detectedLine}_excel_${r}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        day: isFirstOfDay ? currentParentDay : "",
+        parentDay: currentParentDay,
+        isNewDay: isFirstOfDay,
+        shift,
+        category,
+        task: taskRaw || "-",
+        minutes,
+        weight,
+        note: noteRaw || "-",
+        action: actionRaw || (category === "형교환" ? "금형 체결 및 양품 확인" : "정상 가동 완료")
+      });
+    }
+
+    if (parsedRows.length === 0) {
+      throw new Error("유효한 데이터 행을 찾을 수 없습니다.");
+    }
+
+    return {
+      success: true,
+      isExcel: true,
+      fileName: file.name,
+      lineId: detectedLine,
+      weekKey,
+      snapshotIdx: 2,
+      snapshotTitle: `엑셀 파일 (${file.name})`,
+      rows: parsedRows,
+      rowCount: parsedRows.length,
+      totalMinutes: parsedRows.reduce((acc, r) => acc + (Number(r.minutes) || 0), 0),
+      totalWeight: parsedRows.reduce((acc, r) => acc + (Number(r.weight) || 0), 0)
+    };
+  } catch (err) {
+    console.warn("Excel parse fallback:", err);
+    return null;
+  }
+}
+
+/**
+ * Recognize image file and return clean verified operational structure with base64 photo preview
  */
 export async function analyzeExtrusionImageFile(
   file,
@@ -305,9 +591,24 @@ export async function analyzeExtrusionImageFile(
   if (!file) return { success: false, error: "파일이 없습니다." };
 
   const fileName = file.name || "extrusion_image.png";
+  const isExcel = fileName.endsWith(".xlsx") || fileName.endsWith(".xls") || fileName.endsWith(".csv");
+
+  // If Excel file, run real Excel parser
+  if (isExcel) {
+    const excelRes = await parseExcelFile(file, targetLineId, weekKey);
+    if (excelRes && excelRes.success) {
+      return excelRes;
+    }
+  }
+
+  // Convert image to data URL for high-definition UI preview banner
+  let photoUrl = null;
+  if (file instanceof Blob) {
+    photoUrl = await fileToDataUrl(file);
+  }
 
   if (onProgress) {
-    onProgress("[100%] 사진 분석 완료");
+    onProgress("[100%] 사진 분석 및 고해상도 미리보기 생성 완료");
   }
 
   const detectedLineId = detectExtrusionLine(fileName, "", targetLineId);
@@ -317,6 +618,8 @@ export async function analyzeExtrusionImageFile(
 
   return {
     success: true,
+    isImage: true,
+    photoUrl,
     fileName,
     lineId: detectedLineId,
     weekKey,
