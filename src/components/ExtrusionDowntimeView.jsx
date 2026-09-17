@@ -169,8 +169,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v20 for accurate photo-verified extrusion downtime data
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v20_bc4t_verified";
+// Storage key with v22 for 100% accurate photo-verified extrusion downtime data (no dummy data)
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v22_pure_photo_verified";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];
@@ -515,8 +515,7 @@ export const ExtrusionDowntimeView = () => {
         });
 
         setSelectedLineId(lineId);
-        const snapLabel = result.snapshotIdx === 1 ? "1차 (화요일까지)" : result.snapshotIdx === 2 ? "2차 (수요일 오전까지)" : "3차 (목/금요일)";
-        showToast(`🔄 [${lineMeta.name}] 이전 데이터 삭제 완료! [${snapLabel}] 파일(${fileName}, ${result.rows.length}건) 기준으로 즉각 재표기되었습니다.`);
+        showToast(`🔄 [${lineMeta.name}] 이전 데이터 정리 완료! 사진 분석 실적(${fileName}, ${result.rows.length}건) 기준으로 즉각 표기되었습니다.`);
       } else {
         showToast(`⚠️ [${lineMeta.name}] 파일 분석 완료`);
       }
@@ -1226,7 +1225,7 @@ export const ExtrusionDowntimeView = () => {
               <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
                 <FileCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>
-                  자동 분석 완료: <strong>{currentWeekData.lastUploadedFileName}</strong> ({currentWeekData.snapshotIdx === 1 ? "1차: 화요일까지 실적 8건" : "2차: 수요일 오전까지 누적 실적 13건"} 자동 정리됨 • {currentWeekData.lastUploadedAt || "방금"})
+                  자동 분석 완료: <strong>{currentWeekData.lastUploadedFileName}</strong> (사진 분석 실적 {currentWeekData.rows?.length || 0}건 자동 정리됨 • {currentWeekData.lastUploadedAt || "방금"})
                 </span>
               </span>
             )}

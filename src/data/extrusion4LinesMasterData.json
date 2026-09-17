@@ -114,7 +114,7 @@
         ],
         "rows": [
           {
-            "id": "pcm1_mon_1",
+            "id": "pcm1_1",
             "day": "14일 (월)",
             "parentDay": "14일 (월)",
             "isNewDay": true,
@@ -127,7 +127,7 @@
             "action": "사전 승온 완료"
           },
           {
-            "id": "pcm1_mon_2",
+            "id": "pcm1_2",
             "day": "",
             "parentDay": "14일 (월)",
             "isNewDay": false,
@@ -140,7 +140,7 @@
             "action": "금형 T/O 및 샘플 압출 완료"
           },
           {
-            "id": "pcm1_mon_3",
+            "id": "pcm1_3",
             "day": "",
             "parentDay": "14일 (월)",
             "isNewDay": false,
@@ -153,7 +153,7 @@
             "action": "금형 교체 및 양품 확인"
           },
           {
-            "id": "pcm1_mon_4",
+            "id": "pcm1_4",
             "day": "",
             "parentDay": "14일 (월)",
             "isNewDay": false,
@@ -166,7 +166,7 @@
             "action": "금형 교체 및 승온 정상화"
           },
           {
-            "id": "pcm1_mon_5",
+            "id": "pcm1_5",
             "day": "",
             "parentDay": "14일 (월)",
             "isNewDay": false,
@@ -177,49 +177,10 @@
             "weight": 0,
             "note": "특이사항없음",
             "action": "정상 가동 완료"
-          },
-          {
-            "id": "pcm1_tue_1",
-            "day": "15일 (화)",
-            "parentDay": "15일 (화)",
-            "isNewDay": true,
-            "shift": "주간",
-            "category": "정상생산",
-            "task": "DS DR SIDE D 생산 (특이사항없음)",
-            "minutes": 0,
-            "weight": 0,
-            "note": "주간 연속 정상 생산",
-            "action": "특이사항 없음"
-          },
-          {
-            "id": "pcm1_tue_2",
-            "day": "",
-            "parentDay": "15일 (화)",
-            "isNewDay": false,
-            "shift": "주간",
-            "category": "형교환",
-            "task": "CL4 HOOD FRT 형교환",
-            "minutes": 105,
-            "weight": 45,
-            "note": "LOSS율 9.5%",
-            "action": "금형 교체 및 승온 정상화"
-          },
-          {
-            "id": "pcm1_tue_3",
-            "day": "",
-            "parentDay": "15일 (화)",
-            "isNewDay": false,
-            "shift": "야간",
-            "category": "정상생산",
-            "task": "CL4 HOOD FRT 정상생산",
-            "minutes": 0,
-            "weight": 0,
-            "note": "야간 정상 가동",
-            "action": "특이사항 없음"
           }
         ],
-        "totalMinutes": 785,
-        "totalWeight": 266
+        "totalMinutes": 520,
+        "totalWeight": 85
       }
     },
     "monthlyOperatingRates": {

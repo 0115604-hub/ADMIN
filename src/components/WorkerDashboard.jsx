@@ -191,7 +191,7 @@ const TIME_OPTIONS_30MIN = [
 ];
 
 // Storage key for Extrusion 4-Lines Downtime Data
-const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_4lines_v20_bc4t_verified";
+const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_4lines_v22_pure_photo_verified";
 
 const DEFAULT_EXTRUSION_OP_RATES = {
   pcm1: { "7월": "94.2%", "8월": "95.1%", "9월": "93.4%", default: "93.0%" },
@@ -235,10 +235,6 @@ export const getExtrusionSummaryData = () => {
         sepMin += Number(r.minutes || 0);
       });
     });
-    if (sepMin === 0) {
-      const fallbackMin = { pcm1: 570, pcm3: 690, pvc: 1440, tpe: 180 };
-      sepMin = fallbackMin[key] || 570;
-    }
     const sepHours = (sepMin / 60).toFixed(1) + "h";
 
     // 7월, 8월, 9월 월별 추이 (수기로 넣은 데이터 완벽 연동)
