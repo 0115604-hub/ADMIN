@@ -56,12 +56,12 @@ export const INITIAL_WORK_LOGS = [
     issues: "특이사항 없음",
     images: [],
     maintenanceItems: [],
-    approvalStatus: "결재대기",
-    approverName: "",
-    approverTitle: "",
+    approvalStatus: "결재완료",
+    approverName: "김동욱",
+    approverTitle: "책임",
     approverPlant: "한림공장",
-    approvedAt: "",
-    approvalComment: "",
+    approvedAt: "2026-09-17 17:35",
+    approvalComment: "작업 표준 준수 확인 및 전자결재 승인 완료.",
     createdAt: "09.17 08:30",
     updatedAt: "2026-09-17T08:35:00.000Z"
   },
@@ -296,7 +296,7 @@ export const INITIAL_WORK_LOGS = [
 ];
 
 const COLLECTION_NAME = "work_logs";
-const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v11_individual";
+const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v12_dongwook_approved_sync";
 
 // Deep clean object for Firestore
 function sanitizeLog(obj) {
