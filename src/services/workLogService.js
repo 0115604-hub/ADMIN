@@ -56,12 +56,12 @@ export const INITIAL_WORK_LOGS = [
     issues: "특이사항 없음",
     images: [],
     maintenanceItems: [],
-    approvalStatus: "결재완료",
-    approverName: "김동욱",
-    approverTitle: "책임",
+    approvalStatus: "결재대기",
+    approverName: "",
+    approverTitle: "",
     approverPlant: "한림공장",
-    approvedAt: "2026-09-17 17:35",
-    approvalComment: "작업 표준 준수 확인 및 전자결재 승인 완료.",
+    approvedAt: "",
+    approvalComment: "",
     createdAt: "09.17 08:30",
     updatedAt: "2026-09-17T08:35:00.000Z"
   },
@@ -296,7 +296,7 @@ export const INITIAL_WORK_LOGS = [
 ];
 
 const COLLECTION_NAME = "work_logs";
-const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v10_approved";
+const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v11_individual";
 
 // Deep clean object for Firestore
 function sanitizeLog(obj) {
@@ -346,33 +346,27 @@ export const parseLogFields = (log) => {
   return parsed;
 };
 
-// Ensure log has correct authoritative approval status
+// Ensure log has correct authoritative approval status (Respects individual status, no blanket forced approval)
 export const normalizeWorkLogApproval = (log) => {
-  if (!log) return log;
+  if (!log || typeof log !== "object") return log;
   const parsed = parseLogFields(log);
 
-  // If plant is 한림공장 and approval is missing or pending on seed/standard records
-  if (parsed.plant === "한림공장") {
-    if (!parsed.approvalStatus || parsed.approvalStatus === "결재대기" || !parsed.approverName) {
-      if (String(parsed.id).startsWith("seed_") || ["우창용", "오상민"].includes(parsed.writer)) {
-        parsed.approvalStatus = "결재완료";
-        parsed.approverName = "김동욱";
-        parsed.approverTitle = "책임";
-        parsed.approverPlant = "한림공장";
-        parsed.approvedAt = parsed.approvedAt || "2026-09-17 17:30";
-        parsed.approvalComment = parsed.approvalComment || "한림공장 총괄관리자 김동욱 책임 전자결재 승인 완료";
-      }
+  // Default approval status to pending if not present
+  if (!parsed.approvalStatus) {
+    parsed.approvalStatus = "결재대기";
+  }
+
+  // If already approved, ensure approver metadata is populated cleanly
+  if (parsed.approvalStatus === "결재완료" || parsed.approvalStatus === "APPROVED") {
+    parsed.approvalStatus = "결재완료";
+    if (!parsed.approverName) {
+      parsed.approverName = parsed.plant === "삼랑진공장" ? "이명재" : "김동욱";
     }
-  } else if (parsed.plant === "삼랑진공장") {
-    if (!parsed.approvalStatus || parsed.approvalStatus === "결재대기" || !parsed.approverName) {
-      if (String(parsed.id).startsWith("seed_") || ["설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"].includes(parsed.writer)) {
-        parsed.approvalStatus = "결재완료";
-        parsed.approverName = "이명재";
-        parsed.approverTitle = "이사";
-        parsed.approverPlant = "삼랑진공장";
-        parsed.approvedAt = parsed.approvedAt || "2026-09-17 17:30";
-        parsed.approvalComment = parsed.approvalComment || "삼랑진공장 총괄관리자 이명재 이사 전자결재 승인 완료";
-      }
+    if (!parsed.approverTitle) {
+      parsed.approverTitle = parsed.plant === "삼랑진공장" ? "이사" : "책임";
+    }
+    if (!parsed.approverPlant) {
+      parsed.approverPlant = parsed.plant || (parsed.approverName === "이명재" ? "삼랑진공장" : "한림공장");
     }
   }
 
@@ -574,12 +568,12 @@ export const saveWorkLog = async (newLog) => {
     throw new Error("결재가 완료된 업무일지는 수정할 수 없습니다.");
   }
 
-  const cleanData = sanitizeLog(newLog);
-  const logData = {
-    ...cleanData,
+  const logToSave = {
+    approvalStatus: newLog.approvalStatus || "결재대기",
+    ...newLog,
     id: logId,
     updatedAt: new Date().toISOString(),
-    createdAt: cleanData.createdAt || new Date().toLocaleString("ko-KR", {
+    createdAt: newLog.createdAt || new Date().toLocaleString("ko-KR", {
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
@@ -587,13 +581,16 @@ export const saveWorkLog = async (newLog) => {
     })
   };
 
+  const cleanData = sanitizeLog(logToSave);
+  const parsedClean = parseLogFields(cleanData);
+
   // 1. Update local cache immediately
-  const updatedLocal = [parseLogFields(logData), ...current.filter((l) => String(l.id) !== logId)];
+  const updatedLocal = [parsedClean, ...current.filter((l) => String(l.id) !== logId)];
   saveLocalWorkLogs(updatedLocal);
 
   // 2. Sync to Firestore cloud
   try {
-    await setDoc(doc(db, COLLECTION_NAME, logId), logData);
+    await setDoc(doc(db, COLLECTION_NAME, logId), cleanData);
     console.log("Work log successfully synced to Firestore cloud:", logId);
   } catch (e) {
     console.error("Firestore cloud sync error:", e);

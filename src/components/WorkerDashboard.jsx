@@ -801,6 +801,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const handleOpenLogDetail = (log) => {
     pushModalHistory("worklog_detail");
     setSelectedLogDetail(log);
+    setApprovalCommentInput(log?.approvalComment || "");
   };
 
   const handleOpenQualityPopup = (it) => {
