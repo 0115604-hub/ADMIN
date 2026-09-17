@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { syncPlantOvertimeToApprovalBox } from "./approvalService";
+import { sanitizeForFirestore } from "../utils/firestoreUtils";
 
 // ⭐ 공장별 소속 협력업체 취합 체계 (Plant-to-Company Mapping)
 // 삼랑진공장: (주)오륙, 유성
@@ -458,24 +459,49 @@ export const saveOvertimeReport = async (report) => {
     ...report,
     id: reportId,
     title: finalTitle,
-    workDate: report.workDate,
+    workDate: report.workDate || "",
     workDateFormatted: formatKoreanWorkDate(report.workDate),
     updatedAt: now,
     author: report.author || "작성자",
     authorTitle: report.authorTitle || "선임",
-    items: report.items || [],
+    items: (report.items || []).map((it, idx) => ({
+      id: it.id || `rep_item_${report.workDate || "day"}_${idx}_${it.workerName || idx}`,
+      no: it.no || (idx + 1),
+      company: it.company || "",
+      factory: it.factory || "",
+      dept: it.dept || "",
+      line: it.line || "",
+      category: it.category || it.line || "",
+      workerName: it.workerName || "",
+      position: it.position || "작업원",
+      attendanceCode: it.attendanceCode || "",
+      startTime: it.startTime || "08:00",
+      endTime: it.endTime || "17:00",
+      hours: Number(it.hours) || 0,
+      otHours: Number(it.otHours) || 0,
+      count: Number(it.count) || 1,
+      workContent: it.workContent || "",
+      workDetails: it.workDetails || ""
+    })),
     reasons: (report.reasons || []).map(r => {
       if (dayOfWeek && /\([일월화수목금토]\)|\(평일\)/.test(r)) {
         return r.replace(/\([일월화수목금토]\)|\(평일\)/g, `(${dayOfWeek})`);
       }
       return r;
     }),
-    approval: report.approval || [
-      { role: "담당", name: report.author || "담당", status: "완료" },
-      { role: "책임", name: report.plant === "한림공장" ? "김동욱" : "윤경수", status: "완료" },
-      { role: "이사", name: "이명재", status: "완료" },
-      { role: "대표", name: "권태형", status: "완료" }
-    ]
+    approval: (report.approval || [
+      { role: "담당", name: report.author || "담당", title: "선임", status: "APPROVED", date: "", comment: "기안" },
+      { role: "책임", name: report.plant === "한림공장" ? "김동욱" : "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: "권태형", title: "대표", status: "WAITING", date: "" }
+    ]).map(st => ({
+      role: st.role || "담당",
+      name: st.name || "작성자",
+      title: st.title || "선임",
+      status: st.status || "WAITING",
+      date: st.date || "",
+      comment: st.comment || ""
+    }))
   };
 
   const currentReports = getLocalOvertimeReports();
@@ -492,9 +518,10 @@ export const saveOvertimeReport = async (report) => {
   updatedReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
   saveLocalOvertimeReports(updatedReports);
 
-  // Sync to Cloud Firestore
+  // Sync to Cloud Firestore with recursive sanitization
   try {
-    await setDoc(doc(db, COLLECTION_NAME, cleanReport.id), cleanReport, { merge: true });
+    const payload = sanitizeForFirestore(cleanReport);
+    await setDoc(doc(db, COLLECTION_NAME, cleanReport.id), payload, { merge: true });
   } catch (e) {
     console.warn("Firestore overtime save error:", e);
   }

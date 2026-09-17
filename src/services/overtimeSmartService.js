@@ -9,6 +9,7 @@ import {
 import { db } from "../firebase.js";
 import * as XLSX from "xlsx";
 import { INITIAL_SMART_OVERTIME_DATA } from "../data/masterOvertimeSmartData.js";
+import { sanitizeForFirestore } from "../utils/firestoreUtils.js";
 
 const STORAGE_KEY = "oryuk_smart_overtime_data_v2_sept";
 const FIRESTORE_DOC_ID = "overtime_2026_09";
@@ -715,13 +716,13 @@ export const saveSmartOvertimeData = async (data) => {
       const ref = doc(db, "smart_overtime_ledger", FIRESTORE_DOC_ID);
       await setDoc(
         ref,
-        {
+        sanitizeForFirestore({
           year: normalizedData.year || 2026,
           month: normalizedData.month || 9,
           masterWorkers: normalizedData.masterWorkers || [],
           attendanceMatrix: normalizedData.attendanceMatrix || [],
           updatedAt: new Date().toISOString()
-        },
+        }),
         { merge: true }
       );
     }

@@ -998,40 +998,52 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
   const handleOpenRegistrationReportModal = () => {
-    const d = selectedDay;
+    const d = selectedDay || 8;
     const isWk = isWeekendByDate(d);
     const dayLabel = getDayOfWeekKorean(d);
     const reportType = isWk ? "특근보고서" : "근태보고서";
 
-    const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-    const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
+    const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
+    const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
+      company: selectedCompanyFilter || "전체",
+      plant: "전사",
+      author: "양인나 선임",
+      drafter: "양인나",
+      drafterRole: "선임",
+      lead: "윤경수",
+      leadRole: "책임",
+      director: "이명재",
+      directorRole: "이사",
+      ceo: "권태형",
+      ceoRole: "대표"
+    };
 
-    const attendedCount = filteredAttendanceWorkers.filter(w => {
+    const attendedCount = (filteredAttendanceWorkers || []).filter(w => {
       const val = w.daily ? w.daily[d] : "";
       const { isAttended, workHours } = calculateWorkerDailyHours(val);
       return isAttended && workHours > 0;
     }).length;
 
-    const totalHours = filteredAttendanceWorkers.reduce((sum, w) => {
+    const totalHours = (filteredAttendanceWorkers || []).reduce((sum, w) => {
       const val = w.daily ? w.daily[d] : "";
       const { workHours } = calculateWorkerDailyHours(val);
       return sum + (workHours || 0);
     }, 0);
 
-    setReportModalTitle(`9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`);
-    setReportModalAuthor(compMeta.author || "양인나");
+    setReportModalTitle(`9월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`);
+    setReportModalAuthor(compMeta.author || compMeta.drafter || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
     // ⭐ 해당 회사 관리자들로 결재란 자동 구성 (담당: 승인, 책임: 결재대기, 이사/대표: 대기)
     setReportApprovalSteps([
-      { role: "담당", name: compMeta.drafter, title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "기안" },
-      { role: "책임", name: compMeta.lead, title: compMeta.leadRole || "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: compMeta.director, title: compMeta.directorRole || "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: compMeta.ceo, title: compMeta.ceoRole || "대표", status: "WAITING", date: "" }
+      { role: "담당", name: compMeta.drafter || "담당", title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "기안" },
+      { role: "책임", name: compMeta.lead || "책임", title: compMeta.leadRole || "책임", status: "PENDING", date: "", comment: "" },
+      { role: "이사", name: compMeta.director || "이사", title: compMeta.directorRole || "이사", status: "WAITING", date: "", comment: "" },
+      { role: "대표", name: compMeta.ceo || "대표", title: compMeta.ceoRole || "대표", status: "WAITING", date: "", comment: "" }
     ]);
 
     setReportModalNotes(
-      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
+      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant || "전사"} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
     );
 
     handleOpenReportModal();
@@ -1042,18 +1054,32 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setIsSaving(true);
     try {
       // 1. Save smart overtime ledger to Firestore & LocalStorage
-      await saveSmartOvertimeData(smartData);
+      if (smartData) {
+        await saveSmartOvertimeData(smartData);
+      }
       
       // 2. Generate and save company-specific report record
-      const d = selectedDay;
+      const d = selectedDay || 8;
       const isWk = isWeekendByDate(d);
       const dayLabel = getDayOfWeekKorean(d);
       const reportType = isWk ? "특근보고서" : "근태보고서";
-      const compLabel = selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
-      const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"];
-      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant} ${compLabel} ${reportType}`;
+      const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
+      const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
+        company: selectedCompanyFilter || "전체",
+        plant: "전사",
+        author: "양인나 선임",
+        drafter: "양인나",
+        drafterRole: "선임",
+        lead: "윤경수",
+        leadRole: "책임",
+        director: "이명재",
+        directorRole: "이사",
+        ceo: "권태형",
+        ceoRole: "대표"
+      };
+      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
 
-      const items = filteredAttendanceWorkers.filter(w => {
+      const items = (filteredAttendanceWorkers || []).filter(w => {
         const val = w.daily ? w.daily[d] : "";
         const { isAttended, workHours } = calculateWorkerDailyHours(val);
         return isAttended && workHours > 0;
@@ -1061,52 +1087,60 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         const val = w.daily ? w.daily[d] : "";
         const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
         return {
-          id: `rep_item_${d}_${w.no || idx}_${w.name}`,
+          id: `rep_item_${d}_${w.no || idx}_${w.name || idx}`,
           no: idx + 1,
-          company: w.company,
-          factory: getPlantForCompany(w.company),
-          dept: normalizeDept(w.dept),
-          line: w.line || normalizeDept(w.dept),
-          category: w.line || normalizeDept(w.dept),
-          workerName: w.name,
+          company: w.company || "",
+          factory: getPlantForCompany(w.company) || compMeta.plant || "",
+          dept: normalizeDept(w.dept) || "",
+          line: w.line || normalizeDept(w.dept) || "",
+          category: w.line || normalizeDept(w.dept) || "",
+          workerName: w.name || "",
           position: w.position || "작업원",
-          attendanceCode: val,
+          attendanceCode: val || "",
           startTime: "08:00",
           endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : "17:00",
           hours: workHours || 8,
           otHours: (weekdayOt + weekendOt) || 0,
           count: 1,
-          workContent: `${w.company} ${normalizeDept(w.dept)} 작업 수행`,
-          workDetails: `${w.company} ${normalizeDept(w.dept)} ${w.line || ""} 생산 및 납품 대응`
+          workContent: `${w.company || ""} ${normalizeDept(w.dept) || ""} 작업 수행`,
+          workDetails: `${w.company || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} 생산 및 납품 대응`
         };
       });
 
       const totalHours = items.reduce((sum, it) => sum + (Number(it.hours) || 0), 0);
       const cost = totalHours * 15000;
 
-      const compCleanSlug = selectedCompanyFilter === "전체" ? "all" : selectedCompanyFilter.replace(/[()]/g, "");
+      const compCleanSlug = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "all" : String(selectedCompanyFilter).replace(/[()]/g, "").trim();
       const companyReport = {
         id: `report_${compCleanSlug}_2026_09_${String(d).padStart(2, "0")}`,
-        plant: compMeta.plant,
-        company: selectedCompanyFilter,
+        plant: compMeta.plant || "전사",
+        company: selectedCompanyFilter || "전체",
         companies: selectedCompanyFilter === "전체" ? COMPANIES : [selectedCompanyFilter],
         title: finalReportTitle,
         reportType: reportType,
         workDate: `2026-09-${String(d).padStart(2, "0")}`,
         workDateFormatted: `2026-09-${String(d).padStart(2, "0")} (${dayLabel})`,
-        author: reportModalAuthor || "작성자",
-        authorTitle: reportModalAuthorTitle || "선임",
+        author: reportModalAuthor || compMeta.drafter || "작성자",
+        authorTitle: reportModalAuthorTitle || compMeta.drafterRole || "선임",
         updatedAt: new Date().toISOString(),
         status: "IN_PROGRESS",
-        approval: reportApprovalSteps,
+        approval: (reportApprovalSteps || []).map(step => ({
+          role: step.role || "담당",
+          name: step.name || "작성자",
+          title: step.title || "선임",
+          status: step.status || "WAITING",
+          date: step.date || "",
+          comment: step.comment || ""
+        })),
         totalWorkers: items.length,
         totalHours: totalHours,
         cost: cost,
         items: items,
-        reasons: reportModalNotes.split("\n").filter(Boolean)
+        reasons: (reportModalNotes || "").split("\n").filter(Boolean)
       };
 
-      const updatedReports = [companyReport, ...legacyReports.filter((r) => r.id !== companyReport.id)];
+      const currentReports = legacyReports || [];
+      const updatedReports = [companyReport, ...currentReports.filter((r) => r.id !== companyReport.id)];
       await saveOvertimeReport(companyReport);
       setLegacyReports(updatedReports);
       
@@ -1114,13 +1148,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       // 삼랑진공장: (주)오륙 + 유성 취합 ➔ 결재함 자동 등록
       // 한림공장: (주)조영산업 + 한울 + 부림텍 취합 ➔ 결재함 자동 등록
       if (isWk) {
-        await syncPlantOvertimeToApprovalBox({
-          plant: selectedCompanyFilter === "전체" ? null : compMeta.plant,
-          company: selectedCompanyFilter,
-          workDate: `2026-09-${String(d).padStart(2, "0")}`,
-          matrix: smartData.attendanceMatrix,
-          reports: updatedReports
-        });
+        try {
+          await syncPlantOvertimeToApprovalBox({
+            plant: selectedCompanyFilter === "전체" ? null : compMeta.plant,
+            company: selectedCompanyFilter,
+            workDate: `2026-09-${String(d).padStart(2, "0")}`,
+            matrix: smartData.attendanceMatrix,
+            reports: updatedReports
+          });
+        } catch (syncErr) {
+          console.warn("Approval sync warning:", syncErr);
+        }
       }
       
       setHasUnsavedChanges(false);
@@ -1134,7 +1172,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
     } catch (err) {
       console.error(err);
-      alert("등록 중 오류가 발생했습니다: " + err.message);
+      alert("등록 중 오류가 발생했습니다: " + (err?.message || err));
     } finally {
       setIsSaving(false);
     }

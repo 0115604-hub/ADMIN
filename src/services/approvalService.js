@@ -14,6 +14,7 @@ import {
   sendApprovalRejectTelegram
 } from "./telegramService";
 import { isThisWeek, getThisWeekDateRange } from "../utils/dateUtils";
+import { sanitizeForFirestore } from "../utils/firestoreUtils";
 
 const COLLECTION_NAME = "approval_documents";
 const DELETED_COLLECTION_NAME = "deleted_approval_documents";
@@ -803,7 +804,7 @@ export const saveApprovalDocument = async (docData, options = {}) => {
   saveLocalApprovalDocs(updated);
 
   try {
-    await setDoc(doc(db, COLLECTION_NAME, id), fullItem);
+    await setDoc(doc(db, COLLECTION_NAME, id), sanitizeForFirestore(fullItem));
   } catch (e) {
     console.warn("Firestore save approval document fallback to local:", e);
   }
