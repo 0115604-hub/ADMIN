@@ -1055,11 +1055,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   // Pending Approvals Count for General Managers
   const pendingSamrangjinCount = useMemo(() => {
-    return workLogs.filter((l) => l.plant === "삼랑진공장" && l.approvalStatus !== "결재완료").length;
+    return workLogs.filter((l) => l.plant === "삼랑진공장" && l.approvalStatus === "결재대기" && !l.isDeleted).length;
   }, [workLogs]);
 
   const pendingHallimCount = useMemo(() => {
-    return workLogs.filter((l) => l.plant === "한림공장" && l.approvalStatus !== "결재완료").length;
+    return workLogs.filter((l) => l.plant === "한림공장" && l.approvalStatus === "결재대기" && !l.isDeleted).length;
   }, [workLogs]);
 
   // Approval Handlers (With Comment Support)
