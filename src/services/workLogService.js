@@ -11,19 +11,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 
-// Clean initial state (Zero dummy data)
 export const INITIAL_WORK_LOGS = [];
 
 const COLLECTION_NAME = "work_logs";
-const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v16_pure_firestore_realtime";
-
-// Known legacy / sample / seed IDs to purge permanently
-export const OLD_SAMPLE_IDS = [
-  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
-  "seed_hal_cy_0917", "seed_hal_sm_0917", "seed_hal_cy_0916", "seed_hal_sm_0916",
-  "seed_sam_yc_0917", "seed_sam_ks_0917", "seed_sam_cy_0917", "seed_sam_jy_0917",
-  "seed_sam_in_0917", "seed_sam_dg_0917", "seed_sam_ij_0917", "seed_sam_sg_0917"
-];
+const LOCAL_STORAGE_KEY = "factory_daily_work_logs_v17_pure_sync";
 
 // Deep clean object for Firestore
 function sanitizeLog(obj) {
@@ -102,15 +93,6 @@ export const normalizeWorkLogApproval = (log) => {
   return parsed;
 };
 
-// Check if a log is a legacy sample/dummy log
-function isSampleLog(log) {
-  if (!log) return true;
-  const idStr = String(log.id || "");
-  if (OLD_SAMPLE_IDS.includes(idStr)) return true;
-  if (idStr.startsWith("seed_") || idStr.startsWith("sample_")) return true;
-  return false;
-}
-
 // Get local cache
 export const getLocalWorkLogs = () => {
   try {
@@ -122,9 +104,7 @@ export const getLocalWorkLogs = () => {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed
-      .filter((l) => !isSampleLog(l))
-      .map(normalizeWorkLogApproval);
+    return parsed.map(normalizeWorkLogApproval);
   } catch (e) {
     return [];
   }
@@ -132,54 +112,21 @@ export const getLocalWorkLogs = () => {
 
 const saveLocalWorkLogs = (logs) => {
   try {
-    const filtered = Array.isArray(logs)
-      ? logs.filter((l) => !isSampleLog(l)).map(normalizeWorkLogApproval)
+    const parsed = Array.isArray(logs)
+      ? logs.map(normalizeWorkLogApproval)
       : [];
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
   } catch (e) {
     console.error("Local storage error:", e);
   }
 };
 
-// Purge any old dummy/seed logs from Firestore cloud and local storage
-let isPurged = false;
-export const purgeSampleLogsIfNeeded = async () => {
-  if (isPurged) return;
-  try {
-    const snap = await getDocs(collection(db, COLLECTION_NAME));
-    if (!snap.empty) {
-      const batch = writeBatch(db);
-      let count = 0;
-      snap.forEach((docSnap) => {
-        const id = docSnap.id;
-        if (OLD_SAMPLE_IDS.includes(id) || id.startsWith("seed_") || id.startsWith("sample_")) {
-          batch.delete(docSnap.ref);
-          count++;
-        }
-      });
-      if (count > 0) {
-        await batch.commit();
-        console.log(`Purged ${count} old dummy work logs from Firestore.`);
-      }
-    }
-    isPurged = true;
-  } catch (e) {
-    console.warn("Purge sample logs error:", e);
-  }
-};
-
-export const seedInitialLogsToFirestore = async () => {
-  // No-op (zero dummy injection)
-};
-
-export const seedInitialLogsIfNeeded = async () => {
-  await purgeSampleLogsIfNeeded();
-};
+export const purgeSampleLogsIfNeeded = async () => {};
+export const seedInitialLogsToFirestore = async () => {};
+export const seedInitialLogsIfNeeded = async () => {};
 
 // Subscribe to real-time work logs from Cloud Firestore
 export const subscribeWorkLogs = (onUpdate) => {
-  purgeSampleLogsIfNeeded();
-
   // 1. Immediate local cache
   const localLogs = getLocalWorkLogs();
   onUpdate(localLogs);
@@ -189,11 +136,8 @@ export const subscribeWorkLogs = (onUpdate) => {
     const remoteLogs = [];
     if (!snap.empty) {
       snap.forEach((docSnap) => {
-        const id = docSnap.id;
-        if (!isSampleLog({ id })) {
-          const log = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
-          remoteLogs.push(log);
-        }
+        const log = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
+        remoteLogs.push(log);
       });
     }
 
@@ -220,11 +164,8 @@ export const subscribeWorkLogs = (onUpdate) => {
         const remoteLogs = [];
         if (!snapshot.empty) {
           snapshot.forEach((docSnap) => {
-            const id = docSnap.id;
-            if (!isSampleLog({ id })) {
-              const log = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
-              remoteLogs.push(log);
-            }
+            const log = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
+            remoteLogs.push(log);
           });
         }
 
