@@ -78,8 +78,15 @@ export const RecentWorkLogsSummaryModal = ({
   }, [workLogs, selectedDate]);
 
   // Group by plant
-  const samLogs = useMemo(() => dateLogs.filter((l) => l.plant === "삼랑진공장"), [dateLogs]);
-  const hanLogs = useMemo(() => dateLogs.filter((l) => l.plant === "한림공장"), [dateLogs]);
+  const samLogs = useMemo(() => dateLogs.filter((l) => {
+    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "오상민", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
+    return plant === "삼랑진공장";
+  }), [dateLogs]);
+
+  const hanLogs = useMemo(() => dateLogs.filter((l) => {
+    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "오상민", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
+    return plant === "한림공장";
+  }), [dateLogs]);
 
   // Date navigation handlers
   const currentIndex = availableDates.indexOf(selectedDate);

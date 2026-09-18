@@ -1069,7 +1069,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       : (approvalCommentInput.trim() || "확인 및 전자결재 승인 완료");
 
     const targetLog = workLogs.find((l) => String(l.id) === String(logId));
-    const targetPlant = targetLog?.plant || currentProfile?.plant || workerPlant;
+    const targetPlant = targetLog?.plant || (["김동욱", "우창용", "오상민", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
     const approver = {
       name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
       title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
@@ -1088,6 +1088,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const approvedLog = {
       ...(targetLog || {}),
       id: String(logId),
+      plant: targetPlant,
       approvalStatus: "결재완료",
       approverName: approver.name,
       approverTitle: approver.title,
@@ -1097,7 +1098,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Immediately update UI state
+    // 1. Immediately update UI state in React without dropping other logs
     setWorkLogs((prev) => {
       const exists = prev.some((l) => String(l.id) === String(logId));
       if (exists) {
@@ -1112,10 +1113,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     // 2. Persist to Firestore cloud
     try {
-      const updated = await approveWorkLog(logId, approver, targetLog);
-      if (Array.isArray(updated) && updated.length > 0) {
-        setWorkLogs(updated);
-      }
+      await approveWorkLog(logId, approver, targetLog);
     } catch (e) {
       console.error("Cloud approval error:", e);
     }
@@ -1130,7 +1128,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     if (!reason) return;
 
     const targetLog = workLogs.find((l) => String(l.id) === String(logId));
-    const targetPlant = targetLog?.plant || currentProfile?.plant || workerPlant;
+    const targetPlant = targetLog?.plant || (["김동욱", "우창용", "오상민", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
     const approver = {
       name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
       title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
@@ -1148,6 +1146,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const rejectedLog = {
       ...(targetLog || {}),
       id: String(logId),
+      plant: targetPlant,
       approvalStatus: "반려",
       approverName: approver.name,
       approverTitle: approver.title,
@@ -1157,7 +1156,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Immediately update UI state
+    // 1. Immediately update UI state in React without dropping other logs
     setWorkLogs((prev) => {
       const exists = prev.some((l) => String(l.id) === String(logId));
       if (exists) {
@@ -1172,10 +1171,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     // 2. Persist to Firestore cloud
     try {
-      const updated = await rejectWorkLog(logId, approver, reason, targetLog);
-      if (Array.isArray(updated) && updated.length > 0) {
-        setWorkLogs(updated);
-      }
+      await rejectWorkLog(logId, approver, reason, targetLog);
     } catch (e) {
       console.error("Cloud rejection error:", e);
     }
@@ -2631,11 +2627,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           line.includes(term) ||
           issues.includes(term);
 
+        const logPlant = log.plant || log.approverPlant || (["김동욱", "우창용", "오상민", "부림텍", "한울"].includes(log.writer) ? "한림공장" : "삼랑진공장");
+
         const matchPlant =
           filterPlant === "all" ||
-          log.plant === filterPlant ||
-          (filterPlant === "한림공장" && (log.plant?.includes("한림") || log.plant === "한림")) ||
-          (filterPlant === "삼랑진공장" && (log.plant?.includes("삼랑진") || log.plant === "삼랑진"));
+          logPlant === filterPlant ||
+          (filterPlant === "한림공장" && (logPlant.includes("한림") || logPlant === "한림")) ||
+          (filterPlant === "삼랑진공장" && (logPlant.includes("삼랑진") || logPlant === "삼랑진"));
 
         return matchSearch && matchPlant;
       })
@@ -2651,10 +2649,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return Math.ceil(filteredLogs.length / LOGS_PER_PAGE) || 1;
   }, [filteredLogs.length]);
 
+  const safeLogPage = Math.min(Math.max(1, currentLogPage), totalLogPages);
+
   const paginatedLogs = useMemo(() => {
-    const startIdx = (currentLogPage - 1) * LOGS_PER_PAGE;
+    const startIdx = (safeLogPage - 1) * LOGS_PER_PAGE;
     return filteredLogs.slice(startIdx, startIdx + LOGS_PER_PAGE);
-  }, [filteredLogs, currentLogPage]);
+  }, [filteredLogs, safeLogPage]);
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">

@@ -66,27 +66,53 @@ export const parseLogFields = (log) => {
   return parsed;
 };
 
+export const WRITER_PLANT_MAP = {
+  "이명재": "삼랑진공장",
+  "설유철": "삼랑진공장",
+  "윤경수": "삼랑진공장",
+  "이창엽": "삼랑진공장",
+  "전재율": "삼랑진공장",
+  "양인나": "삼랑진공장",
+  "유동길": "삼랑진공장",
+  "조인주": "삼랑진공장",
+  "이상기": "삼랑진공장",
+  "유성": "삼랑진공장",
+  "김동욱": "한림공장",
+  "우창용": "한림공장",
+  "오상민": "한림공장",
+  "부림텍": "한림공장",
+  "한울": "한림공장"
+};
+
 // Ensure log has correct authoritative approval status (Respects individual status strictly)
 export const normalizeWorkLogApproval = (log) => {
   if (!log || typeof log !== "object") return log;
   const parsed = parseLogFields(log);
 
-  // Default approval status to pending if not present
+  // 1. Authoritative plant resolution (prevents plant disappearing)
+  if (!parsed.plant || parsed.plant === "undefined" || parsed.plant === "null") {
+    parsed.plant =
+      parsed.approverPlant ||
+      WRITER_PLANT_MAP[parsed.writer] ||
+      (parsed.approverName === "김동욱" ? "한림공장" : "삼랑진공장");
+  }
+
+  // 2. Default approval status to pending if not present
   if (!parsed.approvalStatus) {
     parsed.approvalStatus = "결재대기";
   }
 
-  // If approved, ensure approver metadata is present
+  // 3. If approved, ensure approver metadata is present
   if (parsed.approvalStatus === "결재완료" || parsed.approvalStatus === "APPROVED") {
     parsed.approvalStatus = "결재완료";
     if (!parsed.approverName) {
-      parsed.approverName = parsed.plant === "삼랑진공장" ? "이명재" : "김동욱";
+      parsed.approverName = parsed.plant === "한림공장" ? "김동욱" : "이명재";
     }
     if (!parsed.approverTitle) {
-      parsed.approverTitle = parsed.plant === "삼랑진공장" ? "이사" : "책임";
+      parsed.approverTitle = parsed.plant === "한림공장" ? "책임" : "이사";
     }
     if (!parsed.approverPlant) {
-      parsed.approverPlant = parsed.plant || (parsed.approverName === "이명재" ? "삼랑진공장" : "한림공장");
+      parsed.approverPlant = parsed.plant;
     }
   }
 
@@ -309,6 +335,10 @@ export const approveWorkLog = async (id, approver = {}, fallbackLog = null) => {
   const current = getLocalWorkLogs();
   const target = current.find((l) => String(l.id) === logId) || fallbackLog || {};
 
+  const plantName = target.plant || approver.plant || WRITER_PLANT_MAP[target.writer] || "한림공장";
+  const defaultApproverName = plantName === "한림공장" ? "김동욱" : "이명재";
+  const defaultApproverTitle = plantName === "한림공장" ? "책임" : "이사";
+
   const nowFormatted = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -316,10 +346,6 @@ export const approveWorkLog = async (id, approver = {}, fallbackLog = null) => {
     hour: "2-digit",
     minute: "2-digit"
   });
-
-  const plantName = approver.plant || target.plant || "한림공장";
-  const defaultApproverName = plantName === "한림공장" ? "김동욱" : "이명재";
-  const defaultApproverTitle = plantName === "한림공장" ? "책임" : "이사";
 
   const approvalData = {
     approvalStatus: "결재완료",
@@ -330,12 +356,13 @@ export const approveWorkLog = async (id, approver = {}, fallbackLog = null) => {
     approvalComment: approver.comment || (plantName === "한림공장" ? "한림공장 총괄관리자 김동욱 책임 전자결재 승인 완료" : "삼랑진공장 총괄관리자 이명재 이사 전자결재 승인 완료")
   };
 
-  const updatedLog = {
+  const updatedLog = normalizeWorkLogApproval({
     ...target,
     ...approvalData,
+    plant: plantName,
     id: logId,
     updatedAt: new Date().toISOString()
-  };
+  });
 
   const updatedLocal = current.some((l) => String(l.id) === logId)
     ? current.map((l) => (String(l.id) === logId ? updatedLog : l))
@@ -369,7 +396,7 @@ export const batchApproveWorkLogs = async (logIds, approver = {}) => {
   const targetIds = logIds.map(String);
   const updatedLocal = current.map((l) => {
     if (targetIds.includes(String(l.id))) {
-      const plantName = approver.plant || l.plant || "한림공장";
+      const plantName = l.plant || approver.plant || WRITER_PLANT_MAP[l.writer] || "한림공장";
       const defaultApproverName = approver.name || (plantName === "한림공장" ? "김동욱" : "이명재");
       const defaultApproverTitle = approver.title || (plantName === "한림공장" ? "책임" : "이사");
       const approvalData = {
@@ -380,7 +407,12 @@ export const batchApproveWorkLogs = async (logIds, approver = {}) => {
         approvedAt: nowFormatted,
         approvalComment: approver.comment || `${plantName} 일괄 확인 및 전자결재 승인 완료`
       };
-      return { ...l, ...approvalData, updatedAt: new Date().toISOString() };
+      return normalizeWorkLogApproval({
+        ...l,
+        ...approvalData,
+        plant: plantName,
+        updatedAt: new Date().toISOString()
+      });
     }
     return l;
   });
@@ -411,6 +443,10 @@ export const rejectWorkLog = async (id, approver = {}, reason = "보완 후 재�
   const current = getLocalWorkLogs();
   const target = current.find((l) => String(l.id) === logId) || fallbackLog || {};
 
+  const plantName = target.plant || approver.plant || WRITER_PLANT_MAP[target.writer] || "한림공장";
+  const defaultApproverName = plantName === "한림공장" ? "김동욱" : "이명재";
+  const defaultApproverTitle = plantName === "한림공장" ? "책임" : "이사";
+
   const nowFormatted = new Date().toLocaleString("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -418,10 +454,6 @@ export const rejectWorkLog = async (id, approver = {}, reason = "보완 후 재�
     hour: "2-digit",
     minute: "2-digit"
   });
-
-  const plantName = approver.plant || target.plant || "한림공장";
-  const defaultApproverName = plantName === "한림공장" ? "김동욱" : "이명재";
-  const defaultApproverTitle = plantName === "한림공장" ? "책임" : "이사";
 
   const rejectionData = {
     approvalStatus: "반려",
@@ -432,12 +464,13 @@ export const rejectWorkLog = async (id, approver = {}, reason = "보완 후 재�
     approvalComment: reason
   };
 
-  const updatedLog = {
+  const updatedLog = normalizeWorkLogApproval({
     ...target,
     ...rejectionData,
+    plant: plantName,
     id: logId,
     updatedAt: new Date().toISOString()
-  };
+  });
 
   const updatedLocal = current.some((l) => String(l.id) === logId)
     ? current.map((l) => (String(l.id) === logId ? updatedLog : l))
