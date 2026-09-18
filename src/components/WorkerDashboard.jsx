@@ -191,7 +191,7 @@ const TIME_OPTIONS_30MIN = [
 ];
 
 // Storage key for Extrusion 4-Lines Downtime Data
-const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_4lines_v22_pure_photo_verified";
+const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_4lines_v23_pcm1qq_verified";
 
 const DEFAULT_EXTRUSION_OP_RATES = {
   pcm1: { "7월": "94.2%", "8월": "95.1%", "9월": "93.4%", default: "93.0%" },

@@ -169,8 +169,8 @@ export const ensureStoreHasWeeks = (store, targetWeekKey) => {
   return hasChanges ? updatedStore : store;
 };
 
-// Storage key with v22 for 100% accurate photo-verified extrusion downtime data (no dummy data)
-const STORAGE_KEY = "factory_extrusion_downtime_4lines_v22_pure_photo_verified";
+// Storage key with v23 for 100% accurate photo-verified extrusion downtime data (PCM1qq verified)
+const STORAGE_KEY = "factory_extrusion_downtime_4lines_v23_pcm1qq_verified";
 
 const CATEGORIES = ["형교환", "승온/준비", "불량/고장", "라인정지", "정상생산"];
 const SHIFTS = ["주간", "야간"];

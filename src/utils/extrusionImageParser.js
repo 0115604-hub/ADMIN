@@ -9,14 +9,18 @@ export const EXTRUSION_LINES = [
   { id: "tpe", name: "TPE LINE", code: "TPE", color: "purple", keywords: ["tpe", "티피이", "tpe라인", "tpe 라인", "tpe line"] }
 ];
 
-// 100% Verified Actual Whiteboard Photo Items (No dummy data)
+// 100% Verified Actual Whiteboard Photo Items (Exact match from PCM1qq.jpg)
 export const PHOTO_VERIFIED_ITEMS = {
   pcm1: [
-    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온 작업준비", minutes: 150, weight: 0, note: "사전 승온 완료 및 필터 점검", action: "사전 승온 완료" },
-    { dayIdx: 0, shift: "주간", category: "형교환", task: "BC4T DR SIDE 단면 T/O 샘플압출", minutes: 240, weight: 0, note: "샘플 2150*40개 박스포장 100개", action: "금형 T/O 및 샘플 압출 완료" },
-    { dayIdx: 0, shift: "주간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 60, weight: 45, note: "LOSS율 6.4%", action: "금형 교체 및 양품 확인" },
-    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 70, weight: 40, note: "제품형상불량", action: "금형 교체 및 승온 정상화" },
-    { dayIdx: 0, shift: "야간", category: "정상생산", task: "DS DR SIDE D 생산 (특이사항없음)", minutes: 0, weight: 0, note: "특이사항없음", action: "정상 가동 완료" }
+    { dayIdx: 0, shift: "주간", category: "승온/준비", task: "가류조 승온, 작업준비", minutes: 170, weight: 0, note: "SP3 DR SIDE D 단면", action: "가류조 승온 및 작업준비 완료" },
+    { dayIdx: 0, shift: "주간", category: "형교환", task: "BC4T DR SIDE D 단면 T/O 샘플 압출\n-. 샘플 2,150X950개 박스포장 100개", minutes: 420, weight: 0, note: "-. LOSS율 6.5%", action: "BC4T DR SIDE 단면 T/O 및 박스포장 완료" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "LQ2 HOOD SIDE 형교환", minutes: 85, weight: 36, note: "", action: "금형 교체 및 승온 정상화" },
+    { dayIdx: 0, shift: "야간", category: "형교환", task: "DS DR SIDE D 형교환", minutes: 110, weight: 50, note: "", action: "금형 교체 완료" },
+    { dayIdx: 0, shift: "야간", category: "불량/고장", task: "-. 제품 형상 불량", minutes: 9, weight: 15, note: "", action: "형상 보정 및 불량 개선" },
+    { dayIdx: 1, shift: "주간", category: "불량/고장", task: "DS DR SIDE D 생산\n-. 제품 스코치 불량", minutes: 7, weight: 12, note: "", action: "스코치 불량 제거 및 라인 정상화" },
+    { dayIdx: 1, shift: "주간", category: "형교환", task: "LQ2 HOOD RR 형교환", minutes: 80, weight: 47, note: "", action: "금형 교체 및 양품 확인" },
+    { dayIdx: 1, shift: "야간", category: "정상생산", task: "LQ2,CL4 HOOD RR 생산 (특이사항없음)", minutes: 0, weight: 0, note: "특이사항없음", action: "정상 가동 완료" },
+    { dayIdx: 2, shift: "주간", category: "정상생산", task: "NQ5A HOOD RR 생산 (특이사항없음)", minutes: 0, weight: 0, note: "특이사항없음", action: "정상 가동 완료" }
   ],
   pcm3: [],
   pvc: [],
@@ -33,17 +37,17 @@ export const SNAPSHOT_3_ITEMS = PHOTO_VERIFIED_ITEMS;
 export const SNAPSHOT_METADATA = {
   1: {
     title: "사진 분석 실적 (PCM #1 라인)",
-    description: "가류조 승온, BC4T 단면 T/O, LQ2, DS 형교환 및 정상생산",
+    description: "가류조 승온(170분), BC4T 단면 T/O(420분), LQ2 형교환(85분), DS 형교환(110분), 형상/스코치 불량 및 정상생산",
     badge: "📷 사진 분석 실적"
   },
   2: {
     title: "사진 분석 실적 (PCM #1 라인)",
-    description: "가류조 승온, BC4T 단면 T/O, LQ2, DS 형교환 및 정상생산",
+    description: "가류조 승온(170분), BC4T 단면 T/O(420분), LQ2 형교환(85분), DS 형교환(110분), 형상/스코치 불량 및 정상생산",
     badge: "📷 사진 분석 실적"
   },
   3: {
     title: "사진 분석 실적 (PCM #1 라인)",
-    description: "가류조 승온, BC4T 단면 T/O, LQ2, DS 형교환 및 정상생산",
+    description: "가류조 승온(170분), BC4T 단면 T/O(420분), LQ2 형교환(85분), DS 형교환(110분), 형상/스코치 불량 및 정상생산",
     badge: "📷 사진 분석 실적"
   }
 };
