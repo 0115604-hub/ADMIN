@@ -47,8 +47,9 @@ export const PurchaseExpenseView = ({
   const { formatAmount } = useCurrency();
   const { selectedMonth } = useMonth();
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");

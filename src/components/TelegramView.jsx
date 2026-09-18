@@ -365,9 +365,9 @@ export const TelegramView = () => {
   const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.purchaseSummary?.totalPurchase || currentMonthData?.totalExpenses || 0;
 
   const prevMonthKey = useMemo(() => {
-    if (!selectedMonth) return "2026-08";
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const prevD = new Date(y, m - 2, 1);
+    const safeMonth = selectedMonth || "2026-09";
+    const [y, m] = safeMonth.split("-").map(Number);
+    const prevD = new Date(y || 2026, (m || 9) - 2, 1);
     const prevY = prevD.getFullYear();
     const prevM = String(prevD.getMonth() + 1).padStart(2, "0");
     return `${prevY}-${prevM}`;

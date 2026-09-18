@@ -132,12 +132,22 @@ export const MonthProvider = ({ children }) => {
     return Array.from(new Set([...defaultMonths, ...dataMonths])).sort().reverse();
   }, [defaultMonths, dataMonths]);
 
-  const [selectedMonth, setSelectedMonth] = useState(() => getCurrentYearMonth());
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    try {
+      const saved = localStorage.getItem("admin_selected_month_v4");
+      if (saved && typeof saved === "string" && saved.includes("-")) {
+        return saved;
+      }
+    } catch (e) {}
+    return getCurrentYearMonth();
+  });
 
   const resetToCurrentMonth = () => {
     const liveCurrentMonth = getCurrentYearMonth();
     setSelectedMonth(liveCurrentMonth);
-    localStorage.setItem("admin_selected_month_v4", liveCurrentMonth);
+    try {
+      localStorage.setItem("admin_selected_month_v4", liveCurrentMonth);
+    } catch (e) {}
   };
 
   const isCurrentMonth = (ym) => ym === currentYearMonth;
@@ -157,7 +167,9 @@ export const MonthProvider = ({ children }) => {
               if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
                 merged["2026-08"] = initialMultiMonthData["2026-08"];
               }
-              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+              try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+              } catch (e) {}
               return merged;
             });
           }
@@ -176,7 +188,9 @@ export const MonthProvider = ({ children }) => {
                 if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
                   merged["2026-08"] = initialMultiMonthData["2026-08"];
                 }
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+                try {
+                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
+                } catch (e) {}
                 return merged;
               });
             }
@@ -195,16 +209,34 @@ export const MonthProvider = ({ children }) => {
 
   // Current active month's data package (with fallback to structured empty month if not yet uploaded)
   const currentMonthData = useMemo(() => {
-    if (allMonthlyData[selectedMonth]) {
-      return allMonthlyData[selectedMonth];
-    }
-    return createEmptyMonthlyData(selectedMonth);
+    const safeMonth = selectedMonth || getCurrentYearMonth();
+    const raw = (allMonthlyData && allMonthlyData[safeMonth]) || null;
+    const empty = createEmptyMonthlyData(safeMonth);
+    if (!raw) return empty;
+    return {
+      ...empty,
+      ...raw,
+      salesSummary: { ...empty.salesSummary, ...(raw.salesSummary || {}) },
+      purchaseSummary: { ...empty.purchaseSummary, ...(raw.purchaseSummary || {}) },
+      expenseSummary: { ...empty.expenseSummary, ...(raw.expenseSummary || {}) },
+      pnlSummary: { ...empty.pnlSummary, ...(raw.pnlSummary || {}) },
+      vehicleSales: Array.isArray(raw.vehicleSales) ? raw.vehicleSales : [],
+      materialPurchases: Array.isArray(raw.materialPurchases) ? raw.materialPurchases : [],
+      purchaseExpenses: Array.isArray(raw.purchaseExpenses) ? raw.purchaseExpenses : [],
+      jajaeGroups: Array.isArray(raw.jajaeGroups) ? raw.jajaeGroups : [],
+      closingLedger: { ...empty.closingLedger, ...(raw.closingLedger || {}) },
+      productionSummary: { ...empty.productionSummary, ...(raw.productionSummary || {}) },
+      qualitySummary: { ...empty.qualitySummary, ...(raw.qualitySummary || {}) }
+    };
   }, [allMonthlyData, selectedMonth]);
 
   // Change active month
   const changeMonth = (yearMonth) => {
-    setSelectedMonth(yearMonth);
-    localStorage.setItem("admin_selected_month_v4", yearMonth);
+    const val = yearMonth || getCurrentYearMonth();
+    setSelectedMonth(val);
+    try {
+      localStorage.setItem("admin_selected_month_v4", val);
+    } catch (e) {}
   };
 
   // Add / Update Monthly Data from Workbook Upload

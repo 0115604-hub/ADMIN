@@ -176,8 +176,9 @@ export const ClosingLedgerView = () => {
   const fileInputRef = useRef(null);
   const manualFileInputRef = useRef(null);
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   // Persistent store keyed by month
   const [closingStore, setClosingStore] = useState(() => {

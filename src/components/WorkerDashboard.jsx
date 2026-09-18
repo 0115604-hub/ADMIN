@@ -1930,8 +1930,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   };
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   const totalSales = currentMonthData?.salesSummary?.totalSales || currentMonthData?.totalSales || 0;
   const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.totalExpenses || 0;
@@ -1939,13 +1940,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   // PnL Achievement calculations for Morning Briefing
   const prevMonthKey = useMemo(() => {
-    if (!selectedMonth) return "2026-08";
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const prevD = new Date(y, m - 2, 1);
+    if (!safeSelectedMonth) return "2026-08";
+    const [y, m] = safeSelectedMonth.split("-").map(Number);
+    const prevD = new Date(y || 2026, (m || 9) - 2, 1);
     const prevY = prevD.getFullYear();
     const prevM = String(prevD.getMonth() + 1).padStart(2, "0");
     return `${prevY}-${prevM}`;
-  }, [selectedMonth]);
+  }, [safeSelectedMonth]);
 
   const prevMonthData = useMemo(() => {
     return allMonthlyData?.[prevMonthKey] || null;

@@ -24,6 +24,8 @@ export class ErrorBoundary extends React.Component {
   handleClearCacheAndReload = () => {
     try {
       localStorage.removeItem("admin_user_profile");
+      localStorage.removeItem("admin_selected_month_v4");
+      localStorage.removeItem("admin_multi_month_store_v4_firestore");
     } catch (e) {
       console.warn("Storage clear error:", e);
     }

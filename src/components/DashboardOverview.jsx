@@ -80,13 +80,14 @@ export const DashboardOverview = ({
     return `${y}-${String(m).padStart(2, "0")}`;
   };
 
-  const prevMonthKey = getPrevMonthKey(selectedMonth);
-  const prevMonthData = prevMonthKey ? allMonthlyData[prevMonthKey] : null;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const prevMonthKey = getPrevMonthKey(safeSelectedMonth);
+  const prevMonthData = prevMonthKey && allMonthlyData ? allMonthlyData[prevMonthKey] : null;
   const salesMoM = prevMonthData && prevMonthData.salesSummary?.totalSales ? totalSales - (prevMonthData.salesSummary?.totalSales || 0) : null;
   const purchaseMoM = prevMonthData && prevMonthData.purchaseSummary?.ledgerBenchmark ? ledgerPurchases - (prevMonthData.purchaseSummary?.ledgerBenchmark || 0) : null;
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   const filteredLogs = workLogs.filter((log) => {
     if (selectedPlantFilter === "all") return true;

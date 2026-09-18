@@ -33,8 +33,9 @@ export const MaterialPurchaseView = () => {
     groupCount: 0
   };
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   // Active group
   const activeGroup = useMemo(() => {

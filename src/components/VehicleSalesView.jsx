@@ -30,15 +30,16 @@ export const VehicleSalesView = () => {
     vehicleGroupCount: 0
   };
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   // Find previous month data for MoM (+- %) comparison
-  const currentIndex = availableMonths.indexOf(selectedMonth);
-  const prevMonthKey = currentIndex >= 0 && currentIndex + 1 < availableMonths.length ? availableMonths[currentIndex + 1] : null;
-  const prevMonthData = prevMonthKey ? allMonthlyData[prevMonthKey] : null;
+  const currentIndex = (availableMonths || []).indexOf(safeSelectedMonth);
+  const prevMonthKey = currentIndex >= 0 && currentIndex + 1 < (availableMonths || []).length ? availableMonths[currentIndex + 1] : null;
+  const prevMonthData = prevMonthKey && allMonthlyData ? allMonthlyData[prevMonthKey] : null;
   const prevMonthParts = prevMonthKey ? prevMonthKey.split("-") : [];
-  const prevMonthTitle = prevMonthKey ? `${prevMonthParts[0]}년 ${prevMonthParts[1]}월` : "전월";
+  const prevMonthTitle = prevMonthKey ? `${prevMonthParts[0] || "2026"}년 ${prevMonthParts[1] || "08"}월` : "전월";
 
   // Total MoM calculation
   const totalSales = salesSummary.totalSales || 0;

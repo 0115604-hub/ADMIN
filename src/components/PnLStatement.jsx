@@ -16,8 +16,9 @@ export const PnLStatement = () => {
   const { selectedMonth, currentMonthData } = useMonth();
   const printRef = useRef();
 
-  const monthParts = selectedMonth.split("-");
-  const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
+  const safeSelectedMonth = selectedMonth || "2026-09";
+  const monthParts = safeSelectedMonth.split("-");
+  const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   const totalSales = currentMonthData?.salesSummary?.totalSales || 0;
   const totalExpenses = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 0;
