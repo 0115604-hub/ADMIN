@@ -139,7 +139,7 @@ export const MonthProvider = ({ children }) => {
         return saved;
       }
     } catch (e) {}
-    return getCurrentYearMonth();
+    return "2026-08";
   });
 
   const resetToCurrentMonth = () => {

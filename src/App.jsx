@@ -75,9 +75,6 @@ export const App = () => {
 
     if (currentProfile) {
       setActiveTab("worker_dashboard");
-      if (resetToCurrentMonth) {
-        resetToCurrentMonth();
-      }
       try {
         window.history.pushState({ screen: "worker_dashboard", isSummary: true }, "");
       } catch (e) {}
