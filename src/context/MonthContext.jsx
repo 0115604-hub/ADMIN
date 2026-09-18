@@ -114,9 +114,11 @@ export const MonthProvider = ({ children }) => {
       try {
         const parsed = JSON.parse(saved);
         const merged = { ...initialMultiMonthData, ...parsed };
-        if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
-          merged["2026-08"] = initialMultiMonthData["2026-08"];
-        }
+        ["2026-09", "2026-08", "2026-07"].forEach((ym) => {
+          if ((!merged[ym] || merged[ym]?.salesSummary?.totalSales === 0) && initialMultiMonthData[ym]?.salesSummary?.totalSales > 0) {
+            merged[ym] = initialMultiMonthData[ym];
+          }
+        });
         return merged;
       } catch (e) {
         console.error("Error reading saved monthly store:", e);
@@ -139,7 +141,7 @@ export const MonthProvider = ({ children }) => {
         return saved;
       }
     } catch (e) {}
-    return "2026-08";
+    return getCurrentYearMonth();
   });
 
   const resetToCurrentMonth = () => {
@@ -164,9 +166,11 @@ export const MonthProvider = ({ children }) => {
           if (remoteData && remoteData.store) {
             setAllMonthlyData((prev) => {
               const merged = { ...prev, ...remoteData.store };
-              if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
-                merged["2026-08"] = initialMultiMonthData["2026-08"];
-              }
+              ["2026-09", "2026-08", "2026-07"].forEach((ym) => {
+                if ((!merged[ym] || merged[ym]?.salesSummary?.totalSales === 0) && initialMultiMonthData[ym]?.salesSummary?.totalSales > 0) {
+                  merged[ym] = initialMultiMonthData[ym];
+                }
+              });
               try {
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
               } catch (e) {}
@@ -185,9 +189,11 @@ export const MonthProvider = ({ children }) => {
             if (remoteData && remoteData.store) {
               setAllMonthlyData((prev) => {
                 const merged = { ...prev, ...remoteData.store };
-                if (merged["2026-08"]?.salesSummary?.totalSales === 0 && initialMultiMonthData["2026-08"]?.salesSummary?.totalSales > 0) {
-                  merged["2026-08"] = initialMultiMonthData["2026-08"];
-                }
+                ["2026-09", "2026-08", "2026-07"].forEach((ym) => {
+                  if ((!merged[ym] || merged[ym]?.salesSummary?.totalSales === 0) && initialMultiMonthData[ym]?.salesSummary?.totalSales > 0) {
+                    merged[ym] = initialMultiMonthData[ym];
+                  }
+                });
                 try {
                   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
                 } catch (e) {}

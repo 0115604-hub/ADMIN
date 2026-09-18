@@ -14,14 +14,17 @@ import {
 } from "lucide-react";
 import { parseExcelFile } from "../utils/excelHelper";
 import { useCurrency } from "../context/CurrencyContext";
+import { useMonth } from "../context/MonthContext";
 
 export const ExcelUploadModal = ({ isOpen, onClose, onBulkUpload }) => {
   const { formatAmount } = useCurrency();
+  const { selectedMonth, uploadMonthlyData, availableMonths } = useMonth();
   const [file, setFile] = useState(null);
   const [previewData, setPreviewData] = useState([]);
+  const [rawParsedPackage, setRawParsedPackage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [targetYearMonth, setTargetYearMonth] = useState("2026-07");
+  const [targetYearMonth, setTargetYearMonth] = useState(selectedMonth || "2026-09");
   const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
@@ -35,6 +38,7 @@ export const ExcelUploadModal = ({ isOpen, onClose, onBulkUpload }) => {
 
     try {
       const parsed = await parseExcelFile(selectedFile, ym);
+      setRawParsedPackage(parsed);
       const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
       if (items.length === 0) {
         setErrorMsg("유효한 매출/매입 데이터가 발견되지 않았습니다.");
@@ -68,8 +72,17 @@ export const ExcelUploadModal = ({ isOpen, onClose, onBulkUpload }) => {
     if (previewData.length === 0) return;
     setLoading(true);
     try {
-      await onBulkUpload(previewData);
-      alert(`총 ${previewData.length}건의 매출/매입 데이터가 성공적으로 등록되었습니다!`);
+      if (rawParsedPackage && uploadMonthlyData) {
+        await uploadMonthlyData(targetYearMonth, rawParsedPackage, {
+          fileName: file?.name || "매입매출현황.xlsx",
+          uploadedBy: "관리자 (일괄업로드)",
+          fileSize: file ? `${(file.size / 1024).toFixed(1)} KB` : "1.2 MB"
+        });
+      }
+      if (onBulkUpload) {
+        await onBulkUpload(previewData);
+      }
+      alert(`[${targetYearMonth}] 총 ${previewData.length}건의 매출/매입 데이터가 성공적으로 등록 및 동기화되었습니다!`);
       handleClose();
     } catch (err) {
       setErrorMsg("등록 중 오류 발생: " + err.message);
@@ -81,6 +94,7 @@ export const ExcelUploadModal = ({ isOpen, onClose, onBulkUpload }) => {
   const handleClose = () => {
     setFile(null);
     setPreviewData([]);
+    setRawParsedPackage(null);
     setErrorMsg("");
     onClose();
   };

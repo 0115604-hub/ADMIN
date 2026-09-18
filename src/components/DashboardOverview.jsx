@@ -101,9 +101,19 @@ export const DashboardOverview = ({
         <div className="absolute right-0 top-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>{monthTitle} 실적 종합</span>
+            <div className="inline-flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>{monthTitle} 실적 종합</span>
+              </span>
+              <span
+                className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30"
+                title={currentMonthData?.latestFile?.fileName ? `등록 엑셀: ${currentMonthData.latestFile.fileName} (${currentMonthData.latestFile.uploadedBy || '조인주 선임'})` : "일일 누적 기준"}
+              >
+                {currentMonthData?.latestFile?.uploadedAtFormatted
+                  ? `${currentMonthData.latestFile.uploadedAtFormatted} 업로드 기준`
+                  : "일일 업로드 누적 기준"}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
               {monthTitle} 현황

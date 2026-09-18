@@ -72,7 +72,7 @@ export const parseExcelFile = async (file) => {
           }
         }
 
-        if (!detectedYearMonth) detectedYearMonth = "2026-08";
+        if (!detectedYearMonth) detectedYearMonth = "2026-09";
 
         // ---------------------------------------------------------------------
         // 2. Identify & Categorize Sheets
