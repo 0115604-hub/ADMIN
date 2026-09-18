@@ -81,8 +81,9 @@ export const parseExcelFile = async (file) => {
         let salesSummary = null;
         let jajaeGroups = [];
         let jajaeSummary = null;
-        let totalSales = 0;
-        let totalPurchases = 0;
+        let detectedMasterSales = 0;
+        let detectedMasterPurchases = 0;
+        let detectedPcmSales = 0;
         const allTransactions = [];
 
         const masterSheetName = sheetNames.find((s) =>
@@ -97,9 +98,6 @@ export const parseExcelFile = async (file) => {
         const summarySheetName = sheetNames.find((s) =>
           /종합결산|종합요약|결산요약/i.test(s)
         );
-        const laborSheetName = sheetNames.find((s) =>
-          /노무비|인건비|공과금/i.test(s)
-        );
 
         // ---------------------------------------------------------------------
         // 3. Parse Master Sales Sheet (정리본 / 매입매출)
@@ -109,17 +107,86 @@ export const parseExcelFile = async (file) => {
           const masterRows = XLSX.utils.sheet_to_json(wsMaster, { header: 1, defval: "" });
 
           // Detect month from sheet title if available
-          if (masterRows[1] && String(masterRows[1][0] || masterRows[1][1] || "").includes("년")) {
-            const m = String(masterRows[1][0] || masterRows[1][1] || "").match(/(\d{4})년\s*(\d{1,2})월/);
-            if (m) detectedYearMonth = `${m[1]}-${String(m[2]).padStart(2, "0")}`;
+          for (let r = 0; r < Math.min(5, masterRows.length); r++) {
+            const rowText = (masterRows[r] || []).join(" ");
+            const m = rowText.match(/(\d{4})년\s*(\d{1,2})월/);
+            if (m) {
+              detectedYearMonth = `${m[1]}-${String(m[2]).padStart(2, "0")}`;
+              break;
+            }
+          }
+
+          // Dynamic detection of summary totals in master sheet
+          for (let r = 0; r < Math.min(30, masterRows.length); r++) {
+            for (let c = 0; c < masterRows[r].length; c++) {
+              const cell = String(masterRows[r][c] || "").trim();
+
+              // Total Sales Box (e.g. "금일 매출 합계", "총 매출 합계", "매출합계")
+              if (/금일\s*매출\s*합계|총\s*매출\s*합계|당월\s*매출\s*합계|매출\s*총합계|총\s*매출액/i.test(cell) && !detectedMasterSales) {
+                for (let k = c + 1; k < masterRows[r].length; k++) {
+                  const num = Number(String(masterRows[r][k]).replace(/,/g, ""));
+                  if (!isNaN(num) && num > 10000000) {
+                    detectedMasterSales = num;
+                    break;
+                  }
+                }
+              }
+
+              // Total Purchases Box (e.g. "금일 매입 합계", "총 매입 합계", "매입합계")
+              if (/금일\s*매입\s*합계|총\s*매입\s*합계|당월\s*매입\s*합계|매입\s*총합계|총\s*매입액/i.test(cell) && !detectedMasterPurchases) {
+                for (let k = c + 1; k < masterRows[r].length; k++) {
+                  const num = Number(String(masterRows[r][k]).replace(/,/g, ""));
+                  if (!isNaN(num) && num > 10000000) {
+                    detectedMasterPurchases = num;
+                    break;
+                  }
+                }
+              }
+
+              // PCM Sales
+              if (/PCM\s*매출/i.test(cell) && !detectedPcmSales) {
+                for (let k = c + 1; k < masterRows[r].length; k++) {
+                  const num = Number(String(masterRows[r][k]).replace(/,/g, ""));
+                  if (!isNaN(num) && num > 10000000) {
+                    detectedPcmSales = num;
+                    break;
+                  }
+                }
+              }
+            }
           }
 
           let currentProcess = "내수상품매출";
           let currentVehicle = "";
           const rawSalesItems = [];
 
-          for (let r = 3; r < masterRows.length; r++) {
+          // Add PCM Sales if found in summary
+          if (detectedPcmSales > 0) {
+            rawSalesItems.push({
+              process: "PCM 매출",
+              vehicle: "PCM 압출/가공",
+              itemCode: "PCM-" + detectedYearMonth.split("-")[1],
+              partNumber: "PCM-TOTAL",
+              partName: `PCM 매출 전체 (압출 및 가공 ${detectedYearMonth.split("-")[1]}월 정산)`,
+              unitPrice: detectedPcmSales,
+              qty: 1,
+              amount: detectedPcmSales
+            });
+          }
+
+          // Header row detection
+          let dataStartRow = 3;
+          for (let r = 0; r < Math.min(10, masterRows.length); r++) {
+            const rStr = masterRows[r].join(" ");
+            if (rStr.includes("고객품번") || rStr.includes("P/NAME") || rStr.includes("아이템코드")) {
+              dataStartRow = r + 1;
+              break;
+            }
+          }
+
+          for (let r = dataStartRow; r < masterRows.length; r++) {
             const row = masterRows[r];
+            const c0 = String(row[0] || "").trim();
             const c1 = String(row[1] || "").trim();
             const c2 = String(row[2] || "").trim();
             const itemCode = String(row[3] || "").trim();
@@ -129,15 +196,17 @@ export const parseExcelFile = async (file) => {
             const qty = Number(String(row[7] || "").replace(/,/g, ""));
             const amount = Number(String(row[8] || "").replace(/,/g, ""));
 
-            // Check summary box in Col 13
-            if (r === 4 && row[13]) totalSales = Number(String(row[13]).replace(/,/g, ""));
-            if (r === 8 && row[13]) totalPurchases = Number(String(row[13]).replace(/,/g, ""));
+            if (c1.includes("매출") || c1.includes("A/S") || c1.includes("EPDM") || c1.includes("임가공")) {
+              currentProcess = c1;
+            }
+            if (c2 && !c2.includes("PCM") && !c2.includes("합계") && !c2.includes("매출")) {
+              currentVehicle = c2;
+            }
 
-            if (c2.includes("PCM 매출") || c1.includes("PCM")) {
-              currentProcess = "PCM 매출";
-              currentVehicle = "PCM 압출/가공";
+            // If PCM row appears in data body and not yet added
+            if ((c2.includes("PCM") || c1.includes("PCM")) && detectedPcmSales === 0) {
               const pcmAmt = Number(String(row[9] || row[10] || row[8] || "").replace(/,/g, ""));
-              if (pcmAmt > 0) {
+              if (pcmAmt > 0 && !rawSalesItems.some((it) => it.process === "PCM 매출")) {
                 rawSalesItems.push({
                   process: "PCM 매출",
                   vehicle: "PCM 압출/가공",
@@ -149,13 +218,6 @@ export const parseExcelFile = async (file) => {
                   amount: pcmAmt
                 });
               }
-            }
-
-            if (c1.includes("매출") || c1.includes("A/S") || c1.includes("EPDM") || c1.includes("임가공")) {
-              currentProcess = c1;
-            }
-            if (c2 && !c2.includes("PCM") && !c2.includes("합계") && !c2.includes("매출")) {
-              currentVehicle = c2;
             }
 
             if (partName && amount > 0 && !partName.includes("합계") && itemCode !== "아이템코드") {
@@ -224,7 +286,7 @@ export const parseExcelFile = async (file) => {
           });
 
           const totalCalcSales = rawSalesItems.reduce((a, b) => a + b.amount, 0);
-          const finalTotalSales = totalSales > 0 ? totalSales : totalCalcSales;
+          const finalTotalSales = detectedMasterSales > 0 ? detectedMasterSales : totalCalcSales;
 
           vehicleSales = Object.values(vMap)
             .sort((a, b) => b.totalAmount - a.totalAmount)
@@ -255,10 +317,35 @@ export const parseExcelFile = async (file) => {
           const wsJajae = workbook.Sheets[jajaeSheetName];
           const jajaeRows = XLSX.utils.sheet_to_json(wsJajae, { header: 1, defval: "" });
 
+          // Check if summary total exists in jajae sheet
+          for (let r = 0; r < Math.min(20, jajaeRows.length); r++) {
+            for (let c = 0; c < jajaeRows[r].length; c++) {
+              const cell = String(jajaeRows[r][c] || "").trim();
+              if (/금일\s*매입\s*합계|총\s*매입\s*합계|당월\s*합계|합계/i.test(cell) && !detectedMasterPurchases) {
+                for (let k = c + 1; k < jajaeRows[r].length; k++) {
+                  const num = Number(String(jajaeRows[r][k]).replace(/,/g, ""));
+                  if (!isNaN(num) && num > 10000000) {
+                    detectedMasterPurchases = num;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
           let currentMainCategory = "기타자재";
           const rawJajaeItems = [];
 
-          for (let r = 2; r < jajaeRows.length; r++) {
+          let jStartRow = 2;
+          for (let r = 0; r < Math.min(6, jajaeRows.length); r++) {
+            const rStr = jajaeRows[r].join(" ");
+            if (rStr.includes("자재코드") || rStr.includes("품명") || rStr.includes("구매처")) {
+              jStartRow = r + 1;
+              break;
+            }
+          }
+
+          for (let r = jStartRow; r < jajaeRows.length; r++) {
             const row = jajaeRows[r];
             const c0 = String(row[0] || "").trim();
             const c1 = String(row[1] || "").trim();
@@ -342,6 +429,7 @@ export const parseExcelFile = async (file) => {
           });
 
           const totalJAmount = rawJajaeItems.reduce((a, b) => a + b.amount, 0);
+          const finalTotalPurchases = detectedMasterPurchases > 0 ? detectedMasterPurchases : totalJAmount;
 
           jajaeGroups = Object.values(jMap)
             .sort((a, b) => b.totalAmount - a.totalAmount)
@@ -351,14 +439,14 @@ export const parseExcelFile = async (file) => {
               color: g.color,
               itemCount: g.itemCount,
               totalAmount: g.totalAmount,
-              share: Number(((g.totalAmount / (totalJAmount || 1)) * 100).toFixed(2)),
+              share: Number(((g.totalAmount / (finalTotalPurchases || 1)) * 100).toFixed(2)),
               mainSuppliers: Array.from(g.suppliers).slice(0, 4).join(", ") || "자체/미지정",
               items: g.items.sort((a, b) => b.amount - a.amount)
             }));
 
           jajaeSummary = {
             yearMonth: detectedYearMonth,
-            totalAmount: totalJAmount,
+            totalAmount: finalTotalPurchases,
             itemCount: rawJajaeItems.length,
             groupCount: jajaeGroups.length
           };
@@ -438,7 +526,7 @@ export const parseExcelFile = async (file) => {
             });
           }
 
-          totalPurchases = parsedSum;
+          const finalTotalPurchases = detectedMasterPurchases > 0 ? detectedMasterPurchases : parsedSum;
           jajaeGroups = Object.values(jMap)
             .sort((a, b) => b.totalAmount - a.totalAmount)
             .map((g, idx) => ({
@@ -447,23 +535,23 @@ export const parseExcelFile = async (file) => {
               color: "#3B82F6",
               itemCount: g.itemCount,
               totalAmount: g.totalAmount,
-              share: Number(((g.totalAmount / (parsedSum || 1)) * 100).toFixed(2)),
+              share: Number(((g.totalAmount / (finalTotalPurchases || 1)) * 100).toFixed(2)),
               mainSuppliers: Array.from(g.suppliers).slice(0, 4).join(", "),
               items: g.items
             }));
 
           jajaeSummary = {
             yearMonth: detectedYearMonth,
-            totalAmount: parsedSum,
+            totalAmount: finalTotalPurchases,
             itemCount: allTransactions.length,
             groupCount: jajaeGroups.length
           };
         }
 
         // ---------------------------------------------------------------------
-        // 6. Parse Summary / Expense Sheets (월간_종합결산요약, 노무비 수기결산)
+        // 6. Summary Sheets Fallback
         // ---------------------------------------------------------------------
-        if (summarySheetName && workbook.Sheets[summarySheetName]) {
+        if (summarySheetName && workbook.Sheets[summarySheetName] && (!detectedMasterSales || !detectedMasterPurchases)) {
           const wsSum = workbook.Sheets[summarySheetName];
           const sRows = XLSX.utils.sheet_to_json(wsSum, { header: 1, defval: "" });
           for (let r = 0; r < sRows.length; r++) {
@@ -473,36 +561,16 @@ export const parseExcelFile = async (file) => {
               for (let c = 0; c < nextRow.length; c++) {
                 const val = Number(String(nextRow[c] || "").replace(/,/g, ""));
                 if (val > 10000000) {
-                  if (!totalSales) totalSales = val;
-                  else if (!totalPurchases && val !== totalSales) totalPurchases = val;
+                  if (!detectedMasterSales) detectedMasterSales = val;
+                  else if (!detectedMasterPurchases && val !== detectedMasterSales) detectedMasterPurchases = val;
                 }
               }
             }
           }
         }
 
-        // ---------------------------------------------------------------------
-        // 7. Universal Fallback (If no transactions parsed yet, scan all sheets)
-        // ---------------------------------------------------------------------
-        if (allTransactions.length === 0 && jajaeGroups.length === 0 && totalSales === 0 && totalPurchases === 0) {
-          for (const s of sheetNames) {
-            const ws = workbook.Sheets[s];
-            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-            for (let r = 1; r < rows.length; r++) {
-              const row = rows[r];
-              for (let c = 0; c < row.length; c++) {
-                const val = Number(String(row[c] || "").replace(/,/g, ""));
-                if (!isNaN(val) && val > 10000) {
-                  totalPurchases += val;
-                  break;
-                }
-              }
-            }
-          }
-        }
-
-        const finalSalesVal = totalSales || (salesSummary?.totalSales || 0);
-        const finalPurchasesVal = totalPurchases || (jajaeSummary?.totalAmount || 0);
+        const finalSalesVal = detectedMasterSales || (salesSummary?.totalSales || 0);
+        const finalPurchasesVal = detectedMasterPurchases || (jajaeSummary?.totalAmount || 0);
 
         const parsedPackage = {
           yearMonth: detectedYearMonth,
@@ -527,9 +595,11 @@ export const parseExcelFile = async (file) => {
           purchaseSummary: {
             yearMonth: detectedYearMonth,
             ledgerBenchmark: finalPurchasesVal,
-            totalExpenses: finalPurchasesVal
+            totalExpenses: finalPurchasesVal,
+            totalPurchase: finalPurchasesVal
           },
-          items: allTransactions
+          items: allTransactions,
+          transactions: allTransactions
         };
 
         resolve(parsedPackage);

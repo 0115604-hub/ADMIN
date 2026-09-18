@@ -1933,9 +1933,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const monthParts = selectedMonth.split("-");
   const monthTitle = `${monthParts[0]}년 ${monthParts[1]}월`;
 
-  const totalSales = currentMonthData?.salesSummary?.totalSales || 1756104735;
-  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 1248400884.5;
-  const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "71.1";
+  const totalSales = currentMonthData?.salesSummary?.totalSales || currentMonthData?.totalSales || 0;
+  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.totalExpenses || 0;
+  const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "0.0";
 
   // PnL Achievement calculations for Morning Briefing
   const prevMonthKey = useMemo(() => {
@@ -1951,11 +1951,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return allMonthlyData?.[prevMonthKey] || null;
   }, [allMonthlyData, prevMonthKey]);
 
-  const prevSales = prevMonthData?.salesSummary?.totalSales || 1714856000;
-  const prevPurchases = prevMonthData?.purchaseSummary?.ledgerBenchmark || prevMonthData?.jajaeSummary?.totalAmount || 1264841000;
+  const prevSales = prevMonthData?.salesSummary?.totalSales || prevMonthData?.totalSales || 0;
+  const prevPurchases = prevMonthData?.purchaseSummary?.ledgerBenchmark || prevMonthData?.jajaeSummary?.totalAmount || prevMonthData?.totalExpenses || 0;
 
-  const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "102.4";
-  const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "98.7";
+  const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "100.0";
+  const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "100.0";
 
   const [selectedPnLChannel, setSelectedPnLChannel] = useState("-1003939516875"); // Default: 경영방 (대표·전무 전용)
 

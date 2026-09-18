@@ -361,8 +361,8 @@ export const TelegramView = () => {
     });
   }, [commonSchedules, todayDateStr]);
 
-  const totalSales = currentMonthData?.salesSummary?.totalSales ?? 965489801;
-  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.purchaseSummary?.totalPurchase || 978009146.46;
+  const totalSales = currentMonthData?.salesSummary?.totalSales || currentMonthData?.totalSales || 0;
+  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.purchaseSummary?.totalPurchase || currentMonthData?.totalExpenses || 0;
 
   const prevMonthKey = useMemo(() => {
     if (!selectedMonth) return "2026-08";
