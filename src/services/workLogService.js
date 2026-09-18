@@ -363,10 +363,10 @@ export const deleteWorkLog = async (id) => {
 };
 
 // Approve an individual work log (Strict item-by-item approval)
-export const approveWorkLog = async (id, approver = {}) => {
+export const approveWorkLog = async (id, approver = {}, fallbackLog = null) => {
   const logId = String(id);
   const current = getLocalWorkLogs();
-  const target = current.find((l) => String(l.id) === logId) || {};
+  const target = current.find((l) => String(l.id) === logId) || fallbackLog || {};
 
   const nowFormatted = new Date().toLocaleString("ko-KR", {
     year: "numeric",
@@ -465,10 +465,10 @@ export const batchApproveWorkLogs = async (logIds, approver = {}) => {
 };
 
 // Reject / Return a work log for revision
-export const rejectWorkLog = async (id, approver = {}, reason = "보완 후 재상신 요망") => {
+export const rejectWorkLog = async (id, approver = {}, reason = "보완 후 재상신 요망", fallbackLog = null) => {
   const logId = String(id);
   const current = getLocalWorkLogs();
-  const target = current.find((l) => String(l.id) === logId) || {};
+  const target = current.find((l) => String(l.id) === logId) || fallbackLog || {};
 
   const nowFormatted = new Date().toLocaleString("ko-KR", {
     year: "numeric",

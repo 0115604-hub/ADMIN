@@ -1076,11 +1076,50 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       plant: currentProfile?.plant || targetPlant,
       comment: finalComment
     };
-    const updated = await approveWorkLog(logId, approver);
-    setWorkLogs(updated);
+
+    const nowFormatted = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    const approvedLog = {
+      ...(targetLog || {}),
+      id: String(logId),
+      approvalStatus: "결재완료",
+      approverName: approver.name,
+      approverTitle: approver.title,
+      approverPlant: targetPlant,
+      approvedAt: nowFormatted,
+      approvalComment: finalComment,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Immediately update UI state
+    setWorkLogs((prev) => {
+      const exists = prev.some((l) => String(l.id) === String(logId));
+      if (exists) {
+        return prev.map((l) => (String(l.id) === String(logId) ? approvedLog : l));
+      }
+      return [approvedLog, ...prev];
+    });
+
     if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
-      setSelectedLogDetail(updated.find((l) => String(l.id) === String(logId)) || null);
+      setSelectedLogDetail(approvedLog);
     }
+
+    // 2. Persist to Firestore cloud
+    try {
+      const updated = await approveWorkLog(logId, approver, targetLog);
+      if (Array.isArray(updated) && updated.length > 0) {
+        setWorkLogs(updated);
+      }
+    } catch (e) {
+      console.error("Cloud approval error:", e);
+    }
+
     setToastMessage("결재 및 지시사항 코멘트가 정상적으로 등록되었습니다.");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
@@ -1097,11 +1136,50 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
       plant: currentProfile?.plant || targetPlant
     };
-    const updated = await rejectWorkLog(logId, approver, reason);
-    setWorkLogs(updated);
+
+    const nowFormatted = new Date().toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+    const rejectedLog = {
+      ...(targetLog || {}),
+      id: String(logId),
+      approvalStatus: "반려",
+      approverName: approver.name,
+      approverTitle: approver.title,
+      approverPlant: targetPlant,
+      approvedAt: nowFormatted,
+      approvalComment: reason,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Immediately update UI state
+    setWorkLogs((prev) => {
+      const exists = prev.some((l) => String(l.id) === String(logId));
+      if (exists) {
+        return prev.map((l) => (String(l.id) === String(logId) ? rejectedLog : l));
+      }
+      return [rejectedLog, ...prev];
+    });
+
     if (selectedLogDetail && String(selectedLogDetail.id) === String(logId)) {
-      setSelectedLogDetail(updated.find((l) => String(l.id) === String(logId)) || null);
+      setSelectedLogDetail(rejectedLog);
     }
+
+    // 2. Persist to Firestore cloud
+    try {
+      const updated = await rejectWorkLog(logId, approver, reason, targetLog);
+      if (Array.isArray(updated) && updated.length > 0) {
+        setWorkLogs(updated);
+      }
+    } catch (e) {
+      console.error("Cloud rejection error:", e);
+    }
+
     setToastMessage("업무일지가 반려 처리되었습니다.");
     setLogSavedToast(true);
     setTimeout(() => setLogSavedToast(false), 3000);
@@ -2537,18 +2615,31 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   };
 
   const filteredLogs = useMemo(() => {
-    return workLogs
+    const term = (searchTerm || "").trim().toLowerCase();
+    return (workLogs || [])
       .filter((log) => {
-        const writerWithTitle = `${log.writer} ${log.title || ""} ${log.process || ""}`;
+        if (!log || typeof log !== "object") return false;
+        const writerWithTitle = `${log.writer || ""} ${log.title || ""} ${log.process || ""}`.toLowerCase();
+        const content = String(log.workContent || "").toLowerCase();
+        const line = String(log.line || "").toLowerCase();
+        const issues = String(log.issues || "").toLowerCase();
+
         const matchSearch =
-          writerWithTitle.includes(searchTerm) ||
-          log.workContent.includes(searchTerm) ||
-          log.line.includes(searchTerm) ||
-          (log.issues && log.issues.includes(searchTerm));
-        const matchPlant = filterPlant === "all" || log.plant === filterPlant;
+          !term ||
+          writerWithTitle.includes(term) ||
+          content.includes(term) ||
+          line.includes(term) ||
+          issues.includes(term);
+
+        const matchPlant =
+          filterPlant === "all" ||
+          log.plant === filterPlant ||
+          (filterPlant === "한림공장" && (log.plant?.includes("한림") || log.plant === "한림")) ||
+          (filterPlant === "삼랑진공장" && (log.plant?.includes("삼랑진") || log.plant === "삼랑진"));
+
         return matchSearch && matchPlant;
       })
-      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+      .sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || "") || String(b.id || "").localeCompare(String(a.id || "")));
   }, [workLogs, searchTerm, filterPlant]);
 
   // Reset pagination when search or plant filter changes
