@@ -2258,7 +2258,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     setUploadSuccess(false);
     setSuccessMessage("");
     try {
-      const result = await parseExcelFile(file);
+      const result = await parseExcelFile(file, selectedMonth);
       setParsedResult({
         file,
         fileName: file.name,
@@ -2266,7 +2266,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         ...result
       });
     } catch (err) {
-      alert("엑셀 파일 파싱 오류: " + err.message);
+      console.error("Excel parse error:", err);
+      alert("엑셀 파일 파싱 오류: " + (err.message || "파일 형식을 확인해 주세요."));
     } finally {
       setParsing(false);
     }
@@ -2302,12 +2303,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         fileSize: parsedResult.fileSize
       });
       if (onBulkUpload && parsedResult.items && parsedResult.items.length > 0) {
-        await onBulkUpload(parsedResult.items);
+        try {
+          await onBulkUpload(parsedResult.items);
+        } catch (e) {
+          console.warn("Bulk upload secondary sync warning:", e);
+        }
       }
       setUploadSuccess(true);
       setSuccessMessage(`${targetYM} 최신 파일(${parsedResult.fileName}) 기준으로 데이터가 갱신되었습니다. (이전 파일 대체 완료)`);
     } catch (err) {
-      alert("업로드 중 오류 발생: " + err.message);
+      console.error("Excel upload error:", err);
+      alert("업로드 중 오류 발생: " + (err.message || "저장 중 오류가 발생했습니다."));
     } finally {
       setUploading(false);
     }

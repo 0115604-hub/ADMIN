@@ -25,9 +25,11 @@ import { useMonth } from "./context/MonthContext";
 import {
   fetchTransactions,
   addTransaction,
+  bulkAddTransactions,
   updateTransaction,
   deleteTransaction,
-  clearAllTransactions
+  clearAllTransactions,
+  getLocalData
 } from "./services/dbService";
 import {
   checkAndAutoSendDailyMorningBriefing,
@@ -238,14 +240,13 @@ export const App = () => {
   // Bulk Upload from Excel
   const handleBulkUpload = async (newTransactions) => {
     try {
-      for (const item of newTransactions) {
-        await addTransaction(item);
+      if (Array.isArray(newTransactions) && newTransactions.length > 0) {
+        await bulkAddTransactions(newTransactions);
+        await loadData(true);
       }
-      await loadData(true);
       setExcelModalOpen(false);
     } catch (error) {
       console.error("Bulk upload error:", error);
-      alert("업로드 중 오류가 발생했습니다: " + error.message);
     }
   };
 

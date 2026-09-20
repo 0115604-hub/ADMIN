@@ -238,14 +238,16 @@ export const parseExcelFile = async (file, customYearMonth = null) => {
           let currentProcess = "내수상품매출";
           let currentVehicle = "";
 
+          const monthSuffix = (detectedYearMonth && detectedYearMonth.includes("-")) ? detectedYearMonth.split("-")[1] : "09";
+
           // Add PCM Sales if found in summary
           if (detectedPcmSales > 0) {
             rawSalesItems.push({
               process: "PCM 매출",
               vehicle: "PCM 압출/가공",
-              itemCode: "PCM-" + detectedYearMonth.split("-")[1],
+              itemCode: "PCM-" + monthSuffix,
               partNumber: "PCM-TOTAL",
-              partName: `PCM 매출 전체 (압출 및 가공 ${detectedYearMonth.split("-")[1]}월 정산)`,
+              partName: `PCM 매출 전체 (압출 및 가공 ${monthSuffix}월 정산)`,
               unitPrice: detectedPcmSales,
               qty: 1,
               amount: detectedPcmSales
@@ -254,7 +256,7 @@ export const parseExcelFile = async (file, customYearMonth = null) => {
 
           let dataStartRow = 3;
           for (let r = 0; r < Math.min(10, masterRows.length); r++) {
-            const rStr = masterRows[r].join(" ");
+            const rStr = (masterRows[r] || []).join(" ");
             if (rStr.includes("고객품번") || rStr.includes("P/NAME") || rStr.includes("아이템코드")) {
               dataStartRow = r + 1;
               break;
@@ -262,7 +264,7 @@ export const parseExcelFile = async (file, customYearMonth = null) => {
           }
 
           for (let r = dataStartRow; r < masterRows.length; r++) {
-            const row = masterRows[r];
+            const row = masterRows[r] || [];
             const c1 = String(row[1] || "").trim();
             const c2 = String(row[2] || "").trim();
             const itemCode = String(row[3] || "").trim();
@@ -286,9 +288,9 @@ export const parseExcelFile = async (file, customYearMonth = null) => {
                 rawSalesItems.push({
                   process: "PCM 매출",
                   vehicle: "PCM 압출/가공",
-                  itemCode: "PCM-" + detectedYearMonth.split("-")[1],
+                  itemCode: "PCM-" + monthSuffix,
                   partNumber: "PCM-TOTAL",
-                  partName: `PCM 매출 전체 (압출 및 가공 ${detectedYearMonth.split("-")[1]}월 정산)`,
+                  partName: `PCM 매출 전체 (압출 및 가공 ${monthSuffix}월 정산)`,
                   unitPrice: pcmAmt,
                   qty: 1,
                   amount: pcmAmt
@@ -312,10 +314,12 @@ export const parseExcelFile = async (file, customYearMonth = null) => {
 
           // Aggregate Vehicle Family Groups
           const getVehicleGroup = (item) => {
-            const v = item.vehicle.toUpperCase().trim();
-            const name = item.partName.toUpperCase();
+            if (!item) return "기타 차종";
+            const v = String(item.vehicle || "").toUpperCase().trim();
+            const name = String(item.partName || "").toUpperCase();
+            const proc = String(item.process || "").toUpperCase();
 
-            if (v.includes("PCM") || item.process.includes("PCM")) return "PCM 압출/가공";
+            if (v.includes("PCM") || proc.includes("PCM")) return "PCM 압출/가공";
             if (v.startsWith("9BQC")) return "9BQC";
             if (v.startsWith("DT")) return "DT (수출)";
             if (v.startsWith("DS")) return "DS (수출)";
@@ -492,9 +496,10 @@ export const parseExcelFile = async (file, customYearMonth = null) => {
           }
 
           const normalizeJGroup = (item) => {
-            const cat = item.mainCategory.toUpperCase();
-            const name = item.partName.toUpperCase();
-            const sup = (item.supplier || "").toUpperCase();
+            if (!item) return { name: "기타 차종 자재", color: "#64748B" };
+            const cat = String(item.mainCategory || "").toUpperCase();
+            const name = String(item.partName || "").toUpperCase();
+            const sup = String(item.supplier || "").toUpperCase();
 
             if (cat.includes("TPE") || name.includes("TPE")) return { name: "TPE 원재료 / 부품", color: "#3B82F6" };
             if (cat.includes("EPDM") || name.includes("EPDM")) return { name: "EPDM 원료 / 상품", color: "#10B981" };

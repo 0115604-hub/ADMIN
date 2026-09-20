@@ -19,7 +19,7 @@ const LOCAL_STORAGE_KEY = "admin_pnl_transactions_v4_clean";
 export const INITIAL_SAMPLE_DATA = [];
 
 // Helper: Get local fallback data
-const getLocalData = () => {
+export const getLocalData = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
@@ -92,6 +92,22 @@ export const addTransaction = async (transactionData) => {
     saveLocalData([newItem, ...current]);
     return newItem;
   }
+};
+
+// Bulk Add transactions (High performance batch)
+export const bulkAddTransactions = async (transactionsList) => {
+  if (!Array.isArray(transactionsList) || transactionsList.length === 0) return [];
+  const current = getLocalData();
+  const newItems = transactionsList.map((t, idx) => ({
+    ...t,
+    id: t.id || `bulk_${Date.now()}_${idx}`,
+    amount: Number(t.amount) || 0,
+    createdAt: t.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }));
+  const merged = [...newItems, ...current];
+  saveLocalData(merged);
+  return newItems;
 };
 
 // Update transaction
