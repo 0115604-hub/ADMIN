@@ -7,7 +7,46 @@ const MonthContext = createContext();
 const FIRESTORE_DOC_PATH = ["system_store", "monthly_master"];
 const LOCAL_STORAGE_KEY = "admin_multi_month_store_v4_firestore";
 
-// Helper: Deep sanitize object to guarantee Firestore compatibility (removes DOM File, functions, undefined)
+// Helper: Safe localStorage setter with quota error recovery and cache cleanup
+export function safeSaveLocalStorage(key, value) {
+  try {
+    const serialized = typeof value === "string" ? value : JSON.stringify(value);
+    localStorage.setItem(key, serialized);
+  } catch (e) {
+    console.warn(`localStorage quota warning for ${key}, cleaning up legacy cache:`, e.message);
+    try {
+      // Clean obsolete large keys
+      const obsoleteKeys = [
+        "admin_multi_month_store_v3",
+        "admin_multi_month_store_v2",
+        "admin_multi_month_store_v1",
+        "admin_pnl_transactions_v3",
+        "admin_pnl_transactions_v2",
+        "operator_upload_history_v1"
+      ];
+      obsoleteKeys.forEach((k) => {
+        try { localStorage.removeItem(k); } catch (err) {}
+      });
+
+      // If value is a monthly store, strip heavy item/transaction raw arrays
+      let cleanVal = value;
+      if (typeof value === "object" && value !== null) {
+        cleanVal = {};
+        for (const ym of Object.keys(value)) {
+          const m = value[ym] || {};
+          const { items, transactions, ...rest } = m;
+          cleanVal[ym] = rest;
+        }
+      }
+      const serialized = typeof cleanVal === "string" ? cleanVal : JSON.stringify(cleanVal);
+      localStorage.setItem(key, serialized);
+    } catch (retryErr) {
+      console.warn(`localStorage full, skipping local write for ${key} (cloud Firestore active):`, retryErr.message);
+    }
+  }
+}
+
+// Helper: Deep sanitize object to guarantee Firestore compatibility (removes DOM File, functions, undefined, heavy raw dumps)
 function sanitizeForFirestore(obj) {
   if (obj === null || typeof obj !== "object") {
     return obj === undefined ? null : obj;
@@ -23,7 +62,7 @@ function sanitizeForFirestore(obj) {
   }
   const result = {};
   for (const key of Object.keys(obj)) {
-    if (key === "file") continue;
+    if (key === "file" || key === "items" || key === "transactions") continue;
     const val = obj[key];
     if (val !== undefined && typeof val !== "function") {
       result[key] = sanitizeForFirestore(val);
@@ -147,9 +186,7 @@ export const MonthProvider = ({ children }) => {
   const resetToCurrentMonth = () => {
     const liveCurrentMonth = getCurrentYearMonth();
     setSelectedMonth(liveCurrentMonth);
-    try {
-      localStorage.setItem("admin_selected_month_v4", liveCurrentMonth);
-    } catch (e) {}
+    safeSaveLocalStorage("admin_selected_month_v4", liveCurrentMonth);
   };
 
   const isCurrentMonth = (ym) => ym === currentYearMonth;
@@ -171,9 +208,7 @@ export const MonthProvider = ({ children }) => {
                   merged[ym] = initialMultiMonthData[ym];
                 }
               });
-              try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
-              } catch (e) {}
+              safeSaveLocalStorage(LOCAL_STORAGE_KEY, merged);
               return merged;
             });
           }
@@ -194,9 +229,7 @@ export const MonthProvider = ({ children }) => {
                     merged[ym] = initialMultiMonthData[ym];
                   }
                 });
-                try {
-                  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
-                } catch (e) {}
+                safeSaveLocalStorage(LOCAL_STORAGE_KEY, merged);
                 return merged;
               });
             }
@@ -240,9 +273,7 @@ export const MonthProvider = ({ children }) => {
   const changeMonth = (yearMonth) => {
     const val = yearMonth || getCurrentYearMonth();
     setSelectedMonth(val);
-    try {
-      localStorage.setItem("admin_selected_month_v4", val);
-    } catch (e) {}
+    safeSaveLocalStorage("admin_selected_month_v4", val);
   };
 
   // Add / Update Monthly Data from Workbook Upload
@@ -288,11 +319,14 @@ export const MonthProvider = ({ children }) => {
           totalPurchase: finalExpenses
         };
 
+    // Strip redundant transaction arrays from monthly summary store
+    const { items, transactions, ...lightweightPackage } = cleanPackage;
+
     const updated = {
       ...allMonthlyData,
       [yearMonth]: {
         ...existing,
-        ...cleanPackage,
+        ...lightweightPackage,
         totalSales: finalSales,
         totalExpenses: finalExpenses,
         salesSummary: finalSalesSummary,
@@ -308,8 +342,8 @@ export const MonthProvider = ({ children }) => {
 
     setAllMonthlyData(updated);
     setSelectedMonth(yearMonth);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-    localStorage.setItem("admin_selected_month_v4", yearMonth);
+    safeSaveLocalStorage(LOCAL_STORAGE_KEY, updated);
+    safeSaveLocalStorage("admin_selected_month_v4", yearMonth);
 
     // Sync to Firestore Cloud Database
     try {
