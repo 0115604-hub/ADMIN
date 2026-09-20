@@ -1430,6 +1430,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return calculateDeptSummary(smartData.attendanceMatrix || [], selectedDay);
   }, [smartData.attendanceMatrix, selectedDay]);
 
+  const isAfter9AM = new Date().getHours() >= 9;
+
+  const unwrittenCompanies = useMemo(() => {
+    const matrix = smartData.attendanceMatrix || [];
+    return COMPANIES.filter((comp) => {
+      const compWorkers = matrix.filter((w) => w.company === comp || (comp.includes("조영") && (w.company || "").includes("조영")));
+      const enteredCount = compWorkers.filter((w) => {
+        const v = w.daily?.[selectedDay];
+        return v !== undefined && v !== null && String(v).trim() !== "" && String(v).trim() !== "미입력";
+      }).length;
+      return enteredCount === 0;
+    }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
+  }, [smartData.attendanceMatrix, selectedDay]);
+
   // Filtered attendance rows for Daily Input and Summary tabs
   const filteredAttendanceWorkers = useMemo(() => {
     let list = (smartData.attendanceMatrix || []).map((w, originalIdx) => ({
@@ -1584,11 +1598,29 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <span className="p-1.5 sm:p-2 rounded-xl bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40">
                 <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
               </span>
-              <h1 className="text-base sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
+              <h1 className="text-base sm:text-xl font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
                 <span>근태현황 및 관리</span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40">
-                  5개사 잔업 스마트 대장
+                  9월 {selectedDay}일 기준
                 </span>
+                {/* ⭐ [당일 9시 기준] 미작성 업체 표기 배지 */}
+                {unwrittenCompanies.length > 0 ? (
+                  <span
+                    className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-rose-500/25 text-rose-300 border border-rose-400/60 shrink-0 flex items-center gap-1 animate-pulse"
+                    title="당일 9시 기준 근태대장 미작성 협력사 목록입니다."
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping shrink-0" />
+                    <span>미작성: {unwrittenCompanies.map((c) => c.shortName).join(", ")} (9시 기준)</span>
+                  </span>
+                ) : (
+                  <span
+                    className="px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black bg-emerald-500/25 text-emerald-300 border border-emerald-400/60 shrink-0 flex items-center gap-1"
+                    title="5개 협력사 전원 당일 9시 기준 작성 완료되었습니다."
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <span>5개사 전원 작성완료 (9시 기준)</span>
+                  </span>
+                )}
               </h1>
             </div>
           </div>
@@ -1646,12 +1678,29 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   className="bg-slate-950/90 hover:bg-slate-900 rounded-2xl p-3 border border-slate-700/80 hover:border-cyan-400 transition-all duration-200 shadow-md flex flex-col justify-between cursor-pointer group active:scale-98 space-y-2"
                   title="클릭 시 오늘자 근태/인원 현황 팝업 보기"
                 >
-                  {/* 상단: 회사명 */}
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5 group-hover:text-cyan-300 transition-colors">
+                  {/* 상단: 회사명 및 9시 기준 작성상태 미니 배지 */}
+                  <div className="flex items-center justify-between gap-1 pb-1 border-b border-slate-800/80">
+                    <span className="font-black text-xs sm:text-sm text-white flex items-center gap-1.5 group-hover:text-cyan-300 transition-colors truncate">
                       <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
                       {compName}
                     </span>
+                    {(() => {
+                      const isUnwritten = unwrittenCompanies.some((c) => c.name === compName);
+                      const isWritten = !isUnwritten;
+                      const badgeClass = isWritten
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50"
+                        : (isAfter9AM
+                            ? "bg-rose-500/25 text-rose-300 border-rose-400/60 animate-pulse font-black"
+                            : "bg-amber-500/20 text-amber-300 border-amber-400/50 font-bold"
+                          );
+                      const badgeText = isWritten ? "작성완료" : (isAfter9AM ? "09:00 미작성" : "작성전");
+                      return (
+                        <span className={`text-[9.5px] px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 ${badgeClass}`}>
+                          {isWritten && <span className="text-[8.5px]">✓</span>}
+                          <span>{badgeText}</span>
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {/* 🎯 포인트 작은 패널: 출근현황 총원:00명 결근:00명 */}
