@@ -42,7 +42,7 @@ export const VehicleSalesView = () => {
   const prevMonthTitle = prevMonthKey ? `${prevMonthParts[0] || "2026"}년 ${prevMonthParts[1] || "08"}월` : "전월";
 
   // Total MoM calculation
-  const totalSales = salesSummary.totalSales || 0;
+  const totalSales = salesSummary.totalSales || currentMonthData?.totalSales || 0;
   const prevTotalSales = prevMonthData?.salesSummary?.totalSales || 0;
   const totalSalesDiff = totalSales - prevTotalSales;
   const totalSalesMoMRate = prevTotalSales > 0 ? (((totalSales - prevTotalSales) / prevTotalSales) * 100).toFixed(1) : null;

@@ -24,7 +24,7 @@ function cleanNumber(val) {
  * 3. Cost & Settlement sheets (월간_종합결산요약, 노무비_이자_공과금_수기결산)
  * 4. Any single or multi-sheet Excel file with sales, purchases, or ledger transactions
  */
-export const parseExcelFile = async (file) => {
+export const parseExcelFile = async (file, customYearMonth = null) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -88,7 +88,9 @@ export const parseExcelFile = async (file) => {
           }
         }
 
-        if (!detectedYearMonth) detectedYearMonth = "2026-09";
+        if (!detectedYearMonth) {
+          detectedYearMonth = customYearMonth && /^\d{4}-\d{2}$/.test(customYearMonth) ? customYearMonth : "2026-09";
+        }
 
         // ---------------------------------------------------------------------
         // 2. Identify & Categorize Sheets
@@ -113,22 +115,22 @@ export const parseExcelFile = async (file) => {
         let detectedMasterPurchases = 0;
         let detectedPcmSales = 0;
 
-        const highPrioritySales = /금일\s*매출\s*합계|당월\s*매출\s*합계|총\s*매출\s*합계|매출\s*총합계|총\s*매출액|매출\s*총계|TOTAL\s*매출|전체\s*매출/i;
-        const highPriorityPurchases = /금일\s*매입\s*합계|당월\s*매입\s*합계|총\s*매입\s*합계|매입\s*총합계|총\s*매입액|매입\s*총계|TOTAL\s*매입|전체\s*매입|총\s*매입\(비용\)\s*결산액|총\s*매입\(비용\)/i;
+        const highPrioritySales = /금일\s*매출\s*합계|당월\s*매출\s*합계|총\s*매출\s*합계|매출\s*총합계|총\s*매출액|총\s*매출|매출\s*총계|TOTAL\s*매출|전체\s*매출|금일\s*매출|당월\s*매출/i;
+        const highPriorityPurchases = /금일\s*매입\s*합계|당월\s*매입\s*합계|총\s*매입\s*합계|매입\s*총합계|총\s*매입액|총\s*매입|매입\s*총계|TOTAL\s*매입|전체\s*매입|총\s*매입\(비용\)\s*결산액|총\s*매입\(비용\)|총매입\(비용\)|금일\s*매입|당월\s*매입/i;
         const pcmPattern = /PCM\s*매출|PCM매출/i;
 
-        const mediumPrioritySales = /매출\s*합계|총\s*매출|합계\s*매출/i;
-        const mediumPriorityPurchases = /매입\s*합계|총\s*매입|자재매입\s*금액|자재매입\s*합계/i;
+        const mediumPrioritySales = /매출\s*합계|합계\s*매출/i;
+        const mediumPriorityPurchases = /매입\s*합계|자재매입\s*금액|자재매입\s*합계|매입총액/i;
 
         function findNumberNear(rows, r, c) {
-          // Check same row to the right (up to 7 cells)
-          for (let k = c + 1; k < Math.min(c + 8, rows[r].length); k++) {
+          // Check same row to the right (up to 9 cells)
+          for (let k = c + 1; k < Math.min(c + 10, rows[r].length); k++) {
             const num = cleanNumber(rows[r][k]);
             if (!isNaN(num) && num > 1000000) return num;
           }
-          // Check rows below (up to 2 rows down)
-          for (let nextR = r + 1; nextR <= Math.min(r + 2, rows.length - 1); nextR++) {
-            for (let nextC = Math.max(0, c - 1); nextC <= Math.min(c + 2, (rows[nextR] || []).length - 1); nextC++) {
+          // Check rows below (up to 3 rows down)
+          for (let nextR = r + 1; nextR <= Math.min(r + 3, rows.length - 1); nextR++) {
+            for (let nextC = Math.max(0, c - 2); nextC <= Math.min(c + 3, (rows[nextR] || []).length - 1); nextC++) {
               const num = cleanNumber(rows[nextR][nextC]);
               if (!isNaN(num) && num > 1000000) return num;
             }

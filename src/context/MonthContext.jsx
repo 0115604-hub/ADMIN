@@ -279,6 +279,14 @@ export const MonthProvider = ({ children }) => {
     const finalJajaeGroups = (cleanPackage.jajaeGroups && cleanPackage.jajaeGroups.length > 0)
       ? cleanPackage.jajaeGroups
       : (existing.jajaeGroups || []);
+    const finalPurchaseSummary = (cleanPackage.purchaseSummary && (cleanPackage.purchaseSummary.ledgerBenchmark > 0 || cleanPackage.purchaseSummary.totalExpenses > 0))
+      ? cleanPackage.purchaseSummary
+      : {
+          yearMonth,
+          ledgerBenchmark: finalExpenses,
+          totalExpenses: finalExpenses,
+          totalPurchase: finalExpenses
+        };
 
     const updated = {
       ...allMonthlyData,
@@ -291,6 +299,7 @@ export const MonthProvider = ({ children }) => {
         vehicleSales: finalVehicleSales,
         jajaeSummary: finalJajaeSummary,
         jajaeGroups: finalJajaeGroups,
+        purchaseSummary: finalPurchaseSummary,
         yearMonth,
         latestFile: latestFileRecord,
         lastUpdated: new Date().toISOString()
