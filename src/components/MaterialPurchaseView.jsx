@@ -32,6 +32,12 @@ export const MaterialPurchaseView = () => {
     itemCount: 0,
     groupCount: 0
   };
+  const totalPurchases =
+    currentMonthData?.purchaseSummary?.ledgerBenchmark ||
+    currentMonthData?.purchaseSummary?.totalExpenses ||
+    currentMonthData?.jajaeSummary?.totalAmount ||
+    currentMonthData?.totalExpenses ||
+    0;
 
   const safeSelectedMonth = selectedMonth || "2026-09";
   const monthParts = safeSelectedMonth.split("-");
@@ -138,7 +144,7 @@ export const MaterialPurchaseView = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                   총 <strong className="text-slate-700 dark:text-slate-200">{jajaeGroups.length}개</strong> 품목군 •{" "}
                   <strong className="text-slate-700 dark:text-slate-200">{jajaeSummary.itemCount}종</strong> 세부 자재 •{" "}
-                  총 매입액 <strong className="text-indigo-600 dark:text-indigo-400">{formatAmount(jajaeSummary.totalAmount)}</strong>
+                  총 매입액 <strong className="text-indigo-600 dark:text-indigo-400">{formatAmount(totalPurchases || jajaeSummary.totalAmount)}</strong>
                 </p>
               </div>
             </div>

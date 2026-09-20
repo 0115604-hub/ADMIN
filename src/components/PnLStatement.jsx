@@ -20,8 +20,13 @@ export const PnLStatement = () => {
   const monthParts = safeSelectedMonth.split("-");
   const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
-  const totalSales = currentMonthData?.salesSummary?.totalSales || 0;
-  const totalExpenses = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || 0;
+  const totalSales = currentMonthData?.salesSummary?.totalSales || currentMonthData?.totalSales || 0;
+  const totalExpenses =
+    currentMonthData?.purchaseSummary?.ledgerBenchmark ||
+    currentMonthData?.purchaseSummary?.totalExpenses ||
+    currentMonthData?.jajaeSummary?.totalAmount ||
+    currentMonthData?.totalExpenses ||
+    0;
 
   // Estimated proportions based on manufacturing structure
   const rawMaterial = Math.round(totalExpenses * 0.603);

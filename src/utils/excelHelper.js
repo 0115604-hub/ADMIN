@@ -1,7 +1,23 @@
 import * as XLSX from "xlsx";
 
 /**
- * Universal Multi-Format Excel Parser for Monthly P&L and Material Purchases
+ * Clean currency/number strings to valid Float/Int
+ * Handles "₩ 1,248,400,885", "1,248,400,884.5원", "(12,000)", commas, spaces, etc.
+ */
+function cleanNumber(val) {
+  if (val === null || val === undefined || val === "") return NaN;
+  if (typeof val === "number") return isNaN(val) ? NaN : val;
+  const cleaned = String(val)
+    .replace(/[₩\$,원\s]/g, "")
+    .replace(/\((.*?)\)/g, "-$1")
+    .replace(/,/g, "")
+    .trim();
+  const num = Number(cleaned);
+  return isNaN(num) ? NaN : num;
+}
+
+/**
+ * Universal High-Precision Multi-Format Excel Parser for Monthly P&L and Material Purchases
  * Supports:
  * 1. Standard Multi-Sheet P&L (매입-매출 정리본, 자재매입, 원자재/부자재 내역 등)
  * 2. Dedicated Purchase Ledger sheets (매입명세표, 매입DATA, 지출내역 등)
@@ -77,15 +93,6 @@ export const parseExcelFile = async (file) => {
         // ---------------------------------------------------------------------
         // 2. Identify & Categorize Sheets
         // ---------------------------------------------------------------------
-        let vehicleSales = [];
-        let salesSummary = null;
-        let jajaeGroups = [];
-        let jajaeSummary = null;
-        let detectedMasterSales = 0;
-        let detectedMasterPurchases = 0;
-        let detectedPcmSales = 0;
-        const allTransactions = [];
-
         const masterSheetName = sheetNames.find((s) =>
           /정리본|매입-매출|매입매출|매출현황|손익|매출/i.test(s) && !/세금계산서/i.test(s)
         );
@@ -100,65 +107,134 @@ export const parseExcelFile = async (file) => {
         );
 
         // ---------------------------------------------------------------------
-        // 3. Parse Master Sales Sheet (정리본 / 매입매출)
+        // 3. Multi-Pass High-Precision Grand Totals Detector
         // ---------------------------------------------------------------------
-        if (masterSheetName && workbook.Sheets[masterSheetName]) {
-          const wsMaster = workbook.Sheets[masterSheetName];
-          const masterRows = XLSX.utils.sheet_to_json(wsMaster, { header: 1, defval: "" });
+        let detectedMasterSales = 0;
+        let detectedMasterPurchases = 0;
+        let detectedPcmSales = 0;
 
-          // Detect month from sheet title if available
-          for (let r = 0; r < Math.min(5, masterRows.length); r++) {
-            const rowText = (masterRows[r] || []).join(" ");
-            const m = rowText.match(/(\d{4})년\s*(\d{1,2})월/);
-            if (m) {
-              detectedYearMonth = `${m[1]}-${String(m[2]).padStart(2, "0")}`;
-              break;
+        const highPrioritySales = /금일\s*매출\s*합계|당월\s*매출\s*합계|총\s*매출\s*합계|매출\s*총합계|총\s*매출액|매출\s*총계|TOTAL\s*매출|전체\s*매출/i;
+        const highPriorityPurchases = /금일\s*매입\s*합계|당월\s*매입\s*합계|총\s*매입\s*합계|매입\s*총합계|총\s*매입액|매입\s*총계|TOTAL\s*매입|전체\s*매입|총\s*매입\(비용\)\s*결산액|총\s*매입\(비용\)/i;
+        const pcmPattern = /PCM\s*매출|PCM매출/i;
+
+        const mediumPrioritySales = /매출\s*합계|총\s*매출|합계\s*매출/i;
+        const mediumPriorityPurchases = /매입\s*합계|총\s*매입|자재매입\s*금액|자재매입\s*합계/i;
+
+        function findNumberNear(rows, r, c) {
+          // Check same row to the right (up to 7 cells)
+          for (let k = c + 1; k < Math.min(c + 8, rows[r].length); k++) {
+            const num = cleanNumber(rows[r][k]);
+            if (!isNaN(num) && num > 1000000) return num;
+          }
+          // Check rows below (up to 2 rows down)
+          for (let nextR = r + 1; nextR <= Math.min(r + 2, rows.length - 1); nextR++) {
+            for (let nextC = Math.max(0, c - 1); nextC <= Math.min(c + 2, (rows[nextR] || []).length - 1); nextC++) {
+              const num = cleanNumber(rows[nextR][nextC]);
+              if (!isNaN(num) && num > 1000000) return num;
             }
           }
+          return null;
+        }
 
-          // Dynamic detection of summary totals in master sheet
-          for (let r = 0; r < Math.min(30, masterRows.length); r++) {
-            for (let c = 0; c < masterRows[r].length; c++) {
-              const cell = String(masterRows[r][c] || "").trim();
+        const masterSheets = sheetNames.filter((s) =>
+          /정리본|매입-매출|매입매출|종합결산|결산|손익|매출/i.test(s) && !/세금계산서/i.test(s)
+        );
+        const searchSheets = [...masterSheets, ...sheetNames.filter((s) => !masterSheets.includes(s))];
 
-              // Total Sales Box (e.g. "금일 매출 합계", "총 매출 합계", "매출합계")
-              if (/금일\s*매출\s*합계|총\s*매출\s*합계|당월\s*매출\s*합계|매출\s*총합계|총\s*매출액/i.test(cell) && !detectedMasterSales) {
-                for (let k = c + 1; k < masterRows[r].length; k++) {
-                  const num = Number(String(masterRows[r][k]).replace(/,/g, ""));
-                  if (!isNaN(num) && num > 10000000) {
-                    detectedMasterSales = num;
-                    break;
-                  }
-                }
+        // PASS 1: High priority search
+        for (const s of searchSheets) {
+          const ws = workbook.Sheets[s];
+          if (!ws) continue;
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+
+          for (let r = 0; r < rows.length; r++) {
+            for (let c = 0; c < rows[r].length; c++) {
+              const cell = String(rows[r][c] || "").trim();
+              if (!cell) continue;
+
+              if (!detectedMasterSales && highPrioritySales.test(cell)) {
+                const num = findNumberNear(rows, r, c);
+                if (num) detectedMasterSales = num;
               }
 
-              // Total Purchases Box (e.g. "금일 매입 합계", "총 매입 합계", "매입합계")
-              if (/금일\s*매입\s*합계|총\s*매입\s*합계|당월\s*매입\s*합계|매입\s*총합계|총\s*매입액/i.test(cell) && !detectedMasterPurchases) {
-                for (let k = c + 1; k < masterRows[r].length; k++) {
-                  const num = Number(String(masterRows[r][k]).replace(/,/g, ""));
+              if (!detectedMasterPurchases && highPriorityPurchases.test(cell)) {
+                const num = findNumberNear(rows, r, c);
+                if (num) detectedMasterPurchases = num;
+              }
+
+              if (!detectedPcmSales && pcmPattern.test(cell)) {
+                const num = findNumberNear(rows, r, c);
+                if (num) detectedPcmSales = num;
+              }
+            }
+          }
+        }
+
+        // PASS 2: Check Jajae sheet bottom totals for purchases if still missing
+        if (jajaeSheetName && !detectedMasterPurchases) {
+          const ws = workbook.Sheets[jajaeSheetName];
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+          for (let r = 0; r < rows.length; r++) {
+            const row = rows[r];
+            for (let c = 0; c < row.length; c++) {
+              const val = String(row[c] || "").trim();
+              if (/삼랑진매출|TOTAL|당월합계|총금액/i.test(val)) {
+                for (let k = c + 1; k < row.length; k++) {
+                  const num = cleanNumber(row[k]);
                   if (!isNaN(num) && num > 10000000) {
                     detectedMasterPurchases = num;
                     break;
                   }
                 }
+                if (detectedMasterPurchases) break;
               }
+            }
+            if (detectedMasterPurchases) break;
+          }
+        }
 
-              // PCM Sales
-              if (/PCM\s*매출/i.test(cell) && !detectedPcmSales) {
-                for (let k = c + 1; k < masterRows[r].length; k++) {
-                  const num = Number(String(masterRows[r][k]).replace(/,/g, ""));
-                  if (!isNaN(num) && num > 10000000) {
-                    detectedPcmSales = num;
-                    break;
+        // PASS 3: Medium priority fallback
+        if (!detectedMasterSales || !detectedMasterPurchases) {
+          for (const s of searchSheets) {
+            const ws = workbook.Sheets[s];
+            if (!ws) continue;
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+            for (let r = 0; r < rows.length; r++) {
+              for (let c = 0; c < rows[r].length; c++) {
+                const cell = String(rows[r][c] || "").trim();
+                if (!cell) continue;
+
+                if (!detectedMasterSales && mediumPrioritySales.test(cell) && !cell.includes("PCM") && !cell.includes("소계")) {
+                  const num = findNumberNear(rows, r, c);
+                  if (num && num > 100000000) {
+                    detectedMasterSales = num;
+                  }
+                }
+
+                if (!detectedMasterPurchases && mediumPriorityPurchases.test(cell) && !cell.includes("소계")) {
+                  const num = findNumberNear(rows, r, c);
+                  if (num && num > 100000000) {
+                    detectedMasterPurchases = num;
                   }
                 }
               }
             }
           }
+        }
+
+        // ---------------------------------------------------------------------
+        // 4. Parse Master Sales Sheet (정리본 / 매입매출)
+        // ---------------------------------------------------------------------
+        let vehicleSales = [];
+        let salesSummary = null;
+        const rawSalesItems = [];
+
+        if (masterSheetName && workbook.Sheets[masterSheetName]) {
+          const wsMaster = workbook.Sheets[masterSheetName];
+          const masterRows = XLSX.utils.sheet_to_json(wsMaster, { header: 1, defval: "" });
 
           let currentProcess = "내수상품매출";
           let currentVehicle = "";
-          const rawSalesItems = [];
 
           // Add PCM Sales if found in summary
           if (detectedPcmSales > 0) {
@@ -174,7 +250,6 @@ export const parseExcelFile = async (file) => {
             });
           }
 
-          // Header row detection
           let dataStartRow = 3;
           for (let r = 0; r < Math.min(10, masterRows.length); r++) {
             const rStr = masterRows[r].join(" ");
@@ -186,15 +261,14 @@ export const parseExcelFile = async (file) => {
 
           for (let r = dataStartRow; r < masterRows.length; r++) {
             const row = masterRows[r];
-            const c0 = String(row[0] || "").trim();
             const c1 = String(row[1] || "").trim();
             const c2 = String(row[2] || "").trim();
             const itemCode = String(row[3] || "").trim();
             const partNumber = String(row[4] || "").trim();
             const partName = String(row[5] || "").trim();
-            const unitPrice = Number(String(row[6] || "").replace(/,/g, ""));
-            const qty = Number(String(row[7] || "").replace(/,/g, ""));
-            const amount = Number(String(row[8] || "").replace(/,/g, ""));
+            const unitPrice = cleanNumber(row[6]);
+            const qty = cleanNumber(row[7]);
+            const amount = cleanNumber(row[8]);
 
             if (c1.includes("매출") || c1.includes("A/S") || c1.includes("EPDM") || c1.includes("임가공")) {
               currentProcess = c1;
@@ -205,7 +279,7 @@ export const parseExcelFile = async (file) => {
 
             // If PCM row appears in data body and not yet added
             if ((c2.includes("PCM") || c1.includes("PCM")) && detectedPcmSales === 0) {
-              const pcmAmt = Number(String(row[9] || row[10] || row[8] || "").replace(/,/g, ""));
+              const pcmAmt = cleanNumber(row[9] || row[10] || row[8]);
               if (pcmAmt > 0 && !rawSalesItems.some((it) => it.process === "PCM 매출")) {
                 rawSalesItems.push({
                   process: "PCM 매출",
@@ -311,30 +385,19 @@ export const parseExcelFile = async (file) => {
         }
 
         // ---------------------------------------------------------------------
-        // 4. Parse Jajae Material Sheet (자재매입)
+        // 5. Parse Jajae Material Sheet (자재매입)
         // ---------------------------------------------------------------------
+        let jajaeGroups = [];
+        let jajaeSummary = null;
+        const allTransactions = [];
+        const rawJajaeItems = [];
+
         if (jajaeSheetName && workbook.Sheets[jajaeSheetName]) {
           const wsJajae = workbook.Sheets[jajaeSheetName];
           const jajaeRows = XLSX.utils.sheet_to_json(wsJajae, { header: 1, defval: "" });
 
-          // Check if summary total exists in jajae sheet
-          for (let r = 0; r < Math.min(20, jajaeRows.length); r++) {
-            for (let c = 0; c < jajaeRows[r].length; c++) {
-              const cell = String(jajaeRows[r][c] || "").trim();
-              if (/금일\s*매입\s*합계|총\s*매입\s*합계|당월\s*합계|합계/i.test(cell) && !detectedMasterPurchases) {
-                for (let k = c + 1; k < jajaeRows[r].length; k++) {
-                  const num = Number(String(jajaeRows[r][k]).replace(/,/g, ""));
-                  if (!isNaN(num) && num > 10000000) {
-                    detectedMasterPurchases = num;
-                    break;
-                  }
-                }
-              }
-            }
-          }
-
           let currentMainCategory = "기타자재";
-          const rawJajaeItems = [];
+          let extraMiscPurchaseAmount = 0;
 
           let jStartRow = 2;
           for (let r = 0; r < Math.min(6, jajaeRows.length); r++) {
@@ -353,16 +416,23 @@ export const parseExcelFile = async (file) => {
             const c3 = String(row[3] || "").trim();
             const c4 = String(row[4] || "").trim();
             const c5 = String(row[5] || "").trim();
-            const unitPrice = Number(String(row[6] || "").replace(/,/g, ""));
-            const qty = Number(String(row[7] || "").replace(/,/g, ""));
-            const amount = Number(String(row[8] || "").replace(/,/g, ""));
+            const unitPrice = cleanNumber(row[6]);
+            const qty = cleanNumber(row[7]);
+            const amount = cleanNumber(row[8]);
             const memo = String(row[12] || row[13] || "").trim();
+
+            // Check for bottom TOTAL(기타매입) row
+            if (String(row[7] || "").includes("TOTAL") && String(row[7] || "").includes("기타매입")) {
+              const miscVal = cleanNumber(row[8] || row[9]);
+              if (miscVal > 0) extraMiscPurchaseAmount = miscVal;
+            }
 
             if (c0 && isNaN(c0) && !c0.includes("순서")) {
               currentMainCategory = c0.replace(/\r?\n/g, " ").trim();
             }
 
-            if (c2 && !c2.includes("품명") && amount > 0) {
+            // Exclude subtotal or total rows from double-counting
+            if (c2 && !c2.includes("품명") && amount > 0 && !/소계|합계|TOTAL|총계/i.test(c2) && !/소계|합계|TOTAL|총계/i.test(c1)) {
               const jItem = {
                 mainCategory: currentMainCategory,
                 code: c1 || "-",
@@ -390,6 +460,33 @@ export const parseExcelFile = async (file) => {
                 memo: memo
               });
             }
+          }
+
+          // If extra misc purchase was found at bottom, add it
+          if (extraMiscPurchaseAmount > 0) {
+            rawJajaeItems.push({
+              mainCategory: "기타/부자재",
+              code: "MISC-01",
+              partName: "기타 매입 및 부자재 마감분",
+              unit: "EA",
+              usage: "공통",
+              supplier: "대성종합상사 외",
+              unitPrice: extraMiscPurchaseAmount,
+              qty: 1,
+              amount: extraMiscPurchaseAmount,
+              memo: "기타매입 집계"
+            });
+            allTransactions.push({
+              id: `jajae_${detectedYearMonth}_misc`,
+              date: `${detectedYearMonth}-28`,
+              type: "expense",
+              category: "부자재",
+              client: "대성종합상사 외",
+              title: "기타 매입 및 부자재 마감분",
+              amount: extraMiscPurchaseAmount,
+              paymentMethod: "세금계산서",
+              memo: "기타매입 집계"
+            });
           }
 
           const normalizeJGroup = (item) => {
@@ -453,7 +550,7 @@ export const parseExcelFile = async (file) => {
         }
 
         // ---------------------------------------------------------------------
-        // 5. Parse Direct Purchase Ledger Sheets (매입명세표, 매입DATA, 지출내역)
+        // 6. Parse Direct Purchase Ledger Sheets (매입명세표, 매입DATA, 지출내역)
         // ---------------------------------------------------------------------
         if (myungseSheetName && workbook.Sheets[myungseSheetName] && jajaeGroups.length === 0) {
           const wsMyungse = workbook.Sheets[myungseSheetName];
@@ -481,7 +578,7 @@ export const parseExcelFile = async (file) => {
 
           for (let r = headerIdx + 1; r < rows.length; r++) {
             const row = rows[r];
-            const amt = Number(String(row[amtCol >= 0 ? amtCol : 6] || "").replace(/,/g, ""));
+            const amt = cleanNumber(row[amtCol >= 0 ? amtCol : 6]);
             if (isNaN(amt) || amt <= 0) continue;
 
             const dateVal = String(row[dateCol >= 0 ? dateCol : 1] || "").trim() || `${detectedYearMonth}-28`;
@@ -548,27 +645,6 @@ export const parseExcelFile = async (file) => {
           };
         }
 
-        // ---------------------------------------------------------------------
-        // 6. Summary Sheets Fallback
-        // ---------------------------------------------------------------------
-        if (summarySheetName && workbook.Sheets[summarySheetName] && (!detectedMasterSales || !detectedMasterPurchases)) {
-          const wsSum = workbook.Sheets[summarySheetName];
-          const sRows = XLSX.utils.sheet_to_json(wsSum, { header: 1, defval: "" });
-          for (let r = 0; r < sRows.length; r++) {
-            const rStr = sRows[r].join(" ");
-            if (rStr.includes("총 매출액") || rStr.includes("매출액") || rStr.includes("Sales")) {
-              const nextRow = sRows[r + 1] || [];
-              for (let c = 0; c < nextRow.length; c++) {
-                const val = Number(String(nextRow[c] || "").replace(/,/g, ""));
-                if (val > 10000000) {
-                  if (!detectedMasterSales) detectedMasterSales = val;
-                  else if (!detectedMasterPurchases && val !== detectedMasterSales) detectedMasterPurchases = val;
-                }
-              }
-            }
-          }
-        }
-
         const finalSalesVal = detectedMasterSales || (salesSummary?.totalSales || 0);
         const finalPurchasesVal = detectedMasterPurchases || (jajaeSummary?.totalAmount || 0);
 
@@ -612,4 +688,5 @@ export const parseExcelFile = async (file) => {
     reader.readAsArrayBuffer(file);
   });
 };
+
 

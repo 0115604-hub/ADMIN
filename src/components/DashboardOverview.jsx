@@ -60,8 +60,13 @@ export const DashboardOverview = ({
   const vehicleSales = currentMonthData?.vehicleSales || [];
   const jajaeGroups = currentMonthData?.jajaeGroups || [];
 
-  const totalSales = salesSummary.totalSales || 0;
-  const ledgerPurchases = purchaseSummary.ledgerBenchmark || 0;
+  const totalSales = salesSummary.totalSales || currentMonthData?.totalSales || 0;
+  const ledgerPurchases =
+    currentMonthData?.purchaseSummary?.ledgerBenchmark ||
+    currentMonthData?.purchaseSummary?.totalExpenses ||
+    currentMonthData?.jajaeSummary?.totalAmount ||
+    currentMonthData?.totalExpenses ||
+    0;
   const netProfit = totalSales - ledgerPurchases;
   const profitMargin = totalSales > 0 ? ((netProfit / totalSales) * 100).toFixed(1) : 0;
 

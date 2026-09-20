@@ -1935,7 +1935,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const monthTitle = `${monthParts[0] || "2026"}년 ${monthParts[1] || "09"}월`;
 
   const totalSales = currentMonthData?.salesSummary?.totalSales || currentMonthData?.totalSales || 0;
-  const totalPurchases = currentMonthData?.purchaseSummary?.ledgerBenchmark || currentMonthData?.jajaeSummary?.totalAmount || currentMonthData?.totalExpenses || 0;
+  const totalPurchases =
+    currentMonthData?.purchaseSummary?.ledgerBenchmark ||
+    currentMonthData?.purchaseSummary?.totalExpenses ||
+    currentMonthData?.jajaeSummary?.totalAmount ||
+    currentMonthData?.totalExpenses ||
+    0;
   const purchaseRatio = totalSales > 0 ? ((totalPurchases / totalSales) * 100).toFixed(1) : "0.0";
 
   // PnL Achievement calculations for Morning Briefing
@@ -1953,7 +1958,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   }, [allMonthlyData, prevMonthKey]);
 
   const prevSales = prevMonthData?.salesSummary?.totalSales || prevMonthData?.totalSales || 0;
-  const prevPurchases = prevMonthData?.purchaseSummary?.ledgerBenchmark || prevMonthData?.jajaeSummary?.totalAmount || prevMonthData?.totalExpenses || 0;
+  const prevPurchases =
+    prevMonthData?.purchaseSummary?.ledgerBenchmark ||
+    prevMonthData?.purchaseSummary?.totalExpenses ||
+    prevMonthData?.jajaeSummary?.totalAmount ||
+    prevMonthData?.totalExpenses ||
+    0;
 
   const salesAchievementPct = prevSales > 0 ? ((totalSales / prevSales) * 100).toFixed(1) : "100.0";
   const purchaseAchievementPct = prevPurchases > 0 ? ((totalPurchases / prevPurchases) * 100).toFixed(1) : "100.0";
