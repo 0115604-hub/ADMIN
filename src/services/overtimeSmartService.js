@@ -493,21 +493,9 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
     ? masterWorkers 
     : (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []);
 
-  // 1. Initialize 30-day base matrix
+  // 1. Initialize 30-day base matrix preserving worker's daily records
   const matrix = workers.map((w, idx) => {
-    const daily = {};
-    for (let d = 1; d <= 30; d++) {
-      const isWeekend = (d === 5 || d === 6 || d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27);
-      if (isWeekend) {
-        daily[d] = "-";
-      } else if (d <= 8) {
-        // Only elapsed working days have base attendance if available
-        daily[d] = (w.daily && w.daily[d]) ? w.daily[d] : "🟢";
-      } else {
-        // ⭐ Future days (9-30) are strictly empty/unrecorded
-        daily[d] = "";
-      }
-    }
+    const daily = { ...(w.daily || {}) };
     return {
       no: idx + 1,
       company: w.company,
@@ -554,14 +542,6 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
     } else {
       targetCompanies = COMPANIES;
     }
-
-    // For weekend reports or registered specific reports, initialize target company workers to "-" first
-    matrix.forEach((w) => {
-      const inTarget = targetCompanies.some(tc => matchCompany(tc, w.company));
-      if (inTarget) {
-        w.daily[day] = isWeekend ? "-" : "-";
-      }
-    });
 
     // Apply items from the report
     if (Array.isArray(report.items)) {
@@ -621,13 +601,6 @@ export const ensureAllCompaniesPresent = (data) => {
   }
 
   let matrix = data.attendanceMatrix.map((w, idx) => {
-    const cleanedDaily = { ...(w.daily || {}) };
-    for (let d = 9; d <= 30; d++) {
-      const isWk = (d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27);
-      if (!isWk && cleanedDaily[d] === "🟢") {
-        cleanedDaily[d] = "";
-      }
-    }
     return {
       ...w,
       no: idx + 1,
@@ -636,7 +609,7 @@ export const ensureAllCompaniesPresent = (data) => {
       line: w.line || normalizeDept(w.dept),
       name: (w.name || "").trim(),
       position: w.position || "작업원",
-      daily: cleanedDaily
+      daily: { ...(w.daily || {}) }
     };
   });
 

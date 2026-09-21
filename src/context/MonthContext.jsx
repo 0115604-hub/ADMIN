@@ -319,6 +319,16 @@ export const MonthProvider = ({ children }) => {
           totalPurchase: finalExpenses
         };
 
+    const finalGrossProfit = cleanPackage.grossProfit !== undefined ? cleanPackage.grossProfit : (finalSales - finalExpenses);
+    const finalCostRatio = finalSales > 0 ? Number(((finalExpenses / finalSales) * 100).toFixed(2)) : 80.93;
+    const finalProfitRatio = finalSales > 0 ? Number((((finalSales - finalExpenses) / finalSales) * 100).toFixed(2)) : 19.07;
+    const finalSalesBreakdown = (cleanPackage.salesBreakdown && cleanPackage.salesBreakdown.length > 0)
+      ? cleanPackage.salesBreakdown
+      : (existing.salesBreakdown || []);
+    const finalPurchaseBreakdown = (cleanPackage.purchaseBreakdown && cleanPackage.purchaseBreakdown.length > 0)
+      ? cleanPackage.purchaseBreakdown
+      : (existing.purchaseBreakdown || []);
+
     // Strip redundant transaction arrays from monthly summary store
     const { items, transactions, ...lightweightPackage } = cleanPackage;
 
@@ -329,6 +339,11 @@ export const MonthProvider = ({ children }) => {
         ...lightweightPackage,
         totalSales: finalSales,
         totalExpenses: finalExpenses,
+        grossProfit: finalGrossProfit,
+        costRatio: finalCostRatio,
+        profitRatio: finalProfitRatio,
+        salesBreakdown: finalSalesBreakdown,
+        purchaseBreakdown: finalPurchaseBreakdown,
         salesSummary: finalSalesSummary,
         vehicleSales: finalVehicleSales,
         jajaeSummary: finalJajaeSummary,

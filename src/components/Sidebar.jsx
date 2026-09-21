@@ -2,15 +2,11 @@ import React from "react";
 import {
   BarChart3,
   Car,
-  Boxes,
-  Layers,
-  FileText,
   Settings,
   LogOut,
   Building2,
   UploadCloud,
   ClipboardList,
-  Calculator,
   PauseCircle,
   CheckSquare,
   Clock,
@@ -28,12 +24,8 @@ import { TelegramLogo } from "./TelegramLogo";
 export const ADMIN_TABS = [
   { id: "worker_dashboard", label: "현황", icon: ClipboardList },
   { id: "electronic_approval", label: "전자결재", icon: FileSignature },
-  { id: "vehicle_sales", label: "차종별 매출 분석", icon: Car },
+  { id: "vehicle_sales", label: "매출매입분석", icon: BarChart3 },
   { id: "hanul_tax_invoice", label: "한울세금계산서", icon: Receipt },
-  { id: "material_purchases", label: "자재매입 품목군 분석", icon: Boxes },
-  { id: "closing_ledger", label: "매입DATA", icon: Calculator },
-  { id: "purchase_costs", label: "계정과목별 매입", icon: Layers },
-  { id: "statement", label: "월간 손익계산서", icon: FileText },
   { id: "telegram", label: "텔레그램 연동 설정", icon: TelegramLogo },
   { id: "settings", label: "설정 & 데이터 관리", icon: Settings }
 ];

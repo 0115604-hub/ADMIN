@@ -3,12 +3,8 @@ import { ArrowUp } from "lucide-react";
 import { Sidebar, ADMIN_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
 import { DashboardOverview } from "./components/DashboardOverview";
-import { VehicleSalesView } from "./components/VehicleSalesView";
+import { SalesPurchaseAnalysisView } from "./components/SalesPurchaseAnalysisView";
 import { HanulTaxInvoiceView } from "./components/HanulTaxInvoiceView";
-import { MaterialPurchaseView } from "./components/MaterialPurchaseView";
-import { PurchaseExpenseView } from "./components/PurchaseExpenseView";
-import { ClosingLedgerView } from "./components/ClosingLedgerView";
-import { PnLStatement } from "./components/PnLStatement";
 import { OperatorWorkspace } from "./components/OperatorWorkspace";
 import { WorkerDashboard } from "./components/WorkerDashboard";
 import { ExtrusionDowntimeView } from "./components/ExtrusionDowntimeView";
@@ -354,8 +350,8 @@ export const App = () => {
                   {activeTab === "electronic_approval" && (
                     <ElectronicApprovalView />
                   )}
-                  {activeTab === "vehicle_sales" && (
-                    <VehicleSalesView />
+                  {(activeTab === "vehicle_sales" || activeTab === "sales_purchase_analysis") && (
+                    <SalesPurchaseAnalysisView />
                   )}
                   {activeTab === "hanul_tax_invoice" && (
                     <HanulTaxInvoiceView />
@@ -389,46 +385,12 @@ export const App = () => {
                     <ElectronicApprovalView />
                   )}
 
-                  {activeTab === "vehicle_sales" && (
-                    <VehicleSalesView />
+                  {(activeTab === "vehicle_sales" || activeTab === "sales_purchase_analysis") && (
+                    <SalesPurchaseAnalysisView />
                   )}
 
                   {activeTab === "hanul_tax_invoice" && (
                     <HanulTaxInvoiceView />
-                  )}
-
-                  {activeTab === "material_purchases" && (
-                    <MaterialPurchaseView />
-                  )}
-
-                  {activeTab === "closing_ledger" && (
-                    <ClosingLedgerView />
-                  )}
-
-                  {activeTab === "purchase_costs" && (
-                    <PurchaseExpenseView
-                      transactions={transactions}
-                      onEdit={(item) => {
-                        pushModalHistory("transaction_edit_modal");
-                        setEditingItem(item);
-                        setModalOpen(true);
-                      }}
-                      onDelete={handleDeleteTransaction}
-                      onOpenNewModal={() => {
-                        pushModalHistory("transaction_new_modal");
-                        setEditingItem(null);
-                        setModalOpen(true);
-                      }}
-                      onOpenExcelModal={() => {
-                        pushModalHistory("excel_modal");
-                        setExcelModalOpen(true);
-                      }}
-                      onClearAll={handleClearAllTransactions}
-                    />
-                  )}
-
-                  {activeTab === "statement" && (
-                    <PnLStatement transactions={transactions} />
                   )}
 
                   {activeTab === "extrusion_downtime" && (

@@ -14,6 +14,16 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+    try {
+      const lastErrorTime = sessionStorage.getItem("last_error_boundary_retry");
+      const now = Date.now();
+      if (!lastErrorTime || (now - Number(lastErrorTime)) > 30000) {
+        sessionStorage.setItem("last_error_boundary_retry", String(now));
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
+      }
+    } catch (e) {}
   }
 
   handleReset = () => {

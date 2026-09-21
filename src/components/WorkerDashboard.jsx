@@ -678,9 +678,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return false;
   }, [approvalDocs]);
 
-  // 공장별 최신 미결재 특근보고서 추출 및 취합 (결재 미완료인 건만 공장 단위로 표시, 결재 완료 시 자동 숨김)
-  const samrangjinSpecialReport = useMemo(() => {
-    if (!Array.isArray(overtimeReports)) return null;
+  // 🌟 공장별 최신 일자의 미결재 특근보고서 추출 (최신 일자 기준 미결재 건만 공장/협력사별 개별 표시, 과거 일자 나열 방지, 결재 완료 시 자동 숨김)
+  const pendingApprovalCards = useMemo(() => {
+    if (!Array.isArray(overtimeReports)) return [];
+    const list = [];
+    const seenIds = new Set();
+
+    // 1. 삼랑진공장: 최신 일자 미결재 특근보고서 추출 (오륙, 유성)
     const unapprovedSam = overtimeReports.filter((r) => {
       if (!r) return false;
       const isSam = r.plant === "삼랑진공장" || r.company === "(주)오륙" || r.company === "유성" || (r.plant?.includes("삼랑진") && !r.plant?.includes("한림"));
@@ -690,44 +694,39 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return !isOvertimeReportApproved(r);
     }).sort((a, b) => (b.workDate || b.updatedAt || "").localeCompare(a.workDate || a.updatedAt || ""));
 
-    if (unapprovedSam.length === 0) return null;
-
-    const latestDate = unapprovedSam[0].workDate;
-    const sameDateReports = unapprovedSam.filter((r) => (r.workDate || "") === latestDate);
-
-    let totalWorkers = 0;
-    let totalCost = 0;
-    const categoryMap = {};
-    const authors = [];
-
-    sameDateReports.forEach((rep) => {
-      totalWorkers += Number(rep.totalWorkers || rep.headcount || (rep.items ? rep.items.length : 0)) || 0;
-      totalCost += Number(rep.cost || 0);
-      if (rep.author && !authors.includes(rep.author)) {
-        authors.push(rep.author);
-      }
-      (rep.items || []).forEach((it) => {
-        const cat = it.category || it.line || it.name || "기타";
-        categoryMap[cat] = (categoryMap[cat] || 0) + (Number(it.count) || 1);
+    if (unapprovedSam.length > 0) {
+      const latestSamDate = unapprovedSam[0].workDate;
+      const samLatestReports = unapprovedSam.filter((r) => (r.workDate || "") === latestSamDate);
+      samLatestReports.forEach((rep) => {
+        const companyLabel = rep.company || (rep.companies && rep.companies.length === 1 ? rep.companies[0] : "");
+        const badgeLabel = companyLabel ? `삼랑진공장 (${companyLabel})` : "삼랑진공장 특근";
+        const cardId = rep.id || `rep_sam_${rep.workDate}_${companyLabel}`;
+        if (!seenIds.has(cardId)) {
+          seenIds.add(cardId);
+          list.push({
+            id: cardId,
+            docId: rep.id,
+            plant: "삼랑진공장",
+            company: companyLabel,
+            isHallim: false,
+            badgeLabel: badgeLabel,
+            title: rep.title || `${badgeLabel} 보고서`,
+            workDate: rep.workDate || "",
+            workDateFormatted: rep.workDateFormatted || rep.workDate || "",
+            author: rep.author || "선임",
+            authorTitle: rep.authorTitle || "선임",
+            cost: Number(rep.cost || 0),
+            totalWorkers: Number(rep.totalWorkers || rep.headcount || (rep.items ? rep.items.length : 0)) || 0,
+            items: rep.items || [],
+            statusLabel: rep.status === "HOLD" ? "결재보류" : "결재진행중",
+            sourceType: "overtime",
+            reportType: rep.reportType || "특근보고서"
+          });
+        }
       });
-    });
+    }
 
-    const items = Object.entries(categoryMap).map(([category, count]) => ({ category, count }));
-
-    return {
-      plant: "삼랑진공장",
-      workDate: latestDate,
-      workDateFormatted: unapprovedSam[0].workDateFormatted || latestDate,
-      author: authors.join(", ") || unapprovedSam[0].author || "선임",
-      authorTitle: unapprovedSam[0].authorTitle || "선임",
-      cost: totalCost || unapprovedSam[0].cost || 0,
-      totalWorkers: totalWorkers || unapprovedSam[0].totalWorkers || 0,
-      items: items.length > 0 ? items : (unapprovedSam[0].items || [])
-    };
-  }, [overtimeReports, isOvertimeReportApproved]);
-
-  const hallimSpecialReport = useMemo(() => {
-    if (!Array.isArray(overtimeReports)) return null;
+    // 2. 한림공장: 최신 일자 미결재 특근보고서 추출 (한울, 조영산업, 부림텍 - 2건 이상 시 모두 개별 표시)
     const unapprovedHal = overtimeReports.filter((r) => {
       if (!r) return false;
       const isHal = r.plant === "한림공장" || r.company === "한울" || r.company === "부림텍" || r.company === "(주)조영산업" || r.plant?.includes("한림");
@@ -737,40 +736,39 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return !isOvertimeReportApproved(r);
     }).sort((a, b) => (b.workDate || b.updatedAt || "").localeCompare(a.workDate || a.updatedAt || ""));
 
-    if (unapprovedHal.length === 0) return null;
-
-    const latestDate = unapprovedHal[0].workDate;
-    const sameDateReports = unapprovedHal.filter((r) => (r.workDate || "") === latestDate);
-
-    let totalWorkers = 0;
-    let totalCost = 0;
-    const categoryMap = {};
-    const authors = [];
-
-    sameDateReports.forEach((rep) => {
-      totalWorkers += Number(rep.totalWorkers || rep.headcount || (rep.items ? rep.items.length : 0)) || 0;
-      totalCost += Number(rep.cost || 0);
-      if (rep.author && !authors.includes(rep.author)) {
-        authors.push(rep.author);
-      }
-      (rep.items || []).forEach((it) => {
-        const cat = it.category || it.line || it.name || "기타";
-        categoryMap[cat] = (categoryMap[cat] || 0) + (Number(it.count) || 1);
+    if (unapprovedHal.length > 0) {
+      const latestHalDate = unapprovedHal[0].workDate;
+      const halLatestReports = unapprovedHal.filter((r) => (r.workDate || "") === latestHalDate);
+      halLatestReports.forEach((rep) => {
+        const companyLabel = rep.company || (rep.companies && rep.companies.length === 1 ? rep.companies[0] : "");
+        const badgeLabel = companyLabel ? `한림공장 (${companyLabel})` : "한림공장 특근";
+        const cardId = rep.id || `rep_hal_${rep.workDate}_${companyLabel}`;
+        if (!seenIds.has(cardId)) {
+          seenIds.add(cardId);
+          list.push({
+            id: cardId,
+            docId: rep.id,
+            plant: "한림공장",
+            company: companyLabel,
+            isHallim: true,
+            badgeLabel: badgeLabel,
+            title: rep.title || `${badgeLabel} 보고서`,
+            workDate: rep.workDate || "",
+            workDateFormatted: rep.workDateFormatted || rep.workDate || "",
+            author: rep.author || "선임",
+            authorTitle: rep.authorTitle || "선임",
+            cost: Number(rep.cost || 0),
+            totalWorkers: Number(rep.totalWorkers || rep.headcount || (rep.items ? rep.items.length : 0)) || 0,
+            items: rep.items || [],
+            statusLabel: rep.status === "HOLD" ? "결재보류" : "결재진행중",
+            sourceType: "overtime",
+            reportType: rep.reportType || "특근보고서"
+          });
+        }
       });
-    });
+    }
 
-    const items = Object.entries(categoryMap).map(([category, count]) => ({ category, count }));
-
-    return {
-      plant: "한림공장",
-      workDate: latestDate,
-      workDateFormatted: unapprovedHal[0].workDateFormatted || latestDate,
-      author: authors.join(", ") || unapprovedHal[0].author || "선임",
-      authorTitle: unapprovedHal[0].authorTitle || "선임",
-      cost: totalCost || unapprovedHal[0].cost || 0,
-      totalWorkers: totalWorkers || unapprovedHal[0].totalWorkers || 0,
-      items: items.length > 0 ? items : (unapprovedHal[0].items || [])
-    };
+    return list;
   }, [overtimeReports, isOvertimeReportApproved]);
 
   const handleOpenWorkerLogs = (worker) => {
@@ -3820,16 +3818,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     {unwrittenCompanies.length === 0 ? "전사 완료" : `${5 - unwrittenCompanies.length}/5 완료`}
                   </span>
                 ) : (
-                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 ${comp.statusBadgeClass}`}>
-                    {comp.isWritten ? (
-                      <>
-                        <span className="text-[8.5px]">✓</span>
-                        <span>작성완료</span>
-                      </>
-                    ) : (
+                  comp.isWritten ? (
+                    <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
+                      <span>✅</span>
+                    </span>
+                  ) : (
+                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 ${comp.statusBadgeClass}`}>
                       <span>{comp.statusBadgeText}</span>
-                    )}
-                  </span>
+                    </span>
+                  )
                 )}
               </div>
 
@@ -3871,94 +3868,82 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           ))}
         </div>
 
-        {/* 2 Factory Overtime Cards (특근보고서 결재 미완료 시 공장별 노출 - 기존 방식 유지 & 세부내역 간결화) */}
-        {(samrangjinSpecialReport || hallimSpecialReport) && (
-          <div className={`grid grid-cols-1 ${samrangjinSpecialReport && hallimSpecialReport ? "md:grid-cols-2" : ""} gap-2 pt-1`}>
-            {/* 삼랑진공장 특근보고서 */}
-            {samrangjinSpecialReport && (
-              <div
-                onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
-                className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-1.5 min-w-0 shadow-2xs hover:shadow-xs cursor-pointer transition-all group"
-                title="클릭 시 특근보고서 상세 이동"
-              >
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="px-1.5 py-0.2 rounded bg-amber-500 text-white text-[9.5px] font-black shrink-0">
-                      삼랑진공장 특근
-                    </span>
-                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 shrink-0">
-                      {samrangjinSpecialReport.workDateFormatted || samrangjinSpecialReport.workDate}
-                    </span>
-                    <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0">
-                      결재진행중
-                    </span>
-                    <span className="text-[9.5px] text-slate-500 font-bold truncate">
-                      {samrangjinSpecialReport.author} {samrangjinSpecialReport.authorTitle || "선임"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
-                      ₩{(samrangjinSpecialReport.cost || 0).toLocaleString()}
-                    </span>
-                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-bold">
-                      ({samrangjinSpecialReport.totalWorkers || samrangjinSpecialReport.headcount || 0}명)
-                    </span>
-                  </div>
-                </div>
+        {/* ⭐ 공장별/문서별 미결재 특근보고서 및 결재문서 카드 (미결재 건 전체 개별 노출 & 세부내역 간결화) */}
+        {pendingApprovalCards.length > 0 && (
+          <div className={`grid grid-cols-1 ${pendingApprovalCards.length === 2 ? "md:grid-cols-2" : pendingApprovalCards.length >= 3 ? "md:grid-cols-2 lg:grid-cols-3" : ""} gap-2 pt-1`}>
+            {pendingApprovalCards.map((report) => {
+              const isHal = report.isHallim || report.plant === "한림공장";
+              const isSam = report.plant === "삼랑진공장";
+              const plantBadgeBg = isHal
+                ? "bg-emerald-600 text-white"
+                : isSam
+                ? "bg-amber-500 text-white"
+                : "bg-indigo-600 text-white";
+              const dateBadgeClass = isHal
+                ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800"
+                : isSam
+                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800"
+                : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-300 border border-indigo-300/80 dark:border-indigo-800";
 
-                {/* 세부내역: 간결한 뱃지 리스트 */}
-                <div className="flex flex-wrap items-center gap-1">
-                  {(samrangjinSpecialReport.items || []).map((it, idx) => (
-                    <span key={idx} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-700/80 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                      {it.category || it.name}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 한림공장 특근보고서 */}
-            {hallimSpecialReport && (
-              <div
-                onClick={() => onNavigateTab && onNavigateTab("overtime_status")}
-                className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-1.5 min-w-0 shadow-2xs hover:shadow-xs cursor-pointer transition-all group"
-                title="클릭 시 특근보고서 상세 이동"
-              >
-                <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white text-[9.5px] font-black shrink-0">
-                      한림공장 특근
-                    </span>
-                    <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800 shrink-0">
-                      {hallimSpecialReport.workDateFormatted || hallimSpecialReport.workDate}
-                    </span>
-                    <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 shrink-0">
-                      결재진행중
-                    </span>
-                    <span className="text-[9.5px] text-slate-500 font-bold truncate">
-                      {hallimSpecialReport.author} {hallimSpecialReport.authorTitle || "선임"}
-                    </span>
+              return (
+                <div
+                  key={report.id}
+                  onClick={() => onNavigateTab && onNavigateTab(report.sourceType === "approval" ? "electronic_approval" : "overtime_status")}
+                  className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-1.5 min-w-0 shadow-2xs hover:shadow-xs cursor-pointer transition-all group hover:border-blue-400 dark:hover:border-blue-500"
+                  title={report.sourceType === "approval" ? "클릭 시 전자결재함 상세 이동" : "클릭 시 특근보고서 상세 이동"}
+                >
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${plantBadgeBg}`}>
+                        {report.badgeLabel || `${report.plant} 특근`}
+                      </span>
+                      {(report.workDateFormatted || report.workDate) && (
+                        <span className={`text-[9.5px] font-extrabold px-1.5 py-0.2 rounded border shrink-0 ${dateBadgeClass}`}>
+                          {report.workDateFormatted || report.workDate}
+                        </span>
+                      )}
+                      <span className={`text-[9px] font-extrabold px-1 py-0.2 rounded border shrink-0 ${
+                        report.statusLabel === "결재보류"
+                          ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
+                          : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
+                      }`}>
+                        {report.statusLabel || "결재진행중"}
+                      </span>
+                      <span className="text-[9.5px] text-slate-500 font-bold truncate">
+                        {report.author} {report.authorTitle || "선임"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {(report.cost > 0 || report.amountText) && (
+                        <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
+                          {report.cost > 0 ? `₩${report.cost.toLocaleString()}` : report.amountText}
+                        </span>
+                      )}
+                      {report.totalWorkers > 0 && (
+                        <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-bold">
+                          ({report.totalWorkers}명)
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
-                      ₩{(hallimSpecialReport.cost || 0).toLocaleString()}
-                    </span>
-                    <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-bold">
-                      ({hallimSpecialReport.totalWorkers || hallimSpecialReport.headcount || 0}명)
-                    </span>
-                  </div>
-                </div>
 
-                {/* 세부내역: 간결한 뱃지 리스트 */}
-                <div className="flex flex-wrap items-center gap-1">
-                  {(hallimSpecialReport.items || []).map((it, idx) => (
-                    <span key={idx} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-700/80 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                      {it.category || it.name}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
-                    </span>
-                  ))}
+                  {/* 세부내역: 품목/라인 뱃지 리스트 또는 제목 */}
+                  {Array.isArray(report.items) && report.items.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {report.items.map((it, idx) => (
+                        <span key={idx} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-700/80 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
+                          {it.category || it.name || it.line || "작업"}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-slate-600 dark:text-slate-400 truncate font-medium">
+                      {report.title}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         )}
       </div>

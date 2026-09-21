@@ -76,7 +76,8 @@ import {
   formatShortWorkDate,
   calculateReportMetrics,
   PLANT_COMPANIES,
-  getPlantForCompany
+  getPlantForCompany,
+  isWeekendByDate
 } from "../services/overtimeService";
 import {
   syncPlantOvertimeToApprovalBox,
@@ -88,37 +89,6 @@ import {
 import { KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 import { getKSTDateString } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
-
-// ⭐ Precise Date & Weekend/Holiday Overtime Helpers (2026년 9월 한국 달력 및 특근 조건 기준)
-export const isWeekendByDate = (dateStrOrDay) => {
-  if (typeof dateStrOrDay === "number") {
-    const d = dateStrOrDay;
-    // 2026년 9월 주말(5,6,12,13,19,20,26,27) 및 추석연휴(24,25,26) 특근 조건
-    if ([5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(d)) return true;
-    const dt = new Date(2026, 8, d); // Month 8 is September (0-indexed)
-    const dayOfWeek = dt.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6;
-  }
-  if (!dateStrOrDay) return false;
-  const p = String(dateStrOrDay).split("-");
-  if (p.length === 3) {
-    const month = parseInt(p[1], 10);
-    const day = parseInt(p[2], 10);
-    if (month === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) return true;
-    const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-    if (!isNaN(dt.getTime())) {
-      const dayOfWeek = dt.getDay();
-      return dayOfWeek === 0 || dayOfWeek === 6;
-    }
-  }
-  const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
-  if (match) {
-    const dayChar = match[1] || match[2];
-    return dayChar === "토" || dayChar === "일";
-  }
-  if (String(dateStrOrDay).includes("특근") && !String(dateStrOrDay).includes("근태")) return true;
-  return false;
-};
 
 export const getDayOfWeekKorean = (dateStrOrDay) => {
   const names = ["일", "월", "화", "수", "목", "금", "토"];
@@ -809,8 +779,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
   };
 
-  // 1-Click Update Worker Attendance for Selected Day (Local Staging)
-  const handleUpdateWorkerDayAttendance = (workerIndexInMaster, newCode) => {
+  // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
+  const handleUpdateWorkerDayAttendance = async (workerIndexInMaster, newCode) => {
     const updatedMatrix = [...smartData.attendanceMatrix];
     if (!updatedMatrix[workerIndexInMaster]) return;
 
@@ -830,10 +800,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
+    await saveSmartOvertimeData(newLedger);
   };
 
   // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day for All Filtered Workers
-  const handleSetAllFilteredWorkersSameAsPrevDay = () => {
+  const handleSetAllFilteredWorkersSameAsPrevDay = async () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
     if (selectedDay <= 1) {
       triggerToast("⚠️ 1일은 이전 일자 데이터가 존재하지 않습니다.");
@@ -968,10 +939,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       : `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 전일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다.`;
 
     triggerToast(msg);
+    await saveSmartOvertimeData(newLedger);
   };
 
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
-  const handleSetAllFilteredWorkersRegular = () => {
+  const handleSetAllFilteredWorkersRegular = async () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
     const updatedMatrix = [...smartData.attendanceMatrix];
 
@@ -994,6 +966,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     triggerToast(`🟢 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명 전원 9월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+    await saveSmartOvertimeData(newLedger);
   };
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
@@ -1687,16 +1660,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     {(() => {
                       const isUnwritten = unwrittenCompanies.some((c) => c.name === compName);
                       const isWritten = !isUnwritten;
-                      const badgeClass = isWritten
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50"
-                        : (isAfter9AM
-                            ? "bg-rose-500/25 text-rose-300 border-rose-400/60 animate-pulse font-black"
-                            : "bg-amber-500/20 text-amber-300 border-amber-400/50 font-bold"
-                          );
-                      const badgeText = isWritten ? "작성완료" : (isAfter9AM ? "09:00 미작성" : "작성전");
+                      if (isWritten) {
+                        return (
+                          <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
+                            <span>✅</span>
+                          </span>
+                        );
+                      }
+                      const badgeClass = isAfter9AM
+                        ? "bg-rose-500/25 text-rose-300 border-rose-400/60 animate-pulse font-black"
+                        : "bg-amber-500/20 text-amber-300 border-amber-400/50 font-bold";
+                      const badgeText = isAfter9AM ? "09:00 미작성" : "작성전";
                       return (
                         <span className={`text-[9.5px] px-1.5 py-0.5 rounded-md border shrink-0 flex items-center gap-0.5 ${badgeClass}`}>
-                          {isWritten && <span className="text-[8.5px]">✓</span>}
                           <span>{badgeText}</span>
                         </span>
                       );

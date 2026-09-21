@@ -17,11 +17,26 @@ import {
   AlertTriangle,
   ChevronRight,
   Sparkles,
-  Info
+  Info,
+  CheckSquare,
+  ListTodo,
+  Users
 } from "lucide-react";
 import { ADMIN_USERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus, getLeaveTypeMeta } from "../../services/annualLeaveService";
 import { subscribeSevereDisasterPhotos } from "../../services/severeDisasterService";
+import {
+  subscribeCommonSchedules,
+  getLocalCommonSchedules,
+  isScheduleExpired
+} from "../../services/commonScheduleService";
+import {
+  subscribeSmartOvertimeData,
+  getLocalSmartOvertimeData,
+  calculateDailySummary,
+  COMPANIES
+} from "../../services/overtimeSmartService";
+import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
 
@@ -41,14 +56,33 @@ export const WorkerPinModal = ({
   const [pinInput, setPinInput] = useState("");
   const [isPinVerified, setIsPinVerified] = useState(false);
   const [pinError, setPinError] = useState(false);
+  const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
+
   const bodyRef = useRef(null);
   const pinInputRef = useRef(null);
   const overlayRef = useRef(null);
 
-  // Subscribe to Lee Myeong-jae's Severe Disaster photos
+  // 1. Subscribe to Lee Myeong-jae's Severe Disaster photos
   useEffect(() => {
     const unsub = subscribeSevereDisasterPhotos((photos) => {
       setDisasterPhotos(photos || []);
+    });
+    return () => unsub();
+  }, []);
+
+  // 2. Subscribe to Company Common Schedules (사내 공통일정 실시간 구독)
+  useEffect(() => {
+    const unsub = subscribeCommonSchedules((scheds) => {
+      setCommonSchedules(scheds || []);
+    });
+    return () => unsub();
+  }, []);
+
+  // 3. Subscribe to Smart Overtime Data (5개사 근태 및 출근 데이터 실시간 구독)
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+  useEffect(() => {
+    const unsub = subscribeSmartOvertimeData((data) => {
+      if (data) setSmartOvertimeData(data);
     });
     return () => unsub();
   }, []);
@@ -103,45 +137,152 @@ export const WorkerPinModal = ({
     }
   }, [isPinVerified]);
 
+  const isAdmin = selectedUser?.role === "ADMIN" || selectedUser?.id === "admin" || selectedUser?.name === "권태형" || selectedUser?.name === "최미영";
+  const todayKst = getKSTDateString();
+
   // 1. Worker's current leave status (당일 근태)
   const leaveStatus = useMemo(() => {
     if (!selectedUser) return null;
     return getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true });
   }, [selectedUser, annualLeaves]);
 
-  // 2. Worker's registered schedules & applications (개인 등록 일정 / 신청 내역)
+  // 2. ⭐ [ADMIN 전용] 완료되지 않은 사내 공통일정 목록 (Uncompleted Common Schedules)
+  const uncompletedCommonSchedules = useMemo(() => {
+    return (commonSchedules || [])
+      .filter((s) => !s.isCompleted && !isScheduleExpired(s))
+      .sort((a, b) => {
+        const aStart = a.startDate || a.date || "";
+        const bStart = b.startDate || b.date || "";
+        if (aStart !== bStart) return aStart.localeCompare(bStart);
+        const aEnd = a.endDate || aStart;
+        const bEnd = b.endDate || bStart;
+        if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
+        return (a.time || "").localeCompare(b.time || "");
+      });
+  }, [commonSchedules]);
+
+  // 3. ⭐ [일반 작업자 전용: 이상기, 우창용 등] 등록된 일정 중 '미완료 항목만' 엄격 필터링 (공유 복사본 중복 완전 방지)
   const workerSchedules = useMemo(() => {
     if (!selectedUser || !annualLeaves || annualLeaves.length === 0) return [];
     const uId = selectedUser.id ? String(selectedUser.id).trim() : "";
     const uName = selectedUser.name ? String(selectedUser.name).trim() : "";
 
-    return annualLeaves
-      .filter((l) => {
-        if (!l || l.isCompleted || l.isDismissed) return false;
-        const lUserId = l.userId ? String(l.userId).trim() : "";
-        const lUserName = l.userName ? String(l.userName).trim() : "";
-        const matchId = Boolean(uId && (lUserId === uId || lUserId === `user_${uName}`));
-        const matchName = Boolean(uName && (lUserName === uName || lUserName.startsWith(uName) || uName.startsWith(lUserName)));
-        const isSharedToMe = Array.isArray(l.sharedWith) && (l.sharedWith.includes(uName) || l.sharedWith.includes(uId));
-        const isSharedRecipient = Boolean(l.isSharedRecipient && (l.userName === uName || l.userId === uId));
-        return matchId || matchName || isSharedToMe || isSharedRecipient;
-      })
-      .sort((a, b) => {
-        const dateA = a.startDate || a.date || "";
-        const dateB = b.startDate || b.date || "";
-        return dateB.localeCompare(dateA);
-      });
-  }, [selectedUser, annualLeaves]);
+    const filtered = annualLeaves.filter((l) => {
+      if (!l) return false;
 
-  // 3. Realtime shared issues / quality alerts / company notices (공유 공지 및 긴급 안건)
+      // 💡 1. 완료된 항목 완전 배제 (완료, 삭제, 거절, 마감 플래그)
+      if (l.isCompleted || l.isDismissed || l.completed || l.done) return false;
+      if (
+        l.status === "completed" ||
+        l.status === "완료" ||
+        l.status === "DONE" ||
+        l.status === "REPLIED" ||
+        l.replyStatus === "REPLIED" ||
+        Boolean(l.replyText)
+      ) {
+        return false;
+      }
+      if (l.state === "completed" || l.state === "done") return false;
+
+      // 💡 2. 사용자 식별 매칭:
+      // 본인에게 직접 등록된 일정 (본인 작성 원본 또는 본인 수신용 공유 레코드)
+      const lUserId = l.userId ? String(l.userId).trim() : "";
+      const lUserName = l.userName ? String(l.userName).trim() : "";
+      const isDirectMine = Boolean(
+        (uId && (lUserId === uId || lUserId === `user_${uName}`)) ||
+        (uName && (lUserName === uName || lUserName.startsWith(uName) || uName.startsWith(lUserName)))
+      );
+
+      // 타인이 보낸 원본 일정의 경우, 본인 전용 수신 복사본이 없을 때만 폴백으로 허용 (중복 노출 방지)
+      const isSharedToMeOnlyFallback = !isDirectMine && Array.isArray(l.sharedWith) &&
+        (l.sharedWith.includes(uName) || l.sharedWith.includes(uId)) &&
+        !annualLeaves.some((other) => other.originLeaveId === (l.originLeaveId || l.id) && (other.userName === uName || other.userId === uId));
+
+      if (!isDirectMine && !isSharedToMeOnlyFallback) return false;
+
+      // 💡 3. 공유받은 일정 세부 상태 확인 (해당 작업자가 이미 완료/답장한 경우 배제)
+      if (Array.isArray(l.sharedWithDetails)) {
+        const userDetail = l.sharedWithDetails.find((d) => d.name === uName || (uId && d.id === uId));
+        if (userDetail && (userDetail.status === "REPLIED" || userDetail.isCompleted || userDetail.completed)) {
+          return false;
+        }
+      }
+
+      // 💡 4. 날짜 만료 검증: 오늘 이전으로 이미 종료된 과거 일정은 미완료 목록에서 배제
+      const rawEnd = l.endDate || l.startDate || l.date;
+      if (rawEnd && String(rawEnd).slice(0, 10) < todayKst) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // 💡 5. originLeaveId 기준 중복 방지 (동일한 공유 일정에 대해 2건 노출 원천 차단)
+    const seenOriginIds = new Set();
+    const result = [];
+    filtered.forEach((item) => {
+      const originKey = item.originLeaveId || item.id;
+      if (!seenOriginIds.has(originKey)) {
+        seenOriginIds.add(originKey);
+        result.push(item);
+      }
+    });
+
+    return result.sort((a, b) => {
+      const dateA = a.startDate || a.date || "";
+      const dateB = b.startDate || b.date || "";
+      return dateA.localeCompare(dateB);
+    });
+  }, [selectedUser, annualLeaves, todayKst]);
+
+  // 4. Realtime shared issues / quality alerts / company notices (공유 공지 및 긴급 안건)
   const sharedNotices = useMemo(() => {
     const list = activeIssues && activeIssues.length > 0 ? activeIssues : urgentIssues || [];
     return list.filter((it) => !it.isDeleted).slice(0, 4);
   }, [activeIssues, urgentIssues]);
 
+  // 5. 🌟 [근태현황정보] 당일 일자 번호 및 일일 근태 요약 집계
+  const todayDayNum = useMemo(() => {
+    const d = new Date();
+    return d.getDate();
+  }, []);
+
+  const dailyOvertimeSummary = useMemo(() => {
+    if (!smartOvertimeData || !smartOvertimeData.attendanceMatrix) return null;
+    return calculateDailySummary(smartOvertimeData.attendanceMatrix, todayDayNum);
+  }, [smartOvertimeData, todayDayNum]);
+
+  const unwrittenCompanies = useMemo(() => {
+    const matrix = smartOvertimeData?.attendanceMatrix || [];
+    return COMPANIES.filter((comp) => {
+      const compWorkers = matrix.filter((w) => w.company === comp || (comp.includes("조영") && (w.company || "").includes("조영")));
+      const enteredCount = compWorkers.filter((w) => {
+        const v = w.daily?.[todayDayNum];
+        return v !== undefined && v !== null && String(v).trim() !== "" && String(v).trim() !== "미입력";
+      }).length;
+      return enteredCount === 0;
+    });
+  }, [smartOvertimeData, todayDayNum]);
+
+  const isAfter9AM = useMemo(() => new Date().getHours() >= 9, []);
+
+  // 6. 🌟 [공장별 근태 매칭]: 삼랑진 관리자 -> 오륙, 유성 / 한림 관리자 -> 조영, 한울, 부림텍 / Admin -> 전체 5개사
+  const targetCompanies = useMemo(() => {
+    if (!selectedUser) return [];
+    if (isAdmin || selectedUser.plant === "본사") {
+      return ["(주)오륙", "유성", "(주)조영산업", "한울", "부림텍"];
+    }
+    if (selectedUser.plant === "삼랑진공장") {
+      return ["(주)오륙", "유성"];
+    }
+    if (selectedUser.plant === "한림공장") {
+      return ["(주)조영산업", "한울", "부림텍"];
+    }
+    return ["(주)오륙", "유성"];
+  }, [selectedUser, isAdmin]);
+
   if (!selectedUser) return null;
 
-  const isAdmin = selectedUser?.role === "ADMIN";
   const expectedPin = selectedUser?.pin || (isAdmin ? "0090" : "11");
 
   const checkPinValidity = (val) => {
@@ -259,7 +400,7 @@ export const WorkerPinModal = ({
                     ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                     : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                 }`}>
-                  {selectedUser.plant || "삼랑진공장"}
+                  {selectedUser.plant || (isAdmin ? "경영총괄" : "삼랑진공장")}
                 </span>
 
                 {/* 🌟 핀번호 넣는 뱃지 (이름 바로 옆 배치) */}
@@ -355,7 +496,7 @@ export const WorkerPinModal = ({
                     {selectedUser.name} {selectedUser.title || ""} 핀번호 입력 후 상태 및 등록된 일정을 확인해 주십시오
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    PIN 번호 인증 완료 시 안전공유판, 현재 상태 및 등록된 일정이 표시됩니다.
+                    PIN 번호 인증 완료 시 안전공유판, 현재 상태 및 {isAdmin ? "미완료 공통일정" : "등록된 일정"}이 표시됩니다.
                   </p>
                 </div>
               </div>
@@ -490,138 +631,262 @@ export const WorkerPinModal = ({
                     </div>
                   </div>
 
-                  {/* ===================================================================== */}
-                  {/* [우측 패널] 📊 상태창 & 등록된 일정 우선 표출 (더미 데이터 완전 삭제) */}
-                  {/* ===================================================================== */}
                   <div className="space-y-3.5 flex flex-col justify-between">
-                    {/* 1. 🟢 상태창 (내 현재 상태 및 담당 정보) */}
-                    <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
-                            <Activity className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                              🟢 작업자 상태창
-                            </span>
-                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                              실시간 근무 상태 및 담당 공정
-                            </span>
-                          </div>
-                        </div>
 
-                        <span className={`text-xs font-black px-2.5 py-0.5 rounded-full border shadow-2xs ${
-                          leaveStatus
-                            ? "bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800"
-                            : "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
-                        }`}>
-                          {leaveStatus ? (leaveStatus.displayBadge || "근태등록") : "정상 근무중"}
-                        </span>
-                      </div>
+                    {/* ================================================================= */}
+                    {/* 2. 일정 섹션: ADMIN -> 📌 미완료 공통일정 / Worker -> 📅 미완료 개인일정 */}
+                    {/* ================================================================= */}
+                    {isAdmin ? (
+                      /* ⭐ [ADMIN 전용] 완료되지 않은 사내 공통일정 (미완료 공통 일정 표출) */
+                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Calendar className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📌 사내 공통일정 (미완료 일정)
+                              </span>
+                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                전사 및 공장별 진행 중인 미완료 공통 일정
+                              </span>
+                            </div>
+                          </div>
 
-                      {/* Detail Info Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs">
-                        <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-0.5">
-                          <span className="text-[10px] text-slate-400 font-bold block">소속 공장</span>
-                          <span className="font-black text-slate-900 dark:text-white truncate block">
-                            {selectedUser.plant || "삼랑진공장"}
+                          <span className="text-xs font-black text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
+                            {uncompletedCommonSchedules.length}건 진행중
                           </span>
                         </div>
 
-                        <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-0.5">
-                          <span className="text-[10px] text-slate-400 font-bold block">담당 공정</span>
-                          <span className="font-black text-slate-900 dark:text-white truncate block">
-                            {selectedUser.assignedProcess || "작업 총괄"}
-                          </span>
-                        </div>
+                        {/* Uncompleted Common Schedules List */}
+                        {uncompletedCommonSchedules.length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {uncompletedCommonSchedules.map((schedule) => {
+                              const startDate = schedule.startDate || schedule.date;
+                              const endDate = schedule.endDate || startDate;
+                              const isSingleDay = startDate === endDate || !endDate;
+                              const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
+                              const timeDisplay = schedule.time && schedule.time !== "종일" ? ` (${schedule.time})` : "";
+                              const targetBadge = schedule.target || "공통";
 
-                        <div className="col-span-2 sm:col-span-1 p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-0.5">
-                          <span className="text-[10px] text-slate-400 font-bold block">직책 / 구분</span>
-                          <span className="font-black text-slate-900 dark:text-white truncate block">
-                            {selectedUser.title || (isAdmin ? "총괄관리자" : "선임")}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                              return (
+                                <div
+                                  key={schedule.id || schedule._docId}
+                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs space-y-1 text-xs"
+                                >
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                                        {targetBadge}
+                                      </span>
+                                      <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                                        {schedule.title || "사내 공통일정"}
+                                      </span>
+                                    </div>
 
-                    {/* 2. 📅 등록된 일정 (나의 신청 및 예정된 근태 일정) */}
-                    <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs">
-                            <Calendar className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                              📅 나의 등록된 일정
-                            </span>
-                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                              연차, 반차, 외출, 출장, 공장방문
-                            </span>
-                          </div>
-                        </div>
-
-                        <span className="text-xs font-black text-blue-800 dark:text-blue-300 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-                          {workerSchedules.length}건 등록됨
-                        </span>
-                      </div>
-
-                      {/* Schedule Items List */}
-                      {workerSchedules.length > 0 ? (
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                          {workerSchedules.map((schedule) => {
-                            const meta = getLeaveTypeMeta(schedule.leaveType || schedule.type);
-                            const startDate = schedule.startDate || schedule.date;
-                            const endDate = schedule.endDate || startDate;
-                            const isSingleDay = startDate === endDate || !endDate;
-                            const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
-
-                            return (
-                              <div
-                                key={schedule.id || schedule._docId}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1 text-xs"
-                              >
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0 ${meta.scheduledBadge || "bg-blue-500 text-white"}`}>
-                                      <span>{meta.emoji}</span>
-                                      <span>{schedule.leaveType || "일정"}</span>
-                                    </span>
-                                    <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
-                                      {dateDisplay}
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
+                                      {dateDisplay}{timeDisplay}
                                     </span>
                                   </div>
 
-                                  {schedule.daysCount && (
-                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
-                                      {schedule.daysCount}일간
+                                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                                    <span className="truncate">작성: {schedule.author || "ADMIN"}</span>
+                                    {Array.isArray(schedule.comments) && schedule.comments.length > 0 && (
+                                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                                        💬 의견 {schedule.comments.length}건
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <span>현재 진행 중인 미완료 공통일정이 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* ⭐ [일반 작업자 전용: 이상기, 우창용 등] 등록된 일정 (미완료 항목만 표출) */
+                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs">
+                              <Calendar className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📅 나의 등록된 일정
+                              </span>
+                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                연차, 반차, 외출, 출장, 공장방문 (미완료)
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-black text-blue-800 dark:text-blue-300 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                            {workerSchedules.length}건 등록됨
+                          </span>
+                        </div>
+
+                        {/* Schedule Items List (Only Incomplete / Active) */}
+                        {workerSchedules.length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {workerSchedules.map((schedule) => {
+                              const meta = getLeaveTypeMeta(schedule.leaveType || schedule.type);
+                              const startDate = schedule.startDate || schedule.date;
+                              const endDate = schedule.endDate || startDate;
+                              const isSingleDay = startDate === endDate || !endDate;
+                              const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
+
+                              return (
+                                <div
+                                  key={schedule.id || schedule._docId}
+                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1 text-xs"
+                                >
+                                  <div className="flex items-center justify-between gap-1.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0 ${meta.scheduledBadge || "bg-blue-500 text-white"}`}>
+                                        <span>{meta.emoji}</span>
+                                        <span>{schedule.leaveType || "일정"}</span>
+                                      </span>
+                                      <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                                        {dateDisplay}
+                                      </span>
+                                    </div>
+
+                                    {schedule.daysCount && (
+                                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
+                                        {schedule.daysCount}일간
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {schedule.reason && (
+                                    <p className="text-[11.5px] text-slate-600 dark:text-slate-300 font-medium pl-1 truncate">
+                                      사유: {schedule.reason}
+                                    </p>
+                                  )}
+
+                                  {Array.isArray(schedule.sharedWith) && schedule.sharedWith.length > 0 && (
+                                    <div className="text-[10px] text-slate-400 pl-1">
+                                      공유: {schedule.sharedWith.join(", ")}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
+                            <Calendar className="w-4 h-4 text-slate-400" />
+                            <span>현재 등록된 미완료 개인 일정이 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ================================================================= */}
+                    {/* 🌟 2-2. 실시간 공장별 근태현황정보 패널 (오륙·유성: 삼랑진 / 조영·한울·부림텍: 한림 / Admin: 전체) */}
+                    {/* ================================================================= */}
+                    {targetCompanies.length > 0 && (
+                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
+                              <Users className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                👥 {isAdmin ? "전사 실시간 근태현황정보" : selectedUser?.plant === "한림공장" ? "한림공장 근태현황정보" : "삼랑진공장 근태현황정보"}
+                              </span>
+                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                {isAdmin
+                                  ? "오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)"
+                                  : selectedUser?.plant === "한림공장"
+                                  ? "조영산업, 한울, 부림텍 당일 출근 및 잔업"
+                                  : "오륙, 유성 당일 출근 및 잔업"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
+                            당일 {todayDayNum}일 기준
+                          </span>
+                        </div>
+
+                        {/* Company Attendance Cards Grid */}
+                        <div className={`grid gap-2 ${targetCompanies.length === 2 ? "grid-cols-2" : targetCompanies.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"}`}>
+                          {targetCompanies.map((compName) => {
+                            const breakdown = dailyOvertimeSummary?.companyBreakdown?.[compName] || {
+                              total: 0,
+                              attended: 0,
+                              absent: 0,
+                              leave: 0,
+                              otWorkers: 0,
+                              otHours: 0
+                            };
+                            const isUnwritten = unwrittenCompanies.includes(compName);
+                            const isWritten = !isUnwritten;
+                            const dotColor = compName.includes("오륙") ? "bg-blue-500" :
+                                             compName.includes("조영") ? "bg-amber-500" :
+                                             compName.includes("한울") ? "bg-emerald-500" :
+                                             compName.includes("부림") ? "bg-purple-500" : "bg-cyan-500";
+
+                            return (
+                              <div
+                                key={compName}
+                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                                    <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
+                                    <span className="truncate">{compName}</span>
+                                  </span>
+                                  {isWritten ? (
+                                    <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
+                                      <span>✅</span>
+                                    </span>
+                                  ) : (
+                                    <span className={`text-[9px] px-1 py-0.5 rounded-md border shrink-0 font-bold ${
+                                      isAfter9AM
+                                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse"
+                                        : "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                                    }`}>
+                                      {isAfter9AM ? "09:00 미작성" : "작성전"}
                                     </span>
                                   )}
                                 </div>
 
-                                {schedule.reason && (
-                                  <p className="text-[11.5px] text-slate-600 dark:text-slate-300 font-medium pl-1 truncate">
-                                    사유: {schedule.reason}
-                                  </p>
-                                )}
-
-                                {Array.isArray(schedule.sharedWith) && schedule.sharedWith.length > 0 && (
-                                  <div className="text-[10px] text-slate-400 pl-1">
-                                    공유: {schedule.sharedWith.join(", ")}
+                                <div className="grid grid-cols-2 gap-1 text-[10px]">
+                                  <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                                    <span className="text-slate-400 block text-[9px]">출근/총원</span>
+                                    <span className="font-black text-slate-900 dark:text-white">
+                                      {breakdown.attended}/{breakdown.total}명
+                                    </span>
+                                  </div>
+                                  <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                                    <span className="text-slate-400 block text-[9px]">당일 잔업</span>
+                                    <span className="font-black text-amber-600 dark:text-amber-400">
+                                      {breakdown.otWorkers}명
+                                      {breakdown.otHours > 0 && <span className="text-[9px] text-amber-500/80"> (+{breakdown.otHours}h)</span>}
+                                    </span>
+                                  </div>
+                                </div>
+                                {breakdown.absent > 0 && (
+                                  <div className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 text-center bg-rose-50 dark:bg-rose-950/50 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60">
+                                    결근 {breakdown.absent}명
                                   </div>
                                 )}
                               </div>
                             );
                           })}
                         </div>
-                      ) : (
-                        <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-400" />
-                          <span>현재 등록된 개인 일정이 없습니다.</span>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* 3. 📢 실시간 공유 공지 & 회의/품질 이슈 */}
                     <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">

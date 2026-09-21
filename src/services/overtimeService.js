@@ -29,6 +29,36 @@ export const getPlantForCompany = (companyName) => {
   return "한림공장";
 };
 
+// ⭐ Precise Date & Weekend/Holiday Overtime Helpers (2026년 9월 한국 달력 및 특근 조건 기준)
+export const isWeekendByDate = (dateStrOrDay) => {
+  if (typeof dateStrOrDay === "number") {
+    const d = dateStrOrDay;
+    if ([5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(d)) return true;
+    const dt = new Date(2026, 8, d);
+    const dayOfWeek = dt.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  }
+  if (!dateStrOrDay) return false;
+  const p = String(dateStrOrDay).split("-");
+  if (p.length === 3) {
+    const month = parseInt(p[1], 10);
+    const day = parseInt(p[2], 10);
+    if (month === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) return true;
+    const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    if (!isNaN(dt.getTime())) {
+      const dayOfWeek = dt.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    }
+  }
+  const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
+  if (match) {
+    const dayChar = match[1] || match[2];
+    return dayChar === "토" || dayChar === "일";
+  }
+  if (String(dateStrOrDay).includes("특근") && !String(dateStrOrDay).includes("근태")) return true;
+  return false;
+};
+
 export const INITIAL_OVERTIME_REPORTS = [
   {
     id: "report_oryuk_2026_09_08",
