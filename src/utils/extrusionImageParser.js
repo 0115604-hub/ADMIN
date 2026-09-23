@@ -1,4 +1,4 @@
-// Extrusion 4-Lines Downtime Parser Utility (Clean & Purged)
+// Extrusion 4-Lines Downtime Parser Utility (Clean, Robust & Universal)
 import * as XLSX from "xlsx";
 import { WEEK_CALENDAR_MAP } from "../components/ExtrusionDowntimeView";
 
@@ -111,6 +111,9 @@ export function parseClipboardTableText(text = "", targetLineId = "pcm1", weekKe
   };
 }
 
+/**
+ * Universal Excel Parser: Handles both modern Standard Flat Table and traditional Report formats
+ */
 export async function parseExcelFile(file, targetLineId = "pcm1", targetWeekKey = "9월3주") {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -118,54 +121,97 @@ export async function parseExcelFile(file, targetLineId = "pcm1", targetWeekKey 
       try {
         const data = new Uint8Array(e.target.result);
         const wb = XLSX.read(data, { type: "array" });
-        const sheetName = wb.SheetNames[0];
-        const ws = wb.Sheets[sheetName];
+        if (!wb.SheetNames || wb.SheetNames.length === 0) {
+          throw new Error("엑셀 시트를 찾을 수 없습니다.");
+        }
+
+        // Try first sheet or sheet with '표준' or '관리'
+        let targetSheetName = wb.SheetNames[0];
+        const prefSheet = wb.SheetNames.find(s => s.includes('표준') || s.includes('관리'));
+        if (prefSheet) targetSheetName = prefSheet;
+
+        const ws = wb.Sheets[targetSheetName];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
+        // Scan header row
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(15, rows.length); i++) {
+          const r = rows[i];
+          if (r && r.some(cell => {
+            const str = String(cell).replace(/\s+/g, '');
+            return str.includes('품명') || str.includes('내용') || str.includes('작업내용');
+          })) {
+            headerRowIdx = i;
+            break;
+          }
+        }
+
         const parsedRows = [];
-        let curDay = "";
-        let curShift = "주간";
         let totalMin = 0;
         let totalWt = 0;
 
-        for (let r = 3; r < rows.length; r++) {
-          const row = rows[r];
-          if (!row || row.length === 0) continue;
-          const dayVal = String(row[0] || "").trim();
-          const shiftVal = String(row[1] || "").trim();
-          const taskVal = String(row[2] || "").trim();
-          const minVal = row[4] !== "" && row[4] !== null ? Number(row[4]) : 0;
-          const wtVal = row[5] !== "" && row[5] !== null ? Number(row[5]) : 0;
-          const noteVal = String(row[6] || "").trim();
+        if (headerRowIdx >= 0) {
+          const header = rows[headerRowIdx].map(h => String(h).replace(/\s+/g, ''));
+          const colIdxDate = header.findIndex(h => h.includes('일자') || h.includes('날짜'));
+          const colIdxDay = header.findIndex(h => h.includes('요일'));
+          const colIdxShift = header.findIndex(h => h.includes('근무조') || h.includes('주야'));
+          const colIdxCat = header.findIndex(h => h.includes('구분'));
+          const colIdxTask = header.findIndex(h => h.includes('품명') || h.includes('내용') || h.includes('작업내용'));
+          const colIdxTime = header.findIndex(h => h.includes('시간') || h.includes('비가동'));
+          const colIdxWt = header.findIndex(h => h.includes('중량') || h.includes('LOSS중량'));
+          const colIdxPlan = header.findIndex(h => h.includes('계획정지'));
+          const colIdxNote = header.findIndex(h => h.includes('비고') || h.includes('LOSS율'));
+          const colIdxAction = header.findIndex(h => h.includes('조치'));
 
-          if (dayVal === "비 고" || dayVal === "총 합계" || dayVal.startsWith("가동률")) break;
-          if (dayVal) curDay = dayVal.replace(/\r?\n/g, " ");
-          if (shiftVal) curShift = shiftVal;
+          let curDay = '';
+          let curShift = '주간';
 
-          if (taskVal || minVal > 0 || wtVal > 0) {
-            totalMin += minVal;
-            totalWt += wtVal;
-            parsedRows.push({
-              id: `${targetLineId}_excel_${r}`,
-              day: parsedRows.length === 0 || parsedRows[parsedRows.length - 1].parentDay !== curDay ? curDay : "",
-              parentDay: curDay,
-              isNewDay: parsedRows.length === 0 || parsedRows[parsedRows.length - 1].parentDay !== curDay,
-              shift: curShift,
-              category: "형교환",
-              task: taskVal || "-",
-              minutes: minVal,
-              weight: wtVal,
-              note: noteVal || "-",
-              action: "정상 가동 완료"
-            });
+          for (let r = headerRowIdx + 1; r < rows.length; r++) {
+            const row = rows[r];
+            if (!row || row.length === 0) continue;
+
+            const firstCol = String(row[0] || '').trim();
+            const secondCol = String(row[1] || '').trim();
+            if (firstCol.includes('합계') || firstCol === '비 고' || firstCol.startsWith('가동률') || secondCol.includes('합계') || secondCol === '비 고') break;
+
+            const taskVal = colIdxTask >= 0 ? String(row[colIdxTask] || '').trim() : '';
+            const timeVal = colIdxTime >= 0 && row[colIdxTime] !== '' && !isNaN(Number(row[colIdxTime])) ? Number(row[colIdxTime]) : 0;
+            const wtVal = colIdxWt >= 0 && row[colIdxWt] !== '' && !isNaN(Number(row[colIdxWt])) ? Number(row[colIdxWt]) : 0;
+            const dayVal = colIdxDay >= 0 && row[colIdxDay] ? String(row[colIdxDay]).trim() : (colIdxDate >= 0 && row[colIdxDate] ? String(row[colIdxDate]).trim() : '');
+            const shiftVal = colIdxShift >= 0 && row[colIdxShift] ? String(row[colIdxShift]).trim() : '';
+            const catVal = colIdxCat >= 0 && row[colIdxCat] ? String(row[colIdxCat]).trim() : '형교환';
+            const noteVal = colIdxNote >= 0 && row[colIdxNote] ? String(row[colIdxNote]).trim() : '-';
+            const actionVal = colIdxAction >= 0 && row[colIdxAction] ? String(row[colIdxAction]).trim() : '정상 가동 완료';
+
+            if (dayVal) curDay = dayVal.replace(/\r?\n/g, ' ');
+            if (shiftVal) curShift = shiftVal;
+
+            if (taskVal && taskVal !== '-') {
+              totalMin += timeVal;
+              totalWt += wtVal;
+              parsedRows.push({
+                id: `${targetLineId}_excel_${r}`,
+                day: parsedRows.length === 0 || parsedRows[parsedRows.length - 1].parentDay !== curDay ? curDay : "",
+                parentDay: curDay,
+                isNewDay: parsedRows.length === 0 || parsedRows[parsedRows.length - 1].parentDay !== curDay,
+                shift: curShift,
+                category: catVal || '형교환',
+                task: taskVal,
+                minutes: timeVal,
+                weight: wtVal,
+                note: noteVal || "-",
+                action: actionVal || "정상 가동 완료"
+              });
+            }
           }
         }
 
         resolve({
-          success: true,
+          success: parsedRows.length > 0,
           rows: parsedRows,
           totalMinutes: totalMin,
-          totalWeight: totalWt
+          totalWeight: totalWt,
+          sheetName: targetSheetName
         });
       } catch (err) {
         reject(err);
