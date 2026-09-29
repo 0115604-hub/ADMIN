@@ -9,17 +9,14 @@ import {
   Scale,
   Activity,
   Download,
+  Trash2,
   RotateCcw,
   Plus,
-  ArrowRight,
-  TrendingUp,
-  FileText,
   AlertCircle
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { EXTRUSION_LINES } from "../utils/extrusionImageParser";
 import { parseExtrusionExcelFile, detectExtrusionLineKey } from "../utils/extrusionFileParser";
-import initialParsedSeed from "../data/extrusion4LinesParsedData.json";
 
 // Standard Manufacturing Calendar Mapping (Preserved for parser compatibility)
 export const WEEK_CALENDAR_MAP = {
@@ -113,32 +110,37 @@ const CATEGORY_COLORS = {
   정상생산: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200"
 };
 
-const STORAGE_KEY = "factory_extrusion_downtime_parsed_v2";
+const STORAGE_KEY = "factory_extrusion_downtime_user_uploaded_v3";
 
 export const ExtrusionDowntimeView = () => {
   const [selectedLineId, setSelectedLineId] = useState("pcm1");
   const [selectedWeek, setSelectedWeek] = useState("9월3주");
-  const [monthFilter, setMonthFilter] = useState("9월");
+  const [monthFilter, setMonthFilter] = useState("전체");
   const [toastMessage, setToastMessage] = useState("");
   const [dragOverBadge, setDragOverBadge] = useState(null);
   const [isGlobalDragging, setIsGlobalDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const fileInputRef = useRef(null);
   const badgeFileInputRefs = useRef({});
   const activeWeekTabRef = useRef(null);
 
-  // Store parsed data per line
+  // Clean state: Initial state starts completely empty, waiting for user file upload
   const [linesData, setLinesData] = useState(() => {
     try {
+      // Clear legacy sample data stores
+      localStorage.removeItem("factory_extrusion_downtime_parsed_v2");
+      localStorage.removeItem("factory_extrusion_downtime_4lines_v24_real_purged");
+      localStorage.removeItem("factory_extrusion_downtime_4lines_v23_pcm1qq_verified");
+
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") return parsed;
       }
     } catch (e) {
       console.warn("Storage load error:", e);
     }
-    return initialParsedSeed || {};
+    return {};
   });
 
   const showToast = (msg) => {
@@ -236,6 +238,29 @@ export const ExtrusionDowntimeView = () => {
       setIsProcessing(false);
       setDragOverBadge(null);
       setIsGlobalDragging(false);
+    }
+  };
+
+  // Clear single line data
+  const handleClearLineData = (lineKey) => {
+    if (window.confirm(`[${LINE_DISPLAY_NAMES[lineKey]}] 분석 데이터를 삭제하시겠습니까?`)) {
+      setLinesData((prev) => {
+        const next = { ...prev };
+        delete next[lineKey];
+        return next;
+      });
+      showToast(`🗑️ [${LINE_DISPLAY_NAMES[lineKey]}] 데이터가 삭제되었습니다.`);
+    }
+  };
+
+  // Clear all lines data
+  const handleClearAllData = () => {
+    if (window.confirm("모든 라인의 비가동 분석 데이터를 영구 삭제하시겠습니까?")) {
+      setLinesData({});
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {}
+      showToast("🗑️ 모든 라인 데이터가 완전히 초기화되었습니다.");
     }
   };
 
@@ -394,9 +419,13 @@ export const ExtrusionDowntimeView = () => {
                   >
                     {lineLabel}
                   </span>
-                  {hasParsedData && (
+                  {hasParsedData ? (
+                    <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                      ✓ {sheetCount}개 주차 분석완료
+                    </span>
+                  ) : (
                     <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 truncate">
-                      {sheetCount}개 주차 분석완료
+                      파일 드래그 대기중
                     </span>
                   )}
                 </div>
@@ -460,12 +489,12 @@ export const ExtrusionDowntimeView = () => {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                  파일: <span className="font-bold text-slate-700 dark:text-slate-300">{currentLineData.fileName}</span> (위 뱃지에 새 엑셀 파일을 드래그하여 즉시 갱신 가능)
+                  분석 파일: <span className="font-bold text-slate-700 dark:text-slate-300">{currentLineData.fileName}</span> (상단 뱃지에 새 엑셀 파일을 드래그하여 즉시 교체 가능)
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               <button
                 type="button"
                 onClick={() => badgeFileInputRefs.current[selectedLineId]?.click()}
@@ -481,6 +510,14 @@ export const ExtrusionDowntimeView = () => {
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>주간 엑셀 다운</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleClearLineData(selectedLineId)}
+                title="이 라인 데이터 삭제"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/50 transition active:scale-95 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
