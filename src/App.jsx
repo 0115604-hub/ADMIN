@@ -16,6 +16,8 @@ import { SettingsView } from "./components/SettingsView";
 import { TransactionModal } from "./components/TransactionModal";
 import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { runStorageHealthCheck } from "./utils/storageHealthCheck";
 import { useAuth } from "./context/AuthContext";
 import { useMonth } from "./context/MonthContext";
 import {
@@ -65,6 +67,7 @@ export const App = () => {
 
   // 1. Initial State and Login/Logout synchronization
   useEffect(() => {
+    runStorageHealthCheck();
     try {
       document.documentElement.style.zoom = "";
       document.body.style.zoom = "";
@@ -342,31 +345,47 @@ export const App = () => {
               {isOperator && (
                 <>
                   {activeTab === "worker_dashboard" && (
-                    <WorkerDashboard
-                      onBulkUpload={handleBulkUpload}
-                      onNavigateTab={(tabId) => setActiveTab(tabId)}
-                    />
+                    <ErrorBoundary inline title="일일생산정보현황">
+                      <WorkerDashboard
+                        onBulkUpload={handleBulkUpload}
+                        onNavigateTab={(tabId) => setActiveTab(tabId)}
+                      />
+                    </ErrorBoundary>
                   )}
                   {activeTab === "electronic_approval" && (
-                    <ElectronicApprovalView />
+                    <ErrorBoundary inline title="전자결재">
+                      <ElectronicApprovalView />
+                    </ErrorBoundary>
                   )}
                   {(activeTab === "vehicle_sales" || activeTab === "sales_purchase_analysis") && (
-                    <SalesPurchaseAnalysisView />
+                    <ErrorBoundary inline title="매출매입분석">
+                      <SalesPurchaseAnalysisView />
+                    </ErrorBoundary>
                   )}
                   {activeTab === "hanul_tax_invoice" && (
-                    <HanulTaxInvoiceView />
+                    <ErrorBoundary inline title="한울 세금계산서">
+                      <HanulTaxInvoiceView />
+                    </ErrorBoundary>
                   )}
                   {activeTab === "extrusion_downtime" && (
-                    <ExtrusionDowntimeView />
+                    <ErrorBoundary inline title="압출동 주간 비가동내역">
+                      <ExtrusionDowntimeView />
+                    </ErrorBoundary>
                   )}
                   {activeTab === "daily_quality" && (
-                    <DailyQualityView />
+                    <ErrorBoundary inline title="일일 품질현황">
+                      <DailyQualityView />
+                    </ErrorBoundary>
                   )}
                   {activeTab === "overtime_status" && (
-                    <OvertimeStatusView onNavigateTab={(tabId) => setActiveTab(tabId)} />
+                    <ErrorBoundary inline title="근태현황 및 관리">
+                      <OvertimeStatusView onNavigateTab={(tabId) => setActiveTab(tabId)} />
+                    </ErrorBoundary>
                   )}
                   {activeTab === "operator_workspace" && (
-                    <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                    <ErrorBoundary inline title="엑셀 파일 업로드">
+                      <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                    </ErrorBoundary>
                   )}
                 </>
               )}
@@ -375,50 +394,70 @@ export const App = () => {
               {isAdmin && (
                 <>
                   {activeTab === "worker_dashboard" && (
-                    <WorkerDashboard
-                      onBulkUpload={handleBulkUpload}
-                      onNavigateTab={(tabId) => setActiveTab(tabId)}
-                    />
+                    <ErrorBoundary inline title="현황">
+                      <WorkerDashboard
+                        onBulkUpload={handleBulkUpload}
+                        onNavigateTab={(tabId) => setActiveTab(tabId)}
+                      />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "electronic_approval" && (
-                    <ElectronicApprovalView />
+                    <ErrorBoundary inline title="전자결재">
+                      <ElectronicApprovalView />
+                    </ErrorBoundary>
                   )}
 
                   {(activeTab === "vehicle_sales" || activeTab === "sales_purchase_analysis") && (
-                    <SalesPurchaseAnalysisView />
+                    <ErrorBoundary inline title="매출매입분석">
+                      <SalesPurchaseAnalysisView />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "hanul_tax_invoice" && (
-                    <HanulTaxInvoiceView />
+                    <ErrorBoundary inline title="한울 세금계산서">
+                      <HanulTaxInvoiceView />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "extrusion_downtime" && (
-                    <ExtrusionDowntimeView />
+                    <ErrorBoundary inline title="압출동 주간 비가동내역">
+                      <ExtrusionDowntimeView />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "daily_quality" && (
-                    <DailyQualityView />
+                    <ErrorBoundary inline title="일일 품질현황">
+                      <DailyQualityView />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "overtime_status" && (
-                    <OvertimeStatusView onNavigateTab={(tabId) => setActiveTab(tabId)} />
+                    <ErrorBoundary inline title="근태현황 및 관리">
+                      <OvertimeStatusView onNavigateTab={(tabId) => setActiveTab(tabId)} />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "operator_workspace" && (
-                    <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                    <ErrorBoundary inline title="엑셀 파일 업로드">
+                      <OperatorWorkspace onBulkUpload={handleBulkUpload} />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "telegram" && (
-                    <TelegramView />
+                    <ErrorBoundary inline title="텔레그램 연동">
+                      <TelegramView />
+                    </ErrorBoundary>
                   )}
 
                   {activeTab === "settings" && (
-                    <SettingsView
-                      transactions={transactions}
-                      onRefresh={() => loadData(true)}
-                      dataSource={dataSource}
-                    />
+                    <ErrorBoundary inline title="설정 및 데이터 관리">
+                      <SettingsView
+                        transactions={transactions}
+                        onRefresh={() => loadData(true)}
+                        dataSource={dataSource}
+                      />
+                    </ErrorBoundary>
                   )}
                 </>
               )}

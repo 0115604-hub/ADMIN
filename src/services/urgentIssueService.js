@@ -26,17 +26,17 @@ const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 const todayDateStrFallback = () => getKSTDateString();
 
 /**
- * 회의일정이 지정 시간 기준 2시간 경과했는지 판별
- * @param {Object} item - { category, expireDate, targetDate, meetingTime, isManuallyRestored }
- * @param {number} graceHours - 경과 기준 시간 (기본 2시간)
+ * 회의일정이 지정 시간 기준 1시간 경과했는지 판별 (회의시작시간 + 1시간 경과 시 첫화면에서 자동 삭제/만료)
+ * @param {Object} item - { category, startDate, date, expireDate, targetDate, meetingTime, isManuallyRestored }
+ * @param {number} graceHours - 경과 기준 시간 (기본 1시간)
  * @returns {boolean}
  */
-export const isMeetingExpired = (item, graceHours = 2) => {
+export const isMeetingExpired = (item, graceHours = 1) => {
   if (!item) return false;
-  if (item.category !== "회의일정" && !item.category?.includes("회의")) return false;
-  if (item.isManuallyRestored) return false;
+  const cat = item.category || "";
+  if (cat !== "회의일정" && !cat.includes("회의") && cat !== "meeting") return false;
 
-  const mDate = item.expireDate || item.targetDate || item.createdAt?.slice(0, 10) || "";
+  const mDate = item.startDate || item.date || item.expireDate || item.targetDate || (item.createdAt ? item.createdAt.slice(0, 10) : "") || "";
   if (!mDate) return false;
 
   const mTime = (item.meetingTime || "14:00").trim();
@@ -46,7 +46,8 @@ export const isMeetingExpired = (item, graceHours = 2) => {
   if (isNaN(h)) h = 14;
   if (isNaN(min)) min = 0;
 
-  const parts = mDate.slice(0, 10).split("-");
+  const cleanDateStr = mDate.replace(/\./g, "-").trim().slice(0, 10);
+  const parts = cleanDateStr.split("-");
   if (parts.length < 3) return false;
   const y = parseInt(parts[0], 10);
   const mon = parseInt(parts[1], 10);
@@ -55,7 +56,7 @@ export const isMeetingExpired = (item, graceHours = 2) => {
 
   // 회의 지정 시각 Date (KST)
   const meetingStartTime = new Date(y, mon - 1, d, h, min, 0).getTime();
-  const expireTimeMs = meetingStartTime + (graceHours * 60 * 60 * 1000); // 회의지정시간 + 2시간
+  const expireTimeMs = meetingStartTime + (graceHours * 60 * 60 * 1000); // 회의지정시간 + 1시간
 
   // KST 현재 시각
   const kstInfo = getKSTTimeInfo();
@@ -113,15 +114,45 @@ export const saveLocalUrgentIssues = (issues) => {
     const valid = Array.isArray(issues) ? issues : [];
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(valid));
   } catch (e) {
-    console.error("Local storage write error for urgent issues:", e);
+    console.warn("Local storage write error for urgent issues, attempting trim:", e);
+    try {
+      const valid = Array.isArray(issues) ? issues : [];
+      const trimmed = valid.map((item, idx) => {
+        if (idx > 15 && Array.isArray(item.images) && item.images.length > 0) {
+          return {
+            ...item,
+            images: item.images.map((img) => (typeof img === "object" ? { ...img, dataUrl: "" } : img))
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch (innerErr) {
+      console.error("Local storage urgent issues error after trim:", innerErr);
+    }
   }
 };
 
-// Helper: Category Priority and Smart Sorting
+// Helper: Sort strictly by latest registration/creation time (최신순 내림차순)
+export const sortIssuesByLatest = (list = []) => {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  return [...list].sort((a, b) => {
+    // 1. 생성/등록/수정 일시 내림차순 (최신순)
+    const timeA = a.createdAt || a.updatedAt || a.date || a.startDate || a.expireDate || "";
+    const timeB = b.createdAt || b.updatedAt || b.date || b.startDate || b.expireDate || "";
+    if (timeA !== timeB) {
+      return timeB.localeCompare(timeA);
+    }
+    // 2. id 기준 최신순 내림차순
+    return String(b.id || "").localeCompare(String(a.id || ""));
+  });
+};
+
+// Helper: Category Priority and Smart Sorting (카테고리별 내부 최신순 정렬)
 // 1위: 품질경보 (최신 등록일시 내림차순)
-// 2위: 회의일정 (다가오는 날짜 오름차순 + 시간 오름차순 + 최신등록 내림차순)
+// 2위: 회의일정 (최신 등록/일시 내림차순)
 // 3위: 오픈이슈/품질이슈 (최신 등록/목표일 내림차순)
-// 4위: 공지사항/사내공지/공유사항 (다가오는 만료/공지일 오름차순 + 최신등록 내림차순)
+// 4위: 공지사항/사내공지/공유사항 (최신 등록/공지일 내림차순)
 export const sortIssuesByCustomPriority = (list = []) => {
   if (!Array.isArray(list) || list.length === 0) return [];
 
@@ -142,53 +173,13 @@ export const sortIssuesByCustomPriority = (list = []) => {
       return prioA - prioB;
     }
 
-    // 2. 카테고리별 내부 정렬
-    // [1위: 품질경보] -> 등록순 (최신 등록일시/생성순 내림차순)
-    if (prioA === 1) {
-      const timeA = a.createdAt || "";
-      const timeB = b.createdAt || "";
-      if (timeA !== timeB) {
-        return timeB.localeCompare(timeA);
-      }
-      return String(b.id || "").localeCompare(String(a.id || ""));
+    // 2. 카테고리별 내부 정렬: 모두 최신순 (최근 등록일시/생성일시/목표일시 내림차순)
+    const timeA = a.createdAt || a.updatedAt || a.date || a.startDate || a.expireDate || "";
+    const timeB = b.createdAt || b.updatedAt || b.date || b.startDate || b.expireDate || "";
+    if (timeA !== timeB) {
+      return timeB.localeCompare(timeA);
     }
-
-    // [2위: 회의일정] -> 다가오는 날짜순 (오름차순) + 시간순 + 최신등록순
-    if (prioA === 2) {
-      const dateA = a.expireDate || a.targetDate || "9999-99-99";
-      const dateB = b.expireDate || b.targetDate || "9999-99-99";
-      if (dateA !== dateB) {
-        return dateA.localeCompare(dateB);
-      }
-      const timeA = a.meetingTime || "99:99";
-      const timeB = b.meetingTime || "99:99";
-      if (timeA !== timeB) {
-        return timeA.localeCompare(timeB);
-      }
-      return (b.createdAt || "").localeCompare(a.createdAt || "");
-    }
-
-    // [3위: 오픈이슈] -> 최신 등록일 / 목표일 내림차순
-    if (prioA === 3) {
-      const timeA = a.createdAt || a.expireDate || "";
-      const timeB = b.createdAt || b.expireDate || "";
-      if (timeA !== timeB) {
-        return timeB.localeCompare(timeA);
-      }
-      return String(b.id || "").localeCompare(String(a.id || ""));
-    }
-
-    // [4위: 공지사항] -> 다가오는 날짜순 (오름차순: 만료/목표일 가까운 순) + 최신등록순
-    if (prioA === 4) {
-      const dateA = a.expireDate || a.targetDate || "9999-99-99";
-      const dateB = b.expireDate || b.targetDate || "9999-99-99";
-      if (dateA !== dateB) {
-        return dateA.localeCompare(dateB);
-      }
-      return (b.createdAt || "").localeCompare(a.createdAt || "");
-    }
-
-    return 0;
+    return String(b.id || "").localeCompare(String(a.id || ""));
   });
 };
 
@@ -259,7 +250,7 @@ export const saveUrgentIssue = async (issueData) => {
     replies: Array.isArray(issueData.replies) ? issueData.replies : [],
     isResolved: issueData.isResolved !== undefined ? Boolean(issueData.isResolved) : Boolean(issueData.actionResult && issueData.actionResult.trim()),
     isDeleted: Boolean(issueData.isDeleted === true),
-    isManuallyRestored: issueData.isManuallyRestored !== undefined ? Boolean(issueData.isManuallyRestored) : true,
+    isManuallyRestored: issueData.isManuallyRestored !== undefined ? Boolean(issueData.isManuallyRestored) : false,
     deletedAt: issueData.deletedAt || "",
     deletedBy: issueData.deletedBy || "",
     createdAt: issueData.createdAt || nowStr

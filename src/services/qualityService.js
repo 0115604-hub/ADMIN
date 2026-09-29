@@ -20,98 +20,7 @@ export const QUALITY_CORE_ITEMS = [
   { id: "hr", name: "HR G-RUN", carModel: "HR", defaultUnitPrice: 2372, defaultDefectReason: "직각 떨어짐, 둔각 떨어짐, 스코치" }
 ];
 
-// Initial Seed Records (Structured per date and item with deterministic IDs)
-export const INITIAL_QUALITY_RECORDS = [
-  // ==========================================
-  // 2026-08 실적 (기준 실적 유지)
-  // ==========================================
-  // 2026-08-24
-  { id: "qual_2026-08-24_ja", date: "2026-08-24", yearMonth: "2026-08", dayOfWeek: "월", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1687, defectQty: 32, defectRate: 1.90, worstReason: "수포 (18건), 둔_어퍼떨어짐 (14건)", lossAmount: 99712, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-24_nx4a", date: "2026-08-24", yearMonth: "2026-08", dayOfWeek: "월", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 2, defectRate: 0.17, worstReason: "스코치 (2건)", lossAmount: 11494, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-24_nx4", date: "2026-08-24", yearMonth: "2026-08", dayOfWeek: "월", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "사상불량 (1건)", lossAmount: 5747, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-24_hr", date: "2026-08-24", yearMonth: "2026-08", dayOfWeek: "월", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 520, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-
-  // 2026-08-25
-  { id: "qual_2026-08-25_ja", date: "2026-08-25", yearMonth: "2026-08", dayOfWeek: "화", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1501, defectQty: 8, defectRate: 0.53, worstReason: "수포 (5건), 직_어퍼떨어짐 (3건)", lossAmount: 24928, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-25_nx4a", date: "2026-08-25", yearMonth: "2026-08", dayOfWeek: "화", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 960, defectQty: 3, defectRate: 0.31, worstReason: "사상불량 (2건), 스코치 (1건)", lossAmount: 17241, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-25_nx4", date: "2026-08-25", yearMonth: "2026-08", dayOfWeek: "화", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 6, defectRate: 0.42, worstReason: "둔_삽입불량 (4건), 사상불량 (2건)", lossAmount: 34482, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-25_hr", date: "2026-08-25", yearMonth: "2026-08", dayOfWeek: "화", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 520, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-
-  // 2026-08-26
-  { id: "qual_2026-08-26_ja", date: "2026-08-26", yearMonth: "2026-08", dayOfWeek: "수", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1744, defectQty: 16, defectRate: 0.92, worstReason: "둔_어퍼떨어짐 (10건), 수포 (6건)", lossAmount: 49856, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-26_nx4a", date: "2026-08-26", yearMonth: "2026-08", dayOfWeek: "수", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 26, defectRate: 2.17, worstReason: "스코치 (18건), 직_찢어짐 (8건)", lossAmount: 149422, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-26_nx4", date: "2026-08-26", yearMonth: "2026-08", dayOfWeek: "수", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1600, defectQty: 4, defectRate: 0.25, worstReason: "사상불량 (4건)", lossAmount: 22988, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-26_hr", date: "2026-08-26", yearMonth: "2026-08", dayOfWeek: "수", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 742, defectQty: 10, defectRate: 1.35, worstReason: "직_어퍼떨어짐 (10건)", lossAmount: 23720, uploader: "이창엽 선임" },
-
-  // 2026-08-27
-  { id: "qual_2026-08-27_ja", date: "2026-08-27", yearMonth: "2026-08", dayOfWeek: "목", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1500, defectQty: 5, defectRate: 0.33, worstReason: "수포 (5건)", lossAmount: 15580, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-27_nx4a", date: "2026-08-27", yearMonth: "2026-08", dayOfWeek: "목", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 9, defectRate: 0.75, worstReason: "직_찢어짐 (5건), 스코치 (4건)", lossAmount: 51723, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-27_nx4", date: "2026-08-27", yearMonth: "2026-08", dayOfWeek: "목", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-27_hr", date: "2026-08-27", yearMonth: "2026-08", dayOfWeek: "목", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 630, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-
-  // 2026-08-28
-  { id: "qual_2026-08-28_ja", date: "2026-08-28", yearMonth: "2026-08", dayOfWeek: "금", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1685, defectQty: 15, defectRate: 0.89, worstReason: "둔_어퍼떨어짐 (9건), 수포 (6건)", lossAmount: 46740, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-28_nx4a", date: "2026-08-28", yearMonth: "2026-08", dayOfWeek: "금", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 960, defectQty: 5, defectRate: 0.52, worstReason: "사상불량 (3건), 스코치 (2건)", lossAmount: 28735, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-28_nx4", date: "2026-08-28", yearMonth: "2026-08", dayOfWeek: "금", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1100, defectQty: 3, defectRate: 0.27, worstReason: "둔_삽입불량 (2건), 사상불량 (1건)", lossAmount: 17241, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-28_hr", date: "2026-08-28", yearMonth: "2026-08", dayOfWeek: "금", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 627, defectQty: 7, defectRate: 1.12, worstReason: "직_어퍼떨어짐 (7건)", lossAmount: 16604, uploader: "이창엽 선임" },
-
-  // 2026-08-29
-  { id: "qual_2026-08-29_ja", date: "2026-08-29", yearMonth: "2026-08", dayOfWeek: "토", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1563, defectQty: 7, defectRate: 0.45, worstReason: "수포 (4건), 둔_어퍼떨어짐 (3건)", lossAmount: 21812, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-29_nx4a", date: "2026-08-29", yearMonth: "2026-08", dayOfWeek: "토", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 960, defectQty: 4, defectRate: 0.42, worstReason: "사상불량 (3건), 직_찢어짐 (1건)", lossAmount: 22988, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-29_nx4", date: "2026-08-29", yearMonth: "2026-08", dayOfWeek: "토", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-08-29_hr", date: "2026-08-29", yearMonth: "2026-08", dayOfWeek: "토", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, uploader: "이창엽 선임" },
-
-  // ==========================================
-  // 2026-09 실적 (이창엽 선임 업로드 엑셀 원본 100% 정합 데이터)
-  // ==========================================
-  // 2026-09-01 (화) - 일자별 불량률 0.46% (검사 4,611 / 불량 21 / 손실 ₩83,864 / 소재폐기 7EA)
-  { id: "qual_2026-09-01_ja", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1451, defectQty: 14, defectRate: 0.96, worstReason: "둔각 떨어짐 (7건), 수포 (5건), 스코치 (1건)", lossAmount: 43624, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-01_nx4a", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 4, defectRate: 0.33, worstReason: "스코치 (3건), 사상불량 (1건)", lossAmount: 22988, scrapA: 2, scrapB: 1, scrapC: 1, scrapD: 0, scrapTotal: 4, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-01_nx4", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 3, defectRate: 0.21, worstReason: "사상불량 (2건), 둔_삽입불량 (1건)", lossAmount: 17241, scrapA: 1, scrapB: 1, scrapC: 1, scrapD: 0, scrapTotal: 3, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-01_hr", date: "2026-09-01", yearMonth: "2026-09", dayOfWeek: "화", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 520, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-02 (수) - 일자별 불량률 0.66% (검사 4,707 / 불량 31 / 손실 ₩104,942 / 소재폐기 7EA)
-  { id: "qual_2026-09-02_ja", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1268, defectQty: 15, defectRate: 1.18, worstReason: "둔각 떨어짐 (6건), 수포 (5건), 사상불량 (2건)", lossAmount: 46740, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-02_nx4a", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 5, defectRate: 0.42, worstReason: "스코치 (3건), 직_삽입불량 (2건)", lossAmount: 28735, scrapA: 3, scrapB: 2, scrapC: 1, scrapD: 0, scrapTotal: 6, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-02_nx4", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "사상불량 (1건)", lossAmount: 5747, scrapA: 1, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 1, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-02_hr", date: "2026-09-02", yearMonth: "2026-09", dayOfWeek: "수", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 799, defectQty: 10, defectRate: 1.25, worstReason: "직각 떨어짐 (5건), 둔각 떨어짐 (5건)", lossAmount: 23720, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-03 (목) - 일자별 불량률 0.50% (검사 4,799 / 불량 24 / 손실 ₩101,094 / 소재폐기 11EA)
-  { id: "qual_2026-09-03_ja", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1209, defectQty: 14, defectRate: 1.16, worstReason: "수포 (9건), 둔각 떨어짐 (3건), 사상불량 (2건)", lossAmount: 43624, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-03_nx4a", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 7, defectRate: 0.58, worstReason: "직_삽입불량 (4건), 둔_삽입불량 (2건), 스코치 (1건)", lossAmount: 40229, scrapA: 4, scrapB: 2, scrapC: 2, scrapD: 0, scrapTotal: 8, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-03_nx4", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 3, defectRate: 0.18, worstReason: "사상불량 (2건), 둔_삽입불량 (1건)", lossAmount: 17241, scrapA: 2, scrapB: 1, scrapC: 0, scrapD: 0, scrapTotal: 3, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-03_hr", date: "2026-09-03", yearMonth: "2026-09", dayOfWeek: "목", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 710, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-04 (금) - 일자별 불량률 0.40% (검사 5,000 / 불량 20 / 손실 ₩61,231 / 소재폐기 1EA)
-  { id: "qual_2026-09-04_ja", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1265, defectQty: 14, defectRate: 1.11, worstReason: "스코치 (5건), 수포 (4건), 둔각 떨어짐 (4건)", lossAmount: 43624, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-04_nx4a", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1440, defectQty: 1, defectRate: 0.07, worstReason: "둔_삽입불량 (1건)", lossAmount: 5747, scrapA: 1, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 1, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-04_nx4", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-04_hr", date: "2026-09-04", yearMonth: "2026-09", dayOfWeek: "금", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 615, defectQty: 5, defectRate: 0.81, worstReason: "스코치 (5건)", lossAmount: 11860, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-05 (토) - 일자별 불량률 0.28% (검사 2,880 / 불량 8 / 손실 ₩45,976 / 소재폐기 8EA)
-  { id: "qual_2026-09-05_ja", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-05_nx4a", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 6, defectRate: 0.50, worstReason: "스코치 (4건), 둔각 떨어짐 (2건)", lossAmount: 34482, scrapA: 3, scrapB: 2, scrapC: 1, scrapD: 0, scrapTotal: 6, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-05_nx4", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1680, defectQty: 2, defectRate: 0.12, worstReason: "사상불량 (2건)", lossAmount: 11494, scrapA: 1, scrapB: 1, scrapC: 0, scrapD: 0, scrapTotal: 2, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-05_hr", date: "2026-09-05", yearMonth: "2026-09", dayOfWeek: "토", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-06 (일) - 휴무
-  { id: "qual_2026-09-06_ja", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-06_nx4a", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-06_nx4", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-06_hr", date: "2026-09-06", yearMonth: "2026-09", dayOfWeek: "일", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-07 (월) - 미가동 / 휴무
-  { id: "qual_2026-09-07_ja", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-07_nx4a", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-07_nx4", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-07_hr", date: "2026-09-07", yearMonth: "2026-09", dayOfWeek: "월", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 0, defectQty: 0, defectRate: 0.00, worstReason: "-", lossAmount: 0, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-
-  // 2026-09-08 (화) - 일자별 불량률 0.47% (검사 4,625 / 불량 22 / 손실 ₩87,023 / 소재폐기 10EA)
-  { id: "qual_2026-09-08_ja", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "ja", itemName: "JA G-RUN", carModel: "JA", inspectQty: 1320, defectQty: 6, defectRate: 0.45, worstReason: "수포 (4건), 둔각 떨어짐 (2건)", lossAmount: 18696, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-08_nx4a", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4a", itemName: "NX4a G-RUN", carModel: "NX4a", inspectQty: 1200, defectQty: 5, defectRate: 0.42, worstReason: "스코치 (3건), 사상불량 (2건)", lossAmount: 28735, scrapA: 3, scrapB: 2, scrapC: 1, scrapD: 0, scrapTotal: 6, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-08_nx4", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "nx4", itemName: "NX4 G-RUN", carModel: "NX4", inspectQty: 1480, defectQty: 4, defectRate: 0.27, worstReason: "사상불량 (3건), 둔_삽입불량 (1건)", lossAmount: 22988, scrapA: 2, scrapB: 1, scrapC: 1, scrapD: 0, scrapTotal: 4, uploader: "이창엽 선임" },
-  { id: "qual_2026-09-08_hr", date: "2026-09-08", yearMonth: "2026-09", dayOfWeek: "화", itemId: "hr", itemName: "HR G-RUN", carModel: "HR", inspectQty: 625, defectQty: 7, defectRate: 1.12, worstReason: "직각 떨어짐 (4건), 둔각 떨어짐 (3건)", lossAmount: 16604, scrapA: 0, scrapB: 0, scrapC: 0, scrapD: 0, scrapTotal: 0, uploader: "이창엽 선임" }
-];
+export const INITIAL_QUALITY_RECORDS = [];
 
 /**
  * Generate a strict composite key: qual_YYYY-MM-DD_itemId
@@ -127,8 +36,9 @@ export const generateQualityRecordId = (date, itemId) => {
  * Sanitize a single quality record
  */
 export const sanitizeQualityRecord = (rec) => {
+  if (!rec || typeof rec !== "object") return null;
   const date = String(rec.date || "2026-09-01").trim();
-  const yearMonth = date.slice(0, 7);
+  const yearMonth = rec.yearMonth || (date.length >= 7 ? date.slice(0, 7) : "2026-09");
   const itemId = String(rec.itemId || "ja").toLowerCase().trim();
   const id = rec.id || generateQualityRecordId(date, itemId);
   const inspectQty = Math.max(0, Math.round(Number(rec.inspectQty) || 0));
@@ -136,8 +46,8 @@ export const sanitizeQualityRecord = (rec) => {
   const defectRate = inspectQty > 0 ? Number(((defectQty / inspectQty) * 100).toFixed(2)) : 0;
   
   const coreDef = QUALITY_CORE_ITEMS.find((c) => c.id === itemId) || QUALITY_CORE_ITEMS[0];
-  const unitPrice = rec.unitPrice || coreDef.defaultUnitPrice;
-  const lossAmount = rec.lossAmount !== undefined ? Math.round(Number(rec.lossAmount)) : Math.round(defectQty * unitPrice);
+  const unitPrice = Number(rec.unitPrice) || coreDef.defaultUnitPrice || 3116;
+  const lossAmount = rec.lossAmount !== undefined ? Math.round(Number(rec.lossAmount) || 0) : Math.round(defectQty * unitPrice);
 
   const dayOfWeek = rec.dayOfWeek || getDayOfWeek(date);
 
@@ -147,7 +57,7 @@ export const sanitizeQualityRecord = (rec) => {
   const scrapC = Math.max(0, Math.round(Number(rec.scrapC) || 0));
   const scrapD = Math.max(0, Math.round(Number(rec.scrapD) || 0));
   const scrapTotal = rec.scrapTotal !== undefined 
-    ? Math.max(0, Math.round(Number(rec.scrapTotal))) 
+    ? Math.max(0, Math.round(Number(rec.scrapTotal) || 0)) 
     : (scrapA + scrapB + scrapC + scrapD);
 
   // If defectQty is 0, worstReason is "-"
@@ -210,22 +120,18 @@ export const getPreviousYearMonth = (yearMonth = "2026-09") => {
 export const getLocalQualityRecords = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_QUALITY_RECORDS));
-      return INITIAL_QUALITY_RECORDS;
-    }
+    if (!saved) return [];
     const parsed = JSON.parse(saved);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      const map = new Map();
-      INITIAL_QUALITY_RECORDS.forEach((r) => map.set(r.id, r));
-      parsed.forEach((r) => map.set(r.id, sanitizeQualityRecord(r)));
-      const merged = Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
-      return merged;
+      return parsed
+        .map((r) => sanitizeQualityRecord(r))
+        .filter((r) => r && r.id)
+        .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     }
-    return INITIAL_QUALITY_RECORDS;
+    return [];
   } catch (e) {
     console.error("getLocalQualityRecords error:", e);
-    return INITIAL_QUALITY_RECORDS;
+    return [];
   }
 };
 
@@ -235,12 +141,13 @@ export const getLocalQualityRecords = () => {
 export const saveLocalQualityRecords = (records) => {
   try {
     const map = new Map();
-    INITIAL_QUALITY_RECORDS.forEach((r) => map.set(r.id, r));
     (records || []).forEach((r) => {
       const sanitized = sanitizeQualityRecord(r);
-      map.set(sanitized.id, sanitized);
+      if (sanitized && sanitized.id) {
+        map.set(sanitized.id, sanitized);
+      }
     });
-    const uniqueArray = Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+    const uniqueArray = Array.from(map.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(uniqueArray));
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("quality-records-updated", { detail: uniqueArray }));
@@ -248,7 +155,7 @@ export const saveLocalQualityRecords = (records) => {
     return uniqueArray;
   } catch (e) {
     console.error("saveLocalQualityRecords error:", e);
-    return records;
+    return records || [];
   }
 };
 
@@ -264,23 +171,18 @@ export const subscribeQualityRecords = (callback) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        const remoteRecords = [];
         if (!snapshot.empty) {
-          const remoteRecords = [];
           snapshot.forEach((d) => {
-            remoteRecords.push(d.data());
+            remoteRecords.push({ id: d.id, ...d.data() });
           });
-
-          const mergedMap = new Map();
-          localInitial.forEach((l) => mergedMap.set(l.id, l));
-          remoteRecords.forEach((r) => mergedMap.set(r.id, sanitizeQualityRecord(r)));
-
-          const finalArray = Array.from(mergedMap.values()).sort((a, b) => b.date.localeCompare(a.date));
-          saveLocalQualityRecords(finalArray);
-          if (callback) callback(finalArray);
-        } else {
-          saveQualityRecordsBatch(localInitial);
-          if (callback) callback(localInitial);
         }
+        const finalArray = remoteRecords
+          .map((r) => sanitizeQualityRecord(r))
+          .filter((r) => r && r.id)
+          .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        saveLocalQualityRecords(finalArray);
+        if (callback) callback(finalArray);
       },
       (error) => {
         console.warn("Quality Firestore subscription warning, using local cache:", error);
@@ -295,28 +197,37 @@ export const subscribeQualityRecords = (callback) => {
 };
 
 /**
- * Save a batch of quality records (Deduplication guarantee)
+ * Save a batch of quality records (Deduplication guarantee & Firestore Chunking)
  */
 export const saveQualityRecordsBatch = async (recordsToSave = []) => {
   if (!recordsToSave || recordsToSave.length === 0) return [];
 
   const localCurrent = getLocalQualityRecords();
   const map = new Map();
-  localCurrent.forEach((r) => map.set(r.id, r));
+  localCurrent.forEach((r) => {
+    if (r && r.id) map.set(r.id, r);
+  });
 
-  const sanitizedList = recordsToSave.map((r) => sanitizeQualityRecord(r));
-  sanitizedList.forEach((r) => map.set(r.id, r));
+  const sanitizedList = recordsToSave.map((r) => sanitizeQualityRecord(r)).filter((r) => r && r.id);
+  sanitizedList.forEach((r) => {
+    if (r && r.id) map.set(r.id, r);
+  });
 
-  const finalMerged = Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+  const finalMerged = Array.from(map.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   saveLocalQualityRecords(finalMerged);
 
   try {
-    const batch = writeBatch(db);
-    sanitizedList.forEach((rec) => {
-      const docRef = doc(db, COLLECTION_NAME, rec.id);
-      batch.set(docRef, rec, { merge: true });
-    });
-    await batch.commit();
+    // Chunk Firestore batch writes into max 400 documents per commit
+    const chunkSize = 400;
+    for (let i = 0; i < sanitizedList.length; i += chunkSize) {
+      const chunk = sanitizedList.slice(i, i + chunkSize);
+      const batch = writeBatch(db);
+      chunk.forEach((rec) => {
+        const docRef = doc(db, COLLECTION_NAME, rec.id);
+        batch.set(docRef, rec, { merge: true });
+      });
+      await batch.commit();
+    }
   } catch (e) {
     console.warn("Firestore saveQualityRecordsBatch fallback to local storage:", e);
   }
@@ -572,30 +483,80 @@ export const getQualityDailyAggregation = (allRecords = [], yearMonth = "2026-09
 };
 
 /**
- * Helper to parse dates from Excel cells (Serial numbers or text)
+ * Helper to parse dates from Excel cells (Serial numbers, Date objects, or text)
  */
 export const parseExcelDate = (val, fallbackYM = "2026-09") => {
-  if (typeof val === "number" && val > 45000 && val < 50000) {
+  if (val === null || val === undefined || val === "") return null;
+  const currentYear = fallbackYM.slice(0, 4) || "2026";
+
+  // 1. JS Date object
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, "0");
+    const d = String(val.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  // 2. Excel Serial date number (e.g. 30000 ~ 70000)
+  if (typeof val === "number" && val > 30000 && val < 70000) {
     const utc_days = Math.floor(val - 25569);
     const utc_value = utc_days * 86400;
     const date_info = new Date(utc_value * 1000);
-    const year = date_info.getFullYear();
-    const month = String(date_info.getMonth() + 1).padStart(2, "0");
-    const day = String(date_info.getDate()).padStart(2, "0");
+    const year = date_info.getUTCFullYear();
+    const month = String(date_info.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date_info.getUTCDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
-  if (typeof val === "string") {
-    const s = val.trim();
-    const m1 = s.match(/(\d{4})[-_./](\d{1,2})[-_./](\d{1,2})/);
-    if (m1) return `${m1[1]}-${m1[2].padStart(2, "0")}-${m1[3].padStart(2, "0")}`;
-    const m2 = s.match(/(\d{1,2})[-_./](\d{1,2})/);
-    if (m2) return `${fallbackYM.slice(0, 4)}-${m2[1].padStart(2, "0")}-${m2[2].padStart(2, "0")}`;
-    const m3 = s.match(/^(\d{1,2})일?$/);
-    if (m3) return `${fallbackYM}-${m3[1].padStart(2, "0")}`;
-  }
+
+  // 3. Day of month as number 1..31
   if (typeof val === "number" && val >= 1 && val <= 31) {
     return `${fallbackYM}-${String(val).padStart(2, "0")}`;
   }
+
+  // 4. String parsing
+  if (typeof val === "string") {
+    const s = val.trim();
+    if (!s) return null;
+
+    // Full Date: YYYY-MM-DD, YYYY.MM.DD, YYYY/MM/DD, YYYY_MM_DD
+    const m1 = s.match(/(\d{4})[-_./](\d{1,2})[-_./](\d{1,2})/);
+    if (m1) {
+      return `${m1[1]}-${m1[2].padStart(2, "0")}-${m1[3].padStart(2, "0")}`;
+    }
+
+    // Korean full date: 2026년 9월 1일
+    const mKorFull = s.match(/(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일?/);
+    if (mKorFull) {
+      return `${mKorFull[1]}-${mKorFull[2].padStart(2, "0")}-${mKorFull[3].padStart(2, "0")}`;
+    }
+
+    // Korean month-day: 9월 1일, 09월 01일, 9월1일(화)
+    const mKor = s.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일?/);
+    if (mKor) {
+      return `${currentYear}-${mKor[1].padStart(2, "0")}-${mKor[2].padStart(2, "0")}`;
+    }
+
+    // Month-Day: 9/1, 09-01, 9.1, 9/1(화), 09.01 (월)
+    const m2 = s.match(/(\d{1,2})[-_./](\d{1,2})/);
+    if (m2) {
+      const p1 = parseInt(m2[1], 10);
+      const p2 = parseInt(m2[2], 10);
+      if (p1 >= 1 && p1 <= 12 && p2 >= 1 && p2 <= 31) {
+        return `${currentYear}-${String(p1).padStart(2, "0")}-${String(p2).padStart(2, "0")}`;
+      }
+    }
+
+    // Single day: 1일, 01일, 1
+    const m3 = s.match(/^(\d{1,2})일?$/);
+    if (m3) {
+      const dayNum = parseInt(m3[1], 10);
+      if (dayNum >= 1 && dayNum <= 31) {
+        return `${fallbackYM}-${String(dayNum).padStart(2, "0")}`;
+      }
+    }
+  }
+
   return null;
 };
 
@@ -618,10 +579,25 @@ export const parseQualityExcelFiles = async (files = []) => {
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
   for (const file of fileList) {
-    const buffer = await file.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: "array" });
-    const sheetNames = wb.SheetNames;
+    let buffer;
+    try {
+      buffer = await file.arrayBuffer();
+    } catch (e) {
+      console.error("Failed to read file arrayBuffer:", file.name, e);
+      continue;
+    }
 
+    let wb;
+    try {
+      wb = XLSX.read(buffer, { type: "array", cellDates: true });
+    } catch (e) {
+      console.error("Failed to parse XLSX workbook:", file.name, e);
+      continue;
+    }
+
+    const sheetNames = wb.SheetNames || [];
+
+    // Detect year-month from file name
     const nameMatch = file.name.match(/(\d{4})[-_.](\d{1,2})/) || file.name.match(/(\d{1,2})월/);
     if (nameMatch) {
       if (nameMatch[1] && nameMatch[2]) {
@@ -633,21 +609,25 @@ export const parseQualityExcelFiles = async (files = []) => {
 
     const hasJeongri = sheetNames.some((s) => s.includes("정리"));
 
-    sheetNames.forEach((sName) => {
+    for (const sName of sheetNames) {
       const cleanName = sName.trim().toUpperCase();
       if (hasJeongri && cleanName.includes("취합DATA")) {
-        return;
+        continue;
       }
 
       const ws = wb.Sheets[sName];
-      if (!ws) return;
+      if (!ws) continue;
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-      if (rows.length < 5) return;
+      if (!Array.isArray(rows) || rows.length < 2) continue;
 
-      // 1. NX4 정리 Sheet: Splits NX4 and NX4a
-      if (cleanName === "NX4 정리" || cleanName.includes("NX4_정리") || cleanName.includes("NX4정리")) {
+      let sheetRecordsCount = 0;
+
+      // =========================================================================
+      // PATTERN 1: NX4 Matrix Sheet (Contains both NX4 and NX4a)
+      // =========================================================================
+      if (cleanName.includes("NX4") && (cleanName.includes("정리") || cleanName.includes("종합") || cleanName.includes("취합") || cleanName.includes("통합") || cleanName.includes("실적") || cleanName === "NX4")) {
         let dateCols = [];
-        for (let r = 0; r < Math.min(36, rows.length); r++) {
+        for (let r = 0; r < Math.min(40, rows.length); r++) {
           const row = rows[r] || [];
           const cols = [];
           for (let c = 1; c < row.length; c++) {
@@ -666,20 +646,28 @@ export const parseQualityExcelFiles = async (files = []) => {
           let nx4aInspRows = [];
           let nx4aDefRows = [];
 
-          for (let r = 0; r < Math.min(45, rows.length); r++) {
+          for (let r = 0; r < Math.min(50, rows.length); r++) {
             const row = rows[r] || [];
-            const label = (String(row[1] || "") + " " + String(row[2] || "")).trim().toUpperCase();
-            if (label.includes("NX4 FRT") || label.includes("NX4-FRT")) {
-              if (r < 40) nx4InspRows.push(r);
-              else nx4DefRows.push(r);
+            const label = (String(row[0] || "") + " " + String(row[1] || "") + " " + String(row[2] || "") + " " + String(row[3] || "")).trim().toUpperCase();
+            if (label.includes("NX4 FRT") || label.includes("NX4-FRT") || label.includes("NX4FRT") || (label.includes("NX4") && !label.includes("NX4A") && !label.includes("NX4-A") && !label.includes("NX4 A") && r < 42)) {
+              if (r < 40 && (label.includes("검사") || label.includes("생산") || label.includes("투입") || r <= 36)) {
+                nx4InspRows.push(r);
+              } else if (label.includes("불량") || label.includes("부적합") || label.includes("폐기") || (r >= 38 && r <= 42)) {
+                nx4DefRows.push(r);
+              }
             } else if (label.includes("NX4A") || label.includes("NX4-A") || label.includes("NX4 A")) {
-              if (r < 40) nx4aInspRows.push(r);
-              else nx4aDefRows.push(r);
+              if (r < 40 && (label.includes("검사") || label.includes("생산") || label.includes("투입") || r <= 38)) {
+                nx4aInspRows.push(r);
+              } else if (label.includes("불량") || label.includes("부적합") || label.includes("폐기") || (r >= 40 && r <= 44)) {
+                nx4aDefRows.push(r);
+              }
             }
           }
 
-          if (nx4InspRows.length === 0) { nx4InspRows = [35, 36]; nx4DefRows = [40, 41]; }
-          if (nx4aInspRows.length === 0) { nx4aInspRows = [37, 38]; nx4aDefRows = [42, 43]; }
+          if (nx4InspRows.length === 0) { nx4InspRows = [35, 36].filter(r => rows[r]); }
+          if (nx4DefRows.length === 0) { nx4DefRows = [40, 41].filter(r => rows[r]); }
+          if (nx4aInspRows.length === 0) { nx4aInspRows = [37, 38].filter(r => rows[r]); }
+          if (nx4aDefRows.length === 0) { nx4aDefRows = [42, 43].filter(r => rows[r]); }
 
           dateCols.forEach((d) => {
             const nx4Insp = Math.round(nx4InspRows.reduce((s, r) => s + (Number(rows[r]?.[d.col]) || 0), 0));
@@ -690,9 +678,8 @@ export const parseQualityExcelFiles = async (files = []) => {
             const dayOfWeek = dayNames[dt.getDay()] || "월";
 
             if (nx4Insp > 0 || nx4Def > 0) {
-              const k = `qual_${d.dateStr}_nx4`;
               parsedRecords.push({
-                id: k,
+                id: `qual_${d.dateStr}_nx4`,
                 date: d.dateStr,
                 yearMonth: d.dateStr.slice(0, 7),
                 dayOfWeek,
@@ -706,12 +693,12 @@ export const parseQualityExcelFiles = async (files = []) => {
                 lossAmount: Math.round(nx4Def * unitPrices.nx4),
                 uploader: "이창엽 선임"
               });
+              sheetRecordsCount++;
             }
 
             if (nx4aInsp > 0 || nx4aDef > 0) {
-              const k = `qual_${d.dateStr}_nx4a`;
               parsedRecords.push({
-                id: k,
+                id: `qual_${d.dateStr}_nx4a`,
                 date: d.dateStr,
                 yearMonth: d.dateStr.slice(0, 7),
                 dayOfWeek,
@@ -725,116 +712,243 @@ export const parseQualityExcelFiles = async (files = []) => {
                 lossAmount: Math.round(nx4aDef * unitPrices.nx4a),
                 uploader: "이창엽 선임"
               });
+              sheetRecordsCount++;
             }
           });
-          return;
+
+          if (sheetRecordsCount > 0) continue;
         }
       }
 
-      // 2. Individual Model Sheets (JA, HR, NX4, NX4a)
-      let itemId = null;
-      let itemName = "";
-      let carModel = "";
-      let defaultReason = "";
+      // =========================================================================
+      // PATTERN 2: Matrix Individual Model Sheet (JA, HR, NX4, NX4a)
+      // =========================================================================
+      let matrixItemId = null;
+      let matrixItemName = "";
+      let matrixCarModel = "";
+      let matrixDefaultReason = "";
 
-      if (cleanName.includes("JA") && (cleanName.includes("통합") || cleanName.includes("취합") || cleanName.includes("종합") || cleanName.includes("정리"))) {
-        itemId = "ja"; itemName = "JA G-RUN"; carModel = "JA"; defaultReason = "둔각 떨어짐, 수포, 스코치";
-      } else if (cleanName.includes("HR") && (cleanName.includes("통합") || cleanName.includes("취합") || cleanName.includes("종합") || cleanName.includes("정리"))) {
-        itemId = "hr"; itemName = "HR G-RUN"; carModel = "HR"; defaultReason = "직각 떨어짐, 둔각 떨어짐, 스코치";
+      if (cleanName.includes("JA")) {
+        matrixItemId = "ja"; matrixItemName = "JA G-RUN"; matrixCarModel = "JA"; matrixDefaultReason = "둔각 떨어짐, 수포, 스코치";
+      } else if (cleanName.includes("HR")) {
+        matrixItemId = "hr"; matrixItemName = "HR G-RUN"; matrixCarModel = "HR"; matrixDefaultReason = "직각 떨어짐, 둔각 떨어짐, 스코치";
       } else if (cleanName.includes("NX4A") || cleanName.includes("NX4-A") || cleanName.includes("NX4 A")) {
-        itemId = "nx4a"; itemName = "NX4a G-RUN"; carModel = "NX4a"; defaultReason = "스코치, 직_삽입불량, 사상불량";
-      } else if (cleanName.includes("NX4") && (cleanName.includes("종합") || cleanName.includes("통합"))) {
-        itemId = "nx4"; itemName = "NX4 G-RUN"; carModel = "NX4"; defaultReason = "사상불량, 둔_삽입불량";
+        matrixItemId = "nx4a"; matrixItemName = "NX4a G-RUN"; matrixCarModel = "NX4a"; matrixDefaultReason = "스코치, 직_삽입불량, 사상불량";
+      } else if (cleanName.includes("NX4")) {
+        matrixItemId = "nx4"; matrixItemName = "NX4 G-RUN"; matrixCarModel = "NX4"; matrixDefaultReason = "사상불량, 둔_삽입불량";
       }
 
-      if (!itemId) return;
-
-      let dateCols = [];
-      for (let r = 0; r < Math.min(36, rows.length); r++) {
-        const row = rows[r] || [];
-        const cols = [];
-        for (let c = 1; c < row.length; c++) {
-          const dStr = parseExcelDate(row[c], detectedYearMonth);
-          if (dStr) cols.push({ col: c, dateStr: dStr });
+      if (matrixItemId) {
+        let dateCols = [];
+        for (let r = 0; r < Math.min(40, rows.length); r++) {
+          const row = rows[r] || [];
+          const cols = [];
+          for (let c = 1; c < row.length; c++) {
+            const dStr = parseExcelDate(row[c], detectedYearMonth);
+            if (dStr) cols.push({ col: c, dateStr: dStr });
+          }
+          if (cols.length >= 3) {
+            dateCols = cols;
+            break;
+          }
         }
-        if (cols.length >= 3) {
-          dateCols = cols;
+
+        if (dateCols.length > 0) {
+          let rowInsp = -1;
+          let rowDef = -1;
+          for (let r = 0; r < rows.length; r++) {
+            const row = rows[r] || [];
+            const label = (String(row[0] || "") + " " + String(row[1] || "") + " " + String(row[2] || "") + " " + String(row[3] || "")).replace(/\s+/g, "").toUpperCase();
+            if (label.includes("총검사") || label.includes("검사수량") || label.includes("검사합계") || label.includes("검사실적") || (r === 39 && label.includes("합계"))) {
+              if (rowInsp === -1) rowInsp = r;
+            }
+            if (label.includes("총불량") || label.includes("불량수량") || label.includes("불량합계") || label.includes("불량실적") || (r === 44 && label.includes("합계"))) {
+              if (rowDef === -1) rowDef = r;
+            }
+          }
+
+          if (rowInsp === -1 && rows[39]) rowInsp = 39;
+          if (rowDef === -1 && rows[44]) rowDef = 44;
+
+          if (rowInsp !== -1 && rowDef !== -1) {
+            dateCols.forEach((d) => {
+              const insp = Math.round(Number(rows[rowInsp]?.[d.col]) || 0);
+              const def = Math.round(Number(rows[rowDef]?.[d.col]) || 0);
+              if (insp === 0 && def === 0) return;
+
+              const rate = insp > 0 ? Number(((def / insp) * 100).toFixed(2)) : 0;
+              const loss = Math.round(def * unitPrices[matrixItemId]);
+              const dt = new Date(d.dateStr);
+              const dayOfWeek = dayNames[dt.getDay()] || "월";
+
+              let reasons = [];
+              if (def > 0) {
+                for (let r = Math.max(rowDef + 1, 10); r < rows.length; r++) {
+                  const row = rows[r];
+                  if (!row) continue;
+                  const dType = String(row[3] || row[2] || row[1] || "").trim();
+                  const cnt = Math.round(Number(row[d.col]) || 0);
+                  if (cnt > 0 && typeof dType === "string" && isNaN(Number(dType)) && !dType.includes("합계") && !dType.includes("불량") && !dType.includes("구분") && !dType.includes("TOTAL") && !dType.includes("불량율") && !dType.includes("%")) {
+                    reasons.push(`${dType} (${cnt}건)`);
+                  }
+                }
+              }
+              const worstReason = def === 0 ? "-" : (reasons.length > 0 ? reasons.slice(0, 3).join(", ") : matrixDefaultReason);
+
+              parsedRecords.push({
+                id: `qual_${d.dateStr}_${matrixItemId}`,
+                date: d.dateStr,
+                yearMonth: d.dateStr.slice(0, 7),
+                dayOfWeek,
+                itemId: matrixItemId,
+                itemName: matrixItemName,
+                carModel: matrixCarModel,
+                inspectQty: insp,
+                defectQty: def,
+                defectRate: rate,
+                worstReason,
+                lossAmount: loss,
+                uploader: "이창엽 선임"
+              });
+              sheetRecordsCount++;
+            });
+
+            if (sheetRecordsCount > 0) continue;
+          }
+        }
+      }
+
+      // =========================================================================
+      // PATTERN 3: Tabular / List Sheet (Row-by-row records e.g. 일일품질검사실적, G-RUN 불량율 집계)
+      // =========================================================================
+      let colDate = -1;
+      let colItem = -1;
+      let colInsp = -1;
+      let colDef = -1;
+      let colReason = -1;
+      let colScrapA = -1;
+      let colScrapB = -1;
+      let colScrapC = -1;
+      let colScrapD = -1;
+      let colScrapTotal = -1;
+      let headerRowIndex = -1;
+
+      for (let r = 0; r < Math.min(15, rows.length); r++) {
+        const row = rows[r];
+        if (!Array.isArray(row)) continue;
+        for (let c = 0; c < row.length; c++) {
+          const h = String(row[c] || "").replace(/\s+/g, "").toUpperCase();
+          if (h.includes("일자") || h.includes("날짜") || h.includes("DATE") || h.includes("검사일자") || h.includes("생산일자")) colDate = c;
+          if (h.includes("차종") || h.includes("품명") || h.includes("품목") || h.includes("아이템") || h.includes("ITEM") || h.includes("모델")) colItem = c;
+          if (h.includes("검사수량") || h.includes("검사수") || h.includes("생산수량") || h.includes("검사실적") || h.includes("투입수량") || h.includes("INSPECT")) colInsp = c;
+          if (h.includes("불량수량") || h.includes("불량수") || h.includes("부적합수량") || h.includes("DEFECT")) colDef = c;
+          if (h.includes("불량사유") || h.includes("불량유형") || h.includes("불량원인") || h.includes("현상") || h.includes("사유") || h.includes("WORST") || h.includes("특이사항")) colReason = c;
+          if (h.includes("소재A") || h.includes("소재1") || h.includes("폐기A")) colScrapA = c;
+          if (h.includes("소재B") || h.includes("소재2") || h.includes("폐기B")) colScrapB = c;
+          if (h.includes("소재C") || h.includes("소재3") || h.includes("폐기C")) colScrapC = c;
+          if (h.includes("소재D") || h.includes("소재4") || h.includes("폐기D")) colScrapD = c;
+          if (h.includes("폐기수량") || h.includes("총폐기") || h.includes("폐기합계") || h.includes("SCRAP")) colScrapTotal = c;
+        }
+        if (colInsp >= 0 || colDef >= 0 || (colDate >= 0 && colItem >= 0)) {
+          headerRowIndex = r;
           break;
         }
       }
 
-      if (dateCols.length === 0) return;
+      if (headerRowIndex >= 0) {
+        for (let r = headerRowIndex + 1; r < rows.length; r++) {
+          const row = rows[r];
+          if (!Array.isArray(row) || row.length === 0) continue;
 
-      let rowInsp = -1;
-      let rowDef = -1;
-      for (let r = 0; r < rows.length; r++) {
-        const row = rows[r] || [];
-        const label = (String(row[0] || "") + " " + String(row[1] || "") + " " + String(row[2] || "") + " " + String(row[3] || "")).replace(/\s+/g, "").toUpperCase();
-        if (label.includes("총검사수") || label.includes("검사수량") || label.includes("검사합계") || (r === 39 && label.includes("합계"))) {
-          if (rowInsp === -1) rowInsp = r;
-        }
-        if (label.includes("총불량수") || label.includes("불량수량") || label.includes("불량합계") || (r === 44 && label.includes("합계"))) {
-          if (rowDef === -1) rowDef = r;
-        }
-      }
+          // Check if row is empty or summary footer
+          const firstCells = (String(row[0] || "") + String(row[1] || "") + String(row[2] || "")).trim();
+          if (firstCells.includes("합계") || firstCells.includes("TOTAL") || firstCells.includes("누계")) continue;
 
-      if (rowInsp === -1 && rows[39]) rowInsp = 39;
-      if (rowDef === -1 && rows[44]) rowDef = 44;
-      if (rowInsp === -1 || rowDef === -1) return;
-
-      dateCols.forEach((d) => {
-        const insp = Math.round(Number(rows[rowInsp]?.[d.col]) || 0);
-        const def = Math.round(Number(rows[rowDef]?.[d.col]) || 0);
-        if (insp === 0 && def === 0) return;
-
-        const rate = insp > 0 ? Number(((def / insp) * 100).toFixed(2)) : 0;
-        const loss = Math.round(def * unitPrices[itemId]);
-        const dt = new Date(d.dateStr);
-        const dayOfWeek = dayNames[dt.getDay()] || "월";
-
-        // Defect reasons
-        let reasons = [];
-        if (def > 0) {
-          for (let r = Math.max(rowDef + 1, 10); r < rows.length; r++) {
-            const row = rows[r];
-            if (!row) continue;
-            const dType = String(row[3] || row[2] || row[1] || "").trim();
-            const cnt = Math.round(Number(row[d.col]) || 0);
-            if (cnt > 0 && typeof dType === "string" && isNaN(Number(dType)) && !dType.includes("합계") && !dType.includes("불량") && !dType.includes("구분") && !dType.includes("TOTAL") && !dType.includes("불량율") && !dType.includes("%")) {
-              reasons.push(`${dType} (${cnt}건)`);
+          // Parse Date
+          let dateStr = null;
+          if (colDate >= 0 && row[colDate]) {
+            dateStr = parseExcelDate(row[colDate], detectedYearMonth);
+          }
+          if (!dateStr) {
+            // Fallback from other columns
+            for (let c = 0; c < Math.min(4, row.length); c++) {
+              dateStr = parseExcelDate(row[c], detectedYearMonth);
+              if (dateStr) break;
             }
           }
-        }
-        const worstReason = def === 0 ? "-" : (reasons.length > 0 ? reasons.slice(0, 3).join(", ") : defaultReason);
+          if (!dateStr) continue;
 
-        const key = `qual_${d.dateStr}_${itemId}`;
-        parsedRecords.push({
-          id: key,
-          date: d.dateStr,
-          yearMonth: d.dateStr.slice(0, 7),
-          dayOfWeek,
-          itemId,
-          itemName,
-          carModel,
-          inspectQty: insp,
-          defectQty: def,
-          defectRate: rate,
-          worstReason,
-          lossAmount: loss,
-          uploader: "이창엽 선임"
-        });
-      });
-    });
+          // Parse Item
+          let rawItem = colItem >= 0 ? String(row[colItem] || "").toUpperCase() : cleanName;
+          let targetItemId = "ja";
+          if (rawItem.includes("NX4A") || rawItem.includes("NX4-A") || rawItem.includes("NX4 A")) targetItemId = "nx4a";
+          else if (rawItem.includes("NX4")) targetItemId = "nx4";
+          else if (rawItem.includes("HR")) targetItemId = "hr";
+          else if (rawItem.includes("JA")) targetItemId = "ja";
+          else {
+            if (cleanName.includes("NX4A")) targetItemId = "nx4a";
+            else if (cleanName.includes("NX4")) targetItemId = "nx4";
+            else if (cleanName.includes("HR")) targetItemId = "hr";
+            else if (cleanName.includes("JA")) targetItemId = "ja";
+          }
+
+          const coreDef = QUALITY_CORE_ITEMS.find((c) => c.id === targetItemId) || QUALITY_CORE_ITEMS[0];
+          const insp = colInsp >= 0 ? Math.max(0, Math.round(Number(String(row[colInsp] || "").replace(/[^0-9.]/g, "")) || 0)) : 0;
+          const def = colDef >= 0 ? Math.max(0, Math.round(Number(String(row[colDef] || "").replace(/[^0-9.]/g, "")) || 0)) : 0;
+          if (insp === 0 && def === 0) continue;
+
+          const rate = insp > 0 ? Number(((def / insp) * 100).toFixed(2)) : 0;
+          const loss = Math.round(def * (unitPrices[targetItemId] || coreDef.defaultUnitPrice));
+          const dt = new Date(dateStr);
+          const dayOfWeek = dayNames[dt.getDay()] || "월";
+
+          const worstReason = colReason >= 0 && row[colReason] && String(row[colReason]).trim() !== "-" 
+            ? String(row[colReason]).trim() 
+            : (def === 0 ? "-" : coreDef.defaultDefectReason);
+
+          const scrapA = colScrapA >= 0 ? Math.max(0, Math.round(Number(row[colScrapA]) || 0)) : 0;
+          const scrapB = colScrapB >= 0 ? Math.max(0, Math.round(Number(row[colScrapB]) || 0)) : 0;
+          const scrapC = colScrapC >= 0 ? Math.max(0, Math.round(Number(row[colScrapC]) || 0)) : 0;
+          const scrapD = colScrapD >= 0 ? Math.max(0, Math.round(Number(row[colScrapD]) || 0)) : 0;
+          const scrapTotal = colScrapTotal >= 0 
+            ? Math.max(0, Math.round(Number(row[colScrapTotal]) || 0)) 
+            : (scrapA + scrapB + scrapC + scrapD);
+
+          parsedRecords.push({
+            id: `qual_${dateStr}_${targetItemId}`,
+            date: dateStr,
+            yearMonth: dateStr.slice(0, 7),
+            dayOfWeek,
+            itemId: targetItemId,
+            itemName: coreDef.name,
+            carModel: coreDef.carModel,
+            inspectQty: insp,
+            defectQty: def,
+            defectRate: rate,
+            worstReason,
+            lossAmount: loss,
+            scrapA,
+            scrapB,
+            scrapC,
+            scrapD,
+            scrapTotal,
+            uploader: "이창엽 선임"
+          });
+        }
+      }
+    }
   }
 
   // Deduplicate against internal list
   const map = new Map();
   parsedRecords.forEach((r) => {
     const s = sanitizeQualityRecord(r);
-    map.set(s.id, s);
+    if (s && s.id) {
+      map.set(s.id, s);
+    }
   });
 
-  const uniqueParsed = Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const uniqueParsed = Array.from(map.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   return {
     records: uniqueParsed,
     count: uniqueParsed.length,

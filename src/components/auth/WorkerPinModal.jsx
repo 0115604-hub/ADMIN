@@ -237,9 +237,9 @@ export const WorkerPinModal = ({
 
   // 4. Realtime shared issues / quality alerts / company notices (공유 공지 및 긴급 안건)
   const sharedNotices = useMemo(() => {
-    const list = activeIssues && activeIssues.length > 0 ? activeIssues : urgentIssues || [];
+    const list = Array.isArray(activeIssues) ? activeIssues : [];
     return list.filter((it) => !it.isDeleted).slice(0, 4);
-  }, [activeIssues, urgentIssues]);
+  }, [activeIssues]);
 
   // 5. 🌟 [근태현황정보] 당일 일자 번호 및 일일 근태 요약 집계
   const todayDayNum = useMemo(() => {
@@ -270,15 +270,15 @@ export const WorkerPinModal = ({
   const targetCompanies = useMemo(() => {
     if (!selectedUser) return [];
     if (isAdmin || selectedUser.plant === "본사") {
-      return ["(주)오륙", "유성", "(주)조영산업", "한울", "부림텍"];
+      return ["오륙", "유성", "조영", "한울", "부림텍"];
     }
     if (selectedUser.plant === "삼랑진공장") {
-      return ["(주)오륙", "유성"];
+      return ["오륙", "유성"];
     }
     if (selectedUser.plant === "한림공장") {
-      return ["(주)조영산업", "한울", "부림텍"];
+      return ["조영", "한울", "부림텍"];
     }
-    return ["(주)오륙", "유성"];
+    return ["오륙", "유성"];
   }, [selectedUser, isAdmin]);
 
   if (!selectedUser) return null;

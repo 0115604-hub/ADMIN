@@ -50,7 +50,7 @@ import * as XLSX from "xlsx";
 import {
   COMPANIES,
   DEPARTMENTS,
-  COMPANY_THEMES,
+  COMPANY_THEMES, cleanCompanyName,
   COMPANY_APPROVAL_MANAGERS,
   ATTENDANCE_OPTIONS,
   getOptionMeta,
@@ -687,7 +687,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     } catch (e) {}
   }, [currentProfile?.name]);
 
-  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("(주)오륙");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("오륙");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
   const [reportListFilter, setReportListFilter] = useState("전체");
   const [reportTypeCategoryFilter, setReportTypeCategoryFilter] = useState("ALL"); // "ALL", "WEEKDAY", "WEEKEND", "SYNTHESIS"
@@ -1165,9 +1165,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     if (report.company) {
       setSelectedCompanyFilter(report.company);
     } else if (report.plant === "삼랑진공장") {
-      setSelectedCompanyFilter("(주)오륙");
+      setSelectedCompanyFilter("오륙");
     } else if (report.plant === "한림공장") {
-      setSelectedCompanyFilter("(주)조영산업");
+      setSelectedCompanyFilter("조영");
     }
     setActiveTab("daily_input");
     triggerToast(`✏️ 9월 ${report.workDate ? report.workDate.split("-")[2] : ""}일 [${report.company || report.plant || "전체"}] 근태 등록 화면으로 이동했습니다.`);
@@ -1236,7 +1236,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       alert("근로자 성명을 입력해주세요.");
       return;
     }
-    const company = selectedCompanyManageWorkers || selectedCompanyPopup || "(주)오륙";
+    const company = cleanCompanyName(selectedCompanyManageWorkers || selectedCompanyPopup || "오륙");
     const dept = normalizeDept(quickNewWorkerDept || "가공동");
     const line = quickNewWorkerLine.trim() || dept;
     const name = quickNewWorkerName.trim();
@@ -1320,13 +1320,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       workerIndexInMatrix >= 0 &&
       workerIndexInMatrix < currentMatrix.length &&
       currentMatrix[workerIndexInMatrix]?.name === workerName &&
-      currentMatrix[workerIndexInMatrix]?.company === companyName
+      cleanCompanyName(currentMatrix[workerIndexInMatrix]?.company) === cleanCompanyName(companyName)
     ) {
       updatedMatrix = currentMatrix.filter((_, idx) => idx !== workerIndexInMatrix);
     } else {
       let removed = false;
       updatedMatrix = currentMatrix.filter((w) => {
-        if (!removed && w.company === companyName && w.name === workerName) {
+        if (!removed && cleanCompanyName(w.company) === cleanCompanyName(companyName) && w.name === workerName) {
           if (!dept || normalizeDept(w.dept) === normalizeDept(dept)) {
             removed = true;
             return false;
@@ -1377,7 +1377,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       ...w,
       dept: normalizeDept(w.dept),
       originalMatrixIndex: originalIdx
-    })).filter((w) => w.company === selectedCompanyManageWorkers);
+    })).filter((w) => cleanCompanyName(w.company) === cleanCompanyName(selectedCompanyManageWorkers));
 
     if (manageWorkerSearch.trim()) {
       const q = manageWorkerSearch.trim().toLowerCase();
@@ -1417,16 +1417,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
   }, [smartData.attendanceMatrix, selectedDay]);
 
-  // Filtered attendance rows for Daily Input and Summary tabs
+  // Filtered attendance rows for Daily Input and Summary tabs (회사별 1번부터 시작하는 순번 부여)
   const filteredAttendanceWorkers = useMemo(() => {
-    let list = (smartData.attendanceMatrix || []).map((w, originalIdx) => ({
-      ...w,
-      dept: normalizeDept(w.dept),
-      originalMatrixIndex: originalIdx
-    }));
+    const compCounters = {};
+    const matrixWithCompanyNo = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
+      const c = cleanCompanyName(w.company);
+      compCounters[c] = (compCounters[c] || 0) + 1;
+      return {
+        ...w,
+        dept: normalizeDept(w.dept),
+        companyNo: compCounters[c],
+        originalMatrixIndex: originalIdx
+      };
+    });
 
+    let list = matrixWithCompanyNo;
     if (selectedCompanyFilter !== "전체") {
-      list = list.filter((w) => w.company === selectedCompanyFilter);
+      list = list.filter((w) => cleanCompanyName(w.company) === cleanCompanyName(selectedCompanyFilter));
     }
     return list;
   }, [smartData.attendanceMatrix, selectedCompanyFilter]);
@@ -1453,7 +1460,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         dept: normalizeDept(w.dept),
         originalMatrixIndex
       }))
-      .filter((w) => w.company === company);
+      .filter((w) => cleanCompanyName(w.company) === cleanCompanyName(company))
+      .map((w, cIdx) => ({
+        ...w,
+        companyNo: cIdx + 1
+      }));
 
     return {
       company,
@@ -1629,8 +1640,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 otHours: 0,
                 totalHours: 0
               };
-              const dotColor = compName === "(주)오륙" ? "bg-blue-400" :
-                compName === "(주)조영산업" ? "bg-purple-400" :
+              const dotColor = compName === "오륙" || compName === "(주)오륙" ? "bg-blue-400" :
+                compName === "조영" || compName === "(주)조영산업" ? "bg-purple-400" :
                 compName === "한울" ? "bg-emerald-400" :
                 compName === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
 
@@ -1823,7 +1834,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <Factory className="w-3 h-3 text-amber-400" />
                       <span>삼랑진</span>
                     </span>
-                    {["(주)오륙", "유성"].map((comp) => (
+                    {["오륙", "유성"].map((comp) => (
                       <button
                         key={comp}
                         type="button"
@@ -1845,7 +1856,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       <Factory className="w-3 h-3 text-emerald-400" />
                       <span>한림</span>
                     </span>
-                    {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                    {["조영", "한울", "부림텍"].map((comp) => (
                       <button
                         key={comp}
                         type="button"
@@ -1950,23 +1961,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               const meta = getOptionMeta(currentVal);
                               const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
                               const ot = weekdayOt + weekendOt;
-                              const companyTheme = COMPANY_THEMES[worker.company] || COMPANY_THEMES["(주)오륙"];
+                              const companyTheme = COMPANY_THEMES[cleanCompanyName(worker.company)] || COMPANY_THEMES["오륙"];
                               const cleanWorkerName = worker.name ? worker.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
 
                               return (
                                 <tr
-                                  key={`${worker.company}__${worker.name}__${worker.originalMatrixIndex}`}
+                                  key={`${cleanCompanyName(worker.company)}__${worker.name}__${worker.originalMatrixIndex}`}
                                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                                 >
-                                  {/* No */}
+                                  {/* No (회사별 순번) */}
                                   <td className="py-1 px-1 text-center font-mono text-slate-400 text-[10.5px] sm:text-[11px]">
-                                    {worker.no}
+                                    {worker.companyNo || worker.no}
                                   </td>
 
                                   {/* 소속 업체 (모바일 숨김) */}
                                   <td className="hidden sm:table-cell py-1 px-1.5">
                                     <span className={`inline-block px-1.5 py-0.5 rounded text-[10.5px] font-black border ${companyTheme.badge} whitespace-nowrap`}>
-                                      {worker.company}
+                                      {cleanCompanyName(worker.company)}
                                     </span>
                                   </td>
 
@@ -2174,7 +2185,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {(() => {
-                    const samBreakdown = ["(주)오륙", "유성"].map(c => dailySummary.companyBreakdown?.[c] || {});
+                    const samBreakdown = ["오륙", "유성"].map(c => dailySummary.companyBreakdown?.[c] || {});
                     const samTotal = samBreakdown.reduce((s, r) => s + (r.total || 0), 0);
                     const samAttended = samBreakdown.reduce((s, r) => s + (r.attended || 0), 0);
                     const samReg = samBreakdown.reduce((s, r) => s + (r.regular || 0), 0);
@@ -2185,7 +2196,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     const samOtHours = samBreakdown.reduce((s, r) => s + (r.otHours || 0), 0);
                     const samTotalHours = samBreakdown.reduce((s, r) => s + (r.totalHours || 0), 0);
 
-                    const halBreakdown = ["(주)조영산업", "한울", "부림텍"].map(c => dailySummary.companyBreakdown?.[c] || {});
+                    const halBreakdown = ["조영", "한울", "부림텍"].map(c => dailySummary.companyBreakdown?.[c] || {});
                     const halTotal = halBreakdown.reduce((s, r) => s + (r.total || 0), 0);
                     const halAttended = halBreakdown.reduce((s, r) => s + (r.attended || 0), 0);
                     const halReg = halBreakdown.reduce((s, r) => s + (r.regular || 0), 0);
@@ -2205,7 +2216,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <span>🏭 삼랑진공장 소속 협력업체</span>
                           </td>
                         </tr>
-                        {["(주)오륙", "유성"].map((comp) => {
+                        {["오륙", "유성"].map((comp) => {
                           const row = dailySummary.companyBreakdown?.[comp] || {};
                           return (
                             <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -2248,7 +2259,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <span>🏭 한림공장 소속 협력업체</span>
                           </td>
                         </tr>
-                        {["(주)조영산업", "한울", "부림텍"].map((comp) => {
+                        {["조영", "한울", "부림텍"].map((comp) => {
                           const row = dailySummary.companyBreakdown?.[comp] || {};
                           return (
                             <tr key={comp} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -2313,8 +2324,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
           {/* Top Controls: Company Dropdown & Pills + Dynamic Summary */}
           {(() => {
-            const filteredMatrixList = (smartData.attendanceMatrix || []).filter((w) => {
-              if (matrixCompanyFilter !== "전체" && w.company !== matrixCompanyFilter) return false;
+            const compCounters = {};
+            const matrixWithCompanyNo = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
+              const c = cleanCompanyName(w.company);
+              compCounters[c] = (compCounters[c] || 0) + 1;
+              return {
+                ...w,
+                companyNo: compCounters[c],
+                originalMatrixIndex: originalIdx
+              };
+            });
+
+            const filteredMatrixList = matrixWithCompanyNo.filter((w) => {
+              if (matrixCompanyFilter !== "전체" && cleanCompanyName(w.company) !== cleanCompanyName(matrixCompanyFilter)) return false;
               return true;
             });
 
@@ -2353,11 +2375,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       >
                         <option value="전체" className="bg-slate-900 text-white font-bold">전체 (5개 협력사 통합)</option>
                         <optgroup label="🏭 삼랑진공장" className="bg-slate-950 text-amber-300 font-bold">
-                          <option value="(주)오륙" className="bg-slate-900 text-white font-bold">(주)오륙</option>
+                          <option value="오륙" className="bg-slate-900 text-white font-bold">오륙</option>
                           <option value="유성" className="bg-slate-900 text-white font-bold">유성</option>
                         </optgroup>
                         <optgroup label="🏭 한림공장" className="bg-slate-950 text-emerald-300 font-bold">
-                          <option value="(주)조영산업" className="bg-slate-900 text-white font-bold">(주)조영산업</option>
+                          <option value="조영" className="bg-slate-900 text-white font-bold">조영</option>
                           <option value="한울" className="bg-slate-900 text-white font-bold">한울</option>
                           <option value="부림텍" className="bg-slate-900 text-white font-bold">부림텍</option>
                         </optgroup>
@@ -2385,7 +2407,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <Factory className="w-3 h-3" />
                         <span>삼랑진:</span>
                       </span>
-                      {["(주)오륙", "유성"].map((comp) => (
+                      {["오륙", "유성"].map((comp) => (
                         <button
                           key={comp}
                           type="button"
@@ -2407,7 +2429,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <Factory className="w-3 h-3" />
                         <span>한림:</span>
                       </span>
-                      {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                      {["조영", "한울", "부림텍"].map((comp) => (
                         <button
                           key={comp}
                           type="button"
@@ -2641,7 +2663,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       >
                         삼랑진공장
                       </button>
-                      {["(주)오륙", "유성"].map((comp) => (
+                      {["오륙", "유성"].map((comp) => (
                         <button
                           key={comp}
                           type="button"
@@ -2670,7 +2692,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       >
                         한림공장
                       </button>
-                      {["(주)조영산업", "한울", "부림텍"].map((comp) => (
+                      {["조영", "한울", "부림텍"].map((comp) => (
                         <button
                           key={comp}
                           type="button"
@@ -3479,7 +3501,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
                       {manageCompanyWorkers.map((worker, idx) => (
-                        <tr key={`${worker.company}_${worker.name}_${worker.originalMatrixIndex}_${idx}`} className="hover:bg-slate-800/60 transition-colors">
+                        <tr key={`${cleanCompanyName(worker.company)}_${worker.name}_${worker.originalMatrixIndex}_${idx}`} className="hover:bg-slate-800/60 transition-colors">
                           <td className="py-1.5 px-2.5 text-center font-mono text-slate-500 text-[11px]">
                             {idx + 1}
                           </td>

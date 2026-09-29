@@ -98,14 +98,15 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
   });
 };
 import { SevereDisasterBar } from "./SevereDisasterBar";
-import { useAuth, PLANTS } from "../context/AuthContext";
+import { useAuth, PLANTS, ADMIN_USERS } from "../context/AuthContext";
 import { useMonth, DEFAULT_MONTH_LIST } from "../context/MonthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { parseExcelFile } from "../utils/excelHelper";
 import {
   getLocalSmartOvertimeData,
   calculateDailySummary,
-  subscribeSmartOvertimeData
+  subscribeSmartOvertimeData,
+  cleanCompanyName
 } from "../services/overtimeSmartService.js";
 import {
   getLocalApprovalDocs,
@@ -120,7 +121,8 @@ import { parseExtrusionExcelFile, saveExtrusionDowntimeBatch, clearAllExtrusionD
 import {
   getLocalOvertimeReports,
   subscribeOvertimeReports,
-  getLatestOvertimeSummary
+  getLatestOvertimeSummary,
+  formatKoreanWorkDate
 } from "../services/overtimeService";
 import {
   getWorkLogs,
@@ -407,6 +409,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울");
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
+  const [selectedOvertimeReportForModal, setSelectedOvertimeReportForModal] = useState(null);
 
   // General Manager Identification
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
@@ -454,14 +457,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     const daily = calculateDailySummary(matrix, todayDayNum);
     const defaultMeta = {
-      "(주)오륙": { workers: 67, attended: 67, otWorkers: 43, otHours: 97, totalHours: 633, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
-      "(주)조영산업": { workers: 18, attended: 18, otWorkers: 14, otHours: 36, totalHours: 180, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
+      "오륙": { workers: 67, attended: 67, otWorkers: 43, otHours: 97, totalHours: 633, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
+      "조영": { workers: 18, attended: 18, otWorkers: 14, otHours: 36, totalHours: 180, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
       "한울": { workers: 12, attended: 12, otWorkers: 8, otHours: 21, totalHours: 117, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
       "부림텍": { workers: 10, attended: 10, otWorkers: 6, otHours: 14, totalHours: 94, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
       "유성": { workers: 5, attended: 5, otWorkers: 3, otHours: 6, totalHours: 44, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
     };
 
-    const companies = ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"].map((name) => {
+    const companies = ["오륙", "조영", "한울", "부림텍", "유성"].map((name) => {
       const meta = defaultMeta[name];
       const b = daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => w.company === name || (name.includes("조영") && (w.company || "").includes("조영")));
@@ -699,7 +702,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const samLatestReports = unapprovedSam.filter((r) => (r.workDate || "") === latestSamDate);
       samLatestReports.forEach((rep) => {
         const companyLabel = rep.company || (rep.companies && rep.companies.length === 1 ? rep.companies[0] : "");
-        const badgeLabel = companyLabel ? `삼랑진공장 (${companyLabel})` : "삼랑진공장 특근";
+        const badgeLabel = companyLabel ? `삼랑진공장 (${cleanCompanyName(companyLabel)})` : "삼랑진공장 특근";
         const cardId = rep.id || `rep_sam_${rep.workDate}_${companyLabel}`;
         if (!seenIds.has(cardId)) {
           seenIds.add(cardId);
@@ -707,18 +710,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             id: cardId,
             docId: rep.id,
             plant: "삼랑진공장",
-            company: companyLabel,
+            company: cleanCompanyName(companyLabel),
             isHallim: false,
             badgeLabel: badgeLabel,
             title: rep.title || `${badgeLabel} 보고서`,
             workDate: rep.workDate || "",
-            workDateFormatted: rep.workDateFormatted || rep.workDate || "",
+            workDateFormatted: formatKoreanWorkDate(rep.workDate) || rep.workDateFormatted || rep.workDate || "",
             author: rep.author || "선임",
             authorTitle: rep.authorTitle || "선임",
             cost: Number(rep.cost || 0),
             totalWorkers: Number(rep.totalWorkers || rep.headcount || (rep.items ? rep.items.length : 0)) || 0,
             items: rep.items || [],
-            statusLabel: rep.status === "HOLD" ? "결재보류" : "결재진행중",
+            statusLabel: rep.status === "HOLD" ? "결재보류" : (rep.status === "APPROVED" ? "결재완료" : "결재진행중"),
             sourceType: "overtime",
             reportType: rep.reportType || "특근보고서"
           });
@@ -726,10 +729,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       });
     }
 
-    // 2. 한림공장: 최신 일자 미결재 특근보고서 추출 (한울, 조영산업, 부림텍 - 2건 이상 시 모두 개별 표시)
+    // 2. 한림공장: 최신 일자 미결재 특근보고서 추출 (한울, 조영, 부림텍 - 2건 이상 시 모두 개별 표시)
     const unapprovedHal = overtimeReports.filter((r) => {
       if (!r) return false;
-      const isHal = r.plant === "한림공장" || r.company === "한울" || r.company === "부림텍" || r.company === "(주)조영산업" || r.plant?.includes("한림");
+      const isHal = r.plant === "한림공장" || r.company === "한울" || r.company === "부림텍" || r.company === "(주)조영산업" || r.company === "조영" || r.plant?.includes("한림");
       if (!isHal) return false;
       const isSpecial = r.reportType === "특근보고서" || r.title?.includes("특근");
       if (!isSpecial) return false;
@@ -741,7 +744,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const halLatestReports = unapprovedHal.filter((r) => (r.workDate || "") === latestHalDate);
       halLatestReports.forEach((rep) => {
         const companyLabel = rep.company || (rep.companies && rep.companies.length === 1 ? rep.companies[0] : "");
-        const badgeLabel = companyLabel ? `한림공장 (${companyLabel})` : "한림공장 특근";
+        const badgeLabel = companyLabel ? `한림공장 (${cleanCompanyName(companyLabel)})` : "한림공장 특근";
         const cardId = rep.id || `rep_hal_${rep.workDate}_${companyLabel}`;
         if (!seenIds.has(cardId)) {
           seenIds.add(cardId);
@@ -749,18 +752,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             id: cardId,
             docId: rep.id,
             plant: "한림공장",
-            company: companyLabel,
+            company: cleanCompanyName(companyLabel),
             isHallim: true,
             badgeLabel: badgeLabel,
             title: rep.title || `${badgeLabel} 보고서`,
             workDate: rep.workDate || "",
-            workDateFormatted: rep.workDateFormatted || rep.workDate || "",
+            workDateFormatted: formatKoreanWorkDate(rep.workDate) || rep.workDateFormatted || rep.workDate || "",
             author: rep.author || "선임",
             authorTitle: rep.authorTitle || "선임",
             cost: Number(rep.cost || 0),
             totalWorkers: Number(rep.totalWorkers || rep.headcount || (rep.items ? rep.items.length : 0)) || 0,
             items: rep.items || [],
-            statusLabel: rep.status === "HOLD" ? "결재보류" : "결재진행중",
+            statusLabel: rep.status === "HOLD" ? "결재보류" : (rep.status === "APPROVED" ? "결재완료" : "결재진행중"),
             sourceType: "overtime",
             reportType: rep.reportType || "특근보고서"
           });
@@ -770,6 +773,71 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     return list;
   }, [overtimeReports, isOvertimeReportApproved]);
+
+  const getReportWorkersList = (report) => {
+    if (!report) return [];
+
+    // 1. If report has items array with worker-level details
+    if (Array.isArray(report.items) && report.items.length > 0) {
+      const list = [];
+      report.items.forEach((it) => {
+        if (it.workerName || it.name) {
+          list.push({
+            no: list.length + 1,
+            name: it.workerName || it.name,
+            dept: it.dept || it.category || "생산",
+            line: it.line || it.category || "-",
+            hours: it.hours ? `${it.hours}H` : (it.otHours ? `${it.otHours}H` : "8H"),
+            otHours: it.otHours ? `${it.otHours}H` : (it.hours ? `${it.hours}H` : "8H"),
+            workContent: it.workContent || it.workDetails || it.details || "특근 및 생산 작업 수행",
+            note: it.attendanceCode ? `근태: ${it.attendanceCode}` : ""
+          });
+        } else if (it.names && typeof it.names === "string") {
+          const splitNames = it.names.split(",").map((s) => s.trim()).filter(Boolean);
+          splitNames.forEach((nm) => {
+            list.push({
+              no: list.length + 1,
+              name: nm,
+              dept: it.dept || it.category || "가공동",
+              line: it.line || it.category || "-",
+              hours: it.hours ? `${it.hours}H` : "8H",
+              otHours: it.hours ? `${it.hours}H` : "8H",
+              workContent: it.workContent || it.workDetails || "특근 및 생산 작업 수행",
+              note: ""
+            });
+          });
+        }
+      });
+      if (list.length > 0) return list;
+    }
+
+    // 2. If no detailed items, look up smartOvertimeData.attendanceMatrix for this company and workDate!
+    if (smartOvertimeData && Array.isArray(smartOvertimeData.attendanceMatrix) && report.workDate) {
+      const dayNum = parseInt(report.workDate.split("-")[2], 10);
+      const targetComp = cleanCompanyName(report.company || (report.badgeLabel || ""));
+      const matched = smartOvertimeData.attendanceMatrix.filter((w) => {
+        const matchComp = !targetComp || cleanCompanyName(w.company) === targetComp;
+        if (!matchComp) return false;
+        const code = w.daily ? w.daily[dayNum] : "";
+        return code === "특근" || code === "주말특근" || code === "19" || code === "21" || code === "22" || code === "🟢" || code === "야간" || code === "주야";
+      });
+
+      if (matched.length > 0) {
+        return matched.map((w, idx) => ({
+          no: idx + 1,
+          name: w.name,
+          dept: w.dept || "생산",
+          line: w.line || w.dept || "-",
+          hours: (w.daily?.[dayNum] === "19" ? "10H (+2H)" : w.daily?.[dayNum] === "21" ? "12H (+4H)" : w.daily?.[dayNum] === "22" ? "13H (+5H)" : "8H (특근)"),
+          otHours: (w.daily?.[dayNum] === "19" ? "2H" : w.daily?.[dayNum] === "21" ? "4H" : w.daily?.[dayNum] === "22" ? "5H" : "8H"),
+          workContent: `${w.dept || ""} ${w.line || ""} 생산 및 특근 대응`,
+          note: `근태코드: ${w.daily?.[dayNum] || "특근"}`
+        }));
+      }
+    }
+
+    return [];
+  };
 
   const handleOpenWorkerLogs = (worker) => {
     pushModalHistory("worker_access_logs");
@@ -970,6 +1038,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     issues: "",
     images: [] // 📷 첨부된 현장 작업 사진 목록 (최대 5장)
   });
+  const [isSavingLog, setIsSavingLog] = useState(false);
 
   useEffect(() => {
     if (currentProfile) {
@@ -2225,10 +2294,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
   };
 
-  // Changyeop Quality 2-Files Handler
+  // Changyeop Quality Files Handler
   const handleQualityFiles = (files) => {
     if (!files || files.length === 0) return;
-    const fileList = Array.from(files).slice(0, 2);
+    const fileList = Array.from(files);
     setQualityRawFiles(fileList);
     setQualityParsing(true);
     setQualityUploadSuccess(false);
@@ -2239,7 +2308,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         id: idx + 1,
         name: f.name,
         size: (f.size / 1024).toFixed(1) + " KB",
-        type: idx === 0 ? "검사실적 데이터" : "불량유형 분석 데이터"
+        type: f.name.includes("불량") ? "불량유형 분석 데이터" : f.name.includes("정리") ? "최종검사 정리 데이터" : "품질 검사실적 데이터"
       })));
       setQualityParsing(false);
     }, 300);
@@ -2270,22 +2339,27 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     try {
       if (qualityRawFiles && qualityRawFiles.length > 0) {
         const { records, count, yearMonth } = await parseQualityExcelFiles(qualityRawFiles);
-        if (records.length > 0) {
+        if (records && records.length > 0) {
           await saveQualityRecordsBatch(records);
           if (yearMonth && changeMonth && yearMonth !== selectedMonth) {
             changeMonth(yearMonth);
           }
           setQualitySuccessMessage(`품질 엑셀 ${qualityFiles.length}개 파일에서 총 ${count}건의 일자별 실적이 중복 없이 데이터베이스에 성공적으로 반영되었습니다!`);
+          setQualityUploadSuccess(true);
         } else {
-          setQualitySuccessMessage(`품질 관련 엑셀 ${qualityFiles.length}개 파일이 데이터베이스에 성공적으로 반영되었습니다!`);
+          setQualitySuccessMessage("선택하신 엑셀 파일에서 품질 실적 데이터를 찾지 못했습니다. 파일 서식을 확인해 주세요.");
+          setQualityUploadSuccess(false);
+          alert("선택하신 엑셀 파일에서 유효한 품질 실적 데이터를 찾지 못했습니다. 파일 서식을 확인해 주세요.");
         }
       } else {
-        setQualitySuccessMessage(`품질 관련 엑셀 ${qualityFiles.length}개 파일이 데이터베이스에 성공적으로 반영되었습니다!`);
+        setQualitySuccessMessage("업로드할 파일이 없습니다.");
+        setQualityUploadSuccess(false);
       }
-      setQualityUploadSuccess(true);
     } catch (err) {
       console.error("Quality upload error:", err);
-      setQualitySuccessMessage("엑셀 파일 파싱 및 저장 중 오류가 발생했습니다.");
+      setQualitySuccessMessage("엑셀 파일 파싱 및 저장 중 오류가 발생했습니다: " + (err.message || ""));
+      setQualityUploadSuccess(false);
+      alert("품질 엑셀 저장 중 오류 발생: " + (err.message || "파일 형식을 확인해 주세요."));
     } finally {
       setQualityUploading(false);
     }
@@ -2361,52 +2435,109 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   // Save work log (Cloud Firestore + Local)
   const handleSaveLog = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSavingLog) return;
+    setIsSavingLog(true);
 
-    // 🌟 [설비보전 전용: 전재율 책임]
-    if (isJaeyul) {
-      const filledItems = maintenanceItems.filter((it) => it.content && it.content.trim());
-      if (filledItems.length === 0) {
-        alert("최소 1개 이상의 설비보전내용을 입력해 주세요.");
+    try {
+      // 🌟 [설비보전 전용: 전재율 책임]
+      if (isJaeyul) {
+        const filledItems = maintenanceItems.filter((it) => it.content && it.content.trim());
+        if (filledItems.length === 0) {
+          alert("최소 1개 이상의 설비보전내용을 입력해 주세요.");
+          return;
+        }
+
+        const formattedContent = filledItems
+          .map((it, idx) => {
+            const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+              ? (it.customEquipmentName?.trim() || "직접입력")
+              : it.equipmentName;
+            return `[${idx + 1}] ${it.category} > ${eqName}\n• 설비보전내용: ${it.content.trim()}`;
+          })
+          .join("\n\n");
+
+        const lineSummary = filledItems
+          .map((it) => {
+            const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+              ? (it.customEquipmentName?.trim() || "직접입력")
+              : it.equipmentName;
+            return `${it.category}(${eqName})`;
+          })
+          .join(", ");
+
+        const newLog = {
+          id: String(Date.now()),
+          date: formData.date || getKSTDateString(),
+          plant: formData.plant || workerPlant || "삼랑진공장",
+          writer: currentProfile?.name || workerFullName || "작업자",
+          title: officialTitle || "선임",
+          process: "설비보전",
+          shift: formData.shift || "주간",
+          line: lineSummary || "설비보전 점검",
+          workContent: formattedContent,
+          maintenanceItems: filledItems.map((it) => ({
+            category: it.category,
+            equipmentName: (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
+              ? (it.customEquipmentName?.trim() || "직접입력")
+              : it.equipmentName,
+            content: it.content.trim()
+          })),
+          issues: "-",
+          images: formData.images || [],
+          status: "완료",
+          createdAt: new Date().toLocaleString("ko-KR", {
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        };
+
+        const updatedList = await saveWorkLog(newLog);
+        if (Array.isArray(updatedList)) {
+          setWorkLogs(updatedList);
+        }
+
+        setMaintenanceItems([
+          {
+            id: 1,
+            category: "압출기",
+            equipmentName: "PCM 1호",
+            customEquipmentName: "",
+            content: ""
+          }
+        ]);
+
+        setFormData((prev) => ({
+          ...prev,
+          workContent: "",
+          issues: "",
+          images: []
+        }));
+
+        setLogSavedToast(true);
+        setTimeout(() => setLogSavedToast(false), 3000);
+        setIsModalOpen(false);
         return;
       }
 
-      const formattedContent = filledItems
-        .map((it, idx) => {
-          const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
-            ? (it.customEquipmentName?.trim() || "직접입력")
-            : it.equipmentName;
-          return `[${idx + 1}] ${it.category} > ${eqName}\n• 설비보전내용: ${it.content.trim()}`;
-        })
-        .join("\n\n");
-
-      const lineSummary = filledItems
-        .map((it) => {
-          const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
-            ? (it.customEquipmentName?.trim() || "직접입력")
-            : it.equipmentName;
-          return `${it.category}(${eqName})`;
-        })
-        .join(", ");
+      if (!formData.workContent || !formData.workContent.trim()) {
+        alert("작업 내용을 입력해 주세요.");
+        return;
+      }
 
       const newLog = {
         id: String(Date.now()),
-        date: formData.date,
-        plant: formData.plant,
-        writer: currentProfile?.name || workerFullName,
-        title: officialTitle,
-        process: "설비보전",
-        shift: formData.shift,
-        line: lineSummary || "설비보전 점검",
-        workContent: formattedContent,
-        maintenanceItems: filledItems.map((it) => ({
-          category: it.category,
-          equipmentName: (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
-            ? (it.customEquipmentName?.trim() || "직접입력")
-            : it.equipmentName,
-          content: it.content.trim()
-        })),
-        issues: "-",
+        date: formData.date || getKSTDateString(),
+        plant: formData.plant || workerPlant || "삼랑진공장",
+        writer: currentProfile?.name || workerFullName || "작업자",
+        title: officialTitle || "선임",
+        process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (formData.process || assignedProcess || "가공동 관리"),
+        shift: formData.shift || "주간",
+        line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? (formData.line || "전라인 품질 검사 및 불량 분석") : (formData.line || "생산 라인"),
+        workContent: formData.workContent,
+        issues: formData.issues || "-",
         images: formData.images || [],
         status: "완료",
         createdAt: new Date().toLocaleString("ko-KR", {
@@ -2417,17 +2548,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         })
       };
 
-      await saveWorkLog(newLog);
-
-      setMaintenanceItems([
-        {
-          id: 1,
-          category: "압출기",
-          equipmentName: "PCM 1호",
-          customEquipmentName: "",
-          content: ""
-        }
-      ]);
+      const updatedList = await saveWorkLog(newLog);
+      if (Array.isArray(updatedList)) {
+        setWorkLogs(updatedList);
+      }
 
       setFormData((prev) => ({
         ...prev,
@@ -2439,47 +2563,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setLogSavedToast(true);
       setTimeout(() => setLogSavedToast(false), 3000);
       setIsModalOpen(false);
-      return;
+    } catch (err) {
+      console.error("Work log save error:", err);
+      alert("업무일지 저장 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingLog(false);
     }
-
-    if (!formData.workContent.trim()) {
-      alert("작업 내용을 입력해 주세요.");
-      return;
-    }
-
-    const newLog = {
-      id: String(Date.now()),
-      date: formData.date,
-      plant: formData.plant,
-      writer: currentProfile?.name || workerFullName,
-      title: officialTitle,
-      process: isInjoo ? "경리업무" : isQualityWorker ? "품질관리" : (formData.process || assignedProcess),
-      shift: formData.shift,
-      line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? (formData.line || "전라인 품질 검사 및 불량 분석") : formData.line,
-      workContent: formData.workContent,
-      issues: formData.issues || "-",
-      images: formData.images || [],
-      status: "완료",
-      createdAt: new Date().toLocaleString("ko-KR", {
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit"
-      })
-    };
-
-    await saveWorkLog(newLog);
-
-    setFormData((prev) => ({
-      ...prev,
-      workContent: "",
-      issues: "",
-      images: []
-    }));
-
-    setLogSavedToast(true);
-    setTimeout(() => setLogSavedToast(false), 3000);
-    setIsModalOpen(false);
   };
 
   const handleDeleteLog = async (id) => {
@@ -2948,363 +3037,405 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         </div>
       )}
 
-      {/* 🌟 작업자 일정/연차 및 스마트 캘린더 센터 (전작업자 공통 적용) */}
-      {!isAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
-          {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
-            {/* Left: Worker Name and Title with Embedded Mini Electronic Approval Panel */}
-            <div className="lg:col-span-3 min-w-0">
-              <div className="relative overflow-hidden rounded-xl sm:rounded-2xl px-3 py-2 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white border-2 border-indigo-500/40 dark:border-indigo-400/40 shadow-md shadow-indigo-950/40 ring-1 ring-white/10 group transition-all">
-                {/* Ambient Soft Glow Highlights */}
-                <div className="absolute -top-6 -right-6 w-20 h-20 bg-gradient-to-br from-blue-500/20 via-indigo-500/20 to-transparent rounded-full blur-xl pointer-events-none" />
-                <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-tr from-cyan-500/15 to-transparent rounded-full blur-lg pointer-events-none" />
+      {/* 🌟 작업자 일정/연차 및 스마트 캘린더 센터 (ADMIN 및 전작업자 공통 적용) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-sm space-y-2.5 min-w-0 max-w-full relative z-20">
+        {/* Top Bar: Worker Profile & Quick Schedule Register Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-center">
+          {/* Left: Worker Name and Title with Embedded Mini Electronic Approval Panel */}
+          <div className="lg:col-span-3 min-w-0">
+            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl px-3 py-2 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white border-2 border-indigo-500/40 dark:border-indigo-400/40 shadow-md shadow-indigo-950/40 ring-1 ring-white/10 group transition-all">
+              {/* Ambient Soft Glow Highlights */}
+              <div className="absolute -top-6 -right-6 w-20 h-20 bg-gradient-to-br from-blue-500/20 via-indigo-500/20 to-transparent rounded-full blur-xl pointer-events-none" />
+              <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-tr from-cyan-500/15 to-transparent rounded-full blur-lg pointer-events-none" />
 
-                <div className="relative flex items-center justify-between gap-1.5 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 truncate">
-                    {/* Dynamic Glowing Avatar with Online Status Indicator */}
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 p-[1.5px] shadow-sm shadow-cyan-500/30">
-                        <div className="w-full h-full rounded-[10px] bg-slate-900/90 backdrop-blur-xs flex items-center justify-center text-cyan-300">
-                          <User className="w-4 h-4 text-cyan-300 drop-shadow-xs" />
-                        </div>
+              <div className="relative flex items-center justify-between gap-1.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 truncate">
+                  {/* Dynamic Glowing Avatar with Online Status Indicator */}
+                  <div className="relative shrink-0">
+                    <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-500 p-[1.5px] shadow-sm shadow-cyan-500/30">
+                      <div className="w-full h-full rounded-[10px] bg-slate-900/90 backdrop-blur-xs flex items-center justify-center text-cyan-300">
+                        <User className="w-4 h-4 text-cyan-300 drop-shadow-xs" />
                       </div>
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-950 rounded-full shadow-xs ring-1 ring-emerald-400/50">
-                        <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
-                      </span>
                     </div>
-
-                    {/* Worker Name with Sub-tag */}
-                    <div className="flex flex-col min-w-0 truncate leading-tight">
-                      <span className="text-[9px] font-extrabold text-cyan-400/90 tracking-wider flex items-center gap-1 uppercase">
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
-                        {workerPlant.replace("공장", "")}
-                      </span>
-                      <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs truncate">
-                        {workerFullName}
-                      </span>
-                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-950 rounded-full shadow-xs ring-1 ring-emerald-400/50">
+                      <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+                    </span>
                   </div>
 
-                  {/* Right: Embedded Electronic Approval Mini Panel + Title Badge */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onNavigateTab && onNavigateTab("electronic_approval");
-                      }}
-                      className={`px-2 py-1 rounded-lg border text-[10.5px] font-black transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1 group/appr ${
-                        pendingCount > 0
-                          ? "bg-rose-500/25 hover:bg-rose-500/40 border-rose-400/70 text-rose-200 ring-1 ring-rose-500/40 animate-pulse"
-                          : holdCount > 0
-                          ? "bg-amber-500/25 hover:bg-amber-500/40 border-amber-400/70 text-amber-200"
-                          : "bg-emerald-500/20 hover:bg-emerald-500/35 border-emerald-400/60 text-emerald-200"
-                      }`}
-                      title="클릭하여 전자결재함으로 바로 이동"
-                    >
-                      <FileSignature className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover/appr:scale-110 transition-transform" />
-                      <span className="whitespace-nowrap font-black">전자결재</span>
-                      {pendingCount > 0 ? (
-                        <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">
-                          {pendingCount}
-                        </span>
-                      ) : (
-                        <span className="px-1 py-0.2 rounded-full bg-emerald-600/80 text-white text-[9px] font-bold">
-                          0
-                        </span>
-                      )}
-                    </button>
-
-                    <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
-                      {officialTitle}
+                  {/* Worker Name with Sub-tag */}
+                  <div className="flex flex-col min-w-0 truncate leading-tight">
+                    <span className="text-[9px] font-extrabold text-cyan-400/90 tracking-wider flex items-center gap-1 uppercase">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse inline-block" />
+                      {(workerPlant || "본사").replace("공장", "")}
+                    </span>
+                    <span className="text-sm sm:text-base font-black text-white tracking-tight drop-shadow-xs truncate">
+                      {workerFullName}
                     </span>
                   </div>
                 </div>
+
+                {/* Right: Embedded Electronic Approval Mini Panel + Title Badge */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNavigateTab && onNavigateTab("electronic_approval");
+                    }}
+                    className={`px-2 py-1 rounded-lg border text-[10.5px] font-black transition-all cursor-pointer shadow-xs active:scale-95 shrink-0 flex items-center gap-1 group/appr ${
+                      pendingCount > 0
+                        ? "bg-rose-500/25 hover:bg-rose-500/40 border-rose-400/70 text-rose-200 ring-1 ring-rose-500/40 animate-pulse"
+                        : holdCount > 0
+                        ? "bg-amber-500/25 hover:bg-amber-500/40 border-amber-400/70 text-amber-200"
+                        : "bg-emerald-500/20 hover:bg-emerald-500/35 border-emerald-400/60 text-emerald-200"
+                    }`}
+                    title="클릭하여 전자결재함으로 바로 이동"
+                  >
+                    <FileSignature className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover/appr:scale-110 transition-transform" />
+                    <span className="whitespace-nowrap font-black">전자결재</span>
+                    {pendingCount > 0 ? (
+                      <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-black">
+                        {pendingCount}
+                      </span>
+                    ) : (
+                      <span className="px-1 py-0.2 rounded-full bg-emerald-600/80 text-white text-[9px] font-bold">
+                        0
+                      </span>
+                    )}
+                  </button>
+
+                  <span className="px-2 py-1 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white border border-blue-400/40 text-xs font-black tracking-wide shadow-sm shadow-indigo-500/30 shrink-0">
+                    {officialTitle || (isAdmin ? "대표이사" : "선임")}
+                  </span>
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Right: Quick Schedule Register Form (9 cols) */}
-            <div className="lg:col-span-9 min-w-0">
-              <form onSubmit={handleRegisterSchedule} className="space-y-1.5">
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
-                  {/* 1. Leave Type Selector (2 cols) */}
-                  <div className="sm:col-span-2 min-w-0">
-                    <select
-                      value={scheduleLeaveType}
-                      onChange={(e) => setScheduleLeaveType(e.target.value)}
-                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
-                    >
-                      <option value="할일">📝 할일</option>
-                      <option value="삼랑진방문">🏭 삼랑진방문</option>
-                      <option value="한림방문">🏭 한림방문</option>
-                      <option value="R&A회의">👔 R&A회의</option>
-                      <option value="외출">🚶 외출</option>
-                      <option value="연차(하루)">🌴 연차(하루)</option>
-                      <option value="오전반차">🌤️ 오전반차</option>
-                      <option value="오후반차">⛅ 오후반차</option>
-                      <option value="출장/교육">🚄 출장/교육</option>
-                    </select>
+          {/* Right: Quick Schedule Register Form (9 cols) */}
+          <div className="lg:col-span-9 min-w-0">
+            <form onSubmit={handleRegisterSchedule} className="space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5 items-center">
+                {/* 1. Leave Type Selector (2 cols) */}
+                <div className="sm:col-span-2 min-w-0">
+                  <select
+                    value={scheduleLeaveType}
+                    onChange={(e) => setScheduleLeaveType(e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                  >
+                    <option value="할일">📝 할일</option>
+                    <option value="삼랑진방문">🏭 삼랑진방문</option>
+                    <option value="한림방문">🏭 한림방문</option>
+                    <option value="R&A회의">👔 R&A회의</option>
+                    <option value="외출">🚶 외출</option>
+                    <option value="연차(하루)">🌴 연차(하루)</option>
+                    <option value="오전반차">🌤️ 오전반차</option>
+                    <option value="오후반차">⛅ 오후반차</option>
+                    <option value="출장/교육">🚄 출장/교육</option>
+                  </select>
+                </div>
+
+                {/* 2. Date Picker (2 cols) */}
+                <div className="sm:col-span-2 min-w-0">
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
+                    <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
+                    <input
+                      type="date"
+                      required
+                      value={scheduleSelectedDate}
+                      onChange={(e) => setScheduleSelectedDate(e.target.value)}
+                      className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer py-0.5"
+                    />
                   </div>
+                </div>
 
-                  {/* 2. Date Picker (2 cols) */}
-                  <div className="sm:col-span-2 min-w-0">
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg border border-blue-400 bg-white dark:bg-slate-800 shadow-2xs">
-                      <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
-                      <input
-                        type="date"
-                        required
-                        value={scheduleSelectedDate}
-                        onChange={(e) => setScheduleSelectedDate(e.target.value)}
-                        className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none cursor-pointer py-0.5"
-                      />
+                {/* 3. Reason/Memo Input (3 cols) */}
+                <div className="sm:col-span-3 min-w-0">
+                  <input
+                    type="text"
+                    value={scheduleReasonInput}
+                    onChange={(e) => setScheduleReasonInput(e.target.value)}
+                    placeholder="내용 입력"
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
+                  />
+                </div>
+
+                {/* 4. 사진촬영 우선 & 파일/앨범 첨부 버튼 (2 cols) */}
+                <div className="sm:col-span-2 min-w-0 flex items-center gap-1">
+                  {/* Hidden inputs for camera capture & file picker */}
+                  <input
+                    type="file"
+                    ref={scheduleCameraInputRef}
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleScheduleFiles}
+                  />
+                  <input
+                    type="file"
+                    ref={scheduleFileInputRef}
+                    accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.hwp,.txt"
+                    multiple
+                    className="hidden"
+                    onChange={handleScheduleFiles}
+                  />
+
+                  {/* 📸 Camera capture button (촬영 우선) */}
+                  <button
+                    type="button"
+                    onClick={() => scheduleCameraInputRef.current?.click()}
+                    disabled={isProcessingScheduleFiles}
+                    className="flex-1 px-1.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800/80 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
+                    title="카메라 사진 촬영 (촬영 우선)"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span className="truncate">촬영</span>
+                  </button>
+
+                  {/* 📁 File / Album attachment button */}
+                  <button
+                    type="button"
+                    onClick={() => scheduleFileInputRef.current?.click()}
+                    disabled={isProcessingScheduleFiles}
+                    className="flex-1 px-1.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
+                    title="앨범 사진 또는 파일 첨부"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span className="truncate">첨부</span>
+                  </button>
+                </div>
+
+                {/* 5. 전작업자 선택창 (단수/복수 선택) (2 cols) */}
+                <div className="sm:col-span-2 relative min-w-0" ref={shareDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsShareDropdownOpen((prev) => !prev)}
+                    className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between gap-1 shadow-2xs cursor-pointer ${
+                      sharedWorkers.length > 0
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
+                        : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
+                    }`}
+                    title="원하는 공유 작업자: 선택 시 해당 작업자의 일정에도 함께 등록됩니다"
+                  >
+                    <div className="flex items-center gap-1 truncate min-w-0">
+                      <Users className={`w-3.5 h-3.5 shrink-0 ${sharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
+                      <span className="truncate text-[11px]">
+                        {sharedWorkers.length === 0
+                          ? "공유작업자"
+                          : sharedWorkers.length === 1
+                          ? sharedWorkers[0].name
+                          : `${sharedWorkers[0].name} 외 ${sharedWorkers.length - 1}명`}
+                      </span>
                     </div>
-                  </div>
+                    {sharedWorkers.length > 0 ? (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSharedWorkers([]);
+                        }}
+                        className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-900 rounded text-slate-400 hover:text-slate-700"
+                        title="선택 초기화"
+                      >
+                        <X className="w-3 h-3" />
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-slate-400">▼</span>
+                    )}
+                  </button>
 
-                  {/* 3. Reason/Memo Input (3 cols) */}
-                  <div className="sm:col-span-3 min-w-0">
-                    <input
-                      type="text"
-                      value={scheduleReasonInput}
-                      onChange={(e) => setScheduleReasonInput(e.target.value)}
-                      placeholder="내용 입력"
-                      className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 shadow-2xs placeholder:text-slate-400 placeholder:text-xs"
-                    />
-                  </div>
-
-                  {/* 4. 사진촬영 우선 & 파일/앨범 첨부 버튼 (2 cols) */}
-                  <div className="sm:col-span-2 min-w-0 flex items-center gap-1">
-                    {/* Hidden inputs for camera capture & file picker */}
-                    <input
-                      type="file"
-                      ref={scheduleCameraInputRef}
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handleScheduleFiles}
-                    />
-                    <input
-                      type="file"
-                      ref={scheduleFileInputRef}
-                      accept="image/*,.pdf,.xlsx,.xls,.docx,.doc,.hwp,.txt"
-                      multiple
-                      className="hidden"
-                      onChange={handleScheduleFiles}
-                    />
-
-                    {/* 📸 Camera capture button (촬영 우선) */}
-                    <button
-                      type="button"
-                      onClick={() => scheduleCameraInputRef.current?.click()}
-                      disabled={isProcessingScheduleFiles}
-                      className="flex-1 px-1.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-800/80 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
-                      title="카메라 사진 촬영 (촬영 우선)"
-                    >
-                      <Camera className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <span className="truncate">촬영</span>
-                    </button>
-
-                    {/* 📁 File / Album attachment button */}
-                    <button
-                      type="button"
-                      onClick={() => scheduleFileInputRef.current?.click()}
-                      disabled={isProcessingScheduleFiles}
-                      className="flex-1 px-1.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-black flex items-center justify-center gap-0.5 shadow-2xs cursor-pointer transition-all active:scale-95 shrink-0"
-                      title="앨범 사진 또는 파일 첨부"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                      <span className="truncate">첨부</span>
-                    </button>
-                  </div>
-
-                  {/* 5. 전작업자 선택창 (단수/복수 선택) (2 cols) */}
-                  <div className="sm:col-span-2 relative min-w-0" ref={shareDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => setIsShareDropdownOpen((prev) => !prev)}
-                      className={`w-full px-2 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between gap-1 shadow-2xs cursor-pointer ${
-                        sharedWorkers.length > 0
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-100 font-black ring-1 ring-blue-400"
-                          : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:border-slate-400"
-                      }`}
-                      title="원하는 공유 작업자: 선택 시 해당 작업자의 일정에도 함께 등록됩니다"
-                    >
-                      <div className="flex items-center gap-1 truncate min-w-0">
-                        <Users className={`w-3.5 h-3.5 shrink-0 ${sharedWorkers.length > 0 ? "text-blue-600" : "text-slate-400"}`} />
-                        <span className="truncate text-[11px]">
-                          {sharedWorkers.length === 0
-                            ? "공유작업자"
-                            : sharedWorkers.length === 1
-                            ? sharedWorkers[0].name
-                            : `${sharedWorkers[0].name} 외 ${sharedWorkers.length - 1}명`}
+                  {/* 전작업자 드롭다운 팝업 */}
+                  {isShareDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-300 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
+                        <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-blue-500" />
+                          <span>원하는 공유 작업자 선택</span>
                         </span>
-                      </div>
-                      {sharedWorkers.length > 0 ? (
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSharedWorkers([]);
-                          }}
-                          className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-900 rounded text-slate-400 hover:text-slate-700"
-                          title="선택 초기화"
-                        >
-                          <X className="w-3 h-3" />
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-400">▼</span>
-                      )}
-                    </button>
-
-                    {/* 전작업자 드롭다운 팝업 */}
-                    {isShareDropdownOpen && (
-                      <div className="absolute right-0 top-full mt-1.5 w-72 sm:w-80 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border-2 border-slate-300 dark:border-slate-700 p-2.5 z-50 animate-fadeIn space-y-2">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-700">
-                          <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5 text-blue-500" />
-                            <span>원하는 공유 작업자 선택</span>
-                          </span>
-                          {sharedWorkers.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setSharedWorkers([])}
-                              className="text-[10.5px] font-bold text-rose-500 hover:underline cursor-pointer"
-                            >
-                              전체해제
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
-                          {/* 한림공장 작업자 */}
-                          <div>
-                            {(() => {
-                              const plantWorkers =
-                                PLANTS[1]?.workers?.filter(
-                                  (w) => w.id !== currentProfile?.id && w.name !== workerFullName
-                                ) || [];
-                              const isAllPlantSelected =
-                                plantWorkers.length > 0 &&
-                                plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
-
-                              return (
-                                <div
-                                  onClick={() => togglePlantSharedWorkers(1)}
-                                  className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
-                                  title="한림공장 작업자 전체 선택 / 해제"
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-emerald-600" />
-                                    <span className="group-hover:underline">한림공장</span>
-                                    <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                      ({plantWorkers.length}명)
-                                    </span>
-                                  </div>
-                                  <span
-                                    className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
-                                      isAllPlantSelected
-                                        ? "bg-emerald-600 text-white shadow-2xs"
-                                        : "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                                    }`}
-                                  >
-                                    {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                            <div className="grid grid-cols-2 gap-1">
-                              {PLANTS[1]?.workers
-                                ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
-                                .map((w) => {
-                                  const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                  return (
-                                    <button
-                                      key={w.id}
-                                      type="button"
-                                      onClick={() => toggleSharedWorker(w)}
-                                      className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                        isSelected
-                                          ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs ring-1 ring-emerald-400/50"
-                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                      }`}
-                                    >
-                                      <span>{w.name}</span>
-                                      <span className="text-[9.5px] opacity-70">
-                                        {isSelected ? "✓" : w.title || "선임"}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                          </div>
-
-                          {/* 삼랑진공장 작업자 */}
-                          <div>
-                            {(() => {
-                              const plantWorkers =
-                                PLANTS[0]?.workers?.filter(
-                                  (w) => w.id !== currentProfile?.id && w.name !== workerFullName
-                                ) || [];
-                              const isAllPlantSelected =
-                                plantWorkers.length > 0 &&
-                                plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
-
-                              return (
-                                <div
-                                  onClick={() => togglePlantSharedWorkers(0)}
-                                  className="text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
-                                  title="삼랑진공장 작업자 전체 선택 / 해제"
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
-                                    <span className="group-hover:underline">삼랑진공장</span>
-                                    <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
-                                      ({plantWorkers.length}명)
-                                    </span>
-                                  </div>
-                                  <span
-                                    className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
-                                      isAllPlantSelected
-                                        ? "bg-amber-600 text-white shadow-2xs"
-                                        : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
-                                    }`}
-                                  >
-                                    {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                            <div className="grid grid-cols-2 gap-1">
-                              {PLANTS[0]?.workers
-                                ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
-                                .map((w) => {
-                                  const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
-                                  return (
-                                    <button
-                                      key={w.id}
-                                      type="button"
-                                      onClick={() => toggleSharedWorker(w)}
-                                      className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
-                                        isSelected
-                                          ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs ring-1 ring-amber-400/50"
-                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
-                                      }`}
-                                    >
-                                      <span>{w.name}</span>
-                                      <span className="text-[9.5px] opacity-70">
-                                        {isSelected ? "✓" : w.title || "선임"}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                          <span className="text-[10.5px] font-bold text-slate-500">
-                            {sharedWorkers.length > 0 ? `${sharedWorkers.length}명 선택됨` : "작업자 선택 안함"}
-                          </span>
+                        {sharedWorkers.length > 0 && (
                           <button
+                            type="button"
+                            onClick={() => setSharedWorkers([])}
+                            className="text-[10.5px] font-bold text-rose-500 hover:underline cursor-pointer"
+                          >
+                            전체해제
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
+                        {/* 본사 / 경영진 */}
+                        {(() => {
+                          const adminList = (ADMIN_USERS || []).filter(
+                            (u) => u.id !== currentProfile?.id && u.name !== workerFullName
+                          );
+                          if (adminList.length === 0) return null;
+                          return (
+                            <div>
+                              <div className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-indigo-50/70 hover:bg-indigo-100/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 select-none">
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                                  <span>본사 / 경영진</span>
+                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                    ({adminList.length}명)
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1 mb-2">
+                                {adminList.map((w) => {
+                                  const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
+                                  return (
+                                    <button
+                                      key={w.id}
+                                      type="button"
+                                      onClick={() => toggleSharedWorker(w)}
+                                      className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                        isSelected
+                                          ? "bg-indigo-100 dark:bg-indigo-950/80 border-indigo-500 text-indigo-900 dark:text-indigo-100 font-black shadow-2xs ring-1 ring-indigo-400/50"
+                                          : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                      }`}
+                                    >
+                                      <span>{w.name}</span>
+                                      <span className="text-[9.5px] opacity-70">
+                                        {isSelected ? "✓" : w.title || "대표"}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* 한림공장 작업자 */}
+                        <div>
+                          {(() => {
+                            const plantWorkers =
+                              PLANTS[1]?.workers?.filter(
+                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+                              ) || [];
+                            const isAllPlantSelected =
+                              plantWorkers.length > 0 &&
+                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
+
+                            return (
+                              <div
+                                onClick={() => togglePlantSharedWorkers(1)}
+                                className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-50/70 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 border border-emerald-200/80 dark:border-emerald-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
+                                title="한림공장 작업자 전체 선택 / 해제"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-emerald-600" />
+                                  <span className="group-hover:underline">한림공장</span>
+                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                    ({plantWorkers.length}명)
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                    isAllPlantSelected
+                                      ? "bg-emerald-600 text-white shadow-2xs"
+                                      : "bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                                  }`}
+                                >
+                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                          <div className="grid grid-cols-2 gap-1">
+                            {PLANTS[1]?.workers
+                              ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
+                              .map((w) => {
+                                const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
+                                return (
+                                  <button
+                                    key={w.id}
+                                    type="button"
+                                    onClick={() => toggleSharedWorker(w)}
+                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-500 text-emerald-900 dark:text-emerald-100 font-black shadow-2xs ring-1 ring-emerald-400/50"
+                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                    }`}
+                                  >
+                                    <span>{w.name}</span>
+                                    <span className="text-[9.5px] opacity-70">
+                                      {isSelected ? "✓" : w.title || "선임"}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+
+                        {/* 삼랑진공장 작업자 */}
+                        <div>
+                          {(() => {
+                            const plantWorkers =
+                              PLANTS[0]?.workers?.filter(
+                                (w) => w.id !== currentProfile?.id && w.name !== workerFullName
+                              ) || [];
+                            const isAllPlantSelected =
+                              plantWorkers.length > 0 &&
+                              plantWorkers.every((w) => sharedWorkers.some((sw) => sw.id === w.id));
+
+                            return (
+                              <div
+                                onClick={() => togglePlantSharedWorkers(0)}
+                                className="text-[11px] font-black text-amber-700 dark:text-amber-400 mb-1.5 flex items-center justify-between p-1.5 px-2 rounded-lg bg-amber-50/70 hover:bg-amber-100/80 dark:bg-amber-950/40 dark:hover:bg-amber-950/70 border border-amber-200/80 dark:border-amber-800/80 cursor-pointer transition-all select-none group active:scale-[0.99]"
+                                title="삼랑진공장 작업자 전체 선택 / 해제"
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <Factory className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-amber-600" />
+                                  <span className="group-hover:underline">삼랑진공장</span>
+                                  <span className="text-[9.5px] font-normal text-slate-500 dark:text-slate-400">
+                                    ({plantWorkers.length}명)
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                    isAllPlantSelected
+                                      ? "bg-amber-600 text-white shadow-2xs"
+                                      : "bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                                  }`}
+                                >
+                                  {isAllPlantSelected ? "✓ 전체해제" : "+ 전체선택"}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                          <div className="grid grid-cols-2 gap-1">
+                            {PLANTS[0]?.workers
+                              ?.filter((w) => w.id !== currentProfile?.id && w.name !== workerFullName)
+                              .map((w) => {
+                                const isSelected = sharedWorkers.some((sw) => sw.id === w.id);
+                                return (
+                                  <button
+                                    key={w.id}
+                                    type="button"
+                                    onClick={() => toggleSharedWorker(w)}
+                                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? "bg-amber-100 dark:bg-amber-950/80 border-amber-500 text-amber-900 dark:text-amber-100 font-black shadow-2xs ring-1 ring-amber-400/50"
+                                        : "bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-slate-300"
+                                    }`}
+                                  >
+                                    <span>{w.name}</span>
+                                    <span className="text-[9.5px] opacity-70">
+                                      {isSelected ? "✓" : w.title || "선임"}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-1.5 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                        <span className="text-[10.5px] font-bold text-slate-500">
+                          {sharedWorkers.length > 0 ? `${sharedWorkers.length}명 선택됨` : "작업자 선택 안함"}
+                        </span>
+                        <button
                             type="button"
                             onClick={() => setIsShareDropdownOpen(false)}
                             className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-[11px] cursor-pointer"
@@ -3625,7 +3756,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
           )}
         </div>
-      )}
 
       {/* ========================================================================= */}
       {/* 🌟 한울 전용 전월 지출내역 등록 (한울 로그인 시에만 표시, admin은 표시 안 함) */}
@@ -3868,80 +3998,57 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           ))}
         </div>
 
-        {/* ⭐ 공장별/문서별 미결재 특근보고서 및 결재문서 카드 (미결재 건 전체 개별 노출 & 세부내역 간결화) */}
+        {/* ⭐ 공장별/문서별 미결재 특근보고서 뱃지 (크롭 스타일: [공장명 (회사명)] [날짜 요일] [결재상태] -> 탭 시 특근근로자명 팝업) */}
         {pendingApprovalCards.length > 0 && (
-          <div className={`grid grid-cols-1 ${pendingApprovalCards.length === 2 ? "md:grid-cols-2" : pendingApprovalCards.length >= 3 ? "md:grid-cols-2 lg:grid-cols-3" : ""} gap-2 pt-1`}>
+          <div className="flex flex-wrap items-center gap-2.5 pt-1.5">
             {pendingApprovalCards.map((report) => {
               const isHal = report.isHallim || report.plant === "한림공장";
               const isSam = report.plant === "삼랑진공장";
               const plantBadgeBg = isHal
-                ? "bg-emerald-600 text-white"
-                : isSam
-                ? "bg-amber-500 text-white"
-                : "bg-indigo-600 text-white";
-              const dateBadgeClass = isHal
-                ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800"
-                : isSam
-                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800"
-                : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-300 border border-indigo-300/80 dark:border-indigo-800";
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                : "bg-[#e59b2c] hover:bg-[#d4891b] text-white";
+              const dateBorderBg = isHal
+                ? "bg-slate-900/95 text-emerald-400 border border-emerald-500/70"
+                : "bg-slate-900/95 text-[#f5a623] border border-[#a8651a]/80";
+
+              const formattedDate = formatKoreanWorkDate(report.workDate) || report.workDateFormatted || report.workDate || "";
+              const statusText = report.statusLabel || "결재진행중";
+              const isHold = statusText === "결재보류";
+              const isApproved = statusText === "결재완료";
+              const statusBadgeClass = isApproved
+                ? "bg-emerald-950/90 text-emerald-300 border-emerald-600/70"
+                : isHold
+                ? "bg-amber-950/90 text-amber-300 border-amber-600/70"
+                : "bg-[#5c1322]/90 text-[#ff8097] border border-[#a8253d]/80";
 
               return (
-                <div
+                <button
+                  type="button"
                   key={report.id}
-                  onClick={() => onNavigateTab && onNavigateTab(report.sourceType === "approval" ? "electronic_approval" : "overtime_status")}
-                  className="p-2 sm:p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70 space-y-1.5 min-w-0 shadow-2xs hover:shadow-xs cursor-pointer transition-all group hover:border-blue-400 dark:hover:border-blue-500"
-                  title={report.sourceType === "approval" ? "클릭 시 전자결재함 상세 이동" : "클릭 시 특근보고서 상세 이동"}
+                  onClick={() => {
+                    pushModalHistory("special_workers_modal");
+                    setSelectedOvertimeReportForModal(report);
+                  }}
+                  className="inline-flex items-center gap-2 p-1 px-1.5 rounded-lg bg-slate-900/80 dark:bg-slate-950/90 border border-slate-700/80 hover:border-amber-500/80 cursor-pointer shadow-xs hover:shadow-md transition-all group active:scale-98"
+                  title="클릭 시 특근 근로자 명단 팝업 보기"
                 >
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-700/60 flex-wrap gap-1">
-                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black shrink-0 ${plantBadgeBg}`}>
-                        {report.badgeLabel || `${report.plant} 특근`}
-                      </span>
-                      {(report.workDateFormatted || report.workDate) && (
-                        <span className={`text-[9.5px] font-extrabold px-1.5 py-0.2 rounded border shrink-0 ${dateBadgeClass}`}>
-                          {report.workDateFormatted || report.workDate}
-                        </span>
-                      )}
-                      <span className={`text-[9px] font-extrabold px-1 py-0.2 rounded border shrink-0 ${
-                        report.statusLabel === "결재보류"
-                          ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800"
-                          : "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800"
-                      }`}>
-                        {report.statusLabel || "결재진행중"}
-                      </span>
-                      <span className="text-[9.5px] text-slate-500 font-bold truncate">
-                        {report.author} {report.authorTitle || "선임"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {(report.cost > 0 || report.amountText) && (
-                        <span className="text-xs font-black text-rose-600 dark:text-rose-400 font-mono">
-                          {report.cost > 0 ? `₩${report.cost.toLocaleString()}` : report.amountText}
-                        </span>
-                      )}
-                      {report.totalWorkers > 0 && (
-                        <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-bold">
-                          ({report.totalWorkers}명)
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  {/* 1. 공장명 (회사명) 뱃지 */}
+                  <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 shadow-2xs ${plantBadgeBg}`}>
+                    {report.badgeLabel || `${report.plant} 특근`}
+                  </span>
 
-                  {/* 세부내역: 품목/라인 뱃지 리스트 또는 제목 */}
-                  {Array.isArray(report.items) && report.items.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-1">
-                      {report.items.map((it, idx) => (
-                        <span key={idx} className="px-1.5 py-0.2 rounded bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-700/80 text-[9px] font-bold text-slate-700 dark:text-slate-300 shrink-0">
-                          {it.category || it.name || it.line || "작업"}: <strong className="text-purple-600 dark:text-purple-400">{it.count || 1}명</strong>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-[10px] text-slate-600 dark:text-slate-400 truncate font-medium">
-                      {report.title}
-                    </div>
+                  {/* 2. 날짜 및 요일 뱃지 */}
+                  {formattedDate && (
+                    <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 font-mono tracking-tight ${dateBorderBg}`}>
+                      {formattedDate}
+                    </span>
                   )}
-                </div>
+
+                  {/* 3. 결재 상태 뱃지 */}
+                  <span className={`px-2 py-0.8 rounded text-[10.5px] sm:text-xs font-black shrink-0 ${statusBadgeClass}`}>
+                    {statusText}
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -6737,10 +6844,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       </div>
                       <div>
                         <p className="text-xs font-black text-slate-800 dark:text-slate-200">
-                          {qualityParsing ? "품질 엑셀 파일 분석 중..." : "품질 관련 엑셀 파일 2개를 여기에 드래그하세요"}
+                          {qualityParsing ? "품질 엑셀 파일 분석 중..." : "품질 관련 엑셀 파일을 여기에 드래그하세요 (1개 또는 여러 개 동시 가능)"}
                         </p>
                         <p className="text-[10px] text-slate-400 mt-0.5">
-                          (일일품질검사실적.xlsx & 불량내역분석.xlsx)
+                          (일일품질검사실적.xlsx, G-RUN 불량율 집계.xlsx, AB동 최종검사 정리 등)
                         </p>
                       </div>
                     </div>
@@ -9595,6 +9702,140 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           </div>
         </div>
       )}
+
+      {/* ⭐ 팝업창: 특근 근로자 명단 보기 (Read-Only) */}
+      {selectedOvertimeReportForModal && (() => {
+        const rep = selectedOvertimeReportForModal;
+        const workers = getReportWorkersList(rep);
+        const formattedDate = formatKoreanWorkDate(rep.workDate) || rep.workDateFormatted || rep.workDate || "";
+        const statusText = rep.statusLabel || "결재진행중";
+        const isApproved = statusText === "결재완료";
+        const isHold = statusText === "결재보류";
+        const statusBadgeClass = isApproved
+          ? "bg-emerald-950 text-emerald-300 border-emerald-700"
+          : isHold
+          ? "bg-amber-950 text-amber-300 border-amber-700"
+          : "bg-rose-950 text-rose-300 border-rose-700";
+
+        return (
+          <div
+            onClick={() => setSelectedOvertimeReportForModal(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl max-w-2xl w-full border-2 border-amber-500/80 shadow-2xl overflow-hidden flex flex-col max-h-[85vh] cursor-default animate-in zoom-in-95 duration-150"
+            >
+              {/* Modal Header */}
+              <div className="px-4 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                    <Users className="w-4 h-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2 flex-wrap">
+                      <span>{rep.badgeLabel || `${rep.plant} 특근보고서`}</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono font-bold">
+                        특근 {workers.length}명
+                      </span>
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-slate-400 font-medium">
+                      <span>📅 {formattedDate}</span>
+                      <span>•</span>
+                      <span className={`px-1.5 py-0.2 rounded border font-bold text-[10px] ${statusBadgeClass}`}>
+                        {statusText}
+                      </span>
+                      <span>•</span>
+                      <span>작성자: <strong className="text-slate-200">{rep.author}</strong> {rep.authorTitle || "선임"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOvertimeReportForModal(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body: Workers List Table */}
+              <div className="p-4 overflow-y-auto flex-1 text-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-amber-300 text-xs flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                    <span>당일 특근 투입 근로자 명단</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-mono font-bold">
+                    총 {workers.length}명 배속
+                  </span>
+                </div>
+
+                {workers.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 font-bold bg-slate-950/50 rounded-xl border border-slate-800">
+                    등록된 특근 근로자 세부 내역이 없습니다.
+                  </div>
+                ) : (
+                  <div className="border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-slate-950 text-slate-400 text-[11px] font-black border-b border-slate-800">
+                        <tr>
+                          <th className="py-2 px-3 text-center w-12 text-slate-500 font-mono">No</th>
+                          <th className="py-2 px-3 w-28">성명</th>
+                          <th className="py-2 px-3 w-24">소속 부서</th>
+                          <th className="py-2 px-3 w-28">공정 / 라인</th>
+                          <th className="py-2 px-3 text-center w-24">특근시간</th>
+                          <th className="py-2 px-3">작업 내용</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 bg-slate-900/40 text-xs">
+                        {workers.map((w, idx) => (
+                          <tr key={`${w.name}_${idx}`} className="hover:bg-slate-800/50 transition-colors">
+                            <td className="py-2 px-3 text-center font-mono text-slate-500 text-[11px]">
+                              {w.no || idx + 1}
+                            </td>
+                            <td className="py-2 px-3 font-black text-white text-xs">
+                              <span className="px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700/60 font-bold">
+                                {w.name}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-purple-300 font-bold text-[11px]">
+                              {w.dept}
+                            </td>
+                            <td className="py-2 px-3 text-slate-300 font-medium text-[11px]">
+                              {w.line}
+                            </td>
+                            <td className="py-2 px-3 text-center">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950 text-amber-300 border border-amber-800/60">
+                                {w.hours || "8H"}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-slate-400 text-[11px] truncate max-w-[200px]">
+                              {w.workContent}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOvertimeReportForModal(null)}
+                  className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 🌟 최근일 기준 전작업자 일일 업무일지 종합 요약 팝업 모달 */}
       <RecentWorkLogsSummaryModal

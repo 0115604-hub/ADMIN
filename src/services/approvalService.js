@@ -14,8 +14,8 @@ import {
   sendApprovalHoldTelegram,
   sendApprovalRejectTelegram
 } from "./telegramService";
-import { isThisWeek, getThisWeekDateRange } from "../utils/dateUtils";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
+import { cleanCompanyName } from "./overtimeSmartService";
 
 const COLLECTION_NAME = "approval_documents";
 const DELETED_COLLECTION_NAME = "deleted_approval_documents";
@@ -42,8 +42,8 @@ export const saveDeletedApprovalIds = (setOrArr) => {
 };
 
 export const PLANT_COMPANIES_MAP = {
-  "삼랑진공장": ["(주)오륙", "오륙", "유성", "유성산업"],
-  "한림공장": ["(주)조영산업", "조영", "조영산업", "한울", "부림텍"]
+  "삼랑진공장": ["오륙", "(주)오륙", "유성", "유성산업"],
+  "한림공장": ["조영", "(주)조영산업", "조영산업", "한울", "부림텍"]
 };
 
 // List of authorized managers by Title / Hierarchy
@@ -216,201 +216,8 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
   ];
 };
 
-// Initial authoritative approval documents (includes pending overtime reports and active drafts)
-export const INITIAL_APPROVAL_DOCS = [
-  {
-    id: "appr_1788484096588",
-    docNumber: "ORYUK-2026-0914-EXP",
-    type: "EXPENSE",
-    typeName: "설비부품 교체 품의서",
-    title: "PU차종 아웃트찬넬 포밍롤 노후 교체 건",
-    plant: "삼랑진공장",
-    department: "설비보전",
-    drafter: "전재율",
-    drafterTitle: "책임",
-    createdAt: "2026-09-14 08:30",
-    content: "PU차종 아웃트찬넬 성형부 3, 4번 포밍롤 마모로 인한 치수 편차 발생 예방을 위해 신규 롤 가공 제작 및 교체를 품의하오니 재가하여 주시기 바랍니다.\n- 공급처: 대명정밀\n- 견적금액: ₩2,400,000",
-    amount: "₩2,400,000",
-    status: "IN_PROGRESS",
-    currentStep: 2,
-    steps: [
-      { role: "담당", name: "전재율", title: "선임", status: "APPROVED", date: "2026-09-14 08:30", comment: "설비보전 품의 상신" },
-      { role: "책임", name: "전재율", title: "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: "대표이사", title: "대표", status: "WAITING", date: "", comment: "" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_ot_samrangjin_20260905",
-    docNumber: "ORYUK-2026-0905-SAM",
-    type: "OVERTIME",
-    typeName: "특근보고서 (결재완료)",
-    title: "[특근보고서] 9월 5일(토) 삼랑진공장 특근보고서 ((주)오륙, 유성)",
-    plant: "삼랑진공장",
-    department: "생산총괄 ((주)오륙 + 유성)",
-    drafter: "양인나",
-    drafterTitle: "선임",
-    createdAt: "2026-09-05 18:00",
-    content: "■ 9월 5일(토) [삼랑진공장] 특근보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 9명 (82 M/H) | 총 노무비: ₩1,230,000\n\n2. 회사별 세부 투입 현황\n• (주)오륙 (7명)\n  - 관리자: 이명재, 설유철, 윤경수, 이창엽, 전재율\n  - 작업자: 양인나, 이상기\n• 유성 (2명)\n  - 관리자: -\n  - 작업자: 유동길, 조인주\n\n3. 주요 작업 내용\n• 현대 NX4/NX4a 긴급 납품 물량 대응 및 토요 특근 정상 가동",
-    amount: "₩1,230,000",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-05 18:00", comment: "특근 취합 기안 상신" },
-      { role: "책임", name: "윤경수", title: "책임", status: "APPROVED", date: "2026-09-06 09:00", comment: "인원 확인 완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-06 11:30", comment: "공수 검토 승인" },
-      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-06 17:00", comment: "최종 승인 완료" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_20260903_001",
-    docNumber: "ORYUK-2026-0901",
-    type: "OVERTIME",
-    typeName: "특근 신청서 (결재완료)",
-    title: "9월 1주차 주말 압출 2호기 및 가공 3호기 특근 승인의 건",
-    plant: "삼랑진공장",
-    department: "생산1팀 (압출)",
-    drafter: "설유철",
-    drafterTitle: "책임",
-    createdAt: "2026-09-03 09:30",
-    content: "현대 NX4a 및 JA 차종 긴급 납품 물량 대응을 위해 주말 특근(08:00~17:00, 총 6명)을 신청하오니 재가하여 주시기 바랍니다.",
-    amount: "₩1,248,000",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "설유철", title: "책임", status: "APPROVED", date: "2026-09-03 09:30", comment: "기안 상신" },
-      { role: "책임", name: "이창엽", title: "책임", status: "APPROVED", date: "2026-09-03 11:00", comment: "계획 확인" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-03 14:20", comment: "승인" },
-      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-03 17:00", comment: "재가" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_20260903_002",
-    docNumber: "ORYUK-2026-0902",
-    type: "LEAVE",
-    typeName: "연차/휴가 신청서 (결재완료)",
-    title: "정기 연차 휴가 신청의 건 (양인나)",
-    plant: "삼랑진공장",
-    department: "가공동 관리",
-    drafter: "양인나",
-    drafterTitle: "선임",
-    createdAt: "2026-09-02 14:20",
-    content: "개인 사유로 인하여 아래와 같이 연차 휴가를 신청하오니 결재 바랍니다.\n- 일시: 2026년 9월 5일 (금) 1일간\n- 업무 대행자: 유동길 선임",
-    amount: "-",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-09-02 14:20", comment: "신청 완료" },
-      { role: "책임", name: "윤경수", title: "책임", status: "APPROVED", date: "2026-09-02 15:10", comment: "업무대행 확인" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-02 17:00", comment: "승인" },
-      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-03 09:00", comment: "재가" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_20260903_003",
-    docNumber: "ORYUK-2026-0903",
-    type: "EXPENSE",
-    typeName: "설비부품 구매 품의서 (결재완료)",
-    title: "한림공장 CHANNEL 밴딩기 유압 실린더 패킹 교체 구매 건",
-    plant: "한림공장",
-    department: "가공동 관리",
-    drafter: "오상민",
-    drafterTitle: "선임",
-    createdAt: "2026-09-03 10:15",
-    content: "CHANNEL 밴딩 1호기 압력 저하 예방을 위한 유압 실린더 패킹 및 오일 필터 정기 교체 자재 구매 품의입니다.\n- 공급처: 삼우유압\n- 납기: 2026-09-05",
-    amount: "₩480,000",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "오상민", title: "선임", status: "APPROVED", date: "2026-09-03 10:15", comment: "긴급 품의" },
-      { role: "책임", name: "김동욱", title: "책임", status: "APPROVED", date: "2026-09-03 11:30", comment: "부품 견적 확인" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-09-03 14:00", comment: "예산 집행 승인" },
-      { role: "대표", name: "대표이사", title: "대표", status: "APPROVED", date: "2026-09-03 16:30", comment: "재가" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_approved_20260830_001",
-    docNumber: "ORYUK-2026-0830-SAM",
-    type: "OVERTIME",
-    typeName: "특근보고서 (결재완료)",
-    title: "[삼랑진공장] 8월 30일(일) 특근실시보고서 취합 ((주)오륙, 유성)",
-    plant: "삼랑진공장",
-    department: "생산총괄 ((주)오륙 + 유성)",
-    drafter: "양인나",
-    drafterTitle: "선임",
-    createdAt: "2026-08-30 18:00",
-    content: "■ 8월 30일(일) [삼랑진공장] 특근실시보고서 취합\n\n1. 특근 요약\n• 대상: 삼랑진공장 ((주)오륙, 유성)\n• 총 투입: 36명 (288 M/H) | 총 노무비: ₩4,320,000\n\n2. 주요 작업 내용\n• 현대 NX4a 긴급 납품 물량 대응 및 주말 특근 정상 가동 완료\n• 결재선 4단계 전원 승인 완료 (대표이사 최종 재가)",
-    amount: "₩4,320,000",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "2026-08-30 18:00", comment: "특근 취합 기안 상신" },
-      { role: "책임", name: "설유철", title: "책임", status: "APPROVED", date: "2026-08-31 09:10", comment: "현장 인원 확인 이상없음" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-08-31 14:20", comment: "공수 및 비용 검토 승인" },
-      { role: "대표", name: "권태형", title: "대표이사", status: "APPROVED", date: "2026-08-31 17:00", comment: "대표이사 최종 결재 승인" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_approved_20260828_002",
-    docNumber: "ORYUK-2026-0828-EXP",
-    type: "EXPENSE",
-    typeName: "자재구매 품의서 (결재완료)",
-    title: "압출 1, 2호기 메인 감속기 오일 및 에어필터 정기 교체 자재 구매 품의",
-    plant: "삼랑진공장",
-    department: "설비보전",
-    drafter: "전재율",
-    drafterTitle: "책임",
-    createdAt: "2026-08-28 11:30",
-    content: "설비 예방보전 및 정기점검용 소모자재 구매 품의입니다.\n- 공급처: 대한윤활유\n- 품명: 고점도 기어유 200L 및 에어클리너 8EA\n- 납품 및 교체 완료 예정일: 2026-09-02",
-    amount: "₩1,850,000",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "전재율", title: "선임", status: "APPROVED", date: "2026-08-28 11:30", comment: "품의 상신" },
-      { role: "책임", name: "전재율", title: "책임", status: "APPROVED", date: "2026-08-28 13:00", comment: "부품 규격 확인 완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-08-28 15:40", comment: "예산 집행 승인" },
-      { role: "대표", name: "권태형", title: "대표이사", status: "APPROVED", date: "2026-08-29 10:15", comment: "대표이사 승인 및 발주 재가" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  },
-  {
-    id: "appr_approved_20260825_003",
-    docNumber: "ORYUK-2026-0825-GEN",
-    type: "GENERAL",
-    typeName: "일반 업무기안 (결재완료)",
-    title: "2026년 3분기 공장 안전관리 및 환경개선 종합계획 승인의 건",
-    plant: "한림공장",
-    department: "총괄관리",
-    drafter: "김동욱",
-    drafterTitle: "책임",
-    createdAt: "2026-08-25 09:00",
-    content: "한림공장 작업장 안전 통로 확보, 유해물질 보관함 교체 및 비상소화설비 정기점검 계획을 상신하오니 결재 바랍니다.",
-    amount: "₩950,000",
-    status: "APPROVED",
-    currentStep: 4,
-    steps: [
-      { role: "담당", name: "김동욱", title: "선임", status: "APPROVED", date: "2026-08-25 09:00", comment: "계획안 상신" },
-      { role: "책임", name: "김동욱", title: "책임", status: "APPROVED", date: "2026-08-25 10:30", comment: "현장 점검 완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: "2026-08-25 14:00", comment: "안전 조치 계획 검토" },
-      { role: "대표", name: "권태형", title: "대표이사", status: "APPROVED", date: "2026-08-26 11:00", comment: "대표이사 결재 승인 - 안전 최우선 시공" }
-    ],
-    rejectReason: "",
-    holdReason: ""
-  }
-];
+// Initial authoritative approval documents (Clean empty array by default)
+export const INITIAL_APPROVAL_DOCS = [];
 
 // Filter out unwanted weekday attendance synthesis documents so the CEO approval box is not flooded with weekday attendance logs
 export const isWeekdayAttSynthDoc = (d) => {
@@ -428,10 +235,7 @@ export const getLocalApprovalDocs = () => {
     const deletedIds = getDeletedApprovalIds();
     let data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!data) {
-      const v7 = localStorage.getItem("oryuk_approval_documents_v7_clean");
-      const v6 = localStorage.getItem("oryuk_approval_documents_v6_kwon_sign");
-      if (v7) data = v7;
-      else if (v6) data = v6;
+      return [];
     }
 
     let parsed = [];
@@ -444,14 +248,6 @@ export const getLocalApprovalDocs = () => {
     }
 
     const docMap = new Map();
-    // 1. Load initial authoritative docs (excluding permanently deleted IDs)
-    INITIAL_APPROVAL_DOCS.forEach((d) => {
-      if (!deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
-        docMap.set(d.id, d);
-      }
-    });
-
-    // 2. Overlay existing stored items (excluding permanently deleted IDs)
     if (Array.isArray(parsed)) {
       parsed.forEach((d) => {
         if (d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
@@ -461,12 +257,10 @@ export const getLocalApprovalDocs = () => {
     }
 
     const merged = Array.from(docMap.values()).map(normalizeApprovalDoc);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
     return merged;
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
-    const deletedIds = getDeletedApprovalIds();
-    return INITIAL_APPROVAL_DOCS.filter((d) => !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
+    return [];
   }
 };
 
@@ -474,7 +268,7 @@ export const getLocalApprovalDocs = () => {
 export const saveLocalApprovalDocs = (docs) => {
   try {
     const deletedIds = getDeletedApprovalIds();
-    const cleanDocs = docs.filter((d) => d && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
+    const cleanDocs = (docs || []).filter((d) => d && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
     const normalized = cleanDocs.map(normalizeApprovalDoc);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
@@ -534,26 +328,11 @@ export const subscribeApprovalDocs = (onUpdate) => {
           });
         }
 
-        // ⭐ MERGE Remote Docs with Local Docs so items NEVER flash and vanish
-        const localDocs = getLocalApprovalDocs();
-        const mergedMap = new Map();
-
-        // 1. Populate all local items first
-        localDocs.forEach((d) => {
-          if (d && d.id && !deletedIds.has(d.id)) mergedMap.set(d.id, d);
-        });
-
-        // 2. Overlay remote items
-        remoteDocs.forEach((d) => {
-          if (d && d.id && !deletedIds.has(d.id)) {
-            mergedMap.set(d.id, d);
-          }
-        });
-
-        // ⭐ Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
+        // Firestore is authoritative source of truth.
+        // Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
         const seenOtKeys = new Set();
         const cleanList = [];
-        for (const item of Array.from(mergedMap.values())) {
+        for (const item of remoteDocs) {
           if (deletedIds.has(item.id)) continue;
 
           if (item.type === "OVERTIME") {
@@ -578,17 +357,17 @@ export const subscribeApprovalDocs = (onUpdate) => {
 
         cleanList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         saveLocalApprovalDocs(cleanList);
-        onUpdate(cleanList);
+        if (onUpdate) onUpdate(cleanList);
       },
       (error) => {
         console.warn("Firestore approval sync warning:", error);
-        onUpdate(getLocalApprovalDocs());
+        if (onUpdate) onUpdate(getLocalApprovalDocs());
       }
     );
     return unsubscribe;
   } catch (e) {
     console.error("subscribeApprovalDocs error:", e);
-    onUpdate(getLocalApprovalDocs());
+    if (onUpdate) onUpdate(getLocalApprovalDocs());
     return () => {};
   }
 };
@@ -974,9 +753,10 @@ export const syncPlantOvertimeToApprovalBox = async ({
   try {
     // 1. Determine target plants to aggregate
     let targetPlants = [];
-    if (plant === "삼랑진공장" || company === "(주)오륙" || company === "유성") {
+    const cleanComp = cleanCompanyName(company);
+    if (plant === "삼랑진공장" || cleanComp === "오륙" || cleanComp === "유성") {
       targetPlants = ["삼랑진공장"];
-    } else if (plant === "한림공장" || company === "(주)조영산업" || company === "한울" || company === "부림텍") {
+    } else if (plant === "한림공장" || cleanComp === "조영" || cleanComp === "한울" || cleanComp === "부림텍") {
       targetPlants = ["한림공장"];
     } else {
       targetPlants = ["삼랑진공장", "한림공장"];

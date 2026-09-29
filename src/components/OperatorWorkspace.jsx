@@ -20,7 +20,7 @@ import { useMonth } from "../context/MonthContext";
 export const OperatorWorkspace = ({ onBulkUpload }) => {
   const { currentProfile } = useAuth();
   const { formatAmount } = useCurrency();
-  const { uploadMonthlyData } = useMonth();
+  const { uploadMonthlyData, selectedMonth, currentYearMonth, availableMonths } = useMonth();
   const fileInputRef = useRef();
 
   const [dragActive, setDragActive] = useState(false);
@@ -94,7 +94,7 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
     if (!parsedResult) return;
     setUploading(true);
     try {
-      const targetYM = parsedResult.yearMonth || "2026-08";
+      const targetYM = parsedResult.yearMonth || selectedMonth || currentYearMonth || "2026-09";
 
       // Save into MonthContext with file metadata
       await uploadMonthlyData(targetYM, parsedResult, {

@@ -58,10 +58,22 @@ export const IssueLedgerModal = ({
 }) => {
   if (!isOpen || typeof document === "undefined") return null;
 
+  const sortedFilteredIssues = React.useMemo(() => {
+    if (!Array.isArray(filteredIssues)) return [];
+    return [...filteredIssues].sort((a, b) => {
+      const timeA = a.createdAt || a.updatedAt || a.date || a.startDate || a.expireDate || "";
+      const timeB = b.createdAt || b.updatedAt || b.date || b.startDate || b.expireDate || "";
+      if (timeA !== timeB) {
+        return timeB.localeCompare(timeA);
+      }
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    });
+  }, [filteredIssues]);
+
   const ISSUES_PER_PAGE = 5;
-  const totalIssuePages = Math.max(1, Math.ceil(filteredIssues.length / ISSUES_PER_PAGE));
+  const totalIssuePages = Math.max(1, Math.ceil(sortedFilteredIssues.length / ISSUES_PER_PAGE));
   const validIssuePage = Math.min(Math.max(1, issueModalPage), totalIssuePages);
-  const paginatedIssues = filteredIssues.slice(
+  const paginatedIssues = sortedFilteredIssues.slice(
     (validIssuePage - 1) * ISSUES_PER_PAGE,
     validIssuePage * ISSUES_PER_PAGE
   );

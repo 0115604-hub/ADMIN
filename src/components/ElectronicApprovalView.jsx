@@ -178,6 +178,7 @@ export const ElectronicApprovalView = () => {
   const fileInputRef = useRef(null);
   const [imageDragActive, setImageDragActive] = useState(false);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
 
   // All eligible workers for Drafter dropdown (전작업자 기안 가능)
   const allWorkers = useMemo(() => {
@@ -456,31 +457,41 @@ export const ElectronicApprovalView = () => {
   // Handle Approve Step (직급/대표 권한 체크)
   const handleApprove = async () => {
     if (!selectedDoc) return;
+    if (isProcessingAction) return;
     if (!currentPermission.canApprove) {
       alert(currentPermission.reason || "결재 권한이 없습니다.");
       return;
     }
 
-    const approverName = isAdmin
-      ? adminApprover
-      : (currentPermission.approverName || currentProfile?.name || "결재자");
+    setIsProcessingAction(true);
+    try {
+      const approverName = isAdmin
+        ? adminApprover
+        : (currentPermission.approverName || currentProfile?.name || "결재자");
 
-    const updated = await approveDocumentStep(
-      selectedDoc.id,
-      currentPermission.stepIndex,
-      approverName,
-      approvalComment || (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "승인")
-    );
+      const updated = await approveDocumentStep(
+        selectedDoc.id,
+        currentPermission.stepIndex,
+        approverName,
+        approvalComment || (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "승인")
+      );
 
-    setSelectedDoc(updated);
-    setApprovalComment("");
-    setActionType("APPROVE");
-    alert(`[${approverName}] 전자 도장 날인 및 결재 승인이 완료되었습니다.`);
+      setSelectedDoc(updated);
+      setApprovalComment("");
+      setActionType("APPROVE");
+      alert(`[${approverName}] 전자 도장 날인 및 결재 승인이 완료되었습니다.`);
+    } catch (err) {
+      console.error("Approval error:", err);
+      alert("결재 승인 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
   };
 
   // Handle Hold Step (보류)
   const handleHold = async () => {
     if (!selectedDoc) return;
+    if (isProcessingAction) return;
     if (!currentPermission.canApprove) {
       alert(currentPermission.reason || "보류 권한이 없습니다.");
       return;
@@ -490,23 +501,32 @@ export const ElectronicApprovalView = () => {
       return;
     }
 
-    const holderName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
-    const updated = await holdDocumentStep(
-      selectedDoc.id,
-      currentPermission.stepIndex,
-      holderName,
-      holdReason
-    );
+    setIsProcessingAction(true);
+    try {
+      const holderName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
+      const updated = await holdDocumentStep(
+        selectedDoc.id,
+        currentPermission.stepIndex,
+        holderName,
+        holdReason
+      );
 
-    setSelectedDoc(updated);
-    setHoldReason("");
-    setActionType("APPROVE");
-    alert("문서가 [보류] 처리되었습니다.");
+      setSelectedDoc(updated);
+      setHoldReason("");
+      setActionType("APPROVE");
+      alert("문서가 [보류] 처리되었습니다.");
+    } catch (err) {
+      console.error("Hold error:", err);
+      alert("보류 처리 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
   };
 
   // Handle Reject Step (반려)
   const handleReject = async () => {
     if (!selectedDoc) return;
+    if (isProcessingAction) return;
     if (!currentPermission.canApprove) {
       alert(currentPermission.reason || "반려 권한이 없습니다.");
       return;
@@ -516,18 +536,26 @@ export const ElectronicApprovalView = () => {
       return;
     }
 
-    const rejectorName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
-    const updated = await rejectDocumentStep(
-      selectedDoc.id,
-      currentPermission.stepIndex,
-      rejectorName,
-      rejectReason
-    );
+    setIsProcessingAction(true);
+    try {
+      const rejectorName = currentPermission.approverName || currentProfile?.name || (isAdmin ? "대표이사" : "결재자");
+      const updated = await rejectDocumentStep(
+        selectedDoc.id,
+        currentPermission.stepIndex,
+        rejectorName,
+        rejectReason
+      );
 
-    setSelectedDoc(updated);
-    setRejectReason("");
-    setActionType("APPROVE");
-    alert("문서가 [반려] 처리되었습니다.");
+      setSelectedDoc(updated);
+      setRejectReason("");
+      setActionType("APPROVE");
+      alert("문서가 [반려] 처리되었습니다.");
+    } catch (err) {
+      console.error("Reject error:", err);
+      alert("반려 처리 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
   };
 
   // Delete Document (Only ADMIN - Permanent Deletion)

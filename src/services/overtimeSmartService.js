@@ -14,7 +14,18 @@ import { sanitizeForFirestore } from "../utils/firestoreUtils.js";
 const STORAGE_KEY = "oryuk_smart_overtime_data_v2_sept";
 const FIRESTORE_DOC_ID = "overtime_2026_09";
 
-export const COMPANIES = ["(주)오륙", "(주)조영산업", "한울", "부림텍", "유성"];
+export const COMPANIES = ["오륙", "조영", "유성", "한울", "부림텍"];
+
+export const cleanCompanyName = (comp) => {
+  if (!comp) return "오륙";
+  const str = String(comp).trim();
+  if (str.includes("오륙")) return "오륙";
+  if (str.includes("조영")) return "조영";
+  if (str.includes("유성")) return "유성";
+  if (str.includes("한울")) return "한울";
+  if (str.includes("부림")) return "부림텍";
+  return str.replace(/^\(주\)\s*/, "").replace(/주식회사\s*/, "").replace(/산업$/, "").trim();
+};
 
 export const DEPARTMENTS = ["관리부", "가공동", "압출동"];
 
@@ -28,8 +39,8 @@ export const normalizeDept = (dept) => {
 };
 
 export const COMPANY_APPROVAL_MANAGERS = {
-  "(주)오륙": {
-    company: "(주)오륙",
+  "오륙": {
+    company: "오륙",
     plant: "삼랑진공장",
     author: "양인나 선임",
     drafter: "양인나",
@@ -54,34 +65,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
     ceo: "권태형",
     ceoRole: "대표"
   },
-  "(주)조영산업": {
-    company: "(주)조영산업",
-    plant: "한림공장",
-    author: "김동욱 책임",
-    drafter: "김동욱",
-    drafterRole: "선임",
-    lead: "김동욱",
-    leadRole: "책임",
-    director: "이명재",
-    directorRole: "이사",
-    ceo: "권태형",
-    ceoRole: "대표"
-  },
   "조영": {
-    company: "(주)조영산업",
-    plant: "한림공장",
-    author: "김동욱 책임",
-    drafter: "김동욱",
-    drafterRole: "선임",
-    lead: "김동욱",
-    leadRole: "책임",
-    director: "이명재",
-    directorRole: "이사",
-    ceo: "권태형",
-    ceoRole: "대표"
-  },
-  "조영산업": {
-    company: "(주)조영산업",
+    company: "조영",
     plant: "한림공장",
     author: "김동욱 책임",
     drafter: "김동욱",
@@ -131,12 +116,16 @@ export const COMPANY_APPROVAL_MANAGERS = {
     directorRole: "이사",
     ceo: "권태형",
     ceoRole: "대표"
-  }
+  },
+  // Aliases for legacy compatibility
+  "(주)오륙": { company: "오륙", plant: "삼랑진공장", author: "양인나 선임", drafter: "양인나", drafterRole: "선임", lead: "윤경수", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)조영산업": { company: "조영", plant: "한림공장", author: "김동욱 책임", drafter: "김동욱", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "조영산업": { company: "조영", plant: "한림공장", author: "김동욱 책임", drafter: "김동욱", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" }
 };
 
 export const COMPANY_THEMES = {
-  "(주)오륙": {
-    name: "(주)오륙",
+  "오륙": {
+    name: "오륙",
     bg: "bg-blue-50 dark:bg-blue-950/40",
     border: "border-blue-300 dark:border-blue-700",
     badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/80 dark:text-blue-200 border-blue-200 dark:border-blue-700",
@@ -145,8 +134,8 @@ export const COMPANY_THEMES = {
     ring: "ring-blue-500/30",
     btn: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
   },
-  "(주)조영산업": {
-    name: "(주)조영산업",
+  "조영": {
+    name: "조영",
     bg: "bg-purple-50 dark:bg-purple-950/40",
     border: "border-purple-300 dark:border-purple-700",
     badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200 border-purple-200 dark:border-purple-700",
@@ -184,7 +173,12 @@ export const COMPANY_THEMES = {
     accent: "text-cyan-600 dark:text-cyan-400",
     ring: "ring-cyan-500/30",
     btn: "bg-cyan-600 hover:bg-cyan-700 text-white shadow-cyan-500/20"
-  }
+  },
+  // Aliases
+  "(주)오륙": { name: "오륙", bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-300 dark:border-blue-700", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900/80 dark:text-blue-200 border-blue-200 dark:border-blue-700", text: "text-blue-900 dark:text-blue-100", accent: "text-blue-600 dark:text-blue-400", ring: "ring-blue-500/30", btn: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20" },
+  "(주)조영산업": { name: "조영", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-300 dark:border-purple-700", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200 border-purple-200 dark:border-purple-700", text: "text-purple-900 dark:text-purple-100", accent: "text-purple-600 dark:text-purple-400", ring: "ring-purple-500/30", btn: "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20" },
+  "(주)조영": { name: "조영", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-300 dark:border-purple-700", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200 border-purple-200 dark:border-purple-700", text: "text-purple-900 dark:text-purple-100", accent: "text-purple-600 dark:text-purple-400", ring: "ring-purple-500/30", btn: "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20" },
+  "조영산업": { name: "조영", bg: "bg-purple-50 dark:bg-purple-950/40", border: "border-purple-300 dark:border-purple-700", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900/80 dark:text-purple-200 border-purple-200 dark:border-purple-700", text: "text-purple-900 dark:text-purple-100", accent: "text-purple-600 dark:text-purple-400", ring: "ring-purple-500/30", btn: "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-500/20" }
 };
 
 export const ATTENDANCE_OPTIONS = [
@@ -321,7 +315,7 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
   let dayTotalHours = 0;
 
   attendanceList.forEach((worker) => {
-    const comp = worker.company || "(주)오륙";
+    const comp = cleanCompanyName(worker.company);
     if (!companyBreakdown[comp]) {
       companyBreakdown[comp] = {
         company: comp,
@@ -415,7 +409,7 @@ export const calculateCompanySummary = (attendanceList) => {
   let grandTotalHours = 0;
 
   attendanceList.forEach((worker) => {
-    const comp = worker.company || "(주)오륙";
+    const comp = cleanCompanyName(worker.company);
     if (!map[comp]) {
       map[comp] = {
         company: comp,
@@ -604,7 +598,7 @@ export const ensureAllCompaniesPresent = (data) => {
     return {
       ...w,
       no: idx + 1,
-      company: w.company || "(주)오륙",
+      company: cleanCompanyName(w.company),
       dept: normalizeDept(w.dept),
       line: w.line || normalizeDept(w.dept),
       name: (w.name || "").trim(),
@@ -650,8 +644,29 @@ export const ensureAllCompaniesPresent = (data) => {
     }
   });
 
-  const reindexedMatrix = matrix.map((w, idx) => ({ ...w, no: idx + 1 }));
-  const reindexedMaster = master.map((w, idx) => ({ ...w, no: idx + 1 }));
+  const compCounters = {};
+  const reindexedMatrix = matrix.map((w) => {
+    const comp = cleanCompanyName(w.company);
+    compCounters[comp] = (compCounters[comp] || 0) + 1;
+    return {
+      ...w,
+      company: comp,
+      companyNo: compCounters[comp],
+      no: compCounters[comp]
+    };
+  });
+
+  const compMasterCounters = {};
+  const reindexedMaster = master.map((w) => {
+    const comp = cleanCompanyName(w.company);
+    compMasterCounters[comp] = (compMasterCounters[comp] || 0) + 1;
+    return {
+      ...w,
+      company: comp,
+      companyNo: compMasterCounters[comp],
+      no: compMasterCounters[comp]
+    };
+  });
 
   return {
     ...data,
@@ -931,6 +946,20 @@ export const importSmartOvertimeFromExcel = async (file) => {
         }
 
         if (importedMatrix.length > 0) {
+          // Assign per-company sequential number (1..N per company)
+          const compCounters = {};
+          importedMatrix.forEach((w) => {
+            const c = cleanCompanyName(w.company);
+            compCounters[c] = (compCounters[c] || 0) + 1;
+            w.no = compCounters[c];
+          });
+          const compCounters2 = {};
+          importedWorkers.forEach((w) => {
+            const c = cleanCompanyName(w.company);
+            compCounters2[c] = (compCounters2[c] || 0) + 1;
+            w.no = compCounters2[c];
+          });
+
           const updatedLedger = {
             year: 2026,
             month: 9,

@@ -22,15 +22,7 @@ function sanitizeLog(obj) {
   for (const key of Object.keys(obj)) {
     const val = obj[key];
     if (val !== undefined && typeof val !== "function") {
-      if (typeof val === "object" && val !== null) {
-        try {
-          result[key] = JSON.stringify(val);
-        } catch {
-          result[key] = "";
-        }
-      } else {
-        result[key] = String(val === null ? "" : val);
-      }
+      result[key] = val;
     }
   }
   return result;
@@ -119,18 +111,57 @@ export const normalizeWorkLogApproval = (log) => {
   return parsed;
 };
 
-// Get local cache
+// Get local cache with automatic legacy version migration
 export const getLocalWorkLogs = () => {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!saved) {
-      return [];
+    let parsed = [];
+    if (saved) {
+      try {
+        parsed = JSON.parse(saved);
+      } catch (e) {
+        parsed = [];
+      }
     }
-    const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed)) {
-      return [];
+
+    // If current storage is empty, scan legacy keys to recover any previously written user work logs
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      const legacyKeys = [
+        "factory_daily_work_logs_v16_pure_firestore_realtime",
+        "factory_daily_work_logs_v15_approval_sync",
+        "factory_daily_work_logs_v14_direct_firestore",
+        "factory_daily_work_logs_v13_firestore_realtime",
+        "factory_daily_work_logs_v12_shared_cloud",
+        "factory_daily_work_logs_v11_realtime_cloud",
+        "factory_daily_work_logs_v10_cloud_master",
+        "factory_daily_work_logs_v9",
+        "factory_daily_work_logs_v8"
+      ];
+      for (const k of legacyKeys) {
+        try {
+          const lData = localStorage.getItem(k);
+          if (lData) {
+            const p = JSON.parse(lData);
+            if (Array.isArray(p) && p.length > 0) {
+              const realUserLogs = p.filter((item) => {
+                const idStr = String(item.id || "");
+                return !idStr.startsWith("seed_") && !idStr.startsWith("sample_") && !["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"].includes(idStr);
+              });
+              if (realUserLogs.length > 0) {
+                parsed = realUserLogs;
+                saveLocalWorkLogs(realUserLogs);
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+      }
     }
-    return parsed.map(normalizeWorkLogApproval);
+
+    if (Array.isArray(parsed)) {
+      return parsed.map(normalizeWorkLogApproval);
+    }
+    return [];
   } catch (e) {
     return [];
   }
@@ -143,7 +174,23 @@ const saveLocalWorkLogs = (logs) => {
       : [];
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
   } catch (e) {
-    console.error("Local storage error:", e);
+    console.warn("Local storage write warning, attempting payload trimming:", e);
+    try {
+      // If quota exceeded, trim large base64 image data for older records in local cache
+      const parsed = Array.isArray(logs) ? logs.map(normalizeWorkLogApproval) : [];
+      const trimmed = parsed.map((item, idx) => {
+        if (idx > 10 && Array.isArray(item.images) && item.images.length > 0) {
+          return {
+            ...item,
+            images: item.images.map((img) => (typeof img === "object" ? { ...img, dataUrl: "" } : img))
+          };
+        }
+        return item;
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch (innerErr) {
+      console.error("Local storage error after trim:", innerErr);
+    }
   }
 };
 

@@ -17,8 +17,8 @@ import { sanitizeForFirestore } from "../utils/firestoreUtils";
 // 삼랑진공장: (주)오륙, 유성
 // 한림공장: (주)조영산업, 한울, 부림텍
 export const PLANT_COMPANIES = {
-  "삼랑진공장": ["(주)오륙", "유성"],
-  "한림공장": ["(주)조영산업", "한울", "부림텍"]
+  "삼랑진공장": ["오륙", "유성"],
+  "한림공장": ["조영", "한울", "부림텍"]
 };
 
 export const getPlantForCompany = (companyName) => {
@@ -59,300 +59,7 @@ export const isWeekendByDate = (dateStrOrDay) => {
   return false;
 };
 
-export const INITIAL_OVERTIME_REPORTS = [
-  {
-    id: "report_oryuk_2026_09_08",
-    plant: "삼랑진공장",
-    company: "(주)오륙",
-    companies: ["(주)오륙"],
-    title: "9월 8일(화) 삼랑진공장 (주)오륙 근태보고서",
-    reportType: "근태보고서",
-    workDate: "2026-09-08",
-    workDateFormatted: "2026-09-08 (화)",
-    author: "양인나 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-08T17:00:00.000Z",
-    approval: [
-      { role: "담당", name: "양인나", title: "선임", status: "완료" },
-      { role: "책임", name: "윤경수", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 7,
-    totalHours: 56,
-    cost: 840000,
-    items: [
-      { id: 1, category: "관리부", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수, 이창엽, 전재율", hours: 8, count: 5 },
-      { id: 2, category: "가공동", workContent: "NX4/NX4a 가공 및 생산 라인 가동", names: "양인나, 이상기", hours: 8, count: 2 }
-    ],
-    reasons: [
-      "1. 9월 8일(화) 삼랑진공장 (주)오륙 정규 생산 라인 가동",
-      "2. 총 7명 출근/투입 (총 투입공수: 56 M/H, 노무비: ₩840,000)"
-    ]
-  },
-  {
-    id: "report_yuseong_2026_09_08",
-    plant: "삼랑진공장",
-    company: "유성",
-    companies: ["유성"],
-    title: "9월 8일(화) 삼랑진공장 유성 근태보고서",
-    reportType: "근태보고서",
-    workDate: "2026-09-08",
-    workDateFormatted: "2026-09-08 (화)",
-    author: "유동길 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-08T17:00:00.000Z",
-    approval: [
-      { role: "담당", name: "유동길", title: "선임", status: "완료" },
-      { role: "책임", name: "설유철", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 2,
-    totalHours: 16,
-    cost: 240000,
-    items: [
-      { id: 1, category: "압출동", workContent: "유성 압출 1라인 및 후가공", names: "유동길, 조인주", hours: 8, count: 2 }
-    ],
-    reasons: [
-      "1. 9월 8일(화) 삼랑진공장 유성 압출 라인 정상 가동",
-      "2. 총 2명 투입 (총 공수: 16 M/H, 노무비: ₩240,000)"
-    ]
-  },
-  {
-    id: "report_hanul_2026_09_08",
-    plant: "한림공장",
-    company: "한울",
-    companies: ["한울"],
-    title: "9월 8일(화) 한림공장 한울 근태보고서",
-    reportType: "근태보고서",
-    workDate: "2026-09-08",
-    workDateFormatted: "2026-09-08 (화)",
-    author: "오상민 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-08T17:00:00.000Z",
-    approval: [
-      { role: "담당", name: "오상민", title: "선임", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 2,
-    totalHours: 16,
-    cost: 240000,
-    items: [
-      { id: 1, category: "가공동", workContent: "NX4/NX4a/HR G-RUN 가공", names: "우창용, 오상민", hours: 8, count: 2 }
-    ],
-    reasons: [
-      "1. 9월 8일(화) 한림공장 한울 가공동 가동",
-      "2. 총 2명 투입 (공수: 16 M/H, 노무비: ₩240,000)"
-    ]
-  },
-  {
-    id: "report_burim_2026_09_08",
-    plant: "한림공장",
-    company: "부림텍",
-    companies: ["부림텍"],
-    title: "9월 8일(화) 한림공장 부림텍 근태보고서",
-    reportType: "근태보고서",
-    workDate: "2026-09-08",
-    workDateFormatted: "2026-09-08 (화)",
-    author: "김동욱 책임",
-    authorTitle: "책임",
-    updatedAt: "2026-09-08T17:00:00.000Z",
-    approval: [
-      { role: "담당", name: "김동욱", title: "책임", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 1,
-    totalHours: 8,
-    cost: 120000,
-    items: [
-      { id: 1, category: "관리부", workContent: "한림 총괄 관리 및 출하", names: "김동욱", hours: 8, count: 1 }
-    ],
-    reasons: [
-      "1. 9월 8일(화) 한림공장 부림텍 정상 가동",
-      "2. 총 1명 투입 (공수: 8 M/H, 노무비: ₩120,000)"
-    ]
-  },
-  {
-    id: "report_joyoung_2026_09_08",
-    plant: "한림공장",
-    company: "(주)조영산업",
-    companies: ["(주)조영산업"],
-    title: "9월 8일(화) 한림공장 (주)조영산업 근태보고서",
-    reportType: "근태보고서",
-    workDate: "2026-09-08",
-    workDateFormatted: "2026-09-08 (화)",
-    author: "오상민 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-08T17:00:00.000Z",
-    approval: [
-      { role: "담당", name: "오상민", title: "선임", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 3,
-    totalHours: 24,
-    cost: 360000,
-    items: [
-      { id: 1, category: "가공동", workContent: "조영 가공 1라인 가동 및 조립", names: "황수현, 박종미, 마이클", hours: 8, count: 3 }
-    ],
-    reasons: [
-      "1. 9월 8일(화) 한림공장 (주)조영산업 정상 가동",
-      "2. 총 3명 투입 (공수: 24 M/H, 노무비: ₩360,000)"
-    ]
-  },
-  {
-    id: "report_oryuk_2026_09_05",
-    plant: "삼랑진공장",
-    company: "(주)오륙",
-    companies: ["(주)오륙"],
-    title: "9월 5일(토) 삼랑진공장 (주)오륙 특근보고서",
-    reportType: "특근보고서",
-    workDate: "2026-09-05",
-    workDateFormatted: "2026-09-05 (토)",
-    author: "양인나 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-05T18:00:00.000Z",
-    approval: [
-      { role: "담당", name: "양인나", title: "선임", status: "완료" },
-      { role: "책임", name: "윤경수", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 7,
-    totalHours: 62,
-    cost: 930000,
-    items: [
-      { id: 1, category: "관리자", workContent: "총괄 관리 및 출하 지시", names: "이명재, 설유철, 윤경수, 이창엽, 전재율", hours: 8, count: 5 },
-      { id: 2, category: "가공동", workContent: "NX4/NX4a 후가공 및 검사", names: "양인나, 이상기", hours: 10, count: 2 }
-    ],
-    reasons: [
-      "1. 9월 5일(토) 삼랑진공장 (주)오륙 토요 특근 긴급 납품 수량 대응",
-      "2. 총 7명 투입 (공수: 62 M/H, 총 노무비: ₩930,000)"
-    ]
-  },
-  {
-    id: "report_yuseong_2026_09_05",
-    plant: "삼랑진공장",
-    company: "유성",
-    companies: ["유성"],
-    title: "9월 5일(토) 삼랑진공장 유성 특근보고서",
-    reportType: "특근보고서",
-    workDate: "2026-09-05",
-    workDateFormatted: "2026-09-05 (토)",
-    author: "유동길 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-05T18:00:00.000Z",
-    approval: [
-      { role: "담당", name: "유동길", title: "선임", status: "완료" },
-      { role: "책임", name: "설유철", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 2,
-    totalHours: 20,
-    cost: 300000,
-    items: [
-      { id: 1, category: "수직 건조", workContent: "수직 건조로 제품 건조 및 압출 대응", names: "유동길, 조인주", hours: 10, count: 2 }
-    ],
-    reasons: [
-      "1. 9월 5일(토) 삼랑진공장 유성 토요 특근 가동",
-      "2. 총 2명 투입 (공수: 20 M/H, 총 노무비: ₩300,000)"
-    ]
-  },
-  {
-    id: "report_joyoung_2026_09_05",
-    plant: "한림공장",
-    company: "(주)조영산업",
-    companies: ["(주)조영산업"],
-    title: "9월 5일(토) 한림공장 (주)조영산업 특근보고서",
-    reportType: "특근보고서",
-    workDate: "2026-09-05",
-    workDateFormatted: "2026-09-05 (토)",
-    author: "오상민 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-05T18:00:00.000Z",
-    approval: [
-      { role: "담당", name: "오상민", title: "선임", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 3,
-    totalHours: 24,
-    cost: 360000,
-    items: [
-      { id: 1, category: "가공동", workContent: "조영 가공 1라인 가동 및 조립", names: "황수현, 박종미, 마이클", hours: 8, count: 3 }
-    ],
-    reasons: [
-      "1. 9월 5일(토) 한림공장 (주)조영산업 토요 특근 가동",
-      "2. 총 3명 투입 (공수: 24 M/H, 총 노무비: ₩360,000)"
-    ]
-  },
-  {
-    id: "report_hanul_2026_09_05",
-    plant: "한림공장",
-    company: "한울",
-    companies: ["한울"],
-    title: "9월 5일(토) 한림공장 한울 특근보고서",
-    reportType: "특근보고서",
-    workDate: "2026-09-05",
-    workDateFormatted: "2026-09-05 (토)",
-    author: "오상민 선임",
-    authorTitle: "선임",
-    updatedAt: "2026-09-05T18:00:00.000Z",
-    approval: [
-      { role: "담당", name: "오상민", title: "선임", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 2,
-    totalHours: 16,
-    cost: 240000,
-    items: [
-      { id: 1, category: "가공동", workContent: "NX4/NX4a/HR G-RUN 가공 및 포장", names: "우창용, 오상민", hours: 8, count: 2 }
-    ],
-    reasons: [
-      "1. 9월 5일(토) 한림공장 한울 토요 특근 가동",
-      "2. 총 2명 투입 (공수: 16 M/H, 총 노무비: ₩240,000)"
-    ]
-  },
-  {
-    id: "report_burim_2026_09_05",
-    plant: "한림공장",
-    company: "부림텍",
-    companies: ["부림텍"],
-    title: "9월 5일(토) 한림공장 부림텍 특근보고서",
-    reportType: "특근보고서",
-    workDate: "2026-09-05",
-    workDateFormatted: "2026-09-05 (토)",
-    author: "김동욱 책임",
-    authorTitle: "책임",
-    updatedAt: "2026-09-05T18:00:00.000Z",
-    approval: [
-      { role: "담당", name: "김동욱", title: "책임", status: "완료" },
-      { role: "책임", name: "김동욱", title: "책임", status: "완료" },
-      { role: "이사", name: "이명재", title: "이사", status: "완료" },
-      { role: "대표", name: "권태형", title: "대표", status: "완료" }
-    ],
-    totalWorkers: 1,
-    totalHours: 8,
-    cost: 120000,
-    items: [
-      { id: 1, category: "관리부", workContent: "한림 총괄 관리 및 출하 지시", names: "김동욱", hours: 8, count: 1 }
-    ],
-    reasons: [
-      "1. 9월 5일(토) 한림공장 부림텍 토요 특근 가동",
-      "2. 총 1명 투입 (공수: 8 M/H, 총 노무비: ₩120,000)"
-    ]
-  }
-];
+export const INITIAL_OVERTIME_REPORTS = [];
 
 const COLLECTION_NAME = "overtime_reports";
 const LOCAL_STORAGE_KEY = "official_overtime_reports_store_v7_company_reports";
@@ -399,17 +106,17 @@ export const calculateReportMetrics = (report) => {
 export const getLocalOvertimeReports = () => {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(INITIAL_OVERTIME_REPORTS));
-    return INITIAL_OVERTIME_REPORTS;
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    return INITIAL_OVERTIME_REPORTS;
+    return [];
   }
 };
 
 export const saveLocalOvertimeReports = (reports) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reports));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reports || []));
   } catch (e) {
     console.error("Local storage overtime save error:", e);
   }
@@ -422,8 +129,8 @@ export const subscribeOvertimeReports = (callback) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
+        const remoteReports = [];
         if (!snapshot.empty) {
-          const remoteReports = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data();
             // ⭐ Ignore & clean legacy auto-generated lumped reports
@@ -437,18 +144,9 @@ export const subscribeOvertimeReports = (callback) => {
           });
           // Sort by updatedAt descending, then workDate descending
           remoteReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
-          saveLocalOvertimeReports(remoteReports);
-          if (callback) callback(remoteReports);
-        } else {
-          // Initialize remote with defaults if empty
-          INITIAL_OVERTIME_REPORTS.forEach(async (rep) => {
-            try {
-              await setDoc(doc(db, COLLECTION_NAME, rep.id), rep, { merge: true });
-            } catch (err) {}
-          });
-          const local = getLocalOvertimeReports();
-          if (callback) callback(local);
         }
+        saveLocalOvertimeReports(remoteReports);
+        if (callback) callback(remoteReports);
       },
       (error) => {
         console.warn("Firestore overtime reports sync error (using local):", error.message);
@@ -618,15 +316,15 @@ export const getLatestOvertimeSummary = (allReports = null) => {
   const halReports = reports.filter((r) => r.plant === "한림공장")
     .sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
 
-  const latestSam = samReports[0] || INITIAL_OVERTIME_REPORTS[0];
-  const latestHal = halReports[0] || INITIAL_OVERTIME_REPORTS[1];
+  const latestSam = samReports[0] || { id: "", plant: "삼랑진공장", company: "오륙", workDate: "", title: "등록된 특근보고서 없음", items: [] };
+  const latestHal = halReports[0] || { id: "", plant: "한림공장", company: "조영", workDate: "", title: "등록된 특근보고서 없음", items: [] };
 
   const samMetrics = calculateReportMetrics(latestSam);
   const halMetrics = calculateReportMetrics(latestHal);
 
-  // Calculate monthly cumulative costs from all registered reports (or base sums)
-  const samMonthCumulative = samReports.reduce((sum, r) => sum + calculateReportMetrics(r).cost, 0) || 16320000;
-  const halMonthCumulative = halReports.reduce((sum, r) => sum + calculateReportMetrics(r).cost, 0) || 5760000;
+  // Calculate monthly cumulative costs from all registered reports
+  const samMonthCumulative = samReports.reduce((sum, r) => sum + calculateReportMetrics(r).cost, 0);
+  const halMonthCumulative = halReports.reduce((sum, r) => sum + calculateReportMetrics(r).cost, 0);
 
   return {
     samrangjin: {
@@ -636,7 +334,7 @@ export const getLatestOvertimeSummary = (allReports = null) => {
       manHours: samMetrics.manHours,
       cost: samMetrics.cost,
       lines: samMetrics.lines,
-      monthCumulativeCost: Math.max(samMonthCumulative, 16320000)
+      monthCumulativeCost: samMonthCumulative
     },
     hallim: {
       ...latestHal,
@@ -645,9 +343,9 @@ export const getLatestOvertimeSummary = (allReports = null) => {
       manHours: halMetrics.manHours,
       cost: halMetrics.cost,
       lines: halMetrics.lines,
-      monthCumulativeCost: Math.max(halMonthCumulative, 5760000)
+      monthCumulativeCost: halMonthCumulative
     },
-    totalMonthCumulativeCost: Math.max(samMonthCumulative, 16320000) + Math.max(halMonthCumulative, 5760000),
+    totalMonthCumulativeCost: samMonthCumulative + halMonthCumulative,
     totalLatestDailyCost: samMetrics.cost + halMetrics.cost,
     totalLatestHeadcount: samMetrics.headcount + halMetrics.headcount,
     totalLatestManHours: samMetrics.manHours + halMetrics.manHours

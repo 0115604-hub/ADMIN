@@ -451,7 +451,7 @@ export const DailyQualityView = () => {
 
     try {
       const { records, count, yearMonth } = await parseQualityExcelFiles(fileList);
-      if (records.length > 0) {
+      if (records && records.length > 0) {
         await saveQualityRecordsBatch(records);
         if (yearMonth && yearMonth !== selectedMonth && changeMonth) {
           changeMonth(yearMonth);
@@ -462,15 +462,15 @@ export const DailyQualityView = () => {
         });
       } else {
         setUploadToast({
-          type: "info",
-          message: "엑셀 파일에서 표준 품질 검사 데이터를 확인하여 동기화했습니다."
+          type: "error",
+          message: "선택하신 엑셀 파일에서 유효한 품질 실적 데이터를 찾지 못했습니다. 표준 엑셀 서식을 확인해 주세요."
         });
       }
     } catch (err) {
       console.error("Quality Excel Upload error:", err);
       setUploadToast({
         type: "error",
-        message: "엑셀 파일 파싱 중 오류가 발생했습니다. 파일 형식을 확인해주세요."
+        message: "엑셀 파일 파싱 및 저장 중 오류 발생: " + (err.message || "파일 형식을 확인해주세요.")
       });
     } finally {
       setIsUploading(false);

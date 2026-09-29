@@ -1,5 +1,5 @@
 import React from "react";
-import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { AlertTriangle, RefreshCw, Home, RotateCcw } from "lucide-react";
 import { OryukLogo } from "./OryukLogo";
 
 export class ErrorBoundary extends React.Component {
@@ -14,19 +14,16 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
-    try {
-      const lastErrorTime = sessionStorage.getItem("last_error_boundary_retry");
-      const now = Date.now();
-      if (!lastErrorTime || (now - Number(lastErrorTime)) > 30000) {
-        sessionStorage.setItem("last_error_boundary_retry", String(now));
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
-      }
-    } catch (e) {}
   }
 
   handleReset = () => {
+    this.setState({ hasError: false, error: null });
+    if (this.props.onReset) {
+      this.props.onReset();
+    }
+  };
+
+  handleReload = () => {
     this.setState({ hasError: false, error: null });
     window.location.reload();
   };
@@ -45,6 +42,50 @@ export class ErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
+      // 1. Inline / Sectional Error Display (Specific Tab or Modal)
+      if (this.props.inline || this.props.title) {
+        return (
+          <div className="p-6 my-4 bg-slate-900/90 border border-slate-700/80 rounded-2xl text-slate-100 shadow-xl flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mb-3">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="font-bold text-base text-white mb-1">
+              {this.props.title ? `${this.props.title} 화면 일시 오류` : "화면 표시 일시 오류"}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-md mb-4">
+              해당 메뉴를 불러오는 도중 일시적인 문제가 감지되었습니다. 아래 버튼을 눌러 다시 시도해 주세요.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={this.handleReset}
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>해당 메뉴 다시 불러오기</span>
+              </button>
+              <button
+                onClick={this.handleReload}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>전체 새로고침</span>
+              </button>
+            </div>
+            {this.state.error && (
+              <details className="mt-4 text-left w-full max-w-md">
+                <summary className="text-[10px] text-slate-500 cursor-pointer hover:text-slate-400">
+                  기술 상세 내용 보기
+                </summary>
+                <pre className="mt-1 p-2 rounded bg-slate-950 text-[10px] text-rose-400 overflow-x-auto font-mono">
+                  {String(this.state.error?.message || this.state.error)}
+                </pre>
+              </details>
+            )}
+          </div>
+        );
+      }
+
+      // 2. Full-Page Global Error Fallback
       return (
         <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 text-slate-100 p-4">
           <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl text-center flex flex-col items-center">
@@ -66,7 +107,7 @@ export class ErrorBoundary extends React.Component {
 
             <div className="flex flex-col sm:flex-row gap-2.5 w-full">
               <button
-                onClick={this.handleReset}
+                onClick={this.handleReload}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-sm shadow-lg shadow-blue-500/30 transition-all cursor-pointer active:scale-95"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -87,7 +128,7 @@ export class ErrorBoundary extends React.Component {
                   오류 내용 확인
                 </summary>
                 <pre className="mt-2 p-2.5 rounded-lg bg-slate-950 text-[10px] text-rose-400 overflow-x-auto font-mono max-h-32">
-                  {this.state.error.toString()}
+                  {String(this.state.error?.message || this.state.error)}
                 </pre>
               </details>
             )}

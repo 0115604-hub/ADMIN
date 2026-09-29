@@ -125,24 +125,35 @@ export async function parseExcelFile(file, targetLineId = "pcm1", targetWeekKey 
           throw new Error("엑셀 시트를 찾을 수 없습니다.");
         }
 
-        // Try first sheet or sheet with '표준' or '관리'
+        // Try standard/master sheet first, else fallback to first sheet
         let targetSheetName = wb.SheetNames[0];
-        const prefSheet = wb.SheetNames.find(s => s.includes('표준') || s.includes('관리'));
+        const prefSheet = wb.SheetNames.find(s => s.includes('표준') || s.includes('관리') || s.includes('대장'));
         if (prefSheet) targetSheetName = prefSheet;
 
         const ws = wb.Sheets[targetSheetName];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
 
-        // Scan header row
+        // Robust header detection
         let headerRowIdx = -1;
-        for (let i = 0; i < Math.min(15, rows.length); i++) {
+        // Priority 1: Match Main Data Table Header (contains 'No' or '순번' + '품명' or '내용')
+        for (let i = 0; i < Math.min(20, rows.length); i++) {
           const r = rows[i];
-          if (r && r.some(cell => {
-            const str = String(cell).replace(/\s+/g, '');
-            return str.includes('품명') || str.includes('내용') || str.includes('작업내용');
-          })) {
+          if (r && r.some(c => String(c).trim() === 'No' || String(c).trim() === '순번') &&
+                   r.some(c => String(c).includes('품명') || String(c).includes('내용'))) {
             headerRowIdx = i;
             break;
+          }
+        }
+
+        // Priority 2: Match header with '품명' or '내용' and ('시간' or '비가동' or '요일')
+        if (headerRowIdx === -1) {
+          for (let i = 0; i < Math.min(20, rows.length); i++) {
+            const r = rows[i];
+            if (r && r.some(c => String(c).replace(/\s+/g, '').includes('품명') || String(c).replace(/\s+/g, '').includes('내용')) &&
+                     r.some(c => String(c).includes('시간') || String(c).includes('비가동') || String(c).includes('요일'))) {
+              headerRowIdx = i;
+              break;
+            }
           }
         }
 
@@ -173,6 +184,7 @@ export async function parseExcelFile(file, targetLineId = "pcm1", targetWeekKey 
             const firstCol = String(row[0] || '').trim();
             const secondCol = String(row[1] || '').trim();
             if (firstCol.includes('합계') || firstCol === '비 고' || firstCol.startsWith('가동률') || secondCol.includes('합계') || secondCol === '비 고') break;
+            if (firstCol === '신규') continue; // Skip interactive quick-add sample row
 
             const taskVal = colIdxTask >= 0 ? String(row[colIdxTask] || '').trim() : '';
             const timeVal = colIdxTime >= 0 && row[colIdxTime] !== '' && !isNaN(Number(row[colIdxTime])) ? Number(row[colIdxTime]) : 0;
@@ -186,7 +198,7 @@ export async function parseExcelFile(file, targetLineId = "pcm1", targetWeekKey 
             if (dayVal) curDay = dayVal.replace(/\r?\n/g, ' ');
             if (shiftVal) curShift = shiftVal;
 
-            if (taskVal && taskVal !== '-') {
+            if (taskVal && taskVal !== '-' && taskVal !== 'undefined') {
               totalMin += timeVal;
               totalWt += wtVal;
               parsedRows.push({

@@ -23,6 +23,7 @@ import {
   addIssueReply,
   deleteIssueReply,
   sortIssuesByCustomPriority,
+  sortIssuesByLatest,
   isMeetingExpired
 } from "../services/urgentIssueService";
 import { OryukLogo } from "./OryukLogo";
@@ -133,6 +134,7 @@ export const AuthModal = () => {
   const [closingBriefingToast, setClosingBriefingToast] = useState(false);
   const [telegramTestResult, setTelegramTestResult] = useState(null);
   const [telegramSavedToast, setTelegramSavedToast] = useState(false);
+  const [isSavingIssue, setIsSavingIssue] = useState(false);
 
   // Subscriptions
   useEffect(() => {
@@ -247,62 +249,76 @@ export const AuthModal = () => {
     }
   };
 
-  // Active issues calculation
+  // Category matching helper
+  const isCatQualityAlert = (cat) => cat === "품질경보" || cat === "품질 경보" || cat === "quality_alert" || (typeof cat === "string" && cat.includes("품질경보"));
+  const isCatMeeting = (cat) => cat === "회의일정" || cat === "회의 일정" || cat === "meeting" || (typeof cat === "string" && cat.includes("회의"));
+  const isCatNotice = (cat) => cat === "공지사항" || cat === "사내공지" || cat === "공유사항" || cat === "notice" || (typeof cat === "string" && cat.includes("공지"));
+  const isCatOpenIssue = (cat) => cat === "오픈이슈" || cat === "오픈 이슈" || cat === "품질이슈" || cat === "open_issue" || (!isCatQualityAlert(cat) && !isCatMeeting(cat) && !isCatNotice(cat));
+
+  // Active issues calculation (첫 화면 표시용 활성 이슈)
   const activeIssues = useMemo(() => {
     return urgentIssues.filter((item) => {
-      if (item.isDeleted) return false;
-      if (item.isManuallyRestored) return true;
-      if (item.category === "회의일정") {
-        return !isMeetingExpired(item);
+      if (!item || item.isDeleted) return false;
+
+      // 1. 회의일정: 회의 시작 시간으로부터 1시간 경과 시 첫 화면에서 자동 만료/제외
+      if (isCatMeeting(item.category)) {
+        return !isMeetingExpired(item, 1);
       }
-      if (item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항") {
-        if (item.expireDate && item.expireDate < todayDateStr) return false;
+
+      // 2. 사내공지 / 공지사항: 만료일자(expireDate)가 지난 경우 첫 화면에서 자동 제외 (단, 수동 복구된 경우 제외)
+      if (isCatNotice(item.category)) {
+        if (item.expireDate && item.expireDate < todayDateStr && !item.isManuallyRestored) return false;
       }
+
+      // 3. 품질경보 & 오픈이슈: 일자가 지나도 절대 자동 삭제되지 않고, 사용자가 직접 '조치완료' 또는 '삭제'하기 전까지 첫 화면에 항상 유지!
       return true;
     });
   }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
   // Metric counts
-  const qualityAlertCount = useMemo(() => activeIssues.filter((i) => i.category === "품질경보").length, [activeIssues]);
-  const meetingIssuesCount = useMemo(() => activeIssues.filter((i) => i.category === "회의일정").length, [activeIssues]);
-  const qualityIssueCount = useMemo(() => activeIssues.filter((i) => i.category === "오픈이슈" || i.category === "품질이슈").length, [activeIssues]);
-  const noticeIssuesCount = useMemo(() => activeIssues.filter((i) => i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항").length, [activeIssues]);
+  const qualityAlertCount = useMemo(() => activeIssues.filter((i) => isCatQualityAlert(i.category)).length, [activeIssues]);
+  const meetingIssuesCount = useMemo(() => activeIssues.filter((i) => isCatMeeting(i.category)).length, [activeIssues]);
+  const qualityIssueCount = useMemo(() => activeIssues.filter((i) => isCatOpenIssue(i.category)).length, [activeIssues]);
+  const noticeIssuesCount = useMemo(() => activeIssues.filter((i) => isCatNotice(i.category)).length, [activeIssues]);
 
   // Displayed issues on first screen
   const displayedActiveIssues = useMemo(() => {
     if (openIssueCategoryFilter === "quality_alert") {
-      return activeIssues.filter((i) => i.category === "품질경보");
+      return activeIssues.filter((i) => isCatQualityAlert(i.category));
     }
     if (openIssueCategoryFilter === "meeting") {
-      return activeIssues.filter((i) => i.category === "회의일정");
+      return activeIssues.filter((i) => isCatMeeting(i.category));
     }
     if (openIssueCategoryFilter === "open_issue" || openIssueCategoryFilter === "quality_issue" || openIssueCategoryFilter === "quality") {
-      return activeIssues.filter((i) => i.category === "오픈이슈" || i.category === "품질이슈");
+      return activeIssues.filter((i) => isCatOpenIssue(i.category));
     }
     if (openIssueCategoryFilter === "notice") {
-      return activeIssues.filter((i) => i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항");
+      return activeIssues.filter((i) => isCatNotice(i.category));
     }
     return activeIssues;
   }, [activeIssues, openIssueCategoryFilter]);
 
-  // Ledger categories
-  const allQualityAlerts = useMemo(() => urgentIssues.filter((i) => !i.isDeleted && i.category === "품질경보"), [urgentIssues]);
-  const allMeetings = useMemo(() => urgentIssues.filter((i) => !i.isDeleted && i.category === "회의일정"), [urgentIssues]);
-  const allQualityIssues = useMemo(() => urgentIssues.filter((i) => !i.isDeleted && (i.category === "오픈이슈" || i.category === "품질이슈")), [urgentIssues]);
-  const allNotices = useMemo(() => urgentIssues.filter((i) => !i.isDeleted && (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항")), [urgentIssues]);
+  // Ledger categories (최신순 정렬 적용)
+  const allQualityAlerts = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatQualityAlert(i.category))), [urgentIssues]);
+  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatMeeting(i.category))), [urgentIssues]);
+  const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatOpenIssue(i.category))), [urgentIssues]);
+  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatNotice(i.category))), [urgentIssues]);
   const allClosedDeletedIssues = useMemo(() => {
-    return urgentIssues.filter((i) => {
+    const list = urgentIssues.filter((i) => {
+      if (!i) return false;
       if (i.isDeleted) return true;
-      if (i.isManuallyRestored) return false;
-      if (i.category === "회의일정") return isMeetingExpired(i);
-      if (i.category === "공지사항" || i.category === "사내공지" || i.category === "공유사항") {
-        return Boolean(i.expireDate && i.expireDate < todayDateStr);
+      if (isCatMeeting(i.category)) {
+        return isMeetingExpired(i, 1);
+      }
+      if (isCatNotice(i.category)) {
+        return Boolean(i.expireDate && i.expireDate < todayDateStr && !i.isManuallyRestored);
       }
       return false;
     });
+    return sortIssuesByLatest(list);
   }, [urgentIssues, todayDateStr, currentKstTimeStr]);
 
-  // Filtered issues for ledger modal
+  // Filtered issues for ledger modal (최신순 정렬 보장)
   const filteredIssues = useMemo(() => {
     let list = urgentIssues;
     if (ledgerCategoryTab === "quality_alert") {
@@ -327,7 +343,7 @@ export const AuthModal = () => {
         return (i.expireDate || i.targetDate) === selectedScheduleDate;
       });
     }
-    return list;
+    return sortIssuesByLatest(list);
   }, [urgentIssues, ledgerCategoryTab, selectedScheduleDate, allQualityAlerts, allMeetings, allQualityIssues, allNotices, allClosedDeletedIssues]);
 
   // 7-day schedule strip for open issues
@@ -510,6 +526,7 @@ export const AuthModal = () => {
   // Save New/Edit Issue
   const handleSaveNewIssue = async (e) => {
     if (e) e.preventDefault();
+    if (isSavingIssue) return;
     if (!newIssueForm.author || !newIssueForm.author.trim()) {
       alert("작성자를 직접 선택해 주세요.");
       return;
@@ -519,45 +536,53 @@ export const AuthModal = () => {
       return;
     }
 
-    const itemToSave = {
-      ...(editingIssue || {}),
-      ...newIssueForm,
-      id: editingIssue?.id || editingIssue?._docId || `issue_${Date.now()}`,
-      category: newIssueForm.category || editingIssue?.category || "오픈이슈",
-      isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
-      deletedBy: "",
-      deletedAt: "",
-      isManuallyRestored: true // 🌟 수정/등록된 항목은 첫화면에 활성화
-    };
-    if (editingIssue?.createdAt) {
-      itemToSave.createdAt = editingIssue.createdAt;
-    } else if (!itemToSave.createdAt) {
-      delete itemToSave.createdAt;
+    setIsSavingIssue(true);
+    try {
+      const itemToSave = {
+        ...(editingIssue || {}),
+        ...newIssueForm,
+        id: editingIssue?.id || editingIssue?._docId || `issue_${Date.now()}`,
+        category: newIssueForm.category || editingIssue?.category || "오픈이슈",
+        isDeleted: false, // 🌟 저장/수정 시 항상 활성 상태(isDeleted: false)로 보장하여 첫화면에 정상 노출
+        deletedBy: "",
+        deletedAt: "",
+        isManuallyRestored: Boolean(editingIssue?.isManuallyRestored)
+      };
+      if (editingIssue?.createdAt) {
+        itemToSave.createdAt = editingIssue.createdAt;
+      } else if (!itemToSave.createdAt) {
+        delete itemToSave.createdAt;
+      }
+
+      const saved = await saveUrgentIssue(itemToSave);
+      if (saved) {
+        setUrgentIssues((prev) => {
+          const targetId = saved.id || saved._docId;
+          const idx = prev.findIndex((i) => i.id === targetId || (saved._docId && i._docId === saved._docId));
+          if (idx >= 0) {
+            const up = [...prev];
+            up[idx] = saved;
+            return sortIssuesByCustomPriority(up);
+          }
+          return sortIssuesByCustomPriority([saved, ...prev]);
+        });
+      }
+
+      // Modal close handling: close both edit and list modal so the user sees the updated item immediately on the first screen
+      setIsIssueModalOpen(false);
+      setEditingIssue(null);
+      setIsIssueDetailMode(true);
+      setIsListModalOpen(false);
+      setOpenedEditFromListModal(false);
+
+      setRestoreToast(editingIssue ? "✅ 항목이 성공적으로 수정되었습니다." : "✅ 새로운 항목이 등록되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+    } catch (err) {
+      console.error("Save issue error:", err);
+      alert("항목 저장 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingIssue(false);
     }
-
-    const saved = await saveUrgentIssue(itemToSave);
-    if (saved) {
-      setUrgentIssues((prev) => {
-        const targetId = saved.id || saved._docId;
-        const idx = prev.findIndex((i) => i.id === targetId || (saved._docId && i._docId === saved._docId));
-        if (idx >= 0) {
-          const up = [...prev];
-          up[idx] = saved;
-          return sortIssuesByCustomPriority(up);
-        }
-        return sortIssuesByCustomPriority([saved, ...prev]);
-      });
-    }
-
-    // Modal close handling: close both edit and list modal so the user sees the updated item immediately on the first screen
-    setIsIssueModalOpen(false);
-    setEditingIssue(null);
-    setIsIssueDetailMode(true);
-    setIsListModalOpen(false);
-    setOpenedEditFromListModal(false);
-
-    setRestoreToast(editingIssue ? "✅ 항목이 성공적으로 수정되었습니다." : "✅ 새로운 항목이 등록되었습니다.");
-    setTimeout(() => setRestoreToast(""), 3500);
   };
 
   // Restore & Cancel Restore
@@ -721,6 +746,7 @@ export const AuthModal = () => {
 
   const handleSaveActionResult = async (e) => {
     if (e) e.preventDefault();
+    if (isSavingIssue) return;
     if (!actionModalData.issue) return;
     if (!actionModalData.actionAuthor || !actionModalData.actionAuthor.trim()) {
       alert("조치자(또는 작성자)를 직접 선택해 주세요.");
@@ -731,22 +757,30 @@ export const AuthModal = () => {
       return;
     }
 
-    const updated = await updateUrgentIssueActionResult(
-      actionModalData.issue.id,
-      actionModalData.actionResult,
-      actionModalData.actionAuthor,
-      actionModalData.actionImages || []
-    );
+    setIsSavingIssue(true);
+    try {
+      const updated = await updateUrgentIssueActionResult(
+        actionModalData.issue.id,
+        actionModalData.actionResult,
+        actionModalData.actionAuthor,
+        actionModalData.actionImages || []
+      );
 
-    if (updated) {
-      setUrgentIssues((prev) => prev.map((it) => (it.id === actionModalData.issue.id ? updated : it)));
-      if (selectedListItem && selectedListItem.id === actionModalData.issue.id) setSelectedListItem(updated);
-      if (editingIssue && editingIssue.id === actionModalData.issue.id) setEditingIssue(updated);
+      if (updated) {
+        setUrgentIssues((prev) => prev.map((it) => (it.id === actionModalData.issue.id ? updated : it)));
+        if (selectedListItem && selectedListItem.id === actionModalData.issue.id) setSelectedListItem(updated);
+        if (editingIssue && editingIssue.id === actionModalData.issue.id) setEditingIssue(updated);
+      }
+
+      handleCloseActionModal();
+      setRestoreToast("✅ 회의/조치 결과가 성공적으로 저장되었습니다.");
+      setTimeout(() => setRestoreToast(""), 3500);
+    } catch (err) {
+      console.error("Save action error:", err);
+      alert("결과 저장 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsSavingIssue(false);
     }
-
-    handleCloseActionModal();
-    setRestoreToast("✅ 회의/조치 결과가 성공적으로 저장되었습니다.");
-    setTimeout(() => setRestoreToast(""), 3500);
   };
 
   // Ledger Action Menu Handlers
@@ -773,7 +807,8 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    await handleRestoreIssue(item.id, e);
+    const targetId = typeof item === "object" && item !== null ? item.id : item;
+    await handleRestoreIssue(targetId, e);
     setTimeout(() => setOpenActionMenuId(null), 100);
   };
 
@@ -782,7 +817,10 @@ export const AuthModal = () => {
       e.preventDefault();
       e.stopPropagation();
     }
-    await handleCancelRestore(item, e);
+    const targetItem = typeof item === "object" && item !== null ? item : urgentIssues.find((i) => i.id === item);
+    if (targetItem) {
+      await handleCancelRestore(targetItem, e);
+    }
     setTimeout(() => setOpenActionMenuId(null), 100);
   };
 

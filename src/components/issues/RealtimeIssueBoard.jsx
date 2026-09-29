@@ -287,17 +287,21 @@ export const RealtimeIssueBoard = ({
                     }`}>
                       {item.plant}
                     </span>
-                    {item.expireDate && (
-                      <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                        {isQualityAlert
-                          ? `🚨 등록일: ${formatMonthDayWithDayOfWeek(item.expireDate)}`
-                          : isMeeting
-                          ? `📅 회의: ${formatMonthDayWithDayOfWeek(item.expireDate)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
-                          : isNotice
-                          ? `📅 만료: ~${formatMonthDayWithDayOfWeek(item.expireDate)}`
-                          : `🚩 D-DAY: ${formatMonthDayWithDayOfWeek(item.expireDate)}`}
-                      </span>
-                    )}
+                    {(() => {
+                      const displayDate = item.startDate || item.expireDate || item.targetDate || item.date || (item.createdAt ? item.createdAt.slice(0, 10) : "");
+                      if (!displayDate) return null;
+                      return (
+                        <span className="px-1.5 py-0.5 rounded-md text-[10.5px] font-bold shrink-0 font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          {isQualityAlert
+                            ? `🚨 등록일: ${formatMonthDayWithDayOfWeek(displayDate)}`
+                            : isMeeting
+                            ? `📅 회의: ${formatMonthDayWithDayOfWeek(displayDate)}${item.meetingTime ? ` ${item.meetingTime}` : ""}`
+                            : isNotice
+                            ? `📅 만료: ~${formatMonthDayWithDayOfWeek(displayDate)}`
+                            : `🚩 D-DAY: ${formatMonthDayWithDayOfWeek(displayDate)}`}
+                        </span>
+                      );
+                    })()}
                     {item.author && (
                       <span className="text-[10.5px] text-slate-400 hidden sm:inline font-medium">
                         등록: {item.author} {item.authorTitle || ""}
