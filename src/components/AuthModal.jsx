@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
 import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
 import {
   getAnnualLeaves,
@@ -37,15 +37,17 @@ import {
 import { compressImage } from "../utils/imageCompressor";
 import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
 
-// Modularized Components
+// Eager Essential Components for Login Screen
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
-import { TelegramConfigModal } from "./auth/TelegramConfigModal";
 import { RealtimeIssueBoard } from "./issues/RealtimeIssueBoard";
-import { IssueLedgerModal } from "./issues/IssueLedgerModal";
-import { IssueEditModal } from "./issues/IssueEditModal";
-import { IssueActionModal } from "./issues/IssueActionModal";
-import { DeleteAuthModal } from "./issues/DeleteAuthModal";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
+
+// Lazy-loaded On-Demand Sub-Modals
+const TelegramConfigModal = lazy(() => import("./auth/TelegramConfigModal").then(m => ({ default: m.TelegramConfigModal || m.default })));
+const IssueLedgerModal = lazy(() => import("./issues/IssueLedgerModal").then(m => ({ default: m.IssueLedgerModal || m.default })));
+const IssueEditModal = lazy(() => import("./issues/IssueEditModal").then(m => ({ default: m.IssueEditModal || m.default })));
+const IssueActionModal = lazy(() => import("./issues/IssueActionModal").then(m => ({ default: m.IssueActionModal || m.default })));
+const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => ({ default: m.DeleteAuthModal || m.default })));
 
 export const AuthModal = () => {
   const { currentProfile, loginWithProfile } = useAuth();
@@ -1304,130 +1306,152 @@ export const AuthModal = () => {
       </div>
 
       {/* 🌟 관리목록 대장 모달 */}
-      <IssueLedgerModal
-        isOpen={isListModalOpen}
-        onClose={() => {
-          setIsListModalOpen(false);
-          setSelectedListItem(null);
-        }}
-        urgentIssues={urgentIssues}
-        filteredIssues={filteredIssues}
-        restoreToast={restoreToast}
-        setRestoreToast={setRestoreToast}
-        ledgerCategoryTab={ledgerCategoryTab}
-        setLedgerCategoryTab={setLedgerCategoryTab}
-        selectedScheduleDate={selectedScheduleDate}
-        setSelectedScheduleDate={setSelectedScheduleDate}
-        issueModalPage={issueModalPage}
-        setIssueModalPage={setIssueModalPage}
-        openIssueScheduleDays={openIssueScheduleDays}
-        allQualityAlerts={allQualityAlerts}
-        allMeetings={allMeetings}
-        allQualityIssues={allQualityIssues}
-        allNotices={allNotices}
-        allClosedDeletedIssues={allClosedDeletedIssues}
-        selectedListItem={selectedListItem}
-        openActionMenuId={openActionMenuId}
-        setOpenActionMenuId={setOpenActionMenuId}
-        onOpenEditIssue={handleOpenEditIssue}
-        onExecuteMeetingResult={handleExecuteMeetingResult}
-        onExecuteEditContent={handleExecuteEditContent}
-        onExecuteRestore={handleExecuteRestore}
-        onExecuteCancelRestore={handleExecuteCancelRestore}
-        onOpenDeleteModal={handleOpenDeleteModal}
-        onOpenNewIssue={handleOpenNewIssue}
-      />
+      {isListModalOpen && (
+        <Suspense fallback={null}>
+          <IssueLedgerModal
+            isOpen={isListModalOpen}
+            onClose={() => {
+              setIsListModalOpen(false);
+              setSelectedListItem(null);
+            }}
+            urgentIssues={urgentIssues}
+            filteredIssues={filteredIssues}
+            restoreToast={restoreToast}
+            setRestoreToast={setRestoreToast}
+            ledgerCategoryTab={ledgerCategoryTab}
+            setLedgerCategoryTab={setLedgerCategoryTab}
+            selectedScheduleDate={selectedScheduleDate}
+            setSelectedScheduleDate={setSelectedScheduleDate}
+            issueModalPage={issueModalPage}
+            setIssueModalPage={setIssueModalPage}
+            openIssueScheduleDays={openIssueScheduleDays}
+            allQualityAlerts={allQualityAlerts}
+            allMeetings={allMeetings}
+            allQualityIssues={allQualityIssues}
+            allNotices={allNotices}
+            allClosedDeletedIssues={allClosedDeletedIssues}
+            selectedListItem={selectedListItem}
+            openActionMenuId={openActionMenuId}
+            setOpenActionMenuId={setOpenActionMenuId}
+            onOpenEditIssue={handleOpenEditIssue}
+            onExecuteMeetingResult={handleExecuteMeetingResult}
+            onExecuteEditContent={handleExecuteEditContent}
+            onExecuteRestore={handleExecuteRestore}
+            onExecuteCancelRestore={handleExecuteCancelRestore}
+            onOpenDeleteModal={handleOpenDeleteModal}
+            onOpenNewIssue={handleOpenNewIssue}
+          />
+        </Suspense>
+      )}
 
       {/* 🌟 신규 등록 및 수정 상세 모달 */}
-      <IssueEditModal
-        isOpen={isIssueModalOpen}
-        onClose={handleCloseIssueModal}
-        editingIssue={editingIssue}
-        isIssueDetailMode={isIssueDetailMode}
-        setIsIssueDetailMode={setIsIssueDetailMode}
-        newIssueForm={newIssueForm}
-        setNewIssueForm={setNewIssueForm}
-        allWorkers={allWorkers}
-        todayDateStr={todayDateStr}
-        onSwitchCategory={handleSwitchCategory}
-        onSaveNewIssue={handleSaveNewIssue}
-        onOpenActionModal={handleOpenActionModal}
-        onCancelRestore={handleCancelRestore}
-        onOpenDeleteModal={handleOpenDeleteModal}
-        onPreviewImage={setPreviewImageModal}
-        actionOpinionForm={actionOpinionForm}
-        setActionOpinionForm={setActionOpinionForm}
-        onModalAddOpinion={handleModalAddOpinion}
-        onModalDeleteOpinion={handleModalDeleteOpinion}
-        replyForm={replyForm}
-        setReplyForm={setReplyForm}
-        isSubmittingReply={isSubmittingReply}
-        onModalAddReply={handleModalAddReply}
-        onModalDeleteReply={handleModalDeleteReply}
-        isProcessingIssueImages={isProcessingIssueImages}
-        onIssueFiles={handleIssueFiles}
-        onIssueImageFiles={handleIssueFiles}
-        onRemoveIssueImage={handleRemoveIssueImage}
-        onOpinionFiles={handleOpinionFiles}
-        onRemoveOpinionFile={handleRemoveOpinionFile}
-        isProcessingActionImages={isProcessingActionImages}
-        onNewIssueActionImageFiles={handleNewIssueActionImageFiles}
-        onRemoveNewIssueActionImage={handleRemoveNewIssueActionImage}
-        onToggleResolvedStatus={async () => {
-          if (!editingIssue) return;
-          const toggled = !editingIssue.isResolved;
-          setNewIssueForm((prev) => ({ ...prev, isResolved: toggled }));
-          const updated = { ...editingIssue, isResolved: toggled };
-          setEditingIssue(updated);
-          setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
-          await saveUrgentIssue(updated);
-        }}
-      />
+      {isIssueModalOpen && (
+        <Suspense fallback={null}>
+          <IssueEditModal
+            isOpen={isIssueModalOpen}
+            onClose={handleCloseIssueModal}
+            editingIssue={editingIssue}
+            isIssueDetailMode={isIssueDetailMode}
+            setIsIssueDetailMode={setIsIssueDetailMode}
+            newIssueForm={newIssueForm}
+            setNewIssueForm={setNewIssueForm}
+            allWorkers={allWorkers}
+            todayDateStr={todayDateStr}
+            onSwitchCategory={handleSwitchCategory}
+            onSaveNewIssue={handleSaveNewIssue}
+            onOpenActionModal={handleOpenActionModal}
+            onCancelRestore={handleCancelRestore}
+            onOpenDeleteModal={handleOpenDeleteModal}
+            onPreviewImage={setPreviewImageModal}
+            actionOpinionForm={actionOpinionForm}
+            setActionOpinionForm={setActionOpinionForm}
+            onModalAddOpinion={handleModalAddOpinion}
+            onModalDeleteOpinion={handleModalDeleteOpinion}
+            replyForm={replyForm}
+            setReplyForm={setReplyForm}
+            isSubmittingReply={isSubmittingReply}
+            onModalAddReply={handleModalAddReply}
+            onModalDeleteReply={handleModalDeleteReply}
+            isProcessingIssueImages={isProcessingIssueImages}
+            onIssueFiles={handleIssueFiles}
+            onIssueImageFiles={handleIssueFiles}
+            onRemoveIssueImage={handleRemoveIssueImage}
+            onOpinionFiles={handleOpinionFiles}
+            onRemoveOpinionFile={handleRemoveOpinionFile}
+            isProcessingActionImages={isProcessingActionImages}
+            onNewIssueActionImageFiles={handleNewIssueActionImageFiles}
+            onRemoveNewIssueActionImage={handleRemoveNewIssueActionImage}
+            onToggleResolvedStatus={async () => {
+              if (!editingIssue) return;
+              const toggled = !editingIssue.isResolved;
+              setNewIssueForm((prev) => ({ ...prev, isResolved: toggled }));
+              const updated = { ...editingIssue, isResolved: toggled };
+              setEditingIssue(updated);
+              setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
+              await saveUrgentIssue(updated);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* 🌟 회의결과 / 조치결과 모달 */}
-      <IssueActionModal
-        actionModalData={actionModalData}
-        setActionModalData={setActionModalData}
-        onClose={handleCloseActionModal}
-        onSaveActionResult={handleSaveActionResult}
-        allWorkers={allWorkers}
-        isProcessingActionImages={isProcessingActionImages}
-        onActionImageFiles={handleActionImageFiles}
-        onRemoveActionImage={handleRemoveActionImage}
-        onPreviewImage={setPreviewImageModal}
-      />
+      {actionModalData?.isOpen && (
+        <Suspense fallback={null}>
+          <IssueActionModal
+            actionModalData={actionModalData}
+            setActionModalData={setActionModalData}
+            onClose={handleCloseActionModal}
+            onSaveActionResult={handleSaveActionResult}
+            allWorkers={allWorkers}
+            isProcessingActionImages={isProcessingActionImages}
+            onActionImageFiles={handleActionImageFiles}
+            onRemoveActionImage={handleRemoveActionImage}
+            onPreviewImage={setPreviewImageModal}
+          />
+        </Suspense>
+      )}
 
       {/* 🌟 2단계 삭제 인증 모달 */}
-      <DeleteAuthModal
-        deleteModalData={deleteModalData}
-        setDeleteModalData={setDeleteModalData}
-        onConfirmDelete={handleConfirmDelete}
-      />
+      {deleteModalData?.isOpen && (
+        <Suspense fallback={null}>
+          <DeleteAuthModal
+            deleteModalData={deleteModalData}
+            setDeleteModalData={setDeleteModalData}
+            onConfirmDelete={handleConfirmDelete}
+          />
+        </Suspense>
+      )}
 
       {/* 🌟 텔레그램 연동 설정 모달 */}
-      <TelegramConfigModal
-        telegramAdminPinModal={telegramAdminPinModal}
-        setTelegramAdminPinModal={setTelegramAdminPinModal}
-        onVerifyTelegramAdmin={handleVerifyTelegramAdmin}
-        isTelegramModalOpen={isTelegramModalOpen}
-        setIsTelegramModalOpen={setIsTelegramModalOpen}
-        telegramConfig={telegramConfig}
-        setTelegramConfig={setTelegramConfig}
-        onSaveTelegramConfig={handleSaveTelegramConfig}
-        testingTelegram={testingTelegram}
-        onTestTelegram={handleTestTelegram}
-        sendingClosingBriefing={sendingClosingBriefing}
-        onSendDailyClosingBriefing={handleSendDailyClosingBriefing}
-        closingBriefingToast={closingBriefingToast}
-        telegramSavedToast={telegramSavedToast}
-        telegramTestResult={telegramTestResult}
-      />
+      {(telegramAdminPinModal || isTelegramModalOpen) && (
+        <Suspense fallback={null}>
+          <TelegramConfigModal
+            telegramAdminPinModal={telegramAdminPinModal}
+            setTelegramAdminPinModal={setTelegramAdminPinModal}
+            onVerifyTelegramAdmin={handleVerifyTelegramAdmin}
+            isTelegramModalOpen={isTelegramModalOpen}
+            setIsTelegramModalOpen={setIsTelegramModalOpen}
+            telegramConfig={telegramConfig}
+            setTelegramConfig={setTelegramConfig}
+            onSaveTelegramConfig={handleSaveTelegramConfig}
+            testingTelegram={testingTelegram}
+            onTestTelegram={handleTestTelegram}
+            sendingClosingBriefing={sendingClosingBriefing}
+            onSendDailyClosingBriefing={handleSendDailyClosingBriefing}
+            closingBriefingToast={closingBriefingToast}
+            telegramSavedToast={telegramSavedToast}
+            telegramTestResult={telegramTestResult}
+          />
+        </Suspense>
+      )}
 
       {/* 🌟 고화질 사진 미리보기 Lightbox */}
-      <ImagePreviewModal
-        previewImage={previewImageModal}
-        onClose={() => setPreviewImageModal(null)}
-      />
+      {Boolean(previewImageModal) && (
+        <ImagePreviewModal
+          previewImage={previewImageModal}
+          onClose={() => setPreviewImageModal(null)}
+        />
+      )}
     </div>
   );
 };

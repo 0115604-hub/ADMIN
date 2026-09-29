@@ -1,25 +1,39 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import { ArrowUp } from "lucide-react";
 import { Sidebar, ADMIN_TABS } from "./components/Sidebar";
 import { Header } from "./components/Header";
-import { DashboardOverview } from "./components/DashboardOverview";
-import { SalesPurchaseAnalysisView } from "./components/SalesPurchaseAnalysisView";
-import { HanulTaxInvoiceView } from "./components/HanulTaxInvoiceView";
-import { OperatorWorkspace } from "./components/OperatorWorkspace";
-import { WorkerDashboard } from "./components/WorkerDashboard";
-import { ExtrusionDowntimeView } from "./components/ExtrusionDowntimeView";
-import { DailyQualityView } from "./components/DailyQualityView";
-import { OvertimeStatusView } from "./components/OvertimeStatusView";
-import { ElectronicApprovalView } from "./components/ElectronicApprovalView";
-import { TelegramView } from "./components/TelegramView";
-import { SettingsView } from "./components/SettingsView";
-import { TransactionModal } from "./components/TransactionModal";
-import { ExcelUploadModal } from "./components/ExcelUploadModal";
 import { AuthModal } from "./components/AuthModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { runStorageHealthCheck } from "./utils/storageHealthCheck";
 import { useAuth } from "./context/AuthContext";
 import { useMonth } from "./context/MonthContext";
+
+// Lazy-loaded views & modals for near-instant startup & mobile optimization
+const WorkerDashboard = lazy(() => import("./components/WorkerDashboard").then(m => ({ default: m.WorkerDashboard || m.default })));
+const SalesPurchaseAnalysisView = lazy(() => import("./components/SalesPurchaseAnalysisView").then(m => ({ default: m.SalesPurchaseAnalysisView || m.default })));
+const HanulTaxInvoiceView = lazy(() => import("./components/HanulTaxInvoiceView").then(m => ({ default: m.HanulTaxInvoiceView || m.default })));
+const OperatorWorkspace = lazy(() => import("./components/OperatorWorkspace").then(m => ({ default: m.OperatorWorkspace || m.default })));
+const ExtrusionDowntimeView = lazy(() => import("./components/ExtrusionDowntimeView").then(m => ({ default: m.ExtrusionDowntimeView || m.default })));
+const DailyQualityView = lazy(() => import("./components/DailyQualityView").then(m => ({ default: m.DailyQualityView || m.default })));
+const OvertimeStatusView = lazy(() => import("./components/OvertimeStatusView").then(m => ({ default: m.OvertimeStatusView || m.default })));
+const ElectronicApprovalView = lazy(() => import("./components/ElectronicApprovalView").then(m => ({ default: m.ElectronicApprovalView || m.default })));
+const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({ default: m.TelegramView || m.default })));
+const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
+const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
+const ExcelUploadModal = lazy(() => import("./components/ExcelUploadModal").then(m => ({ default: m.ExcelUploadModal || m.default })));
+
+// Smooth view skeleton loader
+const ViewLoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[350px] w-full py-16 animate-fadeIn">
+    <div className="relative w-10 h-10">
+      <div className="absolute inset-0 rounded-full border-2 border-blue-100 dark:border-blue-950 opacity-60"></div>
+      <div className="absolute inset-0 rounded-full border-2 border-blue-600 dark:border-blue-400 border-t-transparent animate-spin"></div>
+    </div>
+    <span className="mt-3.5 text-xs font-semibold text-slate-500 dark:text-slate-400 tracking-tight">
+      화면을 불러오는 중입니다...
+    </span>
+  </div>
+);
 import {
   fetchTransactions,
   addTransaction,
@@ -340,7 +354,7 @@ export const App = () => {
               </div>
             </div>
           ) : (
-            <>
+            <Suspense fallback={<ViewLoadingFallback />}>
               {/* OPERATOR VIEWS (Full-Width Single-Page Experience) */}
               {isOperator && (
                 <>
@@ -461,7 +475,7 @@ export const App = () => {
                   )}
                 </>
               )}
-            </>
+            </Suspense>
           )}
         </main>
       </div>
@@ -479,24 +493,30 @@ export const App = () => {
       )}
 
       {/* Transaction Add/Edit Modal (Admin Only) */}
-      {isAdmin && (
-        <TransactionModal
-          isOpen={modalOpen}
-          onClose={() => {
-            setModalOpen(false);
-            setEditingItem(null);
-          }}
-          onSave={handleSaveTransaction}
-          editingItem={editingItem}
-        />
+      {isAdmin && modalOpen && (
+        <Suspense fallback={null}>
+          <TransactionModal
+            isOpen={modalOpen}
+            onClose={() => {
+              setModalOpen(false);
+              setEditingItem(null);
+            }}
+            onSave={handleSaveTransaction}
+            editingItem={editingItem}
+          />
+        </Suspense>
       )}
 
       {/* Excel Upload Modal */}
-      <ExcelUploadModal
-        isOpen={excelModalOpen}
-        onClose={() => setExcelModalOpen(false)}
-        onBulkUpload={handleBulkUpload}
-      />
+      {excelModalOpen && (
+        <Suspense fallback={null}>
+          <ExcelUploadModal
+            isOpen={excelModalOpen}
+            onClose={() => setExcelModalOpen(false)}
+            onBulkUpload={handleBulkUpload}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

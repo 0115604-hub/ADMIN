@@ -5,18 +5,37 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    touch-action: pan-x pan-y pinch-zoom;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     width: 100%;
   }
   body {
     font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
     width: 100%;
-    touch-action: pan-x pan-y pinch-zoom;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   #root {
     width: 100%;
     min-height: 100vh;
   }
+}
+
+/* GPU Hardware Acceleration Helpers for Smooth Mobile Rendering */
+.gpu-accelerated {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Fast tap response on mobile touch devices */
+button, a, input, select, textarea, [role="button"] {
+  touch-action: manipulation;
 }
 
 /* Custom modern scrollbar */
