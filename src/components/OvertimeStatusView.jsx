@@ -803,16 +803,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     await saveSmartOvertimeData(newLedger);
   };
 
-  // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day for All Filtered Workers
+  // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day (Excluding Calendar Special Work Days)
   const handleSetAllFilteredWorkersSameAsPrevDay = async () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
+
+    // 1. [달력기준 특근일 제외 규칙 1] 현재 선택된 날짜가 특근일(주말/공휴일)인 경우 적용 제외
+    if (isWeekendByDate(selectedDay)) {
+      triggerToast(`⚠️ 달력기준 특근일(9월 ${selectedDay}일 ${getDayOfWeekKorean(selectedDay)}요일 - 주말/공휴일)은 '전일과동일' 적용 대상에서 제외됩니다.`);
+      return;
+    }
+
     if (selectedDay <= 1) {
       triggerToast("⚠️ 1일은 이전 일자 데이터가 존재하지 않습니다.");
       return;
     }
-
-    const currentDt = new Date(2026, 8, selectedDay);
-    const currentDow = currentDt.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
 
     // Helper: checks if a day has any worker attendance configured
     const hasDataOnDay = (d) => {
@@ -823,75 +827,30 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       });
     };
 
+    // 2. [달력기준 특근일 제외 규칙 2] 직전 평일(특근일 제외) 탐색
     let targetSourceDay = null;
 
-    // Case 1: Monday (월요일) -> Look for closest weekday in previous week (금 -> 목 -> 수 -> 화 -> 월)
-    if (currentDow === 1) {
-      for (let offset = 3; offset <= 7; offset++) {
-        const candidate = selectedDay - offset;
-        if (candidate >= 1 && hasDataOnDay(candidate)) {
-          targetSourceDay = candidate;
+    // Search backwards for the closest previous regular weekday (non-weekend, non-holiday) that has data
+    for (let d = selectedDay - 1; d >= 1; d--) {
+      if (!isWeekendByDate(d) && hasDataOnDay(d)) {
+        targetSourceDay = d;
+        break;
+      }
+    }
+
+    // If no prior weekday with data was found, pick the closest preceding weekday
+    if (!targetSourceDay) {
+      for (let d = selectedDay - 1; d >= 1; d--) {
+        if (!isWeekendByDate(d)) {
+          targetSourceDay = d;
           break;
         }
       }
-      if (!targetSourceDay) {
-        // Look for any preceding weekday with data down to day 1
-        for (let d = selectedDay - 1; d >= 1; d--) {
-          const dDt = new Date(2026, 8, d);
-          const dDow = dDt.getDay();
-          if (dDow !== 0 && dDow !== 6 && hasDataOnDay(d)) {
-            targetSourceDay = d;
-            break;
-          }
-        }
-      }
-      if (!targetSourceDay) {
-        targetSourceDay = Math.max(1, selectedDay - 3);
-      }
     }
-    // Case 2: Sunday (일요일) -> Check previous Friday or Thursday
-    else if (currentDow === 0) {
-      for (let offset = 2; offset <= 6; offset++) {
-        const candidate = selectedDay - offset;
-        if (candidate >= 1 && hasDataOnDay(candidate)) {
-          targetSourceDay = candidate;
-          break;
-        }
-      }
-      if (!targetSourceDay) {
-        targetSourceDay = Math.max(1, selectedDay - 2);
-      }
-    }
-    // Case 3: Saturday (토요일) -> Check previous Friday
-    else if (currentDow === 6) {
-      for (let offset = 1; offset <= 5; offset++) {
-        const candidate = selectedDay - offset;
-        if (candidate >= 1 && hasDataOnDay(candidate)) {
-          targetSourceDay = candidate;
-          break;
-        }
-      }
-      if (!targetSourceDay) {
-        targetSourceDay = Math.max(1, selectedDay - 1);
-      }
-    }
-    // Case 4: Tuesday ~ Friday (화~금) -> Check selectedDay - 1, then search backwards if empty
-    else {
-      if (hasDataOnDay(selectedDay - 1)) {
-        targetSourceDay = selectedDay - 1;
-      } else {
-        for (let d = selectedDay - 1; d >= 1; d--) {
-          const dDt = new Date(2026, 8, d);
-          const dDow = dDt.getDay();
-          if (dDow !== 0 && dDow !== 6 && hasDataOnDay(d)) {
-            targetSourceDay = d;
-            break;
-          }
-        }
-        if (!targetSourceDay) {
-          targetSourceDay = selectedDay - 1;
-        }
-      }
+
+    if (!targetSourceDay) {
+      triggerToast("⚠️ 적용 가능한 이전 평일(특근일 제외) 데이터가 존재하지 않습니다.");
+      return;
     }
 
     const sourceDayLabel = getDayOfWeekKorean(targetSourceDay);
@@ -914,6 +873,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         // If source value was empty, "-" or unrecorded, default to regular "🟢" so attendance table visibly reflects data
         if (!sourceVal || sourceVal === "-" || sourceVal === "undefined" || sourceVal === "휴무") {
           sourceVal = "🟢";
+        } else if (sourceVal === "특근" || sourceVal === "주말특근") {
+          // 평일에는 특근 코드를 일반 정시(🟢)로 변환
+          sourceVal = "🟢";
         }
 
         if (sourceVal) appliedCount++;
@@ -933,10 +895,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
 
-    const isMonday = currentDow === 1;
-    const msg = isMonday
-      ? `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전주 평일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다.`
-      : `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 전일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다.`;
+    const msg = `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전 평일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
 
     triggerToast(msg);
     await saveSmartOvertimeData(newLedger);
@@ -1910,7 +1869,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   type="button"
                   onClick={handleSetAllFilteredWorkersSameAsPrevDay}
                   className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-indigo-500 ring-2 ring-indigo-400/20"
-                  title={`전일(9월 ${selectedDay > 1 ? selectedDay - 1 : 1}일)과 동일한 근태를 현재 선택된 9월 ${selectedDay}일에 일괄 적용합니다`}
+                  title={`달력기준 특근일(주말/공휴일)을 제외하고 직전 평일과 동일한 근태를 9월 ${selectedDay}일에 일괄 적용합니다`}
                 >
                   <Copy className="w-3.5 h-3.5" />
                   <span>📋 전일과동일</span>
