@@ -739,7 +739,7 @@ export const removeApprovalDocSilently = async (id) => {
 // 주말 (토~일) 또는 특근 지정: 특근보고서 취합 (Overtime)
 
 const KNOWN_MANAGERS = [
-  "이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "우창용", "오상민", "권태형", "최미영"
+  "이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "우창용", "오상민", "TEST", "권태형", "최미영"
 ];
 
 export const syncPlantOvertimeToApprovalBox = async ({

@@ -73,7 +73,8 @@ export const WRITER_PLANT_MAP = {
   "우창용": "한림공장",
   "오상민": "한림공장",
   "부림텍": "한림공장",
-  "한울": "한림공장"
+  "한울": "한림공장",
+  "TEST": "한림공장"
 };
 
 // Ensure log has correct authoritative approval status (Respects individual status strictly)

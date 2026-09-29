@@ -58,10 +58,10 @@ export const PLANTS = [
     badgeColor: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300",
     workers: [
       { id: "hal_dw", name: "김동욱", title: "책임", plant: "한림공장", assignedProcess: "총괄관리", role: "OPERATOR", avatar: "김", pin: "11" },
-      { id: "hal_cy", name: "우창용", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "우", pin: "11" },
       { id: "hal_sm", name: "오상민", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "오", pin: "11" },
       { id: "hal_br", name: "부림텍", title: "협력업체", plant: "한림공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "부", pin: "11", isPartner: true },
-      { id: "hal_hu", name: "한울", title: "협력업체", plant: "한림공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "한", pin: "11", isPartner: true }
+      { id: "hal_hu", name: "한울", title: "협력업체", plant: "한림공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "한", pin: "11", isPartner: true },
+      { id: "hal_test", name: "TEST", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "T", pin: "11" }
     ]
   }
 ];
