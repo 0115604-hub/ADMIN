@@ -1450,7 +1450,7 @@ export const AuthModal = () => {
       )}
 
       {/* 🌟 텔레그램 연동 설정 모달 */}
-      {(telegramAdminPinModal || isTelegramModalOpen) && (
+      {Boolean(telegramAdminPinModal?.isOpen || isTelegramModalOpen) && (
         <Suspense fallback={null}>
           <TelegramConfigModal
             telegramAdminPinModal={telegramAdminPinModal}

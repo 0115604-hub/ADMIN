@@ -178,8 +178,8 @@ import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 
 // Lazy-loaded on-demand heavy modals
-const HanulSettlementModal = lazy(() => import("./HanulSettlementModal"));
-const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal"));
+const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
+const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal").then(m => ({ default: m.RecentWorkLogsSummaryModal || m.default })));
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
