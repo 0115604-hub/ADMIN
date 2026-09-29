@@ -49,6 +49,7 @@ import {
   subscribeTelegramConfig
 } from "./services/telegramService";
 import { pushModalHistory, closeAllModals, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
+import { initVersionWatcher, forceHardReload } from "./utils/versionCheck";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
@@ -60,9 +61,23 @@ export const App = () => {
   const [dataSource, setDataSource] = useState("local");
   const [modalOpen, setModalOpen] = useState(false);
   const [excelModalOpen, setExcelModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTopBtn, setShowTopBtn] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  // Auto version detection and cache synchronization
+  useEffect(() => {
+    const unsub = initVersionWatcher((newVer) => {
+      setUpdateAvailable(true);
+      // Auto reload after 2.5s if modal is not open
+      setTimeout(() => {
+        if (!modalOpenRef.current && !excelModalOpenRef.current) {
+          forceHardReload();
+        }
+      }, 2500);
+    });
+    return () => unsub();
+  }, []);
 
   // Synchronized refs to avoid stale closures in global popstate handler
   const activeTabRef = useRef(activeTab);
@@ -311,6 +326,19 @@ export const App = () => {
 
   return (
     <div className="flex min-h-screen max-w-full overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      {/* ⚡ Real-time Version & Cache Sync Banner */}
+      {updateAvailable && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40 animate-bounce">
+          <span>⚡ 최신 초고속 버전이 배포되었습니다.</span>
+          <button
+            onClick={() => forceHardReload()}
+            className="px-3 py-1 rounded-full bg-white text-blue-700 font-extrabold hover:bg-blue-50 active:scale-95 transition-all cursor-pointer shadow-xs"
+          >
+            지금 즉시 적용
+          </button>
+        </div>
+      )}
+
       {/* Sidebar (Admin Only - Desktop & Mobile Drawer) */}
       {!isOperator && (
         <Sidebar

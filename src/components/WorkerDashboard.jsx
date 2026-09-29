@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, Suspense, lazy } from "react";
 import {
   Factory,
   Calendar,
@@ -175,9 +175,11 @@ import {
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
 import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
-import HanulSettlementModal from "./HanulSettlementModal";
-import RecentWorkLogsSummaryModal from "./RecentWorkLogsSummaryModal";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
+
+// Lazy-loaded on-demand heavy modals
+const HanulSettlementModal = lazy(() => import("./HanulSettlementModal"));
+const RecentWorkLogsSummaryModal = lazy(() => import("./RecentWorkLogsSummaryModal"));
 
 // 30분 단위 시간 선택 목록 (종일 + 24시간 30분 간격)
 const TIME_OPTIONS_30MIN = [
@@ -9838,23 +9840,31 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       })()}
 
       {/* 🌟 최근일 기준 전작업자 일일 업무일지 종합 요약 팝업 모달 */}
-      <RecentWorkLogsSummaryModal
-        isOpen={isWorkLogsSummaryModalOpen}
-        onClose={() => setIsWorkLogsSummaryModalOpen(false)}
-        workLogs={workLogs}
-        onOpenIndividualLog={(log) => {
-          setIsWorkLogsSummaryModalOpen(false);
-          handleOpenLogDetail(log);
-        }}
-        onNavigateTab={onNavigateTab}
-      />
+      {isWorkLogsSummaryModalOpen && (
+        <Suspense fallback={null}>
+          <RecentWorkLogsSummaryModal
+            isOpen={isWorkLogsSummaryModalOpen}
+            onClose={() => setIsWorkLogsSummaryModalOpen(false)}
+            workLogs={workLogs}
+            onOpenIndividualLog={(log) => {
+              setIsWorkLogsSummaryModalOpen(false);
+              handleOpenLogDetail(log);
+            }}
+            onNavigateTab={onNavigateTab}
+          />
+        </Suspense>
+      )}
 
       {/* 🌟 한울 전월 정산표 및 공통비/지출공제 등록 모달 */}
-      <HanulSettlementModal
-        isOpen={isHanulSettlementModalOpen}
-        onClose={() => setIsHanulSettlementModalOpen(false)}
-        initialMonth={getPreviousYearMonth(selectedMonth || "2026-09")}
-      />
+      {isHanulSettlementModalOpen && (
+        <Suspense fallback={null}>
+          <HanulSettlementModal
+            isOpen={isHanulSettlementModalOpen}
+            onClose={() => setIsHanulSettlementModalOpen(false)}
+            initialMonth={getPreviousYearMonth(selectedMonth || "2026-09")}
+          />
+        </Suspense>
+      )}
 
     </div>
   );

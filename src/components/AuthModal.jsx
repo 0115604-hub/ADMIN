@@ -36,6 +36,7 @@ import {
 } from "../services/telegramService";
 import { compressImage } from "../utils/imageCompressor";
 import { pushModalHistory, subscribeCloseAllModals, useModalHistory } from "../utils/modalHistory";
+import { initVersionWatcher, forceHardReload } from "../utils/versionCheck";
 
 // Eager Essential Components for Login Screen
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
@@ -56,6 +57,19 @@ export const AuthModal = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  // Auto version detection and cache synchronization on login screen
+  useEffect(() => {
+    const unsub = initVersionWatcher(() => {
+      setUpdateAvailable(true);
+      setTimeout(() => {
+        forceHardReload();
+      }, 2500);
+    });
+    return () => unsub();
+  }, []);
+
   const [annualLeaves, setAnnualLeaves] = useState(() => getAnnualLeaves());
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
 
@@ -1219,6 +1233,19 @@ export const AuthModal = () => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
+      {/* ⚡ Real-time Version & Cache Sync Banner */}
+      {updateAvailable && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl flex items-center gap-3 text-xs font-bold border border-blue-300/40 animate-bounce">
+          <span>⚡ 최신 초고속 버전이 배포되었습니다.</span>
+          <button
+            onClick={() => forceHardReload()}
+            className="px-3 py-1 rounded-full bg-white text-blue-700 font-extrabold hover:bg-blue-50 active:scale-95 transition-all cursor-pointer shadow-xs"
+          >
+            지금 즉시 적용
+          </button>
+        </div>
+      )}
+
       {/* Background Ambient Glow Orbs */}
       <div className="fixed w-96 h-96 -top-20 -left-20 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="fixed w-96 h-96 -bottom-20 -right-20 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
