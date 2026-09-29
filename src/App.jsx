@@ -64,6 +64,7 @@ export const App = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showTopBtn, setShowTopBtn] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
   // Auto version detection and cache synchronization
   useEffect(() => {
