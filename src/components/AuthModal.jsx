@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
-import { useAuth, ADMIN_USERS, PLANTS } from "../context/AuthContext";
+import { useAuth, ADMIN_USERS, PLANTS, EXTRUSION_WORKERS } from "../context/AuthContext";
 import {
   getAnnualLeaves,
   subscribeAnnualLeaves,
@@ -54,7 +54,8 @@ import {
   Layers,
   Factory,
   ChevronRight,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from "lucide-react";
 
 // Lazy-loaded On-Demand Sub-Modals
@@ -75,6 +76,7 @@ export const AuthModal = () => {
   });
   const [isSevereDisasterModalOpen, setIsSevereDisasterModalOpen] = useState(false);
   const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
+  const [isExtrusionModalOpen, setIsExtrusionModalOpen] = useState(false);
   const [firstPageToast, setFirstPageToast] = useState("");
 
   const [selectedUser, setSelectedUser] = useState(null);
@@ -1283,6 +1285,7 @@ export const AuthModal = () => {
   useModalHistory(isTelegramModalOpen, () => setIsTelegramModalOpen(false), "telegramConfigModal");
   useModalHistory(Boolean(telegramAdminPinModal?.isOpen), () => setTelegramAdminPinModal((prev) => ({ ...prev, isOpen: false })), "telegramAdminPinModal");
   useModalHistory(Boolean(previewImageModal), () => setPreviewImageModal(null), "previewImageModal");
+  useModalHistory(isExtrusionModalOpen, () => setIsExtrusionModalOpen(false), "extrusionModal");
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-slate-950/85 backdrop-blur-xl animate-fadeIn p-2 sm:p-4 py-2 sm:py-8 flex justify-center items-start min-h-screen max-w-full">
@@ -1318,115 +1321,56 @@ export const AuthModal = () => {
             </div>
           )}
 
-          {/* Header Brand with Left-aligned Logo + Right-aligned [압출동] / [가공동] Segmented Tab */}
-          <div className="mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            {/* Left: Logo & Brand Title */}
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div
-                onClick={() => handleUserClick(ADMIN_USERS[0])}
-                className="relative cursor-pointer group active:scale-95 transition-transform shrink-0"
-                title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
-              >
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl blur-xs opacity-40 group-hover:opacity-80 transition-opacity animate-pulse"></div>
-                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-md border border-slate-200/80 dark:border-slate-700 flex items-center justify-center group-hover:border-blue-400 transition-all">
-                  <OryukLogo className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 leading-tight">
-                  <span className="text-blue-600 dark:text-blue-400">(주)오륙</span>
-                  <span>생산관리 통합시스템</span>
-                </h2>
-                <p className="text-[10.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 font-bold">
-                  현장 모바일 실시간 업무포털 • 안전 및 품질 공유
-                </p>
+          {/* Header Brand with Clickable OryukLogo (Original Centered Layout) */}
+          <div className="text-center mb-3 sm:mb-4 flex flex-col items-center">
+            <div
+              onClick={() => handleUserClick(ADMIN_USERS[0])}
+              className="relative mb-2 cursor-pointer group active:scale-95 transition-transform"
+              title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
+            >
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl sm:rounded-3xl blur-md opacity-40 group-hover:opacity-80 transition-opacity animate-pulse"></div>
+              <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 sm:p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center group-hover:border-blue-400 group-hover:shadow-blue-500/25 transition-all">
+                <OryukLogo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md group-hover:scale-105 transition-transform" />
               </div>
             </div>
 
-            {/* Right: [🏭 압출동] vs [⚙️ 가공동] Selector Tab */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs self-stretch sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setFactoryBuildingTab("extrusion")}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  factoryBuildingTab === "extrusion"
-                    ? "bg-teal-600 text-white shadow-md shadow-teal-500/25 ring-2 ring-teal-400/30 scale-102"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <Cpu className="w-4 h-4" />
-                <span>🏭 압출동</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFactoryBuildingTab("processing")}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  factoryBuildingTab === "processing"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-400/30 scale-102"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>⚙️ 가공동</span>
-              </button>
-            </div>
+            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
+              <span className="text-blue-600 dark:text-blue-400">
+                (주)오륙
+              </span>
+              <span>생산관리 통합시스템</span>
+            </h2>
           </div>
 
-          {/* 🌟 3 Clean Quick Access Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 mb-3">
-            {/* Quick 1: 중대재해 공유판 */}
+          {/* 🏭 [압출동 전용 포털] 삼랑진/한림 가공동과 별도로 독립 분리 운영 */}
+          <div className="mb-3">
             <button
               type="button"
-              onClick={() => setIsSevereDisasterModalOpen(true)}
-              className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500/15 to-rose-500/5 dark:from-rose-950/50 dark:to-slate-900 border border-rose-300/80 dark:border-rose-900/60 hover:border-rose-400 dark:hover:border-rose-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
+              onClick={() => setIsExtrusionModalOpen(true)}
+              className="w-full py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-teal-800 hover:from-teal-700 hover:to-teal-900 text-white shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center justify-between gap-2 active:scale-98 cursor-pointer group"
             >
-              <span className="font-black text-xs sm:text-sm text-rose-950 dark:text-rose-200">
-                중대재해 공유판
-              </span>
-              <ChevronRight className="w-4 h-4 text-rose-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-
-            {/* Quick 2: 품질정보 • 사내공지 */}
-            <button
-              type="button"
-              onClick={() => {
-                setLedgerCategoryTab(qualityAlertCount > 0 ? "quality_alert" : "all");
-                setSelectedListItem(null);
-                setIssueModalPage(1);
-                setIsListModalOpen(true);
-              }}
-              className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/15 to-amber-500/5 dark:from-amber-950/50 dark:to-slate-900 border border-amber-300/80 dark:border-amber-900/60 hover:border-amber-400 dark:hover:border-amber-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
-            >
-              <span className="font-black text-xs sm:text-sm text-amber-950 dark:text-amber-200">
-                품질정보 • 사내공지
-              </span>
-              <ChevronRight className="w-4 h-4 text-amber-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-
-            {/* Quick 3: 압출 작업일보 작성 / 가공 작업일지 작성 */}
-            <button
-              type="button"
-              onClick={() => {
-                if (factoryBuildingTab === "extrusion") {
-                  setIsExtrusionReportModalOpen(true);
-                } else {
-                  setFirstPageToast("아래 가공동 작업자 중 본인 이름을 클릭하여 일지를 작성하세요.");
-                  setTimeout(() => setFirstPageToast(""), 3500);
-                }
-              }}
-              className={`py-2.5 px-4 rounded-2xl border shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between ${
-                factoryBuildingTab === "extrusion"
-                  ? "bg-gradient-to-r from-teal-500/15 to-teal-500/5 dark:from-teal-950/50 dark:to-slate-900 border-teal-300 dark:border-teal-800 hover:border-teal-500 text-teal-950 dark:text-teal-200"
-                  : "bg-gradient-to-r from-blue-500/15 to-blue-500/5 dark:from-blue-950/50 dark:to-slate-900 border-blue-300 dark:border-blue-800 hover:border-blue-500 text-blue-950 dark:text-blue-200"
-              }`}
-            >
-              <span className="font-black text-xs sm:text-sm">
-                {factoryBuildingTab === "extrusion" ? "압출 작업일보 작성" : "가공 작업일지 작성"}
-              </span>
-              <ChevronRight className={`w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0 ${
-                factoryBuildingTab === "extrusion" ? "text-teal-500" : "text-blue-500"
-              }`} />
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-1.5 rounded-xl bg-white/20 text-white shrink-0 group-hover:scale-110 transition-transform">
+                  <Cpu className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <div className="text-left min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-black text-xs sm:text-sm tracking-tight text-white">
+                      🏭 삼랑진공장 압출동 전용 포털
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/60 border border-teal-300/60 text-teal-100">
+                      공영국 외 10명 • 비번: 11
+                    </span>
+                  </div>
+                  <span className="text-[10.5px] sm:text-[11px] text-teal-100 font-medium block truncate">
+                    압출 작업일보 실시간 작성 • 주간 비가동 및 생산실적 분석 바로가기
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0 font-black text-xs sm:text-sm text-teal-200 group-hover:text-white transition-colors">
+                <span>압출동 입장</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </div>
             </button>
           </div>
 
@@ -1639,6 +1583,79 @@ export const AuthModal = () => {
           previewImage={previewImageModal}
           onClose={() => setPreviewImageModal(null)}
         />
+      )}
+
+      {/* 🏭 삼랑진공장 압출동 작업자 전용 팝업 선택 모달 (별도 분리 운영) */}
+      {isExtrusionModalOpen && (
+        <div
+          onClick={() => setIsExtrusionModalOpen(false)}
+          className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-3 animate-fadeIn"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl border-2 border-teal-400 dark:border-teal-700 shadow-2xl p-4 sm:p-5 space-y-3.5 animate-scaleUp relative"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-teal-600 text-white shadow-xs">
+                  <Cpu className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight">
+                    삼랑진공장 압출동 작업자 (11명)
+                  </h3>
+                  <span className="text-xs font-bold text-teal-700 dark:text-teal-300">
+                    비밀번호: 11 • 안전·품질 확인 후 압출 생산관리 입장
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsExtrusionModalOpen(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+              본인 이름을 터치하시면 안전공유판과 품질이슈를 확인한 후 압출 생산관리 화면으로 바로 연결됩니다.
+            </p>
+
+            <div className="grid grid-cols-4 gap-1.5">
+              {EXTRUSION_WORKERS.map((worker) => {
+                const isLead = worker.title === "반장" || worker.name === "공영국";
+                return (
+                  <button
+                    key={worker.id}
+                    onClick={() => {
+                      setIsExtrusionModalOpen(false);
+                      handleUserClick(worker);
+                    }}
+                    className={`min-h-[44px] rounded-xl border-2 overflow-hidden flex items-stretch shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-left min-w-0 transition-all cursor-pointer p-0 ${
+                      isLead
+                        ? "border-teal-500 bg-teal-700 text-white shadow-md"
+                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-teal-400"
+                    }`}
+                  >
+                    <div className={`w-[45%] flex items-center justify-center px-1 text-center shrink-0 ${
+                      isLead ? "bg-teal-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    }`}>
+                      <span className="font-black text-xs tracking-tight truncate">
+                        {worker.name}
+                      </span>
+                    </div>
+                    <div className={`w-[55%] flex items-center justify-center text-center px-1 py-0.5 ${
+                      isLead ? "bg-teal-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                    }`}>
+                      <span className="text-[11px] font-bold">{worker.title || "사원"}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 🚨 중대재해 안전보건 공유 모달 */}
