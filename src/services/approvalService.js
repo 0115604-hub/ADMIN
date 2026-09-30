@@ -56,7 +56,8 @@ export const APPROVAL_MANAGERS = {
     { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리" }
   ],
   DIRECTORS: [
-    { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" }
+    { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" },
+    { name: "최미영", title: "전무", plant: "본사", process: "한림공장 결재승인권한" }
   ],
   CEO: [
     { name: "권태형", title: "대표이사", plant: "본사", process: "대표이사" },
@@ -64,22 +65,39 @@ export const APPROVAL_MANAGERS = {
   ]
 };
 
-// Clean and Normalize Document: ensure role '이사' is always '이명재' and content has manager/worker split
+// Clean and Normalize Document: ensure role '이사' allows '이명재' or '최미영' (한림공장)
 // ⭐ 결재 자동 승인 방지: 4단계 모두 실제로 승인되지 않은 문서는 절대 APPROVED 상태가 되지 않도록 방어
 export const normalizeApprovalDoc = (d) => {
   if (!d) return d;
+  const isHanlim = d.plant === "한림공장";
   const fixedSteps = (d.steps || []).map((st) => {
     if (st.role === "이사") {
+      const isApprovedByChoi = st.name === "최미영";
+      const isApprovedByLee = st.name === "이명재";
+      let normName = "이명재";
+      let normTitle = "이사";
+
+      if (isApprovedByChoi) {
+        normName = "최미영";
+        normTitle = "전무";
+      } else if (isApprovedByLee) {
+        normName = "이명재";
+        normTitle = "이사";
+      } else if (isHanlim) {
+        normName = st.name || "이명재/최미영";
+        normTitle = st.date ? "이사" : "이사/전무";
+      }
+
       return {
         ...st,
-        name: "이명재",
-        title: "이사"
+        name: normName,
+        title: normTitle
       };
     }
     if (st.role === "대표") {
       return {
         ...st,
-        name: st.name === "최미영" ? "최미영" : "대표이사",
+        name: st.name === "최미영" ? "최미영" : (st.name || "대표이사"),
         title: st.name === "최미영" ? "전무" : "대표"
       };
     }
@@ -171,6 +189,9 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
     }
   }
 
+  const isHanlim = plant === "한림공장";
+  const step3Name = isHanlim ? "이명재/최미영" : "이명재";
+  const step3Title = isHanlim ? "이사/전무" : "이사";
   const ceoTitle = ceoName === "최미영" ? "전무" : "대표이사";
 
   return [
@@ -199,8 +220,8 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
     },
     {
       role: "이사",
-      name: "이명재",
-      title: "이사",
+      name: step3Name,
+      title: step3Title,
       status: "WAITING",
       date: "",
       comment: ""
@@ -438,14 +459,48 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 4. Step 3: 이사 (직급이 '이사'인 임원: 이명재 이사)
+  // 4. Step 3: 이사 (직급이 '이사'인 임원: 이명재 이사 또는 한림공장의 경우 최미영 전무도 승인 가능)
   if (stepRole === "이사") {
-    if (userName === "이명재" || userTitle === "이사") {
+    const isHanlimDoc = docItem.plant === "한림공장";
+
+    if (isHanlimDoc) {
+      // 한림공장의 결재문서는 이명재 이사 또는 최미영 전무가 승인 가능
+      if (
+        userName === "이명재" ||
+        userName === "최미영" ||
+        userTitle === "이사" ||
+        userTitle === "전무" ||
+        isAdmin
+      ) {
+        let approver = "이명재";
+        if (userName === "최미영" || userTitle === "전무" || currentProfile?.id === "admin_choi") {
+          approver = "최미영";
+        } else if (userName === "이명재" || userTitle === "이사") {
+          approver = "이명재";
+        } else if (isAdmin) {
+          approver = currentProfile?.name === "최미영" ? "최미영" : "이명재";
+        }
+
+        return {
+          canApprove: true,
+          stepIndex: activeStepIdx,
+          stepRole,
+          approverName: approver
+        };
+      }
+      return {
+        canApprove: false,
+        reason: "[한림공장 결재] 이명재 이사 또는 최미영 전무 결재 권한이 필요합니다."
+      };
+    }
+
+    // 삼랑진공장 등 기본
+    if (userName === "이명재" || userTitle === "이사" || isAdmin) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
         stepRole,
-        approverName: "이명재"
+        approverName: userName === "이명재" ? "이명재" : (isAdmin ? (currentProfile?.name || "이명재") : "이명재")
       };
     }
     return {
@@ -562,9 +617,15 @@ export const approveDocumentStep = async (docId, stepIndex, approverName, commen
 
   const updatedSteps = target.steps.map((st, idx) => {
     if (idx === stepIndex) {
+      let finalTitle = st.title;
+      if (approverName === "최미영") finalTitle = "전무";
+      else if (approverName === "이명재") finalTitle = "이사";
+      else if (approverName === "권태형") finalTitle = "대표이사";
+
       return {
         ...st,
         name: approverName || st.name,
+        title: finalTitle || st.title,
         status: "APPROVED",
         date: nowStr,
         comment: comment || "승인"
@@ -616,9 +677,15 @@ export const holdDocumentStep = async (docId, stepIndex, holderName, holdReason)
 
   const updatedSteps = target.steps.map((st, idx) => {
     if (idx === stepIndex) {
+      let finalTitle = st.title;
+      if (holderName === "최미영") finalTitle = "전무";
+      else if (holderName === "이명재") finalTitle = "이사";
+      else if (holderName === "권태형") finalTitle = "대표이사";
+
       return {
         ...st,
         name: holderName || st.name,
+        title: finalTitle || st.title,
         status: "HOLD",
         date: nowStr,
         comment: holdReason || "보류"
@@ -661,9 +728,15 @@ export const rejectDocumentStep = async (docId, stepIndex, rejectorName, rejectR
 
   const updatedSteps = target.steps.map((st, idx) => {
     if (idx === stepIndex) {
+      let finalTitle = st.title;
+      if (rejectorName === "최미영") finalTitle = "전무";
+      else if (rejectorName === "이명재") finalTitle = "이사";
+      else if (rejectorName === "권태형") finalTitle = "대표이사";
+
       return {
         ...st,
         name: rejectorName || st.name,
+        title: finalTitle || st.title,
         status: "REJECTED",
         date: nowStr,
         comment: rejectReason || "반려"
@@ -1070,10 +1143,11 @@ ${taskHeader}`;
       const isStep2Approved = priorSteps[2]?.status === "APPROVED";
       const isStep2Hold = priorSteps[2]?.status === "HOLD";
       const isStep2Rejected = priorSteps[2]?.status === "REJECTED";
+      const isHanlim = targetPlant === "한림공장";
       const step2 = {
         role: "이사",
-        name: "이명재",
-        title: "이사",
+        name: priorSteps[2]?.name || (isHanlim ? "이명재/최미영" : "이명재"),
+        title: priorSteps[2]?.title || (isHanlim && !isStep2Approved ? "이사/전무" : (priorSteps[2]?.name === "최미영" ? "전무" : "이사")),
         status: isStep2Approved ? "APPROVED" : (isStep2Hold ? "HOLD" : (isStep2Rejected ? "REJECTED" : (isStep1Approved ? "PENDING" : "WAITING"))),
         date: priorSteps[2]?.date || "",
         comment: priorSteps[2]?.comment || ""

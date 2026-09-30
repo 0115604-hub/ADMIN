@@ -632,7 +632,7 @@ export const ElectronicApprovalView = () => {
                 )}
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 자동결재선 적용
+                담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재 / 한림공장: 최미영 전무 승인가능) ➔ 대표(대표이사) 자동결재선 적용
               </p>
             </div>
           </div>
@@ -1697,9 +1697,11 @@ export const ElectronicApprovalView = () => {
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
                     <span className="text-[9.5px] font-bold text-slate-400 block">3. 이사 (임원)</span>
                     <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
-                      이명재 이사
+                      {draftForm.plant === "한림공장" ? "이명재 / 최미영" : "이명재 이사"}
                     </strong>
-                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">총괄 이사</span>
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">
+                      {draftForm.plant === "한림공장" ? "이사 / 전무 승인" : "총괄 이사"}
+                    </span>
                   </div>
 
                   {/* 4. 대표 (CEO/전무 선택) */}
