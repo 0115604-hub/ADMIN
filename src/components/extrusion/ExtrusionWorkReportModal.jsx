@@ -16,7 +16,6 @@ import {
   Moon,
   Zap,
   Activity,
-  Search,
   Check,
   ChevronDown
 } from "lucide-react";
@@ -52,9 +51,9 @@ export const ExtrusionWorkReportModal = ({
       lineName: "PCM #1 LINE",
       worker: "공영국 대리",
       subWorkers: "",
-      vehicle: "MCA",
+      vehicle: "BC4T",
       itemCode: "",
-      itemName: "HOOD A",
+      itemName: "D/SIDE D",
       targetQty: 4000,
       actualQty: 3950,
       goodQty: 3880,
@@ -69,45 +68,19 @@ export const ExtrusionWorkReportModal = ({
   });
 
   const [errors, setErrors] = useState({});
-  const [itemSearchQuery, setItemSearchQuery] = useState("");
-  const [selectedVehicleFilter, setSelectedVehicleFilter] = useState("all");
 
   // Items for currently active line (PCM1, PCM3, PVC, TPE)
   const activeLineItems = useMemo(() => {
     return getItemsByLine(formData.lineId || "pcm1");
   }, [formData.lineId]);
 
-  // Unique vehicles for currently active line (sorted alphabetically)
-  const lineUniqueVehicles = useMemo(() => {
-    const set = new Set();
-    activeLineItems.forEach((it) => {
-      if (it.vehicle) set.add(it.vehicle);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "ko-KR"));
-  }, [activeLineItems]);
-
-  // Filtered items by search query and vehicle filter
-  const filteredLineItems = useMemo(() => {
-    let list = activeLineItems;
-    if (selectedVehicleFilter !== "all") {
-      list = list.filter((it) => it.vehicle === selectedVehicleFilter);
-    }
-    if (itemSearchQuery.trim()) {
-      const q = itemSearchQuery.toLowerCase().trim();
-      list = list.filter((it) =>
-        it.vehicle?.toLowerCase().includes(q) ||
-        it.itemName?.toLowerCase().includes(q) ||
-        it.label?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [activeLineItems, selectedVehicleFilter, itemSearchQuery]);
-
   useEffect(() => {
     if (isOpen) {
       if (initialData) {
         setFormData({ ...initialData });
       } else {
+        const pcm1Items = getItemsByLine("pcm1");
+        const defaultItem = pcm1Items[0] || { vehicle: "BC4T", itemName: "D/SIDE D" };
         setFormData({
           date: todayStr,
           shift: "주간",
@@ -116,9 +89,9 @@ export const ExtrusionWorkReportModal = ({
           lineName: "PCM #1 LINE",
           worker: "공영국 대리",
           subWorkers: "",
-          vehicle: "MCA",
+          vehicle: defaultItem.vehicle,
           itemCode: "",
-          itemName: "HOOD A",
+          itemName: defaultItem.itemName,
           targetQty: 4000,
           actualQty: 3950,
           goodQty: 3880,
@@ -132,8 +105,6 @@ export const ExtrusionWorkReportModal = ({
         });
       }
       setErrors({});
-      setItemSearchQuery("");
-      setSelectedVehicleFilter("all");
     }
   }, [isOpen, initialData]);
 
@@ -151,13 +122,15 @@ export const ExtrusionWorkReportModal = ({
 
   const handleLineSelect = (lineId) => {
     const opt = EXTRUSION_LINE_OPTIONS.find((l) => l.id === lineId);
+    const lineItems = getItemsByLine(lineId);
+    const firstItem = lineItems[0];
     setFormData((prev) => ({
       ...prev,
       lineId,
-      lineName: opt ? opt.name : lineId
+      lineName: opt ? opt.name : lineId,
+      vehicle: firstItem ? firstItem.vehicle : prev.vehicle,
+      itemName: firstItem ? firstItem.itemName : prev.itemName
     }));
-    setSelectedVehicleFilter("all");
-    setItemSearchQuery("");
   };
 
   const handleItemSelect = (itemId) => {
@@ -170,13 +143,6 @@ export const ExtrusionWorkReportModal = ({
         itemName: found.itemName
       }));
     }
-  };
-
-  const handleWorkerSelect = (w) => {
-    setFormData((prev) => ({
-      ...prev,
-      worker: `${w.name} ${w.title}`
-    }));
   };
 
   const handleNumberChange = (field, value) => {
@@ -198,8 +164,8 @@ export const ExtrusionWorkReportModal = ({
     const newErrors = {};
 
     if (!formData.date) newErrors.date = "작업일자를 입력해주세요.";
-    if (!formData.worker) newErrors.worker = "작업자를 입력해주세요.";
-    if (!formData.vehicle) newErrors.vehicle = "차종을 선택해주세요.";
+    if (!formData.worker) newErrors.worker = "작업자를 선택해주세요.";
+    if (!formData.vehicle || !formData.itemName) newErrors.vehicle = "생산 아이템을 드롭다운에서 선택해주세요.";
     if (Number(formData.actualQty) < 0) newErrors.actualQty = "생산수량을 확인해주세요.";
 
     if (Object.keys(newErrors).length > 0) {
@@ -249,7 +215,7 @@ export const ExtrusionWorkReportModal = ({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-100 text-xs sm:text-sm">
-          {/* Section 1: Basic Info (Line, Shift, Date, Worker) */}
+          {/* Section 1: Basic Info (Line, Shift, Date, Worker Dropdown) */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
             <div className="flex items-center justify-between">
               <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
@@ -261,7 +227,7 @@ export const ExtrusionWorkReportModal = ({
               </span>
             </div>
 
-            {/* Line Selection Badges */}
+            {/* Line Selection Badges (PCM1, PCM3, PVC, TPE) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {EXTRUSION_LINE_OPTIONS.map((l) => {
                 const isSel = formData.lineId === l.id;
@@ -346,230 +312,120 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               </div>
 
-              {/* Worker Preset Quick Pick */}
+              {/* 🌟 Worker Selection Dropdown (작업자 드롭다운 선택) */}
               <div>
                 <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  작업조장 / 작업자 *
+                  작업조장 / 작업자 (드롭다운 선택) *
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.worker}
                   onChange={(e) => setFormData({ ...formData, worker: e.target.value })}
-                  placeholder="예: 공영국 대리"
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
-                />
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border-2 border-teal-500 font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-hidden cursor-pointer shadow-xs text-xs sm:text-sm"
+                >
+                  <option value="">-- 작업자를 선택하세요 --</option>
+                  {WORKER_PRESETS.map((w) => (
+                    <option key={w.name} value={`${w.name} ${w.title}`}>
+                      {w.name} {w.title} ({w.role})
+                    </option>
+                  ))}
+                  <option value="TEST">TEST</option>
+                </select>
                 {errors.worker && <p className="text-rose-500 text-[10px] mt-0.5">{errors.worker}</p>}
               </div>
             </div>
-
-            {/* Quick Worker Chips */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-1">
-              <span className="text-[10px] font-bold text-slate-400">빠른 작업자 선택:</span>
-              {WORKER_PRESETS.slice(0, 8).map((w) => (
-                <button
-                  key={w.name}
-                  type="button"
-                  onClick={() => handleWorkerSelect(w)}
-                  className={`text-[10.5px] px-2 py-0.5 rounded-lg font-bold transition cursor-pointer border ${
-                    formData.worker.includes(w.name)
-                      ? "bg-teal-100 text-teal-800 border-teal-400 dark:bg-teal-950 dark:text-teal-300 font-black"
-                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
-                  }`}
-                >
-                  {w.name} {w.title}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Section 2: Vehicle & Part Info with Line Badges and Dropdown */}
+          {/* Section 2: Part Info with Line Badges and Initial-Sorted Dropdown */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                 <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                ② 생산 품목 및 차종 (라인별 아이템 드롭다운)
+                ② 생산 품목 (라인별 뱃지 및 아이템 드롭다운 선택)
               </span>
               <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300">
                 선택 라인: {EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.shortName || formData.lineId} ({activeLineItems.length}개 품목)
               </span>
             </div>
 
-            {/* Line Badges Selector */}
-            <div className="flex items-center gap-1.5 flex-wrap pb-1">
-              <span className="text-[10.5px] font-bold text-slate-500">라인 뱃지:</span>
+            {/* Line Badges Selector (PCM1, PCM3, PVC, TPE) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {EXTRUSION_LINE_OPTIONS.map((l) => {
                 const isSel = formData.lineId === l.id;
+                const activeBg =
+                  l.id === "pcm1" ? "bg-teal-600 text-white border-teal-700 shadow-md ring-2 ring-teal-300/50" :
+                  l.id === "pcm3" ? "bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-300/50" :
+                  l.id === "pvc" ? "bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-300/50" :
+                  "bg-purple-600 text-white border-purple-700 shadow-md ring-2 ring-purple-300/50";
+
                 return (
                   <button
                     key={l.id}
                     type="button"
                     onClick={() => handleLineSelect(l.id)}
-                    className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer border flex items-center gap-1.5 ${
+                    className={`py-2 px-3 rounded-2xl font-black text-xs transition-all border cursor-pointer flex items-center justify-between gap-1.5 ${
                       isSel
-                        ? l.id === "pcm1" ? "bg-teal-600 text-white border-teal-700 shadow-xs ring-2 ring-teal-300/40" :
-                          l.id === "pcm3" ? "bg-blue-600 text-white border-blue-700 shadow-xs ring-2 ring-blue-300/40" :
-                          l.id === "pvc" ? "bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-300/40" :
-                          "bg-purple-600 text-white border-purple-700 shadow-xs ring-2 ring-purple-300/40"
+                        ? activeBg
                         : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100"
                     }`}
                   >
-                    <span>🏷️ {l.badge || l.shortName}</span>
-                    <span className="text-[10px] opacity-80">({l.count}개)</span>
+                    <span className="font-black text-xs sm:text-sm">🏷️ {l.badge || l.shortName}</span>
+                    <span className={`text-[10.5px] px-2 py-0.5 rounded-full font-bold ${isSel ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-500"}`}>
+                      {l.count}개
+                    </span>
                   </button>
                 );
               })}
             </div>
 
-            {/* 🌟 Item Dropdown & Live Search Filter */}
-            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-200 dark:border-blue-900/60 shadow-2xs">
+            {/* 🌟 Item Dropdown (이니셜/차종순 정렬) */}
+            <div className="space-y-2.5 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-200 dark:border-blue-900/60 shadow-2xs">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <label className="block text-xs font-black text-blue-900 dark:text-blue-300">
-                  📦 [{EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.badge || "선택"}] 생산 아이템 드롭다운 (이니셜/차종순 정렬) *
+                <label className="block text-xs sm:text-sm font-black text-blue-900 dark:text-blue-300">
+                  📦 [{EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.badge || "선택"}] 생산 아이템 드롭다운 (이니셜순 정렬) *
                 </label>
-                {itemSearchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setItemSearchQuery("")}
-                    className="text-[10.5px] font-bold text-slate-400 hover:text-rose-500 transition cursor-pointer"
-                  >
-                    검색 초기화 ✕
-                  </button>
-                )}
+                <span className="text-[11px] font-bold text-slate-400">
+                  총 {activeLineItems.length}개 품목
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                {/* Search Input Filter */}
-                <div className="sm:col-span-4 relative">
-                  <input
-                    type="text"
-                    value={itemSearchQuery}
-                    onChange={(e) => setItemSearchQuery(e.target.value)}
-                    placeholder="🔍 품명/차종 검색 (예: HOOD, GL3)..."
-                    className="w-full pl-3 pr-7 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                  />
-                  {itemSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setItemSearchQuery("")}
-                      className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Main Select Dropdown */}
-                <div className="sm:col-span-8">
-                  <select
-                    onChange={(e) => handleItemSelect(e.target.value)}
-                    value={
-                      activeLineItems.find(
-                        (it) => it.vehicle === formData.vehicle && it.itemName === formData.itemName
-                      )?.id || ""
-                    }
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-400 dark:border-blue-600 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer shadow-xs"
-                  >
-                    <option value="">
-                      -- [{EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.badge || "선택"}] 아이템을 선택하세요 (총 {filteredLineItems.length}개) --
+              <div>
+                <select
+                  onChange={(e) => handleItemSelect(e.target.value)}
+                  value={
+                    activeLineItems.find(
+                      (it) => it.vehicle === formData.vehicle && it.itemName === formData.itemName
+                    )?.id || ""
+                  }
+                  className="w-full px-3.5 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-blue-500 dark:border-blue-600 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer shadow-xs"
+                >
+                  <option value="">
+                    -- [{EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.badge || "선택"}] 생산 아이템을 선택하세요 (총 {activeLineItems.length}개) --
+                  </option>
+                  {activeLineItems.map((it) => (
+                    <option key={it.id} value={it.id}>
+                      [{it.vehicle}] {it.itemName}{it.isAS ? " 🛠️(A/S)" : ""}
                     </option>
-                    {filteredLineItems.map((it) => (
-                      <option key={it.id} value={it.id}>
-                        [{it.vehicle}] {it.itemName}{it.isAS ? " 🛠️(A/S)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  ))}
+                </select>
+                {errors.vehicle && <p className="text-rose-500 text-[10px] mt-1">{errors.vehicle}</p>}
               </div>
 
-              {/* Quick Vehicle Code Chips (이니셜/차종 바로가기) */}
-              {lineUniqueVehicles.length > 0 && (
-                <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[10.5px]">
-                    <span className="font-bold text-slate-400 shrink-0">차종 필터:</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedVehicleFilter("all")}
-                      className={`px-2 py-0.5 rounded-lg font-black transition shrink-0 cursor-pointer ${
-                        selectedVehicleFilter === "all"
-                          ? "bg-blue-600 text-white shadow-2xs"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-                      }`}
-                    >
-                      전체 ({activeLineItems.length})
-                    </button>
-                    {lineUniqueVehicles.map((v) => {
-                      const count = activeLineItems.filter((it) => it.vehicle === v).length;
-                      const isSel = selectedVehicleFilter === v || formData.vehicle === v;
-                      return (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() => {
-                            setSelectedVehicleFilter(v);
-                            const firstOfCar = activeLineItems.find((it) => it.vehicle === v);
-                            if (firstOfCar) {
-                              setFormData((prev) => ({
-                                ...prev,
-                                vehicle: firstOfCar.vehicle,
-                                itemName: firstOfCar.itemName
-                              }));
-                            }
-                          }}
-                          className={`px-2 py-0.5 rounded-lg font-bold transition shrink-0 cursor-pointer border ${
-                            isSel
-                              ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-400 font-black ring-1 ring-blue-400/40"
-                              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
-                          }`}
-                        >
-                          <span>{v}</span>
-                          {count > 1 && <span className="text-[9px] text-slate-400 ml-0.5">({count})</span>}
-                        </button>
-                      );
-                    })}
+              {/* Selected Item Indicator */}
+              {formData.vehicle && formData.itemName && (
+                <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="px-2 py-0.5 rounded-lg bg-blue-600 text-white font-black text-[11px] shrink-0">
+                      {formData.vehicle}
+                    </span>
+                    <span className="font-bold text-slate-900 dark:text-white truncate">
+                      {formData.itemName}
+                    </span>
                   </div>
+                  <span className="text-[10.5px] font-bold text-blue-700 dark:text-blue-300 shrink-0">
+                    선택완료 ✅
+                  </span>
                 </div>
               )}
-            </div>
-
-            {/* Editable Inputs for Vehicle, Part Number, Description */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  차종 코드 *
-                </label>
-                <input
-                  type="text"
-                  value={formData.vehicle}
-                  onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })}
-                  placeholder="예: MCA, GL3, BL7M"
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-                {errors.vehicle && <p className="text-rose-500 text-[10px] mt-0.5">{errors.vehicle}</p>}
-              </div>
-              <div>
-                <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  품번 (Part Number)
-                </label>
-                <input
-                  type="text"
-                  value={formData.itemCode}
-                  onChange={(e) => setFormData({ ...formData, itemCode: e.target.value })}
-                  placeholder="예: 86811-N9000 (선택)"
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  품명 (Part Description) *
-                </label>
-                <input
-                  type="text"
-                  value={formData.itemName}
-                  onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
-                  placeholder="예: HOOD A, D/SIDE C"
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                />
-              </div>
             </div>
           </div>
 

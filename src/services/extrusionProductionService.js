@@ -18,10 +18,10 @@ const COLLECTION_NAME = "extrusion_work_reports";
 export const EXTRUSION_PROD_STORAGE_KEY = "factory_extrusion_work_reports_v1";
 
 export const EXTRUSION_LINE_OPTIONS = [
-  { id: "pcm1", name: "PCM #1 LINE", shortName: "PCM 1호", badge: "PCM1", plant: "삼랑진공장", color: "teal", count: 48 },
-  { id: "pcm3", name: "PCM #3 LINE", shortName: "PCM 3호", badge: "PCM3", plant: "삼랑진공장", color: "blue", count: 67 },
-  { id: "pvc", name: "PVC LINE", shortName: "PVC", badge: "PVC", plant: "삼랑진공장", color: "amber", count: 14 },
-  { id: "tpe", name: "TPE LINE", shortName: "TPE", badge: "TPE", plant: "삼랑진공장", color: "purple", count: 20 }
+  { id: "pcm1", name: "PCM #1 LINE", shortName: "PCM 1호", badge: "PCM1", plant: "삼랑진공장", color: "teal", count: 49 },
+  { id: "pcm3", name: "PCM #3 LINE", shortName: "PCM 3호", badge: "PCM3", plant: "삼랑진공장", color: "blue", count: 68 },
+  { id: "pvc", name: "PVC LINE", shortName: "PVC", badge: "PVC", plant: "삼랑진공장", color: "amber", count: 15 },
+  { id: "tpe", name: "TPE LINE", shortName: "TPE", badge: "TPE", plant: "삼랑진공장", color: "purple", count: 21 }
 ];
 
 export const VEHICLE_PRESETS = [

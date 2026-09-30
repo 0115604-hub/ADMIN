@@ -1,11 +1,11 @@
 // 삼랑진공장 압출 라인별 생산 아이템 현황 (Excel 기준 이니셜/차종순 정렬 데이터)
-// 원본: 라인별 아이템현황.xlsx (PCM1, PCM3, PVC, TPE)
+// 원본: 라인별 아이템현황.xlsx (PCM1, PCM3, PVC, TPE + TEST 압출)
 
 export const EXTRUSION_LINE_BADGES = [
-  { id: "pcm1", badge: "PCM1", shortName: "PCM 1호", name: "PCM #1 LINE", color: "teal", count: 48 },
-  { id: "pcm3", badge: "PCM3", shortName: "PCM 3호", name: "PCM #3 LINE", color: "blue", count: 67 },
-  { id: "pvc", badge: "PVC", shortName: "PVC", name: "PVC LINE", color: "amber", count: 14 },
-  { id: "tpe", badge: "TPE", shortName: "TPE", name: "TPE LINE", color: "purple", count: 20 }
+  { id: "pcm1", badge: "PCM1", shortName: "PCM 1호", name: "PCM #1 LINE", color: "teal", count: 49 },
+  { id: "pcm3", badge: "PCM3", shortName: "PCM 3호", name: "PCM #3 LINE", color: "blue", count: 68 },
+  { id: "pvc", badge: "PVC", shortName: "PVC", name: "PVC LINE", color: "amber", count: 15 },
+  { id: "tpe", badge: "TPE", shortName: "TPE", name: "TPE LINE", color: "purple", count: 21 }
 ];
 
 export const EXTRUSION_ITEMS_BY_LINE = {
@@ -429,6 +429,16 @@ export const EXTRUSION_ITEMS_BY_LINE = {
       "itemName": "UPPER SEAL A (A/S)",
       "label": "[TB] UPPER SEAL A (A/S)",
       "isAS": true
+    },
+    {
+      "id": "pcm1_test",
+      "lineId": "pcm1",
+      "lineName": "PCM #1 LINE",
+      "lineBadge": "PCM1",
+      "vehicle": "TEST",
+      "itemName": "TEST 압출",
+      "label": "[TEST] TEST 압출",
+      "isAS": false
     },
     {
       "id": "pcm1_44",
@@ -1023,6 +1033,16 @@ export const EXTRUSION_ITEMS_BY_LINE = {
       "isAS": true
     },
     {
+      "id": "pcm3_test",
+      "lineId": "pcm3",
+      "lineName": "PCM #3 LINE",
+      "lineBadge": "PCM3",
+      "vehicle": "TEST",
+      "itemName": "TEST 압출",
+      "label": "[TEST] TEST 압출",
+      "isAS": false
+    },
+    {
       "id": "pcm3_63",
       "lineId": "pcm3",
       "lineName": "PCM #3 LINE",
@@ -1275,6 +1295,16 @@ export const EXTRUSION_ITEMS_BY_LINE = {
       "isAS": false
     },
     {
+      "id": "pvc_test",
+      "lineId": "pvc",
+      "lineName": "PVC LINE",
+      "lineBadge": "PVC",
+      "vehicle": "TEST",
+      "itemName": "TEST 압출",
+      "label": "[TEST] TEST 압출",
+      "isAS": false
+    },
+    {
       "id": "pvc_7",
       "lineId": "pvc",
       "lineName": "PVC LINE",
@@ -1504,6 +1534,16 @@ export const EXTRUSION_ITEMS_BY_LINE = {
       "vehicle": "QX",
       "itemName": "G/RUN 'D' RR",
       "label": "[QX] G/RUN 'D' RR",
+      "isAS": false
+    },
+    {
+      "id": "tpe_test",
+      "lineId": "tpe",
+      "lineName": "TPE LINE",
+      "lineBadge": "TPE",
+      "vehicle": "TEST",
+      "itemName": "TEST 압출",
+      "label": "[TEST] TEST 압출",
       "isAS": false
     }
   ]
