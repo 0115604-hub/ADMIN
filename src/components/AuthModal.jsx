@@ -42,6 +42,20 @@ import { initVersionWatcher, forceHardReload } from "../utils/versionCheck";
 import { WorkerLoginSection } from "./auth/WorkerLoginSection";
 import { RealtimeIssueBoard } from "./issues/RealtimeIssueBoard";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
+import { SevereDisasterModal } from "./common/SevereDisasterModal";
+import { ExtrusionWorkReportModal } from "./extrusion/ExtrusionWorkReportModal";
+import { saveExtrusionReport } from "../services/extrusionProductionService";
+import {
+  ShieldAlert,
+  AlertTriangle,
+  FileSpreadsheet,
+  Zap,
+  Cpu,
+  Layers,
+  Factory,
+  ChevronRight,
+  CheckCircle2
+} from "lucide-react";
 
 // Lazy-loaded On-Demand Sub-Modals
 const TelegramConfigModal = lazy(() => import("./auth/TelegramConfigModal").then(m => ({ default: m.TelegramConfigModal || m.default })));
@@ -52,6 +66,17 @@ const DeleteAuthModal = lazy(() => import("./issues/DeleteAuthModal").then(m => 
 
 export const AuthModal = () => {
   const { currentProfile, loginWithProfile } = useAuth();
+  const [factoryBuildingTab, setFactoryBuildingTab] = useState(() => {
+    try {
+      return localStorage.getItem("oryuk_firstpage_building_tab") || "extrusion";
+    } catch (e) {
+      return "extrusion";
+    }
+  });
+  const [isSevereDisasterModalOpen, setIsSevereDisasterModalOpen] = useState(false);
+  const [isExtrusionReportModalOpen, setIsExtrusionReportModalOpen] = useState(false);
+  const [firstPageToast, setFirstPageToast] = useState("");
+
   const [selectedUser, setSelectedUser] = useState(null);
   const [pin, setPin] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -69,6 +94,28 @@ export const AuthModal = () => {
     });
     return () => unsub();
   }, []);
+
+  // Save factoryBuildingTab to localStorage
+  useEffect(() => {
+    try {
+      if (factoryBuildingTab) {
+        localStorage.setItem("oryuk_firstpage_building_tab", factoryBuildingTab);
+      }
+    } catch (e) {}
+  }, [factoryBuildingTab]);
+
+  const handleSaveExtrusionReport = async (reportData) => {
+    try {
+      await saveExtrusionReport(reportData);
+      setIsExtrusionReportModalOpen(false);
+      setFirstPageToast("✅ 압출 작업일보가 실시간 저장되었습니다.");
+      setTimeout(() => setFirstPageToast(""), 3500);
+    } catch (e) {
+      console.error(e);
+      setFirstPageToast("❌ 작업일보 저장 중 오류가 발생했습니다.");
+      setTimeout(() => setFirstPageToast(""), 3500);
+    }
+  };
 
   const [annualLeaves, setAnnualLeaves] = useState(() => getAnnualLeaves());
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
@@ -1262,26 +1309,171 @@ export const AuthModal = () => {
         {/* Top Glowing Accent Line */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-blue-600 to-emerald-500"></div>
 
-        <div className="p-3.5 sm:p-6 sm:px-7">
-          {/* Header Brand with Clickable OryukLogo */}
-          <div className="text-center mb-3 sm:mb-4 flex flex-col items-center">
-            <div
-              onClick={() => handleUserClick(ADMIN_USERS[0])}
-              className="relative mb-2 cursor-pointer group active:scale-95 transition-transform"
-              title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
-            >
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl sm:rounded-3xl blur-md opacity-40 group-hover:opacity-80 transition-opacity animate-pulse"></div>
-              <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 sm:p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center group-hover:border-blue-400 group-hover:shadow-blue-500/25 transition-all">
-                <OryukLogo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md group-hover:scale-105 transition-transform" />
+        <div className="p-3 sm:p-5 sm:px-6">
+          {/* First Page Toast Alert */}
+          {firstPageToast && (
+            <div className="fixed top-4 right-4 z-60 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-bounce border border-slate-700 backdrop-blur-md">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="text-xs font-bold">{firstPageToast}</span>
+            </div>
+          )}
+
+          {/* Header Brand with Left-aligned Logo + Right-aligned [압출동] / [가공동] Segmented Tab */}
+          <div className="mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Left: Logo & Brand Title */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div
+                onClick={() => handleUserClick(ADMIN_USERS[0])}
+                className="relative cursor-pointer group active:scale-95 transition-transform shrink-0"
+                title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
+              >
+                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl blur-xs opacity-40 group-hover:opacity-80 transition-opacity animate-pulse"></div>
+                <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 shadow-md border border-slate-200/80 dark:border-slate-700 flex items-center justify-center group-hover:border-blue-400 transition-all">
+                  <OryukLogo className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 leading-tight">
+                  <span className="text-blue-600 dark:text-blue-400">(주)오륙</span>
+                  <span>생산관리 통합시스템</span>
+                </h2>
+                <p className="text-[10.5px] sm:text-[11.5px] text-slate-500 dark:text-slate-400 font-bold">
+                  현장 모바일 실시간 업무포털 • 안전 및 품질 공유
+                </p>
               </div>
             </div>
 
-            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
-              <span className="text-blue-600 dark:text-blue-400">
-                (주)오륙
-              </span>
-              <span>생산관리 통합시스템</span>
-            </h2>
+            {/* Right: [🏭 압출동] vs [⚙️ 가공동] Selector Tab */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200/90 dark:border-slate-700 shadow-2xs self-stretch sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setFactoryBuildingTab("extrusion")}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  factoryBuildingTab === "extrusion"
+                    ? "bg-teal-600 text-white shadow-md shadow-teal-500/25 ring-2 ring-teal-400/30 scale-102"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Cpu className="w-4 h-4" />
+                <span>🏭 압출동</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFactoryBuildingTab("processing")}
+                className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  factoryBuildingTab === "processing"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-400/30 scale-102"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>⚙️ 가공동</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 🌟 3 High-Impact Quick Access Popup Buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 mb-3">
+            {/* Quick 1: 중대재해공유판 */}
+            <div
+              onClick={() => setIsSevereDisasterModalOpen(true)}
+              className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent dark:from-rose-950/40 dark:via-rose-900/20 dark:to-transparent border border-rose-200 dark:border-rose-900/60 hover:border-rose-400 dark:hover:border-rose-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <ShieldAlert className="w-4 h-4 animate-pulse" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-xs text-rose-950 dark:text-rose-200">
+                      🚨 중대재해 공유판
+                    </span>
+                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                      안전필독
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                    5대 안전수칙 • 현장점검 사진
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </div>
+
+            {/* Quick 2: 품질경보 & 오픈이슈 대장 */}
+            <div
+              onClick={() => {
+                setLedgerCategoryTab(qualityAlertCount > 0 ? "quality_alert" : "all");
+                setSelectedListItem(null);
+                setIssueModalPage(1);
+                setIsListModalOpen(true);
+              }}
+              className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/40 dark:via-amber-900/20 dark:to-transparent border border-amber-200 dark:border-amber-900/60 hover:border-amber-400 dark:hover:border-amber-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-amber-500 text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                  <AlertTriangle className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-black text-xs text-amber-950 dark:text-amber-200">
+                      ⚠️ 품질정보 • 사내공지
+                    </span>
+                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      {qualityAlertCount > 0 ? `경보 ${qualityAlertCount}건` : `이슈 ${activeIssues.length}건`}
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                    고객사 불량 • 공지사항 • 회의
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </div>
+
+            {/* Quick 3: 실시간 작업일지 / 작업일보 작성 */}
+            <div
+              onClick={() => {
+                if (factoryBuildingTab === "extrusion") {
+                  setIsExtrusionReportModalOpen(true);
+                } else {
+                  setFirstPageToast("아래 가공동 작업자 중 본인 이름을 클릭하여 일지를 작성하세요.");
+                  setTimeout(() => setFirstPageToast(""), 3500);
+                }
+              }}
+              className={`p-2.5 sm:p-3 rounded-2xl border shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between ${
+                factoryBuildingTab === "extrusion"
+                  ? "bg-gradient-to-br from-teal-500/15 via-teal-500/5 to-transparent dark:from-teal-950/40 dark:via-teal-900/20 dark:to-transparent border-teal-300 dark:border-teal-800 hover:border-teal-500"
+                  : "bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent dark:from-blue-950/40 dark:via-blue-900/20 dark:to-transparent border-blue-300 dark:border-blue-800 hover:border-blue-500"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`p-2 rounded-xl text-white shadow-xs group-hover:scale-105 transition-transform shrink-0 ${
+                  factoryBuildingTab === "extrusion" ? "bg-teal-600" : "bg-blue-600"
+                }`}>
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`font-black text-xs ${
+                      factoryBuildingTab === "extrusion" ? "text-teal-950 dark:text-teal-200" : "text-blue-950 dark:text-blue-200"
+                    }`}>
+                      {factoryBuildingTab === "extrusion" ? "✍️ 압출 작업일보 작성" : "✍️ 가공 작업일지 작성"}
+                    </span>
+                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                      실시간
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
+                    {factoryBuildingTab === "extrusion" ? "호기별 실적 • 수율 1초 등록" : "공정 실적 • 불량 입력"}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className={`w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0 ${
+                factoryBuildingTab === "extrusion" ? "text-teal-500" : "text-blue-500"
+              }`} />
+            </div>
           </div>
 
           {/* 📢 1. 실시간 공지 & 오픈이슈 라이브 보드 */}
@@ -1317,6 +1509,7 @@ export const AuthModal = () => {
 
           {/* 👤 2. 작업자 로그인 섹션 */}
           <WorkerLoginSection
+            factoryBuildingTab={factoryBuildingTab}
             selectedUser={selectedUser}
             setSelectedUser={setSelectedUser}
             pin={pin}
@@ -1334,6 +1527,14 @@ export const AuthModal = () => {
             urgentIssues={urgentIssues}
             onUserClick={handleUserClick}
             onPinSubmit={handlePinSubmit}
+            onOpenExtrusionReport={() => setIsExtrusionReportModalOpen(true)}
+            onOpenDisasterModal={() => setIsSevereDisasterModalOpen(true)}
+            onOpenQualityAlerts={() => {
+              setLedgerCategoryTab("quality_alert");
+              setSelectedListItem(null);
+              setIssueModalPage(1);
+              setIsListModalOpen(true);
+            }}
           />
         </div>
       </div>
@@ -1483,6 +1684,23 @@ export const AuthModal = () => {
         <ImagePreviewModal
           previewImage={previewImageModal}
           onClose={() => setPreviewImageModal(null)}
+        />
+      )}
+
+      {/* 🚨 중대재해 안전보건 공유 모달 */}
+      {isSevereDisasterModalOpen && (
+        <SevereDisasterModal
+          isOpen={isSevereDisasterModalOpen}
+          onClose={() => setIsSevereDisasterModalOpen(false)}
+        />
+      )}
+
+      {/* 🏭 압출 작업일보 신규 작성 모달 */}
+      {isExtrusionReportModalOpen && (
+        <ExtrusionWorkReportModal
+          isOpen={isExtrusionReportModalOpen}
+          onClose={() => setIsExtrusionReportModalOpen(false)}
+          onSave={handleSaveExtrusionReport}
         />
       )}
     </div>
