@@ -18,7 +18,13 @@ import {
   Activity,
   Plus,
   Check,
-  ChevronDown
+  ChevronDown,
+  ChevronUp,
+  FileCheck2,
+  Package,
+  Sliders,
+  Thermometer,
+  Gauge
 } from "lucide-react";
 import {
   WORKER_PRESETS,
@@ -61,6 +67,7 @@ export const ExtrusionWorkReportModal = ({
   isEditing = false
 }) => {
   const todayStr = new Date().toISOString().split("T")[0];
+  const [showCheckSheetDetails, setShowCheckSheetDetails] = useState(false);
 
   const [formData, setFormData] = useState(() => {
     if (initialData) {
@@ -92,7 +99,24 @@ export const ExtrusionWorkReportModal = ({
 
       return {
         ...initialData,
-        items
+        items,
+        rawMaterials: {
+          rubberLot: initialData?.rawMaterials?.rubberLot || "",
+          coatingLot: initialData?.rawMaterials?.coatingLot || "",
+          insertLot: initialData?.rawMaterials?.insertLot || ""
+        },
+        defectBreakdown: {
+          cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
+          startLossKg: initialData?.defectBreakdown?.startLossKg || "",
+          appearanceKg: initialData?.defectBreakdown?.appearanceKg || ""
+        },
+        conditions: {
+          extruderRpm: initialData?.conditions?.extruderRpm || "26.4",
+          waterTemp: initialData?.conditions?.waterTemp || "47.0",
+          cureTemp: initialData?.conditions?.cureTemp || "270.0",
+          haulOffSpeed: initialData?.conditions?.haulOffSpeed || "19.6",
+          puThickness: initialData?.conditions?.puThickness || "16.5"
+        }
       };
     }
 
@@ -105,6 +129,23 @@ export const ExtrusionWorkReportModal = ({
       worker: "공영국 대리",
       subWorkers: "",
       items: [createDefaultItem("pcm1")],
+      rawMaterials: {
+        rubberLot: "W60433 / UF10161726927029200A",
+        coatingLot: "UF10161726927032700A",
+        insertLot: "SK5 0.5T / LOT-260930A"
+      },
+      defectBreakdown: {
+        cutoffKg: "",
+        startLossKg: "",
+        appearanceKg: ""
+      },
+      conditions: {
+        extruderRpm: "26.4",
+        waterTemp: "47.0",
+        cureTemp: "270.0",
+        haulOffSpeed: "19.6",
+        puThickness: "16.5"
+      },
       downtimeMinutes: 30,
       downtimeCategory: "형교환",
       downtimeDetail: "",
@@ -152,7 +193,24 @@ export const ExtrusionWorkReportModal = ({
 
         setFormData({
           ...initialData,
-          items
+          items,
+          rawMaterials: {
+            rubberLot: initialData?.rawMaterials?.rubberLot || "",
+            coatingLot: initialData?.rawMaterials?.coatingLot || "",
+            insertLot: initialData?.rawMaterials?.insertLot || ""
+          },
+          defectBreakdown: {
+            cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
+            startLossKg: initialData?.defectBreakdown?.startLossKg || "",
+            appearanceKg: initialData?.defectBreakdown?.appearanceKg || ""
+          },
+          conditions: {
+            extruderRpm: initialData?.conditions?.extruderRpm || "26.4",
+            waterTemp: initialData?.conditions?.waterTemp || "47.0",
+            cureTemp: initialData?.conditions?.cureTemp || "270.0",
+            haulOffSpeed: initialData?.conditions?.haulOffSpeed || "19.6",
+            puThickness: initialData?.conditions?.puThickness || "16.5"
+          }
         });
       } else {
         setFormData({
@@ -164,6 +222,23 @@ export const ExtrusionWorkReportModal = ({
           worker: "공영국 대리",
           subWorkers: "",
           items: [createDefaultItem("pcm1")],
+          rawMaterials: {
+            rubberLot: "W60433 / UF10161726927029200A",
+            coatingLot: "UF10161726927032700A",
+            insertLot: "SK5 0.5T / LOT-260930A"
+          },
+          defectBreakdown: {
+            cutoffKg: "",
+            startLossKg: "",
+            appearanceKg: ""
+          },
+          conditions: {
+            extruderRpm: "26.4",
+            waterTemp: "47.0",
+            cureTemp: "270.0",
+            haulOffSpeed: "19.6",
+            puThickness: "16.5"
+          },
           downtimeMinutes: 30,
           downtimeCategory: "형교환",
           downtimeDetail: "",
@@ -193,7 +268,6 @@ export const ExtrusionWorkReportModal = ({
     const newLineItems = getItemsByLine(lineId);
     const defaultNewItem = newLineItems[0] || { vehicle: "BC4T", itemName: "D/SIDE D" };
 
-    // Update items to match new line items if not matching
     const updatedItems = formData.items.map((it) => {
       const exists = newLineItems.some((n) => n.vehicle === it.vehicle && n.itemName === it.itemName);
       if (exists) return it;
@@ -237,7 +311,6 @@ export const ExtrusionWorkReportModal = ({
       const targetItem = { ...nextItems[index] };
 
       if (field === "itemSelect") {
-        // Value is encoded as "vehicle:::itemName"
         const [v, n] = value.split(":::");
         targetItem.vehicle = v || "";
         targetItem.itemName = n || "";
@@ -245,7 +318,6 @@ export const ExtrusionWorkReportModal = ({
         const num = value === "" ? "" : Math.max(0, Number(value));
         targetItem[field] = num;
 
-        // Auto adjust defect quantity
         if (field === "actualQty" || field === "goodQty") {
           const act = field === "actualQty" ? (num === "" ? 0 : num) : Number(targetItem.actualQty) || 0;
           const gd = field === "goodQty" ? (num === "" ? 0 : num) : Number(targetItem.goodQty) || 0;
@@ -265,6 +337,16 @@ export const ExtrusionWorkReportModal = ({
     setFormData((prev) => ({ ...prev, [field]: num }));
   };
 
+  const handleNestedFieldChange = (parent, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [parent]: {
+        ...prev[parent],
+        [field]: value
+      }
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const newErrors = {};
@@ -272,7 +354,6 @@ export const ExtrusionWorkReportModal = ({
     if (!formData.date) newErrors.date = "작업일자를 입력해주세요.";
     if (!formData.worker) newErrors.worker = "작업자를 선택해주세요.";
 
-    // Validate items
     if (!formData.items || formData.items.length === 0) {
       newErrors.items = "생산 품목을 최소 1개 이상 추가해주세요.";
     } else {
@@ -303,7 +384,7 @@ export const ExtrusionWorkReportModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[94vh]">
         {/* Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-teal-800 via-teal-900 to-slate-900 text-white flex items-center justify-between shrink-0 shadow-md">
           <div className="flex items-center gap-3">
@@ -312,10 +393,10 @@ export const ExtrusionWorkReportModal = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black tracking-tight">
-                {isEditing ? "압출 작업일보 수정" : "압출 작업일보 신규 작성"}
+                {isEditing ? "압출 작업일보 및 체크시트 수정" : "압출 작업일보 및 체크시트 등록"}
               </h3>
               <p className="text-[11px] text-teal-200/80 font-medium">
-                라인별 생산실적 등록 (주/야간 품종 교체 생산 다품목 추가 지원)
+                (주)화승 R&A / 삼랑진공장 표준 작업체크시트 & 다품종 생산일보
               </p>
             </div>
           </div>
@@ -337,17 +418,17 @@ export const ExtrusionWorkReportModal = ({
             <div className="flex items-center justify-between">
               <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                 <Cpu className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                ① 기본 정보 (호기 및 작업자)
+                ① 기본 정보 (1. 공정 및 설비명)
               </span>
               <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
-                삼랑진공장 압출동
+                삼랑진공장 압출동 · SL생산팀
               </span>
             </div>
 
-            {/* 🌟 Clean Line Selection Buttons (라인명만 깔끔하게) */}
+            {/* Clean Line Selection Buttons */}
             <div>
               <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1.5">
-                생산 호기 선택 *
+                생산 호기(라인명) 선택 *
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {CLEAN_LINE_OPTIONS.map((l) => {
@@ -428,7 +509,7 @@ export const ExtrusionWorkReportModal = ({
               {/* Worker Dropdown */}
               <div>
                 <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  작업조장 / 작업자 (드롭다운) *
+                  작업자명 (작업조장 / 담당) *
                 </label>
                 <select
                   value={formData.worker}
@@ -441,6 +522,7 @@ export const ExtrusionWorkReportModal = ({
                       {w.name} {w.title} ({w.role})
                     </option>
                   ))}
+                  <option value="현해">현해</option>
                   <option value="TEST">TEST</option>
                 </select>
                 {errors.worker && <p className="text-rose-500 text-[10px] mt-0.5">{errors.worker}</p>}
@@ -449,13 +531,13 @@ export const ExtrusionWorkReportModal = ({
           </div>
 
           {/* ========================================================================= */}
-          {/* Section 2: Multi-Item Production Management (품종 교체 생산 다품목 추가) */}
+          {/* Section 2: Multi-Item Production Management (2. 작업현황 - 생산현황) */}
           {/* ========================================================================= */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                 <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                ② 생산 품목 관리 (품종 교체 생산 지원)
+                ② 생산 품목 현황 (다품종 교체 생산 지원)
               </span>
               <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300">
                 {formData.lineName} · 등록 품목 {formData.items.length}개
@@ -518,7 +600,7 @@ export const ExtrusionWorkReportModal = ({
                     {/* Item Dropdown */}
                     <div>
                       <label className="block text-[11px] font-black text-blue-900 dark:text-blue-300 mb-1">
-                        📦 생산 아이템 선택 (이니셜순 정렬) *
+                        📦 생산 품명 선택 (차종/품명 이니셜순 정렬) *
                       </label>
                       <select
                         value={currentVal}
@@ -540,7 +622,7 @@ export const ExtrusionWorkReportModal = ({
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
                       <div>
                         <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                          계획수량 (m)
+                          지시/계획수량 (m)
                         </label>
                         <input
                           type="number"
@@ -553,7 +635,7 @@ export const ExtrusionWorkReportModal = ({
 
                       <div>
                         <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                          총 실적 (m) *
+                          작업/총실적 (m) *
                         </label>
                         <input
                           type="number"
@@ -609,7 +691,7 @@ export const ExtrusionWorkReportModal = ({
               })}
             </div>
 
-            {/* ➕ Add Item Button (생산품목 추가 버튼) */}
+            {/* ➕ Add Item Button */}
             <button
               type="button"
               onClick={handleAddItem}
@@ -627,7 +709,7 @@ export const ExtrusionWorkReportModal = ({
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                 <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                ③ 종합 실적 및 전체 수율 자동 계산 ({formData.items.length}개 품목 합산)
+                ③ 종합 실적 및 전체 수율 요약 ({formData.items.length}개 품목 합산)
               </span>
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black text-xs border border-emerald-300">
@@ -682,13 +764,207 @@ export const ExtrusionWorkReportModal = ({
           </div>
 
           {/* ========================================================================= */}
-          {/* Section 4: Downtime & Loss Management */}
+          {/* Section 4: 작업체크시트 상세 기록 (원자재 LOT / 불량 세부 / 주요 공정조건) */}
+          {/* ========================================================================= */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowCheckSheetDetails(!showCheckSheetDetails)}
+              className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <FileCheck2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                  ④ 작업체크시트 상세 (원자재 LOT / 불량 세부 / 공정 조건 체크)
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
+                  {showCheckSheetDetails ? "접기 ▲" : "체크시트 항목 펼치기 ▼"}
+                </span>
+              </div>
+              {showCheckSheetDetails ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+
+            {showCheckSheetDetails && (
+              <div className="p-4 pt-1 space-y-4 border-t border-slate-200 dark:border-slate-700/80 animate-fadeIn">
+                {/* 1. 원자재 현황 (연고무, 코팅액, 심금 LOT) */}
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
+                    <Package className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>원자재 현황 (연고무 / 코팅액 / 심금 LOT)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        연고무 원료코드 & LOT NO
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.rawMaterials?.rubberLot || ""}
+                        onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberLot", e.target.value)}
+                        placeholder="예: W60433 / UF10161726927029200A"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        코팅액 약품명 & LOT NO
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.rawMaterials?.coatingLot || ""}
+                        onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingLot", e.target.value)}
+                        placeholder="예: UF10161726927032700A / HSC-2000B-3"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        심금 규격 & LOT NO
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.rawMaterials?.insertLot || ""}
+                        onChange={(e) => handleNestedFieldChange("rawMaterials", "insertLot", e.target.value)}
+                        placeholder="예: SK5 0.5T / LOT-260930A"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. 불량 세부 현황 (단연조정, 셋지/시동, 치수/외관) */}
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    <span>불량 세부 현황 (단연조정 / 셋지 / 치수외관)</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        단연조정 불량 (kg)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.defectBreakdown?.cutoffKg || ""}
+                        onChange={(e) => handleNestedFieldChange("defectBreakdown", "cutoffKg", e.target.value)}
+                        placeholder="예: 23.2"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-rose-600 focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        셋지(시동) 불량 (kg)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.defectBreakdown?.startLossKg || ""}
+                        onChange={(e) => handleNestedFieldChange("defectBreakdown", "startLossKg", e.target.value)}
+                        placeholder="예: 3.8"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-rose-600 focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        치수 / 외관 불량 (kg)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={formData.defectBreakdown?.appearanceKg || ""}
+                        onChange={(e) => handleNestedFieldChange("defectBreakdown", "appearanceKg", e.target.value)}
+                        placeholder="예: 2.5"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-rose-600 focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. 압출 & 가류 공정 조건 모니터링 */}
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
+                    <Sliders className="w-3.5 h-3.5 text-teal-600" />
+                    <span>주요 설비/품질 조건 체크 (압출속도, 온수조, 가류온도, PU코팅두께, 인취속도)</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        압출기 속도 (RPM)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.conditions?.extruderRpm || ""}
+                        onChange={(e) => handleNestedFieldChange("conditions", "extruderRpm", e.target.value)}
+                        placeholder="예: 26.4"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        온수조 온도 (℃)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.conditions?.waterTemp || ""}
+                        onChange={(e) => handleNestedFieldChange("conditions", "waterTemp", e.target.value)}
+                        placeholder="예: 47.0"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        가류조 온도 (℃)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.conditions?.cureTemp || ""}
+                        onChange={(e) => handleNestedFieldChange("conditions", "cureTemp", e.target.value)}
+                        placeholder="예: 270.0"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        PU 코팅두께 (㎛)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.conditions?.puThickness || ""}
+                        onChange={(e) => handleNestedFieldChange("conditions", "puThickness", e.target.value)}
+                        placeholder="예: 16.5"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
+                      />
+                    </div>
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
+                        인취기 속도 (m/분)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.conditions?.haulOffSpeed || ""}
+                        onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
+                        placeholder="예: 19.6"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================================= */}
+          {/* Section 5: Downtime & Loss Management */}
           {/* ========================================================================= */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
             <div className="flex items-center justify-between">
               <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                 <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                ④ 비가동 시간 및 발생 사유
+                ⑤ 비가동 시간 및 발생 사유 (2. 작업현황 - 비가동)
               </span>
               <span className="text-[11px] font-bold text-slate-500">
                 총 {formData.downtimeMinutes || 0}분 ({(Number(formData.downtimeMinutes || 0) / 60).toFixed(1)}시간)
@@ -733,13 +1009,13 @@ export const ExtrusionWorkReportModal = ({
               </div>
               <div className="sm:col-span-3">
                 <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  비가동 상세 사유 및 조치 내용
+                  비가동 상세 사유 및 조치 내용 (시간대 포함)
                 </label>
                 <input
                   type="text"
                   value={formData.downtimeDetail}
                   onChange={(e) => setFormData({ ...formData, downtimeDetail: e.target.value })}
-                  placeholder="예: 금형 교체 30분 완료, 온도 승온 15분 정상 가동"
+                  placeholder="예: 08:00 - 08:50 품종교체 및 시운전 50분 완료"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                 />
               </div>
@@ -747,11 +1023,11 @@ export const ExtrusionWorkReportModal = ({
           </div>
 
           {/* ========================================================================= */}
-          {/* Section 5: Notes & Handover */}
+          {/* Section 6: Notes & Handover */}
           {/* ========================================================================= */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2">
             <label className="block font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-              ⑤ 특이사항 및 인수인계 사항
+              ⑥ 특이사항 및 교대 인수인계 사항
             </label>
             <textarea
               rows={2}
