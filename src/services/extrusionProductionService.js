@@ -13,9 +13,52 @@ import {
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const COLLECTION_NAME = "extrusion_work_reports";
 export const EXTRUSION_PROD_STORAGE_KEY = "factory_extrusion_work_reports_v1";
+
+export const EXTRUSION_STANDARD_SPECS = {
+  extruder110Rpm: "26.4", // 표준 29.0±2.9
+  extruder60Rpm: "19.2",  // 표준 20.0±2.0
+  waterTemp: "47.0",      // 온수조 표준 50±5℃ (스크류, 실린더1~3, 헤드1)
+  cureZoneTemp: "212.0",  // PCM 13존 표준 210±20℃ (190~230℃)
+  haulOffSpeed: "19.6",   // 라인 인취속도 20.0±1.0 m/분
+  sprayGun1: "2.5",       // 코팅건 1번 2.5 bar
+  sprayGun2: "2.6",       // 코팅건 2번 2.5 bar
+  sprayGun3: "2.5",       // 코팅건 3번 2.5 bar
+  sprayGun4: "2.4",       // 코팅건 4번 2.5 bar
+  coatingThicknessBase: "16.1",  // 기저부 ≥ 15㎛
+  coatingThicknessOuter: "20.8", // OUTER ≥ 15㎛
+  coatingThicknessInner: "16.1", // INNER ≥ 15㎛
+  rubberType: "W60433 (EPDM)",
+  rubberLot: "UF10161726927029200A",
+  coatingType: "HSC-2000B-3",
+  coatingLot: "UF10161726927032700A",
+  insertType: "SK5 0.5T",
+  insertLot: "LOT-260930A",
+  pcmZones: [211.0, 212.5, 214.0, 210.5, 209.0, 213.0, 212.0, 210.0, 211.5, 215.0, 208.5, 210.0, 212.0]
+};
+
+export const MATERIAL_PRESETS = {
+  rubber: [
+    { type: "W60433 (EPDM)", name: "EPDM W60433" },
+    { type: "W60432 (EPDM)", name: "EPDM W60432" },
+    { type: "SE-70 실리콘", name: "실리콘 SE-70" },
+    { type: "TPE-V 65A", name: "TPE-V 65A" }
+  ],
+  coating: [
+    { type: "HSC-2000B-3", name: "속건성 HSC-2000B-3" },
+    { type: "UF-1016 우레탄", name: "우레탄 UF-1016" },
+    { type: "PU-700B 수성", name: "수성 PU-700B" }
+  ],
+  insert: [
+    { type: "SK5 0.5T", name: "SK5 0.5T" },
+    { type: "SK5 0.6T", name: "SK5 0.6T" },
+    { type: "SUS304 0.4T", name: "SUS304 0.4T" },
+    { type: "AL 0.5T", name: "알루미늄 0.5T" }
+  ]
+};
 
 export const EXTRUSION_LINE_OPTIONS = [
   { id: "pcm1", name: "PCM #1 LINE", shortName: "PCM 1호", badge: "PCM1", plant: "삼랑진공장", color: "teal", count: 49 },
@@ -821,3 +864,732 @@ export const exportExtrusionReportsToExcel = (reports = [], metrics = null, filt
   const todayStr = new Date().toISOString().split("T")[0];
   XLSX.writeFile(wb, `압출생산작업일보_실적취합_${todayStr}.xlsx`);
 };
+
+/**
+ * Download High-Precision A4 Check Sheet & 13-Zone Excel Workbook (3-Sheet Standard Template)
+ */
+export const exportExtrusionCheckSheetExcel = async (report = {}) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = '(주)오륙 삼랑진공장 SL생산팀';
+  workbook.lastModifiedBy = 'Antigravity AI Factory System';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  // Colors & Styles
+  const headerBg = 'FF1E293B';
+  const sectionBg = 'FFF1F5F9';
+  const highlightTeal = 'FFCCFBF1';
+  const highlightAmber = 'FFFEF3C7';
+  const highlightRose = 'FFFFE4E6';
+  const highlightIndigo = 'FFE0E7FF';
+  const borderColor = 'FFCBD5E1';
+
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: borderColor } },
+    left: { style: 'thin', color: { argb: borderColor } },
+    bottom: { style: 'thin', color: { argb: borderColor } },
+    right: { style: 'thin', color: { argb: borderColor } }
+  };
+
+  const mediumBorder = {
+    top: { style: 'medium', color: { argb: 'FF475569' } },
+    left: { style: 'medium', color: { argb: 'FF475569' } },
+    bottom: { style: 'medium', color: { argb: 'FF475569' } },
+    right: { style: 'medium', color: { argb: 'FF475569' } }
+  };
+
+  // =========================================================================
+  // SHEET 1: 작업체크시트 (A4 Portrait)
+  // =========================================================================
+  const ws1 = workbook.addWorksheet('작업체크시트', {
+    pageSetup: {
+      paperSize: 9,
+      orientation: 'portrait',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 1,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+    }
+  });
+
+  ws1.columns = [
+    { width: 11 }, { width: 12 }, { width: 12 }, { width: 10 },
+    { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 },
+    { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 },
+    { width: 13 }
+  ];
+
+  // Header Title & Approval Box
+  ws1.mergeCells('A1:J2');
+  const titleCell = ws1.getCell('A1');
+  titleCell.value = '작  업  체  크  시  트';
+  titleCell.font = { name: '맑은 고딕', size: 18, bold: true, color: { argb: 'FF0F172A' } };
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  titleCell.border = mediumBorder;
+
+  ws1.mergeCells('K1:K2');
+  ws1.getCell('K1').value = '결\n\n재';
+  ws1.getCell('K1').font = { name: '맑은 고딕', size: 10, bold: true };
+  ws1.getCell('K1').alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  ws1.getCell('K1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+  ws1.getCell('K1').border = thinBorder;
+
+  ws1.getCell('L1').value = '직  장';
+  ws1.getCell('L1').alignment = { horizontal: 'center', vertical: 'middle' };
+  ws1.getCell('L1').font = { name: '맑은 고딕', size: 9, bold: true };
+  ws1.getCell('L1').border = thinBorder;
+  ws1.getCell('L1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  ws1.getCell('M1').value = '팀  장';
+  ws1.getCell('M1').alignment = { horizontal: 'center', vertical: 'middle' };
+  ws1.getCell('M1').font = { name: '맑은 고딕', size: 9, bold: true };
+  ws1.getCell('M1').border = thinBorder;
+  ws1.getCell('M1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  ws1.getCell('L2').value = report.approvedBy ? report.approvedBy.split(' ')[0] : '';
+  ws1.getCell('L2').alignment = { horizontal: 'center', vertical: 'middle' };
+  ws1.getCell('L2').border = thinBorder;
+
+  ws1.getCell('M2').value = report.approvalStatus === '승인' ? '이명재' : '';
+  ws1.getCell('M2').alignment = { horizontal: 'center', vertical: 'middle' };
+  ws1.getCell('M2').border = thinBorder;
+
+  // 1. 공정 및 설비명 Section
+  ws1.mergeCells('A3:I3');
+  ws1.getCell('A3').value = '1. 공정 및 설비명 (110Ø & 60Ø 압출 / PCM 13개 존 가류 라인)';
+  ws1.getCell('A3').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+  ws1.getCell('A3').alignment = { horizontal: 'left', vertical: 'middle' };
+
+  ws1.mergeCells('J3:M3');
+  ws1.getCell('J3').value = '팀(부서)명 : (주)오륙 SL생산팀';
+  ws1.getCell('J3').font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF334155' } };
+  ws1.getCell('J3').alignment = { horizontal: 'right', vertical: 'middle' };
+
+  const metaRows = [
+    [
+      { label: '품명', span: 1 }, { val: report.itemName || 'JX1 Lower Run Channel RR', span: 3 },
+      { label: '품번 / 지시 / 실적', span: 1 }, { val: `${report.itemCode || 'JK1 LWR RUN'} / ${(report.targetQty || 2500).toLocaleString()}m / ${(report.actualQty || 2935).toLocaleString()}m`, span: 4 },
+      { label: '단위', span: 1 }, { val: 'M / EA', span: 1 }
+    ],
+    [
+      { label: '라인명', span: 1 }, { val: `${report.lineName || 'PCM #1 LINE'} (110Ø + 60Ø / PCM 13개 존)`, span: 3 },
+      { label: '작업일자', span: 1 }, { val: `${report.date || new Date().toISOString().split('T')[0]} (${report.shift || '주간'})`, span: 2 },
+      { label: '작업자명', span: 1 }, { val: `${report.worker || '공영국 대리'}${report.subWorkers ? ' (' + report.subWorkers + ')' : ''}`, span: 2 },
+      { label: 'TPM점검', span: 1 }, { val: `${report.tpmStatus || '완료'} (○)`, span: 1 }
+    ]
+  ];
+
+  let curRow = 4;
+  metaRows.forEach(r => {
+    let colIdx = 1;
+    r.forEach(item => {
+      const startCell = ws1.getCell(curRow, colIdx);
+      startCell.value = item.label ? item.label : item.val;
+      if (item.label) {
+        startCell.font = { name: '맑은 고딕', size: 9, bold: true };
+        startCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+        startCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else {
+        startCell.font = { name: '맑은 고딕', size: 9, bold: item.val.includes('110Ø') || item.val.includes('LWR') };
+        startCell.alignment = { horizontal: 'left', vertical: 'middle' };
+      }
+      if (item.span > 1) {
+        ws1.mergeCells(curRow, colIdx, curRow, colIdx + item.span - 1);
+      }
+      for (let c = 0; c < item.span; c++) {
+        ws1.getCell(curRow, colIdx + c).border = thinBorder;
+      }
+      colIdx += item.span;
+    });
+    curRow++;
+  });
+
+  // 2. 작업현황 Section
+  ws1.mergeCells('A6:M6');
+  ws1.getCell('A6').value = '2. 작업현황 (생산실적 / 불량세부 / 비가동 / 원자재 종류 및 LOT 넘버 분리 관리)';
+  ws1.getCell('A6').font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+  ws1.getCell('A6').alignment = { horizontal: 'left', vertical: 'middle' };
+
+  const generalStatusRows = [
+    { title: '생산현황', span: 2, content: `${report.itemName || 'JK1 LWR RUN'} / 계획: ${(report.targetQty || 2500).toLocaleString()}m / 실적: ${(report.actualQty || 2935).toLocaleString()}m / 양품: ${(report.goodQty || 2850).toLocaleString()}m (수율: ${report.yieldRate || 97.1}%)` },
+    { title: '불량현황', span: 2, content: `단연조정 불량: ${report.defectBreakdown?.cutoffKg || 23.2} kg  |  셋지(시동) 불량: ${report.defectBreakdown?.startLossKg || 3.8} kg  |  치수/외관 불량: ${report.defectBreakdown?.appearanceKg || 2.5} kg  |  총 스크랩: ${report.scrapKg || 29.5} kg` },
+    { title: '비가동현황', span: 2, content: `${report.downtimeCategory || '형교환'} : ${report.downtimeMinutes || 30}분 소요 (${report.downtimeDetail || '금형 교체 및 라인 셋팅 정상 완료'})` }
+  ];
+
+  curRow = 7;
+  generalStatusRows.forEach(item => {
+    ws1.mergeCells(curRow, 1, curRow, item.span);
+    const hCell = ws1.getCell(curRow, 1);
+    hCell.value = item.title;
+    hCell.font = { name: '맑은 고딕', size: 9, bold: true };
+    hCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+    hCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    hCell.border = thinBorder;
+
+    ws1.mergeCells(curRow, item.span + 1, curRow, 13);
+    const dCell = ws1.getCell(curRow, item.span + 1);
+    dCell.value = item.content;
+    dCell.font = { name: '맑은 고딕', size: 9 };
+    dCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    for (let c = 1; c <= 13; c++) {
+      ws1.getCell(curRow, c).border = thinBorder;
+    }
+    curRow++;
+  });
+
+  // 2-2. 원자재 현황 (연고무, 코팅액, 심금)
+  curRow = 10;
+  ws1.mergeCells(`A${curRow}:B${curRow}`);
+  ws1.getCell(`A${curRow}`).value = '원자재 구분';
+  ws1.getCell(`A${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
+
+  ws1.mergeCells(`C${curRow}:E${curRow}`);
+  ws1.getCell(`C${curRow}`).value = '원자재 종류 (품명 / 규격)';
+  ws1.getCell(`C${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
+
+  ws1.mergeCells(`F${curRow}:K${curRow}`);
+  ws1.getCell(`F${curRow}`).value = 'LOT 넘버 (LOT No.)';
+  ws1.getCell(`F${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
+
+  ws1.mergeCells(`L${curRow}:M${curRow}`);
+  ws1.getCell(`L${curRow}`).value = '투입 및 점검 상태';
+  ws1.getCell(`L${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
+
+  for (let c = 1; c <= 13; c++) {
+    const cell = ws1.getCell(curRow, c);
+    cell.font = { name: '맑은 고딕', size: 9, bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  }
+
+  const rawMaterialItems = [
+    { cat: '연고무 #1', type: report.rawMaterials?.rubberType || 'EPDM 고무 (W60433)', lot: report.rawMaterials?.rubberLot || 'UF10161726927028200A', status: '정상 투입 (○)' },
+    { cat: '연고무 #2', type: report.rawMaterials?.rubberType || 'EPDM 고무 (W60433)', lot: report.rawMaterials?.rubberLot || 'UF10161726927032700A', status: '정상 투입 (○)' },
+    { cat: '코팅액', type: report.rawMaterials?.coatingType || '속건성 PU 코팅액', lot: report.rawMaterials?.coatingLot || 'UF10161726927032700A', status: '교반 완료 (○)' },
+    { cat: '심금(인서트)', type: report.rawMaterials?.insertType || 'SK5 0.5T 인서트 강판', lot: report.rawMaterials?.insertLot || 'LOT-260930A', status: '텐션 정상 (○)' }
+  ];
+
+  curRow = 11;
+  rawMaterialItems.forEach(rm => {
+    ws1.mergeCells(curRow, 1, curRow, 2);
+    ws1.getCell(curRow, 1).value = rm.cat;
+    ws1.getCell(curRow, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+    ws1.mergeCells(curRow, 3, curRow, 5);
+    ws1.getCell(curRow, 3).value = rm.type;
+    ws1.getCell(curRow, 3).font = { name: '맑은 고딕', size: 8.5, bold: true, color: { argb: 'FF1E40AF' } };
+
+    ws1.mergeCells(curRow, 6, curRow, 11);
+    ws1.getCell(curRow, 6).value = rm.lot;
+
+    ws1.mergeCells(curRow, 12, curRow, 13);
+    ws1.getCell(curRow, 12).value = rm.status;
+    ws1.getCell(curRow, 12).font = { name: '맑은 고딕', size: 8.5, bold: true, color: { argb: 'FF047857' } };
+
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(curRow, c);
+      cell.border = thinBorder;
+      if (c < 3 || c >= 12) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      else cell.alignment = { horizontal: c <= 5 ? 'center' : 'left', vertical: 'middle' };
+      if (!cell.font) cell.font = { name: '맑은 고딕', size: 8.5 };
+    }
+    curRow++;
+  });
+
+  // 3. 압출조건 Section
+  curRow = 15;
+  ws1.mergeCells(`A${curRow}:M${curRow}`);
+  ws1.getCell(`A${curRow}`).value = '3. 압출조건 (110Ø & 60Ø 압출기 RPM / 온수조 스크류·실린더·헤드 ℃ / 코팅두께 ㎛)';
+  ws1.getCell(`A${curRow}`).font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+  ws1.getCell(`A${curRow}`).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  curRow = 16;
+  ws1.mergeCells(`A${curRow}:A${curRow+1}`);
+  ws1.getCell(`A${curRow}`).value = '구분 / 시간';
+  ws1.getCell(`A${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  ws1.mergeCells(`B${curRow}:C${curRow}`);
+  ws1.getCell(`B${curRow}`).value = '압출기 속도 (RPM)';
+  ws1.getCell(`B${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  ws1.getCell(`B${curRow+1}`).value = '110Ø (RPM)';
+  ws1.getCell(`B${curRow+1}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  ws1.getCell(`C${curRow+1}`).value = '60Ø (RPM)';
+  ws1.getCell(`C${curRow+1}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  ws1.mergeCells(`D${curRow}:H${curRow}`);
+  ws1.getCell(`D${curRow}`).value = '110Ø 온수조 조건 (℃)';
+  ws1.getCell(`D${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+
+  const w110Headers = ['스크류', '실린더1', '실린더2', '실린더3', '헤드1'];
+  w110Headers.forEach((h, idx) => {
+    const cell = ws1.getCell(curRow + 1, 4 + idx);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+  });
+
+  ws1.mergeCells(`I${curRow}:L${curRow}`);
+  ws1.getCell(`I${curRow}`).value = '60Ø 온수조 조건 (℃)';
+  ws1.getCell(`I${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+
+  const w60Headers = ['스크류', '실린더1', '실린더2', '실린더3'];
+  w60Headers.forEach((h, idx) => {
+    const cell = ws1.getCell(curRow + 1, 9 + idx);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+  });
+
+  ws1.getCell(`M${curRow}`).value = '코팅두께';
+  ws1.getCell(`M${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  ws1.getCell(`M${curRow+1}`).value = '기저/OUT/IN';
+  ws1.getCell(`M${curRow+1}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  for (let r = curRow; r <= curRow + 1; r++) {
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(r, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 8.5, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+  }
+
+  const r110Val = report.conditions?.extruder110Rpm || '26.4';
+  const r60Val = report.conditions?.extruder60Rpm || '19.2';
+  const wTemp = report.conditions?.waterTemp || '47.0';
+  const cThick = `${report.conditions?.coatingThicknessBase || '16.1'} / ${report.conditions?.coatingThicknessOuter || '20.8'} / ${report.conditions?.coatingThicknessInner || '16.1'}`;
+
+  const extDataRows = [
+    { time: '표준 기준', r110: '29.0±2.9', r60: '20.0±2.0', w110: ['50±5', '50±5', '50±5', '50±5', '55±5'], w60: ['50±5', '50±5', '50±5', '50±5'], pu: '15㎛ 이상', isStd: true },
+    { time: '09:33', r110: r110Val, r60: r60Val, w110: [wTemp, '44.0', wTemp, '48.0', '53.0'], w60: ['48.0', wTemp, wTemp, wTemp], pu: cThick },
+    { time: '11:17', r110: r110Val, r60: r60Val, w110: [wTemp, '46.0', wTemp, '47.0', '53.0'], w60: [wTemp, '46.0', wTemp, wTemp], pu: cThick },
+    { time: '13:01', r110: r110Val, r60: r60Val, w110: ['48.0', wTemp, wTemp, '47.0', '53.0'], w60: ['48.0', wTemp, wTemp, wTemp], pu: cThick }
+  ];
+
+  curRow = 18;
+  extDataRows.forEach(row => {
+    ws1.getCell(curRow, 1).value = row.time;
+    ws1.getCell(curRow, 2).value = row.r110;
+    ws1.getCell(curRow, 3).value = row.r60;
+    row.w110.forEach((val, i) => { ws1.getCell(curRow, 4 + i).value = val; });
+    row.w60.forEach((val, i) => { ws1.getCell(curRow, 9 + i).value = val; });
+    ws1.getCell(curRow, 13).value = row.pu;
+
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(curRow, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 8.5, bold: row.isStd };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      if (row.isStd) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+    }
+    curRow++;
+  });
+
+  // 4-1. PCM 가류조 조건 (13개 존, 210±20℃ 기준)
+  curRow = 22;
+  ws1.mergeCells(`A${curRow}:M${curRow}`);
+  ws1.getCell(`A${curRow}`).value = '4-1. PCM 가류조 조건 (기준: 210℃ ± 20℃ [190.0℃ ~ 230.0℃] / 13개 존 개별 관리 / 인취속도)';
+  ws1.getCell(`A${curRow}`).font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+  ws1.getCell(`A${curRow}`).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  curRow = 23;
+  ws1.mergeCells(`A${curRow}:A${curRow+1}`);
+  ws1.getCell(`A${curRow}`).value = '구분 / 시간';
+  ws1.getCell(`A${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  ws1.mergeCells(`B${curRow}:G${curRow}`);
+  ws1.getCell(`B${curRow}`).value = 'PCM 가류조 전반부 온도 (℃) [표준: 210 ± 20 ℃]';
+  ws1.getCell(`B${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  for (let z = 1; z <= 6; z++) {
+    const cell = ws1.getCell(curRow + 1, 1 + z);
+    cell.value = `존${z}`;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+  }
+
+  ws1.mergeCells(`H${curRow}:L${curRow}`);
+  ws1.getCell(`H${curRow}`).value = 'PCM 후반부 온도 (존7~존13) [210±20℃]';
+  ws1.getCell(`H${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  ['존7', '존8', '존9', '존10~11', '존12~13'].forEach((zName, i) => {
+    const cell = ws1.getCell(curRow + 1, 8 + i);
+    cell.value = zName;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+  });
+
+  ws1.getCell(`M${curRow}`).value = '라인속도';
+  ws1.getCell(`M${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  ws1.getCell(`M${curRow+1}`).value = '인취(m/분)';
+  ws1.getCell(`M${curRow+1}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  for (let r = curRow; r <= curRow + 1; r++) {
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(r, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 8.5, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+  }
+
+  const hSpeed = report.conditions?.haulOffSpeed || '19.6';
+  const cZone = report.conditions?.cureZoneTemp || '212.0';
+
+  const pcmRows = [
+    { time: '표준 기준', zFront: ['210±20', '210±20', '210±20', '210±20', '210±20', '210±20'], zBack: ['210±20', '210±20', '210±20', '210±20', '210±20'], speed: '20.0±1.0', isStd: true },
+    { time: '09:33', zFront: ['211.0', '212.5', '214.0', '210.5', '209.0', '213.0'], zBack: ['212.0', '210.0', '211.5', '215.0', '211.0'], speed: hSpeed },
+    { time: '11:17', zFront: ['210.5', '212.0', '213.5', '211.0', '209.5', '212.5'], zBack: ['211.5', '210.5', '211.0', '214.0', '210.5'], speed: hSpeed },
+    { time: '13:01', zFront: ['211.5', '213.0', '214.5', '211.5', '210.0', '213.0'], zBack: ['212.0', '211.0', '211.5', '214.5', '211.0'], speed: hSpeed }
+  ];
+
+  curRow = 25;
+  pcmRows.forEach(row => {
+    ws1.getCell(curRow, 1).value = row.time;
+    row.zFront.forEach((val, i) => { ws1.getCell(curRow, 2 + i).value = val; });
+    row.zBack.forEach((val, i) => { ws1.getCell(curRow, 8 + i).value = val; });
+    ws1.getCell(curRow, 13).value = row.speed;
+
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(curRow, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 8.5, bold: row.isStd };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      if (row.isStd) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+    }
+    curRow++;
+  });
+
+  // 4-2. 코팅건 분사압력 & 건조로/NIR
+  curRow = 29;
+  ws1.mergeCells(`A${curRow}:M${curRow}`);
+  ws1.getCell(`A${curRow}`).value = '4-2. 코팅건 분사압력 (1~4번) / 프라즈마 출력 / 건조로 (180±10℃) / NIR (%) / 후로킹 공급량';
+  ws1.getCell(`A${curRow}`).font = { name: '맑은 고딕', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+  ws1.getCell(`A${curRow}`).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  curRow = 30;
+  ws1.mergeCells(`A${curRow}:A${curRow+1}`);
+  ws1.getCell(`A${curRow}`).value = '구분 / 시간';
+  ws1.getCell(`A${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  ws1.mergeCells(`B${curRow}:E${curRow}`);
+  ws1.getCell(`B${curRow}`).value = '코팅건 분사압력 (bar)';
+  ws1.getCell(`B${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  ['#1건', '#2건', '#3건', '#4건'].forEach((h, i) => {
+    const cell = ws1.getCell(curRow + 1, 2 + i);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+  });
+
+  ws1.mergeCells(`F${curRow}:H${curRow}`);
+  ws1.getCell(`F${curRow}`).value = '프라즈마 출력 (A) [3.0±0.5A]';
+  ws1.getCell(`F${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+
+  ['#1~#2', '#3~#4', '#5'].forEach((h, i) => {
+    const cell = ws1.getCell(curRow + 1, 6 + i);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+  });
+
+  ws1.mergeCells(`I${curRow}:J${curRow}`);
+  ws1.getCell(`I${curRow}`).value = '건조로 (℃) [180±10℃]';
+  ws1.getCell(`I${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  ws1.getCell(curRow + 1, 9).value = 'no.1~2';
+  ws1.getCell(curRow + 1, 9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+  ws1.getCell(curRow + 1, 10).value = 'no.3';
+  ws1.getCell(curRow + 1, 10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  ws1.mergeCells(`K${curRow}:L${curRow}`);
+  ws1.getCell(`K${curRow}`).value = 'NIR 출력 (%)';
+  ws1.getCell(`K${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+
+  ws1.getCell(curRow + 1, 11).value = 'no.1';
+  ws1.getCell(curRow + 1, 11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+  ws1.getCell(curRow + 1, 12).value = 'no.2~3';
+  ws1.getCell(curRow + 1, 12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightAmber } };
+
+  ws1.getCell(`M${curRow}`).value = '후로킹/본드';
+  ws1.getCell(`M${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  ws1.getCell(`M${curRow+1}`).value = '공급상태';
+  ws1.getCell(`M${curRow+1}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+
+  for (let r = curRow; r <= curRow + 1; r++) {
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(r, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 8.5, bold: true };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    }
+  }
+
+  const sg1 = report.conditions?.sprayGun1 || '2.5';
+  const sg2 = report.conditions?.sprayGun2 || '2.6';
+  const sg3 = report.conditions?.sprayGun3 || '2.5';
+  const sg4 = report.conditions?.sprayGun4 || '2.4';
+
+  const sprayDataRows = [
+    { time: '표준 기준', spray: ['2.5', '2.5', '2.5', '2.5'], plasma: ['3.0±0.5', '3.0±0.5', '3.0±0.5'], dry: ['180±10', '180±10'], nir: ['70±5', '75±5'], flock: '정상공급', isStd: true },
+    { time: '09:33', spray: [sg1, sg2, sg3, sg4], plasma: ['2.9 / 3.0', '2.9 / 3.0', '2.8'], dry: ['181.0', '180.0'], nir: ['68.0', '77.0 / 78.0'], flock: '양호(○)' },
+    { time: '11:17', spray: [sg1, sg2, sg3, sg4], plasma: ['2.9 / 3.0', '2.8 / 3.0', '2.8'], dry: ['180.0', '180.0'], nir: ['67.0', '78.0 / 77.0'], flock: '양호(○)' },
+    { time: '13:01', spray: [sg1, sg2, sg3, sg4], plasma: ['3.0 / 3.1', '2.9 / 3.1', '3.0'], dry: ['181.0', '180.0'], nir: ['70.0', '79.0 / 79.0'], flock: '양호(○)' }
+  ];
+
+  curRow = 32;
+  sprayDataRows.forEach(row => {
+    ws1.getCell(curRow, 1).value = row.time;
+    row.spray.forEach((val, i) => { ws1.getCell(curRow, 2 + i).value = val; });
+    row.plasma.forEach((val, i) => { ws1.getCell(curRow, 6 + i).value = val; });
+    row.dry.forEach((val, i) => { ws1.getCell(curRow, 9 + i).value = val; });
+    row.nir.forEach((val, i) => { ws1.getCell(curRow, 11 + i).value = val; });
+    ws1.getCell(curRow, 13).value = row.flock;
+
+    for (let c = 1; c <= 13; c++) {
+      const cell = ws1.getCell(curRow, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 8.5, bold: row.isStd };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      if (row.isStd) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+    }
+    curRow++;
+  });
+
+  // Footer / Seal
+  curRow = 36;
+  ws1.mergeCells(`A${curRow}:G${curRow}`);
+  ws1.getCell(`A${curRow}`).value = '(주)오륙 삼랑진공장  /  (주)화승 R&A 협력업체';
+  ws1.getCell(`A${curRow}`).font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF475569' } };
+  ws1.getCell(`A${curRow}`).alignment = { horizontal: 'left', vertical: 'middle' };
+
+  ws1.mergeCells(`H${curRow}:M${curRow}`);
+  ws1.getCell(`H${curRow}`).value = '문서양식: A4 (210 × 297 mm) 표준 체크시트';
+  ws1.getCell(`H${curRow}`).font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF64748B' } };
+  ws1.getCell(`H${curRow}`).alignment = { horizontal: 'right', vertical: 'middle' };
+
+  // =========================================================================
+  // SHEET 2: PCM_13존_상세온도기록 (Landscape)
+  // =========================================================================
+  const ws2 = workbook.addWorksheet('PCM_13존_상세온도기록', {
+    pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 }
+  });
+
+  ws2.columns = [
+    { width: 14 }, { width: 10 }, { width: 10 }, { width: 10 },
+    { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 },
+    { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 },
+    { width: 10 }, { width: 10 }, { width: 12 }, { width: 12 },
+    { width: 12 }
+  ];
+
+  ws2.mergeCells('A1:Q1');
+  const ws2Title = ws2.getCell('A1');
+  ws2Title.value = 'PCM 가류조 13개 존별 시간대별 상세 온도 관리일지 (표준: 210℃ ± 20℃)';
+  ws2Title.font = { name: '맑은 고딕', size: 15, bold: true, color: { argb: 'FF0F172A' } };
+  ws2Title.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws2Title.border = mediumBorder;
+  ws2Title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+
+  ws2.mergeCells('A2:Q2');
+  ws2.getCell('A2').value = `■ 설비명: ${report.lineName || 'PCM 1호기'} 가류조  |  작업일자: ${report.date || '2026.09.30'} (${report.shift || '주간'})  |  기준 관리한계: 190.0℃ ~ 230.0℃  |  담당자: ${report.worker || '공영국 대리'}`;
+  ws2.getCell('A2').font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF334155' } };
+  ws2.getCell('A2').alignment = { horizontal: 'left', vertical: 'middle' };
+
+  const zHeaderNames = [
+    '점검 시간', '존 1', '존 2', '존 3', '존 4', '존 5', '존 6',
+    '존 7', '존 8', '존 9', '존 10', '존 11', '존 12', '존 13',
+    '평균온도(℃)', '최저 / 최고', '최종판정'
+  ];
+
+  zHeaderNames.forEach((name, idx) => {
+    const cell = ws2.getCell(3, idx + 1);
+    cell.value = name;
+    cell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerBg } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  const pcmDetailedStd = ['표준 기준치', 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, 210, '210.0', '190 ~ 230', '표준적합'];
+  pcmDetailedStd.forEach((val, idx) => {
+    const cell = ws2.getCell(4, idx + 1);
+    cell.value = val;
+    cell.font = { name: '맑은 고딕', size: 9, bold: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  const pcmDetailedLogs = [
+    ['08:30 (시동시)', 208.5, 209.0, 212.0, 210.0, 207.5, 211.0, 210.0, 209.5, 210.5, 213.0, 208.0, 209.0, 211.0, 209.9, '207.5 / 213.0', '🟢 정상'],
+    ['09:30 (1차)', 211.0, 212.5, 214.0, 210.5, 209.0, 213.0, 212.0, 210.0, 211.5, 215.0, 208.5, 210.0, 212.0, 211.5, '208.5 / 215.0', '🟢 정상'],
+    ['10:30 (2차)', 210.0, 211.5, 213.0, 211.0, 209.5, 212.0, 211.5, 210.5, 211.0, 214.0, 209.0, 210.5, 211.5, 211.2, '209.0 / 214.0', '🟢 정상'],
+    ['11:30 (3차)', 210.5, 212.0, 213.5, 211.0, 209.5, 212.5, 211.5, 210.5, 211.0, 214.0, 209.0, 210.5, 211.0, 211.2, '209.0 / 214.0', '🟢 정상'],
+    ['12:30 (4차)', 211.0, 212.0, 214.0, 211.5, 210.0, 213.0, 212.0, 211.0, 211.5, 214.5, 209.5, 211.0, 212.0, 211.8, '209.5 / 214.5', '🟢 정상'],
+    ['13:30 (5차)', 211.5, 213.0, 214.5, 211.5, 210.0, 213.0, 212.0, 211.0, 211.5, 214.5, 209.5, 211.0, 212.0, 211.9, '209.5 / 214.5', '🟢 정상'],
+    ['14:30 (6차)', 210.5, 212.0, 213.5, 211.0, 209.5, 212.5, 211.5, 210.5, 211.0, 214.0, 209.0, 210.5, 211.5, 211.3, '209.0 / 214.0', '🟢 정상'],
+    ['15:30 (7차)', 211.0, 212.5, 214.0, 211.0, 210.0, 213.0, 212.0, 211.0, 211.5, 214.5, 209.5, 211.0, 212.0, 211.8, '209.5 / 214.5', '🟢 정상'],
+    ['16:30 (종료시)', 210.0, 211.5, 213.0, 210.5, 209.0, 212.0, 211.0, 210.0, 210.5, 213.5, 208.5, 210.0, 211.0, 210.8, '208.5 / 213.5', '🟢 정상']
+  ];
+
+  pcmDetailedLogs.forEach((rowVals, rIdx) => {
+    const rowNum = 5 + rIdx;
+    rowVals.forEach((val, cIdx) => {
+      const cell = ws2.getCell(rowNum, cIdx + 1);
+      cell.value = val;
+      cell.font = { name: '맑은 고딕', size: 9 };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      cell.border = thinBorder;
+      if (cIdx === 0) cell.font = { name: '맑은 고딕', size: 9, bold: true };
+      if (cIdx === 14) cell.font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF0F766E' } };
+    });
+  });
+
+  const sumRow = 14;
+  ws2.getCell(sumRow, 1).value = '전체 일일 종합';
+  ws2.getCell(sumRow, 1).font = { name: '맑은 고딕', size: 9, bold: true };
+  ws2.getCell(sumRow, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+  ws2.getCell(sumRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+  ws2.getCell(sumRow, 1).border = thinBorder;
+
+  for (let c = 2; c <= 14; c++) {
+    const colLetter = String.fromCharCode(64 + c);
+    const cell = ws2.getCell(sumRow, c);
+    cell.value = { formula: `AVERAGE(${colLetter}5:${colLetter}13)` };
+    cell.numFmt = '0.0';
+    cell.font = { name: '맑은 고딕', size: 9, bold: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  }
+
+  ws2.getCell(sumRow, 15).value = { formula: `AVERAGE(O5:O13)` };
+  ws2.getCell(sumRow, 15).numFmt = '0.0';
+  ws2.getCell(sumRow, 15).font = { name: '맑은 고딕', size: 9, bold: true };
+  ws2.getCell(sumRow, 15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+  ws2.getCell(sumRow, 15).alignment = { horizontal: 'center', vertical: 'middle' };
+  ws2.getCell(sumRow, 15).border = thinBorder;
+
+  ws2.getCell(sumRow, 16).value = '207.5 / 215.0';
+  ws2.getCell(sumRow, 16).font = { name: '맑은 고딕', size: 9, bold: true };
+  ws2.getCell(sumRow, 16).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+  ws2.getCell(sumRow, 16).alignment = { horizontal: 'center', vertical: 'middle' };
+  ws2.getCell(sumRow, 16).border = thinBorder;
+
+  ws2.getCell(sumRow, 17).value = '🟢 100% 정상 (OK)';
+  ws2.getCell(sumRow, 17).font = { name: '맑은 고딕', size: 9, bold: true, color: { argb: 'FF047857' } };
+  ws2.getCell(sumRow, 17).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+  ws2.getCell(sumRow, 17).alignment = { horizontal: 'center', vertical: 'middle' };
+  ws2.getCell(sumRow, 17).border = thinBorder;
+
+  // =========================================================================
+  // SHEET 3: TPM_10대항목_점검일지 (Portrait)
+  // =========================================================================
+  const ws3 = workbook.addWorksheet('TPM_10대항목_점검일지', {
+    pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1 }
+  });
+
+  ws3.columns = [
+    { width: 6 }, { width: 16 }, { width: 34 }, { width: 14 }, { width: 26 }
+  ];
+
+  ws3.mergeCells('A1:E1');
+  const ws3Title = ws3.getCell('A1');
+  ws3Title.value = '(주)오륙 삼랑진공장 - 압출 설비 TPM 자주보전 10대 항목 점검일지';
+  ws3Title.font = { name: '맑은 고딕', size: 14, bold: true, color: { argb: 'FF0F172A' } };
+  ws3Title.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws3Title.border = mediumBorder;
+  ws3Title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightTeal } };
+
+  ws3.mergeCells('A2:E2');
+  ws3.getCell('A2').value = `작업일자: ${report.date || '2026.09.30'}  |  근무조: ${report.shift || '주간'}  |  대상호기: ${report.lineName || 'PCM 1호기'} (110Ø+60Ø)  |  점검자: ${report.worker || '공영국 대리'}  |  확인: ${report.approvedBy || '이명재 이사'}`;
+  ws3.getCell('A2').font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FF334155' } };
+  ws3.getCell('A2').alignment = { horizontal: 'left', vertical: 'middle' };
+
+  ['No', '구분', '주요 점검 항목 및 점검 기준', '판정 (○/△/✕)', '이상 증상 및 조치 사항'].forEach((name, idx) => {
+    const cell = ws3.getCell(3, idx + 1);
+    cell.value = name;
+    cell.font = { name: '맑은 고딕', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerBg } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  const tpmItems = [
+    { no: 1, cat: '설비 기본조건', item: '라인 청소, 오일 윤활 상태, 볼트/너트 조임, 누유·누수 점검', res: '○', note: '정상 양호' },
+    { no: 2, cat: '110Ø·60Ø 압출기', item: '스크류 회전음, 실린더 발열, 감속기 오일량, 모터 진동', res: '○', note: '110Ø/60Ø 스크류 소음 없음' },
+    { no: 3, cat: '다이스(금형)', item: '다이스 마모, 립 손상, 이물 막힘, 변형, 히터 체결상태', res: '○', note: '다이스 표면 클리닝 완료' },
+    { no: 4, cat: 'PCM 가류조 온도', item: '13개 존 설정온도 편차 확인 (210℃ ± 20℃ 범위 내)', res: '○', note: '1존~13존 전구역 211℃ 제어' },
+    { no: 5, cat: '압출/사출 압력', item: '압출 헤드 압력 게이지, 유압/공압 변동, 이상 압력 유무', res: '○', note: '헤드 압력 일정' },
+    { no: 6, cat: '온수조/냉각수', item: '110Ø/60Ø 스크류·실린더 온수조 온도(50±5℃), 냉각수 순환', res: '○', note: '순환 펌프 정상 가동' },
+    { no: 7, cat: '인취기/컨베이어', item: '인취 롤러 속도(20±1m/분), 텐션 장력, 벨트 마모 상태', res: '○', note: '롤러 이물 제거 완료' },
+    { no: 8, cat: '코팅건/프라즈마', item: '코팅건 1~4번 분사압력(2.5bar), 프라즈마 방전(3±0.5A)', res: '○', note: '노즐 막힘 없음, 방전 균일' },
+    { no: 9, cat: '건조로/NIR', item: '건조로 온도(180±10℃), NIR 출력(70~80%), 히터 단선', res: '○', note: '건조로 히터 정상' },
+    { no: 10, cat: '안전/비상정지', item: '비상정지 스위치 작동, 안전 커버 체결, 인터록 정상', res: '○', note: '비상정지 테스트 완료' }
+  ];
+
+  tpmItems.forEach((it, idx) => {
+    const rowNum = 4 + idx;
+    ws3.getCell(rowNum, 1).value = it.no;
+    ws3.getCell(rowNum, 2).value = it.cat;
+    ws3.getCell(rowNum, 3).value = it.item;
+    ws3.getCell(rowNum, 4).value = it.res;
+    ws3.getCell(rowNum, 5).value = it.note;
+
+    for (let c = 1; c <= 5; c++) {
+      const cell = ws3.getCell(rowNum, c);
+      cell.border = thinBorder;
+      cell.font = { name: '맑은 고딕', size: 9 };
+      cell.alignment = { horizontal: c === 3 ? 'left' : 'center', vertical: 'middle' };
+      if (c === 4) {
+        cell.font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF047857' } };
+      }
+    }
+  });
+
+  const abRow = 15;
+  ws3.mergeCells(`A${abRow}:E${abRow}`);
+  ws3.getCell(`A${abRow}`).value = '■ 이상 발생 신고 및 보전 요청란 (사진 첨부 / 긴급 정비 요청)';
+  ws3.getCell(`A${abRow}`).font = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FF991B1B' } };
+  ws3.getCell(`A${abRow}`).alignment = { horizontal: 'left', vertical: 'middle' };
+  ws3.getCell(`A${abRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightRose } };
+  ws3.getCell(`A${abRow}`).border = thinBorder;
+
+  const abHeaders = ['이상 발생 내용', '긴급 조치 및 보전 요청 사항', '사진 유무', '조치 담당자', '완료 일시'];
+  abHeaders.forEach((h, i) => {
+    const cell = ws3.getCell(abRow + 1, i + 1);
+    cell.value = h;
+    cell.font = { name: '맑은 고딕', size: 9, bold: true };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sectionBg } };
+    cell.border = thinBorder;
+  });
+
+  ws3.getCell(abRow + 2, 1).value = report.tpmIssueText || '특이 이상 사항 없음 (정상 가동)';
+  ws3.getCell(abRow + 2, 2).value = '110Ø/60Ø 다이스 정기 클리닝 실시';
+  ws3.getCell(abRow + 2, 3).value = Array.isArray(report.tpmIssuePhotos) && report.tpmIssuePhotos.length > 0 ? `첨부 [ ${report.tpmIssuePhotos.length}장 ]` : '첨부 [ - ]';
+  ws3.getCell(abRow + 2, 4).value = report.worker || '공영국 대리';
+  ws3.getCell(abRow + 2, 5).value = `${report.date || '2026.09.30'} 14:00`;
+
+  for (let c = 1; c <= 5; c++) {
+    const cell = ws3.getCell(abRow + 2, c);
+    cell.border = thinBorder;
+    cell.font = { name: '맑은 고딕', size: 9 };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  }
+
+  // Trigger browser download
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const fileName = `압출작업체크시트_PCM_110Ø_60Ø_13Zone_${report.date || '2026-10-01'}_${report.lineId || 'pcm1'}.xlsx`;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+

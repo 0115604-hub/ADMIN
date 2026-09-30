@@ -33,7 +33,8 @@ import {
   deleteExtrusionReport,
   toggleExtrusionReportApproval,
   calculateExtrusionMetrics,
-  exportExtrusionReportsToExcel
+  exportExtrusionReportsToExcel,
+  exportExtrusionCheckSheetExcel
 } from "../../services/extrusionProductionService";
 import ExtrusionWorkReportModal from "./ExtrusionWorkReportModal";
 
@@ -176,6 +177,28 @@ export const ExtrusionProductionTab = () => {
     showToast("📊 생산실적 및 작업일보 엑셀 파일이 다운로드되었습니다.");
   };
 
+  // Handler: Download Blank / Standard Check Sheet
+  const handleDownloadBlankCheckSheet = async () => {
+    try {
+      await exportExtrusionCheckSheetExcel(null);
+      showToast("📄 A4 압출작업 표준 체크시트 양식이 다운로드되었습니다.");
+    } catch (e) {
+      console.error(e);
+      showToast("❌ 체크시트 양식 다운로드 중 오류가 발생했습니다.");
+    }
+  };
+
+  // Handler: Download Individual Report Check Sheet
+  const handleDownloadCheckSheet = async (report) => {
+    try {
+      await exportExtrusionCheckSheetExcel(report);
+      showToast(`📄 [${report.lineName || "압출"} ${report.itemCode || ""}] A4 표준 체크시트가 다운로드되었습니다.`);
+    } catch (e) {
+      console.error(e);
+      showToast("❌ 체크시트 엑셀 다운로드 중 오류가 발생했습니다.");
+    }
+  };
+
   // Handler: Print
   const handlePrint = () => {
     window.print();
@@ -231,6 +254,15 @@ export const ExtrusionProductionTab = () => {
           >
             <Download className="w-4 h-4" />
             <span>실적 엑셀 취합</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadBlankCheckSheet}
+            className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+            title="A4 표준 압출작업 체크시트 (3개 시트 통합 서식) 다운로드"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>체크시트 표준서식</span>
           </button>
           <button
             type="button"
@@ -960,6 +992,14 @@ export const ExtrusionProductionTab = () => {
                       {/* Action Buttons */}
                       <td className="py-3 px-3 text-center">
                         <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadCheckSheet(r)}
+                            title="A4 표준 체크시트 엑셀 다운로드"
+                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 transition active:scale-95 cursor-pointer"
+                          >
+                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(r)}
