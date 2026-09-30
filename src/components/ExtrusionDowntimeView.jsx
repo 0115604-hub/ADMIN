@@ -15,6 +15,9 @@ import {
   AlertCircle
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { EXTRUSION_LINES } from "../utils/extrusionImageParser";
 import { parseExtrusionExcelFile, detectExtrusionLineKey } from "../utils/extrusionFileParser";
 
@@ -156,8 +159,22 @@ export const sanitizeExtrusionRows = (rawRows = []) => {
 };
 
 export const ExtrusionDowntimeView = () => {
-  const [selectedLineId, setSelectedLineId] = useState("pcm1");
-  const [selectedWeek, setSelectedWeek] = useState("9월3주");
+  const [selectedLineId, setSelectedLineId] = useState(() => {
+    try {
+      const saved = localStorage.getItem("factory_extrusion_selected_line");
+      if (saved) return saved;
+    } catch (e) {}
+    return "pcm1";
+  });
+
+  const [selectedWeek, setSelectedWeek] = useState(() => {
+    try {
+      const saved = localStorage.getItem("factory_extrusion_selected_week");
+      if (saved) return saved;
+    } catch (e) {}
+    return "9월3주";
+  });
+
   const [monthFilter, setMonthFilter] = useState("전체");
   const [toastMessage, setToastMessage] = useState("");
   const [dragOverBadge, setDragOverBadge] = useState(null);
@@ -193,6 +210,36 @@ export const ExtrusionDowntimeView = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 4000);
   };
+
+  // Real-time Firestore Cloud Sync
+  useEffect(() => {
+    try {
+      const docRef = doc(db, "extrusion_lines_data", "master_v5");
+      const unsub = onSnapshot(
+        docRef,
+        (snap) => {
+          if (snap.exists()) {
+            const remoteData = snap.data();
+            if (remoteData && typeof remoteData === "object" && Object.keys(remoteData).length > 0) {
+              setLinesData((prev) => {
+                const merged = { ...prev, ...remoteData };
+                try {
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                } catch (e) {}
+                return merged;
+              });
+            }
+          }
+        },
+        (err) => {
+          console.warn("Firestore extrusion sync fallback:", err);
+        }
+      );
+      return () => unsub();
+    } catch (e) {
+      console.warn("Firestore extrusion listener error:", e);
+    }
+  }, []);
 
   // Auto sanitize any existing stored data on mount
   useEffect(() => {
@@ -240,6 +287,24 @@ export const ExtrusionDowntimeView = () => {
     });
   }, []);
 
+  // Save selectedLineId and selectedWeek to localStorage
+  useEffect(() => {
+    try {
+      if (selectedLineId) {
+        localStorage.setItem("factory_extrusion_selected_line", selectedLineId);
+      }
+    } catch (e) {}
+  }, [selectedLineId]);
+
+  useEffect(() => {
+    try {
+      if (selectedWeek) {
+        localStorage.setItem("factory_extrusion_selected_week", selectedWeek);
+      }
+    } catch (e) {}
+  }, [selectedWeek]);
+
+  // Persist linesData to localStorage & Firestore on state update
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(linesData));
@@ -250,6 +315,22 @@ export const ExtrusionDowntimeView = () => {
       console.warn("Storage save error:", e);
     }
   }, [linesData]);
+
+  // Auto select a line that has uploaded data if current line is empty
+  useEffect(() => {
+    if (!linesData || Object.keys(linesData).length === 0) return;
+    const currentHasData = Boolean(
+      linesData[selectedLineId]?.sheets && Object.keys(linesData[selectedLineId].sheets).length > 0
+    );
+    if (!currentHasData) {
+      const lineWithData = Object.keys(linesData).find(
+        (k) => linesData[k]?.sheets && Object.keys(linesData[k].sheets).length > 0
+      );
+      if (lineWithData) {
+        setSelectedLineId(lineWithData);
+      }
+    }
+  }, [linesData, selectedLineId]);
 
   const currentLineData = linesData[selectedLineId] || null;
   const currentLineName = LINE_DISPLAY_NAMES[selectedLineId] || "PCM #1 LINE";
@@ -266,7 +347,7 @@ export const ExtrusionDowntimeView = () => {
       if (weeklySheetKeys.includes("9월3주")) {
         setSelectedWeek("9월3주");
       } else {
-        setSelectedWeek(weeklySheetKeys[0]);
+        setSelectedWeek(weeklySheetKeys[weeklySheetKeys.length - 1] || weeklySheetKeys[0]);
       }
     }
   }, [weeklySheetKeys, selectedWeek]);
@@ -353,17 +434,40 @@ export const ExtrusionDowntimeView = () => {
       // Detect line key if not explicitly set
       const lineKey = targetLineKey || detectExtrusionLineKey(file.name, selectedLineId);
 
-      setLinesData((prev) => ({
-        ...prev,
-        [lineKey]: parsed
-      }));
+      const targetWeek = parsed.sheets["9월3주"]
+        ? "9월3주"
+        : Object.keys(parsed.sheets)[Object.keys(parsed.sheets).length - 1] || Object.keys(parsed.sheets)[0];
+
+      const linePayload = {
+        ...parsed,
+        id: lineKey,
+        name: LINE_DISPLAY_NAMES[lineKey] || lineKey
+      };
+
+      setLinesData((prev) => {
+        const next = {
+          ...prev,
+          [lineKey]: linePayload
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          localStorage.setItem("factory_extrusion_selected_line", lineKey);
+          localStorage.setItem("factory_extrusion_selected_week", targetWeek);
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("extrusion-data-updated", { detail: next }));
+          }
+        } catch (e) {}
+
+        // Cloud save to Firestore
+        try {
+          setDoc(doc(db, "extrusion_lines_data", "master_v5"), sanitizeForFirestore(next), { merge: true }).catch(() => {});
+        } catch (e) {}
+
+        return next;
+      });
 
       setSelectedLineId(lineKey);
-      if (parsed.sheets["9월3주"]) {
-        setSelectedWeek("9월3주");
-      } else {
-        setSelectedWeek(Object.keys(parsed.sheets)[0]);
-      }
+      setSelectedWeek(targetWeek);
 
       showToast(`✅ [${LINE_DISPLAY_NAMES[lineKey]}] ${file.name} (${sheetCount}개 주차) 분석 완료!`);
     } catch (err) {
@@ -382,6 +486,13 @@ export const ExtrusionDowntimeView = () => {
       setLinesData((prev) => {
         const next = { ...prev };
         delete next[lineKey];
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("extrusion-data-updated", { detail: next }));
+          }
+          setDoc(doc(db, "extrusion_lines_data", "master_v5"), sanitizeForFirestore(next)).catch(() => {});
+        } catch (e) {}
         return next;
       });
       showToast(`🗑️ [${LINE_DISPLAY_NAMES[lineKey]}] 데이터가 삭제되었습니다.`);
