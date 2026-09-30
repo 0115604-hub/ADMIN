@@ -306,11 +306,14 @@ export const ExtrusionProductionTab = () => {
                 onClick={() => setSelectedLineFilter(l.id)}
                 className={`px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer ${
                   selectedLineFilter === l.id
-                    ? "bg-teal-600 text-white shadow-xs"
+                    ? l.id === "pcm1" ? "bg-teal-600 text-white shadow-xs" :
+                      l.id === "pcm3" ? "bg-blue-600 text-white shadow-xs" :
+                      l.id === "pvc" ? "bg-amber-600 text-white shadow-xs" :
+                      "bg-purple-600 text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                 }`}
               >
-                {l.shortName}
+                {l.badge || l.shortName}
               </button>
             ))}
           </div>

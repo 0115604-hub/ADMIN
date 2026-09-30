@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   X,
   Save,
@@ -15,7 +15,10 @@ import {
   Sun,
   Moon,
   Zap,
-  Activity
+  Activity,
+  Search,
+  Check,
+  ChevronDown
 } from "lucide-react";
 import {
   EXTRUSION_LINE_OPTIONS,
@@ -24,6 +27,11 @@ import {
   DOWNTIME_CATEGORIES,
   sanitizeExtrusionReport
 } from "../../services/extrusionProductionService";
+import {
+  EXTRUSION_LINE_BADGES,
+  EXTRUSION_ITEMS_BY_LINE,
+  getItemsByLine
+} from "../../data/extrusionItemsData";
 
 export const ExtrusionWorkReportModal = ({
   isOpen,
@@ -42,11 +50,11 @@ export const ExtrusionWorkReportModal = ({
       plant: "삼랑진공장",
       lineId: "pcm1",
       lineName: "PCM #1 LINE",
-      worker: "설유철 책임",
+      worker: "공영국 대리",
       subWorkers: "",
-      vehicle: "NX4",
+      vehicle: "MCA",
       itemCode: "",
-      itemName: "G/RUN FRT, RR",
+      itemName: "HOOD A",
       targetQty: 4000,
       actualQty: 3950,
       goodQty: 3880,
@@ -61,6 +69,39 @@ export const ExtrusionWorkReportModal = ({
   });
 
   const [errors, setErrors] = useState({});
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
+  const [selectedVehicleFilter, setSelectedVehicleFilter] = useState("all");
+
+  // Items for currently active line (PCM1, PCM3, PVC, TPE)
+  const activeLineItems = useMemo(() => {
+    return getItemsByLine(formData.lineId || "pcm1");
+  }, [formData.lineId]);
+
+  // Unique vehicles for currently active line (sorted alphabetically)
+  const lineUniqueVehicles = useMemo(() => {
+    const set = new Set();
+    activeLineItems.forEach((it) => {
+      if (it.vehicle) set.add(it.vehicle);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "ko-KR"));
+  }, [activeLineItems]);
+
+  // Filtered items by search query and vehicle filter
+  const filteredLineItems = useMemo(() => {
+    let list = activeLineItems;
+    if (selectedVehicleFilter !== "all") {
+      list = list.filter((it) => it.vehicle === selectedVehicleFilter);
+    }
+    if (itemSearchQuery.trim()) {
+      const q = itemSearchQuery.toLowerCase().trim();
+      list = list.filter((it) =>
+        it.vehicle?.toLowerCase().includes(q) ||
+        it.itemName?.toLowerCase().includes(q) ||
+        it.label?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [activeLineItems, selectedVehicleFilter, itemSearchQuery]);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,11 +114,11 @@ export const ExtrusionWorkReportModal = ({
           plant: "삼랑진공장",
           lineId: "pcm1",
           lineName: "PCM #1 LINE",
-          worker: "설유철 책임",
+          worker: "공영국 대리",
           subWorkers: "",
-          vehicle: "NX4",
+          vehicle: "MCA",
           itemCode: "",
-          itemName: "G/RUN FRT, RR",
+          itemName: "HOOD A",
           targetQty: 4000,
           actualQty: 3950,
           goodQty: 3880,
@@ -91,6 +132,8 @@ export const ExtrusionWorkReportModal = ({
         });
       }
       setErrors({});
+      setItemSearchQuery("");
+      setSelectedVehicleFilter("all");
     }
   }, [isOpen, initialData]);
 
@@ -113,14 +156,20 @@ export const ExtrusionWorkReportModal = ({
       lineId,
       lineName: opt ? opt.name : lineId
     }));
+    setSelectedVehicleFilter("all");
+    setItemSearchQuery("");
   };
 
-  const handleVehicleSelect = (v) => {
-    setFormData((prev) => ({
-      ...prev,
-      vehicle: v.code,
-      itemName: v.itemPreset || prev.itemName
-    }));
+  const handleItemSelect = (itemId) => {
+    if (!itemId) return;
+    const found = activeLineItems.find((it) => it.id === itemId);
+    if (found) {
+      setFormData((prev) => ({
+        ...prev,
+        vehicle: found.vehicle,
+        itemName: found.itemName
+      }));
+    }
   };
 
   const handleWorkerSelect = (w) => {
@@ -216,20 +265,33 @@ export const ExtrusionWorkReportModal = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {EXTRUSION_LINE_OPTIONS.map((l) => {
                 const isSel = formData.lineId === l.id;
+                const activeBg =
+                  l.id === "pcm1" ? "bg-teal-600 text-white border-teal-700 shadow-md ring-2 ring-teal-400/40" :
+                  l.id === "pcm3" ? "bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-400/40" :
+                  l.id === "pvc" ? "bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-400/40" :
+                  "bg-purple-600 text-white border-purple-700 shadow-md ring-2 ring-purple-400/40";
+
                 return (
                   <button
                     key={l.id}
                     type="button"
                     onClick={() => handleLineSelect(l.id)}
-                    className={`py-2 px-3 rounded-xl font-black text-xs transition border cursor-pointer flex flex-col items-center gap-0.5 ${
+                    className={`py-2 px-3 rounded-2xl font-black text-xs transition-all border cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                       isSel
-                        ? "bg-teal-600 text-white border-teal-700 shadow-sm ring-2 ring-teal-400/40"
+                        ? activeBg
                         : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60"
                     }`}
                   >
-                    <span>{l.name}</span>
-                    <span className={`text-[9.5px] ${isSel ? "text-teal-100" : "text-slate-400"}`}>
-                      {l.shortName}
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-[10.5px] px-1.5 py-0.2 rounded-md font-black ${
+                        isSel ? "bg-white/20 text-white" : "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200"
+                      }`}>
+                        {l.badge || l.shortName}
+                      </span>
+                      <span className="font-black text-xs">{l.shortName}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold ${isSel ? "text-white/80" : "text-slate-400"}`}>
+                      아이템 {l.count || 0}종
                     </span>
                   </button>
                 );
@@ -293,7 +355,7 @@ export const ExtrusionWorkReportModal = ({
                   type="text"
                   value={formData.worker}
                   onChange={(e) => setFormData({ ...formData, worker: e.target.value })}
-                  placeholder="예: 설유철 책임"
+                  placeholder="예: 공영국 대리"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
                 />
                 {errors.worker && <p className="text-rose-500 text-[10px] mt-0.5">{errors.worker}</p>}
@@ -303,14 +365,14 @@ export const ExtrusionWorkReportModal = ({
             {/* Quick Worker Chips */}
             <div className="flex items-center gap-1.5 flex-wrap pt-1">
               <span className="text-[10px] font-bold text-slate-400">빠른 작업자 선택:</span>
-              {WORKER_PRESETS.slice(0, 6).map((w) => (
+              {WORKER_PRESETS.slice(0, 8).map((w) => (
                 <button
                   key={w.name}
                   type="button"
                   onClick={() => handleWorkerSelect(w)}
                   className={`text-[10.5px] px-2 py-0.5 rounded-lg font-bold transition cursor-pointer border ${
                     formData.worker.includes(w.name)
-                      ? "bg-teal-100 text-teal-800 border-teal-400 dark:bg-teal-950 dark:text-teal-300"
+                      ? "bg-teal-100 text-teal-800 border-teal-400 dark:bg-teal-950 dark:text-teal-300 font-black"
                       : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
                   }`}
                 >
@@ -320,35 +382,156 @@ export const ExtrusionWorkReportModal = ({
             </div>
           </div>
 
-          {/* Section 2: Vehicle & Part Info */}
+          {/* Section 2: Vehicle & Part Info with Line Badges and Dropdown */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
-            <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-              <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              ② 생산 품목 및 차종
-            </span>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                <Layers className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                ② 생산 품목 및 차종 (라인별 아이템 드롭다운)
+              </span>
+              <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300">
+                선택 라인: {EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.shortName || formData.lineId} ({activeLineItems.length}개 품목)
+              </span>
+            </div>
 
-            {/* Vehicle Preset Chips */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10.5px] font-bold text-slate-500">차종 프리셋:</span>
-              {VEHICLE_PRESETS.map((v) => {
-                const isSel = formData.vehicle === v.code;
+            {/* Line Badges Selector */}
+            <div className="flex items-center gap-1.5 flex-wrap pb-1">
+              <span className="text-[10.5px] font-bold text-slate-500">라인 뱃지:</span>
+              {EXTRUSION_LINE_OPTIONS.map((l) => {
+                const isSel = formData.lineId === l.id;
                 return (
                   <button
-                    key={v.code}
+                    key={l.id}
                     type="button"
-                    onClick={() => handleVehicleSelect(v)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer border ${
+                    onClick={() => handleLineSelect(l.id)}
+                    className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer border flex items-center gap-1.5 ${
                       isSel
-                        ? "bg-blue-600 text-white border-blue-700 shadow-xs ring-2 ring-blue-300/40"
+                        ? l.id === "pcm1" ? "bg-teal-600 text-white border-teal-700 shadow-xs ring-2 ring-teal-300/40" :
+                          l.id === "pcm3" ? "bg-blue-600 text-white border-blue-700 shadow-xs ring-2 ring-blue-300/40" :
+                          l.id === "pvc" ? "bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-300/40" :
+                          "bg-purple-600 text-white border-purple-700 shadow-xs ring-2 ring-purple-300/40"
                         : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100"
                     }`}
                   >
-                    {v.code} ({v.name.split(" ")[0]})
+                    <span>🏷️ {l.badge || l.shortName}</span>
+                    <span className="text-[10px] opacity-80">({l.count}개)</span>
                   </button>
                 );
               })}
             </div>
 
+            {/* 🌟 Item Dropdown & Live Search Filter */}
+            <div className="space-y-2 p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-200 dark:border-blue-900/60 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <label className="block text-xs font-black text-blue-900 dark:text-blue-300">
+                  📦 [{EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.badge || "선택"}] 생산 아이템 드롭다운 (이니셜/차종순 정렬) *
+                </label>
+                {itemSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setItemSearchQuery("")}
+                    className="text-[10.5px] font-bold text-slate-400 hover:text-rose-500 transition cursor-pointer"
+                  >
+                    검색 초기화 ✕
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                {/* Search Input Filter */}
+                <div className="sm:col-span-4 relative">
+                  <input
+                    type="text"
+                    value={itemSearchQuery}
+                    onChange={(e) => setItemSearchQuery(e.target.value)}
+                    placeholder="🔍 품명/차종 검색 (예: HOOD, GL3)..."
+                    className="w-full pl-3 pr-7 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  />
+                  {itemSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setItemSearchQuery("")}
+                      className="absolute right-2 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Main Select Dropdown */}
+                <div className="sm:col-span-8">
+                  <select
+                    onChange={(e) => handleItemSelect(e.target.value)}
+                    value={
+                      activeLineItems.find(
+                        (it) => it.vehicle === formData.vehicle && it.itemName === formData.itemName
+                      )?.id || ""
+                    }
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border-2 border-blue-400 dark:border-blue-600 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer shadow-xs"
+                  >
+                    <option value="">
+                      -- [{EXTRUSION_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.badge || "선택"}] 아이템을 선택하세요 (총 {filteredLineItems.length}개) --
+                    </option>
+                    {filteredLineItems.map((it) => (
+                      <option key={it.id} value={it.id}>
+                        [{it.vehicle}] {it.itemName}{it.isAS ? " 🛠️(A/S)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick Vehicle Code Chips (이니셜/차종 바로가기) */}
+              {lineUniqueVehicles.length > 0 && (
+                <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-[10.5px]">
+                    <span className="font-bold text-slate-400 shrink-0">차종 필터:</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedVehicleFilter("all")}
+                      className={`px-2 py-0.5 rounded-lg font-black transition shrink-0 cursor-pointer ${
+                        selectedVehicleFilter === "all"
+                          ? "bg-blue-600 text-white shadow-2xs"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                      }`}
+                    >
+                      전체 ({activeLineItems.length})
+                    </button>
+                    {lineUniqueVehicles.map((v) => {
+                      const count = activeLineItems.filter((it) => it.vehicle === v).length;
+                      const isSel = selectedVehicleFilter === v || formData.vehicle === v;
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => {
+                            setSelectedVehicleFilter(v);
+                            const firstOfCar = activeLineItems.find((it) => it.vehicle === v);
+                            if (firstOfCar) {
+                              setFormData((prev) => ({
+                                ...prev,
+                                vehicle: firstOfCar.vehicle,
+                                itemName: firstOfCar.itemName
+                              }));
+                            }
+                          }}
+                          className={`px-2 py-0.5 rounded-lg font-bold transition shrink-0 cursor-pointer border ${
+                            isSel
+                              ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-400 font-black ring-1 ring-blue-400/40"
+                              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-400"
+                          }`}
+                        >
+                          <span>{v}</span>
+                          {count > 1 && <span className="text-[9px] text-slate-400 ml-0.5">({count})</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Editable Inputs for Vehicle, Part Number, Description */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
@@ -358,9 +541,10 @@ export const ExtrusionWorkReportModal = ({
                   type="text"
                   value={formData.vehicle}
                   onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })}
-                  placeholder="예: NX4, GN7"
+                  placeholder="예: MCA, GL3, BL7M"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
+                {errors.vehicle && <p className="text-rose-500 text-[10px] mt-0.5">{errors.vehicle}</p>}
               </div>
               <div>
                 <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
@@ -370,19 +554,19 @@ export const ExtrusionWorkReportModal = ({
                   type="text"
                   value={formData.itemCode}
                   onChange={(e) => setFormData({ ...formData, itemCode: e.target.value })}
-                  placeholder="예: 86811-N9000"
+                  placeholder="예: 86811-N9000 (선택)"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                  품명 (Part Description)
+                  품명 (Part Description) *
                 </label>
                 <input
                   type="text"
                   value={formData.itemName}
                   onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
-                  placeholder="예: WEATHER STRIP BODY S/D"
+                  placeholder="예: HOOD A, D/SIDE C"
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
               </div>
@@ -435,6 +619,7 @@ export const ExtrusionWorkReportModal = ({
                   onChange={(e) => handleNumberChange("actualQty", e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border-2 border-emerald-500 font-black text-right text-emerald-700 dark:text-emerald-400 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                 />
+                {errors.actualQty && <p className="text-rose-500 text-[10px] mt-0.5">{errors.actualQty}</p>}
               </div>
 
               <div>

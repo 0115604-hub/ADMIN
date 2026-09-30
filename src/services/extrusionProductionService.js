@@ -18,10 +18,10 @@ const COLLECTION_NAME = "extrusion_work_reports";
 export const EXTRUSION_PROD_STORAGE_KEY = "factory_extrusion_work_reports_v1";
 
 export const EXTRUSION_LINE_OPTIONS = [
-  { id: "pcm1", name: "PCM #1 LINE", shortName: "PCM 1호", plant: "삼랑진공장", color: "teal" },
-  { id: "pcm3", name: "PCM #3 LINE", shortName: "PCM 3호", plant: "삼랑진공장", color: "blue" },
-  { id: "pvc", name: "PVC LINE", shortName: "PVC", plant: "삼랑진공장", color: "amber" },
-  { id: "tpe", name: "TPE LINE", shortName: "TPE", plant: "삼랑진공장", color: "purple" }
+  { id: "pcm1", name: "PCM #1 LINE", shortName: "PCM 1호", badge: "PCM1", plant: "삼랑진공장", color: "teal", count: 48 },
+  { id: "pcm3", name: "PCM #3 LINE", shortName: "PCM 3호", badge: "PCM3", plant: "삼랑진공장", color: "blue", count: 67 },
+  { id: "pvc", name: "PVC LINE", shortName: "PVC", badge: "PVC", plant: "삼랑진공장", color: "amber", count: 14 },
+  { id: "tpe", name: "TPE LINE", shortName: "TPE", badge: "TPE", plant: "삼랑진공장", color: "purple", count: 20 }
 ];
 
 export const VEHICLE_PRESETS = [
@@ -36,16 +36,26 @@ export const VEHICLE_PRESETS = [
 ];
 
 export const WORKER_PRESETS = [
-  { name: "설유철", title: "책임", role: "압출동 관리/조장", plant: "삼랑진공장" },
+  { name: "공영국", title: "대리", role: "압출동 조장/관리", plant: "삼랑진공장" },
+  { name: "심임대", title: "반장", role: "압출 1호기 반장", plant: "삼랑진공장" },
+  { name: "이상은", title: "반장", role: "압출 3호기 반장", plant: "삼랑진공장" },
+  { name: "설유철", title: "책임", role: "압출동 관리", plant: "삼랑진공장" },
   { name: "윤경수", title: "책임", role: "가공/압출 총괄", plant: "삼랑진공장" },
   { name: "이창엽", title: "책임", role: "품질관리", plant: "삼랑진공장" },
   { name: "전재율", title: "책임", role: "설비보전", plant: "삼랑진공장" },
   { name: "이명재", title: "이사", role: "공장 총괄", plant: "삼랑진공장" },
-  { name: "양인나", title: "선임", role: "생산관리", plant: "삼랑진공장" },
-  { name: "유동길", title: "사원", role: "압출 1호기", plant: "삼랑진공장" },
-  { name: "조인주", title: "사원", role: "압출 3호기", plant: "삼랑진공장" },
-  { name: "이상기", title: "사원", role: "PVC/TPE", plant: "삼랑진공장" },
-  { name: "유성", title: "반장", role: "압출 조장", plant: "삼랑진공장" }
+  { name: "양인나", title: "선임", role: "가공동 관리", plant: "삼랑진공장" },
+  { name: "유동길", title: "선임", role: "가공동 관리", plant: "삼랑진공장" },
+  { name: "조인주", title: "선임", role: "경리업무", plant: "삼랑진공장" },
+  { name: "이상기", title: "사원", role: "품질관리", plant: "삼랑진공장" },
+  { name: "닉", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "마이클", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "존카를로", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "지미", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "만", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "샤먼", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "쿠마루", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
+  { name: "이수루", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" }
 ];
 
 export const DOWNTIME_CATEGORIES = [
