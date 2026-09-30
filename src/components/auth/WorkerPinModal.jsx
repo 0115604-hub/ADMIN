@@ -138,6 +138,13 @@ export const WorkerPinModal = ({
   }, [isPinVerified]);
 
   const isAdmin = selectedUser?.role === "ADMIN" || selectedUser?.id === "admin" || selectedUser?.name === "권태형" || selectedUser?.name === "최미영";
+  const isExtrusionWorker =
+    selectedUser?.building === "압출동" ||
+    selectedUser?.assignedProcess === "압출동" ||
+    selectedUser?.id?.startsWith("ext_") ||
+    selectedUser?.name === "공영국" ||
+    selectedUser?.name === "심임대" ||
+    selectedUser?.name === "이상은";
   const todayKst = getKSTDateString();
 
   // 1. Worker's current leave status (당일 근태)
@@ -507,7 +514,9 @@ export const WorkerPinModal = ({
                     중대재해알림판과 품질이슈 꼭 확인바랍니다.
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    인증 완료 시 중대재해 안전공유판, 품질경보 및 {isAdmin ? "미완료 공통일정" : "등록된 일정"}이 표시됩니다.
+                    {isExtrusionWorker
+                      ? "인증 완료 시 중대재해공유판과 품질이슈공유판이 표시됩니다."
+                      : `인증 완료 시 중대재해 안전공유판, 품질경보 및 ${isAdmin ? "미완료 공통일정" : "등록된 일정"}이 표시됩니다.`}
                   </p>
                 </div>
               </div>
@@ -543,7 +552,7 @@ export const WorkerPinModal = ({
                 {/* PC 2-Column Wide Grid / Mobile Stacked */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 items-stretch">
                   {/* ===================================================================== */}
-                  {/* [좌측 패널] 🚨 이명재 이사 중대재해 및 안전 공유판 (사진 사이즈 2배 확대) */}
+                  {/* [좌측 패널 1] 🚨 중대재해공유판 (이명재 이사 중대재해 및 안전 공유판) */}
                   {/* ===================================================================== */}
                   <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-rose-950/20 dark:to-amber-950/30 border-2 border-amber-300/90 dark:border-amber-700/80 flex flex-col justify-between space-y-3.5 shadow-sm">
                     <div className="space-y-3">
@@ -554,7 +563,7 @@ export const WorkerPinModal = ({
                           </div>
                           <div>
                             <span className="text-sm md:text-base font-black text-slate-900 dark:text-white block leading-tight">
-                              🚨 중대재해 및 안전 공유판
+                              🚨 중대재해공유판
                             </span>
                             <span className="text-[10.5px] font-bold text-amber-800 dark:text-amber-300">
                               (사진 2배 확대 뷰 • 탭 시 고화질 원본)
@@ -642,334 +651,419 @@ export const WorkerPinModal = ({
                     </div>
                   </div>
 
-                  <div className="space-y-3.5 flex flex-col justify-between">
-
-                    {/* ================================================================= */}
-                    {/* 2. 일정 섹션: ADMIN -> 📌 미완료 공통일정 / Worker -> 📅 미완료 개인일정 */}
-                    {/* ================================================================= */}
-                    {isAdmin ? (
-                      /* ⭐ [ADMIN 전용] 완료되지 않은 사내 공통일정 (미완료 공통 일정 표출) */
-                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2.5">
+                  {/* ===================================================================== */}
+                  {/* [우측 패널 2] 압출작업자: ⚠️ 품질이슈공유판 / 비압출: 기존 일정+근태+공지판 */}
+                  {/* ===================================================================== */}
+                  {isExtrusionWorker ? (
+                    <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 border-2 border-amber-300/90 dark:border-amber-700/80 flex flex-col justify-between space-y-3.5 shadow-sm">
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                              <Calendar className="w-4 h-4" />
+                            <div className="p-1.5 rounded-xl bg-amber-600 text-white shadow-xs">
+                              <AlertTriangle className="w-4 h-4" />
                             </div>
                             <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📌 사내 공통일정 (미완료 일정)
+                              <span className="text-sm md:text-base font-black text-slate-900 dark:text-white block leading-tight">
+                                ⚠️ 품질이슈공유판
                               </span>
-                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                전사 및 공장별 진행 중인 미완료 공통 일정
+                              <span className="text-[10.5px] font-bold text-amber-800 dark:text-amber-300">
+                                압출 품질경보 및 주요 품질이슈 실시간 공유
                               </span>
                             </div>
                           </div>
 
-                          <span className="text-xs font-black text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
-                            {uncompletedCommonSchedules.length}건 진행중
+                          <span className="text-xs font-black text-amber-900 dark:text-amber-200 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700">
+                            {sharedNotices.length}건
                           </span>
                         </div>
 
-                        {/* Uncompleted Common Schedules List */}
-                        {uncompletedCommonSchedules.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {uncompletedCommonSchedules.map((schedule) => {
-                              const startDate = schedule.startDate || schedule.date;
-                              const endDate = schedule.endDate || startDate;
-                              const isSingleDay = startDate === endDate || !endDate;
-                              const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
-                              const timeDisplay = schedule.time && schedule.time !== "종일" ? ` (${schedule.time})` : "";
-                              const targetBadge = schedule.target || "공통";
+                        {/* Realtime shared quality notices & alerts */}
+                        {sharedNotices.length > 0 ? (
+                          <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-0.5">
+                            {sharedNotices.map((item) => {
+                              const isQualityAlert = item.category === "품질경보" || item.category === "품질이슈" || item.category?.includes("품질");
+                              const isMeeting = item.category === "회의일정";
+                              const badgeStyle = isQualityAlert
+                                ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300"
+                                : isMeeting
+                                ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
+                                : "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300";
 
                               return (
                                 <div
-                                  key={schedule.id || schedule._docId}
-                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs space-y-1 text-xs"
+                                  key={item.id || item._docId}
+                                  className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200/90 dark:border-amber-800/60 space-y-1.5 text-xs shadow-2xs"
                                 >
                                   <div className="flex items-center justify-between gap-1.5">
                                     <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-                                        {targetBadge}
+                                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border shrink-0 ${badgeStyle}`}>
+                                        {item.category || "품질이슈"}
                                       </span>
-                                      <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
-                                        {schedule.title || "사내 공통일정"}
+                                      <span className="font-black text-slate-900 dark:text-white truncate text-xs sm:text-sm">
+                                        {item.title || item.content}
                                       </span>
                                     </div>
-
-                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
-                                      {dateDisplay}{timeDisplay}
+                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                      {item.author || "관리자"}
                                     </span>
                                   </div>
-
-                                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                                    <span className="truncate">작성: {schedule.author || "ADMIN"}</span>
-                                    {Array.isArray(schedule.comments) && schedule.comments.length > 0 && (
-                                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                                        💬 의견 {schedule.comments.length}건
-                                      </span>
-                                    )}
-                                  </div>
+                                  {item.title && item.content && (
+                                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 font-medium pl-0.5">
+                                      {item.content}
+                                    </p>
+                                  )}
+                                  {item.createdAt && (
+                                    <div className="text-[10px] text-slate-400 pl-0.5 pt-0.5">
+                                      등록일: {new Date(item.createdAt).toLocaleDateString("ko-KR")}
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
-                            <Calendar className="w-4 h-4 text-slate-400" />
-                            <span>현재 진행 중인 미완료 공통일정이 없습니다.</span>
+                          <div className="py-16 text-center text-xs sm:text-sm text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-amber-300 dark:border-amber-700/60 flex flex-col items-center justify-center space-y-1.5">
+                            <AlertTriangle className="w-8 h-8 text-amber-500/50 mb-1" />
+                            <span>공유된 실시간 품질이슈 및 공지사항이 없습니다.</span>
+                            <span className="text-[11px] font-medium text-slate-400">품질 이상 및 공지 등록 시 즉시 표출됩니다.</span>
                           </div>
                         )}
                       </div>
-                    ) : (
-                      /* ⭐ [일반 작업자 전용: 이상기, 우창용 등] 등록된 일정 (미완료 항목만 표출) */
+
+                      <div className="pt-2.5 border-t border-amber-300/50 dark:border-amber-700/50 flex items-center justify-between text-[11px] font-bold text-amber-800/90 dark:text-amber-300/90">
+                        <span>품질이슈 실시간 연동</span>
+                        <span className="text-slate-500 dark:text-slate-400 font-normal">※ 압출 품질이슈 전용 상세 기능 순차 추가 예정</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5 flex flex-col justify-between">
+                      {/* ================================================================= */}
+                      {/* 2. 일정 섹션: ADMIN -> 📌 미완료 공통일정 / Worker -> 📅 미완료 개인일정 */}
+                      {/* ================================================================= */}
+                      {isAdmin ? (
+                        /* ⭐ [ADMIN 전용] 완료되지 않은 사내 공통일정 (미완료 공통 일정 표출) */
+                        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                                <Calendar className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  📌 사내 공통일정 (미완료 일정)
+                                </span>
+                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                  전사 및 공장별 진행 중인 미완료 공통 일정
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-xs font-black text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
+                              {uncompletedCommonSchedules.length}건 진행중
+                            </span>
+                          </div>
+
+                          {/* Uncompleted Common Schedules List */}
+                          {uncompletedCommonSchedules.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                              {uncompletedCommonSchedules.map((schedule) => {
+                                const startDate = schedule.startDate || schedule.date;
+                                const endDate = schedule.endDate || startDate;
+                                const isSingleDay = startDate === endDate || !endDate;
+                                const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
+                                const timeDisplay = schedule.time && schedule.time !== "종일" ? ` (${schedule.time})` : "";
+                                const targetBadge = schedule.target || "공통";
+
+                                return (
+                                  <div
+                                    key={schedule.id || schedule._docId}
+                                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs space-y-1 text-xs"
+                                  >
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                                          {targetBadge}
+                                        </span>
+                                        <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                                          {schedule.title || "사내 공통일정"}
+                                        </span>
+                                      </div>
+
+                                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
+                                        {dateDisplay}{timeDisplay}
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                                      <span className="truncate">작성: {schedule.author || "ADMIN"}</span>
+                                      {Array.isArray(schedule.comments) && schedule.comments.length > 0 && (
+                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                                          💬 의견 {schedule.comments.length}건
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                              <span>현재 진행 중인 미완료 공통일정이 없습니다.</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        /* ⭐ [일반 작업자 전용: 이상기, 우창용 등] 등록된 일정 (미완료 항목만 표출) */
+                        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs">
+                                <Calendar className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  📅 나의 등록된 일정
+                                </span>
+                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                  연차, 반차, 외출, 출장, 공장방문 (미완료)
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-xs font-black text-blue-800 dark:text-blue-300 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                              {workerSchedules.length}건 등록됨
+                            </span>
+                          </div>
+
+                          {/* Schedule Items List (Only Incomplete / Active) */}
+                          {workerSchedules.length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                              {workerSchedules.map((schedule) => {
+                                const meta = getLeaveTypeMeta(schedule.leaveType || schedule.type);
+                                const startDate = schedule.startDate || schedule.date;
+                                const endDate = schedule.endDate || startDate;
+                                const isSingleDay = startDate === endDate || !endDate;
+                                const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
+
+                                return (
+                                  <div
+                                    key={schedule.id || schedule._docId}
+                                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1 text-xs"
+                                  >
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0 ${meta.scheduledBadge || "bg-blue-500 text-white"}`}>
+                                          <span>{meta.emoji}</span>
+                                          <span>{schedule.leaveType || "일정"}</span>
+                                        </span>
+                                        <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                                          {dateDisplay}
+                                        </span>
+                                      </div>
+
+                                      {schedule.daysCount && (
+                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
+                                          {schedule.daysCount}일간
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {schedule.reason && (
+                                      <p className="text-[11.5px] text-slate-600 dark:text-slate-300 font-medium pl-1 truncate">
+                                        사유: {schedule.reason}
+                                      </p>
+                                    )}
+
+                                    {Array.isArray(schedule.sharedWith) && schedule.sharedWith.length > 0 && (
+                                      <div className="text-[10px] text-slate-400 pl-1">
+                                        공유: {schedule.sharedWith.join(", ")}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
+                              <Calendar className="w-4 h-4 text-slate-400" />
+                              <span>현재 등록된 미완료 개인 일정이 없습니다.</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ================================================================= */}
+                      {/* 🌟 2-2. 실시간 공장별 근태현황정보 패널 (오륙·유성: 삼랑진 / 조영·한울·부림텍: 한림 / Admin: 전체) */}
+                      {/* ================================================================= */}
+                      {targetCompanies.length > 0 && (
+                        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
+                                <Users className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  👥 {isAdmin ? "전사 실시간 근태현황정보" : selectedUser?.plant === "한림공장" ? "한림공장 근태현황정보" : "삼랑진공장 근태현황정보"}
+                                </span>
+                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                  {isAdmin
+                                    ? "오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)"
+                                    : selectedUser?.plant === "한림공장"
+                                    ? "조영산업, 한울, 부림텍 당일 출근 및 잔업"
+                                    : "오륙, 유성 당일 출근 및 잔업"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
+                              당일 {todayDayNum}일 기준
+                            </span>
+                          </div>
+
+                          {/* Company Attendance Cards Grid */}
+                          <div className={`grid gap-2 ${targetCompanies.length === 2 ? "grid-cols-2" : targetCompanies.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"}`}>
+                            {targetCompanies.map((compName) => {
+                              const breakdown = dailyOvertimeSummary?.companyBreakdown?.[compName] || {
+                                total: 0,
+                                attended: 0,
+                                absent: 0,
+                                leave: 0,
+                                otWorkers: 0,
+                                otHours: 0
+                              };
+                              const isUnwritten = unwrittenCompanies.includes(compName);
+                              const isWritten = !isUnwritten;
+                              const dotColor = compName.includes("오륙") ? "bg-blue-500" :
+                                               compName.includes("조영") ? "bg-amber-500" :
+                                               compName.includes("한울") ? "bg-emerald-500" :
+                                               compName.includes("부림") ? "bg-purple-500" : "bg-cyan-500";
+
+                              return (
+                                <div
+                                  key={compName}
+                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5"
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                                      <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
+                                      <span className="truncate">{compName}</span>
+                                    </span>
+                                    {isWritten ? (
+                                      <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
+                                        <span>✅</span>
+                                      </span>
+                                    ) : (
+                                      <span className={`text-[9px] px-1 py-0.5 rounded-md border shrink-0 font-bold ${
+                                        isAfter9AM
+                                          ? "bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse"
+                                          : "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                                      }`}>
+                                        {isAfter9AM ? "09:00 미작성" : "작성전"}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-1 text-[10px]">
+                                    <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                                      <span className="text-slate-400 block text-[9px]">출근/총원</span>
+                                      <span className="font-black text-slate-900 dark:text-white">
+                                        {breakdown.attended}/{breakdown.total}명
+                                      </span>
+                                    </div>
+                                    <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                                      <span className="text-slate-400 block text-[9px]">당일 잔업</span>
+                                      <span className="font-black text-amber-600 dark:text-amber-400">
+                                        {breakdown.otWorkers}명
+                                        {breakdown.otHours > 0 && <span className="text-[9px] text-amber-500/80"> (+{breakdown.otHours}h)</span>}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {breakdown.absent > 0 && (
+                                    <div className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 text-center bg-rose-50 dark:bg-rose-950/50 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60">
+                                      결근 {breakdown.absent}명
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. 📢 실시간 공유 공지 & 회의/품질 이슈 */}
                       <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs">
-                              <Calendar className="w-4 h-4" />
+                            <div className="p-1.5 rounded-xl bg-amber-600 text-white shadow-xs">
+                              <BellRing className="w-4 h-4" />
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📅 나의 등록된 일정
+                                📢 전사/공장 공유 공지 및 안건
                               </span>
                               <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                연차, 반차, 외출, 출장, 공장방문 (미완료)
+                                품질경보, 사내공지, 긴급 회의일정
                               </span>
                             </div>
                           </div>
 
-                          <span className="text-xs font-black text-blue-800 dark:text-blue-300 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-                            {workerSchedules.length}건 등록됨
+                          <span className="text-xs font-black text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+                            {sharedNotices.length}건
                           </span>
                         </div>
 
-                        {/* Schedule Items List (Only Incomplete / Active) */}
-                        {workerSchedules.length > 0 ? (
-                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {workerSchedules.map((schedule) => {
-                              const meta = getLeaveTypeMeta(schedule.leaveType || schedule.type);
-                              const startDate = schedule.startDate || schedule.date;
-                              const endDate = schedule.endDate || startDate;
-                              const isSingleDay = startDate === endDate || !endDate;
-                              const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
+                        {sharedNotices.length > 0 ? (
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+                            {sharedNotices.map((item) => {
+                              const isQualityAlert = item.category === "품질경보";
+                              const isMeeting = item.category === "회의일정";
+                              const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
+
+                              const badgeStyle = isQualityAlert
+                                ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300"
+                                : isMeeting
+                                ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
+                                : isNotice
+                                ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
+                                : "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300";
 
                               return (
                                 <div
-                                  key={schedule.id || schedule._docId}
-                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1 text-xs"
+                                  key={item.id || item._docId}
+                                  className="p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-0.5 text-xs shadow-2xs"
                                 >
                                   <div className="flex items-center justify-between gap-1.5">
                                     <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0 ${meta.scheduledBadge || "bg-blue-500 text-white"}`}>
-                                        <span>{meta.emoji}</span>
-                                        <span>{schedule.leaveType || "일정"}</span>
+                                      <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-md border shrink-0 ${badgeStyle}`}>
+                                        {item.category || "공지"}
                                       </span>
-                                      <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
-                                        {dateDisplay}
+                                      <span className="font-black text-slate-900 dark:text-white truncate text-xs">
+                                        {item.title || item.content}
                                       </span>
                                     </div>
-
-                                    {schedule.daysCount && (
-                                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
-                                        {schedule.daysCount}일간
-                                      </span>
-                                    )}
+                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                      {item.author || "관리자"}
+                                    </span>
                                   </div>
-
-                                  {schedule.reason && (
-                                    <p className="text-[11.5px] text-slate-600 dark:text-slate-300 font-medium pl-1 truncate">
-                                      사유: {schedule.reason}
+                                  {item.title && item.content && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-medium pl-0.5">
+                                      {item.content}
                                     </p>
-                                  )}
-
-                                  {Array.isArray(schedule.sharedWith) && schedule.sharedWith.length > 0 && (
-                                    <div className="text-[10px] text-slate-400 pl-1">
-                                      공유: {schedule.sharedWith.join(", ")}
-                                    </div>
                                   )}
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
-                            <Calendar className="w-4 h-4 text-slate-400" />
-                            <span>현재 등록된 미완료 개인 일정이 없습니다.</span>
+                          <div className="py-3 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                            공유된 실시간 공지 및 긴급 안건이 없습니다.
                           </div>
                         )}
                       </div>
-                    )}
-
-                    {/* ================================================================= */}
-                    {/* 🌟 2-2. 실시간 공장별 근태현황정보 패널 (오륙·유성: 삼랑진 / 조영·한울·부림텍: 한림 / Admin: 전체) */}
-                    {/* ================================================================= */}
-                    {targetCompanies.length > 0 && (
-                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
-                              <Users className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                👥 {isAdmin ? "전사 실시간 근태현황정보" : selectedUser?.plant === "한림공장" ? "한림공장 근태현황정보" : "삼랑진공장 근태현황정보"}
-                              </span>
-                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                {isAdmin
-                                  ? "오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)"
-                                  : selectedUser?.plant === "한림공장"
-                                  ? "조영산업, 한울, 부림텍 당일 출근 및 잔업"
-                                  : "오륙, 유성 당일 출근 및 잔업"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
-                            당일 {todayDayNum}일 기준
-                          </span>
-                        </div>
-
-                        {/* Company Attendance Cards Grid */}
-                        <div className={`grid gap-2 ${targetCompanies.length === 2 ? "grid-cols-2" : targetCompanies.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"}`}>
-                          {targetCompanies.map((compName) => {
-                            const breakdown = dailyOvertimeSummary?.companyBreakdown?.[compName] || {
-                              total: 0,
-                              attended: 0,
-                              absent: 0,
-                              leave: 0,
-                              otWorkers: 0,
-                              otHours: 0
-                            };
-                            const isUnwritten = unwrittenCompanies.includes(compName);
-                            const isWritten = !isUnwritten;
-                            const dotColor = compName.includes("오륙") ? "bg-blue-500" :
-                                             compName.includes("조영") ? "bg-amber-500" :
-                                             compName.includes("한울") ? "bg-emerald-500" :
-                                             compName.includes("부림") ? "bg-purple-500" : "bg-cyan-500";
-
-                            return (
-                              <div
-                                key={compName}
-                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                                    <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
-                                    <span className="truncate">{compName}</span>
-                                  </span>
-                                  {isWritten ? (
-                                    <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
-                                      <span>✅</span>
-                                    </span>
-                                  ) : (
-                                    <span className={`text-[9px] px-1 py-0.5 rounded-md border shrink-0 font-bold ${
-                                      isAfter9AM
-                                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse"
-                                        : "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                                    }`}>
-                                      {isAfter9AM ? "09:00 미작성" : "작성전"}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-1 text-[10px]">
-                                  <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
-                                    <span className="text-slate-400 block text-[9px]">출근/총원</span>
-                                    <span className="font-black text-slate-900 dark:text-white">
-                                      {breakdown.attended}/{breakdown.total}명
-                                    </span>
-                                  </div>
-                                  <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
-                                    <span className="text-slate-400 block text-[9px]">당일 잔업</span>
-                                    <span className="font-black text-amber-600 dark:text-amber-400">
-                                      {breakdown.otWorkers}명
-                                      {breakdown.otHours > 0 && <span className="text-[9px] text-amber-500/80"> (+{breakdown.otHours}h)</span>}
-                                    </span>
-                                  </div>
-                                </div>
-                                {breakdown.absent > 0 && (
-                                  <div className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 text-center bg-rose-50 dark:bg-rose-950/50 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60">
-                                    결근 {breakdown.absent}명
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 3. 📢 실시간 공유 공지 & 회의/품질 이슈 */}
-                    <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1.5 rounded-xl bg-amber-600 text-white shadow-xs">
-                            <BellRing className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                              📢 전사/공장 공유 공지 및 안건
-                            </span>
-                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                              품질경보, 사내공지, 긴급 회의일정
-                            </span>
-                          </div>
-                        </div>
-
-                        <span className="text-xs font-black text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
-                          {sharedNotices.length}건
-                        </span>
-                      </div>
-
-                      {sharedNotices.length > 0 ? (
-                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
-                          {sharedNotices.map((item) => {
-                            const isQualityAlert = item.category === "품질경보";
-                            const isMeeting = item.category === "회의일정";
-                            const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
-
-                            const badgeStyle = isQualityAlert
-                              ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300"
-                              : isMeeting
-                              ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
-                              : isNotice
-                              ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
-                              : "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300";
-
-                            return (
-                              <div
-                                key={item.id || item._docId}
-                                className="p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-0.5 text-xs shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1.5">
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-md border shrink-0 ${badgeStyle}`}>
-                                      {item.category || "공지"}
-                                    </span>
-                                    <span className="font-black text-slate-900 dark:text-white truncate text-xs">
-                                      {item.title || item.content}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                                    {item.author || "관리자"}
-                                  </span>
-                                </div>
-                                {item.title && item.content && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-medium pl-0.5">
-                                    {item.content}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="py-3 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                          공유된 실시간 공지 및 긴급 안건이 없습니다.
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
