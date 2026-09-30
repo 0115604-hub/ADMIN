@@ -35,9 +35,9 @@ export const ADMIN_USERS = [
 ];
 
 export const EXTRUSION_WORKERS = [
-  { id: "ext_gyg", name: "공영국", title: "반장", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "공", pin: "11" },
-  { id: "ext_sid", name: "심임대", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "심", pin: "11" },
-  { id: "ext_lse", name: "이상은", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" },
+  { id: "ext_gyg", name: "공영국", title: "대리", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "공", pin: "11" },
+  { id: "ext_sid", name: "심임대", title: "반장", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "심", pin: "11" },
+  { id: "ext_lse", name: "이상은", title: "반장", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" },
   { id: "ext_nic", name: "닉", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "닉", pin: "11" },
   { id: "ext_mic", name: "마이클", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "마", pin: "11" },
   { id: "ext_jca", name: "존카를로", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "존", pin: "11" },
