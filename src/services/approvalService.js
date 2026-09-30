@@ -161,6 +161,12 @@ export const normalizeApprovalDoc = (d) => {
     }
   }
 
+  // ⭐ 평일 근태 문서는 작성자 전결로 자동 완료 처리
+  if (isWeekdayDocument && (normalizedType === "ATTENDANCE" || normalizedTitle.includes("근태"))) {
+    computedStatus = "APPROVED";
+    computedStep = fixedSteps.length;
+  }
+
   return {
     ...d,
     title: normalizedTitle,

@@ -232,6 +232,19 @@ export const saveOvertimeReport = async (report) => {
     }))
   };
 
+  // ⭐ 평일 근태보고서는 작성자 전결로 자동 승인 처리 (결재대기 없음)
+  const isWeekendReport = cleanReport.workDate ? isWeekendByDate(cleanReport.workDate) : false;
+  const isExplicitOvertime = cleanReport.reportType === "특근보고서" || (cleanReport.title && cleanReport.title.includes("특근") && !cleanReport.title.includes("근태"));
+  if (!isWeekendReport && !isExplicitOvertime) {
+    cleanReport.status = "APPROVED";
+    cleanReport.approval = [
+      { role: "담당", name: cleanReport.author || "담당", title: cleanReport.authorTitle || "선임", status: "APPROVED", date: cleanReport.workDate || now.slice(0, 10), comment: "작성자 전결" },
+      { role: "책임", name: cleanReport.plant === "한림공장" ? "김동욱" : "윤경수", title: "책임", status: "APPROVED", date: cleanReport.workDate || now.slice(0, 10), comment: "전결" },
+      { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: cleanReport.workDate || now.slice(0, 10), comment: "전결" },
+      { role: "대표", name: "권태형", title: "대표", status: "APPROVED", date: cleanReport.workDate || now.slice(0, 10), comment: "전결" }
+    ];
+  }
+
   const currentReports = getLocalOvertimeReports();
   const existingIdx = currentReports.findIndex((r) => r.id === cleanReport.id);
   let updatedReports;
@@ -255,8 +268,6 @@ export const saveOvertimeReport = async (report) => {
   }
 
   // ⭐ Auto-sync to Electronic Approval Box ONLY for weekend overtime
-  const isWeekendReport = cleanReport.workDate ? isWeekendByDate(cleanReport.workDate) : false;
-  const isExplicitOvertime = cleanReport.reportType === "특근보고서" || (cleanReport.title && cleanReport.title.includes("특근") && !cleanReport.title.includes("근태"));
   if (isWeekendReport || isExplicitOvertime) {
     try {
       await syncPlantOvertimeToApprovalBox({

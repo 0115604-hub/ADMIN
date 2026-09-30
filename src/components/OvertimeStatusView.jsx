@@ -357,6 +357,29 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
   const plantKey = plantName === "삼랑진공장" ? "samrangjin" : "hanlim";
   const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
 
+  const isWk = isWeekendByDate(workDateStr || report.title);
+  const hasSpecialOvertime = report.reportType === "특근보고서" || (report.title && report.title.includes("특근") && !report.title.includes("근태"));
+  const isActualOvertime = isWk || hasSpecialOvertime;
+
+  // ⭐ 1. 평일 근태보고서는 작성자 전결로 처리 (결재대기 없이 전결 승인 완료)
+  if (!isActualOvertime) {
+    const drafterName = report.author?.split(" ")[0] || "작성자";
+    const drafterTitle = report.authorTitle || "선임";
+    const dateStr = report.workDate || report.updatedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+    return {
+      status: "APPROVED",
+      statusLabel: "결재완료 (작성자 전결)",
+      currentStep: 4,
+      steps: [
+        { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: dateStr, comment: "작성자 전결" },
+        { role: "책임", name: plantName === "한림공장" ? "김동욱" : "윤경수", title: "책임", status: "APPROVED", date: dateStr, comment: "전결" },
+        { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: dateStr, comment: "전결" },
+        { role: "대표", name: "권태형", title: "대표", status: "APPROVED", date: dateStr, comment: "전결" }
+      ],
+      approvalDoc: null
+    };
+  }
+
   // 1. Try finding canonical plant-level synthesis approval doc
   let matchedDoc = (approvalDocs || []).find((d) => d.id === canonicalDocId);
 
@@ -966,13 +989,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setReportModalAuthor(compMeta.author || compMeta.drafter || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
-    // ⭐ 해당 회사 관리자들로 결재란 자동 구성 (담당: 승인, 책임: 결재대기, 이사/대표: 대기)
-    setReportApprovalSteps([
-      { role: "담당", name: compMeta.drafter || "담당", title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "기안" },
-      { role: "책임", name: compMeta.lead || "책임", title: compMeta.leadRole || "책임", status: "PENDING", date: "", comment: "" },
-      { role: "이사", name: compMeta.director || "이사", title: compMeta.directorRole || "이사", status: "WAITING", date: "", comment: "" },
-      { role: "대표", name: compMeta.ceo || "대표", title: compMeta.ceoRole || "대표", status: "WAITING", date: "", comment: "" }
-    ]);
+    // ⭐ 해당 회사 관리자들로 결재란 자동 구성 (평일 근태보고서는 작성자 전결 승인, 주말 특근은 4단계 결재)
+    if (!isWk) {
+      setReportApprovalSteps([
+        { role: "담당", name: compMeta.drafter || "담당", title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "작성자 전결" },
+        { role: "책임", name: compMeta.lead || "책임", title: compMeta.leadRole || "책임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "전결" },
+        { role: "이사", name: compMeta.director || "이사", title: compMeta.directorRole || "이사", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "전결" },
+        { role: "대표", name: compMeta.ceo || "대표", title: compMeta.ceoRole || "대표", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "전결" }
+      ]);
+    } else {
+      setReportApprovalSteps([
+        { role: "담당", name: compMeta.drafter || "담당", title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "기안" },
+        { role: "책임", name: compMeta.lead || "책임", title: compMeta.leadRole || "책임", status: "PENDING", date: "", comment: "" },
+        { role: "이사", name: compMeta.director || "이사", title: compMeta.directorRole || "이사", status: "WAITING", date: "", comment: "" },
+        { role: "대표", name: compMeta.ceo || "대표", title: compMeta.ceoRole || "대표", status: "WAITING", date: "", comment: "" }
+      ]);
+    }
 
     setReportModalNotes(
       `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant || "전사"} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
@@ -1055,14 +1087,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         author: reportModalAuthor || compMeta.drafter || "작성자",
         authorTitle: reportModalAuthorTitle || compMeta.drafterRole || "선임",
         updatedAt: new Date().toISOString(),
-        status: "IN_PROGRESS",
+        status: isWk ? "IN_PROGRESS" : "APPROVED",
         approval: (reportApprovalSteps || []).map(step => ({
           role: step.role || "담당",
           name: step.name || "작성자",
           title: step.title || "선임",
-          status: step.status || "WAITING",
+          status: isWk ? (step.status || "WAITING") : "APPROVED",
           date: step.date || "",
-          comment: step.comment || ""
+          comment: isWk ? (step.comment || "") : "작성자 전결"
         })),
         totalWorkers: items.length,
         totalHours: totalHours,
@@ -1100,7 +1132,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         const plantLabel = compMeta.plant || (selectedCompanyFilter === "전체" ? "전 공장" : "공장");
         triggerToast(`🎉 [${selectedCompanyFilter}] ${reportType} 등록 및 [${plantLabel}] 협력사 취합 결재함 연동이 완료되었습니다!`);
       } else {
-        triggerToast(`🎉 [${selectedCompanyFilter}] 관리자 결재선 적용 ${reportType}가 등록되었습니다!`);
+        triggerToast(`🎉 [${selectedCompanyFilter}] ${reportType}가 작성자 전결로 등록 및 승인되었습니다!`);
       }
     } catch (err) {
       console.error(err);
