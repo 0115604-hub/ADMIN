@@ -129,29 +129,48 @@ export const normalizeApprovalDoc = (d) => {
   let normalizedType = d.type || "OVERTIME";
   let normalizedContent = d.content || "";
 
-  // Dynamic weekday determination from title, id, or workDate
-  let isWeekendFromDate = null;
+  // Dynamic weekday vs weekend/holiday determination
+  let isHolidayOrWeekend = null;
   const dateStrToCheck = d.workDate || d.title || d.id || "";
   const ymdMatch = String(dateStrToCheck).match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
   if (ymdMatch) {
-    const dt = new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[3], 10));
-    const dow = dt.getDay();
-    isWeekendFromDate = dow === 0 || dow === 6;
-  } else {
-    const mdMatch = String(dateStrToCheck).match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
-    if (mdMatch) {
-      const dt = new Date(2026, parseInt(mdMatch[1], 10) - 1, parseInt(mdMatch[2], 10));
+    const y = parseInt(ymdMatch[1], 10);
+    const m = parseInt(ymdMatch[2], 10);
+    const day = parseInt(ymdMatch[3], 10);
+    if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) {
+      isHolidayOrWeekend = true;
+    } else if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(day)) {
+      isHolidayOrWeekend = true;
+    } else {
+      const dt = new Date(y, m - 1, day);
       const dow = dt.getDay();
-      isWeekendFromDate = dow === 0 || dow === 6;
+      isHolidayOrWeekend = dow === 0 || dow === 6;
+    }
+  } else {
+    const mdMatch = String(dateStrToCheck).match(/(?:(\d{4})년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+    if (mdMatch) {
+      const y = mdMatch[1] ? parseInt(mdMatch[1], 10) : 2026;
+      const m = parseInt(mdMatch[2], 10);
+      const day = parseInt(mdMatch[3], 10);
+      if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) {
+        isHolidayOrWeekend = true;
+      } else if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(day)) {
+        isHolidayOrWeekend = true;
+      } else {
+        const dt = new Date(y, m - 1, day);
+        const dow = dt.getDay();
+        isHolidayOrWeekend = dow === 0 || dow === 6;
+      }
     }
   }
 
-  const isExplicitWeekday = /\((월|화|수|목|금)\)|(월요일|화요일|수요일|목요일|금요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
   const isExplicitWeekend = /\((토|일)\)|(토요일|일요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
+  const isExplicitWeekday = /\((월|화|수|목|금)\)|(월요일|화요일|수요일|목요일|금요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
 
   const isWeekdayDocument =
-    isExplicitWeekday ||
-    (isWeekendFromDate === false && !isExplicitWeekend);
+    !isHolidayOrWeekend &&
+    !isExplicitWeekend &&
+    (isHolidayOrWeekend === false || isExplicitWeekday);
 
   const hasSynthesisOvertimeLabel =
     normalizedTitle.includes("특근보고서 취합") ||

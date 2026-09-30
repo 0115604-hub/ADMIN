@@ -719,10 +719,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   const getDayLabel = (d) => getDayOfWeekKorean(d, currentYear, currentMonthNum);
   const getDayFullLabel = (d) => getDayOfWeekFullKorean(d, currentYear, currentMonthNum);
-  const isWeekendDay = (d) => {
-    const dt = new Date(currentYear, currentMonthNum - 1, d);
-    return dt.getDay() === 0 || dt.getDay() === 6;
-  };
+  const isWeekendDay = (d) => isWeekendByDate(d, currentYear, currentMonthNum);
 
   // Daily views state (로그인 및 접속 시점의 실시간 당일 일자로 기본 선택)
   const [selectedDay, setSelectedDay] = useState(() => {
