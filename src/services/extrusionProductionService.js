@@ -70,6 +70,79 @@ export const DOWNTIME_CATEGORIES = [
   { id: "기타", label: "기타", color: "bg-gray-100 text-gray-800 border-gray-300" }
 ];
 
+export const TPM_CHECK_ITEMS = [
+  {
+    id: 1,
+    category: "설비 기본조건",
+    name: "청소, 윤활, 조임, 누유·누수 점검",
+    desc: "설비 본체/바닥 청결, 급유상태, 볼트 풀림, 유압유/냉각수 누설 여부 (육안/촉감)",
+    cycle: "1회/일"
+  },
+  {
+    id: 2,
+    category: "압출기",
+    name: "스크류, 실린더, 감속기, 모터 상태",
+    desc: "스크류 회전음 정상 여부, 모터/감속기 이상 발열 및 진동 (110Ø / 70Ø 청음/촉감)",
+    cycle: "1회/일"
+  },
+  {
+    id: 3,
+    category: "다이스",
+    name: "마모, 막힘, 변형, 체결상태",
+    desc: "다이스 토출구 이물질, 마모/스크래치, 히터 밀착 및 볼트 체결 (육안/공구)",
+    cycle: "교체시/일"
+  },
+  {
+    id: 4,
+    category: "온도",
+    name: "실린더·다이 온도 설정 및 편차",
+    desc: "설정치(SV) 대비 현재치(PV) 편차 ±5℃ 이내 유지, 열전대 단선 유무",
+    cycle: "수시"
+  },
+  {
+    id: 5,
+    category: "압력",
+    name: "압출압력, 압력 변동, 이상압력",
+    desc: "수지 압력 지침 안정 여부, 급격한 압력 상승 및 맥동 유무 (압력계)",
+    cycle: "수시"
+  },
+  {
+    id: 6,
+    category: "냉각",
+    name: "냉각수 온도·유량·순환상태",
+    desc: "수온 적정(20±5℃), 수로 막힘/누수 없음, 펌프 순환 압력 (유량계/육안)",
+    cycle: "1회/일"
+  },
+  {
+    id: 7,
+    category: "인취/권취",
+    name: "인취속도, 장력, 롤러 상태",
+    desc: "인취 롤러 마모/이물 없음, 롤러 속도 동기화(20±1m/분), 벨트 장력",
+    cycle: "1회/일"
+  },
+  {
+    id: 8,
+    category: "절단",
+    name: "절단기 상태, 칼날 마모, 절단길이",
+    desc: "칼날 이 빠짐/마모 없음, 절단 단면 직각도/버(Burr) 없음, 치수 편차",
+    cycle: "수시"
+  },
+  {
+    id: 9,
+    category: "전기/제어",
+    name: "센서, 인버터, 히터, 제어반",
+    desc: "조작반 램프/스위치 정상, 배선 손상/분진 없음, 인버터 알람 유무 (육안)",
+    cycle: "1회/일"
+  },
+  {
+    id: 10,
+    category: "안전",
+    name: "방호장치, 비상정지, 안전커버",
+    desc: "비상정지(E-Stop) 즉시 작동 시험, 회전부 안전커버 체결, 도어 인터록",
+    cycle: "1회/교대(필수)"
+  }
+];
+
 /**
  * Clean & Format a single report entry
  */
@@ -186,6 +259,10 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       sprayGun3: String(raw.conditions?.sprayGun3 || raw.sprayGun3 || "").trim(),
       sprayGun4: String(raw.conditions?.sprayGun4 || raw.sprayGun4 || "").trim()
     },
+    tpmStatus: String(raw.tpmStatus || "완료"),
+    tpmChecks: Array.isArray(raw.tpmChecks) && raw.tpmChecks.length > 0
+      ? raw.tpmChecks.map(c => ({ id: c.id, status: c.status || "OK", note: c.note || "" }))
+      : TPM_CHECK_ITEMS.map(c => ({ id: c.id, status: "OK", note: "" })),
     downtimeMinutes,
     downtimeCategory: String(raw.downtimeCategory || "형교환"),
     downtimeDetail: String(raw.downtimeDetail || ""),
