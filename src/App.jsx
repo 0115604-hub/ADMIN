@@ -50,6 +50,7 @@ import {
 } from "./services/telegramService";
 import { pushModalHistory, closeAllModals, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
 import { initVersionWatcher, forceHardReload } from "./utils/versionCheck";
+import { initDailyMaintenanceScheduler } from "./services/dailyMaintenanceService";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
@@ -78,6 +79,14 @@ export const App = () => {
       }, 2500);
     });
     return () => unsub();
+  }, []);
+
+  // Daily Maintenance & HealthCheck Scheduler (매일 새벽 자동 헬스체크, 무결성 정제 및 스냅샷 백업)
+  useEffect(() => {
+    const stopScheduler = initDailyMaintenanceScheduler();
+    return () => {
+      if (stopScheduler) stopScheduler();
+    };
   }, []);
 
   // Synchronized refs to avoid stale closures in global popstate handler

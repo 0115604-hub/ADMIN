@@ -67,6 +67,48 @@ export const sortExtrusionWeeks = (weekKeys = []) => {
 };
 
 /**
+ * Robust filter to eliminate any meaningless summary/total/empty rows
+ */
+export const sanitizeExtrusionRows = (rawRows = []) => {
+  if (!Array.isArray(rawRows)) return [];
+  return rawRows.filter((r) => {
+    if (!r || typeof r !== "object") return false;
+
+    const noStr = String(r.no || "").trim();
+    const taskStr = String(r.task || "").trim();
+    const dateStr = String(r.date || "").trim();
+    const dayStr = String(r.day || "").trim();
+    const noteStr = String(r.note || "").trim();
+
+    // 1. Filter out summary / total / calculation lines
+    const isSumOrFooter =
+      noStr.includes("합계") ||
+      noStr.includes("총계") ||
+      noStr.includes("소계") ||
+      noStr.includes("집계") ||
+      noStr.includes("TOTAL") ||
+      noStr.includes("SUM") ||
+      taskStr.includes("합계") ||
+      taskStr.includes("총 합계") ||
+      taskStr.includes("실적 총") ||
+      noteStr.includes("실시간 동적") ||
+      noteStr.includes("가동률 및 비가동 합산");
+
+    if (isSumOrFooter) return false;
+
+    // 2. Filter out phantom rows that have no task description AND no date
+    const isPhantomEmpty =
+      (!taskStr || taskStr === "-") &&
+      (!dateStr || dateStr === "-") &&
+      (!dayStr || dayStr === "-");
+
+    if (isPhantomEmpty) return false;
+
+    return true;
+  });
+};
+
+/**
  * Parses an Excel file (.xlsx, .xls) containing weekly downtime sheets
  * @param {File} file 
  * @returns {Promise<{ fileName: string, updatedAt: string, sheets: Record<string, any> }>}
