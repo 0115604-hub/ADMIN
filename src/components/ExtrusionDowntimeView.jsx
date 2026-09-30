@@ -110,7 +110,8 @@ const CATEGORY_COLORS = {
   정상생산: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200"
 };
 
-const STORAGE_KEY = "factory_extrusion_downtime_user_uploaded_v4";
+export const EXTRUSION_STORAGE_KEY = "factory_extrusion_downtime_user_uploaded_v5";
+const STORAGE_KEY = EXTRUSION_STORAGE_KEY;
 
 /**
  * Robust filter to eliminate any meaningless summary/total/empty rows
@@ -166,14 +167,16 @@ export const ExtrusionDowntimeView = () => {
   const badgeFileInputRefs = useRef({});
   const activeWeekTabRef = useRef(null);
 
-  // Clean state: Initial state loaded and sanitized
+  // Clean state: Initial state loaded and sanitized (Purged of all old dummy data)
   const [linesData, setLinesData] = useState(() => {
     try {
-      // Clear legacy sample data stores
+      // Permanently clear legacy sample data stores
       localStorage.removeItem("factory_extrusion_downtime_parsed_v2");
       localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v3");
+      localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v4");
       localStorage.removeItem("factory_extrusion_downtime_4lines_v24_real_purged");
       localStorage.removeItem("factory_extrusion_downtime_4lines_v23_pcm1qq_verified");
+      localStorage.removeItem("factory_extrusion_downtime_logs_clean_v1");
 
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -240,6 +243,9 @@ export const ExtrusionDowntimeView = () => {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(linesData));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("extrusion-data-updated", { detail: linesData }));
+      }
     } catch (e) {
       console.warn("Storage save error:", e);
     }

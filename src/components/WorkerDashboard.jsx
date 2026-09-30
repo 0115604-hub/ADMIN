@@ -57,7 +57,6 @@ import {
   Receipt
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import masterExtrusionData from "../data/extrusion4LinesMasterData.json";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -194,20 +193,21 @@ const TIME_OPTIONS_30MIN = [
   "03:00", "03:30", "04:00", "04:30", "05:00", "05:30"
 ];
 
-// Storage key for Extrusion 4-Lines Downtime Data
-const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_4lines_v23_pcm1qq_verified";
+// Storage key for Extrusion 4-Lines Downtime Data (Synced directly with ExtrusionDowntimeView)
+const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_user_uploaded_v5";
 
-const DEFAULT_EXTRUSION_OP_RATES = {
-  pcm1: { "7월": "94.2%", "8월": "95.1%", "9월": "93.4%", default: "93.0%" },
-  pcm3: { "7월": "93.5%", "8월": "94.0%", "9월": "92.8%", default: "92.8%" },
-  pvc: { "7월": "89.6%", "8월": "96.5%", "9월": "91.5%", default: "91.5%" },
-  tpe: { "7월": "96.3%", "8월": "89.7%", "9월": "95.2%", default: "95.2%" }
-};
-
-// Dynamic Extrusion 4-Lines Summary with real-time manual data synchronization
+// Dynamic Extrusion 4-Lines Summary calculated purely from real uploaded data
 export const getExtrusionSummaryData = () => {
-  let store = masterExtrusionData;
+  let store = {};
   try {
+    // Permanently clear legacy sample data stores
+    localStorage.removeItem("factory_extrusion_downtime_parsed_v2");
+    localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v3");
+    localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v4");
+    localStorage.removeItem("factory_extrusion_downtime_4lines_v24_real_purged");
+    localStorage.removeItem("factory_extrusion_downtime_4lines_v23_pcm1qq_verified");
+    localStorage.removeItem("factory_extrusion_downtime_logs_clean_v1");
+
     const saved = localStorage.getItem(STORAGE_KEY_EXTRUSION);
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -225,53 +225,111 @@ export const getExtrusionSummaryData = () => {
   ];
 
   return lineKeys.map(({ key, defaultName, defaultCode, themeColor }) => {
-    const lObj = store[key] || masterExtrusionData[key] || {};
+    const lObj = store[key] || {};
     const lineName = lObj.name || defaultName;
     const lineCode = lObj.code || defaultCode;
+    const sheets = lObj.sheets || lObj.weeklyData || {};
+    const sheetKeys = Object.keys(sheets);
 
-    // 9월 누적 비가동 시간 계산
-    const weeks = Object.keys(lObj.weeklyData || {});
-    const sepWeeks = weeks.filter((w) => w.startsWith("9월"));
-    let sepMin = 0;
-    sepWeeks.forEach((w) => {
-      const rows = lObj.weeklyData[w]?.rows || [];
-      rows.forEach((r) => {
-        sepMin += Number(r.minutes || 0);
-      });
-    });
-    const sepHours = (sepMin / 60).toFixed(1) + "h";
+    // If no data uploaded yet for this line, display clean initial empty state
+    if (sheetKeys.length === 0) {
+      return {
+        lineKey: key,
+        line: lineName,
+        code: lineCode,
+        themeColor,
+        currentMonth: "9월",
+        currentMonthMin: 0,
+        currentMonthHours: "0.0h",
+        lossRate: "0.0%",
+        opRatio: "100.0",
+        isPending: true,
+        monthlyTrend: [
+          { month: "7월", opRate: "-", opNum: 100, lossRate: "-", lossNum: 0, isCurrent: false },
+          { month: "8월", opRate: "-", opNum: 100, lossRate: "-", lossNum: 0, isCurrent: false },
+          { month: "9월", opRate: "-", opNum: 100, lossRate: "-", lossNum: 0, isCurrent: true }
+        ]
+      };
+    }
 
-    // 7월, 8월, 9월 월별 추이 (수기로 넣은 데이터 완벽 연동)
+    // Monthly trends dynamically calculated from uploaded sheets
     const months = ["7월", "8월", "9월"];
     const monthlyTrend = months.map((m) => {
-      // 1. 월가동율 (수기 저장 데이터 우선)
-      const opRaw =
-        lObj.monthlyOperatingRates?.[m] ||
-        DEFAULT_EXTRUSION_OP_RATES[key]?.[m] ||
-        DEFAULT_EXTRUSION_OP_RATES[key]?.default ||
-        "93.0%";
-      const opNum = parseFloat(String(opRaw).replace("%", "")) || 93.0;
-      const opStr = `${opNum.toFixed(1)}%`;
+      const mSheets = sheetKeys.filter((k) => k.startsWith(m) || k.includes(m));
+      if (mSheets.length === 0) {
+        return {
+          month: m,
+          opRate: "-",
+          opNum: 100,
+          lossRate: "-",
+          lossNum: 0,
+          isCurrent: m === "9월"
+        };
+      }
 
-      // 2. 월누적 LOSS율 (수기 저장 데이터 우선)
-      const lossRaw =
-        lObj.monthlyLossRates?.[m] ||
-        lObj.monthlyLossRates?.default ||
-        "6.0%";
-      const lossNum = parseFloat(String(lossRaw).replace("%", "")) || 6.0;
-      const lossStr = `${lossNum.toFixed(1)}%`;
+      let mTotalMin = 0;
+      let mPlanMin = 0;
+      const mTotalBase = mSheets.length * 7200; // 5 days 24h per week (7,200 min)
+
+      mSheets.forEach((w) => {
+        const sh = sheets[w];
+        const rows = Array.isArray(sh?.rows) ? sh.rows : [];
+        rows.forEach((r) => {
+          const noStr = String(r.no || "").trim();
+          const taskStr = String(r.task || "").trim();
+          if (noStr.includes("합계") || taskStr.includes("합계") || taskStr.includes("총 합계")) return;
+          const min = Number(r.minutes || 0);
+          mTotalMin += min;
+          if (r.plan === "Y" || r.plan === "y") mPlanMin += min;
+        });
+      });
+
+      const netDowntime = Math.max(0, mTotalMin - mPlanMin);
+      const netRunTime = Math.max(0, mTotalBase - mPlanMin);
+      const opNum = netRunTime > 0 ? ((netRunTime - netDowntime) / netRunTime) * 100 : 100;
+      const lossNum = mTotalBase > 0 ? (mTotalMin / mTotalBase) * 100 : 0;
 
       return {
         month: m,
-        opRate: opStr,
-        opNum: opNum,
-        lossRate: lossStr,
-        lossNum: lossNum,
+        opRate: `${opNum.toFixed(1)}%`,
+        opNum: Number(opNum.toFixed(1)),
+        lossRate: `${lossNum.toFixed(1)}%`,
+        lossNum: Number(lossNum.toFixed(1)),
         isCurrent: m === "9월"
       };
     });
 
+    // 9월 (당월) 누적 비가동 시간 계산
+    const sepSheets = sheetKeys.filter((w) => w.startsWith("9월") || w.includes("9월"));
+    let sepMin = 0;
+    let sepPlanMin = 0;
+    const sepTotalBase = Math.max(1, sepSheets.length) * 7200;
+
+    sepSheets.forEach((w) => {
+      const sh = sheets[w];
+      const rows = Array.isArray(sh?.rows) ? sh.rows : [];
+      rows.forEach((r) => {
+        const noStr = String(r.no || "").trim();
+        const taskStr = String(r.task || "").trim();
+        if (noStr.includes("합계") || taskStr.includes("합계") || taskStr.includes("총 합계")) return;
+        const min = Number(r.minutes || 0);
+        sepMin += min;
+        if (r.plan === "Y" || r.plan === "y") sepPlanMin += min;
+      });
+    });
+
     const currSep = monthlyTrend.find((m) => m.month === "9월") || monthlyTrend[monthlyTrend.length - 1];
+    const sepHours = (sepMin / 60).toFixed(1) + "h";
+    const sepNetDowntime = Math.max(0, sepMin - sepPlanMin);
+    const sepNetRunTime = Math.max(0, sepTotalBase - sepPlanMin);
+    const sepOpRatio =
+      sepSheets.length > 0 && sepNetRunTime > 0
+        ? (((sepNetRunTime - sepNetDowntime) / sepNetRunTime) * 100).toFixed(1)
+        : "100.0";
+    const sepLossRate =
+      sepSheets.length > 0 && sepTotalBase > 0
+        ? `${((sepMin / sepTotalBase) * 100).toFixed(1)}%`
+        : "0.0%";
 
     return {
       lineKey: key,
@@ -281,8 +339,9 @@ export const getExtrusionSummaryData = () => {
       currentMonth: "9월",
       currentMonthMin: sepMin,
       currentMonthHours: sepHours,
-      lossRate: currSep.lossRate,
-      opRatio: currSep.opNum.toFixed(1),
+      lossRate: sepSheets.length > 0 ? sepLossRate : "0.0%",
+      opRatio: sepSheets.length > 0 ? sepOpRatio : "100.0",
+      isPending: false,
       monthlyTrend
     };
   });
@@ -422,7 +481,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   // 5 Company Smart Overtime Ledger Subscription for Panel 4
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
 
-  // Extrusion 4-Lines Downtime Summary (수기 지표 실시간 연동)
+  // Extrusion 4-Lines Downtime Summary (실시간 업로드 데이터 연동)
   const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
 
   useEffect(() => {
@@ -431,9 +490,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
     window.addEventListener("storage", refreshExtrusionData);
     window.addEventListener("focus", refreshExtrusionData);
+    window.addEventListener("extrusion-data-updated", refreshExtrusionData);
     return () => {
       window.removeEventListener("storage", refreshExtrusionData);
       window.removeEventListener("focus", refreshExtrusionData);
+      window.removeEventListener("extrusion-data-updated", refreshExtrusionData);
     };
   }, []);
 
@@ -4228,10 +4289,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
                     <div className="space-y-1">
                       {ex.monthlyTrend.map((mItem) => {
+                        const isNoData = mItem.opRate === "-";
                         // 큰막대: 월가동율 (0~100% 기준)
-                        const opPct = Math.min(100, Math.max(20, mItem.opNum));
+                        const opPct = isNoData ? 0 : Math.min(100, Math.max(20, mItem.opNum));
                         // 작은막대: 0.5~6% 데이터가 육안상 명확히 구분되도록 전용 비례 스케일 적용 (16%~60%)
-                        const lossVisualPct = Math.min(65, Math.max(16, mItem.lossNum * 7));
+                        const lossVisualPct = isNoData ? 0 : Math.min(65, Math.max(16, mItem.lossNum * 7));
 
                         return (
                           <div
@@ -4250,24 +4312,30 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                             </span>
 
                             {/* 시각적 바: 큰막대(월가동율) + 큰막대 안의 작은막대(LOSS율) */}
-                            <div className="flex-1 min-w-[50px] bg-slate-200 dark:bg-slate-800 rounded-full h-2.5 relative overflow-hidden flex items-center p-0.2">
-                              {/* 큰막대: 월가동율 */}
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 relative flex items-center ${
-                                  mItem.isCurrent
-                                    ? "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 shadow-xs"
-                                    : "bg-teal-600/80 dark:bg-teal-700/80"
-                                }`}
-                                style={{ width: `${opPct}%` }}
-                                title={`${mItem.month} 가동: ${mItem.opRate} | LOSS: ${mItem.lossRate}`}
-                              >
-                                {/* 큰막대 안의 작은막대: LOSS율 */}
+                            <div className="flex-1 min-w-[50px] bg-slate-200/80 dark:bg-slate-800 rounded-full h-2.5 relative overflow-hidden flex items-center p-0.2">
+                              {isNoData ? (
+                                <div className="h-full w-full flex items-center justify-center text-[7px] text-slate-400 font-bold">
+                                  -
+                                </div>
+                              ) : (
+                                /* 큰막대: 월가동율 */
                                 <div
-                                  className="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 shadow-xs flex items-center justify-center shrink-0 border border-white/70"
-                                  style={{ width: `${lossVisualPct}%` }}
-                                  title={`${mItem.month} LOSS율: ${mItem.lossRate}`}
-                                />
-                              </div>
+                                  className={`h-full rounded-full transition-all duration-500 relative flex items-center ${
+                                    mItem.isCurrent
+                                      ? "bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 shadow-xs"
+                                      : "bg-teal-600/80 dark:bg-teal-700/80"
+                                  }`}
+                                  style={{ width: `${opPct}%` }}
+                                  title={`${mItem.month} 가동: ${mItem.opRate} | LOSS: ${mItem.lossRate}`}
+                                >
+                                  {/* 큰막대 안의 작은막대: LOSS율 */}
+                                  <div
+                                    className="h-full rounded-full bg-gradient-to-r from-rose-500 via-rose-600 to-amber-500 shadow-xs flex items-center justify-center shrink-0 border border-white/70"
+                                    style={{ width: `${lossVisualPct}%` }}
+                                    title={`${mItem.month} LOSS율: ${mItem.lossRate}`}
+                                  />
+                                </div>
+                              )}
                             </div>
 
                             {/* 우측 수치 라벨: 가동율 & LOSS율 */}
