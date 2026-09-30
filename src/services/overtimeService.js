@@ -29,33 +29,45 @@ export const getPlantForCompany = (companyName) => {
   return "한림공장";
 };
 
-// ⭐ Precise Date & Weekend/Holiday Overtime Helpers (2026년 9월 한국 달력 및 특근 조건 기준)
+// ⭐ Precise Date & Weekend/Holiday Overtime Helpers (토요일, 일요일만 주말 특근으로 판정, 월~금 평일은 100% 정상 근태보고서)
 export const isWeekendByDate = (dateStrOrDay) => {
   if (typeof dateStrOrDay === "number") {
     const d = dateStrOrDay;
-    if ([5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(d)) return true;
     const dt = new Date(2026, 8, d);
     const dayOfWeek = dt.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6;
+    return dayOfWeek === 0 || dayOfWeek === 6; // 5, 6, 12, 13, 19, 20, 26, 27일만 주말
   }
   if (!dateStrOrDay) return false;
+
+  // 1. 명시적 요일 텍스트 확인 ((월), (화), (수), (목), (금) 등은 절대 특근 아님)
+  const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
+  if (match) {
+    const dayChar = match[1] || match[2];
+    if (["월", "화", "수", "목", "금"].includes(dayChar)) return false;
+    if (dayChar === "토" || dayChar === "일") return true;
+  }
+
+  // 2. YYYY-MM-DD 날짜 파싱 기준 실제 요일 판정
   const p = String(dateStrOrDay).split("-");
   if (p.length === 3) {
-    const month = parseInt(p[1], 10);
-    const day = parseInt(p[2], 10);
-    if (month === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) return true;
     const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
     if (!isNaN(dt.getTime())) {
       const dayOfWeek = dt.getDay();
       return dayOfWeek === 0 || dayOfWeek === 6;
     }
   }
-  const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
-  if (match) {
-    const dayChar = match[1] || match[2];
-    return dayChar === "토" || dayChar === "일";
+
+  // 3. 9월 X일 형식 파싱
+  const mMatch = String(dateStrOrDay).match(/(\d{1,2})월\s*(\d{1,2})일/);
+  if (mMatch) {
+    const day = parseInt(mMatch[2], 10);
+    const dt = new Date(2026, 8, day);
+    if (!isNaN(dt.getTime())) {
+      const dayOfWeek = dt.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    }
   }
-  if (String(dateStrOrDay).includes("특근") && !String(dateStrOrDay).includes("근태")) return true;
+
   return false;
 };
 
@@ -103,12 +115,47 @@ export const calculateReportMetrics = (report) => {
   return { headcount, manHours, cost, lines };
 };
 
+// ⭐ 평일 보고서 자동 정제 함수: 월~금 평일 보고서는 100% 근태보고서 및 작성자 전결(APPROVED)로 보정
+export const normalizeOvertimeReport = (report) => {
+  if (!report) return report;
+  const workDate = report.workDate || "";
+  const isWeekend = isWeekendByDate(workDate || report.title || report.workDateFormatted);
+
+  if (!isWeekend) {
+    let cleanTitle = report.title || "";
+    if (cleanTitle.includes("특근보고서") || cleanTitle.includes("특근실시보고서")) {
+      cleanTitle = cleanTitle.replace(/특근보고서/g, "근태보고서").replace(/특근실시보고서/g, "근태보고서");
+    }
+    const drafterName = report.author?.split(" ")[0] || "작성자";
+    const drafterTitle = report.authorTitle || "선임";
+    const plantName = report.plant || getPlantForCompany(report.company || "");
+    const dateStr = workDate || report.updatedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
+
+    return {
+      ...report,
+      title: cleanTitle,
+      reportType: "근태보고서",
+      status: "APPROVED",
+      approval: [
+        { role: "담당", name: drafterName, title: drafterTitle, status: "APPROVED", date: dateStr, comment: "작성자 전결" },
+        { role: "책임", name: plantName === "한림공장" ? "김동욱" : "윤경수", title: "책임", status: "APPROVED", date: dateStr, comment: "전결" },
+        { role: "이사", name: "이명재", title: "이사", status: "APPROVED", date: dateStr, comment: "전결" },
+        { role: "대표", name: "권태형", title: "대표", status: "APPROVED", date: dateStr, comment: "전결" }
+      ]
+    };
+  }
+  return report;
+};
+
 export const getLocalOvertimeReports = () => {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!saved) return [];
     const parsed = JSON.parse(saved);
-    return Array.isArray(parsed) ? parsed : [];
+    if (Array.isArray(parsed)) {
+      return parsed.map(normalizeOvertimeReport);
+    }
+    return [];
   } catch (e) {
     return [];
   }
@@ -116,7 +163,8 @@ export const getLocalOvertimeReports = () => {
 
 export const saveLocalOvertimeReports = (reports) => {
   try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(reports || []));
+    const cleanList = (reports || []).map(normalizeOvertimeReport);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cleanList));
   } catch (e) {
     console.error("Local storage overtime save error:", e);
   }
@@ -145,8 +193,9 @@ export const subscribeOvertimeReports = (callback) => {
           // Sort by updatedAt descending, then workDate descending
           remoteReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
         }
-        saveLocalOvertimeReports(remoteReports);
-        if (callback) callback(remoteReports);
+        const normalizedList = remoteReports.map(normalizeOvertimeReport);
+        saveLocalOvertimeReports(normalizedList);
+        if (callback) callback(normalizedList);
       },
       (error) => {
         console.warn("Firestore overtime reports sync error (using local):", error.message);

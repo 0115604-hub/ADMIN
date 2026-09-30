@@ -121,7 +121,8 @@ import {
   getLocalOvertimeReports,
   subscribeOvertimeReports,
   getLatestOvertimeSummary,
-  formatKoreanWorkDate
+  formatKoreanWorkDate,
+  isWeekendByDate
 } from "../services/overtimeService";
 import {
   getWorkLogs,
@@ -718,9 +719,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return todayStr;
   }, []);
 
-  // 특근보고서 결재 완료 여부 확인 (결재 완료 시 대시보드에서 자동 숨김)
+  // 특근보고서 결재 완료 여부 확인 (평일 보고서는 작성자 전결이므로 무조건 완료, 주말 특근만 결재 완료 시 대시보드에서 자동 숨김)
   const isOvertimeReportApproved = useCallback((rep) => {
     if (!rep) return false;
+    // ⭐ 평일(월~금) 근태보고서는 작성자 전결이므로 무조건 승인 완료로 간주
+    const isWk = isWeekendByDate(rep.workDate || rep.title || rep.workDateFormatted);
+    if (!isWk) return true;
+
     if (rep.approvalStatus === "결재완료" || rep.approvalStatus === "APPROVED" || rep.status === "APPROVED" || rep.status === "결재완료") {
       return true;
     }
@@ -744,19 +749,19 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return false;
   }, [approvalDocs]);
 
-  // 🌟 공장별 최신 일자의 미결재 특근보고서 추출 (최신 일자 기준 미결재 건만 공장/협력사별 개별 표시, 과거 일자 나열 방지, 결재 완료 시 자동 숨김)
+  // 🌟 공장별 최신 일자의 미결재 특근보고서 추출 (주말/공휴일 특근보고서만 대상, 평일 근태보고서 완전 제외, 결재 완료 시 자동 숨김)
   const pendingApprovalCards = useMemo(() => {
     if (!Array.isArray(overtimeReports)) return [];
     const list = [];
     const seenIds = new Set();
 
-    // 1. 삼랑진공장: 최신 일자 미결재 특근보고서 추출 (오륙, 유성)
+    // 1. 삼랑진공장: 최신 일자 미결재 특근보고서 추출 (오륙, 유성 - 주말/특근만)
     const unapprovedSam = overtimeReports.filter((r) => {
       if (!r) return false;
       const isSam = r.plant === "삼랑진공장" || r.company === "(주)오륙" || r.company === "유성" || (r.plant?.includes("삼랑진") && !r.plant?.includes("한림"));
       if (!isSam) return false;
-      const isSpecial = r.reportType === "특근보고서" || r.title?.includes("특근");
-      if (!isSpecial) return false;
+      const isWk = isWeekendByDate(r.workDate || r.title || r.workDateFormatted);
+      if (!isWk) return false; // 평일 근태보고서는 전결이므로 제외
       return !isOvertimeReportApproved(r);
     }).sort((a, b) => (b.workDate || b.updatedAt || "").localeCompare(a.workDate || a.updatedAt || ""));
 
@@ -792,13 +797,13 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       });
     }
 
-    // 2. 한림공장: 최신 일자 미결재 특근보고서 추출 (한울, 조영, 부림텍 - 2건 이상 시 모두 개별 표시)
+    // 2. 한림공장: 최신 일자 미결재 특근보고서 추출 (한울, 조영, 부림텍 - 주말/특근만)
     const unapprovedHal = overtimeReports.filter((r) => {
       if (!r) return false;
       const isHal = r.plant === "한림공장" || r.company === "한울" || r.company === "부림텍" || r.company === "(주)조영산업" || r.company === "조영" || r.plant?.includes("한림");
       if (!isHal) return false;
-      const isSpecial = r.reportType === "특근보고서" || r.title?.includes("특근");
-      if (!isSpecial) return false;
+      const isWk = isWeekendByDate(r.workDate || r.title || r.workDateFormatted);
+      if (!isWk) return false; // 평일 근태보고서는 전결이므로 제외
       return !isOvertimeReportApproved(r);
     }).sort((a, b) => (b.workDate || b.updatedAt || "").localeCompare(a.workDate || a.updatedAt || ""));
 
