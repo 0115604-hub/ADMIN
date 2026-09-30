@@ -923,6 +923,17 @@ export const ExtrusionProductionTab = () => {
                             </span>
                           </div>
                         )}
+                        {(r.tpmIssueText || (Array.isArray(r.tpmIssuePhotos) && r.tpmIssuePhotos.length > 0)) && (
+                          <div className="flex items-center gap-1 text-[10.5px] font-bold text-amber-600 dark:text-amber-400 mt-0.5 truncate">
+                            <span className="px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[9.5px] font-black">
+                              🚨 TPM이상
+                            </span>
+                            <span className="truncate">{r.tpmIssueText || "점검 사진 등록"}</span>
+                            {Array.isArray(r.tpmIssuePhotos) && r.tpmIssuePhotos.length > 0 && (
+                              <span className="text-[10px]">📷 {r.tpmIssuePhotos.length}장</span>
+                            )}
+                          </div>
+                        )}
                         {r.notes && (
                           <p className="text-[10.5px] text-slate-500 italic truncate mt-0.5">
                             📝 {r.notes}
