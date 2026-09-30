@@ -26,41 +26,74 @@ const LOCAL_STORAGE_KEY = "oryuk_urgent_issues_v2";
 const todayDateStrFallback = () => getKSTDateString();
 
 /**
- * 회의일정이 지정 시간 기준 1시간 경과했는지 판별 (회의시작시간 + 1시간 경과 시 첫화면에서 자동 삭제/만료)
- * @param {Object} item - { category, startDate, date, expireDate, targetDate, meetingTime, isManuallyRestored }
- * @param {number} graceHours - 경과 기준 시간 (기본 1시간)
+ * 회의일정이 지정 일시 경과했는지 판별 (일정 경과 시 첫화면 및 활성목록에서 제외되어 [종결삭제관리]로 이동)
+ * @param {Object} item - { category, startDate, date, expireDate, targetDate, meetingDate, meetingTime, isManuallyRestored }
+ * @param {number} graceHours - 경과 기준 시간 (기본 0시간)
  * @returns {boolean}
  */
-export const isMeetingExpired = (item, graceHours = 1) => {
-  if (!item) return false;
-  const cat = item.category || "";
+export const isMeetingExpired = (item, graceHours = 0) => {
+  if (!item || typeof item !== "object") return false;
+  const cat = String(item.category || "").trim();
   if (cat !== "회의일정" && !cat.includes("회의") && cat !== "meeting") return false;
 
-  const mDate = item.startDate || item.date || item.expireDate || item.targetDate || (item.createdAt ? item.createdAt.slice(0, 10) : "") || "";
-  if (!mDate) return false;
+  // Extract date string from all possible date fields
+  let rawDate =
+    item.meetingDate ||
+    item.expireDate ||
+    item.startDate ||
+    item.targetDate ||
+    item.date ||
+    (item.createdAt ? String(item.createdAt).slice(0, 10) : "") ||
+    "";
 
-  const mTime = (item.meetingTime || "14:00").trim();
-  let [hStr, minStr] = mTime.split(":");
-  let h = parseInt(hStr, 10);
-  let min = parseInt(minStr, 10);
-  if (isNaN(h)) h = 14;
-  if (isNaN(min)) min = 0;
+  if (!rawDate) return false;
 
-  const cleanDateStr = mDate.replace(/\./g, "-").trim().slice(0, 10);
-  const parts = cleanDateStr.split("-");
-  if (parts.length < 3) return false;
-  const y = parseInt(parts[0], 10);
-  const mon = parseInt(parts[1], 10);
-  const d = parseInt(parts[2], 10);
-  if (isNaN(y) || isNaN(mon) || isNaN(d)) return false;
-
-  // 회의 지정 시각 Date (KST)
-  const meetingStartTime = new Date(y, mon - 1, d, h, min, 0).getTime();
-  const expireTimeMs = meetingStartTime + (graceHours * 60 * 60 * 1000); // 회의지정시간 + 1시간
-
-  // KST 현재 시각
   const kstInfo = getKSTTimeInfo();
-  const [currY, currM, currD] = kstInfo.dateStr.split("-").map(Number);
+  const todayStr = kstInfo.dateStr; // YYYY-MM-DD
+
+  // Normalize date format
+  const cleanStr = String(rawDate).replace(/[.\/]/g, "-").trim();
+  const dateMatch = cleanStr.match(/(\d{4})[-년\s]*(\d{1,2})[-월\s]*(\d{1,2})/);
+
+  let y, mon, d;
+  if (dateMatch) {
+    y = parseInt(dateMatch[1], 10);
+    mon = parseInt(dateMatch[2], 10);
+    d = parseInt(dateMatch[3], 10);
+  } else {
+    const mmddMatch = cleanStr.match(/(\d{1,2})[-월\s]*(\d{1,2})/);
+    if (mmddMatch) {
+      y = new Date().getFullYear();
+      mon = parseInt(mmddMatch[1], 10);
+      d = parseInt(mmddMatch[2], 10);
+    } else {
+      return false;
+    }
+  }
+
+  const formattedItemDate = `${y}-${String(mon).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  // 1. If meeting date is strictly before today (과거 일자), it is 100% expired
+  if (formattedItemDate < todayStr) {
+    return true;
+  }
+
+  // 2. If meeting date is today, check whether the meeting time (+ graceHours) has passed
+  const mTime = String(item.meetingTime || item.time || "14:00").trim();
+  let h = 14;
+  let min = 0;
+  const timeMatch = mTime.match(/(\d{1,2})\s*[:시]\s*(\d{1,2})?/);
+  if (timeMatch) {
+    h = parseInt(timeMatch[1], 10);
+    if (timeMatch[2]) min = parseInt(timeMatch[2], 10);
+    if (mTime.includes("오후") && h < 12) h += 12;
+    if (mTime.includes("오전") && h === 12) h = 0;
+  }
+
+  const meetingStartTime = new Date(y, mon - 1, d, h, min, 0).getTime();
+  const expireTimeMs = meetingStartTime + (graceHours * 60 * 60 * 1000);
+
+  const [currY, currM, currD] = todayStr.split("-").map(Number);
   const nowKst = new Date(currY, currM - 1, currD, kstInfo.hour, kstInfo.minute, kstInfo.second || 0).getTime();
 
   return nowKst >= expireTimeMs;

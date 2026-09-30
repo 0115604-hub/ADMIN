@@ -17,6 +17,8 @@ import {
   ChevronsRight,
   Plus
 } from "lucide-react";
+import { isMeetingExpired } from "../../services/urgentIssueService";
+import { getKSTDateString } from "../../utils/dateUtils";
 
 const getIssueOpinionCount = (item) => {
   if (!item) return 0;
@@ -278,12 +280,15 @@ export const IssueLedgerModal = ({
             ) : (
               paginatedIssues.map((it, idx) => {
                 const isCurrent = selectedListItem?.id === it.id;
-                const isItMeeting = it.category === "회의일정";
-                const isItNotice = it.category === "공지사항" || it.category === "사내공지" || it.category === "공유사항";
-                const isItQualityAlert = it.category === "품질경보";
-                const isItDeleted = Boolean(it.isDeleted);
+                const isItMeeting = it.category === "회의일정" || it.category === "meeting" || String(it.category || "").includes("회의");
+                const isItNotice = it.category === "공지사항" || it.category === "사내공지" || it.category === "공유사항" || it.category === "notice" || String(it.category || "").includes("공지");
+                const isItQualityAlert = it.category === "품질경보" || it.category === "quality_alert" || String(it.category || "").includes("품질경보");
+                const todayStr = getKSTDateString();
+                const isItExpiredMeeting = isItMeeting && isMeetingExpired(it, 0);
+                const isItExpiredNotice = isItNotice && Boolean(it.expireDate && it.expireDate < todayStr && !it.isManuallyRestored);
+                const isItDeleted = Boolean(it.isDeleted || isItExpiredMeeting || isItExpiredNotice);
                 const hasAction = typeof it.actionResult === "string" && it.actionResult.trim().length > 0;
-                const isItResolved = Boolean(it.isResolved || hasAction);
+                const isItResolved = Boolean(it.isResolved || hasAction || isItExpiredMeeting);
                 const isItUnresolved = !isItDeleted && !isItResolved;
                 const itemNum = (validIssuePage - 1) * ISSUES_PER_PAGE + idx + 1;
 

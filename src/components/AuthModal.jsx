@@ -276,9 +276,9 @@ export const AuthModal = () => {
     return urgentIssues.filter((item) => {
       if (!item || item.isDeleted) return false;
 
-      // 1. 회의일정: 회의 시작 시간으로부터 1시간 경과 시 첫 화면에서 자동 만료/제외
+      // 1. 회의일정: 회의 시작 시간 경과 시 첫 화면에서 자동 만료/제외 -> 종결삭제관리로 이동
       if (isCatMeeting(item.category)) {
-        return !isMeetingExpired(item, 1);
+        return !isMeetingExpired(item, 0);
       }
 
       // 2. 사내공지 / 공지사항: 만료일자(expireDate)가 지난 경우 첫 화면에서 자동 제외 (단, 수동 복구된 경우 제외)
@@ -316,15 +316,15 @@ export const AuthModal = () => {
 
   // Ledger categories (최신순 정렬 적용)
   const allQualityAlerts = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatQualityAlert(i.category))), [urgentIssues]);
-  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatMeeting(i.category))), [urgentIssues]);
+  const allMeetings = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatMeeting(i.category) && !isMeetingExpired(i, 0))), [urgentIssues, todayDateStr, currentKstTimeStr]);
   const allQualityIssues = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatOpenIssue(i.category))), [urgentIssues]);
-  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatNotice(i.category))), [urgentIssues]);
+  const allNotices = useMemo(() => sortIssuesByLatest(urgentIssues.filter((i) => !i.isDeleted && isCatNotice(i.category) && (!i.expireDate || i.expireDate >= todayDateStr || i.isManuallyRestored))), [urgentIssues, todayDateStr]);
   const allClosedDeletedIssues = useMemo(() => {
     const list = urgentIssues.filter((i) => {
       if (!i) return false;
       if (i.isDeleted) return true;
       if (isCatMeeting(i.category)) {
-        return isMeetingExpired(i, 1);
+        return isMeetingExpired(i, 0);
       }
       if (isCatNotice(i.category)) {
         return Boolean(i.expireDate && i.expireDate < todayDateStr && !i.isManuallyRestored);
