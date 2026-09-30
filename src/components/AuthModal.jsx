@@ -1623,7 +1623,7 @@ export const AuthModal = () => {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-              본인 이름을 터치하시면 안전공유판과 품질이슈를 확인한 후 압출 생산관리 화면으로 바로 연결됩니다.
+              본인 이름을 터치하시면 안전알림판과 필수 공지를 꼭 확인하신 후 압출 생산관리 화면으로 바로 연결됩니다.
             </p>
 
             <div className="grid grid-cols-4 gap-1.5">

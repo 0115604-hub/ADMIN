@@ -502,11 +502,12 @@ export const WorkerPinModal = ({
                 </div>
 
                 <div className="space-y-1.5">
-                  <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                    {selectedUser.name} {selectedUser.title || ""} 핀번호 입력 후 상태 및 등록된 일정을 확인해 주십시오
+                  <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                    {selectedUser.name} {selectedUser.title || ""}님, PIN 번호 입력 후 <br className="hidden sm:inline" />
+                    안전알림판과 필수 공지를 꼭 확인해 주시기 바랍니다
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
-                    PIN 번호 인증 완료 시 안전공유판, 현재 상태 및 {isAdmin ? "미완료 공통일정" : "등록된 일정"}이 표시됩니다.
+                    PIN 번호 인증 완료 시 중대재해 안전공유판, 품질경보 및 {isAdmin ? "미완료 공통일정" : "등록된 일정"}이 표시됩니다.
                   </p>
                 </div>
               </div>
