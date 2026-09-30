@@ -344,6 +344,16 @@ export const WorkerPinModal = ({
     setIsLoggingIn(true);
     try {
       clearModalStack();
+      if (
+        selectedUser?.building === "압출동" ||
+        selectedUser?.assignedProcess === "압출동" ||
+        selectedUser?.id?.startsWith("ext_") ||
+        selectedUser?.name === "공영국"
+      ) {
+        try {
+          localStorage.setItem("factory_extrusion_active_subtab", "production");
+        } catch (e) {}
+      }
       loginWithProfile(selectedUser, true, false);
       setSelectedUser(null);
     } catch (err) {

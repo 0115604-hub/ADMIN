@@ -35,9 +35,9 @@ export const WorkerLoginSection = ({
       {/* CASE 1: [🏭 압출동] 선택 시: 11명 압출동 전용 작업자 명단 표출 */}
       {/* ========================================================================= */}
       {isExtrusion ? (
-        <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-teal-50/50 dark:bg-teal-950/20 border-2 border-teal-300 dark:border-teal-800 space-y-2.5 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="text-xs sm:text-sm font-black text-teal-800 dark:text-teal-300 flex items-center gap-1.5 flex-wrap">
+        <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-teal-50/60 dark:bg-teal-950/30 border-2 border-teal-400 dark:border-teal-700 space-y-2.5 shadow-2xs">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-xs sm:text-sm font-black text-teal-900 dark:text-teal-200 flex items-center gap-1.5 flex-wrap">
               <div className="p-1.5 rounded-xl bg-teal-600 text-white shadow-xs">
                 <Cpu className="w-3.5 h-3.5" />
               </div>
@@ -47,8 +47,27 @@ export const WorkerLoginSection = ({
               </span>
             </div>
             <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-teal-600 text-white shadow-xs">
-              {EXTRUSION_WORKERS.length}명
+              총 {EXTRUSION_WORKERS.length}명
             </span>
+          </div>
+
+          {/* 🌟 명확한 입장 안내 배너 */}
+          <div className="p-2 sm:p-2.5 rounded-xl bg-teal-600/10 dark:bg-teal-900/40 border border-teal-300/80 dark:border-teal-700/80 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Sparkles className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 animate-bounce" />
+              <span className="text-[11.5px] sm:text-xs font-black text-teal-950 dark:text-teal-200 truncate">
+                👉 본인 이름 터치 → 핀번호(11) → 중대재해·품질 확인 후 압출 생산관리로 입장!
+              </span>
+            </div>
+            {EXTRUSION_WORKERS[0] && (
+              <button
+                type="button"
+                onClick={() => onUserClick(EXTRUSION_WORKERS[0])}
+                className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-[11px] font-black shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+              >
+                ⚡ 공영국(반장) 바로입장
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-4 sm:grid-cols-4 gap-1 sm:gap-1.5">

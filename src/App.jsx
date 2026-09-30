@@ -114,9 +114,22 @@ export const App = () => {
     } catch (e) {}
 
     if (currentProfile) {
-      setActiveTab("worker_dashboard");
+      const isExtrusionWorker =
+        currentProfile.building === "압출동" ||
+        currentProfile.assignedProcess === "압출동" ||
+        currentProfile.id?.startsWith("ext_") ||
+        currentProfile.name === "공영국" ||
+        currentProfile.name === "설유철";
+
+      const targetTab = isExtrusionWorker ? "extrusion_downtime" : "worker_dashboard";
+      if (isExtrusionWorker) {
+        try {
+          localStorage.setItem("factory_extrusion_active_subtab", "production");
+        } catch (e) {}
+      }
+      setActiveTab(targetTab);
       try {
-        window.history.pushState({ screen: "worker_dashboard", isSummary: true }, "");
+        window.history.pushState({ screen: targetTab, isSummary: true }, "");
       } catch (e) {}
     } else {
       try {

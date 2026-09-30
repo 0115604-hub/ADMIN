@@ -69,16 +69,51 @@ export const Header = ({
             <span className="sm:hidden">← 뒤로</span>
           </button>
         ) : isOperator ? (
-          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 truncate">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs p-1 shrink-0">
               <OryukLogo className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 truncate">
               <h2 className="text-xs sm:text-base font-black text-slate-900 dark:text-white tracking-tight truncate">
                 <span className="text-slate-900 dark:text-white font-black">(주)오륙 </span>
-                <span className="text-blue-600 dark:text-blue-400 font-black">생산관리시스템</span>
+                <span className="text-teal-600 dark:text-teal-400 font-black">
+                  {currentProfile?.building === "압출동" ? "압출 생산관리" : "생산관리시스템"}
+                </span>
               </h2>
             </div>
+
+            {/* Extrusion Operator Tab Switcher */}
+            {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && setActiveTab && (
+              <div className="flex items-center gap-1 ml-1 sm:ml-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      localStorage.setItem("factory_extrusion_active_subtab", "production");
+                    } catch (e) {}
+                    setActiveTab("extrusion_downtime");
+                  }}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                    activeTab === "extrusion_downtime"
+                      ? "bg-teal-600 text-white shadow-xs"
+                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                  }`}
+                >
+                  <span>🏭 압출작업일보</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("worker_dashboard")}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                    activeTab === "worker_dashboard"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                  }`}
+                >
+                  <span>📋 종합현황</span>
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           /* Admin Title Header */

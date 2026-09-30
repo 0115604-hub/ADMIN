@@ -2867,6 +2867,37 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
+      {/* 🌟 압출동 작업자 전용 상단 배너 (압출 생산관리 및 작업일보 바로가기) */}
+      {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && (
+        <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-teal-800 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-2 rounded-xl bg-white/20 backdrop-blur-xs text-white shrink-0">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-black text-sm sm:text-base leading-tight">
+                🏭 삼랑진공장 압출동 작업자 모드 ({currentProfile.name} {currentProfile.title || "사원"})
+              </h3>
+              <p className="text-xs text-teal-100 font-medium">
+                압출 생산관리 탭에서 실시간 작업일보 작성 및 생산실적/비가동 분석을 확인하세요.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                localStorage.setItem("factory_extrusion_active_subtab", "production");
+              } catch (e) {}
+              if (onNavigateTab) onNavigateTab("extrusion_downtime");
+            }}
+            className="px-4 py-2 rounded-xl bg-white text-teal-800 font-black text-xs sm:text-sm hover:bg-teal-50 active:scale-95 transition-all shadow-sm shrink-0 cursor-pointer text-center"
+          >
+            🏭 압출 생산관리 및 작업일보 바로가기 ➡️
+          </button>
+        </div>
+      )}
+
       {/* ========================================================================= */}
       {/* 📌 사내 공통일정 (1줄 간결 바 • 결재 패널 상단 • ADMIN 전용 노출 • 클릭 시 실시간 의견/코멘트 팝업) */}
       {/* ========================================================================= */}
