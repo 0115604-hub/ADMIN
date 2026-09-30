@@ -75,6 +75,7 @@ export const parseExtrusionExcelFile = async (file) => {
       const row = data[r];
       if (!row || row.length === 0) continue;
 
+      const rawNo = colNo !== -1 ? String(row[colNo] || "").trim() : "";
       const task = colTask !== -1 ? String(row[colTask] || "").trim() : "";
       const minVal = colMin !== -1 ? Number(row[colMin]) || 0 : 0;
       const weightVal = colWeight !== -1 ? Number(row[colWeight]) || 0 : 0;
@@ -86,12 +87,27 @@ export const parseExtrusionExcelFile = async (file) => {
       const noteVal = colNote !== -1 ? String(row[colNote] || "").trim() : "";
       const actionVal = colAction !== -1 ? String(row[colAction] || "").trim() : "";
 
-      // Skip empty template placeholder rows
-      if (!task && minVal === 0 && weightVal === 0 && !dateVal) continue;
+      // 1. Skip summary / total / footer rows at the bottom of the worksheet
+      const isTotalRow =
+        rawNo.includes("합계") ||
+        rawNo.includes("총계") ||
+        rawNo.includes("소계") ||
+        rawNo.includes("집계") ||
+        rawNo.includes("TOTAL") ||
+        rawNo.includes("SUM") ||
+        row.some((c) => typeof c === "string" && (c.includes("합계") || c.includes("총 합계") || c.includes("주간 실적 총") || c.includes("소계")));
+
+      if (isTotalRow) continue;
+
+      // 2. Skip empty rows without task description AND without valid date
+      if (!task && !dateVal && !dayVal) continue;
+
+      // 3. Skip template placeholder rows where date is empty and minutes is 0
+      if (!task && minVal === 0 && weightVal === 0) continue;
 
       rows.push({
         id: `${sheetName}_row_${r}`,
-        no: colNo !== -1 ? row[colNo] : rows.length + 1,
+        no: Number(rawNo) || rows.length + 1,
         date: dateVal,
         day: dayVal,
         shift: shiftVal,
