@@ -1373,67 +1373,40 @@ export const AuthModal = () => {
             </div>
           </div>
 
-          {/* 🌟 3 High-Impact Quick Access Popup Buttons */}
+          {/* 🌟 3 Clean Quick Access Buttons */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 mb-3">
-            {/* Quick 1: 중대재해공유판 */}
-            <div
+            {/* Quick 1: 중대재해 공유판 */}
+            <button
+              type="button"
               onClick={() => setIsSevereDisasterModalOpen(true)}
-              className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-rose-500/10 via-rose-500/5 to-transparent dark:from-rose-950/40 dark:via-rose-900/20 dark:to-transparent border border-rose-200 dark:border-rose-900/60 hover:border-rose-400 dark:hover:border-rose-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
+              className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-rose-500/15 to-rose-500/5 dark:from-rose-950/50 dark:to-slate-900 border border-rose-300/80 dark:border-rose-900/60 hover:border-rose-400 dark:hover:border-rose-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <ShieldAlert className="w-4 h-4 animate-pulse" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-black text-xs text-rose-950 dark:text-rose-200">
-                      🚨 중대재해 공유판
-                    </span>
-                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300">
-                      안전필독
-                    </span>
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                    5대 안전수칙 • 현장점검 사진
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </div>
+              <span className="font-black text-xs sm:text-sm text-rose-950 dark:text-rose-200">
+                중대재해 공유판
+              </span>
+              <ChevronRight className="w-4 h-4 text-rose-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
 
-            {/* Quick 2: 품질경보 & 오픈이슈 대장 */}
-            <div
+            {/* Quick 2: 품질정보 • 사내공지 */}
+            <button
+              type="button"
               onClick={() => {
                 setLedgerCategoryTab(qualityAlertCount > 0 ? "quality_alert" : "all");
                 setSelectedListItem(null);
                 setIssueModalPage(1);
                 setIsListModalOpen(true);
               }}
-              className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-950/40 dark:via-amber-900/20 dark:to-transparent border border-amber-200 dark:border-amber-900/60 hover:border-amber-400 dark:hover:border-amber-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
+              className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500/15 to-amber-500/5 dark:from-amber-950/50 dark:to-slate-900 border border-amber-300/80 dark:border-amber-900/60 hover:border-amber-400 dark:hover:border-amber-700 shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-amber-500 text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                  <AlertTriangle className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-black text-xs text-amber-950 dark:text-amber-200">
-                      ⚠️ 품질정보 • 사내공지
-                    </span>
-                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                      {qualityAlertCount > 0 ? `경보 ${qualityAlertCount}건` : `이슈 ${activeIssues.length}건`}
-                    </span>
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                    고객사 불량 • 공지사항 • 회의
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </div>
+              <span className="font-black text-xs sm:text-sm text-amber-950 dark:text-amber-200">
+                품질정보 • 사내공지
+              </span>
+              <ChevronRight className="w-4 h-4 text-amber-500 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </button>
 
-            {/* Quick 3: 실시간 작업일지 / 작업일보 작성 */}
-            <div
+            {/* Quick 3: 압출 작업일보 작성 / 가공 작업일지 작성 */}
+            <button
+              type="button"
               onClick={() => {
                 if (factoryBuildingTab === "extrusion") {
                   setIsExtrusionReportModalOpen(true);
@@ -1442,38 +1415,19 @@ export const AuthModal = () => {
                   setTimeout(() => setFirstPageToast(""), 3500);
                 }
               }}
-              className={`p-2.5 sm:p-3 rounded-2xl border shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between ${
+              className={`py-2.5 px-4 rounded-2xl border shadow-2xs hover:shadow-md transition-all cursor-pointer group active:scale-98 flex items-center justify-between ${
                 factoryBuildingTab === "extrusion"
-                  ? "bg-gradient-to-br from-teal-500/15 via-teal-500/5 to-transparent dark:from-teal-950/40 dark:via-teal-900/20 dark:to-transparent border-teal-300 dark:border-teal-800 hover:border-teal-500"
-                  : "bg-gradient-to-br from-blue-500/15 via-blue-500/5 to-transparent dark:from-blue-950/40 dark:via-blue-900/20 dark:to-transparent border-blue-300 dark:border-blue-800 hover:border-blue-500"
+                  ? "bg-gradient-to-r from-teal-500/15 to-teal-500/5 dark:from-teal-950/50 dark:to-slate-900 border-teal-300 dark:border-teal-800 hover:border-teal-500 text-teal-950 dark:text-teal-200"
+                  : "bg-gradient-to-r from-blue-500/15 to-blue-500/5 dark:from-blue-950/50 dark:to-slate-900 border-blue-300 dark:border-blue-800 hover:border-blue-500 text-blue-950 dark:text-blue-200"
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className={`p-2 rounded-xl text-white shadow-xs group-hover:scale-105 transition-transform shrink-0 ${
-                  factoryBuildingTab === "extrusion" ? "bg-teal-600" : "bg-blue-600"
-                }`}>
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`font-black text-xs ${
-                      factoryBuildingTab === "extrusion" ? "text-teal-950 dark:text-teal-200" : "text-blue-950 dark:text-blue-200"
-                    }`}>
-                      {factoryBuildingTab === "extrusion" ? "✍️ 압출 작업일보 작성" : "✍️ 가공 작업일지 작성"}
-                    </span>
-                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                      실시간
-                    </span>
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                    {factoryBuildingTab === "extrusion" ? "호기별 실적 • 수율 1초 등록" : "공정 실적 • 불량 입력"}
-                  </p>
-                </div>
-              </div>
+              <span className="font-black text-xs sm:text-sm">
+                {factoryBuildingTab === "extrusion" ? "압출 작업일보 작성" : "가공 작업일지 작성"}
+              </span>
               <ChevronRight className={`w-4 h-4 group-hover:translate-x-0.5 transition-transform shrink-0 ${
                 factoryBuildingTab === "extrusion" ? "text-teal-500" : "text-blue-500"
               }`} />
-            </div>
+            </button>
           </div>
 
           {/* 📢 1. 실시간 공지 & 오픈이슈 라이브 보드 */}
