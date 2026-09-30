@@ -18,6 +18,8 @@ import {
   FileSpreadsheet,
   Download,
   Paperclip,
+  MapPin,
+  ListOrdered,
   X
 } from "lucide-react";
 
@@ -508,7 +510,7 @@ export const IssueEditModal = ({
                 {/* Multi-line textarea for opinions (No enter-submit, allows line breaks, text-only supported) */}
                 <div>
                   <textarea
-                    rows="2"
+                    rows="3"
                     placeholder={
                       newIssueForm.category === "품질경보"
                         ? "품질경보 조치결과 및 개선 내용을 입력해 주세요. (등록 시 조치완료 텔레그램 실시간 1회 발송)"
@@ -516,7 +518,7 @@ export const IssueEditModal = ({
                     }
                     value={actionOpinionForm.content}
                     onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
-                    className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
+                    className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden min-h-[70px]"
                   ></textarea>
                 </div>
 
@@ -835,15 +837,15 @@ export const IssueEditModal = ({
                   </div>
                   <div>
                     <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block mb-1">
-                      상세 전달 내용
+                      상세 전달 내용 (문제 상황 및 작업자 전달 사항)
                     </label>
                     <textarea
-                      rows="2"
+                      rows="6"
                       required
-                      placeholder="구체적인 상황, 문제점 및 작업자 전달 사항을 입력해 주세요."
+                      placeholder="구체적인 상황, 문제점 및 작업자 전달 사항을 상세히 입력해 주세요."
                       value={newIssueForm.content}
                       onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
-                      className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs"
+                      className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs sm:text-sm min-h-[140px]"
                     ></textarea>
 
                     {/* Photo & Excel Attachments under 상세 전달 내용 */}
@@ -1164,11 +1166,11 @@ export const IssueEditModal = ({
                     {/* Multi-line textarea for opinions (No enter-submit, allows line breaks, text-only supported) */}
                     <div>
                       <textarea
-                        rows="2"
+                        rows="3"
                         placeholder="조치 의견 및 진행 상황을 입력해 주세요. (첨부파일 없이 텍스트만 작성하여 등록 가능)"
                         value={actionOpinionForm.content}
                         onChange={(e) => setActionOpinionForm({ ...actionOpinionForm, content: e.target.value })}
-                        className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden"
+                        className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden min-h-[70px]"
                       ></textarea>
                     </div>
 
@@ -1276,39 +1278,111 @@ export const IssueEditModal = ({
                   </div>
                 </div>
               </div>
-            ) : (
-              /* 기타 카테고리 (회의일정 / 사내공지 / 품질경보) */
-              <div className={`p-3 rounded-2xl border transition-all ${
-                newIssueForm.category === "회의일정"
-                  ? "bg-purple-50/80 dark:bg-purple-950/40 border-purple-300 dark:border-purple-800 ring-1 ring-purple-400/30"
-                  : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
-                  ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
-                  : "bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-1 ring-rose-400/30"
-              }`}>
-                {newIssueForm.category === "회의일정" ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="font-black text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5 shrink-0">
+            ) : newIssueForm.category === "회의일정" ? (
+              /* 📅 회의일정 전용: 일시 / 장소 / 안건 간편 입력 카드 */
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-50/80 dark:bg-purple-950/40 border-2 border-purple-300 dark:border-purple-800 space-y-3 shadow-xs">
+                {/* 1. 회의 제목 */}
+                <div>
+                  <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5 mb-1">
+                    <Megaphone className="w-3.5 h-3.5 text-purple-600" />
+                    <span>회의 제목</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="예: 9월 2주차 생산성 향상 및 품질 개선 회의"
+                    value={newIssueForm.title}
+                    onChange={(e) => setNewIssueForm({ ...newIssueForm, title: e.target.value })}
+                    className="w-full px-3.5 py-2 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs sm:text-sm shadow-2xs focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
+                  />
+                  {/* 회의 제목 간편 추천 칩 */}
+                  <div className="flex items-center gap-1 flex-wrap pt-1.5">
+                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">간편선택:</span>
+                    {[
+                      "주간 생산성 및 품질 개선 회의",
+                      "TAM G/R 후가공 이관 공정 협의",
+                      "공장 안전보건 및 5S 정기 점검",
+                      "월간 경영 실적 및 원가 절감 리뷰"
+                    ].map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => setNewIssueForm({ ...newIssueForm, title: sug })}
+                        className="px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-[10.5px] font-semibold text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                      >
+                        +{sug}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. 회의 일시 (날짜 + 시간 + 퀵 날짜 버튼) */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                      <span>회의 진행 일시</span>
+                      <span>① 회의 일시</span>
                     </label>
-                    <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                    {/* 퀵 날짜 선택 버튼 */}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { label: "오늘", type: "today" },
+                        { label: "내일", type: "tomorrow" },
+                        { label: "이번주 금", type: "thisFriday" },
+                        { label: "다음주 월", type: "nextMonday" }
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => {
+                            const d = new Date();
+                            if (item.type === "tomorrow") d.setDate(d.getDate() + 1);
+                            else if (item.type === "thisFriday") {
+                              const day = d.getDay();
+                              const diff = (5 - day + 7) % 7 || 7;
+                              d.setDate(d.getDate() + diff);
+                            } else if (item.type === "nextMonday") {
+                              const day = d.getDay();
+                              const diff = ((1 - day + 7) % 7) || 7;
+                              d.setDate(d.getDate() + (diff === 0 ? 7 : diff));
+                            }
+                            const yyyy = d.getFullYear();
+                            const mm = String(d.getMonth() + 1).padStart(2, "0");
+                            const dd = String(d.getDate()).padStart(2, "0");
+                            setNewIssueForm({ ...newIssueForm, expireDate: `${yyyy}-${mm}-${dd}` });
+                          }}
+                          className="px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 text-[10px] font-bold text-purple-800 dark:text-purple-300 cursor-pointer transition-all active:scale-95"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-500 shrink-0">날짜:</span>
                       <input
                         type="date"
                         required
                         value={newIssueForm.expireDate || todayDateStr}
                         onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs text-center cursor-pointer"
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-2xs text-center cursor-pointer"
                       />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-slate-500 shrink-0">시간:</span>
                       <select
                         value={newIssueForm.meetingTime || "14:00"}
                         onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingTime: e.target.value })}
-                        className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-purple-700 dark:text-purple-300 shadow-xs text-center cursor-pointer"
+                        className="w-full px-2.5 py-1.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-mono font-black text-xs text-purple-700 dark:text-purple-300 shadow-2xs text-center cursor-pointer"
                       >
                         {[
                           "06:00", "06:30", "07:00", "07:30", "08:00", "08:30",
                           "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
                           "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
-                          "15:00", "15:30", "16:00", "16:30", "17:00"
+                          "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+                          "18:00", "18:30", "19:00", "20:00"
                         ].map((t) => (
                           <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold">
                             {t}
@@ -1317,197 +1391,392 @@ export const IssueEditModal = ({
                       </select>
                     </div>
                   </div>
-                ) : newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <Megaphone className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>공지 게시 만료일자</span>
-                      </label>
-                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                        * 만료일 경과 시 첫 화면에서 자동 정리됩니다.
-                      </p>
-                    </div>
-                    <input
-                      type="date"
-                      required
-                      value={newIssueForm.expireDate || todayDateStr}
-                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                      className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
-                    />
-                  </div>
-                ) : (
-                  /* 품질경보 */
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                        <span>품질경보 등록일</span>
-                      </label>
-                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
-                        * 품질경보가 발행/등록된 일자입니다.
-                      </p>
-                    </div>
-                    <input
-                      type="date"
-                      required
-                      value={newIssueForm.expireDate || todayDateStr}
-                      onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
-                      className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+                </div>
 
-            {/* 4. 제목 & 내용 */}
-            {newIssueForm.category !== "오픈이슈" && (
-              <div className="space-y-2">
-                <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    {newIssueForm.category === "회의일정" ? "회의 제목" : "제목"}
+                {/* 3. 회의 장소 (텍스트 입력 + 퀵 장소 프리셋 버튼) */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-1.5">
+                  <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-purple-600" />
+                    <span>② 회의 장소</span>
                   </label>
                   <input
                     type="text"
-                    required
-                    placeholder={
-                      newIssueForm.category === "회의일정"
-                        ? "예: 9월 2주차 생산성 향상 및 품질 개선 주간 회의"
-                        : newIssueForm.category === "공지사항"
-                        ? "예: 9월 정기 소방 안전점검 및 현장 정리정돈 안내"
-                        : "예: 압출 2호기 금형 히터 온도 점검 요망"
-                    }
-                    value={newIssueForm.title}
-                    onChange={(e) => setNewIssueForm({ ...newIssueForm, title: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs sm:text-sm"
+                    placeholder="예: 삼랑진공장 2층 대회의실"
+                    value={newIssueForm.meetingLocation ?? ""}
+                    onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingLocation: e.target.value })}
+                    className="w-full px-3 py-1.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs shadow-2xs focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
                   />
+                  {/* 회의 장소 퀵 프리셋 버튼 */}
+                  <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">장소선택:</span>
+                    {[
+                      "삼랑진 2층 대회의실",
+                      "삼랑진 현장 사무실",
+                      "한림공장 회의실",
+                      "인주공장 회의실",
+                      "온라인 화상회의(Zoom)"
+                    ].map((loc) => (
+                      <button
+                        key={loc}
+                        type="button"
+                        onClick={() => setNewIssueForm({ ...newIssueForm, meetingLocation: loc })}
+                        className="px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900 text-[10.5px] font-semibold text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                      >
+                        +{loc}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    {newIssueForm.category === "회의일정" ? "회의 안건 및 상세 일정" : "상세 전달 내용"}
-                  </label>
+                {/* 4. 회의 안건 및 상세 내용 (2배 확대: rows="6", min-h-[140px] + 퀵 안건 프리셋) */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                      <ListOrdered className="w-3.5 h-3.5 text-purple-600" />
+                      <span>③ 회의 주요 안건 및 상세 전달 내용</span>
+                    </label>
+                    <span className="text-[10.5px] text-purple-600 dark:text-purple-400 font-semibold">
+                      * 안건 칩을 누르면 자동으로 추가됩니다
+                    </span>
+                  </div>
                   <textarea
-                    rows="3"
+                    rows="6"
                     required
-                    placeholder={
-                      newIssueForm.category === "회의일정"
-                        ? "• 일시: 2026-09-08(화) 14:00\n• 장소: 삼랑진공장 2층 대회의실\n• 안건: 압출 라인 히터 개선 및 불량율 저감 대책"
-                        : "구체적인 상황 및 작업자 전달 사항을 입력해 주세요."
-                    }
+                    placeholder="회의에서 논의할 주요 안건 및 상세 내용을 입력해 주세요.&#10;예:&#10;• 압출 라인 히터 개선 및 불량율 저감 대책&#10;• 9월 생산 계획 및 작업자 배정 협의"
                     value={newIssueForm.content}
                     onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
-                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs sm:text-sm"
+                    className="w-full p-3 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs sm:text-sm min-h-[140px] focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
                   ></textarea>
 
-                  {/* Photo & Excel Attachments under 상세 전달 내용 */}
-                  <div className="pt-1.5 space-y-1.5">
-                    <div className="flex items-center justify-between gap-1 flex-wrap">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {/* 📸 즉시 촬영 */}
-                        <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="카메라로 즉시 촬영">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            disabled={isProcessingIssueImages}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files.length > 0) {
-                                (onIssueFiles || onIssueImageFiles)(e.target.files);
-                                e.target.value = "";
-                              }
-                            }}
-                            className="hidden"
-                          />
-                          <Camera className="w-3.5 h-3.5 text-rose-600" />
-                          <span>📸 촬영</span>
-                        </label>
+                  {/* 회의 안건 간편 추가 칩 */}
+                  <div className="flex items-center gap-1 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">안건추가:</span>
+                    {[
+                      "생산관리시스템 리뷰 및 피드백",
+                      "TAM G/R 후가공 이관 및 생산 일정",
+                      "품질 불량 저감 및 공정 개선 대책",
+                      "현장 안전보건 및 5S 정기 점검",
+                      "신규 금형 및 설비 시운전 협의"
+                    ].map((topic) => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => {
+                          const current = newIssueForm.content?.trim() || "";
+                          const newText = current ? `${current}\n• ${topic}` : `• ${topic}`;
+                          setNewIssueForm({ ...newIssueForm, content: newText });
+                        }}
+                        className="px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900 text-[10.5px] font-semibold text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                      >
+                        +{topic}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                        {/* 📁 앨범 선택 */}
-                        <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="갤러리/앨범에서 사진 선택">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            disabled={isProcessingIssueImages}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files.length > 0) {
-                                (onIssueFiles || onIssueImageFiles)(e.target.files);
-                                e.target.value = "";
-                              }
-                            }}
-                            className="hidden"
-                          />
-                          <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                          <span>📁 앨범</span>
-                        </label>
+                {/* Photo & Excel Attachments for 회의일정 */}
+                <div className="pt-1 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* 📸 즉시 촬영 */}
+                      <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="카메라로 즉시 촬영">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          disabled={isProcessingIssueImages}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              (onIssueFiles || onIssueImageFiles)(e.target.files);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Camera className="w-3.5 h-3.5 text-rose-600" />
+                        <span>📸 촬영</span>
+                      </label>
 
-                        {/* 📊 엑셀 첨부 */}
-                        <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="엑셀 파일 첨부">
-                          <input
-                            type="file"
-                            accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-                            multiple
-                            disabled={isProcessingIssueImages}
-                            onChange={(e) => {
-                              if (e.target.files && e.target.files.length > 0) {
-                                (onIssueFiles || onIssueImageFiles)(e.target.files);
-                                e.target.value = "";
-                              }
-                            }}
-                            className="hidden"
-                          />
-                          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>📊 엑셀</span>
-                        </label>
-                      </div>
-                      <span className="text-[10.5px] text-slate-400 font-medium">
-                        {newIssueForm.images?.length || 0}개 파일 첨부됨
-                      </span>
+                      {/* 📁 앨범 선택 */}
+                      <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="갤러리/앨범에서 사진 선택">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={isProcessingIssueImages}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              (onIssueFiles || onIssueImageFiles)(e.target.files);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                        <span>📁 앨범</span>
+                      </label>
+
+                      {/* 📊 엑셀 첨부 */}
+                      <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="엑셀 파일 첨부">
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                          multiple
+                          disabled={isProcessingIssueImages}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              (onIssueFiles || onIssueImageFiles)(e.target.files);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>📊 엑셀</span>
+                      </label>
                     </div>
+                    <span className="text-[10.5px] text-slate-400 font-medium">
+                      {newIssueForm.images?.length || 0}개 파일 첨부됨
+                    </span>
+                  </div>
 
-                    {/* Previews of attached files in newIssueForm */}
-                    {newIssueForm.images && newIssueForm.images.length > 0 && (
-                      <div className="flex items-center gap-2 flex-wrap pt-1">
-                        {newIssueForm.images.map((file, idx) => {
-                          const isImg = file.fileType === "image" || file.dataUrl?.startsWith("data:image/") || (!file.fileType && !file.name?.match(/\.(xlsx|xls|csv)$/i));
-                          return isImg ? (
-                            <div key={file.id || idx} className="relative group rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 w-14 h-14 bg-slate-100 dark:bg-slate-800 shrink-0 shadow-xs">
-                              <img
-                                src={file.dataUrl}
-                                alt={file.name}
-                                onClick={() => onPreviewImage({ url: file.dataUrl, name: file.name })}
-                                className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => onRemoveIssueImage(idx)}
-                                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs cursor-pointer"
-                                title="삭제"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ) : (
-                            <div key={file.id || idx} className="relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
-                              <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <span className="max-w-[130px] truncate text-[11px]" title={file.name}>
-                                {file.name || "엑셀파일.xlsx"}
-                              </span>
-                              <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-mono">({file.size})</span>
-                              <button
-                                type="button"
-                                onClick={() => onRemoveIssueImage(idx)}
-                                className="text-slate-400 hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer font-bold"
-                                title="삭제"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          );
-                        })}
+                  {/* Previews of attached files in newIssueForm */}
+                  {newIssueForm.images && newIssueForm.images.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      {newIssueForm.images.map((file, idx) => {
+                        const isImg = file.fileType === "image" || file.dataUrl?.startsWith("data:image/") || (!file.fileType && !file.name?.match(/\.(xlsx|xls|csv)$/i));
+                        return isImg ? (
+                          <div key={file.id || idx} className="relative group rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 w-14 h-14 bg-slate-100 dark:bg-slate-800 shrink-0 shadow-xs">
+                            <img
+                              src={file.dataUrl}
+                              alt={file.name}
+                              onClick={() => onPreviewImage({ url: file.dataUrl, name: file.name })}
+                              className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveIssueImage(idx)}
+                              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs cursor-pointer"
+                              title="삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div key={file.id || idx} className="relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+                            <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span className="max-w-[130px] truncate text-[11px]" title={file.name}>
+                              {file.name || "엑셀파일.xlsx"}
+                            </span>
+                            <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-mono">({file.size})</span>
+                            <button
+                              type="button"
+                              onClick={() => onRemoveIssueImage(idx)}
+                              className="text-slate-400 hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer font-bold"
+                              title="삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* 기타 카테고리 (사내공지 / 품질경보) */
+              <div className="space-y-3">
+                {/* 3. 날짜 설정 카드 */}
+                <div className={`p-3 rounded-2xl border transition-all ${
+                  newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지"
+                    ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-400/30"
+                    : "bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 ring-1 ring-rose-400/30"
+                }`}>
+                  {newIssueForm.category === "공지사항" || newIssueForm.category === "사내공지" ? (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Megaphone className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>공지 게시 만료일자</span>
+                        </label>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                          * 만료일 경과 시 첫 화면에서 자동 정리됩니다.
+                        </p>
                       </div>
-                    )}
+                      <input
+                        type="date"
+                        required
+                        value={newIssueForm.expireDate || todayDateStr}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                      />
+                    </div>
+                  ) : (
+                    /* 품질경보 */
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="font-black text-xs block text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                          <span>품질경보 등록일</span>
+                        </label>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                          * 품질경보가 발행/등록된 일자입니다.
+                        </p>
+                      </div>
+                      <input
+                        type="date"
+                        required
+                        value={newIssueForm.expireDate || todayDateStr}
+                        onChange={(e) => setNewIssueForm({ ...newIssueForm, expireDate: e.target.value })}
+                        className="px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-white dark:bg-slate-800 font-mono font-black text-xs text-slate-900 dark:text-white shadow-xs cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. 제목 & 내용 (2배 확대: rows="6", min-h-[140px]) */}
+                <div className="space-y-2">
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      제목
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={
+                        newIssueForm.category === "공지사항"
+                          ? "예: 9월 정기 소방 안전점검 및 현장 정리정돈 안내"
+                          : "예: 압출 2호기 금형 히터 온도 점검 요망"
+                      }
+                      value={newIssueForm.title}
+                      onChange={(e) => setNewIssueForm({ ...newIssueForm, title: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                      상세 전달 내용 (문제 상황 및 작업자 전달 사항)
+                    </label>
+                    <textarea
+                      rows="6"
+                      required
+                      placeholder="구체적인 상황 및 작업자 전달 사항을 상세히 입력해 주세요."
+                      value={newIssueForm.content}
+                      onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
+                      className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs sm:text-sm min-h-[140px]"
+                    ></textarea>
+
+                    {/* Photo & Excel Attachments under 상세 전달 내용 */}
+                    <div className="pt-1.5 space-y-1.5">
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* 📸 즉시 촬영 */}
+                          <label className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/80 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="카메라로 즉시 촬영">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              disabled={isProcessingIssueImages}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  (onIssueFiles || onIssueImageFiles)(e.target.files);
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <Camera className="w-3.5 h-3.5 text-rose-600" />
+                            <span>📸 촬영</span>
+                          </label>
+
+                          {/* 📁 앨범 선택 */}
+                          <label className="px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/80 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="갤러리/앨범에서 사진 선택">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              disabled={isProcessingIssueImages}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  (onIssueFiles || onIssueImageFiles)(e.target.files);
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                            <span>📁 앨범</span>
+                          </label>
+
+                          {/* 📊 엑셀 첨부 */}
+                          <label className="px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-2xs" title="엑셀 파일 첨부">
+                            <input
+                              type="file"
+                              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                              multiple
+                              disabled={isProcessingIssueImages}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                  (onIssueFiles || onIssueImageFiles)(e.target.files);
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>📊 엑셀</span>
+                          </label>
+                        </div>
+                        <span className="text-[10.5px] text-slate-400 font-medium">
+                          {newIssueForm.images?.length || 0}개 파일 첨부됨
+                        </span>
+                      </div>
+
+                      {/* Previews of attached files in newIssueForm */}
+                      {newIssueForm.images && newIssueForm.images.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                          {newIssueForm.images.map((file, idx) => {
+                            const isImg = file.fileType === "image" || file.dataUrl?.startsWith("data:image/") || (!file.fileType && !file.name?.match(/\.(xlsx|xls|csv)$/i));
+                            return isImg ? (
+                              <div key={file.id || idx} className="relative group rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 w-14 h-14 bg-slate-100 dark:bg-slate-800 shrink-0 shadow-xs">
+                                <img
+                                  src={file.dataUrl}
+                                  alt={file.name}
+                                  onClick={() => onPreviewImage({ url: file.dataUrl, name: file.name })}
+                                  className="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition-transform"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => onRemoveIssueImage(idx)}
+                                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-bold shadow-xs cursor-pointer"
+                                  title="삭제"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div key={file.id || idx} className="relative group flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 text-xs font-bold shadow-2xs">
+                                <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <span className="max-w-[130px] truncate text-[11px]" title={file.name}>
+                                  {file.name || "엑셀파일.xlsx"}
+                                </span>
+                                <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-mono">({file.size})</span>
+                                <button
+                                  type="button"
+                                  onClick={() => onRemoveIssueImage(idx)}
+                                  className="text-slate-400 hover:text-rose-600 ml-1 p-0.5 rounded cursor-pointer font-bold"
+                                  title="삭제"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1613,7 +1882,7 @@ export const IssueEditModal = ({
                     {newIssueForm.category === "회의일정" ? "회의 결과 및 결정 안건 상세" : "조치결과 상세 내용"}
                   </label>
                   <textarea
-                    rows="3"
+                    rows="5"
                     placeholder={
                       newIssueForm.category === "회의일정"
                         ? "예:\n1. 불량 원인 규명 및 금형 히터 교체 일정 확정\n2. 다음 주부터 2공장 표준 점검표 적용 시행"
@@ -1628,7 +1897,7 @@ export const IssueEditModal = ({
                         isResolved: val.trim().length > 0 ? true : newIssueForm.isResolved
                       });
                     }}
-                    className="w-full p-3 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white"
+                    className="w-full p-3 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white min-h-[110px]"
                   ></textarea>
                 </div>
 

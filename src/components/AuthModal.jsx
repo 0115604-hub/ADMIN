@@ -224,6 +224,8 @@ export const AuthModal = () => {
       ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
       : todayDateStr,
     meetingTime: "14:00",
+    meetingLocation: currentPlant === "한림공장" ? "한림공장 회의실" : currentPlant === "인주공장" ? "인주공장 회의실" : "삼랑진공장 2층 대회의실",
+    meetingAgenda: "",
     progress: 0,
     title: "",
     content: "",
@@ -511,6 +513,8 @@ export const AuthModal = () => {
       startDate: issue.startDate || issue.expireDate || todayDateStr,
       expireDate: issue.expireDate || issue.targetDate || todayDateStr,
       meetingTime: issue.meetingTime || "14:00",
+      meetingLocation: issue.meetingLocation || "",
+      meetingAgenda: issue.meetingAgenda || issue.content || "",
       progress: issue.progress || 0,
       title: issue.title || "",
       content: issue.content || "",

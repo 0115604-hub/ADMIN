@@ -134,7 +134,7 @@ export const IssueActionModal = ({
               {isMeetingAction ? "회의 결과 및 결정 사항" : "조치결과 상세 내용"}
             </label>
             <textarea
-              rows="4"
+              rows="5"
               required
               placeholder={
                 isMeetingAction
@@ -143,7 +143,7 @@ export const IssueActionModal = ({
               }
               value={actionModalData.actionResult}
               onChange={(e) => setActionModalData((prev) => ({ ...prev, actionResult: e.target.value }))}
-              className={`w-full p-3.5 rounded-xl border-2 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white focus:outline-none focus:ring-2 ${
+              className={`w-full p-3.5 rounded-xl border-2 bg-white dark:bg-slate-800 font-semibold leading-relaxed text-slate-900 dark:text-white min-h-[110px] focus:outline-none focus:ring-2 ${
                 isMeetingAction
                   ? "border-purple-500/50 dark:border-purple-500/40 focus:ring-purple-500"
                   : "border-emerald-500/50 dark:border-emerald-500/40 focus:ring-emerald-500"
