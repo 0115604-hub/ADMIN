@@ -19,6 +19,54 @@ export const detectExtrusionLineKey = (fileName, fallbackLineKey = "pcm1") => {
 };
 
 /**
+ * Helper to sort week keys chronologically and sequentially (1주 -> 2주 -> 3주 -> 4주 -> 5주)
+ */
+export const getWeekSortKey = (weekStr = "") => {
+  if (!weekStr || typeof weekStr !== "string") return 999999;
+  const str = weekStr.trim();
+
+  // Pattern 1: "9월1주", "9월 1주", "9월1주차", "09월 01주"
+  const mwMatch = str.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*주/i);
+  if (mwMatch) {
+    const month = parseInt(mwMatch[1], 10);
+    const week = parseInt(mwMatch[2], 10);
+    return month * 1000 + week * 10;
+  }
+
+  // Pattern 2: "9월" only
+  const mOnlyMatch = str.match(/(\d{1,2})\s*월/i);
+  if (mOnlyMatch) {
+    const month = parseInt(mOnlyMatch[1], 10);
+    return month * 1000 + 500;
+  }
+
+  // Pattern 3: "1주", "2주", "3주차", "W1", "W01"
+  const wOnlyMatch = str.match(/(\d{1,2})\s*(?:주|w|week)/i);
+  if (wOnlyMatch) {
+    const week = parseInt(wOnlyMatch[1], 10);
+    return 100000 + week * 10;
+  }
+
+  // Pattern 4: Numeric extract
+  const numMatch = str.match(/\d+/);
+  if (numMatch) {
+    return 200000 + parseInt(numMatch[0], 10);
+  }
+
+  return 999999;
+};
+
+export const sortExtrusionWeeks = (weekKeys = []) => {
+  if (!Array.isArray(weekKeys)) return [];
+  return [...weekKeys].sort((a, b) => {
+    const keyA = getWeekSortKey(a);
+    const keyB = getWeekSortKey(b);
+    if (keyA !== keyB) return keyA - keyB;
+    return a.localeCompare(b, "ko", { numeric: true });
+  });
+};
+
+/**
  * Parses an Excel file (.xlsx, .xls) containing weekly downtime sheets
  * @param {File} file 
  * @returns {Promise<{ fileName: string, updatedAt: string, sheets: Record<string, any> }>}
@@ -27,11 +75,7 @@ export const parseExtrusionExcelFile = async (file) => {
   const arrayBuffer = await file.arrayBuffer();
   const wb = XLSX.read(arrayBuffer, { type: "array" });
 
-  const result = {
-    fileName: file.name,
-    updatedAt: new Date().toISOString(),
-    sheets: {}
-  };
+  const rawSheets = {};
 
   for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
@@ -137,7 +181,7 @@ export const parseExtrusionExcelFile = async (file) => {
         ? `${(((netRunTime - netDowntime) / netRunTime) * 100).toFixed(1)}%`
         : "100.0%";
 
-    result.sheets[sheetName] = {
+    rawSheets[sheetName] = {
       sheetName,
       totalRunMinutes,
       totalDowntime,
@@ -152,5 +196,16 @@ export const parseExtrusionExcelFile = async (file) => {
     };
   }
 
-  return result;
+  // Sort sheets sequentially from week 1 (1주 -> 2주 -> 3주 ...)
+  const sortedWeekKeys = sortExtrusionWeeks(Object.keys(rawSheets));
+  const sortedSheets = {};
+  sortedWeekKeys.forEach((k) => {
+    sortedSheets[k] = rawSheets[k];
+  });
+
+  return {
+    fileName: file.name,
+    updatedAt: new Date().toISOString(),
+    sheets: sortedSheets
+  };
 };

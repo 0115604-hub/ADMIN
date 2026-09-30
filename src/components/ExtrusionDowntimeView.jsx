@@ -60,7 +60,61 @@ export const WEEK_CALENDAR_MAP = {
   "12월1주": { period: "12/07 ~ 12/13", daysList: ["07일 (월)", "08일 (화)", "09일 (수)", "10일 (목)", "11일 (금)", "12일 (토)", "13일 (일)"] },
   "12월2주": { period: "12/14 ~ 12/20", daysList: ["14일 (월)", "15일 (화)", "16일 (수)", "17일 (목)", "18일 (금)", "19일 (토)", "20일 (일)"] },
   "12월3주": { period: "12/21 ~ 12/27", daysList: ["21일 (월)", "22일 (화)", "23일 (수)", "24일 (목)", "25일 (금)", "26일 (토)", "27일 (일)"] },
-  "12월4주": { period: "12/28 ~ 01/03", daysList: ["28일 (월)", "29일 (화)", "30일 (수)", "31일 (목)", "01일 (금)", "02일 (토)", "03일 (일)"] }
+};
+
+/**
+ * Helper to sort week keys chronologically and sequentially (1주 -> 2주 -> 3주 -> 4주 -> 5주)
+ */
+export const getWeekSortKey = (weekStr = "") => {
+  if (!weekStr || typeof weekStr !== "string") return 999999;
+  const str = weekStr.trim();
+
+  // Pattern 1: Check against predefined WEEK_CALENDAR_MAP order
+  const calKeys = Object.keys(WEEK_CALENDAR_MAP);
+  const calIdx = calKeys.indexOf(str);
+  if (calIdx !== -1) {
+    return calIdx * 10;
+  }
+
+  // Pattern 2: "9월1주", "9월 1주", "9월1주차", "09월 01주"
+  const mwMatch = str.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*주/i);
+  if (mwMatch) {
+    const month = parseInt(mwMatch[1], 10);
+    const week = parseInt(mwMatch[2], 10);
+    return month * 1000 + week * 10;
+  }
+
+  // Pattern 3: "9월" only
+  const mOnlyMatch = str.match(/(\d{1,2})\s*월/i);
+  if (mOnlyMatch) {
+    const month = parseInt(mOnlyMatch[1], 10);
+    return month * 1000 + 500;
+  }
+
+  // Pattern 4: "1주", "2주", "3주차", "W1", "W01"
+  const wOnlyMatch = str.match(/(\d{1,2})\s*(?:주|w|week)/i);
+  if (wOnlyMatch) {
+    const week = parseInt(wOnlyMatch[1], 10);
+    return 100000 + week * 10;
+  }
+
+  // Pattern 5: Numeric extract
+  const numMatch = str.match(/\d+/);
+  if (numMatch) {
+    return 200000 + parseInt(numMatch[0], 10);
+  }
+
+  return 999999;
+};
+
+export const sortExtrusionWeeks = (weekKeys = []) => {
+  if (!Array.isArray(weekKeys)) return [];
+  return [...weekKeys].sort((a, b) => {
+    const keyA = getWeekSortKey(a);
+    const keyB = getWeekSortKey(b);
+    if (keyA !== keyB) return keyA - keyB;
+    return a.localeCompare(b, "ko", { numeric: true });
+  });
 };
 
 export const LINE_DISPLAY_NAMES = {
@@ -338,7 +392,7 @@ export const ExtrusionDowntimeView = () => {
 
   const weeklySheetKeys = useMemo(() => {
     if (!currentLineData?.sheets) return [];
-    return Object.keys(currentLineData.sheets);
+    return sortExtrusionWeeks(Object.keys(currentLineData.sheets));
   }, [currentLineData]);
 
   // Adjust selected week if not in weeklySheetKeys
@@ -347,7 +401,7 @@ export const ExtrusionDowntimeView = () => {
       if (weeklySheetKeys.includes("9월3주")) {
         setSelectedWeek("9월3주");
       } else {
-        setSelectedWeek(weeklySheetKeys[weeklySheetKeys.length - 1] || weeklySheetKeys[0]);
+        setSelectedWeek(weeklySheetKeys[0]);
       }
     }
   }, [weeklySheetKeys, selectedWeek]);
@@ -433,10 +487,11 @@ export const ExtrusionDowntimeView = () => {
 
       // Detect line key if not explicitly set
       const lineKey = targetLineKey || detectExtrusionLineKey(file.name, selectedLineId);
+      const sortedKeys = sortExtrusionWeeks(Object.keys(parsed.sheets));
 
       const targetWeek = parsed.sheets["9월3주"]
         ? "9월3주"
-        : Object.keys(parsed.sheets)[Object.keys(parsed.sheets).length - 1] || Object.keys(parsed.sheets)[0];
+        : sortedKeys[0] || "9월1주";
 
       const linePayload = {
         ...parsed,
