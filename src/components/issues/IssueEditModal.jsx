@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   Calendar,
@@ -20,6 +20,11 @@ import {
   Paperclip,
   MapPin,
   ListOrdered,
+  Users,
+  Building2,
+  Factory,
+  ChevronDown,
+  ChevronUp,
   X
 } from "lucide-react";
 
@@ -70,6 +75,55 @@ export const IssueEditModal = ({
   onToggleResolvedStatus
 }) => {
   if (!isOpen || typeof document === "undefined") return null;
+
+  const [isAttendeeDropdownOpen, setIsAttendeeDropdownOpen] = useState(false);
+
+  // Grouped workers for meeting attendee selection
+  const adminWorkers = useMemo(() => (allWorkers || []).filter((w) => w.plantName === "본사"), [allWorkers]);
+  const samrangjinWorkers = useMemo(() => (allWorkers || []).filter((w) => w.plantName === "삼랑진공장"), [allWorkers]);
+  const hanlimWorkers = useMemo(() => (allWorkers || []).filter((w) => w.plantName === "한림공장"), [allWorkers]);
+
+  const currentAttendees = newIssueForm.attendees || [];
+
+  const isAttendeeSelected = (w) => {
+    return currentAttendees.some((a) => (a.id && a.id === w.id) || a.name === w.name || a === w.name);
+  };
+
+  const toggleAttendee = (w) => {
+    const exists = currentAttendees.some((a) => (a.id && a.id === w.id) || a.name === w.name || a === w.name);
+    let updated;
+    if (exists) {
+      updated = currentAttendees.filter((a) => (a.id ? a.id !== w.id : a.name !== w.name && a !== w.name));
+    } else {
+      updated = [...currentAttendees, { id: w.id, name: w.name, title: w.title || "", plantName: w.plantName || "" }];
+    }
+    setNewIssueForm({ ...newIssueForm, attendees: updated });
+  };
+
+  const toggleGroupAttendees = (groupWorkers) => {
+    const allSelected = groupWorkers.length > 0 && groupWorkers.every((w) => isAttendeeSelected(w));
+    let updated;
+    if (allSelected) {
+      const groupNames = new Set(groupWorkers.map((w) => w.name));
+      const groupIds = new Set(groupWorkers.map((w) => w.id));
+      updated = currentAttendees.filter((a) => !groupIds.has(a.id) && !groupNames.has(a.name) && !groupNames.has(a));
+    } else {
+      const toAdd = groupWorkers
+        .filter((w) => !isAttendeeSelected(w))
+        .map((w) => ({ id: w.id, name: w.name, title: w.title || "", plantName: w.plantName || "" }));
+      updated = [...currentAttendees, ...toAdd];
+    }
+    setNewIssueForm({ ...newIssueForm, attendees: updated });
+  };
+
+  const selectAllAttendees = (list) => {
+    const updated = list.map((w) => ({ id: w.id, name: w.name, title: w.title || "", plantName: w.plantName || "" }));
+    setNewIssueForm({ ...newIssueForm, attendees: updated });
+  };
+
+  const clearAllAttendees = () => {
+    setNewIssueForm({ ...newIssueForm, attendees: [] });
+  };
 
   // 📅 오픈이슈 등록 모달용 14일 인터랙티브 타임라인 캘린더 생성기
   const getOpenIssueFormCalendarDays = (startDateStr, targetDateStr, replies = []) => {
@@ -279,6 +333,23 @@ export const IssueEditModal = ({
               <div className="text-xs sm:text-[13px] font-medium text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
                 {editingIssue.content || "상세 전달 내용이 없습니다."}
               </div>
+
+              {/* 회의 참석자 목록 (회의일정인 경우) */}
+              {editingIssue.category === "회의일정" && editingIssue.attendees && editingIssue.attendees.length > 0 && (
+                <div className="p-2.5 rounded-xl bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 space-y-1">
+                  <span className="font-bold text-[11px] text-purple-900 dark:text-purple-200 flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5 text-purple-600" />
+                    <span>회의 참석자 ({editingIssue.attendees.length}명):</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    {editingIssue.attendees.map((att, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-purple-950 dark:text-purple-100 text-[10.5px] font-bold border border-purple-200 dark:border-purple-700 shadow-2xs">
+                        {att.name || att} {att.title || ""}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* 조치 결과 내용 (회의일정, 품질경보, 사내공지 등) */}
               {editingIssue.actionResult && newIssueForm.category !== "오픈이슈" ? (
@@ -1385,6 +1456,207 @@ export const IssueEditModal = ({
                     onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
                     className="w-full p-3 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs sm:text-sm min-h-[140px] focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
                   ></textarea>
+                </div>
+
+                {/* 5. 회의 참석자 선택 (드롭다운) */}
+                <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-purple-600" />
+                      <span>④ 회의 참석자 선택</span>
+                      <span className="text-[10.5px] font-bold text-purple-600 dark:text-purple-400">
+                        {currentAttendees.length > 0 ? `(${currentAttendees.length}명 선택됨)` : "(전체 참석/공람)"}
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      {currentAttendees.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={clearAllAttendees}
+                          className="px-2 py-0.5 rounded-md bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 text-[10px] font-bold cursor-pointer"
+                        >
+                          전체해제
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => selectAllAttendees(allWorkers || [])}
+                        className="px-2 py-0.5 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200 text-[10px] font-bold cursor-pointer"
+                      >
+                        전원선택
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 드롭다운 토글 버튼 */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAttendeeDropdownOpen(!isAttendeeDropdownOpen)}
+                    className="w-full px-3 py-2 rounded-xl border border-purple-300 dark:border-purple-700 bg-purple-50/70 dark:bg-purple-950/40 hover:bg-purple-100/70 text-left flex items-center justify-between gap-2 cursor-pointer transition-all active:scale-[0.99] shadow-2xs"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                      <Users className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                      {currentAttendees.length === 0 ? (
+                        <span className="text-xs font-bold text-purple-900 dark:text-purple-200">
+                          👥 전체 참석자 (미지정 시 전체 참석 / 공람)
+                        </span>
+                      ) : (
+                        <span className="text-xs font-black text-purple-950 dark:text-purple-100 truncate">
+                          👥 {currentAttendees.map((a) => a.name || a).join(", ")}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs font-black text-purple-700 dark:text-purple-300 flex items-center gap-0.5 shrink-0">
+                      <span>{isAttendeeDropdownOpen ? "접기" : "참석자 선택"}</span>
+                      {isAttendeeDropdownOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </span>
+                  </button>
+
+                  {/* 참석자 드롭다운 패널 (유저 첨부 이미지와 동일한 UI) */}
+                  {isAttendeeDropdownOpen && (
+                    <div className="p-3 rounded-xl bg-slate-900/95 dark:bg-slate-950 text-white border-2 border-purple-400 dark:border-purple-700 space-y-2.5 shadow-xl animate-fadeIn">
+                      <div className="flex items-center justify-between pb-1 border-b border-slate-700 text-xs">
+                        <span className="font-black text-purple-300 flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-purple-400" />
+                          <span>원하는 공유 작업자 / 회의 참석자 선택</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {currentAttendees.length}/{allWorkers?.length || 0}명
+                        </span>
+                      </div>
+
+                      <div className="max-h-64 overflow-y-auto space-y-2.5 pr-1 no-scrollbar text-xs">
+                        {/* 1. 본사 / 경영진 */}
+                        {adminWorkers.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div
+                              onClick={() => toggleGroupAttendees(adminWorkers)}
+                              className="text-[11px] font-black text-indigo-300 flex items-center justify-between p-1.5 px-2 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/80 border border-indigo-800/80 cursor-pointer transition-all select-none"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Building2 className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>본사 / 경영진</span>
+                                <span className="text-[9.5px] font-normal text-slate-400">({adminWorkers.length}명)</span>
+                              </div>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                adminWorkers.every(isAttendeeSelected)
+                                  ? "bg-indigo-600 text-white"
+                                  : "bg-slate-800 text-indigo-300 border border-indigo-700"
+                              }`}>
+                                {adminWorkers.every(isAttendeeSelected) ? "✓ 전체해제" : "+ 전체선택"}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {adminWorkers.map((w) => {
+                                const isSelected = isAttendeeSelected(w);
+                                return (
+                                  <button
+                                    key={w.id || w.name}
+                                    type="button"
+                                    onClick={() => toggleAttendee(w)}
+                                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? "bg-indigo-600/90 border-indigo-400 text-white font-black shadow-xs ring-1 ring-indigo-400"
+                                        : "bg-slate-800/80 border-slate-700 text-slate-200 hover:border-slate-500"
+                                    }`}
+                                  >
+                                    <span>{w.name}</span>
+                                    <span className="text-[10px] opacity-75">{isSelected ? "✓" : w.title || "대표"}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2. 삼랑진공장 */}
+                        {samrangjinWorkers.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div
+                              onClick={() => toggleGroupAttendees(samrangjinWorkers)}
+                              className="text-[11px] font-black text-blue-300 flex items-center justify-between p-1.5 px-2 rounded-lg bg-blue-950/70 hover:bg-blue-900/80 border border-blue-800/80 cursor-pointer transition-all select-none"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Factory className="w-3.5 h-3.5 text-blue-400" />
+                                <span>삼랑진공장</span>
+                                <span className="text-[9.5px] font-normal text-slate-400">({samrangjinWorkers.length}명)</span>
+                              </div>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                samrangjinWorkers.every(isAttendeeSelected)
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-800 text-blue-300 border border-blue-700"
+                              }`}>
+                                {samrangjinWorkers.every(isAttendeeSelected) ? "✓ 전체해제" : "+ 전체선택"}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {samrangjinWorkers.map((w) => {
+                                const isSelected = isAttendeeSelected(w);
+                                return (
+                                  <button
+                                    key={w.id || w.name}
+                                    type="button"
+                                    onClick={() => toggleAttendee(w)}
+                                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? "bg-blue-600/90 border-blue-400 text-white font-black shadow-xs ring-1 ring-blue-400"
+                                        : "bg-slate-800/80 border-slate-700 text-slate-200 hover:border-slate-500"
+                                    }`}
+                                  >
+                                    <span>{w.name}</span>
+                                    <span className="text-[10px] opacity-75">{isSelected ? "✓" : w.title || ""}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. 한림공장 */}
+                        {hanlimWorkers.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div
+                              onClick={() => toggleGroupAttendees(hanlimWorkers)}
+                              className="text-[11px] font-black text-emerald-300 flex items-center justify-between p-1.5 px-2 rounded-lg bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-800/80 cursor-pointer transition-all select-none"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Factory className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>한림공장</span>
+                                <span className="text-[9.5px] font-normal text-slate-400">({hanlimWorkers.length}명)</span>
+                              </div>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-md font-black transition-all ${
+                                hanlimWorkers.every(isAttendeeSelected)
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-slate-800 text-emerald-300 border border-emerald-700"
+                              }`}>
+                                {hanlimWorkers.every(isAttendeeSelected) ? "✓ 전체해제" : "+ 전체선택"}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {hanlimWorkers.map((w) => {
+                                const isSelected = isAttendeeSelected(w);
+                                return (
+                                  <button
+                                    key={w.id || w.name}
+                                    type="button"
+                                    onClick={() => toggleAttendee(w)}
+                                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer active:scale-95 ${
+                                      isSelected
+                                        ? "bg-emerald-600/90 border-emerald-400 text-white font-black shadow-xs ring-1 ring-emerald-400"
+                                        : "bg-slate-800/80 border-slate-700 text-slate-200 hover:border-slate-500"
+                                    }`}
+                                  >
+                                    <span>{w.name}</span>
+                                    <span className="text-[10px] opacity-75">{isSelected ? "✓" : w.title || (w.isPartner ? "협력업체" : "")}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Photo & Excel Attachments for 회의일정 */}
