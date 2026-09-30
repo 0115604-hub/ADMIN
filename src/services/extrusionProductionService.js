@@ -74,16 +74,73 @@ export const DOWNTIME_CATEGORIES = [
  * Clean & Format a single report entry
  */
 export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
-  const targetQty = Math.max(0, Number(raw.targetQty) || 0);
-  const actualQty = Math.max(0, Number(raw.actualQty) || 0);
-  const goodQty = Math.max(0, Number(raw.goodQty) || 0);
-  const defectQty = Math.max(0, Number(raw.defectQty) || Math.max(0, actualQty - goodQty));
-  const scrapKg = Math.max(0, Number(raw.scrapKg) || 0);
+  let items = [];
+  if (Array.isArray(raw.items) && raw.items.length > 0) {
+    items = raw.items.map((it, i) => {
+      const itTarget = Math.max(0, Number(it.targetQty) || 0);
+      const itActual = Math.max(0, Number(it.actualQty) || 0);
+      const itGood = Math.max(0, Number(it.goodQty) || 0);
+      const itDefect = Math.max(0, Number(it.defectQty) || Math.max(0, itActual - itGood));
+      const itScrap = Math.max(0, Number(it.scrapKg) || 0);
+      const itAttainment = itTarget > 0 ? Number(((itActual / itTarget) * 100).toFixed(1)) : 100.0;
+      const itYield = itActual > 0 ? Number(((itGood / itActual) * 100).toFixed(1)) : 100.0;
+      const itDefectRate = itActual > 0 ? Number(((itDefect / itActual) * 100).toFixed(1)) : 0.0;
+
+      return {
+        id: String(it.id || `item_${i + 1}`),
+        vehicle: String(it.vehicle || "").trim(),
+        itemName: String(it.itemName || "").trim(),
+        itemCode: String(it.itemCode || "").trim(),
+        targetQty: itTarget,
+        actualQty: itActual,
+        goodQty: itGood,
+        defectQty: itDefect,
+        scrapKg: itScrap,
+        yieldRate: itYield,
+        attainmentRate: itAttainment,
+        defectRate: itDefectRate
+      };
+    });
+  }
+
+  let targetQty = Math.max(0, Number(raw.targetQty) || 0);
+  let actualQty = Math.max(0, Number(raw.actualQty) || 0);
+  let goodQty = Math.max(0, Number(raw.goodQty) || 0);
+  let defectQty = Math.max(0, Number(raw.defectQty) || Math.max(0, actualQty - goodQty));
+  let scrapKg = Math.max(0, Number(raw.scrapKg) || 0);
   const downtimeMinutes = Math.max(0, Number(raw.downtimeMinutes) || 0);
+
+  if (items.length > 0) {
+    targetQty = items.reduce((sum, it) => sum + it.targetQty, 0);
+    actualQty = items.reduce((sum, it) => sum + it.actualQty, 0);
+    goodQty = items.reduce((sum, it) => sum + it.goodQty, 0);
+    defectQty = items.reduce((sum, it) => sum + it.defectQty, 0);
+    scrapKg = Number(items.reduce((sum, it) => sum + it.scrapKg, 0).toFixed(1));
+  } else if (raw.vehicle || raw.itemName) {
+    items = [
+      {
+        id: "item_1",
+        vehicle: String(raw.vehicle || "").trim(),
+        itemName: String(raw.itemName || "").trim(),
+        itemCode: String(raw.itemCode || "").trim(),
+        targetQty,
+        actualQty,
+        goodQty,
+        defectQty,
+        scrapKg,
+        yieldRate: actualQty > 0 ? Number(((goodQty / actualQty) * 100).toFixed(1)) : 100.0,
+        attainmentRate: targetQty > 0 ? Number(((actualQty / targetQty) * 100).toFixed(1)) : 100.0,
+        defectRate: actualQty > 0 ? Number(((defectQty / actualQty) * 100).toFixed(1)) : 0.0
+      }
+    ];
+  }
 
   const attainmentRate = targetQty > 0 ? Number(((actualQty / targetQty) * 100).toFixed(1)) : 100.0;
   const yieldRate = actualQty > 0 ? Number(((goodQty / actualQty) * 100).toFixed(1)) : 100.0;
   const defectRate = actualQty > 0 ? Number(((defectQty / actualQty) * 100).toFixed(1)) : 0.0;
+
+  const vehicle = items.length > 0 ? items.map((it) => it.vehicle).filter(Boolean).join(", ") : String(raw.vehicle || "NX4");
+  const itemName = items.length > 0 ? items.map((it) => it.itemName).filter(Boolean).join(", ") : String(raw.itemName || "WEATHER STRIP");
 
   const todayStr = new Date().toISOString().split("T")[0];
 
@@ -94,11 +151,12 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     plant: String(raw.plant || "삼랑진공장"),
     lineId: String(raw.lineId || "pcm1"),
     lineName: String(raw.lineName || "PCM #1 LINE"),
-    worker: String(raw.worker || "설유철 책임"),
+    worker: String(raw.worker || "공영국 대리"),
     subWorkers: String(raw.subWorkers || ""),
-    vehicle: String(raw.vehicle || "NX4"),
+    vehicle,
     itemCode: String(raw.itemCode || ""),
-    itemName: String(raw.itemName || "WEATHER STRIP"),
+    itemName,
+    items,
     targetQty,
     actualQty,
     goodQty,
@@ -454,28 +512,59 @@ export const calculateExtrusionMetrics = (reports = []) => {
     lineMap[lKey].downtimeMinutes += dt;
     lineMap[lKey].reportCount += 1;
 
-    // Vehicle breakdown
-    const vKey = r.vehicle || "기타";
-    if (!vehicleMap[vKey]) {
-      vehicleMap[vKey] = {
-        vehicle: vKey,
-        itemName: r.itemName || "-",
-        target: 0,
-        actual: 0,
-        good: 0,
-        defect: 0,
-        scrapKg: 0,
-        downtimeMinutes: 0,
-        reportCount: 0
-      };
+    // Vehicle breakdown (aggregate per item if available)
+    if (Array.isArray(r.items) && r.items.length > 0) {
+      r.items.forEach((it) => {
+        const vKey = it.vehicle || "기타";
+        const itTarget = Number(it.targetQty) || 0;
+        const itActual = Number(it.actualQty) || 0;
+        const itGood = Number(it.goodQty) || 0;
+        const itDefect = Number(it.defectQty) || 0;
+        const itScrap = Number(it.scrapKg) || 0;
+
+        if (!vehicleMap[vKey]) {
+          vehicleMap[vKey] = {
+            vehicle: vKey,
+            itemName: it.itemName || "-",
+            target: 0,
+            actual: 0,
+            good: 0,
+            defect: 0,
+            scrapKg: 0,
+            downtimeMinutes: 0,
+            reportCount: 0
+          };
+        }
+        vehicleMap[vKey].target += itTarget;
+        vehicleMap[vKey].actual += itActual;
+        vehicleMap[vKey].good += itGood;
+        vehicleMap[vKey].defect += itDefect;
+        vehicleMap[vKey].scrapKg += itScrap;
+        vehicleMap[vKey].reportCount += 1;
+      });
+    } else {
+      const vKey = r.vehicle || "기타";
+      if (!vehicleMap[vKey]) {
+        vehicleMap[vKey] = {
+          vehicle: vKey,
+          itemName: r.itemName || "-",
+          target: 0,
+          actual: 0,
+          good: 0,
+          defect: 0,
+          scrapKg: 0,
+          downtimeMinutes: 0,
+          reportCount: 0
+        };
+      }
+      vehicleMap[vKey].target += t;
+      vehicleMap[vKey].actual += a;
+      vehicleMap[vKey].good += g;
+      vehicleMap[vKey].defect += d;
+      vehicleMap[vKey].scrapKg += s;
+      vehicleMap[vKey].downtimeMinutes += dt;
+      vehicleMap[vKey].reportCount += 1;
     }
-    vehicleMap[vKey].target += t;
-    vehicleMap[vKey].actual += a;
-    vehicleMap[vKey].good += g;
-    vehicleMap[vKey].defect += d;
-    vehicleMap[vKey].scrapKg += s;
-    vehicleMap[vKey].downtimeMinutes += dt;
-    vehicleMap[vKey].reportCount += 1;
 
     // Downtime category breakdown
     const catKey = r.downtimeCategory || "기타";

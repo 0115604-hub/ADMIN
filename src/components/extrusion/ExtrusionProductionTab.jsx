@@ -827,16 +827,39 @@ export const ExtrusionProductionTab = () => {
                       </td>
 
                       {/* Vehicle & Item */}
-                      <td className="py-3 px-3 max-w-[200px]">
-                        <div className="font-black text-slate-900 dark:text-white flex items-center gap-1">
-                          <span className="px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[10px] font-black">
-                            {r.vehicle}
-                          </span>
-                          <span className="truncate">{r.itemCode || "-"}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 truncate mt-0.5">
-                          {r.itemName || "-"}
-                        </div>
+                      <td className="py-3 px-3 max-w-[240px]">
+                        {Array.isArray(r.items) && r.items.length > 1 ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 text-[10px] font-black">
+                                다품목 {r.items.length}종
+                              </span>
+                            </div>
+                            <div className="space-y-0.5">
+                              {r.items.map((it, i) => (
+                                <div key={it.id || i} className="text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-1 truncate">
+                                  <span className="px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[9.5px] font-black shrink-0">
+                                    {it.vehicle}
+                                  </span>
+                                  <span className="truncate font-medium text-[10.5px]">{it.itemName}</span>
+                                  <span className="text-[10px] text-slate-400 shrink-0 font-bold">({it.actualQty}m)</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="font-black text-slate-900 dark:text-white flex items-center gap-1">
+                              <span className="px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[10px] font-black">
+                                {r.vehicle}
+                              </span>
+                              <span className="truncate text-xs">{r.itemCode || ""}</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 truncate mt-0.5 font-medium">
+                              {r.itemName || "-"}
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Target Qty */}
