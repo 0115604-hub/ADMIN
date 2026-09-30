@@ -129,10 +129,29 @@ export const normalizeApprovalDoc = (d) => {
   let normalizedType = d.type || "OVERTIME";
   let normalizedContent = d.content || "";
 
+  // Dynamic weekday determination from title, id, or workDate
+  let isWeekendFromDate = null;
+  const dateStrToCheck = d.workDate || d.title || d.id || "";
+  const ymdMatch = String(dateStrToCheck).match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (ymdMatch) {
+    const dt = new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[3], 10));
+    const dow = dt.getDay();
+    isWeekendFromDate = dow === 0 || dow === 6;
+  } else {
+    const mdMatch = String(dateStrToCheck).match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+    if (mdMatch) {
+      const dt = new Date(2026, parseInt(mdMatch[1], 10) - 1, parseInt(mdMatch[2], 10));
+      const dow = dt.getDay();
+      isWeekendFromDate = dow === 0 || dow === 6;
+    }
+  }
+
+  const isExplicitWeekday = /\((월|화|수|목|금)\)|(월요일|화요일|수요일|목요일|금요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
+  const isExplicitWeekend = /\((토|일)\)|(토요일|일요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
+
   const isWeekdayDocument =
-    /\((월|화|수|목|금)\)/.test(normalizedTitle) ||
-    /202609(0[1-4]|0[7-9]|1[01]|1[4-8]|2[1-5]|2[8-9]|30)/.test(d.id || "") ||
-    /2026-09-(0[1-4]|0[7-9]|1[01]|1[4-8]|2[1-5]|2[8-9]|30)/.test(d.workDate || "");
+    isExplicitWeekday ||
+    (isWeekendFromDate === false && !isExplicitWeekend);
 
   const hasSynthesisOvertimeLabel =
     normalizedTitle.includes("특근보고서 취합") ||
@@ -842,24 +861,31 @@ export const syncPlantOvertimeToApprovalBox = async ({
     }
 
     // 2. Parse day and workDate
-    let dayNum = 5;
-    let workDateStr = "2026-09-05";
+    let yearNum = 2026;
+    let monthNum = 10;
+    let dayNum = 1;
+    let workDateStr = "2026-10-01";
     if (typeof workDate === "number") {
       dayNum = workDate;
-      workDateStr = `2026-09-${String(dayNum).padStart(2, "0")}`;
+      const now = new Date();
+      yearNum = now.getFullYear();
+      monthNum = now.getMonth() + 1;
+      workDateStr = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     } else if (typeof workDate === "string" && workDate) {
       const match = workDate.match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
       if (match) {
+        yearNum = match[1] ? parseInt(match[1], 10) : 2026;
+        monthNum = parseInt(match[2], 10);
         dayNum = parseInt(match[3], 10);
-        workDateStr = `2026-09-${String(dayNum).padStart(2, "0")}`;
+        workDateStr = `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
       }
     }
 
     const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
-    const dt = new Date(2026, 8, dayNum);
+    const dt = new Date(yearNum, monthNum - 1, dayNum);
     const dayOfWeekIndex = dt.getDay(); // 0 = 일, 6 = 토
     const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6;
-    const dayLabel = dayOfWeekNames[dayOfWeekIndex] || (isWeekend ? "토" : "화");
+    const dayLabel = dayOfWeekNames[dayOfWeekIndex] || (isWeekend ? "토" : "목");
 
     let allReports = Array.isArray(reports) ? reports : null;
     if (allReports === null) {
@@ -956,8 +982,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         d.plant === targetPlant &&
         (
           (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-          (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-          (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+          (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+          (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
         )
       );
 
@@ -977,8 +1003,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
           (
             d.id === canonicalDocId ||
             (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-            (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-            (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+            (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+            (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
           )
         );
         for (const d of allMatchingDocs) {
@@ -1056,8 +1082,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
           (
             d.id === canonicalDocId ||
             (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-            (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-            (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+            (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+            (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
           )
         );
         for (const d of allMatchingDocs) {
@@ -1071,8 +1097,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         d.id === canonicalDocId ||
         (d.plant === targetPlant && (d.type === "OVERTIME" || d.type === "ATTENDANCE") && (
           (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-          (d.docNumber && d.docNumber.includes(`09${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-          (d.title && d.title.includes(`9월 ${dayNum}일`) && d.title.includes(targetPlant))
+          (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
+          (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
         ))
       );
 
@@ -1099,7 +1125,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
       const titleCompList = participatingCompanies.length > 0 ? participatingCompanies : targetCompanies;
-      const title = `[특근보고서] 9월 ${dayNum}일(${dayLabel}) ${targetPlant} 특근보고서 (${titleCompList.join(", ")})`;
+      const title = `[특근보고서] ${monthNum}월 ${dayNum}일(${dayLabel}) ${targetPlant} 특근보고서 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
         ? "생산총괄 ((주)오륙 + 유성)"
         : "생산총괄 ((주)조영산업 + 한울 + 부림텍)";
@@ -1112,7 +1138,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       }).join("\n");
 
       // ⭐ 초간결 특근 취합 결재 문서 내용
-      const content = `■ 9월 ${dayNum}일(${dayLabel}) [${targetPlant}] ${reportCategoryName} 취합
+      const content = `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [${targetPlant}] ${reportCategoryName} 취합
 
 ${summaryHeader}
 • 대상: ${targetPlant} (${titleCompList.join(", ")})
@@ -1192,7 +1218,7 @@ ${taskHeader}`;
 
       const approvalDoc = normalizeApprovalDoc({
         id: canonicalDocId,
-        docNumber: existingDoc?.docNumber || `ORYUK-2026-09${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
+        docNumber: existingDoc?.docNumber || `ORYUK-${yearNum}-${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}-${targetPlant === "삼랑진공장" ? "SAM" : "HAL"}`,
         type: docType,
         typeName: docTypeName,
         title,
@@ -1234,8 +1260,11 @@ export const syncAllOvertimeReportsToApprovalBox = async () => {
     const weekendDates = new Set();
     allReports.forEach((r) => {
       if (r.workDate) {
-        const dayNum = parseInt(r.workDate.slice(-2), 10);
-        const dt = new Date(2026, 8, isNaN(dayNum) ? 5 : dayNum);
+        const parts = String(r.workDate).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+        const y = parts && parts[1] ? parseInt(parts[1], 10) : 2026;
+        const m = parts && parts[2] ? parseInt(parts[2], 10) : 10;
+        const d = parts && parts[3] ? parseInt(parts[3], 10) : 1;
+        const dt = new Date(y, m - 1, d);
         const dow = dt.getDay();
         const isWk = dow === 0 || dow === 6;
         if (isWk || r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))) {

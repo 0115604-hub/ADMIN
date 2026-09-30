@@ -30,12 +30,12 @@ export const getPlantForCompany = (companyName) => {
 };
 
 // ⭐ Precise Date & Weekend/Holiday Overtime Helpers (토요일, 일요일만 주말 특근으로 판정, 월~금 평일은 100% 정상 근태보고서)
-export const isWeekendByDate = (dateStrOrDay) => {
+export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
   if (typeof dateStrOrDay === "number") {
     const d = dateStrOrDay;
-    const dt = new Date(2026, 8, d);
+    const dt = new Date(year, month - 1, d);
     const dayOfWeek = dt.getDay();
-    return dayOfWeek === 0 || dayOfWeek === 6; // 5, 6, 12, 13, 19, 20, 26, 27일만 주말
+    return dayOfWeek === 0 || dayOfWeek === 6;
   }
   if (!dateStrOrDay) return false;
 
@@ -57,11 +57,13 @@ export const isWeekendByDate = (dateStrOrDay) => {
     }
   }
 
-  // 3. 9월 X일 형식 파싱
-  const mMatch = String(dateStrOrDay).match(/(\d{1,2})월\s*(\d{1,2})일/);
+  // 3. X월 X일 형식 파싱
+  const mMatch = String(dateStrOrDay).match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
   if (mMatch) {
-    const day = parseInt(mMatch[2], 10);
-    const dt = new Date(2026, 8, day);
+    const y = mMatch[1] ? parseInt(mMatch[1], 10) : year;
+    const m = parseInt(mMatch[2], 10);
+    const day = parseInt(mMatch[3], 10);
+    const dt = new Date(y, m - 1, day);
     if (!isNaN(dt.getTime())) {
       const dayOfWeek = dt.getDay();
       return dayOfWeek === 0 || dayOfWeek === 6;

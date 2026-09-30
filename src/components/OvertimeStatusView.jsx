@@ -46,6 +46,7 @@ import {
   Stamp
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
 import * as XLSX from "xlsx";
 import {
   COMPANIES,
@@ -90,27 +91,37 @@ import { KWON_SIGNATURE_BLACK } from "../assets/kwonSignature";
 import { getKSTDateString } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 
-export const getDayOfWeekKorean = (dateStrOrDay) => {
+export const getDayOfWeekKorean = (dateStrOrDay, year = 2026, month = 10) => {
   const names = ["일", "월", "화", "수", "목", "금", "토"];
   if (typeof dateStrOrDay === "number") {
-    const dt = new Date(2026, 8, dateStrOrDay);
-    return names[dt.getDay()] || "화";
+    const dt = new Date(year, month - 1, dateStrOrDay);
+    return names[dt.getDay()] || "목";
   }
-  if (!dateStrOrDay) return "화";
+  if (!dateStrOrDay) return "목";
   const p = String(dateStrOrDay).split("-");
   if (p.length === 3) {
     const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
     if (!isNaN(dt.getTime())) {
-      return names[dt.getDay()] || "화";
+      return names[dt.getDay()] || "목";
     }
   }
   const match = String(dateStrOrDay).match(/\(([일월화수목금토])\)|([일월화수목금토])요일/);
-  if (match) return match[1] || match[2] || "화";
-  return "화";
+  if (match) return match[1] || match[2] || "목";
+
+  const mMatch = String(dateStrOrDay).match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
+  if (mMatch) {
+    const y = mMatch[1] ? parseInt(mMatch[1], 10) : year;
+    const m = parseInt(mMatch[2], 10);
+    const d = parseInt(mMatch[3], 10);
+    const dt = new Date(y, m - 1, d);
+    if (!isNaN(dt.getTime())) return names[dt.getDay()] || "목";
+  }
+
+  return "목";
 };
 
-export const getDayOfWeekFullKorean = (dateStrOrDay) => {
-  const short = getDayOfWeekKorean(dateStrOrDay);
+export const getDayOfWeekFullKorean = (dateStrOrDay, year = 2026, month = 10) => {
+  const short = getDayOfWeekKorean(dateStrOrDay, year, month);
   return short ? `${short}요일` : "";
 };
 
@@ -127,39 +138,42 @@ export const getReportDateSortKey = (report) => {
     }
   }
   const raw = String(report.workDateFormatted || report.title || "");
-  const match2 = raw.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  const match2 = raw.match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
   if (match2) {
-    const m = String(parseInt(match2[1], 10)).padStart(2, "0");
-    const d = String(parseInt(match2[2], 10)).padStart(2, "0");
-    return `2026-${m}-${d}`;
+    const y = match2[1] || "2026";
+    const m = String(parseInt(match2[2], 10)).padStart(2, "0");
+    const d = String(parseInt(match2[3], 10)).padStart(2, "0");
+    return `${y}-${m}-${d}`;
   }
-  return "2026-09-01";
+  return "2026-10-01";
 };
 
 // ⭐ 보고서 제목 내 날짜/요일 및 보고서 유형(평일=근태보고서, 주말=특근보고서) 100% 자동 동기화 함수
-export const formatShortMonthDay = (dateStrOrDay) => {
-  let month = 9;
-  let day = 8;
-  let dayOfWeek = "화";
+export const formatShortMonthDay = (dateStrOrDay, year = 2026, month = 10) => {
+  let m = month;
+  let day = 1;
+  let dayOfWeek = "목";
   if (typeof dateStrOrDay === "number") {
     day = dateStrOrDay;
-    dayOfWeek = getDayOfWeekKorean(day);
+    dayOfWeek = getDayOfWeekKorean(day, year, m);
   } else if (dateStrOrDay) {
     const match = String(dateStrOrDay).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
     if (match) {
-      month = parseInt(match[2], 10);
+      const y = match[1] ? parseInt(match[1], 10) : year;
+      m = parseInt(match[2], 10);
       day = parseInt(match[3], 10);
-      dayOfWeek = getDayOfWeekKorean(day);
+      dayOfWeek = getDayOfWeekKorean(day, y, m);
     } else {
-      const match2 = String(dateStrOrDay).match(/(\d{1,2})월\s*(\d{1,2})일/);
+      const match2 = String(dateStrOrDay).match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
       if (match2) {
-        month = parseInt(match2[1], 10);
-        day = parseInt(match2[2], 10);
-        dayOfWeek = getDayOfWeekKorean(day);
+        const y = match2[1] ? parseInt(match2[1], 10) : year;
+        m = parseInt(match2[2], 10);
+        day = parseInt(match2[3], 10);
+        dayOfWeek = getDayOfWeekKorean(day, y, m);
       }
     }
   }
-  return `${month}월 ${day}일 (${dayOfWeek})`;
+  return `${m}월 ${day}일 (${dayOfWeek})`;
 };
 
 // ⭐ 공장 뱃지 렌더링 함수
@@ -297,11 +311,12 @@ export const getCleanReportTitle = (report) => {
     }
   }
   if (!dayStr) {
-    const match2 = String(rawTitle).match(/(\d{1,2})월\s*(\d{1,2})일/);
+    const match2 = String(rawTitle).match(/(?:(\d{4})년\s*)?(\d{1,2})월\s*(\d{1,2})일/);
     if (match2) {
-      dayStr = `${parseInt(match2[1], 10)}월 ${parseInt(match2[2], 10)}일(${correctDayOfWeek})`;
+      dayStr = `${parseInt(match2[2], 10)}월 ${parseInt(match2[3], 10)}일(${correctDayOfWeek})`;
     } else {
-      dayStr = `9월 8일(${correctDayOfWeek})`;
+      const now = new Date();
+      dayStr = `${now.getMonth() + 1}월 ${now.getDate()}일(${correctDayOfWeek})`;
     }
   }
 
@@ -503,9 +518,11 @@ export const generateSynthesizedPlantReports = (reports = []) => {
 
   dateMap.forEach((reps, workDate) => {
     const isWk = isWeekendByDate(workDate);
-    const dayLabel = getDayOfWeekKorean(workDate);
-    const dayNumMatch = workDate.match(/-(\d{1,2})$/);
-    const dayNum = dayNumMatch ? parseInt(dayNumMatch[1], 10) : 5;
+    const dateParts = String(workDate).match(/(\d{4})?-?(\d{1,2})-(\d{1,2})/);
+    const yearNum = dateParts && dateParts[1] ? parseInt(dateParts[1], 10) : 2026;
+    const monthNum = dateParts && dateParts[2] ? parseInt(dateParts[2], 10) : 10;
+    const dayNum = dateParts && dateParts[3] ? parseInt(dateParts[3], 10) : 1;
+    const dayLabel = getDayOfWeekKorean(workDate, yearNum, monthNum);
 
     const hasSpecialOvertime = reps.some(
       (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
@@ -559,10 +576,10 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         plant,
         company: `${companies.join(", ")} 취합`,
         companies: companies,
-        title: `[삼랑진공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
+        title: `[삼랑진공장] ${monthNum}월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
         reportType: "특근보고서 (취합)",
         workDate,
-        workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
+        workDateFormatted: `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
         author: drafterName,
         authorTitle: drafterTitle,
         updatedAt: targetReps[0]?.updatedAt || new Date().toISOString(),
@@ -579,7 +596,7 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         items: allItems,
         childReports: targetReps,
         reasons: [
-          `■ 9월 ${dayNum}일(${dayLabel}) [삼랑진공장] 특근보고서 취합 (${companies.join(", ")})`,
+          `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [삼랑진공장] 특근보고서 취합 (${companies.join(", ")})`,
           `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
           `2. 협력사별 투입 현황:\n${compBreakdownText}`,
           `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 삼랑진공장 주말 특근 가동 현황 취합`
@@ -615,10 +632,10 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         plant,
         company: `${companies.join(", ")} 취합`,
         companies: companies,
-        title: `[한림공장] 9월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
+        title: `[한림공장] ${monthNum}월 ${dayNum}일(${dayLabel}) 특근보고서 (${companies.join(", ")})`,
         reportType: "특근보고서 (취합)",
         workDate,
-        workDateFormatted: `2026-09-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
+        workDateFormatted: `${yearNum}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")} (${dayLabel})`,
         author: drafterName,
         authorTitle: drafterTitle,
         updatedAt: targetReps[0]?.updatedAt || new Date().toISOString(),
@@ -635,7 +652,7 @@ export const generateSynthesizedPlantReports = (reports = []) => {
         items: allItems,
         childReports: targetReps,
         reasons: [
-          `■ 9월 ${dayNum}일(${dayLabel}) [한림공장] 특근보고서 취합 (${companies.join(", ")})`,
+          `■ ${monthNum}월 ${dayNum}일(${dayLabel}) [한림공장] 특근보고서 취합 (${companies.join(", ")})`,
           `1. 대상: ${companies.join(", ")} (총 ${totalWorkers}명, ${totalHours} M/H, 총 노무비 ₩${cost.toLocaleString()})`,
           `2. 협력사별 투입 현황:\n${compBreakdownText}`,
           `3. 작업 내용: 현대/기아 긴급 납품 물량 대응 및 한림공장 주말 특근 가동 현황 취합`
@@ -688,27 +705,50 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' default
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
+  // Dynamic Month & Year from global Header context
+  const { selectedMonth = getCurrentYearMonth() } = useMonth() || {};
+  const [currentYear, currentMonthNum] = useMemo(() => {
+    const ym = selectedMonth || getCurrentYearMonth();
+    const parts = ym.split("-").map(Number);
+    return [parts[0] || 2026, parts[1] || 10];
+  }, [selectedMonth]);
+
+  const daysInMonth = useMemo(() => {
+    return new Date(currentYear, currentMonthNum, 0).getDate();
+  }, [currentYear, currentMonthNum]);
+
+  const getDayLabel = (d) => getDayOfWeekKorean(d, currentYear, currentMonthNum);
+  const getDayFullLabel = (d) => getDayOfWeekFullKorean(d, currentYear, currentMonthNum);
+  const isWeekendDay = (d) => {
+    const dt = new Date(currentYear, currentMonthNum - 1, d);
+    return dt.getDay() === 0 || dt.getDay() === 6;
+  };
+
   // Daily views state (로그인 및 접속 시점의 실시간 당일 일자로 기본 선택)
   const [selectedDay, setSelectedDay] = useState(() => {
     try {
       const kst = getKSTDateString(new Date());
       const day = parseInt(kst.split("-")[2], 10);
-      return !isNaN(day) && day >= 1 && day <= 30 ? day : new Date().getDate() || 11;
+      return !isNaN(day) && day >= 1 && day <= 31 ? day : new Date().getDate() || 1;
     } catch (e) {
-      return new Date().getDate() || 11;
+      return new Date().getDate() || 1;
     }
   });
 
-  // 로그인 사용자 변경 또는 재접속 시 당일 일자로 자동 동기화
+  // 로그인 사용자 변경 또는 월 변경 시 당일 일자 자동 동기화
   useEffect(() => {
     try {
       const kst = getKSTDateString(new Date());
       const day = parseInt(kst.split("-")[2], 10);
-      if (!isNaN(day) && day >= 1 && day <= 30) {
+      if (!isNaN(day) && day >= 1 && day <= daysInMonth) {
         setSelectedDay(day);
+      } else if (selectedDay > daysInMonth) {
+        setSelectedDay(daysInMonth);
       }
-    } catch (e) {}
-  }, [currentProfile?.name]);
+    } catch (e) {
+      if (selectedDay > daysInMonth) setSelectedDay(daysInMonth);
+    }
+  }, [currentProfile?.name, daysInMonth]);
 
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState("오륙");
   const [matrixCompanyFilter, setMatrixCompanyFilter] = useState("전체");
@@ -748,7 +788,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
   const [selectedLegacyReport, setSelectedLegacyReport] = useState(null);
   const [isLegacyModalOpen, setIsLegacyModalOpen] = useState(false);
-  const [selectedWeekendDay, setSelectedWeekendDay] = useState(12); // Default to upcoming weekend: 9월 12일 (토)
+  const [selectedWeekendDay, setSelectedWeekendDay] = useState(3);
 
   // Show Toast notification
   const triggerToast = (msg) => {
@@ -831,8 +871,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
 
     // 1. [달력기준 특근일 제외 규칙 1] 현재 선택된 날짜가 특근일(주말/공휴일)인 경우 적용 제외
-    if (isWeekendByDate(selectedDay)) {
-      triggerToast(`⚠️ 달력기준 특근일(9월 ${selectedDay}일 ${getDayOfWeekKorean(selectedDay)}요일 - 주말/공휴일)은 '전일과동일' 적용 대상에서 제외됩니다.`);
+    if (isWeekendDay(selectedDay)) {
+      triggerToast(`⚠️ 달력기준 특근일(${currentMonthNum}월 ${selectedDay}일 ${getDayLabel(selectedDay)}요일 - 주말/공휴일)은 '전일과동일' 적용 대상에서 제외됩니다.`);
       return;
     }
 
@@ -855,7 +895,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     // Search backwards for the closest previous regular weekday (non-weekend, non-holiday) that has data
     for (let d = selectedDay - 1; d >= 1; d--) {
-      if (!isWeekendByDate(d) && hasDataOnDay(d)) {
+      if (!isWeekendDay(d) && hasDataOnDay(d)) {
         targetSourceDay = d;
         break;
       }
@@ -864,7 +904,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     // If no prior weekday with data was found, pick the closest preceding weekday
     if (!targetSourceDay) {
       for (let d = selectedDay - 1; d >= 1; d--) {
-        if (!isWeekendByDate(d)) {
+        if (!isWeekendDay(d)) {
           targetSourceDay = d;
           break;
         }
@@ -876,7 +916,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return;
     }
 
-    const sourceDayLabel = getDayOfWeekKorean(targetSourceDay);
+    const sourceDayLabel = getDayLabel(targetSourceDay);
     const updatedMatrix = [...smartData.attendanceMatrix];
     let appliedCount = 0;
 
@@ -918,7 +958,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
 
-    const msg = `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전 평일(9월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
+    const msg = `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전 평일(${currentMonthNum}월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
 
     triggerToast(msg);
     await saveSmartOvertimeData(newLedger);
@@ -947,15 +987,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    triggerToast(`🟢 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명 전원 9월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+    triggerToast(`🟢 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명 전원 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
     await saveSmartOvertimeData(newLedger);
   };
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
   const handleOpenRegistrationReportModal = () => {
-    const d = selectedDay || 8;
-    const isWk = isWeekendByDate(d);
-    const dayLabel = getDayOfWeekKorean(d);
+    const d = selectedDay || 1;
+    const isWk = isWeekendDay(d);
+    const dayLabel = getDayLabel(d);
     const reportType = isWk ? "특근보고서" : "근태보고서";
 
     const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
@@ -985,7 +1025,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return sum + (workHours || 0);
     }, 0);
 
-    setReportModalTitle(`9월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`);
+    setReportModalTitle(`${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`);
     setReportModalAuthor(compMeta.author || compMeta.drafter || "양인나");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
@@ -1002,12 +1042,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         { role: "담당", name: compMeta.drafter || "담당", title: compMeta.drafterRole || "선임", status: "APPROVED", date: new Date().toLocaleDateString("ko-KR"), comment: "기안" },
         { role: "책임", name: compMeta.lead || "책임", title: compMeta.leadRole || "책임", status: "PENDING", date: "", comment: "" },
         { role: "이사", name: compMeta.director || "이사", title: compMeta.directorRole || "이사", status: "WAITING", date: "", comment: "" },
-        { role: "대표", name: compMeta.ceo || "대표", title: compMeta.ceoRole || "대표", status: "WAITING", date: "", comment: "" }
+        { role: "대표", name: compMeta.ceo || "대표", title: compMeta.ceoRole || "대표", status: "WAITING", date: "" }
       ]);
     }
 
     setReportModalNotes(
-      `1. 2026년 9월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant || "전사"} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
+      `1. ${currentYear}년 ${currentMonthNum}월 ${d}일(${dayLabel}) ${compLabel} 생산 라인 가동 및 ${reportType} 현황\n2. ${compMeta.plant || "전사"} 소속 ${selectedCompanyFilter === "전체" ? "통합" : selectedCompanyFilter} 관리자 결재 승인\n3. 총 ${attendedCount}명 출근/투입 (총 투입공수: ${totalHours} M/H, 예상 노무비: ₩${(totalHours * 15000).toLocaleString()})`
     );
 
     handleOpenReportModal();
@@ -1023,9 +1063,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
       
       // 2. Generate and save company-specific report record
-      const d = selectedDay || 8;
-      const isWk = isWeekendByDate(d);
-      const dayLabel = getDayOfWeekKorean(d);
+      const d = selectedDay || 1;
+      const isWk = isWeekendDay(d);
+      const dayLabel = getDayLabel(d);
       const reportType = isWk ? "특근보고서" : "근태보고서";
       const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
@@ -1041,7 +1081,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         ceo: "권태형",
         ceoRole: "대표"
       };
-      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `2026년 9월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
+      const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `${currentYear}년 ${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
 
       const items = (filteredAttendanceWorkers || []).filter(w => {
         const val = w.daily ? w.daily[d] : "";
@@ -1076,14 +1116,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       const compCleanSlug = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "all" : String(selectedCompanyFilter).replace(/[()]/g, "").trim();
       const companyReport = {
-        id: `report_${compCleanSlug}_2026_09_${String(d).padStart(2, "0")}`,
+        id: `report_${compCleanSlug}_${currentYear}_${String(currentMonthNum).padStart(2, "0")}_${String(d).padStart(2, "0")}`,
         plant: compMeta.plant || "전사",
         company: selectedCompanyFilter || "전체",
         companies: selectedCompanyFilter === "전체" ? COMPANIES : [selectedCompanyFilter],
         title: finalReportTitle,
         reportType: reportType,
-        workDate: `2026-09-${String(d).padStart(2, "0")}`,
-        workDateFormatted: `2026-09-${String(d).padStart(2, "0")} (${dayLabel})`,
+        workDate: `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+        workDateFormatted: `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")} (${dayLabel})`,
         author: reportModalAuthor || compMeta.drafter || "작성자",
         authorTitle: reportModalAuthorTitle || compMeta.drafterRole || "선임",
         updatedAt: new Date().toISOString(),
@@ -1116,7 +1156,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           await syncPlantOvertimeToApprovalBox({
             plant: selectedCompanyFilter === "전체" ? null : compMeta.plant,
             company: selectedCompanyFilter,
-            workDate: `2026-09-${String(d).padStart(2, "0")}`,
+            workDate: `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
             matrix: smartData.attendanceMatrix,
             reports: updatedReports
           });
@@ -1161,7 +1201,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       setSelectedCompanyFilter("조영");
     }
     setActiveTab("daily_input");
-    triggerToast(`✏️ 9월 ${report.workDate ? report.workDate.split("-")[2] : ""}일 [${report.company || report.plant || "전체"}] 근태 등록 화면으로 이동했습니다.`);
+    triggerToast(`✏️ ${report.workDate ? report.workDate.split("-")[1] + "월 " + report.workDate.split("-")[2] : ""}일 [${report.company || report.plant || "전체"}] 근태 등록 화면으로 이동했습니다.`);
   };
 
   // ⭐ USER ACTION: 특근보고서 삭제 핸들러
@@ -1233,14 +1273,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const name = quickNewWorkerName.trim();
     const position = quickNewWorkerPos || "작업원";
 
-    // Build standard 30-day attendance record for September 2026
+    // Build standard attendance record for current month
     const emptyDaily = {};
-    for (let d = 1; d <= 30; d++) {
-      const isWk = (d === 5 || d === 6 || d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const isWk = isWeekendDay(d);
       if (isWk) {
         emptyDaily[d] = "-";
-      } else if (d <= 8) {
-        emptyDaily[d] = "🟢";
       } else {
         emptyDaily[d] = "";
       }
@@ -1300,7 +1338,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // Quick Delete Worker (from Company Popup & Personnel Management Modal)
   const handleQuickDeleteWorker = async (workerIndexInMatrix, workerName, companyName, dept, line) => {
-    if (!window.confirm(`정말로 [${companyName}] ${workerName} (${dept || ""}) 근로자를 삭제하시겠습니까?\n(해당 작업자의 모든 9월 근태 내역이 삭제됩니다)`)) {
+    if (!window.confirm(`정말로 [${companyName}] ${workerName} (${dept || ""}) 근로자를 삭제하시겠습니까?\n(해당 작업자의 모든 ${currentMonthNum}월 근태 내역이 삭제됩니다)`)) {
       return;
     }
 
@@ -1529,31 +1567,35 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       halLines = [{ name: "9BQC", count: 2 }, { name: "CHANNEL", count: 2 }];
     }
 
+    const dayNumStr = String(day).padStart(2, "0");
+    const monthNumStr = String(currentMonthNum).padStart(2, "0");
+    const dayLabelStr = getDayLabel(day);
+
     return {
       samrangjin: {
         plant: "삼랑진공장",
         companies: "(주)오륙, 유성",
-        dateFormatted: `2026-09-${String(day).padStart(2, "0")} (토)`,
+        dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
         author: "양인나 선임",
         headcount: samWorkers.length || 40,
         manHours: samHours || 382,
         cost: samCost || 5730000,
         lines: samLines,
-        reportId: `report_samrangjin_2026_09_${String(day).padStart(2, "0")}`
+        reportId: `report_samrangjin_${currentYear}_${monthNumStr}_${dayNumStr}`
       },
       hallim: {
         plant: "한림공장",
         companies: "(주)조영산업, 한울, 부림텍",
-        dateFormatted: (day === 5 ? "2026-09-06 (일)" : `2026-09-${String(day).padStart(2, "0")} (토)`),
-        author: (day === 5 ? "한울 협력업체" : "오상민 선임"),
-        headcount: halWorkers.length || (day === 5 ? 2 : 4),
-        manHours: halHours || (day === 5 ? 16 : 32),
-        cost: halCost || (day === 5 ? 240000 : 480000),
+        dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
+        author: (dayLabelStr === "일" ? "한울 협력업체" : "오상민 선임"),
+        headcount: halWorkers.length || (dayLabelStr === "일" ? 2 : 4),
+        manHours: halHours || (dayLabelStr === "일" ? 16 : 32),
+        cost: halCost || (dayLabelStr === "일" ? 240000 : 480000),
         lines: halLines,
-        reportId: `report_hanlim_2026_09_${String(day).padStart(2, "0")}`
+        reportId: `report_hanlim_${currentYear}_${monthNumStr}_${dayNumStr}`
       }
     };
-  }, [selectedWeekendDay, smartData]);
+  }, [selectedWeekendDay, smartData, currentYear, currentMonthNum, getDayLabel]);
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-16 min-w-0 max-w-full">
@@ -1576,7 +1618,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <h1 className="text-base sm:text-xl font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
                 <span>근태현황 및 관리</span>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-400/40">
-                  9월 {selectedDay}일 기준
+                  {currentMonthNum}월 {selectedDay}일 기준
                 </span>
                 {/* ⭐ [당일 9시 기준] 미작성 업체 표기 배지 */}
                 {unwrittenCompanies.length > 0 ? (
@@ -1608,7 +1650,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           <div className="flex items-center justify-between pb-2">
             <h3 className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Building2 className="w-4 h-4 text-cyan-400" />
-              <span>5개 협력사별 근태 현황 (9월 {selectedDay}일 기준)</span>
+              <span>5개 협력사별 근태 현황 ({currentMonthNum}월 {selectedDay}일 기준)</span>
             </h3>
             <span className="text-[11px] font-bold text-slate-400">
               전체 총원: <strong className="text-white font-mono">{smartData.attendanceMatrix?.length || 0}명</strong>
@@ -1809,9 +1851,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     onChange={(e) => setSelectedDay(Number(e.target.value))}
                     className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-cyan-400 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/40 rounded-xl px-3 py-1.5 cursor-pointer shadow-inner"
                   >
-                    {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
+                    {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
                       <option key={d} value={d} className="bg-slate-900 text-white font-bold py-1">
-                        2026년 9월 {d}일 ({(d === 6 || d === 13 || d === 20 || d === 27) ? "일요일" : (d === 5 || d === 12 || d === 19 || d === 26) ? "토요일" : "평일"})
+                        {currentYear}년 {currentMonthNum}월 {d}일 ({getDayFullLabel(d)})
                       </option>
                     ))}
                   </select>
@@ -1878,7 +1920,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
                 >
                   <FileText className="w-4 h-4" />
-                  <span>💾 [{selectedCompanyFilter}] 9월 {selectedDay}일({getDayOfWeekKorean(selectedDay)}) 등록</span>
+                  <span>💾 [{selectedCompanyFilter}] {currentMonthNum}월 {selectedDay}일({getDayLabel(selectedDay)}) 등록</span>
                 </button>
               </div>
             </div>
@@ -1890,7 +1932,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <div className="flex items-center gap-2 flex-wrap">
                 <Zap className="w-4 h-4 text-cyan-500" />
                 <h3 className="font-black text-sm text-slate-900 dark:text-white">
-                  작업자별 9월 {selectedDay}일 근태 선택 테이블 (2열 병렬)
+                  작업자별 {currentMonthNum}월 {selectedDay}일 근태 선택 테이블 (2열 병렬)
                 </h3>
                 <span className="text-xs font-bold text-slate-500">
                   (조회 {filteredAttendanceWorkers.length}명)
@@ -1901,7 +1943,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   type="button"
                   onClick={handleSetAllFilteredWorkersSameAsPrevDay}
                   className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-indigo-500 ring-2 ring-indigo-400/20"
-                  title={`달력기준 특근일(주말/공휴일)을 제외하고 직전 평일과 동일한 근태를 9월 ${selectedDay}일에 일괄 적용합니다`}
+                  title={`달력기준 특근일(주말/공휴일)을 제외하고 직전 평일과 동일한 근태를 ${currentMonthNum}월 ${selectedDay}일에 일괄 적용합니다`}
                 >
                   <Copy className="w-3.5 h-3.5" />
                   <span>📋 전일과동일</span>
@@ -1941,7 +1983,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               <th className="hidden sm:table-cell py-1.5 px-1.5 w-16">업체</th>
                               <th className="hidden sm:table-cell py-1.5 px-1.5 w-14">부서</th>
                               <th className="py-1.5 px-1 sm:px-1.5 w-14 sm:w-16">성명</th>
-                              <th className="py-1.5 px-0.5 sm:px-1.5 text-center">9월 {selectedDay}일 근태 선택</th>
+                              <th className="py-1.5 px-0.5 sm:px-1.5 text-center">{currentMonthNum}월 {selectedDay}일 근태 선택</th>
                               <th className="py-1.5 px-1 text-center w-10 sm:w-12">잔업</th>
                               <th className="py-1.5 px-0.5 text-center w-6 sm:w-7"></th>
                             </tr>
@@ -2104,9 +2146,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       type="button"
                                       onClick={() => {
                                         handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "");
-                                        triggerToast(`↩️ ${worker.name}님의 9월 ${selectedDay}일 근태 선택이 취소되었습니다.`);
+                                        triggerToast(`↩️ ${worker.name}님의 ${currentMonthNum}월 ${selectedDay}일 근태 선택이 취소되었습니다.`);
                                       }}
-                                      title={`9월 ${selectedDay}일 근태 선택 취소`}
+                                      title={`${currentMonthNum}월 ${selectedDay}일 근태 선택 취소`}
                                       className={`p-1 rounded transition-colors cursor-pointer ${
                                         currentVal
                                           ? "text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 active:scale-95"
@@ -2141,7 +2183,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-cyan-600" />
                 <h3 className="font-black text-base text-slate-900 dark:text-white">
-                  9월 {selectedDay}일 5개사 일일 종합 집계표
+                  {currentMonthNum}월 {selectedDay}일 5개사 일일 종합 집계표
                 </h3>
               </div>
               <select
@@ -2149,9 +2191,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 onChange={(e) => setSelectedDay(Number(e.target.value))}
                 className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-slate-600 rounded-xl px-3 py-1.5 cursor-pointer"
               >
-                {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d} className="bg-slate-900 text-white font-bold">
-                    9월 {d}일 ({d % 7 === 6 || d % 7 === 0 ? "주말" : "평일"})
+                    {currentMonthNum}월 {d}일 ({getDayFullLabel(d)})
                   </option>
                 ))}
               </select>
@@ -2309,7 +2351,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📊 TAB 3: 9월 전사 종합현황판 (업체별 드롭다운 & 30일 전체 매트릭스) */}
+      {/* 📊 TAB 3: 당월 전사 종합현황판 (업체별 드롭다운 & 전체 매트릭스) */}
       {/* ========================================================================= */}
       {activeTab === "monthly_matrix" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
@@ -2352,7 +2394,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <div className="flex items-center gap-2">
                       <CalendarDays className="w-5 h-5 text-indigo-500" />
                       <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                        9월 30일 근태 및 잔업 전체 매트릭스
+                        {currentMonthNum}월 {daysInMonth}일 근태 및 잔업 전체 매트릭스
                       </h3>
                     </div>
 
@@ -2445,7 +2487,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <span className="font-mono font-black text-sm sm:text-base text-indigo-600 dark:text-indigo-400">{filteredMatrixList.length}명</span>
                   </div>
                   <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">9월 총 출근일수</span>
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">{currentMonthNum}월 총 출근일수</span>
                     <span className="font-mono font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">{sumWorkDays}일</span>
                   </div>
                   <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -2471,8 +2513,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <th className="hidden sm:table-cell p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
                         <th className="hidden sm:table-cell p-2 w-20">부서</th>
                         <th className="p-2 w-20 sticky left-10 sm:left-28 bg-slate-900 z-30">성명</th>
-                        {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
-                          <th key={d} className={`p-1 text-center w-7 ${(d === 6 || d === 13 || d === 20 || d === 27) ? "bg-rose-950/80 text-rose-300" : (d === 5 || d === 12 || d === 19 || d === 26) ? "bg-blue-950/80 text-blue-300" : ""}`}>
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
+                          <th key={d} className={`p-1 text-center w-7 ${getDayLabel(d) === "일" ? "bg-rose-950/80 text-rose-300" : getDayLabel(d) === "토" ? "bg-blue-950/80 text-blue-300" : ""}`}>
                             {d}
                           </th>
                         ))}
@@ -2492,7 +2534,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <td className="hidden sm:table-cell p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
                             <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
                             <td className="p-1.5 font-black sticky left-10 sm:left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
-                            {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => {
+                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
                               const val = w.daily ? w.daily[d] : "";
                               return (
                                 <td key={d} className="p-0.5 text-center font-mono text-[10px]">
@@ -2931,7 +2973,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         ? "bg-rose-950 text-rose-300 border-rose-800"
                         : "bg-cyan-950 text-cyan-300 border-cyan-800"
                     }`}>
-                      2026-09-{String(selectedDay).padStart(2, "0")}
+                      {currentYear}-{String(currentMonthNum).padStart(2, "0")}-{String(selectedDay).padStart(2, "0")}
                     </span>
                   </h3>
                 </div>
@@ -3086,7 +3128,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="font-black text-slate-200 text-xs flex items-center gap-1.5">
                         <Users className="w-3.5 h-3.5 text-purple-400" />
-                        <span>9월 {selectedDay}일 투입/등록 인원 ({enteredWorkers.length}명)</span>
+                        <span>{currentMonthNum}월 {selectedDay}일 투입/등록 인원 ({enteredWorkers.length}명)</span>
                       </span>
 
                       {/* 근태별 인원 요약 뱃지 */}
@@ -3210,7 +3252,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
                   <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-1.5">
                     <span>{popupCompanyData.company}</span>
-                    <span className="text-cyan-300 font-normal text-xs sm:text-sm">9월 {selectedDay}일 오늘자 근태 현황</span>
+                    <span className="text-cyan-300 font-normal text-xs sm:text-sm">{currentMonthNum}월 {selectedDay}일 오늘자 근태 현황</span>
                   </h3>
                 </div>
 
