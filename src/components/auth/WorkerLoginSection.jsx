@@ -24,7 +24,7 @@ export const WorkerLoginSection = ({
   onPinSubmit
 }) => {
   return (
-    <div className="space-y-2.5 sm:space-y-3">
+    <div id="worker-login-section-root" className="space-y-2.5 sm:space-y-3">
       {/* 1. 삼랑진공장 (가공동/품질/관리) */}
       <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-2xs">
         <div className="flex items-center justify-between">

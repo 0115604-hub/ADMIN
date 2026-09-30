@@ -1321,57 +1321,61 @@ export const AuthModal = () => {
             </div>
           )}
 
-          {/* Header Brand with Clickable OryukLogo (Original Centered Layout) */}
-          <div className="text-center mb-3 sm:mb-4 flex flex-col items-center">
+          {/* Header Brand with Logo on Left and [압출동] / [가공동] Badges on Right */}
+          <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4 pb-2.5 sm:pb-3 border-b border-slate-100 dark:border-slate-800/80">
+            {/* Left: Brand Logo & Title */}
             <div
               onClick={() => handleUserClick(ADMIN_USERS[0])}
-              className="relative mb-2 cursor-pointer group active:scale-95 transition-transform"
+              className="flex items-center gap-2 sm:gap-3 cursor-pointer group active:scale-98 transition-transform min-w-0"
               title="오륙 로고를 클릭하여 관리자(Admin) 모드로 진입합니다"
             >
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 rounded-2xl sm:rounded-3xl blur-md opacity-40 group-hover:opacity-80 transition-opacity animate-pulse"></div>
-              <div className="relative w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 p-1.5 sm:p-2 shadow-xl border-2 border-white/80 dark:border-slate-700 flex items-center justify-center group-hover:border-blue-400 group-hover:shadow-blue-500/25 transition-all">
-                <OryukLogo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-md group-hover:scale-105 transition-transform" />
+              <div className="relative w-8 h-8 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 sm:p-1.5 shadow-md border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 group-hover:border-blue-400 group-hover:shadow-blue-500/20 transition-all">
+                <OryukLogo className="w-6 h-6 sm:w-8 sm:h-8 drop-shadow-xs group-hover:scale-105 transition-transform" />
+              </div>
+              <div className="min-w-0 text-left">
+                <h2 className="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1 sm:gap-1.5 truncate">
+                  <span className="text-blue-600 dark:text-blue-400 font-black">
+                    (주)오륙
+                  </span>
+                  <span className="truncate">생산관리 통합시스템</span>
+                </h2>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold hidden sm:block">
+                  실시간 안전·품질 & 공장별 통합 관리
+                </span>
               </div>
             </div>
 
-            <h2 className="text-base sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center justify-center gap-1.5 sm:gap-2">
-              <span className="text-blue-600 dark:text-blue-400">
-                (주)오륙
-              </span>
-              <span>생산관리 통합시스템</span>
-            </h2>
-          </div>
+            {/* Right: 2 Badges: [압출동] & [가공동] */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsExtrusionModalOpen(true)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ring-2 ring-teal-400/30"
+                title="삼랑진공장 압출동 작업자 전용 포털 (공영국 외 10명)"
+              >
+                <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-200 animate-pulse" />
+                <span>압출동</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-800/80 text-teal-100 hidden sm:inline">
+                  11명
+                </span>
+              </button>
 
-          {/* 🏭 [압출동 전용 포털] 삼랑진/한림 가공동과 별도로 독립 분리 운영 */}
-          <div className="mb-3">
-            <button
-              type="button"
-              onClick={() => setIsExtrusionModalOpen(true)}
-              className="w-full py-2.5 sm:py-3 px-3.5 sm:px-4 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-teal-800 hover:from-teal-700 hover:to-teal-900 text-white shadow-md hover:shadow-lg border border-teal-400/40 transition-all flex items-center justify-between gap-2 active:scale-98 cursor-pointer group"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-1.5 rounded-xl bg-white/20 text-white shrink-0 group-hover:scale-110 transition-transform">
-                  <Cpu className="w-4 h-4 sm:w-5 sm:h-5" />
-                </div>
-                <div className="text-left min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-black text-xs sm:text-sm tracking-tight text-white">
-                      🏭 삼랑진공장 압출동 전용 포털
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/60 border border-teal-300/60 text-teal-100">
-                      공영국 외 10명 • 비번: 11
-                    </span>
-                  </div>
-                  <span className="text-[10.5px] sm:text-[11px] text-teal-100 font-medium block truncate">
-                    압출 작업일보 실시간 작성 • 주간 비가동 및 생산실적 분석 바로가기
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0 font-black text-xs sm:text-sm text-teal-200 group-hover:text-white transition-colors">
-                <span>압출동 입장</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </div>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("worker-login-section-root");
+                  if (el) el.scrollIntoView({ behavior: "smooth" });
+                }}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-black text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                title="삼랑진·한림공장 가공동 작업자 (15명)"
+              >
+                <Factory className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
+                <span>가공동</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hidden sm:inline">
+                  삼랑진·한림
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* 📢 1. 실시간 공지 & 오픈이슈 라이브 보드 */}
