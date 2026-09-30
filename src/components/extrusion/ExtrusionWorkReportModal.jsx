@@ -191,8 +191,11 @@ export const ExtrusionWorkReportModal = ({
           ? initialData.tpmIssuePhotos
           : (Array.isArray(initialData?.tpmIssueReport?.photos) ? initialData.tpmIssueReport.photos : []),
         rawMaterials: {
+          rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : "W60433"),
           rubberLot: initialData?.rawMaterials?.rubberLot || "",
+          coatingType: initialData?.rawMaterials?.coatingType || (initialData?.rawMaterials?.coatingLot?.includes("/") ? initialData.rawMaterials.coatingLot.split("/")[0].trim() : "HSC-2000B-3"),
           coatingLot: initialData?.rawMaterials?.coatingLot || "",
+          insertType: initialData?.rawMaterials?.insertType || (initialData?.rawMaterials?.insertLot?.includes("/") ? initialData.rawMaterials.insertLot.split("/")[0].trim() : "SK5 0.5T"),
           insertLot: initialData?.rawMaterials?.insertLot || ""
         },
         defectBreakdown: {
@@ -202,7 +205,7 @@ export const ExtrusionWorkReportModal = ({
         },
         conditions: {
           extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || "26.4",
-          extruder70Rpm: initialData?.conditions?.extruder70Rpm || "19.2",
+          extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || "19.2",
           waterTemp: initialData?.conditions?.waterTemp || "47.0",
           cureZoneTemp: initialData?.conditions?.cureZoneTemp || initialData?.conditions?.cureTemp || "212.0",
           haulOffSpeed: initialData?.conditions?.haulOffSpeed || "19.6",
@@ -226,9 +229,12 @@ export const ExtrusionWorkReportModal = ({
       tpmIssueText: "",
       tpmIssuePhotos: [],
       rawMaterials: {
-        rubberLot: "W60433 / UF10161726927029200A",
+        rubberType: "W60433",
+        rubberLot: "UF10161726927029200A",
+        coatingType: "HSC-2000B-3",
         coatingLot: "UF10161726927032700A",
-        insertLot: "SK5 0.5T / LOT-260930A"
+        insertType: "SK5 0.5T",
+        insertLot: "LOT-260930A"
       },
       defectBreakdown: {
         cutoffKg: "",
@@ -237,9 +243,9 @@ export const ExtrusionWorkReportModal = ({
       },
       conditions: {
         extruder110Rpm: "26.4",
-        extruder70Rpm: "19.2",
+        extruder60Rpm: "19.2",
         waterTemp: "47.0",
-        cureZoneTemp: "212.0", // 210±20℃
+        cureZoneTemp: "212.0", // PCM 13존 210±20℃
         haulOffSpeed: "19.6",
         sprayGun1: "2.5",
         sprayGun2: "2.6",
@@ -305,8 +311,11 @@ export const ExtrusionWorkReportModal = ({
           ...initialData,
           items,
           rawMaterials: {
+            rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : "W60433"),
             rubberLot: initialData?.rawMaterials?.rubberLot || "",
+            coatingType: initialData?.rawMaterials?.coatingType || (initialData?.rawMaterials?.coatingLot?.includes("/") ? initialData.rawMaterials.coatingLot.split("/")[0].trim() : "HSC-2000B-3"),
             coatingLot: initialData?.rawMaterials?.coatingLot || "",
+            insertType: initialData?.rawMaterials?.insertType || (initialData?.rawMaterials?.insertLot?.includes("/") ? initialData.rawMaterials.insertLot.split("/")[0].trim() : "SK5 0.5T"),
             insertLot: initialData?.rawMaterials?.insertLot || ""
           },
           defectBreakdown: {
@@ -316,7 +325,7 @@ export const ExtrusionWorkReportModal = ({
           },
           conditions: {
             extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || "26.4",
-            extruder70Rpm: initialData?.conditions?.extruder70Rpm || "19.2",
+            extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || "19.2",
             waterTemp: initialData?.conditions?.waterTemp || "47.0",
             cureZoneTemp: initialData?.conditions?.cureZoneTemp || initialData?.conditions?.cureTemp || "212.0",
             haulOffSpeed: initialData?.conditions?.haulOffSpeed || "19.6",
@@ -338,9 +347,12 @@ export const ExtrusionWorkReportModal = ({
           subWorkers: "",
           items: [createDefaultItem("pcm1")],
           rawMaterials: {
-            rubberLot: "W60433 / UF10161726927029200A",
+            rubberType: "W60433",
+            rubberLot: "UF10161726927029200A",
+            coatingType: "HSC-2000B-3",
             coatingLot: "UF10161726927032700A",
-            insertLot: "SK5 0.5T / LOT-260930A"
+            insertType: "SK5 0.5T",
+            insertLot: "LOT-260930A"
           },
           defectBreakdown: {
             cutoffKg: "",
@@ -349,9 +361,9 @@ export const ExtrusionWorkReportModal = ({
           },
           conditions: {
             extruder110Rpm: "26.4",
-            extruder70Rpm: "19.2",
+            extruder60Rpm: "19.2",
             waterTemp: "47.0",
-            cureZoneTemp: "212.0",
+            cureZoneTemp: "212.0", // PCM 13존 210±20℃
             haulOffSpeed: "19.6",
             sprayGun1: "2.5",
             sprayGun2: "2.6",
@@ -1235,48 +1247,113 @@ export const ExtrusionWorkReportModal = ({
 
               {showCheckSheetDetails && (
                 <div className="p-4 pt-1 space-y-4 border-t border-slate-200 dark:border-slate-700/80 animate-fadeIn">
-                  {/* 1. 원자재 현황 (연고무, 코팅액, 심금 LOT) */}
-                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-                    <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                      <Package className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>원자재 현황 (연고무 / 코팅액 / 심금 LOT)</span>
+                  {/* 1. 원자재 현황 (연고무, 코팅액, 심금 - 종류 및 LOT 넘버 분리 표기) */}
+                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
+                        <Package className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>1. 투입 원자재 현황 (연고무 · 코팅액 · 심금 구분 관리)</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
+                        종류 및 LOT No. 분리 입력
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          연고무 원료코드 & LOT NO
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.rawMaterials?.rubberLot || ""}
-                          onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberLot", e.target.value)}
-                          placeholder="예: W60433 / UF10161726927029200A"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                        />
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* 연고무 */}
+                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200">⬛ 연고무</span>
+                          <span className="text-[10px] text-slate-400 font-bold">EPDM 배합고무</span>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                            원자재 종류 (품명 / 원료코드)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rawMaterials?.rubberType || ""}
+                            onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberType", e.target.value)}
+                            placeholder="예: W60433"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                            LOT 넘버 (LOT No.)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rawMaterials?.rubberLot || ""}
+                            onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberLot", e.target.value)}
+                            placeholder="예: UF10161726927029200A"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          코팅액 약품명 & LOT NO
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.rawMaterials?.coatingLot || ""}
-                          onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingLot", e.target.value)}
-                          placeholder="예: UF10161726927032700A / HSC-2000B-3"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                        />
+
+                      {/* 코팅액 */}
+                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200">🧪 코팅액</span>
+                          <span className="text-[10px] text-slate-400 font-bold">표면 처리제</span>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                            원자재 종류 (약품명 / 규격)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rawMaterials?.coatingType || ""}
+                            onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingType", e.target.value)}
+                            placeholder="예: HSC-2000B-3"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                            LOT 넘버 (LOT No.)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rawMaterials?.coatingLot || ""}
+                            onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingLot", e.target.value)}
+                            placeholder="예: UF10161726927032700A"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          심금 규격 & LOT NO
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.rawMaterials?.insertLot || ""}
-                          onChange={(e) => handleNestedFieldChange("rawMaterials", "insertLot", e.target.value)}
-                          placeholder="예: SK5 0.5T / LOT-260930A"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                        />
+
+                      {/* 심금 */}
+                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200">⚙️ 심금 (Insert)</span>
+                          <span className="text-[10px] text-slate-400 font-bold">보강 심금재</span>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                            원자재 종류 (규격 / 재질)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rawMaterials?.insertType || ""}
+                            onChange={(e) => handleNestedFieldChange("rawMaterials", "insertType", e.target.value)}
+                            placeholder="예: SK5 0.5T"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
+                            LOT 넘버 (LOT No.)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.rawMaterials?.insertLot || ""}
+                            onChange={(e) => handleNestedFieldChange("rawMaterials", "insertLot", e.target.value)}
+                            placeholder="예: LOT-260930A"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1285,7 +1362,7 @@ export const ExtrusionWorkReportModal = ({
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
                     <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
                       <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                      <span>불량 세부 현황 (단연조정 / 셋지 / 치수외관)</span>
+                      <span>2. 불량 세부 현황 (단연조정 / 셋지시동 / 치수외관 불량 중량)</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
@@ -1337,7 +1414,7 @@ export const ExtrusionWorkReportModal = ({
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
                     <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
                       <Sliders className="w-3.5 h-3.5 text-teal-600" />
-                      <span>3. 압출조건 (110Ø / 60Ø 압출기 속도 & 온수조 온도)</span>
+                      <span>3. 압출 조건 (110Ø · 60Ø 압출기 속도 & 스크류/실린더 온수조 온도)</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
@@ -1358,7 +1435,7 @@ export const ExtrusionWorkReportModal = ({
                         </label>
                         <input
                           type="text"
-                          value={formData.conditions?.extruder60Rpm || formData.conditions?.extruder70Rpm || ""}
+                          value={formData.conditions?.extruder60Rpm || ""}
                           onChange={(e) => handleNestedFieldChange("conditions", "extruder60Rpm", e.target.value)}
                           placeholder="예: 19.2"
                           className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
@@ -1379,11 +1456,16 @@ export const ExtrusionWorkReportModal = ({
                     </div>
                   </div>
 
-                  {/* 4. 코팅건 분사압력 (1번, 2번, 3번, 4번) */}
+                  {/* 4. 코팅건 분사압력 (1번, 2번, 3번, 4번) & 코팅두께 안내 */}
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-                    <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                      <Wind className="w-3.5 h-3.5 text-blue-600" />
-                      <span>코팅건 분사압력 (1번, 2번, 3번, 4번 분사수치 / bar)</span>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
+                        <Wind className="w-3.5 h-3.5 text-blue-600" />
+                        <span>4. 코팅건 분사압력 (1번~4번 분사 / bar) 및 코팅두께 (15㎛ 이상)</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-950 px-2 py-0.5 rounded-md border border-blue-200">
+                        코팅두께 규격: 기저부 · OUTER · INNER ≥ 15㎛
+                      </span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       <div>
@@ -1437,21 +1519,21 @@ export const ExtrusionWorkReportModal = ({
                     </div>
                   </div>
 
-                  {/* 5. 가류조 조건 (가류존 1번~13번 : 표준 210℃ ± 20℃) */}
+                  {/* 5. PCM 가류조 조건 (존1번 ~ 존13번 : 표준 210℃ ± 20℃) */}
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
                         <Flame className="w-3.5 h-3.5 text-rose-600" />
-                        <span>4-1. 가류조 조건 (가류존 1번~13번 : 표준 210℃ ± 20℃)</span>
+                        <span>5. PCM 가류조 조건 (존1~존13 전체 13개 존 : 표준 210℃ ± 20℃)</span>
                       </div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200">
-                        가류존 1~13번 전구역 정상 작동 [OK]
+                        PCM 13존 전구역 정상 작동 [OK]
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
                         <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          가류존 평균온도 (℃) <span className="text-[10px] text-rose-600 font-bold">[표준: 210 ± 20 ℃]</span>
+                          가류존 평균온도 (℃) <span className="text-[10px] text-rose-600 font-bold">[표준: 210 ± 20 ℃ (190~230℃)]</span>
                         </label>
                         <input
                           type="text"

@@ -179,8 +179,11 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     attainmentRate,
     defectRate,
     rawMaterials: {
+      rubberType: String(raw.rawMaterials?.rubberType || raw.rubberType || (raw.rawMaterials?.rubberLot?.includes("/") ? raw.rawMaterials.rubberLot.split("/")[0].trim() : "W60433")).trim(),
       rubberLot: String(raw.rawMaterials?.rubberLot || raw.rubberLot || "").trim(),
+      coatingType: String(raw.rawMaterials?.coatingType || raw.coatingType || (raw.rawMaterials?.coatingLot?.includes("/") ? raw.rawMaterials.coatingLot.split("/")[0].trim() : "HSC-2000B-3")).trim(),
       coatingLot: String(raw.rawMaterials?.coatingLot || raw.coatingLot || "").trim(),
+      insertType: String(raw.rawMaterials?.insertType || raw.insertType || (raw.rawMaterials?.insertLot?.includes("/") ? raw.rawMaterials.insertLot.split("/")[0].trim() : "SK5 0.5T")).trim(),
       insertLot: String(raw.rawMaterials?.insertLot || raw.insertLot || "").trim()
     },
     defectBreakdown: {
@@ -189,15 +192,15 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       appearanceKg: Math.max(0, Number(raw.defectBreakdown?.appearanceKg || raw.appearanceKg) || 0)
     },
     conditions: {
-      extruder110Rpm: String(raw.conditions?.extruder110Rpm || raw.extruder110Rpm || raw.conditions?.extruderRpm || "").trim(),
-      extruder70Rpm: String(raw.conditions?.extruder70Rpm || raw.extruder70Rpm || "").trim(),
-      waterTemp: String(raw.conditions?.waterTemp || raw.waterTemp || "").trim(),
-      cureZoneTemp: String(raw.conditions?.cureZoneTemp || raw.cureZoneTemp || raw.conditions?.cureTemp || "").trim(), // 210±20℃
-      haulOffSpeed: String(raw.conditions?.haulOffSpeed || raw.haulOffSpeed || "").trim(),
-      sprayGun1: String(raw.conditions?.sprayGun1 || raw.sprayGun1 || "").trim(),
-      sprayGun2: String(raw.conditions?.sprayGun2 || raw.sprayGun2 || "").trim(),
-      sprayGun3: String(raw.conditions?.sprayGun3 || raw.sprayGun3 || "").trim(),
-      sprayGun4: String(raw.conditions?.sprayGun4 || raw.sprayGun4 || "").trim()
+      extruder110Rpm: String(raw.conditions?.extruder110Rpm || raw.extruder110Rpm || raw.conditions?.extruderRpm || "26.4").trim(),
+      extruder60Rpm: String(raw.conditions?.extruder60Rpm || raw.extruder60Rpm || raw.conditions?.extruder70Rpm || "19.2").trim(),
+      waterTemp: String(raw.conditions?.waterTemp || raw.waterTemp || "47.0").trim(),
+      cureZoneTemp: String(raw.conditions?.cureZoneTemp || raw.cureZoneTemp || raw.conditions?.cureTemp || "212.0").trim(), // 210±20℃ (존1~존13)
+      haulOffSpeed: String(raw.conditions?.haulOffSpeed || raw.haulOffSpeed || "19.6").trim(),
+      sprayGun1: String(raw.conditions?.sprayGun1 || raw.sprayGun1 || "2.5").trim(),
+      sprayGun2: String(raw.conditions?.sprayGun2 || raw.sprayGun2 || "2.6").trim(),
+      sprayGun3: String(raw.conditions?.sprayGun3 || raw.sprayGun3 || "2.5").trim(),
+      sprayGun4: String(raw.conditions?.sprayGun4 || raw.sprayGun4 || "2.4").trim()
     },
     tpmStatus: String(raw.tpmStatus || "완료"),
     tpmChecks: Array.isArray(raw.tpmChecks) && raw.tpmChecks.length > 0
@@ -702,8 +705,11 @@ export const exportExtrusionReportsToExcel = (reports = [], metrics = null, filt
       "달성률(%)",
       "양품률/수율(%)",
       "스크랩(kg)",
+      "연고무 종류",
       "연고무 LOT",
+      "코팅액 종류",
       "코팅액 LOT",
+      "심금 종류",
       "심금 LOT",
       "110Ø속도(RPM)",
       "60Ø속도(RPM)",
@@ -712,7 +718,7 @@ export const exportExtrusionReportsToExcel = (reports = [], metrics = null, filt
       "코팅건2번",
       "코팅건3번",
       "코팅건4번",
-      "가류존온도(210±20℃)",
+      "PCM가류존온도(210±20℃)",
       "인취속도(m/분)",
       "비가동(분)",
       "비가동 원인",
@@ -742,8 +748,11 @@ export const exportExtrusionReportsToExcel = (reports = [], metrics = null, filt
       `${r.attainmentRate}%`,
       `${r.yieldRate}%`,
       r.scrapKg || 0,
+      r.rawMaterials?.rubberType || "-",
       r.rawMaterials?.rubberLot || "-",
+      r.rawMaterials?.coatingType || "-",
       r.rawMaterials?.coatingLot || "-",
+      r.rawMaterials?.insertType || "-",
       r.rawMaterials?.insertLot || "-",
       r.conditions?.extruder110Rpm || r.conditions?.extruderRpm || "-",
       r.conditions?.extruder60Rpm || r.conditions?.extruder70Rpm || "-",
