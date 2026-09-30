@@ -1295,69 +1295,14 @@ export const IssueEditModal = ({
                     onChange={(e) => setNewIssueForm({ ...newIssueForm, title: e.target.value })}
                     className="w-full px-3.5 py-2 rounded-xl border border-purple-200 dark:border-purple-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs sm:text-sm shadow-2xs focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
                   />
-                  {/* 회의 제목 간편 추천 칩 */}
-                  <div className="flex items-center gap-1 flex-wrap pt-1.5">
-                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">간편선택:</span>
-                    {[
-                      "주간 생산성 및 품질 개선 회의",
-                      "TAM G/R 후가공 이관 공정 협의",
-                      "공장 안전보건 및 5S 정기 점검",
-                      "월간 경영 실적 및 원가 절감 리뷰"
-                    ].map((sug) => (
-                      <button
-                        key={sug}
-                        type="button"
-                        onClick={() => setNewIssueForm({ ...newIssueForm, title: sug })}
-                        className="px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-[10.5px] font-semibold text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
-                      >
-                        +{sug}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
-                {/* 2. 회의 일시 (날짜 + 시간 + 퀵 날짜 버튼) */}
+                {/* 2. 회의 일시 (날짜 + 시간) */}
                 <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-2">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                      <span>① 회의 일시</span>
-                    </label>
-                    {/* 퀵 날짜 선택 버튼 */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {[
-                        { label: "오늘", type: "today" },
-                        { label: "내일", type: "tomorrow" },
-                        { label: "이번주 금", type: "thisFriday" },
-                        { label: "다음주 월", type: "nextMonday" }
-                      ].map((item) => (
-                        <button
-                          key={item.label}
-                          type="button"
-                          onClick={() => {
-                            const d = new Date();
-                            if (item.type === "tomorrow") d.setDate(d.getDate() + 1);
-                            else if (item.type === "thisFriday") {
-                              const day = d.getDay();
-                              const diff = (5 - day + 7) % 7 || 7;
-                              d.setDate(d.getDate() + diff);
-                            } else if (item.type === "nextMonday") {
-                              const day = d.getDay();
-                              const diff = ((1 - day + 7) % 7) || 7;
-                              d.setDate(d.getDate() + (diff === 0 ? 7 : diff));
-                            }
-                            const yyyy = d.getFullYear();
-                            const mm = String(d.getMonth() + 1).padStart(2, "0");
-                            const dd = String(d.getDate()).padStart(2, "0");
-                            setNewIssueForm({ ...newIssueForm, expireDate: `${yyyy}-${mm}-${dd}` });
-                          }}
-                          className="px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 text-[10px] font-bold text-purple-800 dark:text-purple-300 cursor-pointer transition-all active:scale-95"
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-purple-600" />
+                    <span>① 회의 일시</span>
+                  </label>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="flex items-center gap-2">
@@ -1393,7 +1338,7 @@ export const IssueEditModal = ({
                   </div>
                 </div>
 
-                {/* 3. 회의 장소 (텍스트 입력 + 퀵 장소 프리셋 버튼) */}
+                {/* 3. 회의 장소 (텍스트 입력 + 3대 장소 퀵 프리셋) */}
                 <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-1.5">
                   <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-purple-600" />
@@ -1401,26 +1346,24 @@ export const IssueEditModal = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="예: 삼랑진공장 2층 대회의실"
+                    placeholder="예: 삼랑진회의실, 한림공장회의실, 화상회의(ZOOM)"
                     value={newIssueForm.meetingLocation ?? ""}
                     onChange={(e) => setNewIssueForm({ ...newIssueForm, meetingLocation: e.target.value })}
                     className="w-full px-3 py-1.5 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs shadow-2xs focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
                   />
-                  {/* 회의 장소 퀵 프리셋 버튼 */}
-                  <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">장소선택:</span>
+                  {/* 회의 장소 3가지 퀵 프리셋 버튼 */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[10.5px] font-bold text-purple-700 dark:text-purple-300">장소선택:</span>
                     {[
-                      "삼랑진 2층 대회의실",
-                      "삼랑진 현장 사무실",
-                      "한림공장 회의실",
-                      "인주공장 회의실",
-                      "온라인 화상회의(Zoom)"
+                      "삼랑진회의실",
+                      "한림공장회의실",
+                      "화상회의(ZOOM)"
                     ].map((loc) => (
                       <button
                         key={loc}
                         type="button"
                         onClick={() => setNewIssueForm({ ...newIssueForm, meetingLocation: loc })}
-                        className="px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900 text-[10.5px] font-semibold text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg border border-purple-300 dark:border-purple-700 bg-white dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900 text-[11px] font-black text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
                       >
                         +{loc}
                       </button>
@@ -1428,17 +1371,12 @@ export const IssueEditModal = ({
                   </div>
                 </div>
 
-                {/* 4. 회의 안건 및 상세 내용 (2배 확대: rows="6", min-h-[140px] + 퀵 안건 프리셋) */}
+                {/* 4. 회의 안건 및 상세 내용 (깔끔하고 넓은 6행 입력창) */}
                 <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-purple-200 dark:border-purple-800 space-y-1.5">
-                  <div className="flex items-center justify-between gap-1 flex-wrap">
-                    <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
-                      <ListOrdered className="w-3.5 h-3.5 text-purple-600" />
-                      <span>③ 회의 주요 안건 및 상세 전달 내용</span>
-                    </label>
-                    <span className="text-[10.5px] text-purple-600 dark:text-purple-400 font-semibold">
-                      * 안건 칩을 누르면 자동으로 추가됩니다
-                    </span>
-                  </div>
+                  <label className="font-black text-xs text-purple-950 dark:text-purple-200 flex items-center gap-1.5">
+                    <ListOrdered className="w-3.5 h-3.5 text-purple-600" />
+                    <span>③ 회의 주요 안건 및 상세 전달 내용</span>
+                  </label>
                   <textarea
                     rows="6"
                     required
@@ -1447,31 +1385,6 @@ export const IssueEditModal = ({
                     onChange={(e) => setNewIssueForm({ ...newIssueForm, content: e.target.value })}
                     className="w-full p-3 rounded-xl border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 font-medium leading-relaxed text-slate-900 dark:text-white text-xs sm:text-sm min-h-[140px] focus:ring-2 focus:ring-purple-400 focus:outline-hidden"
                   ></textarea>
-
-                  {/* 회의 안건 간편 추가 칩 */}
-                  <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">안건추가:</span>
-                    {[
-                      "생산관리시스템 리뷰 및 피드백",
-                      "TAM G/R 후가공 이관 및 생산 일정",
-                      "품질 불량 저감 및 공정 개선 대책",
-                      "현장 안전보건 및 5S 정기 점검",
-                      "신규 금형 및 설비 시운전 협의"
-                    ].map((topic) => (
-                      <button
-                        key={topic}
-                        type="button"
-                        onClick={() => {
-                          const current = newIssueForm.content?.trim() || "";
-                          const newText = current ? `${current}\n• ${topic}` : `• ${topic}`;
-                          setNewIssueForm({ ...newIssueForm, content: newText });
-                        }}
-                        className="px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900 text-[10.5px] font-semibold text-purple-900 dark:text-purple-200 cursor-pointer transition-all active:scale-95 shadow-2xs"
-                      >
-                        +{topic}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 {/* Photo & Excel Attachments for 회의일정 */}
