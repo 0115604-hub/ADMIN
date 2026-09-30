@@ -114,9 +114,28 @@ export const ExtrusionWorkReportModal = ({
   onClose,
   onSave,
   initialData = null,
-  isEditing = false
+  isEditing = false,
+  existingReports = []
 }) => {
   const todayStr = new Date().toISOString().split("T")[0];
+
+  // Helper to check if TPM check was already done today for the specified worker (초/중/종물 3회 접속 고려)
+  const isTpmAlreadyDone = (targetDate, targetWorker) => {
+    if (!targetDate || !targetWorker) return false;
+    const workerClean = String(targetWorker).trim();
+    const key = `extrusion_tpm_done_${targetDate}_${workerClean}`;
+    if (localStorage.getItem(key) === "true") return true;
+
+    // Check if any report today for this worker already completed TPM
+    if (Array.isArray(existingReports) && existingReports.length > 0) {
+      const workerFirstName = workerClean.split(" ")[0];
+      const match = existingReports.some(
+        (r) => r.date === targetDate && r.worker?.includes(workerFirstName) && r.tpmStatus === "완료"
+      );
+      if (match) return true;
+    }
+    return false;
+  };
   
   // Step state: 'tpm' (1단계: TPM 점검) or 'report' (2단계: 작업일보 작성)
   const [currentStep, setCurrentStep] = useState(isEditing ? "report" : "tpm");
@@ -245,7 +264,10 @@ export const ExtrusionWorkReportModal = ({
   // Sync on modal open or initialData change
   useEffect(() => {
     if (isOpen) {
-      setCurrentStep(isEditing ? "report" : "tpm");
+      const targetWorker = initialData?.worker || formData.worker || "공영국 대리";
+      const targetDate = initialData?.date || todayStr;
+      const alreadyDone = isEditing || isTpmAlreadyDone(targetDate, targetWorker);
+      setCurrentStep(alreadyDone ? "report" : "tpm");
       if (initialData) {
         const items = (Array.isArray(initialData.items) && initialData.items.length > 0)
           ? initialData.items.map((it, i) => ({
@@ -375,6 +397,17 @@ export const ExtrusionWorkReportModal = ({
 
   const handleSetAllTpmOk = () => {
     setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
+  };
+
+  // Proceed to Step 2 & record TPM completion for date + worker
+  const handleProceedToReport = () => {
+    const key = `extrusion_tpm_done_${formData.date}_${String(formData.worker).trim()}`;
+    try {
+      localStorage.setItem(key, "true");
+    } catch (e) {
+      console.warn("localStorage error:", e);
+    }
+    setCurrentStep("report");
   };
 
   // Photo capture handler for Abnormality Report
@@ -510,6 +543,14 @@ export const ExtrusionWorkReportModal = ({
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
+    }
+
+    // Mark TPM as completed for this worker today
+    const key = `extrusion_tpm_done_${formData.date}_${String(formData.worker).trim()}`;
+    try {
+      localStorage.setItem(key, "true");
+    } catch (e) {
+      console.warn("localStorage error:", e);
     }
 
     const reportToSave = sanitizeExtrusionReport({
@@ -803,19 +844,19 @@ export const ExtrusionWorkReportModal = ({
           /* ========================================================================= */
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-100 text-xs sm:text-sm animate-fadeIn">
             {/* TPM Verification Passed Banner */}
-            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-2">
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span className="font-black text-emerald-900 dark:text-emerald-200 text-xs">
-                  TPM 설비 자주보전 10대 항목 점검 완료 (작업일보 등록 가능)
+                  금일 TPM 설비점검 완료 (초·중·종물 작업일보 기록 가능)
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setCurrentStep("tpm")}
-                className="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline cursor-pointer flex items-center gap-1"
               >
-                TPM 재확인 ➔
+                <span>TPM 점검표 재확인 / 이상신고 ➔</span>
               </button>
             </div>
 
@@ -1534,7 +1575,7 @@ export const ExtrusionWorkReportModal = ({
               </button>
               <button
                 type="button"
-                onClick={() => setCurrentStep("report")}
+                onClick={handleProceedToReport}
                 className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5"
               >
                 <span>TPM 점검 완료 ➔ 작업일보 작성 진행</span>

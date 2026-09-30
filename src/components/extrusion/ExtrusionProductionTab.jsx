@@ -1036,6 +1036,7 @@ export const ExtrusionProductionTab = () => {
         onSave={handleSaveReport}
         initialData={editingReport}
         isEditing={Boolean(editingReport)}
+        existingReports={reports}
       />
     </div>
   );
