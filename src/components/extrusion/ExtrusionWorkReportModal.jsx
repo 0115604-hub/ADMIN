@@ -1224,7 +1224,7 @@ export const ExtrusionWorkReportModal = ({
                 <div className="flex items-center gap-2">
                   <FileCheck2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                   <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                    ④ 작업체크시트 상세 (원자재 LOT / 불량 세부 / 110Ø·70Ø 압출 / 코팅건 1~4번 / 가류존 1~13번)
+                    ④ 작업체크시트 상세 (원자재 LOT / 불량 세부 / 110Ø·60Ø 압출 / 코팅건 1~4번 / PCM 가류존 1~13번)
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
                     {showCheckSheetDetails ? "접기 ▲" : "체크시트 항목 펼치기 ▼"}
@@ -1333,11 +1333,11 @@ export const ExtrusionWorkReportModal = ({
                     </div>
                   </div>
 
-                  {/* 3. 압출기 조건 (110Ø & 70Ø) 및 온수조 */}
+                  {/* 3. 압출기 조건 (110Ø & 60Ø) 및 온수조 */}
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
                     <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
                       <Sliders className="w-3.5 h-3.5 text-teal-600" />
-                      <span>3. 압출조건 (110Ø / 70Ø 압출기 속도 & 온수조 온도)</span>
+                      <span>3. 압출조건 (110Ø / 60Ø 압출기 속도 & 온수조 온도)</span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
@@ -1354,12 +1354,12 @@ export const ExtrusionWorkReportModal = ({
                       </div>
                       <div>
                         <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          70Ø 압출기 속도 (RPM) <span className="text-[10px] text-teal-600 font-bold">[표준: 20.0±2.0]</span>
+                          60Ø 압출기 속도 (RPM) <span className="text-[10px] text-teal-600 font-bold">[표준: 20.0±2.0]</span>
                         </label>
                         <input
                           type="text"
-                          value={formData.conditions?.extruder70Rpm || ""}
-                          onChange={(e) => handleNestedFieldChange("conditions", "extruder70Rpm", e.target.value)}
+                          value={formData.conditions?.extruder60Rpm || formData.conditions?.extruder70Rpm || ""}
+                          onChange={(e) => handleNestedFieldChange("conditions", "extruder60Rpm", e.target.value)}
                           placeholder="예: 19.2"
                           className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
                         />
