@@ -34,6 +34,20 @@ export const ADMIN_USERS = [
   }
 ];
 
+export const EXTRUSION_WORKERS = [
+  { id: "ext_gyg", name: "공영국", title: "반장", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "공", pin: "11" },
+  { id: "ext_sid", name: "심임대", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "심", pin: "11" },
+  { id: "ext_lse", name: "이상은", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" },
+  { id: "ext_nic", name: "닉", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "닉", pin: "11" },
+  { id: "ext_mic", name: "마이클", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "마", pin: "11" },
+  { id: "ext_jca", name: "존카를로", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "존", pin: "11" },
+  { id: "ext_jim", name: "지미", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "지", pin: "11" },
+  { id: "ext_man", name: "만", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "만", pin: "11" },
+  { id: "ext_sha", name: "샤먼", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "샤", pin: "11" },
+  { id: "ext_kum", name: "쿠마루", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "쿠", pin: "11" },
+  { id: "ext_isu", name: "이수루", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" }
+];
+
 export const PLANTS = [
   {
     id: "samrangjin",
@@ -69,7 +83,8 @@ export const PLANTS = [
 // Flat list of all selectable users
 export const ALL_DESIGNATED_USERS = [
   ...ADMIN_USERS,
-  ...PLANTS.flatMap((p) => p.workers)
+  ...PLANTS.flatMap((p) => p.workers),
+  ...EXTRUSION_WORKERS
 ];
 
 const AuthContext = createContext();
