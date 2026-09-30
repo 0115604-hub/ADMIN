@@ -110,7 +110,49 @@ const CATEGORY_COLORS = {
   정상생산: "bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-200"
 };
 
-const STORAGE_KEY = "factory_extrusion_downtime_user_uploaded_v3";
+const STORAGE_KEY = "factory_extrusion_downtime_user_uploaded_v4";
+
+/**
+ * Robust filter to eliminate any meaningless summary/total/empty rows
+ */
+export const sanitizeExtrusionRows = (rawRows = []) => {
+  if (!Array.isArray(rawRows)) return [];
+  return rawRows.filter((r) => {
+    if (!r || typeof r !== "object") return false;
+
+    const noStr = String(r.no || "").trim();
+    const taskStr = String(r.task || "").trim();
+    const dateStr = String(r.date || "").trim();
+    const dayStr = String(r.day || "").trim();
+    const noteStr = String(r.note || "").trim();
+
+    // 1. Filter out summary / total / calculation lines
+    const isSumOrFooter =
+      noStr.includes("합계") ||
+      noStr.includes("총계") ||
+      noStr.includes("소계") ||
+      noStr.includes("집계") ||
+      noStr.includes("TOTAL") ||
+      noStr.includes("SUM") ||
+      taskStr.includes("합계") ||
+      taskStr.includes("총 합계") ||
+      taskStr.includes("실적 총") ||
+      noteStr.includes("실시간 동적") ||
+      noteStr.includes("가동률 및 비가동 합산");
+
+    if (isSumOrFooter) return false;
+
+    // 2. Filter out phantom rows that have no task description AND no date
+    const isPhantomEmpty =
+      (!taskStr || taskStr === "-") &&
+      (!dateStr || dateStr === "-") &&
+      (!dayStr || dayStr === "-");
+
+    if (isPhantomEmpty) return false;
+
+    return true;
+  });
+};
 
 export const ExtrusionDowntimeView = () => {
   const [selectedLineId, setSelectedLineId] = useState("pcm1");
@@ -124,11 +166,12 @@ export const ExtrusionDowntimeView = () => {
   const badgeFileInputRefs = useRef({});
   const activeWeekTabRef = useRef(null);
 
-  // Clean state: Initial state starts completely empty, waiting for user file upload
+  // Clean state: Initial state loaded and sanitized
   const [linesData, setLinesData] = useState(() => {
     try {
       // Clear legacy sample data stores
       localStorage.removeItem("factory_extrusion_downtime_parsed_v2");
+      localStorage.removeItem("factory_extrusion_downtime_user_uploaded_v3");
       localStorage.removeItem("factory_extrusion_downtime_4lines_v24_real_purged");
       localStorage.removeItem("factory_extrusion_downtime_4lines_v23_pcm1qq_verified");
 
@@ -147,6 +190,52 @@ export const ExtrusionDowntimeView = () => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 4000);
   };
+
+  // Auto sanitize any existing stored data on mount
+  useEffect(() => {
+    setLinesData((prev) => {
+      if (!prev || typeof prev !== "object") return prev;
+      let changed = false;
+      const cleaned = {};
+      Object.keys(prev).forEach((lineKey) => {
+        const line = prev[lineKey];
+        if (line?.sheets) {
+          const cleanedSheets = {};
+          Object.keys(line.sheets).forEach((wKey) => {
+            const sh = line.sheets[wKey];
+            const cleanRows = sanitizeExtrusionRows(sh?.rows);
+            if (cleanRows.length !== (sh?.rows?.length || 0)) {
+              changed = true;
+            }
+            let totalDowntime = 0;
+            let planStop = 0;
+            let totalScrapKg = 0;
+            cleanRows.forEach((r) => {
+              const min = Number(r.minutes || 0);
+              const wt = Number(r.weight || 0);
+              totalDowntime += min;
+              totalScrapKg += wt;
+              if (r.plan === "Y" || r.plan === "y") planStop += min;
+            });
+            cleanedSheets[wKey] = {
+              ...sh,
+              rows: cleanRows,
+              rowsCount: cleanRows.length,
+              totalDowntime,
+              totalDowntimeHours: (totalDowntime / 60).toFixed(1),
+              planStop,
+              netDowntime: Math.max(0, totalDowntime - planStop),
+              totalScrapKg: Number(totalScrapKg.toFixed(1))
+            };
+          });
+          cleaned[lineKey] = { ...line, sheets: cleanedSheets };
+        } else {
+          cleaned[lineKey] = line;
+        }
+      });
+      return changed ? cleaned : prev;
+    });
+  }, []);
 
   useEffect(() => {
     try {
@@ -190,9 +279,49 @@ export const ExtrusionDowntimeView = () => {
     return () => clearTimeout(timer);
   }, [selectedWeek, selectedLineId, monthFilter]);
 
+  // Dynamically computed & sanitized current week metrics
   const currentWeekData = useMemo(() => {
     if (!currentLineData?.sheets || !selectedWeek) return null;
-    return currentLineData.sheets[selectedWeek] || null;
+    const rawSheet = currentLineData.sheets[selectedWeek];
+    if (!rawSheet) return null;
+
+    const cleanRows = sanitizeExtrusionRows(rawSheet.rows);
+    let totalDowntime = 0;
+    let planStop = 0;
+    let totalScrapKg = 0;
+
+    cleanRows.forEach((r) => {
+      const min = Number(r.minutes || 0);
+      const wt = Number(r.weight || 0);
+      totalDowntime += min;
+      totalScrapKg += wt;
+      if (r.plan === "Y" || r.plan === "y") planStop += min;
+    });
+
+    const totalRunMinutes = 7200;
+    const netDowntime = Math.max(0, totalDowntime - planStop);
+    const netRunTime = Math.max(0, totalRunMinutes - planStop);
+    const opRate =
+      totalRunMinutes > 0
+        ? `${(((totalRunMinutes - totalDowntime) / totalRunMinutes) * 100).toFixed(1)}%`
+        : "100.0%";
+    const netOpRate =
+      netRunTime > 0
+        ? `${(((netRunTime - netDowntime) / netRunTime) * 100).toFixed(1)}%`
+        : "100.0%";
+
+    return {
+      ...rawSheet,
+      rows: cleanRows,
+      rowsCount: cleanRows.length,
+      totalDowntime,
+      totalDowntimeHours: (totalDowntime / 60).toFixed(1),
+      planStop,
+      netDowntime,
+      totalScrapKg: Number(totalScrapKg.toFixed(1)),
+      opRate,
+      netOpRate
+    };
   }, [currentLineData, selectedWeek]);
 
   // Handle parsing a dropped or selected file
@@ -253,17 +382,6 @@ export const ExtrusionDowntimeView = () => {
     }
   };
 
-  // Clear all lines data
-  const handleClearAllData = () => {
-    if (window.confirm("모든 라인의 비가동 분석 데이터를 영구 삭제하시겠습니까?")) {
-      setLinesData({});
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch (e) {}
-      showToast("🗑️ 모든 라인 데이터가 완전히 초기화되었습니다.");
-    }
-  };
-
   // Badge Specific Drop
   const handleBadgeDrop = (e, lineKey) => {
     e.preventDefault();
@@ -293,7 +411,7 @@ export const ExtrusionDowntimeView = () => {
 
   // Export current week to Excel
   const handleExportCurrentWeekExcel = () => {
-    if (!currentWeekData || !currentWeekData.rows) {
+    if (!currentWeekData || !currentWeekData.rows || currentWeekData.rows.length === 0) {
       showToast("내보낼 실적 데이터가 없습니다.");
       return;
     }
@@ -577,7 +695,8 @@ export const ExtrusionDowntimeView = () => {
                   const isThisWeek = w === "9월3주";
                   const wPeriod = WEEK_CALENDAR_MAP[w]?.period || "";
                   const sheetInfo = currentLineData.sheets[w];
-                  const dMin = sheetInfo ? sheetInfo.totalDowntime : 0;
+                  const cleanRows = sanitizeExtrusionRows(sheetInfo?.rows);
+                  const dMin = cleanRows.reduce((acc, r) => acc + Number(r.minutes || 0), 0);
 
                   return (
                     <button
@@ -760,9 +879,9 @@ export const ExtrusionDowntimeView = () => {
                         >
                           {/* 일자 / 요일 */}
                           <td className="py-2.5 px-3 text-center font-black text-slate-900 dark:text-slate-100 whitespace-nowrap bg-slate-50/40 dark:bg-slate-800/30">
-                            {r.date ? (
+                            {r.date && r.date !== "-" ? (
                               <span className="px-2 py-1 rounded-md bg-slate-200/80 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-black">
-                                {r.date} {r.day ? `(${r.day})` : ""}
+                                {r.date} {r.day && r.day !== "-" ? `(${r.day})` : ""}
                               </span>
                             ) : (
                               <span className="text-slate-400">-</span>
@@ -778,14 +897,14 @@ export const ExtrusionDowntimeView = () => {
                                   : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
                               }`}
                             >
-                              {r.shift}
+                              {r.shift || "주간"}
                             </span>
                           </td>
 
                           {/* 구분 */}
                           <td className="py-2.5 px-2 text-center">
                             <span className={`px-2.5 py-1 rounded-md text-[11px] border ${catColor}`}>
-                              {r.category}
+                              {r.category || "정상생산"}
                             </span>
                           </td>
 
