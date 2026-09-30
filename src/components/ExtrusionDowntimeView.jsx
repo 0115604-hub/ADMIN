@@ -12,7 +12,10 @@ import {
   Trash2,
   RotateCcw,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Factory,
+  BarChart3,
+  Cpu
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
@@ -20,6 +23,7 @@ import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { EXTRUSION_LINES } from "../utils/extrusionImageParser";
 import { parseExtrusionExcelFile, detectExtrusionLineKey } from "../utils/extrusionFileParser";
+import ExtrusionProductionTab from "./extrusion/ExtrusionProductionTab";
 
 // Standard Manufacturing Calendar Mapping (Preserved for parser compatibility)
 export const WEEK_CALENDAR_MAP = {
@@ -213,6 +217,14 @@ export const sanitizeExtrusionRows = (rawRows = []) => {
 };
 
 export const ExtrusionDowntimeView = () => {
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem("factory_extrusion_active_subtab");
+      if (saved) return saved;
+    } catch (e) {}
+    return "production"; // Default to production management tab
+  });
+
   const [selectedLineId, setSelectedLineId] = useState(() => {
     try {
       const saved = localStorage.getItem("factory_extrusion_selected_line");
@@ -341,7 +353,15 @@ export const ExtrusionDowntimeView = () => {
     });
   }, []);
 
-  // Save selectedLineId and selectedWeek to localStorage
+  // Save activeSubTab, selectedLineId and selectedWeek to localStorage
+  useEffect(() => {
+    try {
+      if (activeSubTab) {
+        localStorage.setItem("factory_extrusion_active_subtab", activeSubTab);
+      }
+    } catch (e) {}
+  }, [activeSubTab]);
+
   useEffect(() => {
     try {
       if (selectedLineId) {
@@ -657,10 +677,42 @@ export const ExtrusionDowntimeView = () => {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 1. Top 4 Lines Badges (드래그 앤 드롭 지원 뱃지 4개) */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {/* Sub-Tab Navigation Switcher */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-1.5 border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("production")}
+          className={`flex-1 py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeSubTab === "production"
+              ? "bg-teal-600 text-white shadow-md shadow-teal-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Factory className="w-4 h-4" />
+          <span>🏭 압출 생산관리 및 작업일보 (실시간 작성/취합)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab("downtime")}
+          className={`flex-1 py-2.5 px-4 rounded-xl font-black text-xs sm:text-sm transition flex items-center justify-center gap-2 cursor-pointer ${
+            activeSubTab === "downtime"
+              ? "bg-teal-600 text-white shadow-md shadow-teal-500/20"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>📊 압출 비가동 상세 분석 (주간대장/엑셀)</span>
+        </button>
+      </div>
+
+      {activeSubTab === "production" ? (
+        <ExtrusionProductionTab />
+      ) : (
+        <>
+          {/* ========================================================================= */}
+          {/* 1. Top 4 Lines Badges (드래그 앤 드롭 지원 뱃지 4개) */}
+          {/* ========================================================================= */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {EXTRUSION_LINES.map((lMeta) => {
           const lineKey = lMeta.id;
           const isSelected = selectedLineId === lineKey;
@@ -1169,6 +1221,8 @@ export const ExtrusionDowntimeView = () => {
             <span>파일 선택하여 분석하기</span>
           </button>
         </div>
+      )}
+        </>
       )}
     </div>
   );
