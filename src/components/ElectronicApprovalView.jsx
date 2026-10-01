@@ -47,7 +47,13 @@ import {
   getAutoApprovalSteps,
   APPROVAL_MANAGERS,
   syncPlantOvertimeToApprovalBox,
-  syncAllOvertimeReportsToApprovalBox
+  syncAllOvertimeReportsToApprovalBox,
+  isApprovalDocPending,
+  isApprovalDocHold,
+  isApprovalDocApproved,
+  isApprovalDocRejected,
+  isApprovalDocMyDraft,
+  parseSafeTimestamp
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
@@ -282,11 +288,11 @@ export const ElectronicApprovalView = () => {
       }
 
       // 2. Tab filter
-      if (selectedTab === "PENDING" && doc.status !== "IN_PROGRESS") return false;
-      if (selectedTab === "HOLD" && doc.status !== "HOLD") return false;
-      if (selectedTab === "MY_DRAFTS" && doc.drafter !== currentProfile?.name) return false;
-      if (selectedTab === "APPROVED" && doc.status !== "APPROVED") return false;
-      if (selectedTab === "REJECTED" && doc.status !== "REJECTED") return false;
+      if (selectedTab === "PENDING" && !isApprovalDocPending(doc)) return false;
+      if (selectedTab === "HOLD" && !isApprovalDocHold(doc)) return false;
+      if (selectedTab === "MY_DRAFTS" && !isApprovalDocMyDraft(doc, currentProfile, isAdmin)) return false;
+      if (selectedTab === "APPROVED" && !isApprovalDocApproved(doc)) return false;
+      if (selectedTab === "REJECTED" && !isApprovalDocRejected(doc)) return false;
 
       // 3. Search query filter
       if (searchQuery.trim()) {
@@ -305,48 +311,24 @@ export const ElectronicApprovalView = () => {
 
     // ⭐ 최근 등록순(최신 기안일시/업데이트일시 기준 내림차순) 정렬
     list.sort((a, b) => {
-      const getDocTimestamp = (d) => {
-        if (!d) return 0;
-        if (d.updatedAt) {
-          const t = new Date(d.updatedAt).getTime();
-          if (!isNaN(t) && t > 0) return t;
-        }
-        if (d.createdAt) {
-          const cleanStr = String(d.createdAt).replace(/\./g, "-").replace(/\s+/, "T");
-          const t = new Date(cleanStr).getTime();
-          if (!isNaN(t) && t > 0) return t;
-        }
-        if (d.id) {
-          const m = d.id.match(/2026\d{4}|\d{10,13}/);
-          if (m) {
-            if (m[0].length === 8) {
-              const y = m[0].slice(0, 4);
-              const mon = m[0].slice(4, 6);
-              const day = m[0].slice(6, 8);
-              return new Date(`${y}-${mon}-${day}T18:00:00`).getTime();
-            }
-            const n = parseInt(m[0], 10);
-            if (!isNaN(n)) return n;
-          }
-        }
-        return 0;
-      };
-      return getDocTimestamp(b) - getDocTimestamp(a);
+      const tA = parseSafeTimestamp(a.updatedAt || a.createdAt || a.id || 0);
+      const tB = parseSafeTimestamp(b.updatedAt || b.createdAt || b.id || 0);
+      return tB - tA;
     });
 
     return list;
-  }, [approvalDocs, selectedTab, selectedPlant, searchQuery, currentProfile]);
+  }, [approvalDocs, selectedTab, selectedPlant, searchQuery, currentProfile, isAdmin]);
 
-  // Statistics
+  // Statistics (100% unified with filteredDocs)
   const stats = useMemo(() => {
     const total = approvalDocs.length;
-    const pending = approvalDocs.filter((d) => d.status === "IN_PROGRESS").length;
-    const hold = approvalDocs.filter((d) => d.status === "HOLD").length;
-    const approved = approvalDocs.filter((d) => d.status === "APPROVED").length;
-    const rejected = approvalDocs.filter((d) => d.status === "REJECTED").length;
-    const myDrafts = approvalDocs.filter((d) => d.drafter === currentProfile?.name).length;
+    const pending = approvalDocs.filter(isApprovalDocPending).length;
+    const hold = approvalDocs.filter(isApprovalDocHold).length;
+    const approved = approvalDocs.filter(isApprovalDocApproved).length;
+    const rejected = approvalDocs.filter(isApprovalDocRejected).length;
+    const myDrafts = approvalDocs.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
     return { total, pending, hold, approved, rejected, myDrafts };
-  }, [approvalDocs, currentProfile]);
+  }, [approvalDocs, currentProfile, isAdmin]);
 
   // Permission evaluation for currently opened document
   const currentPermission = useMemo(() => {
@@ -860,7 +842,7 @@ export const ElectronicApprovalView = () => {
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 flex items-center justify-center gap-1">
                             <Clock className="w-3 h-3 text-rose-500 animate-pulse" />
-                            <span>결재대기 ({doc.steps.find((s) => s.status === "PENDING")?.role || "책임"})</span>
+                            <span>결재대기 ({(doc.steps || []).find((s) => s.status === "PENDING")?.role || "책임"})</span>
                           </span>
                         )}
                       </td>
@@ -942,7 +924,8 @@ export const ElectronicApprovalView = () => {
               const isApproved = selectedDoc.status === "APPROVED";
               const isHold = selectedDoc.status === "HOLD";
               const isRejected = selectedDoc.status === "REJECTED";
-              const pendingStep = selectedDoc.steps.find((s) => s.status === "PENDING");
+              const docSteps = Array.isArray(selectedDoc.steps) ? selectedDoc.steps : [];
+              const pendingStep = docSteps.find((s) => s.status === "PENDING");
 
               return (
                 <>
@@ -1047,7 +1030,7 @@ export const ElectronicApprovalView = () => {
                     </div>
 
                     <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                      {selectedDoc.steps.map((st, idx) => {
+                      {docSteps.map((st, idx) => {
                         const isStepApproved = st.status === "APPROVED";
                         const isStepPending = st.status === "PENDING";
                         const isStepHold = st.status === "HOLD";
@@ -1202,7 +1185,7 @@ export const ElectronicApprovalView = () => {
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-slate-500">결재 의견 및 결재 이력:</span>
               <div className="space-y-1">
-                {selectedDoc.steps.filter((s) => s.date).map((st, idx) => (
+                {docSteps.filter((s) => s.date).map((st, idx) => (
                   <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] flex items-center justify-between text-slate-600 dark:text-slate-300">
                     <span className="font-bold">
                       [{st.role}] {st.name} {st.status === "APPROVED" ? "✓ 승인" : st.status === "HOLD" ? "⏸️ 보류" : "✕ 반려"} : {st.comment || "의견 없음"}
