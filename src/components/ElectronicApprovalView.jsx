@@ -228,7 +228,7 @@ export const ElectronicApprovalView = () => {
     selectedDocRef.current = selectedDoc;
   }, [selectedDoc]);
 
-  // Real-time Cloud Synchronization & Overtime Synthesis
+  // Real-time Cloud Synchronization
   useEffect(() => {
     const unsub = subscribeApprovalDocs((docs) => {
       setApprovalDocs(docs);
@@ -237,11 +237,6 @@ export const ElectronicApprovalView = () => {
         if (found) setSelectedDoc(found);
       }
     });
-    syncAllOvertimeReportsToApprovalBox().then((synced) => {
-      if (Array.isArray(synced) && synced.length > 0) {
-        setApprovalDocs(getLocalApprovalDocs());
-      }
-    }).catch((e) => console.warn("Auto-sync overtime approval error:", e));
     return () => unsub();
   }, []);
 

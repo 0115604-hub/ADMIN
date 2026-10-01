@@ -156,132 +156,8 @@ export const parseSafeTimestamp = (val) => {
   return 0;
 };
 
-// Clean and Normalize Document: calculate true step statuses without altering user document data
-// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장
-export const normalizeApprovalDoc = (d) => {
-  if (!d) return d;
-  const isHanlim = d.plant === "한림공장";
-
-  // Guarantee always exactly 4 steps
-  const rawSteps = (Array.isArray(d.steps) && d.steps.length === 4)
-    ? d.steps
-    : getAutoApprovalSteps(
-        d.plant,
-        d.drafter || "기안자",
-        d.drafterTitle || "선임",
-        d.department || "생산총괄",
-        d.leadName || null,
-        d.ceoName || "대표이사",
-        d.directorName || null
-      );
-
-  const fixedSteps = rawSteps.map((st, idx) => {
-    if (!st) {
-      const defaultRoles = ["담당", "책임", "이사", "대표"];
-      return { role: defaultRoles[idx] || "책임", name: "", title: "", status: idx === 0 ? "APPROVED" : "WAITING", date: "", comment: "" };
-    }
-    if (st.role === "이사") {
-      const isApprovedByChoi = st.name === "최미영";
-      const isApprovedByLee = st.name === "이명재";
-      let normName = st.name || "이명재";
-      let normTitle = "이사";
-
-      if (isApprovedByChoi) {
-        normName = "최미영";
-        normTitle = "전무";
-      } else if (isApprovedByLee) {
-        normName = "이명재";
-        normTitle = "이사";
-      } else if (st.name?.includes("최미영") && st.name?.includes("이명재")) {
-        normName = "이명재 / 최미영";
-        normTitle = st.date ? "이사" : "이사/전무";
-      } else if (isHanlim && (!st.name || st.name === "이명재/최미영")) {
-        normName = "이명재 / 최미영";
-        normTitle = st.date ? "이사" : "이사/전무";
-      }
-
-      return {
-        ...st,
-        name: normName,
-        title: normTitle
-      };
-    }
-    if (st.role === "대표") {
-      return {
-        ...st,
-        name: st.name === "최미영" ? "최미영" : (st.name || "대표이사"),
-        title: st.name === "최미영" ? "전무" : "대표"
-      };
-    }
-    return st;
-  });
-
-  // Calculate true approval step status based strictly on the 4 steps
-  const approvedCount = fixedSteps.filter((st) => st.status === "APPROVED").length;
-  let computedStatus = "IN_PROGRESS";
-  let computedStep = approvedCount + 1;
-
-  if (approvedCount === fixedSteps.length && fixedSteps.length > 0) {
-    computedStatus = "APPROVED";
-    computedStep = fixedSteps.length;
-  } else if (fixedSteps.some((st) => st.status === "REJECTED")) {
-    computedStatus = "REJECTED";
-    computedStep = fixedSteps.findIndex((st) => st.status === "REJECTED") + 1;
-  } else if (fixedSteps.some((st) => st.status === "HOLD")) {
-    computedStatus = "HOLD";
-    computedStep = fixedSteps.findIndex((st) => st.status === "HOLD") + 1;
-  } else {
-    computedStatus = "IN_PROGRESS";
-    computedStep = Math.min(Math.max(1, approvedCount + 1), 4);
-  }
-
-  return {
-    ...d,
-    currentStep: computedStep,
-    status: computedStatus,
-    steps: fixedSteps
-  };
-};
-
-// Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
-export const isApprovalDocPending = (doc) => {
-  if (!doc) return false;
-  const s = doc.status || "IN_PROGRESS";
-  if (s === "APPROVED" || s === "REJECTED" || s === "HOLD") return false;
-  return s === "IN_PROGRESS" || s === "PENDING" || (Array.isArray(doc.steps) && doc.steps.some(st => st.status === "PENDING"));
-};
-
-export const isApprovalDocHold = (doc) => {
-  if (!doc) return false;
-  const s = doc.status;
-  return s === "HOLD" || (Array.isArray(doc.steps) && doc.steps.some(st => st.status === "HOLD"));
-};
-
-export const isApprovalDocApproved = (doc) => {
-  if (!doc) return false;
-  const s = doc.status;
-  return s === "APPROVED" || s === "완료" || (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every(st => st.status === "APPROVED"));
-};
-
-export const isApprovalDocRejected = (doc) => {
-  if (!doc) return false;
-  const s = doc.status;
-  return s === "REJECTED" || (Array.isArray(doc.steps) && doc.steps.some(st => st.status === "REJECTED"));
-};
-
-export const isApprovalDocMyDraft = (doc, currentProfile, isAdmin) => {
-  if (!doc) return false;
-  const userName = currentProfile?.name || "";
-  if (!userName) return false;
-  return (
-    doc.drafter === userName ||
-    (doc.drafter && doc.drafter.includes(userName)) ||
-    (isAdmin && (doc.drafter === "권태형" || doc.drafter === "최미영" || doc.drafter === "대표이사"))
-  );
-};
-
 // Helper to construct automatic 4-step approval line
-export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, department, leadName = null, ceoName = "대표이사", directorName = null) => {
+export function getAutoApprovalSteps(plant, drafterName, drafterTitle, department, leadName = null, ceoName = "대표이사", directorName = null) {
   let step2Name = leadName;
   let step2Title = "책임";
 
@@ -357,7 +233,143 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
       comment: ""
     }
   ];
-};
+}
+
+// Clean and Normalize Document: calculate true step statuses without altering user document data
+// ⭐ 결재 자동 승인 방지 & 4단계 결재선 구조 무조건 보장
+export function normalizeApprovalDoc(d) {
+  if (!d || typeof d !== "object") return d;
+  const isHanlim = d.plant === "한림공장";
+
+  // Guarantee always exactly 4 steps
+  let rawSteps = null;
+  if (Array.isArray(d.steps) && d.steps.length === 4) {
+    rawSteps = d.steps;
+  } else {
+    try {
+      rawSteps = getAutoApprovalSteps(
+        d.plant,
+        d.drafter || "기안자",
+        d.drafterTitle || "선임",
+        d.department || "생산총괄",
+        d.leadName || null,
+        d.ceoName || "대표이사",
+        d.directorName || null
+      );
+    } catch (e) {
+      rawSteps = [
+        { role: "담당", name: d.drafter || "기안자", title: d.drafterTitle || "선임", status: "APPROVED", date: "", comment: "" },
+        { role: "책임", name: "설유철", title: "책임", status: "PENDING", date: "", comment: "" },
+        { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
+        { role: "대표", name: "대표이사", title: "대표이사", status: "WAITING", date: "", comment: "" }
+      ];
+    }
+  }
+
+  const fixedSteps = rawSteps.map((st, idx) => {
+    if (!st) {
+      const defaultRoles = ["담당", "책임", "이사", "대표"];
+      return { role: defaultRoles[idx] || "책임", name: "", title: "", status: idx === 0 ? "APPROVED" : "WAITING", date: "", comment: "" };
+    }
+    if (st.role === "이사") {
+      const isApprovedByChoi = st.name === "최미영";
+      const isApprovedByLee = st.name === "이명재";
+      let normName = st.name || "이명재";
+      let normTitle = "이사";
+
+      if (isApprovedByChoi) {
+        normName = "최미영";
+        normTitle = "전무";
+      } else if (isApprovedByLee) {
+        normName = "이명재";
+        normTitle = "이사";
+      } else if (st.name?.includes("최미영") && st.name?.includes("이명재")) {
+        normName = "이명재 / 최미영";
+        normTitle = st.date ? "이사" : "이사/전무";
+      } else if (isHanlim && (!st.name || st.name === "이명재/최미영")) {
+        normName = "이명재 / 최미영";
+        normTitle = st.date ? "이사" : "이사/전무";
+      }
+
+      return {
+        ...st,
+        name: normName,
+        title: normTitle
+      };
+    }
+    if (st.role === "대표") {
+      return {
+        ...st,
+        name: st.name === "최미영" ? "최미영" : (st.name || "대표이사"),
+        title: st.name === "최미영" ? "전무" : "대표"
+      };
+    }
+    return st;
+  });
+
+  // Calculate true approval step status based strictly on the 4 steps
+  const approvedCount = fixedSteps.filter((st) => st && st.status === "APPROVED").length;
+  let computedStatus = "IN_PROGRESS";
+  let computedStep = approvedCount + 1;
+
+  if (approvedCount === fixedSteps.length && fixedSteps.length > 0) {
+    computedStatus = "APPROVED";
+    computedStep = fixedSteps.length;
+  } else if (fixedSteps.some((st) => st && st.status === "REJECTED")) {
+    computedStatus = "REJECTED";
+    computedStep = fixedSteps.findIndex((st) => st && st.status === "REJECTED") + 1;
+  } else if (fixedSteps.some((st) => st && st.status === "HOLD")) {
+    computedStatus = "HOLD";
+    computedStep = fixedSteps.findIndex((st) => st && st.status === "HOLD") + 1;
+  } else {
+    computedStatus = "IN_PROGRESS";
+    computedStep = Math.min(Math.max(1, approvedCount + 1), 4);
+  }
+
+  return {
+    ...d,
+    currentStep: computedStep,
+    status: computedStatus,
+    steps: fixedSteps
+  };
+}
+
+// Unified Status Filter Helpers (100% consistent across cards, tabs and counts)
+export function isApprovalDocPending(doc) {
+  if (!doc) return false;
+  const s = doc.status || "IN_PROGRESS";
+  if (s === "APPROVED" || s === "REJECTED" || s === "HOLD") return false;
+  return s === "IN_PROGRESS" || s === "PENDING" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "PENDING"));
+}
+
+export function isApprovalDocHold(doc) {
+  if (!doc) return false;
+  const s = doc.status;
+  return s === "HOLD" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "HOLD"));
+}
+
+export function isApprovalDocApproved(doc) {
+  if (!doc) return false;
+  const s = doc.status;
+  return s === "APPROVED" || s === "완료" || (Array.isArray(doc.steps) && doc.steps.length === 4 && doc.steps.every(st => st && st.status === "APPROVED"));
+}
+
+export function isApprovalDocRejected(doc) {
+  if (!doc) return false;
+  const s = doc.status;
+  return s === "REJECTED" || (Array.isArray(doc.steps) && doc.steps.some(st => st && st.status === "REJECTED"));
+}
+
+export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
+  if (!doc) return false;
+  const userName = currentProfile?.name || "";
+  if (!userName) return false;
+  return (
+    doc.drafter === userName ||
+    (doc.drafter && doc.drafter.includes(userName)) ||
+    (isAdmin && (doc.drafter === "권태형" || doc.drafter === "최미영" || doc.drafter === "대표이사"))
+  );
+}
 
 // Initial authoritative approval documents (Clean empty array by default)
 export const INITIAL_APPROVAL_DOCS = [];
@@ -365,17 +377,16 @@ export const INITIAL_APPROVAL_DOCS = [];
 // Helper: NEVER delete or filter any document automatically
 export const isWeekdayAttSynthDoc = () => false;
 
-// Helper: Read local storage with migration from older versions, normalization and deletion filtering
-export const getLocalApprovalDocs = () => {
+// Helper: Read local storage with migration from older versions and safe normalization
+export function getLocalApprovalDocs() {
   try {
-    const deletedIds = getDeletedApprovalIds();
     let data = localStorage.getItem(LOCAL_STORAGE_KEY);
     
-    // Auto-migration: If v9 is missing or empty array, check previous storage keys to restore existing documents
-    if (!data || data === "[]" || data === "null" || data === "undefined") {
+    // Auto-migration: If v9 is missing, empty string, "[]", "null", check previous storage keys to restore existing documents
+    if (!data || data === "[]" || data === "null" || data === "undefined" || data.trim() === "") {
       for (const oldKey of PREV_STORAGE_KEYS) {
         const oldData = localStorage.getItem(oldKey);
-        if (oldData) {
+        if (oldData && oldData !== "[]" && oldData !== "null") {
           try {
             const parsedOld = JSON.parse(oldData);
             if (Array.isArray(parsedOld) && parsedOld.length > 0) {
@@ -388,7 +399,7 @@ export const getLocalApprovalDocs = () => {
       }
     }
 
-    if (!data) {
+    if (!data || data === "[]" || data === "null" || data === "undefined") {
       return [];
     }
 
@@ -402,47 +413,67 @@ export const getLocalApprovalDocs = () => {
     const docMap = new Map();
     if (Array.isArray(parsed)) {
       parsed.forEach((d) => {
-        if (d && d.id && !deletedIds.has(d.id)) {
-          docMap.set(d.id, d);
+        if (d && d.id) {
+          try {
+            const normalized = normalizeApprovalDoc(d);
+            docMap.set(d.id, normalized);
+          } catch (normErr) {
+            docMap.set(d.id, d);
+          }
         }
       });
     }
 
-    const merged = Array.from(docMap.values()).map(normalizeApprovalDoc);
-    return merged;
+    const list = Array.from(docMap.values());
+    list.sort((a, b) => {
+      const tA = parseSafeTimestamp(a.updatedAt || a.createdAt || a.id || 0);
+      const tB = parseSafeTimestamp(b.updatedAt || b.createdAt || b.id || 0);
+      return tB - tA;
+    });
+
+    return list;
   } catch (e) {
     console.error("Local storage read error for approval documents:", e);
     return [];
   }
-};
+}
 
 // Helper: Save local storage
-export const saveLocalApprovalDocs = (docs) => {
+export function saveLocalApprovalDocs(docs) {
   try {
-    const deletedIds = getDeletedApprovalIds();
-    const cleanDocs = (docs || []).filter((d) => d && d.id && !deletedIds.has(d.id));
-    const normalized = cleanDocs.map(normalizeApprovalDoc);
+    const cleanDocs = (docs || []).filter((d) => d && d.id);
+    const normalized = cleanDocs.map((d) => {
+      try {
+        return normalizeApprovalDoc(d);
+      } catch (e) {
+        return d;
+      }
+    });
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
     console.error("Local storage write error for approval documents:", e);
   }
-};
+}
 
 // Real-time Cloud Synchronization with Robust Local Merge & Permanent Document Retention
-export const subscribeApprovalDocs = (onUpdate) => {
+export function subscribeApprovalDocs(onUpdate) {
   try {
     const colRef = collection(db, COLLECTION_NAME);
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
-        const deletedIds = getDeletedApprovalIds();
         const remoteDocs = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
-            if (deletedIds.has(d.id)) return;
             const rawDoc = { id: d.id, ...d.data() };
-            const normalized = normalizeApprovalDoc(rawDoc);
-            remoteDocs.push(normalized);
+            try {
+              const normalized = normalizeApprovalDoc(rawDoc);
+              if (normalized && normalized.id) {
+                remoteDocs.push(normalized);
+              }
+            } catch (e) {
+              if (rawDoc.id) remoteDocs.push(rawDoc);
+            }
           });
         }
 
@@ -452,19 +483,18 @@ export const subscribeApprovalDocs = (onUpdate) => {
 
         // 1. Seed with local documents
         localDocs.forEach((d) => {
-          if (d && d.id && !deletedIds.has(d.id)) {
+          if (d && d.id) {
             docMap.set(d.id, d);
           }
         });
 
-        // 2. Merge remote docs
+        // 2. Merge remote docs (remote is authoritative or newer)
         remoteDocs.forEach((r) => {
-          if (r && r.id && !deletedIds.has(r.id)) {
+          if (r && r.id) {
             const existing = docMap.get(r.id);
             if (!existing) {
               docMap.set(r.id, r);
             } else {
-              // Remote is authoritative or newer
               const tRemote = parseSafeTimestamp(r.updatedAt || r.createdAt || 0);
               const tLocal = parseSafeTimestamp(existing.updatedAt || existing.createdAt || 0);
               if (tRemote >= tLocal) {
@@ -474,9 +504,9 @@ export const subscribeApprovalDocs = (onUpdate) => {
           }
         });
 
-        // 3. Any manual drafts or valid local docs missing from Firestore -> asynchronously sync up to Firestore
+        // 3. Any local docs missing from Firestore -> asynchronously sync up to Firestore
         localDocs.forEach((localDoc) => {
-          if (localDoc && localDoc.id && !deletedIds.has(localDoc.id)) {
+          if (localDoc && localDoc.id) {
             const inRemote = remoteDocs.some((r) => r.id === localDoc.id);
             if (!inRemote) {
               setDoc(doc(db, COLLECTION_NAME, localDoc.id), sanitizeForFirestore(localDoc)).catch(() => {});
@@ -484,7 +514,14 @@ export const subscribeApprovalDocs = (onUpdate) => {
           }
         });
 
-        const mergedList = Array.from(docMap.values()).map(normalizeApprovalDoc);
+        const mergedList = Array.from(docMap.values()).map((d) => {
+          try {
+            return normalizeApprovalDoc(d);
+          } catch (e) {
+            return d;
+          }
+        });
+
         mergedList.sort((a, b) => {
           const tA = parseSafeTimestamp(a.updatedAt || a.createdAt || a.id || 0);
           const tB = parseSafeTimestamp(b.updatedAt || b.createdAt || b.id || 0);
@@ -505,7 +542,7 @@ export const subscribeApprovalDocs = (onUpdate) => {
     if (onUpdate) onUpdate(getLocalApprovalDocs());
     return () => {};
   }
-};
+}
 
 // Check Approval Role Permission
 export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
