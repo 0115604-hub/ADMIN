@@ -389,13 +389,9 @@ export const ExtrusionProductionTab = () => {
                 <th className="py-2.5 px-3 whitespace-nowrap">일자 / 조</th>
                 <th className="py-2.5 px-3 whitespace-nowrap">호기 / 작업자</th>
                 <th className="py-2.5 px-3">차종 / 품명</th>
-                <th className="py-2.5 px-2 text-right">계획</th>
-                <th className="py-2.5 px-2 text-right">실적</th>
-                <th className="py-2.5 px-2 text-right">양품</th>
-                <th className="py-2.5 px-2 text-right">수율</th>
-                <th className="py-2.5 px-2 text-right">스크랩</th>
-                <th className="py-2.5 px-2.5 text-right">비가동</th>
-                <th className="py-2.5 px-3">비가동 내용</th>
+                <th className="py-2.5 px-3 text-right">수율</th>
+                <th className="py-2.5 px-3 text-right">스크랩</th>
+                <th className="py-2.5 px-3 text-right">비가동</th>
                 <th className="py-2.5 px-2 text-center">결재</th>
                 <th className="py-2.5 px-2.5 text-center">관리</th>
               </tr>
@@ -435,9 +431,8 @@ export const ExtrusionProductionTab = () => {
                         <div className="font-black text-teal-700 dark:text-teal-400 text-xs">
                           {r.lineName}
                         </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-bold">
-                          {r.worker}
-                          {r.subWorkers ? ` (${r.subWorkers})` : ""}
+                        <div className="text-[11px] text-slate-700 dark:text-slate-300 font-bold">
+                          {r.worker || "-"}
                         </div>
                       </td>
 
@@ -466,23 +461,8 @@ export const ExtrusionProductionTab = () => {
                         )}
                       </td>
 
-                      {/* Target Qty */}
-                      <td className="py-2.5 px-2 text-right text-slate-500 font-bold text-xs">
-                        {r.targetQty ? `${Number(r.targetQty).toLocaleString()}m` : "-"}
-                      </td>
-
-                      {/* Actual Qty */}
-                      <td className="py-2.5 px-2 text-right font-black text-slate-900 dark:text-white text-xs">
-                        {r.actualQty ? `${Number(r.actualQty).toLocaleString()}m` : "0m"}
-                      </td>
-
-                      {/* Good Qty */}
-                      <td className="py-2.5 px-2 text-right font-black text-blue-700 dark:text-blue-400 text-xs">
-                        {r.goodQty ? `${Number(r.goodQty).toLocaleString()}m` : "0m"}
-                      </td>
-
                       {/* Yield Rate */}
-                      <td className="py-2.5 px-2 text-right">
+                      <td className="py-2.5 px-3 text-right">
                         <span
                           className={`font-black text-[11px] px-1.5 py-0.5 rounded ${
                             r.yieldRate >= 97
@@ -495,38 +475,25 @@ export const ExtrusionProductionTab = () => {
                       </td>
 
                       {/* Scrap Kg */}
-                      <td className="py-2.5 px-2 text-right text-amber-600 font-bold text-xs">
+                      <td className="py-2.5 px-3 text-right font-black text-amber-600 text-xs">
                         {r.scrapKg > 0 ? `${r.scrapKg}kg` : "-"}
                       </td>
 
                       {/* Downtime */}
-                      <td className="py-2.5 px-2.5 text-right whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
                         {r.downtimeMinutes > 0 ? (
-                          <span className="font-black text-rose-600 dark:text-rose-400 text-xs">
-                            {r.downtimeMinutes}분
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-
-                      {/* Downtime Reason / Notes */}
-                      <td className="py-2.5 px-3 max-w-[200px] truncate text-xs">
-                        {r.downtimeMinutes > 0 ? (
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-900 shrink-0">
-                              {r.downtimeCategory || "형교환"}
+                          <div>
+                            <span className="font-black text-rose-600 dark:text-rose-400 text-xs">
+                              {r.downtimeMinutes}분
                             </span>
-                            <span className="truncate text-slate-700 dark:text-slate-300 font-medium text-[11px]">
-                              {r.downtimeDetail || "-"}
-                            </span>
+                            {r.downtimeCategory && (
+                              <div className="text-[10px] text-slate-500 truncate max-w-[120px] ml-auto">
+                                {r.downtimeCategory}
+                              </div>
+                            )}
                           </div>
-                        ) : r.tpmIssueText ? (
-                          <span className="text-amber-600 dark:text-amber-400 text-[11px] font-bold truncate">
-                            🚨 {r.tpmIssueText}
-                          </span>
                         ) : (
-                          <span className="text-slate-400 text-[11px]">정상 가동</span>
+                          <span className="text-slate-400 text-xs">-</span>
                         )}
                       </td>
 
@@ -580,7 +547,7 @@ export const ExtrusionProductionTab = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={13} className="py-12 text-center text-slate-400 space-y-1.5">
+                  <td colSpan={9} className="py-12 text-center text-slate-400 space-y-1.5">
                     <AlertCircle className="w-7 h-7 text-slate-300 mx-auto" />
                     <p className="text-xs font-bold">등록된 작업일보 내역이 없습니다.</p>
                   </td>
@@ -593,26 +560,17 @@ export const ExtrusionProductionTab = () => {
                   <td colSpan={4} className="py-2.5 px-3 text-center font-black text-xs">
                     ■ 합계 ({(filteredReports || []).length}건)
                   </td>
-                  <td className="py-2.5 px-2 text-right text-slate-600 dark:text-slate-400 text-xs">
-                    {(metrics?.totalTarget || 0).toLocaleString()}m
-                  </td>
-                  <td className="py-2.5 px-2 text-right text-slate-900 dark:text-white font-black text-xs">
-                    {(metrics?.totalActual || 0).toLocaleString()}m
-                  </td>
-                  <td className="py-2.5 px-2 text-right text-blue-700 dark:text-blue-400 font-black text-xs">
-                    {(metrics?.totalGood || 0).toLocaleString()}m
-                  </td>
-                  <td className="py-2.5 px-2 text-right text-emerald-600 font-black text-xs">
+                  <td className="py-2.5 px-3 text-right text-emerald-600 font-black text-xs">
                     {metrics?.yieldRate ?? 0}%
                   </td>
-                  <td className="py-2.5 px-2 text-right text-amber-600 font-black text-xs">
+                  <td className="py-2.5 px-3 text-right text-amber-600 font-black text-xs">
                     {metrics?.totalScrapKg ?? 0}kg
                   </td>
-                  <td className="py-2.5 px-2.5 text-right text-rose-600 font-black text-xs">
+                  <td className="py-2.5 px-3 text-right text-rose-600 font-black text-xs">
                     {metrics?.totalDowntimeMinutes ?? 0}분
                   </td>
-                  <td colSpan={3} className="py-2.5 px-3 text-slate-500 text-[11px]">
-                    (달성률: <strong>{metrics?.attainmentRate ?? 0}%</strong>, 비가동: <strong>{metrics?.totalDowntimeHours ?? 0}h</strong>)
+                  <td colSpan={2} className="py-2.5 px-3 text-center text-slate-500 text-[11px]">
+                    (비가동: <strong>{metrics?.totalDowntimeHours ?? 0}h</strong>)
                   </td>
                 </tr>
               </tfoot>
