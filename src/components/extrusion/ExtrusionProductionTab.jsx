@@ -37,6 +37,7 @@ import {
   exportExtrusionCheckSheetExcel
 } from "../../services/extrusionProductionService";
 import ExtrusionWorkReportModal from "./ExtrusionWorkReportModal";
+import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 export const ExtrusionProductionTab = () => {
   const [reports, setReports] = useState([]);
@@ -274,6 +275,11 @@ export const ExtrusionProductionTab = () => {
           </button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 1-2. 설유철 책임 전용 품목별 원재료 BOM 등록 한 줄 패널 (설유철/Admin만 노출) */}
+      {/* ========================================================================= */}
+      <ExtrusionMaterialBOMQuickPanel />
 
       {/* ========================================================================= */}
       {/* 2. Filter Selector Bar */}

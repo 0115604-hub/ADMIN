@@ -266,13 +266,37 @@ export const ITEM_MATERIAL_BOM_MAP = {
 };
 
 // ============================================================================
-// 6. 헬퍼 함수: 품목 선택 시 자동 원재료 매핑 조회
+// 6. 헬퍼 함수: 품목 선택 시 자동 원재료 매핑 조회 (동적 등록 BOM 우선 조회)
 // ============================================================================
 export const getMaterialBOMForItem = (vehicle, itemName) => {
   const v = String(vehicle || "").trim();
   const n = String(itemName || "").trim();
 
-  // 1. 차종 + 품명 정밀 매칭
+  // 1. 동적으로 등록된 커스텀 BOM 매핑 확인
+  let customMap = {};
+  try {
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem("factory_extrusion_custom_bom_v1");
+      if (raw) {
+        customMap = JSON.parse(raw) || {};
+      }
+    }
+  } catch (e) {}
+
+  // 1-1. 커스텀 차종 + 품명 정밀 매칭
+  if (v && n) {
+    const fullKey = `${v}:::${n}`;
+    if (customMap[fullKey]) {
+      return { ...customMap[fullKey], matchedKey: fullKey, matchType: "CUSTOM_EXACT" };
+    }
+  }
+
+  // 1-2. 커스텀 차종 기준 매칭
+  if (v && customMap[v]) {
+    return { ...customMap[v], matchedKey: v, matchType: "CUSTOM_VEHICLE" };
+  }
+
+  // 2. 정적 마스터 BOM 차종 + 품명 정밀 매칭
   if (v && n) {
     const fullKey = `${v}:::${n}`;
     if (ITEM_MATERIAL_BOM_MAP[fullKey]) {
@@ -280,12 +304,12 @@ export const getMaterialBOMForItem = (vehicle, itemName) => {
     }
   }
 
-  // 2. 차종 기준 매칭
+  // 3. 정적 마스터 BOM 차종 기준 매칭
   if (v && ITEM_MATERIAL_BOM_MAP[v]) {
     return { ...ITEM_MATERIAL_BOM_MAP[v], matchedKey: v, matchType: "VEHICLE" };
   }
 
-  // 3. 기본 표준값 (Fallback)
+  // 4. 기본 표준값 (Fallback)
   return {
     rubberType: "W60433",
     compoundType: "IA4-75B_1",

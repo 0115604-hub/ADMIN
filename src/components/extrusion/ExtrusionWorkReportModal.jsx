@@ -56,6 +56,7 @@ import {
   EPDM_COATINGS,
   getMaterialBOMForItem
 } from "../../data/extrusionRawMaterialsData";
+import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -1462,6 +1463,22 @@ export const ExtrusionWorkReportModal = ({
 
               {showCheckSheetDetails && (
                 <div className="p-4 space-y-4 animate-fadeIn">
+                  {/* 설유철 책임 전용 BOM 빠른 등록 패널 */}
+                  <ExtrusionMaterialBOMQuickPanel
+                    onBOMRegistered={(bom) => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        rawMaterials: {
+                          ...prev.rawMaterials,
+                          rubberType: bom.rubberType || prev.rawMaterials?.rubberType,
+                          compoundType: bom.compoundType || prev.rawMaterials?.compoundType,
+                          insertType: bom.insertType || prev.rawMaterials?.insertType,
+                          coatingType: bom.coatingType || prev.rawMaterials?.coatingType
+                        }
+                      }));
+                    }}
+                  />
+
                   {/* 1. 투입 원자재 현황 (EPDM.xlsx 마스터 연동 및 중량/LOT 기록) */}
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
