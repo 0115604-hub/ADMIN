@@ -612,6 +612,40 @@ export const ExtrusionWorkReportModal = ({
   const totalDowntimeMinutes = dtEvents.reduce((sum, ev) => sum + (Number(ev?.minutes) || 0), 0);
   const totalDowntimeScrapKg = Number(dtEvents.reduce((sum, ev) => sum + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
 
+  // Multi-worker selection helpers (압출동 11명 복수선택)
+  const currentWorkers = useMemo(() => {
+    if (!formData.worker) return [];
+    return String(formData.worker)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [formData.worker]);
+
+  const handleToggleWorker = (workerStr) => {
+    setFormData((prev) => {
+      const cur = String(prev.worker || "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const simpleName = workerStr.split(" ")[0];
+      const exists = cur.some((w) => w === workerStr || w.startsWith(simpleName) || simpleName.startsWith(w));
+
+      let updated;
+      if (exists) {
+        updated = cur.filter((w) => w !== workerStr && !w.startsWith(simpleName) && !simpleName.startsWith(w));
+      } else {
+        updated = [...cur, workerStr];
+      }
+
+      const nextWorker = updated.join(", ");
+      return {
+        ...prev,
+        worker: nextWorker
+      };
+    });
+  };
+
   // TPM Handlers
   const handleTpmStatusChange = (itemId, status) => {
     setTpmChecks((prev) =>
@@ -1353,8 +1387,8 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               </div>
 
-              {/* Date, Shift, Worker in a clean 3-column row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
+              {/* Date & Shift */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 items-center">
                 {/* 1. Date */}
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
@@ -1401,28 +1435,48 @@ export const ExtrusionWorkReportModal = ({
                     </button>
                   </div>
                 </div>
+              </div>
 
-                {/* 3. Worker Dropdown */}
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-                    작업자명 (담당 조장)
+              {/* 3. 압출동 11명 작업자 복수선택 뱃지 */}
+              <div className="space-y-1.5 pt-0.5">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <span>작업자 선택</span>
+                    <span className="text-[9.5px] text-teal-600 dark:text-teal-400 font-bold">(압출동 11명 · 복수선택 가능)</span>
                   </label>
-                  <select
-                    value={formData.worker}
-                    onChange={(e) => setFormData({ ...formData, worker: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-teal-500 font-black text-slate-900 dark:text-white focus:ring-1 focus:ring-teal-500 focus:outline-hidden cursor-pointer text-xs"
-                  >
-                    <option value="">-- 작업자 선택 --</option>
-                    {WORKER_PRESETS.map((w) => (
-                      <option key={w.name} value={`${w.name} ${w.title}`}>
-                        {w.name} {w.title} ({w.role})
-                      </option>
-                    ))}
-                    <option value="현해">현해</option>
-                    <option value="TEST">TEST</option>
-                  </select>
-                  {errors.worker && <p className="text-rose-500 text-[10px] mt-0.5">{errors.worker}</p>}
+                  {currentWorkers.length > 0 && (
+                    <span className="text-[10.5px] font-black text-teal-700 dark:text-teal-300 truncate max-w-full">
+                      ✓ {currentWorkers.length}명 선택: {currentWorkers.join(", ")}
+                    </span>
+                  )}
                 </div>
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {WORKER_PRESETS.map((w) => {
+                    const label = `${w.name} ${w.title}`.trim();
+                    const isSelected = currentWorkers.some(
+                      (cw) => cw === label || cw === w.name || cw.startsWith(w.name) || w.name.startsWith(cw)
+                    );
+
+                    return (
+                      <button
+                        key={w.name}
+                        type="button"
+                        onClick={() => handleToggleWorker(label)}
+                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer flex items-center gap-1 border ${
+                          isSelected
+                            ? "bg-teal-600 text-white border-teal-700 shadow-xs font-black ring-1 ring-teal-400/40"
+                            : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        <span>{w.name}</span>
+                        <span className="text-[10px] opacity-80">{w.title}</span>
+                        {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {errors.worker && <p className="text-rose-500 text-[10px] mt-0.5">{errors.worker}</p>}
               </div>
             </div>
 

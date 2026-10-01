@@ -80,18 +80,9 @@ export const VEHICLE_PRESETS = [
 ];
 
 export const WORKER_PRESETS = [
-  { name: "공영국", title: "대리", role: "압출동 조장/관리", plant: "삼랑진공장" },
+  { name: "공영국", title: "대리", role: "압출동 조장", plant: "삼랑진공장" },
   { name: "심임대", title: "반장", role: "압출 1호기 반장", plant: "삼랑진공장" },
   { name: "이상은", title: "반장", role: "압출 3호기 반장", plant: "삼랑진공장" },
-  { name: "설유철", title: "책임", role: "압출동 관리", plant: "삼랑진공장" },
-  { name: "윤경수", title: "책임", role: "가공/압출 총괄", plant: "삼랑진공장" },
-  { name: "이창엽", title: "책임", role: "품질관리", plant: "삼랑진공장" },
-  { name: "전재율", title: "책임", role: "설비보전", plant: "삼랑진공장" },
-  { name: "이명재", title: "이사", role: "공장 총괄", plant: "삼랑진공장" },
-  { name: "양인나", title: "선임", role: "가공동 관리", plant: "삼랑진공장" },
-  { name: "유동길", title: "선임", role: "가공동 관리", plant: "삼랑진공장" },
-  { name: "조인주", title: "선임", role: "경리업무", plant: "삼랑진공장" },
-  { name: "이상기", title: "사원", role: "품질관리", plant: "삼랑진공장" },
   { name: "닉", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
   { name: "마이클", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
   { name: "존카를로", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
