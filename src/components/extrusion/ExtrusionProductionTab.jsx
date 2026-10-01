@@ -36,14 +36,37 @@ import {
   exportExtrusionReportsToExcel,
   exportExtrusionCheckSheetExcel
 } from "../../services/extrusionProductionService";
+import { useAuth } from "../../context/AuthContext";
 import ExtrusionWorkReportModal from "./ExtrusionWorkReportModal";
 import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 export const ExtrusionProductionTab = () => {
+  const { currentProfile, isAdmin } = useAuth();
+  const isExtrusionWorker = Boolean(
+    currentProfile?.building === "압출동" ||
+    currentProfile?.assignedProcess === "압출동" ||
+    currentProfile?.id?.startsWith("ext_") ||
+    currentProfile?.name === "공영국" ||
+    currentProfile?.department === "압출" ||
+    currentProfile?.role === "extrusion"
+  );
+
   const [reports, setReports] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
   const [toastMessage, setToastMessage] = useState("");
+
+  // Listen for open report modal event from Header
+  useEffect(() => {
+    const handleOpenModal = () => {
+      setEditingReport(null);
+      setIsModalOpen(true);
+    };
+    window.addEventListener("open-extrusion-work-report-modal", handleOpenModal);
+    return () => {
+      window.removeEventListener("open-extrusion-work-report-modal", handleOpenModal);
+    };
+  }, []);
 
   // Filters
   const [dateFilterMode, setDateFilterMode] = useState("all"); // today | 7days | month | all | custom
@@ -557,196 +580,199 @@ export const ExtrusionProductionTab = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 4. Line By Line Comparison Cards (호기별 실적 비교) */}
+      {/* 4. Line By Line Comparison Cards (호기별 실적 비교) & 5. Vehicle Breakdown (관리자/비작업자 전용 패널) */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {(metrics?.lineStats || []).map((line) => {
-          const isSelected = selectedLineFilter === line.id;
-          return (
-            <div
-              key={line.id}
-              onClick={() => setSelectedLineFilter(isSelected ? "all" : line.id)}
-              className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all cursor-pointer select-none ${
-                isSelected
-                  ? "border-teal-500 ring-2 ring-teal-500/20 shadow-md bg-teal-50/20 dark:bg-teal-950/20"
-                  : "border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
-              }`}
-            >
-              {/* Line Header */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                  <span className="font-black text-sm text-slate-900 dark:text-white">
-                    {line.name}
-                  </span>
+      {!isExtrusionWorker && (
+        <>
+          {/* 4. Line By Line Comparison Cards (호기별 실적 비교) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {(metrics?.lineStats || []).map((line) => {
+              const isSelected = selectedLineFilter === line.id;
+              return (
+                <div
+                  key={line.id}
+                  onClick={() => setSelectedLineFilter(isSelected ? "all" : line.id)}
+                  className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all cursor-pointer select-none ${
+                    isSelected
+                      ? "border-teal-500 ring-2 ring-teal-500/20 shadow-md bg-teal-50/20 dark:bg-teal-950/20"
+                      : "border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
+                  }`}
+                >
+                  {/* Line Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
+                      <span className="font-black text-sm text-slate-900 dark:text-white">
+                        {line.name}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {line.reportCount || 0}건 등록
+                    </span>
+                  </div>
+
+                  {/* Progress Gauges */}
+                  <div className="space-y-2 my-2 text-xs">
+                    {/* Attainment Progress */}
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                        <span>달성률 ({(line.actual || 0).toLocaleString()} / {(line.target || 0).toLocaleString()}m)</span>
+                        <span className="font-black text-slate-900 dark:text-white">{line.attainmentRate ?? 0}%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Number(line.attainmentRate) || 0)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    {/* Yield Progress */}
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
+                        <span>양품 수율 (양품 {(line.good || 0).toLocaleString()}m)</span>
+                        <span className="font-black text-blue-600 dark:text-blue-400">{line.yieldRate ?? 0}%</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Number(line.yieldRate) || 0)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer Meta */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">스크랩:</span>
+                      <span className="font-bold text-amber-600">{line.scrapKg ?? 0}kg</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">비가동:</span>
+                      <span className="font-bold text-rose-600">{line.downtimeMinutes ?? 0}분</span>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {line.reportCount || 0}건 등록
+              );
+            })}
+          </div>
+
+          {/* 5. Two Columns: Vehicle Breakdown & Downtime Pareto */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {/* Left: Vehicle / Part Breakdown */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  차종별 생산 실적 및 수율 분석
+                </h3>
+                <span className="text-[10.5px] font-bold text-slate-400">
+                  총 {(metrics?.vehicleStats || []).length}개 차종
                 </span>
               </div>
 
-              {/* Progress Gauges */}
-              <div className="space-y-2 my-2 text-xs">
-                {/* Attainment Progress */}
-                <div>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    <span>달성률 ({(line.actual || 0).toLocaleString()} / {(line.target || 0).toLocaleString()}m)</span>
-                    <span className="font-black text-slate-900 dark:text-white">{line.attainmentRate ?? 0}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, Number(line.attainmentRate) || 0)}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Yield Progress */}
-                <div>
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    <span>양품 수율 (양품 {(line.good || 0).toLocaleString()}m)</span>
-                    <span className="font-black text-blue-600 dark:text-blue-400">{line.yieldRate ?? 0}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, Number(line.yieldRate) || 0)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Meta */}
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">스크랩:</span>
-                  <span className="font-bold text-amber-600">{line.scrapKg ?? 0}kg</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">비가동:</span>
-                  <span className="font-bold text-rose-600">{line.downtimeMinutes ?? 0}분</span>
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
+                      <th className="py-2 px-3">차종</th>
+                      <th className="py-2 px-2 text-right">계획(m)</th>
+                      <th className="py-2 px-2 text-right">실적(m)</th>
+                      <th className="py-2 px-2 text-right">양품(m)</th>
+                      <th className="py-2 px-2 text-right">달성률</th>
+                      <th className="py-2 px-2 text-right">수율</th>
+                      <th className="py-2 px-3 text-right">스크랩</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                    {(metrics?.vehicleStats || []).length > 0 ? (
+                      metrics.vehicleStats.map((v) => (
+                        <tr key={v.vehicle} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <td className="py-2 px-3 font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <span className="px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-black text-[10.5px]">
+                              {v.vehicle}
+                            </span>
+                            <span className="text-[11px] text-slate-500 truncate max-w-[120px]">
+                              {v.itemName}
+                            </span>
+                          </td>
+                          <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">
+                            {(v.target || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2 px-2 text-right font-black text-slate-900 dark:text-white">
+                            {(v.actual || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400 font-bold">
+                            {(v.good || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold text-emerald-600">
+                            {v.attainmentRate ?? 0}%
+                          </td>
+                          <td className="py-2 px-2 text-right font-black text-blue-600">
+                            {v.yieldRate ?? 0}%
+                          </td>
+                          <td className="py-2 px-3 text-right text-amber-600 font-bold">
+                            {v.scrapKg ?? 0}kg
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="py-6 text-center text-slate-400 text-xs">
+                          선택된 조건의 차종별 실적이 없습니다.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* ========================================================================= */}
-      {/* 5. Two Columns: Vehicle Breakdown & Downtime Pareto */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {/* Left: Vehicle / Part Breakdown */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-blue-600" />
-              차종별 생산 실적 및 수율 분석
-            </h3>
-            <span className="text-[10.5px] font-bold text-slate-400">
-              총 {(metrics?.vehicleStats || []).length}개 차종
-            </span>
-          </div>
+            {/* Right: Downtime Reasons Pareto */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-rose-600" />
+                  비가동 원인별 분포 및 손실 시간
+                </h3>
+                <span className="text-[10.5px] font-bold text-slate-400">
+                  총 {metrics?.totalDowntimeMinutes || 0}분 ({metrics?.totalDowntimeHours || 0}시간)
+                </span>
+              </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
-                  <th className="py-2 px-3">차종</th>
-                  <th className="py-2 px-2 text-right">계획(m)</th>
-                  <th className="py-2 px-2 text-right">실적(m)</th>
-                  <th className="py-2 px-2 text-right">양품(m)</th>
-                  <th className="py-2 px-2 text-right">달성률</th>
-                  <th className="py-2 px-2 text-right">수율</th>
-                  <th className="py-2 px-3 text-right">스크랩</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                {(metrics?.vehicleStats || []).length > 0 ? (
-                  metrics.vehicleStats.map((v) => (
-                    <tr key={v.vehicle} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                      <td className="py-2 px-3 font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <span className="px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-black text-[10.5px]">
-                          {v.vehicle}
-                        </span>
-                        <span className="text-[11px] text-slate-500 truncate max-w-[120px]">
-                          {v.itemName}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">
-                        {(v.target || 0).toLocaleString()}
-                      </td>
-                      <td className="py-2 px-2 text-right font-black text-slate-900 dark:text-white">
-                        {(v.actual || 0).toLocaleString()}
-                      </td>
-                      <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400 font-bold">
-                        {(v.good || 0).toLocaleString()}
-                      </td>
-                      <td className="py-2 px-2 text-right font-bold text-emerald-600">
-                        {v.attainmentRate ?? 0}%
-                      </td>
-                      <td className="py-2 px-2 text-right font-black text-blue-600">
-                        {v.yieldRate ?? 0}%
-                      </td>
-                      <td className="py-2 px-3 text-right text-amber-600 font-bold">
-                        {v.scrapKg ?? 0}kg
-                      </td>
-                    </tr>
+              <div className="space-y-2.5 pt-1">
+                {(metrics?.downtimeCategoryStats || []).length > 0 ? (
+                  metrics.downtimeCategoryStats.map((c) => (
+                    <div key={c.category} className="space-y-1 text-xs">
+                      <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-bold text-[11.5px]">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black">{c.category}</span>
+                          <span className="text-[10.5px] text-slate-400">({c.occurrences || 0}회 발생)</span>
+                        </div>
+                        <div className="flex items-center gap-2 font-black">
+                          <span className="text-rose-600">{c.minutes || 0}분 ({c.hours || 0}h)</span>
+                          <span className="text-slate-400 text-[10.5px]">[{c.percentage || 0}%]</span>
+                        </div>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full bg-rose-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Number(c.percentage) || 0)}%` }}
+                        ></div>
+                      </div>
+                    </div>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan={7} className="py-6 text-center text-slate-400 text-xs">
-                      선택된 조건의 차종별 실적이 없습니다.
-                    </td>
-                  </tr>
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    등록된 비가동 손실 내역이 없습니다.
+                  </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Right: Downtime Reasons Pareto */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-rose-600" />
-              비가동 원인별 분포 및 손실 시간
-            </h3>
-            <span className="text-[10.5px] font-bold text-slate-400">
-              총 {metrics?.totalDowntimeMinutes || 0}분 ({metrics?.totalDowntimeHours || 0}시간)
-            </span>
-          </div>
-
-          <div className="space-y-2.5 pt-1">
-            {(metrics?.downtimeCategoryStats || []).length > 0 ? (
-              metrics.downtimeCategoryStats.map((c) => (
-                <div key={c.category} className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-bold text-[11.5px]">
-                    <div className="flex items-center gap-2">
-                      <span className="font-black">{c.category}</span>
-                      <span className="text-[10.5px] text-slate-400">({c.occurrences || 0}회 발생)</span>
-                    </div>
-                    <div className="flex items-center gap-2 font-black">
-                      <span className="text-rose-600">{c.minutes || 0}분 ({c.hours || 0}h)</span>
-                      <span className="text-slate-400 text-[10.5px]">[{c.percentage || 0}%]</span>
-                    </div>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <div
-                      className="h-full bg-rose-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, Number(c.percentage) || 0)}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-8 text-center text-slate-400 text-xs">
-                등록된 비가동 손실 내역이 없습니다.
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
 
       {/* ========================================================================= */}
       {/* 6. Main Real-time Reports Ledger Table (작업일보 대장) */}

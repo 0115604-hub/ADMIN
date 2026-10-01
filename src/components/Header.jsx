@@ -90,37 +90,25 @@ export const Header = ({
               </h2>
             </div>
 
-            {/* Extrusion Operator Tab Switcher */}
-            {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && setActiveTab && (
-              <div className="flex items-center gap-1 ml-1 sm:ml-2">
-                <button
-                  type="button"
-                  onClick={() => {
+            {/* Extrusion Operator Work Report Write Button */}
+            {isExtrusionWorker && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeTab !== "extrusion_downtime" && setActiveTab) {
                     try {
                       localStorage.setItem("factory_extrusion_active_subtab", "production");
                     } catch (e) {}
                     setActiveTab("extrusion_downtime");
-                  }}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                    activeTab === "extrusion_downtime"
-                      ? "bg-teal-600 text-white shadow-xs"
-                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-                  }`}
-                >
-                  <span>🏭 압출작업일보</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("worker_dashboard")}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
-                    activeTab === "worker_dashboard"
-                      ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-                  }`}
-                >
-                  <span>📋 종합현황</span>
-                </button>
-              </div>
+                  }
+                  window.dispatchEvent(new CustomEvent("open-extrusion-work-report-modal"));
+                }}
+                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
+                title="압출 작업일보 작성"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>✍️ 일보작성</span>
+              </button>
             )}
           </div>
         ) : (
