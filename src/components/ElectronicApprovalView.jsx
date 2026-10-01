@@ -1191,7 +1191,7 @@ export const ElectronicApprovalView = () => {
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-slate-500">결재 의견 및 결재 이력:</span>
               <div className="space-y-1">
-                {docSteps.filter((s) => s.date).map((st, idx) => (
+                {(selectedDoc.steps || []).filter((s) => s && s.date).map((st, idx) => (
                   <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-[11px] flex items-center justify-between text-slate-600 dark:text-slate-300">
                     <span className="font-bold">
                       [{st.role}] {st.name} {st.status === "APPROVED" ? "✓ 승인" : st.status === "HOLD" ? "⏸️ 보류" : "✕ 반려"} : {st.comment || "의견 없음"}
