@@ -288,10 +288,14 @@ export const INITIAL_APPROVAL_DOCS = [];
 // Filter out unwanted weekday attendance synthesis documents so the CEO approval box is not flooded with weekday attendance logs
 export const isWeekdayAttSynthDoc = (d) => {
   if (!d) return false;
+  // ⭐ If it's an overtime document or a weekend/holiday document, NEVER filter it out!
+  if (d.id && d.id.startsWith("appr_ot_")) return false;
+  if (d.type === "OVERTIME") return false;
+  if (isWeekendByDate(d.workDate || d.title || d.docNumber || d.id)) return false;
+
   if (d.id && d.id.startsWith("appr_att_")) return true;
   if (d.type === "ATTENDANCE" && d.typeName && d.typeName.includes("취합")) return true;
   if (d.title && d.title.includes("근태보고서 취합")) return true;
-  if (d.title && /\((월|화|수|목|금)\)/.test(d.title) && d.title.includes("특근보고서 취합")) return true;
   return false;
 };
 

@@ -51,6 +51,7 @@ import {
 import { pushModalHistory, closeAllModals, popTopModal, wasModalJustPopped } from "./utils/modalHistory";
 import { initVersionWatcher, forceHardReload } from "./utils/versionCheck";
 import { initDailyMaintenanceScheduler } from "./services/dailyMaintenanceService";
+import { syncAllOvertimeReportsToApprovalBox } from "./services/approvalService";
 
 export const App = () => {
   const { isAuthenticated, isOperator, isAdmin, currentProfile, loading: authLoading, logout } = useAuth();
@@ -241,6 +242,9 @@ export const App = () => {
 
   useEffect(() => {
     loadData();
+    // Auto-sync existing/remote weekend/holiday overtime reports to approval box
+    syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("App mount auto-sync overtime reports to approval box:", e));
+
     // Daily 07:40 AM Morning & 17:30 PM Closing Briefing Checks
     checkAndAutoSendDailyMorningBriefing();
     checkAndAutoSendDailyClosingBriefing();

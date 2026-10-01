@@ -10,7 +10,7 @@ import {
   orderBy
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { syncPlantOvertimeToApprovalBox } from "./approvalService";
+import { syncPlantOvertimeToApprovalBox, syncAllOvertimeReportsToApprovalBox } from "./approvalService";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 
 // ⭐ 공장별 소속 협력업체 취합 체계 (Plant-to-Company Mapping)
@@ -230,6 +230,8 @@ export const subscribeOvertimeReports = (callback) => {
         }
         const normalizedList = remoteReports.map(normalizeOvertimeReport);
         saveLocalOvertimeReports(normalizedList);
+        // ⭐ Automatically synthesize weekend/holiday overtime reports into electronic approval box
+        syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("Background auto-sync overtime reports to approval box error:", e));
         if (callback) callback(normalizedList);
       },
       (error) => {
