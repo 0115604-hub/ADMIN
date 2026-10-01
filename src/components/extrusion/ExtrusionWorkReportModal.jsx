@@ -787,6 +787,8 @@ export const ExtrusionWorkReportModal = ({
       } else if (field === "category") {
         next.category = value;
         const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
+        const isDefectCategory = ["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅"].includes(value);
+        next.type = isDefectCategory ? "불량" : "비가동";
         if (!next.detail || DOWNTIME_CATEGORIES.some((c) => c.defaultDetail === next.detail)) {
           next.detail = catObj?.defaultDetail || "";
         }
@@ -2019,280 +2021,184 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 4: 비가동 및 불량내역 (비가동·불량 통합 등록 카드 + 등록 목록) */}
+            {/* Section 4: 비가동 및 불량내역 (간결하고 직관적인 통합 등록) */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-              {/* Section Header & Live Totals Badges */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+              {/* Header & Badges */}
+              <div className="flex items-center justify-between flex-wrap gap-1.5">
+                <div className="flex items-center gap-2">
                   <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    ④ 비가동 및 불량내역 등록
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    ④ 비가동 및 불량내역
                   </span>
-                  <span className="text-[10.5px] px-2 py-0.5 rounded-full font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border border-blue-300/60">
-                    총 {dtEvents.length}건 (비가동 {dtEvents.filter(e => (e.type || "비가동") === "비가동").length}건 · 불량 {dtEvents.filter(e => e.type === "불량").length}건 · 복합 {dtEvents.filter(e => e.type === "복합").length}건)
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                    총 {dtEvents.length}건
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/60 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-rose-600" />
-                    총 비가동: {totalDowntimeMinutes}분 ({(totalDowntimeMinutes / 60).toFixed(1)}시간)
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                    ⏱️ {totalDowntimeMinutes}분
                   </span>
                   {totalDowntimeScrapKg > 0 && (
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-300/60 flex items-center gap-1">
-                      <Trash2 className="w-3.5 h-3.5 text-orange-600" />
-                      총 폐기량: {totalDowntimeScrapKg}kg
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-black bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-800">
+                      🗑️ {totalDowntimeScrapKg}kg
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Input Card Form (Matching IssueEditModal style exactly) */}
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-400/80 dark:border-blue-700/80 shadow-md space-y-2.5">
-                {/* Top Row: Category/Type & Times & Minutes/Scrap */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-2.5 items-end">
-                  {/* 1. 구분 및 불량/비가동 항목 (5 cols) */}
-                  <div className="md:col-span-5 space-y-1">
-                    <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                      <span className="flex items-center gap-1">🏷️ 구분 / 불량 항목 (직접 선택)</span>
-                      {/* Type selector segmented pills */}
-                      <span className="inline-flex rounded-md p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => handleDowntimeDraftChange("type", "비가동")}
-                          className={`px-1.5 py-0.5 rounded transition cursor-pointer ${
-                            downtimeDraft.type === "비가동"
-                              ? "bg-amber-600 text-white font-black shadow-xs"
-                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                          }`}
-                        >
-                          ⏱️비가동
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDowntimeDraftChange("type", "불량")}
-                          className={`px-1.5 py-0.5 rounded transition cursor-pointer ${
-                            downtimeDraft.type === "불량"
-                              ? "bg-rose-600 text-white font-black shadow-xs"
-                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                          }`}
-                        >
-                          ⚠️품질불량
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDowntimeDraftChange("type", "복합")}
-                          className={`px-1.5 py-0.5 rounded transition cursor-pointer ${
-                            downtimeDraft.type === "복합"
-                              ? "bg-purple-600 text-white font-black shadow-xs"
-                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                          }`}
-                        >
-                          🔄복합
-                        </button>
-                      </span>
+              {/* Simple Clean Input Card */}
+              <div className="p-2.5 sm:p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-xs space-y-2">
+                {/* 1행: 항목(22개) / 시작~종료 / 소요시간 / 폐기량 */}
+                <div className="grid grid-cols-2 sm:grid-cols-12 gap-1.5 sm:gap-2 items-center">
+                  {/* 항목 선택 (4 cols) */}
+                  <div className="col-span-2 sm:col-span-4">
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                      불량/비가동 항목 (22종)
                     </label>
                     <select
                       value={downtimeDraft.category || "압개시"}
                       onChange={(e) => handleDowntimeDraftChange("category", e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-slate-800 text-xs font-black text-blue-950 dark:text-blue-200 shadow-xs cursor-pointer focus:ring-1 focus:ring-blue-400"
+                      className="w-full px-2 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-slate-800 text-xs font-black text-amber-950 dark:text-amber-200 cursor-pointer focus:ring-1 focus:ring-amber-500"
                     >
                       {DOWNTIME_CATEGORIES.map((c) => (
                         <option key={c.id} value={c.id}>
-                          [{c.label}] {c.defaultDetail || c.label}
+                          {c.label} ({["압개시", "형교환", "종료", "설비이상", "다이스수정", "기술TRY"].includes(c.id) ? "비가동" : "불량"})
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* 2. 시작시간 ~ 종료시간 (4 cols) */}
-                  <div className="md:col-span-4 space-y-1">
-                    <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block">
-                      ⏱️ 시간 (시작 ~ 종료)
+                  {/* 시작 ~ 종료 시간 (4 cols) */}
+                  <div className="col-span-2 sm:col-span-4">
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                      시간 (시작 ~ 종료)
                     </label>
                     <div className="flex items-center gap-1">
                       <input
                         type="time"
                         value={downtimeDraft.startTime || ""}
                         onChange={(e) => handleDowntimeDraftChange("startTime", e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-center text-slate-900 dark:text-white shadow-xs focus:ring-1 focus:ring-blue-400"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-center text-slate-900 dark:text-white"
                       />
-                      <span className="text-slate-400 font-bold text-xs">~</span>
+                      <span className="text-slate-400 text-xs">~</span>
                       <input
                         type="time"
                         value={downtimeDraft.endTime || ""}
                         onChange={(e) => handleDowntimeDraftChange("endTime", e.target.value)}
-                        className="w-full px-2 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-center text-slate-900 dark:text-white shadow-xs focus:ring-1 focus:ring-blue-400"
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-center text-slate-900 dark:text-white"
                       />
                     </div>
                   </div>
 
-                  {/* 3. 자동계산시간 & 폐기량 (3 cols) */}
-                  <div className="md:col-span-3 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300">
-                        ⚡ 시간(분) &amp; 폐기(kg)
-                      </label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          step="5"
-                          value={downtimeDraft.minutes ?? ""}
-                          onChange={(e) => handleDowntimeDraftChange("minutes", e.target.value)}
-                          placeholder="0분"
-                          className="w-full px-2 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/30 font-black text-xs text-right text-rose-700 dark:text-rose-300 shadow-xs focus:ring-1 focus:ring-rose-400"
-                          title="비가동 소요시간(분)"
-                        />
-                        <span className="absolute right-1 top-2 text-[9px] text-rose-400 font-bold pointer-events-none">분</span>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          value={downtimeDraft.scrapKg ?? ""}
-                          onChange={(e) => handleDowntimeDraftChange("scrapKg", e.target.value)}
-                          placeholder="0.0"
-                          className="w-full px-2 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 font-black text-xs text-right text-amber-700 dark:text-amber-300 shadow-xs focus:ring-1 focus:ring-amber-400"
-                          title="폐기 중량(kg)"
-                        />
-                        <span className="absolute right-1 top-2 text-[9px] text-amber-400 font-bold pointer-events-none">kg</span>
-                      </div>
-                    </div>
+                  {/* 소요시간 (2 cols) */}
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                      소요시간(분)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      value={downtimeDraft.minutes ?? ""}
+                      onChange={(e) => handleDowntimeDraftChange("minutes", e.target.value)}
+                      placeholder="0"
+                      className="w-full px-2 py-1.5 rounded-lg border border-rose-300 dark:border-rose-700 bg-rose-50/40 dark:bg-slate-800 text-xs font-black text-right text-rose-700 dark:text-rose-300"
+                    />
+                  </div>
+
+                  {/* 폐기량 (2 cols) */}
+                  <div className="col-span-1 sm:col-span-2">
+                    <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                      폐기중량(kg)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={downtimeDraft.scrapKg ?? ""}
+                      onChange={(e) => handleDowntimeDraftChange("scrapKg", e.target.value)}
+                      placeholder="0.0"
+                      className="w-full px-2 py-1.5 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50/40 dark:bg-slate-800 text-xs font-black text-right text-orange-700 dark:text-orange-300"
+                    />
                   </div>
                 </div>
 
-                {/* Middle Row: Textarea for detail */}
-                <div>
-                  <textarea
-                    rows={2}
-                    placeholder="발생 내역 및 조치 내용을 입력해 주세요. (우측 드롭다운 템플릿 선택 또는 직접 작성)"
+                {/* 2행: 내역 직접입력/드롭다운선택 + [등록] 버튼 */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
                     value={downtimeDraft.detail || ""}
                     onChange={(e) => handleDowntimeDraftChange("detail", e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden min-h-[58px]"
+                    placeholder="발생 내역 및 조치 내용을 입력하세요 (직접 입력 또는 자동 문구 수정)"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                   />
-                </div>
-
-                {/* Bottom Row: Buttons Bar (Left Template Select + Right [➕ 내역 등록] Button) */}
-                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
-                  <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">📋 빠른 템플릿:</span>
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleDowntimeDraftChange("detailPreset", e.target.value);
-                        }
-                      }}
-                      className="w-full max-w-sm px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-[11px] font-bold cursor-pointer hover:border-blue-400 focus:ring-1 focus:ring-blue-400"
-                    >
-                      <option value="">-- 내역 템플릿 선택 --</option>
-                      {DOWNTIME_CATEGORIES.map((c) => (
-                        <option key={c.id} value={c.defaultDetail || c.label}>
-                          [{c.label}] {c.defaultDetail || c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   <button
                     type="button"
                     onClick={handleAddDraftEvent}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer shrink-0"
+                    className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shrink-0 transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-xs"
                   >
-                    <Plus className="w-4 h-4" />
-                    <span>내역 등록</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>등록</span>
                   </button>
                 </div>
               </div>
 
-              {/* Below Input Card: Registered Events List (등록된 내역 목록) */}
+              {/* 등록된 목록 (간결한 1줄 카드 목록) */}
               {dtEvents.length > 0 ? (
-                <div className="space-y-2 pt-1">
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                      <span>📝 등록된 내역 목록</span>
-                      <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] font-black">
-                        {dtEvents.length}건
-                      </span>
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      (항목별 삭제 가능)
-                    </span>
-                  </div>
+                <div className="space-y-1.5">
+                  {dtEvents.map((ev, idx) => {
+                    const isDefect = ["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅"].includes(ev.category) || ev.type === "불량";
+                    return (
+                      <div
+                        key={ev.id || `dt_item_${idx}`}
+                        className="p-2 sm:p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2 shadow-2xs hover:border-slate-400 transition"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-black shrink-0 ${
+                            isDefect ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          }`}>
+                            {ev.category || "압개시"}
+                          </span>
 
-                  <div className="space-y-1.5">
-                    {dtEvents.map((ev, idx) => {
-                      const isDefect = ev.type === "불량";
-                      const isCombo = ev.type === "복합";
-                      const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === ev.category);
-
-                      return (
-                        <div
-                          key={ev.id || `dt_reg_${idx}`}
-                          className="p-2.5 sm:p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:border-blue-300 dark:hover:border-blue-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                        >
-                          <div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
-                            <span className={`w-5 h-5 rounded-full text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 ${
-                              isDefect ? "bg-rose-600" : isCombo ? "bg-purple-600" : "bg-amber-600"
-                            }`}>
-                              {idx + 1}
+                          {(ev.startTime || ev.endTime) && (
+                            <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-400 shrink-0">
+                              {ev.startTime || "--:--"}~{ev.endTime || "--:--"}
                             </span>
+                          )}
 
-                            <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
-                              <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black shrink-0 ${
-                                isDefect
-                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300"
-                                  : isCombo
-                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
-                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
-                              }`}>
-                                {ev.type || "비가동"} • {ev.category || "압개시"}
-                              </span>
+                          {ev.minutes > 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-rose-600 dark:text-rose-400 text-[10.5px] font-black shrink-0">
+                              {ev.minutes}분
+                            </span>
+                          )}
 
-                              {(ev.startTime || ev.endTime) && (
-                                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10.5px] font-mono font-bold shrink-0">
-                                  ⏰ {ev.startTime || "--:--"} ~ {ev.endTime || "--:--"}
-                                </span>
-                              )}
+                          {Number(ev.scrapKg) > 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-orange-600 dark:text-orange-400 text-[10.5px] font-black shrink-0">
+                              폐기 {ev.scrapKg}kg
+                            </span>
+                          )}
 
-                              {ev.minutes > 0 && (
-                                <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-[10.5px] font-black shrink-0 border border-rose-200 dark:border-rose-900">
-                                  ⏱️ {ev.minutes}분
-                                </span>
-                              )}
-
-                              {Number(ev.scrapKg) > 0 && (
-                                <span className="px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 text-[10.5px] font-black shrink-0 border border-orange-200 dark:border-orange-900">
-                                  🗑️ 폐기: {ev.scrapKg}kg
-                                </span>
-                              )}
-
-                              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate flex-1 min-w-[120px]" title={ev.detail}>
-                                {ev.detail || catObj?.defaultDetail || "-"}
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveDowntimeEvent(idx)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer self-end sm:self-center shrink-0"
-                            title="이 내역 삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <span className="text-xs text-slate-700 dark:text-slate-300 truncate min-w-[80px]" title={ev.detail}>
+                            {ev.detail || "-"}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDowntimeEvent(idx)}
+                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer shrink-0"
+                          title="삭제"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="py-4 px-3 text-center text-xs text-slate-400 dark:text-slate-500 bg-white/60 dark:bg-slate-900/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-                  등록된 비가동 및 불량 내역이 없습니다. 위 입력창에서 내역을 작성한 후 <strong className="text-blue-600 dark:text-blue-400">[내역 등록]</strong> 버튼을 눌러주세요.
+                <div className="py-2.5 text-center text-xs text-slate-400 bg-white/50 dark:bg-slate-900/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                  등록된 비가동 및 불량 내역이 없습니다.
                 </div>
               )}
             </div>
