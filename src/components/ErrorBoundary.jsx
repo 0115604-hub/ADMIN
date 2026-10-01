@@ -55,7 +55,7 @@ export class ErrorBoundary extends React.Component {
             <p className="text-xs text-slate-400 max-w-md mb-4">
               해당 메뉴를 불러오는 도중 일시적인 문제가 감지되었습니다. 아래 버튼을 눌러 다시 시도해 주세요.
             </p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 justify-center">
               <button
                 onClick={this.handleReset}
                 className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
@@ -70,16 +70,27 @@ export class ErrorBoundary extends React.Component {
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>전체 새로고침</span>
               </button>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem("factory_extrusion_active_subtab");
+                    localStorage.removeItem("factory_extrusion_selected_line");
+                    localStorage.removeItem("factory_extrusion_selected_week");
+                  } catch (e) {}
+                  this.handleReload();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <span>압출 캐시 초기화</span>
+              </button>
             </div>
             {this.state.error && (
-              <details className="mt-4 text-left w-full max-w-md">
-                <summary className="text-[10px] text-slate-500 cursor-pointer hover:text-slate-400">
-                  기술 상세 내용 보기
-                </summary>
-                <pre className="mt-1 p-2 rounded bg-slate-950 text-[10px] text-rose-400 overflow-x-auto font-mono">
+              <div className="mt-4 text-left w-full max-w-lg">
+                <div className="text-[11px] font-bold text-slate-400 mb-1">오류 상세 내용:</div>
+                <pre className="p-2.5 rounded-xl bg-slate-950 text-[11px] text-rose-400 overflow-x-auto font-mono border border-rose-900/50">
                   {String(this.state.error?.message || this.state.error)}
                 </pre>
-              </details>
+              </div>
             )}
           </div>
         );

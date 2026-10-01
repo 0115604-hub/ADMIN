@@ -593,8 +593,6 @@ export const ExtrusionWorkReportModal = ({
     }
   }, [isOpen, initialData, isEditing]);
 
-  if (!isOpen) return null;
-
   // Multi-item shift-level aggregated totals
   const itemsList = Array.isArray(formData?.items) ? formData.items : [];
   const totalTargetQty = itemsList.reduce((sum, it) => sum + (Number(it?.targetQty) || 0), 0);
@@ -613,13 +611,10 @@ export const ExtrusionWorkReportModal = ({
   const totalDowntimeScrapKg = Number(dtEvents.reduce((sum, ev) => sum + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
 
   // Multi-worker selection helpers (압출동 11명 복수선택)
-  const currentWorkers = useMemo(() => {
-    if (!formData.worker) return [];
-    return String(formData.worker)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }, [formData.worker]);
+  const currentWorkers = String(formData?.worker || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const handleToggleWorker = (workerStr) => {
     setFormData((prev) => {
@@ -1055,6 +1050,8 @@ export const ExtrusionWorkReportModal = ({
 
     onSave(reportToSave);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fadeIn">
