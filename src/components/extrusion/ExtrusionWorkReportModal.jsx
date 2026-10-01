@@ -131,15 +131,19 @@ const calculateMinutesFromTime = (startTime, endTime) => {
   }
 };
 
-const createDefaultDowntimeEvent = (suffix = Date.now()) => ({
-  id: `dt_${suffix}_${Math.random().toString(36).substring(2, 6)}`,
-  startTime: "08:00",
-  endTime: "08:30",
-  minutes: 30,
-  category: "압개시",
-  detail: "초기 압출 승온 및 제품 인취 세팅",
-  scrapKg: ""
-});
+const createDefaultDowntimeEvent = (type = "비가동", category = "압개시", suffix = Date.now()) => {
+  const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === category) || DOWNTIME_CATEGORIES[0];
+  return {
+    id: `dt_${suffix}_${Math.random().toString(36).substring(2, 6)}`,
+    type: type || "비가동", // "비가동" | "불량" | "복합"
+    startTime: "08:00",
+    endTime: "08:30",
+    minutes: 30,
+    category: category || "압개시",
+    detail: catObj?.defaultDetail || "초기 압출 승온 및 제품 인취 세팅",
+    scrapKg: ""
+  };
+};
 
 export const ExtrusionWorkReportModal = ({
   isOpen,
@@ -257,26 +261,28 @@ export const ExtrusionWorkReportModal = ({
         downtimeEvents: Array.isArray(initialData?.downtimeEvents) && initialData.downtimeEvents.length > 0
           ? initialData.downtimeEvents.map((e, idx) => ({
               id: e.id || `dt_${idx + 1}`,
+              type: e.type || (["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅", "다이스수정"].includes(e.category) ? "불량" : "비가동"),
               startTime: e.startTime || "",
               endTime: e.endTime || "",
               minutes: Number(e.minutes) || 0,
-              category: e.category || "형교환",
+              category: e.category || "압개시",
               detail: e.detail || "",
               scrapKg: e.scrapKg ?? ""
             }))
           : (initialData?.downtimeMinutes > 0 || initialData?.downtimeDetail || initialData?.startTime
               ? [{
                   id: "dt_1",
+                  type: "비가동",
                   startTime: initialData?.startTime || "08:00",
                   endTime: initialData?.endTime || "08:30",
                   minutes: Number(initialData?.downtimeMinutes) || 30,
-                  category: initialData?.downtimeCategory || "형교환",
+                  category: initialData?.downtimeCategory || "압개시",
                   detail: initialData?.downtimeDetail || "",
                   scrapKg: initialData?.downtimeScrapKg ?? ""
                 }]
-              : [createDefaultDowntimeEvent()]),
+              : [createDefaultDowntimeEvent("비가동", "압개시")]),
         downtimeMinutes: Number(initialData?.downtimeMinutes) || 30,
-        downtimeCategory: initialData?.downtimeCategory || "형교환",
+        downtimeCategory: initialData?.downtimeCategory || "압개시",
         downtimeDetail: initialData?.downtimeDetail || "",
         downtimeScrapKg: initialData?.downtimeScrapKg ?? "",
         conditions: {
@@ -460,26 +466,28 @@ export const ExtrusionWorkReportModal = ({
           downtimeEvents: Array.isArray(initialData?.downtimeEvents) && initialData.downtimeEvents.length > 0
             ? initialData.downtimeEvents.map((e, idx) => ({
                 id: e.id || `dt_${idx + 1}`,
+                type: e.type || (["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "미분산", "발포", "원인불명", "밴딩", "심금절단", "심금노출", "천공", "연고무절단", "길이", "코팅", "다이스수정"].includes(e.category) ? "불량" : "비가동"),
                 startTime: e.startTime || "",
                 endTime: e.endTime || "",
                 minutes: Number(e.minutes) || 0,
-                category: e.category || "형교환",
+                category: e.category || "압개시",
                 detail: e.detail || "",
                 scrapKg: e.scrapKg ?? ""
               }))
             : (initialData?.downtimeMinutes > 0 || initialData?.downtimeDetail || initialData?.startTime
                 ? [{
                     id: "dt_1",
+                    type: "비가동",
                     startTime: initialData?.startTime || "08:00",
                     endTime: initialData?.endTime || "08:30",
                     minutes: Number(initialData?.downtimeMinutes) || 30,
-                    category: initialData?.downtimeCategory || "형교환",
+                    category: initialData?.downtimeCategory || "압개시",
                     detail: initialData?.downtimeDetail || "",
                     scrapKg: initialData?.downtimeScrapKg ?? ""
                   }]
-                : [createDefaultDowntimeEvent()]),
+                : [createDefaultDowntimeEvent("비가동", "압개시")]),
           downtimeMinutes: Number(initialData?.downtimeMinutes) || 30,
-          downtimeCategory: initialData?.downtimeCategory || "형교환",
+          downtimeCategory: initialData?.downtimeCategory || "압개시",
           downtimeDetail: initialData?.downtimeDetail || "",
           downtimeScrapKg: initialData?.downtimeScrapKg ?? "",
           conditions: {
@@ -561,9 +569,9 @@ export const ExtrusionWorkReportModal = ({
             coatingThicknessInner: EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
             pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones]
           },
-          downtimeEvents: [createDefaultDowntimeEvent()],
+          downtimeEvents: [createDefaultDowntimeEvent("비가동", "압개시")],
           downtimeMinutes: 30,
-          downtimeCategory: "형교환",
+          downtimeCategory: "압개시",
           downtimeDetail: "",
           downtimeScrapKg: "",
           notes: "",
@@ -749,10 +757,13 @@ export const ExtrusionWorkReportModal = ({
     });
   };
 
-  const handleAddDowntimeEvent = () => {
+  const handleAddDowntimeEvent = (type = "비가동", category = "압개시") => {
     setFormData((prev) => ({
       ...prev,
-      downtimeEvents: [...(prev.downtimeEvents || []), createDefaultDowntimeEvent(Date.now())]
+      downtimeEvents: [
+        ...(prev.downtimeEvents || []),
+        createDefaultDowntimeEvent(type, category, Date.now())
+      ]
     }));
   };
 
@@ -762,7 +773,7 @@ export const ExtrusionWorkReportModal = ({
       if (list.length <= 1) {
         return {
           ...prev,
-          downtimeEvents: [createDefaultDowntimeEvent(Date.now())]
+          downtimeEvents: [createDefaultDowntimeEvent("비가동", "압개시", Date.now())]
         };
       }
       return {
@@ -779,11 +790,22 @@ export const ExtrusionWorkReportModal = ({
 
       if (field === "minutes" || field === "scrapKg") {
         target[field] = value === "" ? "" : Math.max(0, Number(value));
+      } else if (field === "type") {
+        target.type = value;
+        if (value === "불량" && target.category === "압개시") {
+          target.category = "뜯김";
+          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "뜯김");
+          target.detail = catObj?.defaultDetail || "";
+        } else if (value === "비가동" && target.category === "뜯김") {
+          target.category = "형교환";
+          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "형교환");
+          target.detail = catObj?.defaultDetail || "";
+        }
       } else if (field === "category") {
         target.category = value;
         const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
-        if (!target.detail && catObj?.defaultDetail) {
-          target.detail = catObj.defaultDetail;
+        if (!target.detail || DOWNTIME_CATEGORIES.some((c) => c.defaultDetail === target.detail)) {
+          target.detail = catObj?.defaultDetail || "";
         }
       } else if (field === "detailPreset") {
         target.detail = value;
@@ -800,9 +822,7 @@ export const ExtrusionWorkReportModal = ({
         const e = field === "endTime" ? value : target.endTime;
         if (s && e) {
           const comp = calculateMinutesFromTime(s, e);
-          if (comp > 0) {
-            target.minutes = comp;
-          }
+          target.minutes = comp;
         }
       }
 
@@ -1908,49 +1928,101 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 4: 비가동 및 불량내역 */}
+            {/* Section 4: 비가동 및 불량내역 (비가동·불량 통합 등록 & 자동 계산) */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-              {/* Header & Badges */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
+              {/* Section Header & Live Totals Badges */}
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                     <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    ④ 비가동 및 불량내역
+                    ④ 비가동 및 불량내역 등록
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60">
-                    총 {dtEvents.length}건
+                  <span className="text-[10.5px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60">
+                    총 {dtEvents.length}건 (비가동 {dtEvents.filter(e => (e.type || "비가동") === "비가동").length}건 · 불량 {dtEvents.filter(e => e.type === "불량").length}건 · 복합 {dtEvents.filter(e => e.type === "복합").length}건)
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/60">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/60 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-rose-600" />
                     총 비가동: {totalDowntimeMinutes}분 ({(totalDowntimeMinutes / 60).toFixed(1)}시간)
                   </span>
                   {totalDowntimeScrapKg > 0 && (
-                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-300/60">
-                      총 폐기: {totalDowntimeScrapKg}kg
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-300/60 flex items-center gap-1">
+                      <Trash2 className="w-3.5 h-3.5 text-orange-600" />
+                      총 폐기량: {totalDowntimeScrapKg}kg
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Events List */}
-              <div className="space-y-2.5">
+              {/* Events List (비가동 / 불량 / 복합 등록 카드 목록) */}
+              <div className="space-y-3">
                 {dtEvents.map((ev, idx) => {
+                  const currentType = ev.type || "비가동";
+                  const isDefect = currentType === "불량";
+                  const isCombo = currentType === "복합";
+                  
                   return (
                     <div
                       key={ev.id || `dt_card_${idx}`}
-                      className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/70 shadow-xs space-y-2.5 transition-all hover:border-amber-300 dark:hover:border-amber-700/50"
+                      className={`p-3 sm:p-3.5 bg-white dark:bg-slate-900 rounded-2xl border shadow-xs space-y-2.5 transition-all ${
+                        isDefect
+                          ? "border-rose-300 dark:border-rose-800/70 hover:border-rose-400"
+                          : isCombo
+                          ? "border-purple-300 dark:border-purple-800/70 hover:border-purple-400"
+                          : "border-amber-300 dark:border-amber-800/70 hover:border-amber-400"
+                      }`}
                     >
-                      {/* Card Top Row: Number, Category Select, Quick time badges, Delete button */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-black text-[11px] flex items-center justify-center shrink-0">
+                      {/* Card Top: Number, Type Toggle, Category Select, Elapsed badge, Delete */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`w-5 h-5 rounded-full text-white font-black text-[11px] flex items-center justify-center shrink-0 ${
+                            isDefect ? "bg-rose-600" : isCombo ? "bg-purple-600" : "bg-amber-600"
+                          }`}>
                             {idx + 1}
                           </span>
-                          {/* Category Select */}
+
+                          {/* Type Segmented Buttons (비가동 | 불량 | 복합) */}
+                          <div className="inline-flex rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold">
+                            <button
+                              type="button"
+                              onClick={() => handleDowntimeEventChange(idx, "type", "비가동")}
+                              className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                                currentType === "비가동"
+                                  ? "bg-amber-600 text-white font-black shadow-xs"
+                                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                              }`}
+                            >
+                              ⏱️ 비가동
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDowntimeEventChange(idx, "type", "불량")}
+                              className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                                currentType === "불량"
+                                  ? "bg-rose-600 text-white font-black shadow-xs"
+                                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                              }`}
+                            >
+                              ⚠️ 품질불량
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDowntimeEventChange(idx, "type", "복합")}
+                              className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
+                                currentType === "복합"
+                                  ? "bg-purple-600 text-white font-black shadow-xs"
+                                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                              }`}
+                            >
+                              🔄 비가동+불량
+                            </button>
+                          </div>
+
+                          {/* Category Select (22개 항목) */}
                           <div className="flex items-center gap-1">
-                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">구분:</span>
+                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">항목:</span>
                             <select
                               value={ev.category || "압개시"}
                               onChange={(e) => handleDowntimeEventChange(idx, "category", e.target.value)}
@@ -1984,10 +2056,11 @@ export const ExtrusionWorkReportModal = ({
                         </div>
                       </div>
 
-                      {/* Time, Minutes, Scrap Inputs Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* Time, Minutes, Scrap Inputs Grid (시작시간/종료시간 넣으면 비가동시간 자동 계산 & 폐기량 입력) */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        {/* 1. 시작시간 */}
                         <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                          <label className="block text-[10px] font-black text-slate-600 dark:text-slate-400 mb-0.5">
                             시작시간
                           </label>
                           <input
@@ -1997,8 +2070,10 @@ export const ExtrusionWorkReportModal = ({
                             className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
                           />
                         </div>
+
+                        {/* 2. 종료시간 */}
                         <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                          <label className="block text-[10px] font-black text-slate-600 dark:text-slate-400 mb-0.5">
                             종료시간
                           </label>
                           <input
@@ -2008,10 +2083,19 @@ export const ExtrusionWorkReportModal = ({
                             className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
                           />
                         </div>
+
+                        {/* 3. 비가동시간(분) (자동 계산 & 수동 입력 가능) */}
                         <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
-                            비가동(분)
-                          </label>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <label className="text-[10px] font-black text-slate-600 dark:text-slate-400">
+                              비가동시간 (분)
+                            </label>
+                            {ev.startTime && ev.endTime && (
+                              <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                                ⚡자동계산
+                              </span>
+                            )}
+                          </div>
                           <input
                             type="number"
                             min="0"
@@ -2022,9 +2106,11 @@ export const ExtrusionWorkReportModal = ({
                             className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-right text-rose-600 dark:text-rose-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
                           />
                         </div>
+
+                        {/* 4. 폐기량(kg) */}
                         <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
-                            폐기중량(kg)
+                          <label className="block text-[10px] font-black text-slate-600 dark:text-slate-400 mb-0.5">
+                            폐기량 (kg)
                           </label>
                           <input
                             type="number"
@@ -2084,15 +2170,25 @@ export const ExtrusionWorkReportModal = ({
                 ))}
               </datalist>
 
-              {/* Add Event Button */}
-              <button
-                type="button"
-                onClick={handleAddDowntimeEvent}
-                className="w-full py-2 border-2 border-dashed border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500 text-amber-800 dark:text-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>비가동 및 불량 내역 추가 등록</span>
-              </button>
+              {/* Action Buttons for Adding Events */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleAddDowntimeEvent("비가동", "형교환")}
+                  className="py-2.5 px-3 border-2 border-dashed border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500 text-amber-900 dark:text-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-amber-600" />
+                  <span>➕ ⏱️ 비가동 내역 추가 등록</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddDowntimeEvent("불량", "뜯김")}
+                  className="py-2.5 px-3 border-2 border-dashed border-rose-300 dark:border-rose-700 hover:border-rose-500 dark:hover:border-rose-500 text-rose-900 dark:text-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-950/30 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5 text-rose-600" />
+                  <span>➕ ⚠️ 불량(스크랩) 내역 추가 등록</span>
+                </button>
+              </div>
             </div>
 
             {/* ========================================================================= */}
