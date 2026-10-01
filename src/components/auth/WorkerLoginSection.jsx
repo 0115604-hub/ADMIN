@@ -130,7 +130,15 @@ export const WorkerLoginSection = ({
                       ) : isPartner ? (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
                       ) : (
-                        <span className="text-[10.5px] sm:text-[11.5px] font-bold">{worker.title || "선임"}</span>
+                        <span className="text-[10.5px] sm:text-[11.5px] font-bold">
+                          {worker.title && worker.title !== "사원"
+                            ? worker.title
+                            : worker.assignedProcess === "품질관리"
+                            ? "품질"
+                            : worker.assignedProcess
+                            ? worker.assignedProcess.slice(0, 4)
+                            : ""}
+                        </span>
                       )}
                     </div>
                   </button>
@@ -244,7 +252,15 @@ export const WorkerLoginSection = ({
                       ) : isPartner ? (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
                       ) : (
-                        <span className="text-[10.5px] sm:text-[11.5px] font-bold">{worker.title || "선임"}</span>
+                        <span className="text-[10.5px] sm:text-[11.5px] font-bold">
+                          {worker.title && worker.title !== "사원"
+                            ? worker.title
+                            : worker.assignedProcess === "품질관리"
+                            ? "품질"
+                            : worker.assignedProcess
+                            ? worker.assignedProcess.slice(0, 4)
+                            : ""}
+                        </span>
                       )}
                     </div>
                   </button>

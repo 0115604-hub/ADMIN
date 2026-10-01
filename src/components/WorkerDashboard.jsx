@@ -2881,7 +2881,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             </div>
             <div>
               <h3 className="font-black text-sm sm:text-base leading-tight">
-                🏭 삼랑진공장 압출동 작업자 모드 ({currentProfile.name} {currentProfile.title || "사원"})
+                🏭 삼랑진공장 압출동 작업자 모드 ({currentProfile.name}{currentProfile.title && currentProfile.title !== "사원" ? ` ${currentProfile.title}` : ""})
               </h3>
               <p className="text-xs text-teal-100 font-medium">
                 압출 생산관리 탭에서 실시간 작업일보 작성 및 생산실적/비가동 분석을 확인하세요.

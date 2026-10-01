@@ -38,14 +38,14 @@ export const EXTRUSION_WORKERS = [
   { id: "ext_gyg", name: "공영국", title: "대리", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "공", pin: "11" },
   { id: "ext_sid", name: "심임대", title: "반장", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "심", pin: "11" },
   { id: "ext_lse", name: "이상은", title: "반장", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" },
-  { id: "ext_nic", name: "닉", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "닉", pin: "11" },
-  { id: "ext_mic", name: "마이클", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "마", pin: "11" },
-  { id: "ext_jca", name: "존카를로", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "존", pin: "11" },
-  { id: "ext_jim", name: "지미", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "지", pin: "11" },
-  { id: "ext_man", name: "만", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "만", pin: "11" },
-  { id: "ext_sha", name: "샤먼", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "샤", pin: "11" },
-  { id: "ext_kum", name: "쿠마루", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "쿠", pin: "11" },
-  { id: "ext_isu", name: "이수루", title: "사원", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" }
+  { id: "ext_nic", name: "닉", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "닉", pin: "11" },
+  { id: "ext_mic", name: "마이클", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "마", pin: "11" },
+  { id: "ext_jca", name: "존카를로", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "존", pin: "11" },
+  { id: "ext_jim", name: "지미", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "지", pin: "11" },
+  { id: "ext_man", name: "만", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "만", pin: "11" },
+  { id: "ext_sha", name: "샤먼", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "샤", pin: "11" },
+  { id: "ext_kum", name: "쿠마루", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "쿠", pin: "11" },
+  { id: "ext_isu", name: "이수루", title: "", plant: "삼랑진공장", building: "압출동", assignedProcess: "압출동", role: "OPERATOR", avatar: "이", pin: "11" }
 ];
 
 export const PLANTS = [
@@ -62,7 +62,7 @@ export const PLANTS = [
       { id: "sam_in", name: "양인나", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "양", pin: "11" },
       { id: "sam_dg", name: "유동길", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "유", pin: "11" },
       { id: "sam_ij", name: "조인주", title: "선임", plant: "삼랑진공장", assignedProcess: "경리업무", role: "OPERATOR", avatar: "조", pin: "11" },
-      { id: "sam_sg", name: "이상기", title: "사원", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" },
+      { id: "sam_sg", name: "이상기", title: "", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" },
       { id: "sam_ys", name: "유성", title: "협력업체", plant: "삼랑진공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "유", pin: "11", isPartner: true }
     ]
   },
@@ -138,10 +138,11 @@ export const AuthProvider = ({ children }) => {
           (u) => u.id === targetId || u.name === targetId || u.id === savedProfile.id || u.name === savedProfile.name
         );
         if (matched) {
+          const titleStr = matched.title && matched.title !== "사원" ? ` ${matched.title}` : "";
           const refreshed = {
             ...matched,
-            displayName: matched.role === "ADMIN" ? "ADMIN" : `${matched.name} ${matched.title}`,
-            roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name} ${matched.title}`
+            displayName: matched.role === "ADMIN" ? "ADMIN" : `${matched.name}${titleStr}`.trim(),
+            roleLabel: matched.role === "ADMIN" ? "ADMIN" : `${matched.plant} • ${matched.name}${titleStr}`.trim()
           };
           setCurrentProfile(refreshed);
           sessionStorage.setItem("admin_user_profile", JSON.stringify(refreshed));
@@ -197,10 +198,11 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
+    const titleStr = target.title && target.title !== "사원" ? ` ${target.title}` : "";
     const profileToSave = {
       ...target,
-      displayName: target.role === "ADMIN" ? "ADMIN" : `${target.name} ${target.title || ""}`.trim(),
-      roleLabel: target.role === "ADMIN" ? "ADMIN" : `${target.plant} • ${target.name} ${target.title || ""}`.trim()
+      displayName: target.role === "ADMIN" ? "ADMIN" : `${target.name}${titleStr}`.trim(),
+      roleLabel: target.role === "ADMIN" ? "ADMIN" : `${target.plant} • ${target.name}${titleStr}`.trim()
     };
 
     setCurrentProfile(profileToSave);
