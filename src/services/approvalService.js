@@ -16,6 +16,7 @@ import {
 } from "./telegramService";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
 import { cleanCompanyName } from "./overtimeSmartService";
+import { isWeekendByDate } from "./overtimeService";
 
 const COLLECTION_NAME = "approval_documents";
 const DELETED_COLLECTION_NAME = "deleted_approval_documents";
@@ -903,7 +904,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
     const dayOfWeekNames = ["일", "월", "화", "수", "목", "금", "토"];
     const dt = new Date(yearNum, monthNum - 1, dayNum);
     const dayOfWeekIndex = dt.getDay(); // 0 = 일, 6 = 토
-    const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6;
+    const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6 || isWeekendByDate(workDateStr);
     const dayLabel = dayOfWeekNames[dayOfWeekIndex] || (isWeekend ? "토" : "목");
 
     let allReports = Array.isArray(reports) ? reports : null;
@@ -965,9 +966,9 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const hasSpecialOvertimeReport = plantReports.some(
         (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
       );
-      const isActualOvertime = isWeekend || hasSpecialOvertimeReport;
+      const isActualOvertime = isWeekend || isWeekendByDate(workDateStr) || hasSpecialOvertimeReport;
 
-      // ⭐ 평일 근태보고서는 전자결재함에 등록하지 않고(근태/특근관리 탭에서 전담 관리), 주말 특근보고서만 전자결재함에 연동
+      // ⭐ 평일 근태보고서는 전자결재함에 등록하지 않고(근태/특근관리 탭에서 전담 관리), 주말/공휴일 특근보고서만 전자결재함에 연동
       if (!isActualOvertime) {
         // Clean up any previously created weekday synthesis document from approval box
         const oldIds = [
@@ -1285,7 +1286,7 @@ export const syncAllOvertimeReportsToApprovalBox = async () => {
         const d = parts && parts[3] ? parseInt(parts[3], 10) : 1;
         const dt = new Date(y, m - 1, d);
         const dow = dt.getDay();
-        const isWk = dow === 0 || dow === 6;
+        const isWk = dow === 0 || dow === 6 || isWeekendByDate(r.workDate);
         if (isWk || r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))) {
           weekendDates.add(r.workDate);
         }

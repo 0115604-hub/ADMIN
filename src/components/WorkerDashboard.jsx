@@ -4121,33 +4121,43 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 : "bg-[#5c1322]/90 text-[#ff8097] border border-[#a8253d]/80";
 
               return (
-                <button
-                  type="button"
+                <div
                   key={report.id}
-                  onClick={() => {
-                    pushModalHistory("special_workers_modal");
-                    setSelectedOvertimeReportForModal(report);
-                  }}
-                  className="inline-flex items-center gap-2 p-1 px-1.5 rounded-lg bg-slate-900/80 dark:bg-slate-950/90 border border-slate-700/80 hover:border-amber-500/80 cursor-pointer shadow-xs hover:shadow-md transition-all group active:scale-98"
-                  title="클릭 시 특근 근로자 명단 팝업 보기"
+                  className="inline-flex items-center gap-1.5 p-1 px-1.5 rounded-lg bg-slate-900/80 dark:bg-slate-950/90 border border-slate-700/80 hover:border-amber-500/80 shadow-xs hover:shadow-md transition-all group"
                 >
-                  {/* 1. 공장명 (회사명) 뱃지 */}
-                  <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 shadow-2xs ${plantBadgeBg}`}>
-                    {report.badgeLabel || `${report.plant} 특근`}
-                  </span>
-
-                  {/* 2. 날짜 및 요일 뱃지 */}
-                  {formattedDate && (
-                    <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 font-mono tracking-tight ${dateBorderBg}`}>
-                      {formattedDate}
+                  {/* 1. 공장명 (회사명) & 날짜 뱃지 (클릭 시 특근 근로자 명단 모달) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pushModalHistory("special_workers_modal");
+                      setSelectedOvertimeReportForModal(report);
+                    }}
+                    className="inline-flex items-center gap-1.5 cursor-pointer active:scale-98"
+                    title="클릭 시 특근 투입 근로자 명단 보기"
+                  >
+                    <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 shadow-2xs ${plantBadgeBg}`}>
+                      {report.badgeLabel || `${report.plant} 특근`}
                     </span>
-                  )}
+                    {formattedDate && (
+                      <span className={`px-2.5 py-0.8 rounded text-[11px] sm:text-xs font-black shrink-0 font-mono tracking-tight ${dateBorderBg}`}>
+                        {formattedDate}
+                      </span>
+                    )}
+                  </button>
 
-                  {/* 3. 결재 상태 뱃지 */}
-                  <span className={`px-2 py-0.8 rounded text-[10.5px] sm:text-xs font-black shrink-0 ${statusBadgeClass}`}>
-                    {statusText}
-                  </span>
-                </button>
+                  {/* 2. 결재 상태 뱃지 (클릭 시 전자결재함으로 바로 이동) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onNavigateTab) onNavigateTab("electronic_approval");
+                    }}
+                    className={`px-2.5 py-0.8 rounded text-[10.5px] sm:text-xs font-black shrink-0 cursor-pointer hover:opacity-80 active:scale-95 transition-all flex items-center gap-1 ${statusBadgeClass}`}
+                    title="클릭 시 전자결재함으로 바로 이동"
+                  >
+                    <span>{statusText}</span>
+                    <ArrowRight className="w-3 h-3 shrink-0" />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -9857,13 +9867,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedOvertimeReportForModal(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {onNavigateTab && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedOvertimeReportForModal(null);
+                        onNavigateTab("electronic_approval");
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0"
+                    >
+                      <FileSignature className="w-4 h-4" />
+                      <span>⚡ 전자결재 이동 및 승인</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOvertimeReportForModal(null)}
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Body: Workers List Table */}
@@ -9929,11 +9954,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               </div>
 
               {/* Modal Footer */}
-              <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex justify-end shrink-0">
+              <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
+                {onNavigateTab ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedOvertimeReportForModal(null);
+                      onNavigateTab("electronic_approval");
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                  >
+                    <FileSignature className="w-4 h-4" />
+                    <span>⚡ 전자결재함으로 이동하여 결재 진행</span>
+                  </button>
+                ) : <div />}
                 <button
                   type="button"
                   onClick={() => setSelectedOvertimeReportForModal(null)}
-                  className="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs cursor-pointer shadow-md active:scale-95 transition-all"
                 >
                   닫기
                 </button>
