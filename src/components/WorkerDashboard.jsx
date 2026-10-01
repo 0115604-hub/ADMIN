@@ -430,7 +430,6 @@ export const JAEYUL_EQUIPMENT_CATEGORIES = [
 
 export const JAEYUL_EQUIPMENT_OPTIONS = [
   "PCM 1호",
-  "PCM 2호",
   "PCM 3호",
   "TPE 1호",
   "PVC",
@@ -446,7 +445,7 @@ export const JAEYUL_EQUIPMENT_OPTIONS = [
 ];
 
 export const JAEYUL_CATEGORY_EQUIPMENT_MAP = {
-  "압출기": ["PCM 1호", "PCM 2호", "PCM 3호", "TPE 1호", "PVC", "내용직접입력"],
+  "압출기": ["PCM 1호", "PCM 3호", "TPE 1호", "PVC", "내용직접입력"],
   "사출기": ["300TON", "45TON", "25TON", "내용직접입력"],
   "컴프레셔": ["압출동 컴프레셔", "AB동 컴프레셔", "C동 컴프레셔", "내용직접입력"],
   "코팅설비": ["코팅(8턴)", "코팅(서랍)", "내용직접입력"],

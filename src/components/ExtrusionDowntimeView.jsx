@@ -32,10 +32,10 @@ import { useAuth } from "../context/AuthContext";
 
 export const LINE_PRESETS = [
   { id: "all", name: "전체 라인", shortName: "전체", badge: "ALL", color: "teal", themeColor: "teal" },
-  { id: "1호기", lineId: "pcm1", name: "1호기 (PCM #1)", shortName: "1호기", badge: "1호기", color: "teal", themeColor: "teal" },
-  { id: "2호기", lineId: "pcm2", name: "2호기 (PCM #2)", shortName: "2호기", badge: "2호기", color: "blue", themeColor: "blue" },
-  { id: "3호기", lineId: "pcm3", name: "3호기 (PCM #3)", shortName: "3호기", badge: "3호기", color: "amber", themeColor: "amber" },
-  { id: "4호기", lineId: "tpe", name: "4호기 (TPE / PVC)", shortName: "4호기", badge: "4호기", color: "purple", themeColor: "purple" }
+  { id: "pcm1", name: "PCM 1호 (PCM #1)", shortName: "PCM 1호", badge: "PCM 1호", color: "teal", themeColor: "teal" },
+  { id: "pcm3", name: "PCM 3호 (PCM #3)", shortName: "PCM 3호", badge: "PCM 3호", color: "blue", themeColor: "blue" },
+  { id: "pvc", name: "PVC LINE", shortName: "PVC", badge: "PVC", color: "amber", themeColor: "amber" },
+  { id: "tpe", name: "TPE LINE", shortName: "TPE", badge: "TPE", color: "purple", themeColor: "purple" }
 ];
 
 const PERIOD_OPTIONS = [
@@ -58,7 +58,7 @@ export const ExtrusionDowntimeView = () => {
     return "production";
   });
 
-  // Selected line filter: "all", "1호기", "2호기", "3호기", "4호기"
+  // Selected line filter: "all", "pcm1", "pcm3", "pvc", "tpe"
   const [selectedLine, setSelectedLine] = useState(() => {
     try {
       const saved = localStorage.getItem("factory_extrusion_selected_line_v2");
@@ -129,13 +129,19 @@ export const ExtrusionDowntimeView = () => {
 
       // 1. Line filter
       if (selectedLine !== "all") {
-        const lineStr = String(r.lineName || r.lineId || "").trim();
-        const matchesLine =
-          lineStr.includes(selectedLine) ||
-          (selectedLine === "1호기" && (lineStr.includes("1") || lineStr.includes("pcm1") || lineStr.includes("PCM #1"))) ||
-          (selectedLine === "2호기" && (lineStr.includes("2") || lineStr.includes("pcm2") || lineStr.includes("PCM #2"))) ||
-          (selectedLine === "3호기" && (lineStr.includes("3") || lineStr.includes("pcm3") || lineStr.includes("PCM #3") || lineStr.includes("PVC"))) ||
-          (selectedLine === "4호기" && (lineStr.includes("4") || lineStr.includes("pcm4") || lineStr.includes("PCM #4") || lineStr.includes("TPE")));
+        const lineStr = String(r.lineName || r.lineId || "").toLowerCase().trim();
+        let matchesLine = false;
+        if (selectedLine === "pcm1" || selectedLine === "1호기") {
+          matchesLine = lineStr.includes("pcm1") || lineStr.includes("pcm #1") || lineStr.includes("pcm 1") || lineStr.includes("1호");
+        } else if (selectedLine === "pcm3" || selectedLine === "3호기") {
+          matchesLine = lineStr.includes("pcm3") || lineStr.includes("pcm #3") || lineStr.includes("pcm 3") || lineStr.includes("3호");
+        } else if (selectedLine === "pvc") {
+          matchesLine = lineStr.includes("pvc") || lineStr.includes("피브이씨");
+        } else if (selectedLine === "tpe" || selectedLine === "4호기") {
+          matchesLine = lineStr.includes("tpe") || lineStr.includes("티피이");
+        } else {
+          matchesLine = lineStr.includes(selectedLine.toLowerCase());
+        }
         if (!matchesLine) return false;
       }
 
@@ -190,10 +196,10 @@ export const ExtrusionDowntimeView = () => {
   const lineStats = useMemo(() => {
     const map = {
       all: { count: reports.length, downtimeMinutes: 0, scrapKg: 0 },
-      "1호기": { count: 0, downtimeMinutes: 0, scrapKg: 0 },
-      "2호기": { count: 0, downtimeMinutes: 0, scrapKg: 0 },
-      "3호기": { count: 0, downtimeMinutes: 0, scrapKg: 0 },
-      "4호기": { count: 0, downtimeMinutes: 0, scrapKg: 0 }
+      pcm1: { count: 0, downtimeMinutes: 0, scrapKg: 0 },
+      pcm3: { count: 0, downtimeMinutes: 0, scrapKg: 0 },
+      pvc: { count: 0, downtimeMinutes: 0, scrapKg: 0 },
+      tpe: { count: 0, downtimeMinutes: 0, scrapKg: 0 }
     };
 
     reports.forEach((r) => {
@@ -202,23 +208,23 @@ export const ExtrusionDowntimeView = () => {
       map.all.downtimeMinutes += dt;
       map.all.scrapKg += s;
 
-      const lineStr = String(r.lineName || r.lineId || "").trim();
-      if (lineStr.includes("1") || lineStr.includes("pcm1")) {
-        map["1호기"].count += 1;
-        map["1호기"].downtimeMinutes += dt;
-        map["1호기"].scrapKg += s;
-      } else if (lineStr.includes("2") || lineStr.includes("pcm2")) {
-        map["2호기"].count += 1;
-        map["2호기"].downtimeMinutes += dt;
-        map["2호기"].scrapKg += s;
-      } else if (lineStr.includes("3") || lineStr.includes("pcm3") || lineStr.includes("PVC")) {
-        map["3호기"].count += 1;
-        map["3호기"].downtimeMinutes += dt;
-        map["3호기"].scrapKg += s;
-      } else if (lineStr.includes("4") || lineStr.includes("pcm4") || lineStr.includes("TPE")) {
-        map["4호기"].count += 1;
-        map["4호기"].downtimeMinutes += dt;
-        map["4호기"].scrapKg += s;
+      const lineStr = String(r.lineName || r.lineId || "").toLowerCase().trim();
+      if (lineStr.includes("pcm1") || lineStr.includes("pcm #1") || lineStr.includes("pcm 1") || lineStr.includes("1호")) {
+        map.pcm1.count += 1;
+        map.pcm1.downtimeMinutes += dt;
+        map.pcm1.scrapKg += s;
+      } else if (lineStr.includes("pcm3") || lineStr.includes("pcm #3") || lineStr.includes("pcm 3") || lineStr.includes("3호")) {
+        map.pcm3.count += 1;
+        map.pcm3.downtimeMinutes += dt;
+        map.pcm3.scrapKg += s;
+      } else if (lineStr.includes("pvc") || lineStr.includes("피브이씨")) {
+        map.pvc.count += 1;
+        map.pvc.downtimeMinutes += dt;
+        map.pvc.scrapKg += s;
+      } else if (lineStr.includes("tpe") || lineStr.includes("티피이") || lineStr.includes("4호")) {
+        map.tpe.count += 1;
+        map.tpe.downtimeMinutes += dt;
+        map.tpe.scrapKg += s;
       }
     });
 
@@ -305,7 +311,7 @@ export const ExtrusionDowntimeView = () => {
       ) : (
         <div className="space-y-3.5">
           {/* ========================================================================= */}
-          {/* 1. Line Selection Badges (1호기 / 2호기 / 3호기 / 4호기 / 전체라인) */}
+          {/* 1. Line Selection Badges (전체 / PCM 1호 / PCM 3호 / PVC / TPE) */}
           {/* ========================================================================= */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {LINE_PRESETS.map((line) => {
