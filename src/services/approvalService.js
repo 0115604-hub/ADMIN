@@ -964,13 +964,23 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const targetCompanies = PLANT_COMPANIES_MAP[targetPlant] || [];
       const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
 
-      // Filter reports for this plant and date
+      // Filter reports for this plant and date with strict partner company isolation
       const plantReports = allReports.filter(r => {
         if (!r) return false;
+        const repComp = cleanCompanyName(r.company);
+
+        // Prevent cross-plant contamination:
+        if (targetPlant === "삼랑진공장" && (repComp === "조영" || repComp === "한울" || repComp === "부림텍")) {
+          return false;
+        }
+        if (targetPlant === "한림공장" && (repComp === "오륙" || repComp === "유성")) {
+          return false;
+        }
+
         const matchesPlant = (
           r.plant === targetPlant ||
           (r.plant && r.plant.includes(targetPlant.replace("공장", ""))) ||
-          targetCompanies.some(c => cleanCompanyName(r.company) === cleanCompanyName(c)) ||
+          targetCompanies.some(c => repComp === cleanCompanyName(c)) ||
           targetCompanies.some(c => r.title && r.title.includes(c))
         );
         if (!matchesPlant) return false;
