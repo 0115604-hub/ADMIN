@@ -1243,7 +1243,7 @@ export const ExtrusionWorkReportModal = ({
                           ))}
                         </select>
 
-                        {/* Minimal Raw Material BOM & Weight/LOT Direct Inputs (미사용 재료 완전 숨김) */}
+                        {/* Minimal Raw Material BOM & Weight/LOT Direct Inputs (한줄짜리 간략한 뱃지) */}
                         {(() => {
                           if (!item?.vehicle || !item?.itemName) return null;
                           const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName) || {};
@@ -1254,7 +1254,7 @@ export const ExtrusionWorkReportModal = ({
                               weightKey: "rubberWeight",
                               lotKey: "rubberLot",
                               icon: "⬛",
-                              label: "연고무",
+                              label: "연고무1",
                               val: (formData?.rawMaterials?.rubberType !== undefined && formData?.rawMaterials?.rubberType !== "") ? formData.rawMaterials.rubberType : (itemBOM.rubberType || "W60433"),
                               defaultVal: EPDM_RUBBERS[0]?.name || "W60712$2",
                               containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
@@ -1341,21 +1341,22 @@ export const ExtrusionWorkReportModal = ({
                           return (
                             <div className="pt-2 pb-0.5 space-y-2">
                               {activeSlots.length > 0 ? (
-                                <div className="p-3 rounded-2xl bg-slate-900/90 dark:bg-slate-950 border-2 border-slate-700/80 shadow-md space-y-2.5">
-                                  <div className="flex items-center justify-between gap-2 flex-wrap pb-1.5 border-b border-slate-800">
+                                <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-900/90 dark:bg-slate-950 border-2 border-slate-700/80 shadow-md space-y-2">
+                                  {/* Header: Concise single-line badge */}
+                                  <div className="flex items-center justify-between gap-1.5 flex-wrap pb-1 border-b border-slate-800">
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[11px] font-black text-emerald-400 flex items-center gap-1">
-                                        <span>🌿</span> BOM 원재료 규격 &amp; 투입 중량 / LOT 넘버
+                                      <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-black text-xs">
+                                        🌿 원재료 BOM
                                       </span>
-                                      <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                        실시간 입력
+                                      <span className="text-[11px] font-bold text-emerald-300">
+                                        투입 중량 &amp; LOT
                                       </span>
                                     </div>
 
                                     {/* Quick Add Unused Materials if needed */}
                                     {unusedSlots.length > 0 && (
                                       <div className="flex items-center gap-1 flex-wrap">
-                                        <span className="text-[10px] text-slate-400 font-bold">➕ 자재 추가:</span>
+                                        <span className="text-[10px] text-slate-400 font-bold">➕ 추가:</span>
                                         {unusedSlots.map((u) => (
                                           <button
                                             key={u.id}
@@ -1365,7 +1366,7 @@ export const ExtrusionWorkReportModal = ({
                                               const valToSet = (bVal && bVal !== "미사용") ? bVal : u.defaultVal;
                                               handleNestedFieldChange("rawMaterials", u.id, valToSet);
                                             }}
-                                            className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 transition active:scale-95 cursor-pointer flex items-center gap-0.5"
+                                            className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 transition active:scale-95 cursor-pointer flex items-center gap-0.5"
                                           >
                                             <span>{u.icon}</span>
                                             <span>+{u.label}</span>
@@ -1375,8 +1376,8 @@ export const ExtrusionWorkReportModal = ({
                                     )}
                                   </div>
 
-                                  {/* Grid of material cards with weight & lot inputs */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                  {/* Single-line compact material cards */}
+                                  <div className="space-y-1.5">
                                     {activeSlots.map((slot) => {
                                       const currentWeight = formData.rawMaterials?.[slot.weightKey] ?? "";
                                       const currentLot = formData.rawMaterials?.[slot.lotKey] || "";
@@ -1384,11 +1385,11 @@ export const ExtrusionWorkReportModal = ({
                                       return (
                                         <div
                                           key={slot.id}
-                                          className={`p-2.5 rounded-xl border flex flex-col justify-between gap-2 shadow-xs ${slot.containerCls}`}
+                                          className={`p-2 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 shadow-xs ${slot.containerCls}`}
                                         >
-                                          {/* Badge Header: Icon + Name: Spec */}
-                                          <div className="flex items-center justify-between gap-1">
-                                            <div className="flex items-center gap-1.5 truncate">
+                                          {/* Left Badge: Name & Spec */}
+                                          <div className="flex items-center justify-between sm:justify-start gap-1.5 min-w-[140px] sm:w-[170px] shrink-0">
+                                            <div className="flex items-center gap-1 truncate">
                                               <span className="text-xs">{slot.icon}</span>
                                               <span className="opacity-80 font-bold text-[10.5px]">{slot.label}:</span>
                                               <span className={`text-xs font-black truncate ${slot.specTextCls}`}>{slot.val}</span>
@@ -1396,40 +1397,48 @@ export const ExtrusionWorkReportModal = ({
                                             <button
                                               type="button"
                                               onClick={() => handleNestedFieldChange("rawMaterials", slot.id, "미사용")}
-                                              className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition cursor-pointer"
-                                              title="이 자재 미사용 처리 (숨김)"
+                                              className="sm:hidden text-slate-400 hover:text-rose-400 p-0.5 rounded cursor-pointer"
+                                              title="이 자재 미사용 처리"
                                             >
                                               <X className="w-3.5 h-3.5" />
                                             </button>
                                           </div>
 
-                                          {/* Direct Inputs: 중량(kg) & LOT 넘버 */}
-                                          <div className="grid grid-cols-2 gap-1.5">
-                                            <div>
-                                              <label className="block text-[9.5px] font-black text-emerald-400 mb-0.5">
-                                                투입중량 (kg) *
-                                              </label>
+                                          {/* Right Direct Inputs: 중량(kg) & LOT 넘버 in a single line */}
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <div className="flex items-center gap-1 flex-1">
+                                              <span className="text-[10px] font-black text-emerald-400 whitespace-nowrap shrink-0">
+                                                중량(kg)
+                                              </span>
                                               <input
                                                 type="number"
                                                 step="0.1"
                                                 value={currentWeight}
                                                 onChange={(e) => handleNestedFieldChange("rawMaterials", slot.weightKey, e.target.value)}
                                                 placeholder="0.0"
-                                                className="w-full px-2 py-1.5 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-emerald-500/80 text-xs font-black text-emerald-300 placeholder-emerald-600/60 text-right focus:ring-2 focus:ring-emerald-400 focus:outline-hidden"
+                                                className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-emerald-500/80 text-xs font-black text-emerald-300 placeholder-emerald-600/60 text-right focus:ring-1 focus:ring-emerald-400 focus:outline-hidden"
                                               />
                                             </div>
-                                            <div>
-                                              <label className="block text-[9.5px] font-black text-indigo-300 mb-0.5">
-                                                LOT 넘버 *
-                                              </label>
+                                            <div className="flex items-center gap-1 flex-1">
+                                              <span className="text-[10px] font-black text-indigo-300 whitespace-nowrap shrink-0">
+                                                LOT
+                                              </span>
                                               <input
                                                 type="text"
                                                 value={currentLot}
                                                 onChange={(e) => handleNestedFieldChange("rawMaterials", slot.lotKey, e.target.value)}
                                                 placeholder="LOT No."
-                                                className="w-full px-2 py-1.5 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-400 focus:outline-hidden"
+                                                className="w-full px-2 py-1 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-1 focus:ring-indigo-400 focus:outline-hidden"
                                               />
                                             </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleNestedFieldChange("rawMaterials", slot.id, "미사용")}
+                                              className="hidden sm:block text-slate-400 hover:text-rose-400 p-0.5 rounded cursor-pointer shrink-0"
+                                              title="이 자재 미사용 처리"
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                            </button>
                                           </div>
                                         </div>
                                       );
@@ -1443,7 +1452,7 @@ export const ExtrusionWorkReportModal = ({
                                     <span>선택된 품목에 매칭된 BOM 원재료가 없습니다.</span>
                                   </div>
                                   <div className="flex items-center gap-1 flex-wrap">
-                                    <span className="text-[10px] text-slate-500 font-bold">자재 직접 추가:</span>
+                                    <span className="text-[10px] text-slate-500 font-bold">자재 추가:</span>
                                     {unusedSlots.map((u) => (
                                       <button
                                         key={u.id}
@@ -1548,16 +1557,16 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 3: Curing Temp, Water Temp & Coating Pressure (한줄짜리 구간별 패널 3종) */}
+            {/* Section 3: Curing Temp, Water Temp & Coating Pressure (한줄짜리 간략한 뱃지 패널) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                   <Flame className="w-4 h-4 text-orange-500" />
-                  ③ 주요 작업조건 (가류조 · 온조기 · 코팅압력)
+                  ③ 작업조건
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
-                  구간별 실측 입력
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border border-orange-300">
+                  가류조 · 온조기 · 코팅압력
                 </span>
               </div>
 
@@ -1566,10 +1575,10 @@ export const ExtrusionWorkReportModal = ({
                 <div className="flex items-center justify-between gap-1 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
-                      가류조
+                      🔥 가류조
                     </span>
                     <span className="text-[11px] font-bold text-orange-900 dark:text-orange-200">
-                      가류조 온도 (1~13존 실측, 표준 210±20℃)
+                      가류조 (1~13존 · 표준 210±20℃)
                     </span>
                   </div>
                   <button
@@ -1590,7 +1599,7 @@ export const ExtrusionWorkReportModal = ({
                     }}
                     className="px-2 py-0.5 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-[10px] font-black border border-orange-200 transition cursor-pointer"
                   >
-                    ⚡ 13개존 일괄설정
+                    ⚡ 일괄설정
                   </button>
                 </div>
 
@@ -1642,10 +1651,10 @@ export const ExtrusionWorkReportModal = ({
                 <div className="flex items-center justify-between gap-1 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs">
-                      온조기
+                      💧 온조기
                     </span>
                     <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200">
-                      온조기 온도 (1~4구간 실측, 표준 50±5℃)
+                      온조기 (1~4구간 · 표준 50±5℃)
                     </span>
                   </div>
                 </div>
@@ -1702,10 +1711,10 @@ export const ExtrusionWorkReportModal = ({
                 <div className="flex items-center justify-between gap-1 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
-                      코팅압력
+                      🧪 코팅압력
                     </span>
                     <span className="text-[11px] font-bold text-sky-900 dark:text-sky-200">
-                      코팅 분사압력 (1~3번건, 표준 2.5±0.3 bar)
+                      코팅압력 (1~3번건 · 표준 2.5±0.3 bar)
                     </span>
                   </div>
                 </div>
