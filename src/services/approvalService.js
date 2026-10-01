@@ -316,7 +316,7 @@ export const getLocalApprovalDocs = () => {
 export const saveLocalApprovalDocs = (docs) => {
   try {
     const deletedIds = getDeletedApprovalIds();
-    const cleanDocs = (docs || []).filter((d) => d && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
+    const cleanDocs = (docs || []).filter((d) => d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
     const normalized = cleanDocs.map(normalizeApprovalDoc);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
@@ -369,25 +369,53 @@ export const subscribeApprovalDocs = (onUpdate) => {
           });
         }
 
-        // Keep all valid documents without deleting user drafts
-        const cleanList = [];
-        const seenDocIds = new Set();
-        for (const item of remoteDocs) {
-          if (!item || !item.id) continue;
-          if (deletedIds.has(item.id)) continue;
-          if (seenDocIds.has(item.id)) continue;
-          seenDocIds.add(item.id);
-          cleanList.push(item);
-        }
+        // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so local drafts are never wiped
+        const localDocs = getLocalApprovalDocs();
+        const docMap = new Map();
 
-        cleanList.sort((a, b) => {
+        // 1. Seed with local documents
+        localDocs.forEach((d) => {
+          if (d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
+            docMap.set(d.id, d);
+          }
+        });
+
+        // 2. Merge remote docs
+        remoteDocs.forEach((r) => {
+          if (r && r.id && !deletedIds.has(r.id) && !isWeekdayAttSynthDoc(r)) {
+            const existing = docMap.get(r.id);
+            if (!existing) {
+              docMap.set(r.id, r);
+            } else {
+              // Remote is authoritative or newer
+              const tRemote = new Date(r.updatedAt || r.createdAt || 0).getTime();
+              const tLocal = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+              if (tRemote >= tLocal) {
+                docMap.set(r.id, r);
+              }
+            }
+          }
+        });
+
+        // 3. Any manual drafts or valid local docs missing from Firestore -> asynchronously sync up to Firestore
+        localDocs.forEach((localDoc) => {
+          if (localDoc && localDoc.id && !deletedIds.has(localDoc.id) && !isWeekdayAttSynthDoc(localDoc)) {
+            const inRemote = remoteDocs.some((r) => r.id === localDoc.id);
+            if (!inRemote && (localDoc.isDirectManualDraft || localDoc.isManualDraft || !localDoc.id.startsWith("appr_ot_"))) {
+              setDoc(doc(db, COLLECTION_NAME, localDoc.id), sanitizeForFirestore(localDoc)).catch(() => {});
+            }
+          }
+        });
+
+        const mergedList = Array.from(docMap.values());
+        mergedList.sort((a, b) => {
           const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();
           const tB = new Date(b.updatedAt || b.createdAt || 0).getTime();
           return tB - tA;
         });
 
-        saveLocalApprovalDocs(cleanList);
-        if (onUpdate) onUpdate(cleanList);
+        saveLocalApprovalDocs(mergedList);
+        if (onUpdate) onUpdate(mergedList);
       },
       (error) => {
         console.warn("Firestore approval sync warning:", error);
@@ -790,15 +818,28 @@ export const deleteApprovalDocument = async (id) => {
   return updated;
 };
 
-// 🧹 Silent Remove Approval Doc (Used during aggregation sync without adding to user-deleted blacklist)
+// 🧹 Silent Remove Approval Doc (Used ONLY for auto-synthesized overtime aggregation cleanup)
+// ⭐ IMPORTANT: NEVER remove manual drafts or documents created directly by users!
 export const removeApprovalDocSilently = async (id) => {
   if (!id) return;
   const current = getLocalApprovalDocs();
+  const target = current.find((d) => d.id === id);
+  if (target && (target.isDirectManualDraft || target.isManualDraft || (!target.id.startsWith("appr_ot_") && !target.id.startsWith("appr_att_")))) {
+    // Protected: Manual draft or non-synthesis document must NEVER be removed silently
+    return;
+  }
   const updated = current.filter((d) => d.id !== id);
   saveLocalApprovalDocs(updated);
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, id));
   } catch (e) {}
+};
+
+// ⭐ Helper: Check if document is strictly an auto-synthesized doc (NOT a manual draft)
+const isAutoSynthDoc = (d) => {
+  if (!d || !d.id) return false;
+  if (d.isDirectManualDraft || d.isManualDraft) return false;
+  return d.id.startsWith("appr_ot_") || d.id.startsWith("appr_att_");
 };
 
 // ⭐ 공장별 소속 협력사 근태/특근보고서 결재함 자동 취합 및 등록 연동 (Plant-Level Attendance & Overtime Approval Synthesis)
@@ -970,8 +1011,9 @@ export const syncPlantOvertimeToApprovalBox = async ({
         continue;
       }
 
-      // 🧹 1. Clean duplicate approval documents for this plant and date (while preserving approved steps if any)
+      // 🧹 1. Clean duplicate auto-synthesized approval documents for this plant and date (while strictly preserving user manual drafts!)
       const duplicateDocs = currentApprovalDocs.filter(d => 
+        isAutoSynthDoc(d) &&
         d.id !== canonicalDocId &&
         (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
         d.plant === targetPlant &&
@@ -993,6 +1035,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       // ⭐ If no reports exist for this plant on this date (e.g. user deleted them):
       if (plantReports.length === 0) {
         const allMatchingDocs = getLocalApprovalDocs().filter(d => 
+          isAutoSynthDoc(d) &&
           (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
           d.plant === targetPlant &&
           (
@@ -1069,6 +1112,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       // If no workers or no valid companies for this plant on this date:
       if (totalPlantWorkers === 0 || companySummaries.length === 0) {
         const allMatchingDocs = getLocalApprovalDocs().filter(d => 
+          isAutoSynthDoc(d) &&
           (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
           d.plant === targetPlant &&
           (

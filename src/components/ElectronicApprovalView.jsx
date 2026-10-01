@@ -431,6 +431,8 @@ export const ElectronicApprovalView = () => {
       status: "IN_PROGRESS"
     }, { isDirectManualDraft: true, sendDraftTelegram: true });
 
+    setApprovalDocs(getLocalApprovalDocs());
+
     const defaultCeo = currentProfile?.name === "최미영" ? "최미영" : "권태형";
     setIsDraftModalOpen(false);
     setDraftForm({
