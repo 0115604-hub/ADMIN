@@ -49,6 +49,13 @@ import {
 import {
   getItemsByLine
 } from "../../data/extrusionItemsData";
+import {
+  EPDM_RUBBERS,
+  EPDM_COMPOUNDS,
+  EPDM_INSERTS,
+  EPDM_COATINGS,
+  getMaterialBOMForItem
+} from "../../data/extrusionRawMaterialsData";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -196,12 +203,18 @@ export const ExtrusionWorkReportModal = ({
           ? initialData.tpmIssuePhotos
           : (Array.isArray(initialData?.tpmIssueReport?.photos) ? initialData.tpmIssueReport.photos : []),
         rawMaterials: {
-          rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : EXTRUSION_STANDARD_SPECS.rubberType),
-          rubberLot: initialData?.rawMaterials?.rubberLot || EXTRUSION_STANDARD_SPECS.rubberLot,
-          coatingType: initialData?.rawMaterials?.coatingType || (initialData?.rawMaterials?.coatingLot?.includes("/") ? initialData.rawMaterials.coatingLot.split("/")[0].trim() : EXTRUSION_STANDARD_SPECS.coatingType),
-          coatingLot: initialData?.rawMaterials?.coatingLot || EXTRUSION_STANDARD_SPECS.coatingLot,
-          insertType: initialData?.rawMaterials?.insertType || (initialData?.rawMaterials?.insertLot?.includes("/") ? initialData.rawMaterials.insertLot.split("/")[0].trim() : EXTRUSION_STANDARD_SPECS.insertType),
-          insertLot: initialData?.rawMaterials?.insertLot || EXTRUSION_STANDARD_SPECS.insertLot
+          rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType || "W60433")),
+          rubberWeight: initialData?.rawMaterials?.rubberWeight ?? "",
+          rubberLot: initialData?.rawMaterials?.rubberLot || "",
+          coatingType: initialData?.rawMaterials?.coatingType || (initialData?.rawMaterials?.coatingLot?.includes("/") ? initialData.rawMaterials.coatingLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).coatingType || "HSC-2000-B-3")),
+          coatingWeight: initialData?.rawMaterials?.coatingWeight ?? "",
+          coatingLot: initialData?.rawMaterials?.coatingLot || "",
+          insertType: initialData?.rawMaterials?.insertType || (initialData?.rawMaterials?.insertLot?.includes("/") ? initialData.rawMaterials.insertLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).insertType || "SUS430(0.4*51*3)")),
+          insertWeight: initialData?.rawMaterials?.insertWeight ?? "",
+          insertLot: initialData?.rawMaterials?.insertLot || "",
+          compoundType: initialData?.rawMaterials?.compoundType || (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType || "IA4-75B_1"),
+          compoundWeight: initialData?.rawMaterials?.compoundWeight ?? "",
+          compoundLot: initialData?.rawMaterials?.compoundLot || ""
         },
         defectBreakdown: {
           cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
@@ -228,6 +241,9 @@ export const ExtrusionWorkReportModal = ({
       };
     }
 
+    const defaultItem = createDefaultItem("pcm1");
+    const defaultBOM = getMaterialBOMForItem(defaultItem.vehicle, defaultItem.itemName);
+
     return {
       date: todayStr,
       shift: "주간",
@@ -236,16 +252,22 @@ export const ExtrusionWorkReportModal = ({
       lineName: "PCM #1 LINE",
       worker: "공영국 대리",
       subWorkers: "",
-      items: [createDefaultItem("pcm1")],
+      items: [defaultItem],
       tpmIssueText: "",
       tpmIssuePhotos: [],
       rawMaterials: {
-        rubberType: EXTRUSION_STANDARD_SPECS.rubberType,
-        rubberLot: EXTRUSION_STANDARD_SPECS.rubberLot,
-        coatingType: EXTRUSION_STANDARD_SPECS.coatingType,
-        coatingLot: EXTRUSION_STANDARD_SPECS.coatingLot,
-        insertType: EXTRUSION_STANDARD_SPECS.insertType,
-        insertLot: EXTRUSION_STANDARD_SPECS.insertLot
+        rubberType: defaultBOM.rubberType || "W60433",
+        rubberWeight: "",
+        rubberLot: "",
+        coatingType: defaultBOM.coatingType || "HSC-2000-B-3",
+        coatingWeight: "",
+        coatingLot: "",
+        insertType: defaultBOM.insertType || "SUS430(0.4*51*3)",
+        insertWeight: "",
+        insertLot: "",
+        compoundType: defaultBOM.compoundType || "IA4-75B_1",
+        compoundWeight: "",
+        compoundLot: ""
       },
       defectBreakdown: {
         cutoffKg: "",
@@ -335,12 +357,18 @@ export const ExtrusionWorkReportModal = ({
           ...initialData,
           items,
           rawMaterials: {
-            rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : EXTRUSION_STANDARD_SPECS.rubberType),
-            rubberLot: initialData?.rawMaterials?.rubberLot || EXTRUSION_STANDARD_SPECS.rubberLot,
-            coatingType: initialData?.rawMaterials?.coatingType || (initialData?.rawMaterials?.coatingLot?.includes("/") ? initialData.rawMaterials.coatingLot.split("/")[0].trim() : EXTRUSION_STANDARD_SPECS.coatingType),
-            coatingLot: initialData?.rawMaterials?.coatingLot || EXTRUSION_STANDARD_SPECS.coatingLot,
-            insertType: initialData?.rawMaterials?.insertType || (initialData?.rawMaterials?.insertLot?.includes("/") ? initialData.rawMaterials.insertLot.split("/")[0].trim() : EXTRUSION_STANDARD_SPECS.insertType),
-            insertLot: initialData?.rawMaterials?.insertLot || EXTRUSION_STANDARD_SPECS.insertLot
+            rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType || "W60433")),
+            rubberWeight: initialData?.rawMaterials?.rubberWeight ?? "",
+            rubberLot: initialData?.rawMaterials?.rubberLot || "",
+            coatingType: initialData?.rawMaterials?.coatingType || (initialData?.rawMaterials?.coatingLot?.includes("/") ? initialData.rawMaterials.coatingLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).coatingType || "HSC-2000-B-3")),
+            coatingWeight: initialData?.rawMaterials?.coatingWeight ?? "",
+            coatingLot: initialData?.rawMaterials?.coatingLot || "",
+            insertType: initialData?.rawMaterials?.insertType || (initialData?.rawMaterials?.insertLot?.includes("/") ? initialData.rawMaterials.insertLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).insertType || "SUS430(0.4*51*3)")),
+            insertWeight: initialData?.rawMaterials?.insertWeight ?? "",
+            insertLot: initialData?.rawMaterials?.insertLot || "",
+            compoundType: initialData?.rawMaterials?.compoundType || (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType || "IA4-75B_1"),
+            compoundWeight: initialData?.rawMaterials?.compoundWeight ?? "",
+            compoundLot: initialData?.rawMaterials?.compoundLot || ""
           },
           defectBreakdown: {
             cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
@@ -366,6 +394,9 @@ export const ExtrusionWorkReportModal = ({
           }
         });
       } else {
+        const defItem = createDefaultItem("pcm1");
+        const defBOM = getMaterialBOMForItem(defItem.vehicle, defItem.itemName);
+
         setTpmChecks(TPM_CHECK_ITEMS.map((it) => ({ id: it.id, status: "OK", note: "" })));
         setFormData({
           date: todayStr,
@@ -375,14 +406,20 @@ export const ExtrusionWorkReportModal = ({
           lineName: "PCM #1 LINE",
           worker: "공영국 대리",
           subWorkers: "",
-          items: [createDefaultItem("pcm1")],
+          items: [defItem],
           rawMaterials: {
-            rubberType: EXTRUSION_STANDARD_SPECS.rubberType,
-            rubberLot: EXTRUSION_STANDARD_SPECS.rubberLot,
-            coatingType: EXTRUSION_STANDARD_SPECS.coatingType,
-            coatingLot: EXTRUSION_STANDARD_SPECS.coatingLot,
-            insertType: EXTRUSION_STANDARD_SPECS.insertType,
-            insertLot: EXTRUSION_STANDARD_SPECS.insertLot
+            rubberType: defBOM.rubberType || "W60433",
+            rubberWeight: "",
+            rubberLot: "",
+            coatingType: defBOM.coatingType || "HSC-2000-B-3",
+            coatingWeight: "",
+            coatingLot: "",
+            insertType: defBOM.insertType || "SUS430(0.4*51*3)",
+            insertWeight: "",
+            insertLot: "",
+            compoundType: defBOM.compoundType || "IA4-75B_1",
+            compoundWeight: "",
+            compoundLot: ""
           },
           defectBreakdown: {
             cutoffKg: "",
@@ -501,11 +538,21 @@ export const ExtrusionWorkReportModal = ({
       };
     });
 
+    const activeItem = updatedItems[0] || defaultNewItem;
+    const bom = getMaterialBOMForItem(activeItem.vehicle, activeItem.itemName);
+
     setFormData((prev) => ({
       ...prev,
       lineId,
       lineName: fullName,
-      items: updatedItems.length > 0 ? updatedItems : [createDefaultItem(lineId)]
+      items: updatedItems.length > 0 ? updatedItems : [createDefaultItem(lineId)],
+      rawMaterials: {
+        ...prev.rawMaterials,
+        rubberType: bom.rubberType || prev.rawMaterials?.rubberType || "W60433",
+        coatingType: bom.coatingType || prev.rawMaterials?.coatingType || "HSC-2000-B-3",
+        insertType: bom.insertType || prev.rawMaterials?.insertType || "SUS430(0.4*51*3)",
+        compoundType: bom.compoundType || prev.rawMaterials?.compoundType || "IA4-75B_1"
+      }
     }));
   };
 
@@ -532,11 +579,24 @@ export const ExtrusionWorkReportModal = ({
     setFormData((prev) => {
       const nextItems = [...prev.items];
       const targetItem = { ...nextItems[index] };
+      let nextRawMaterials = { ...prev.rawMaterials };
 
       if (field === "itemSelect") {
         const [v, n] = value.split(":::");
         targetItem.vehicle = v || "";
         targetItem.itemName = n || "";
+
+        // Auto-match BOM from master EPDM data
+        const bom = getMaterialBOMForItem(targetItem.vehicle, targetItem.itemName);
+        if (bom) {
+          nextRawMaterials = {
+            ...nextRawMaterials,
+            rubberType: bom.rubberType || nextRawMaterials.rubberType || "W60433",
+            coatingType: bom.coatingType || nextRawMaterials.coatingType || "HSC-2000-B-3",
+            insertType: bom.insertType || nextRawMaterials.insertType || "SUS430(0.4*51*3)",
+            compoundType: bom.compoundType || nextRawMaterials.compoundType || "IA4-75B_1"
+          };
+        }
       } else if (["targetQty", "actualQty", "goodQty", "defectQty", "scrapKg"].includes(field)) {
         const num = value === "" ? "" : Math.max(0, Number(value));
         targetItem[field] = num;
@@ -551,7 +611,7 @@ export const ExtrusionWorkReportModal = ({
       }
 
       nextItems[index] = targetItem;
-      return { ...prev, items: nextItems };
+      return { ...prev, items: nextItems, rawMaterials: nextRawMaterials };
     });
   };
 
@@ -1402,165 +1462,277 @@ export const ExtrusionWorkReportModal = ({
 
               {showCheckSheetDetails && (
                 <div className="p-4 space-y-4 animate-fadeIn">
-                  {/* 1. 원자재 현황 (연고무, 코팅액, 심금 - 종류 및 LOT 넘버 분리 & 빠른 선택 칩) */}
+                  {/* 1. 투입 원자재 현황 (EPDM.xlsx 마스터 연동 및 중량/LOT 기록) */}
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                        <Package className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>1. 투입 원자재 현황 (원자재 종류 & LOT 넘버 분리 표기)</span>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                        <Package className="w-4 h-4 text-indigo-600" />
+                        <span>1. 투입 원자재 현황 (사용연고무 · 코팅액 · 심금 · 컴파운드 자동매칭 및 중량/LOT 기록)</span>
                       </div>
-                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800">
-                        원클릭 칩으로 빠른 품종 입력
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10.5px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800">
+                          ✨ 품목 선택 시 규격 자동입력 (작업자는 중량/LOT 입력)
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {/* 연고무 */}
-                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                      {/* 1. 사용연고무 */}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-slate-800 dark:text-slate-200">⬛ 연고무</span>
-                          <span className="text-[10px] text-slate-400 font-bold">EPDM 고무</span>
-                        </div>
-                        {/* Material Chips */}
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {MATERIAL_PRESETS.rubber.map((rm) => (
-                            <button
-                              key={rm.type}
-                              type="button"
-                              onClick={() => handleNestedFieldChange("rawMaterials", "rubberType", rm.type)}
-                              className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold transition cursor-pointer border ${
-                                formData.rawMaterials?.rubberType === rm.type
-                                  ? "bg-indigo-600 text-white border-indigo-700"
-                                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100"
-                              }`}
-                            >
-                              {rm.type.split(" ")[0]}
-                            </button>
-                          ))}
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                            <span>⬛</span>
+                            <span>사용연고무</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
+                            품목 자동연동
+                          </span>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            원자재 종류 (품명 / 규격)
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            연고무 규격명 (EPDM) *
                           </label>
-                          <input
-                            type="text"
-                            value={formData.rawMaterials?.rubberType || ""}
-                            onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberType", e.target.value)}
-                            placeholder="예: W60433 (EPDM)"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list="epdm_rubber_list"
+                              value={formData.rawMaterials?.rubberType || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberType", e.target.value)}
+                              placeholder="연고무 선택 또는 입력"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-black text-indigo-900 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                            <datalist id="epdm_rubber_list">
+                              {EPDM_RUBBERS.map((r) => (
+                                <option key={r.name} value={r.name}>{`${r.name} (${r.type} / ${r.unit})`}</option>
+                              ))}
+                            </datalist>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            LOT 넘버 (LOT No.)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.rawMaterials?.rubberLot || ""}
-                            onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberLot", e.target.value)}
-                            placeholder="예: UF10161726927029200A"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              투입중량 (kg) *
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.rawMaterials?.rubberWeight ?? ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberWeight", e.target.value)}
+                              placeholder="0.0"
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-400 dark:border-emerald-600 text-xs font-black text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              LOT 넘버 *
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.rawMaterials?.rubberLot || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "rubberLot", e.target.value)}
+                              placeholder="LOT No."
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      {/* 코팅액 */}
-                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                      {/* 2. 코팅액 */}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-slate-800 dark:text-slate-200">🧪 코팅액</span>
-                          <span className="text-[10px] text-slate-400 font-bold">표면 처리제</span>
-                        </div>
-                        {/* Coating Chips */}
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {MATERIAL_PRESETS.coating.map((cm) => (
-                            <button
-                              key={cm.type}
-                              type="button"
-                              onClick={() => handleNestedFieldChange("rawMaterials", "coatingType", cm.type)}
-                              className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold transition cursor-pointer border ${
-                                formData.rawMaterials?.coatingType === cm.type
-                                  ? "bg-indigo-600 text-white border-indigo-700"
-                                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100"
-                              }`}
-                            >
-                              {cm.type.split(" ")[0]}
-                            </button>
-                          ))}
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                            <span>🧪</span>
+                            <span>코팅액</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
+                            품목 자동연동
+                          </span>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            원자재 종류 (약품명 / 규격)
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            코팅액 규격명 *
                           </label>
-                          <input
-                            type="text"
-                            value={formData.rawMaterials?.coatingType || ""}
-                            onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingType", e.target.value)}
-                            placeholder="예: HSC-2000B-3"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list="epdm_coating_list"
+                              value={formData.rawMaterials?.coatingType || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingType", e.target.value)}
+                              placeholder="코팅액 선택 또는 입력"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-black text-indigo-900 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                            <datalist id="epdm_coating_list">
+                              {EPDM_COATINGS.map((c) => (
+                                <option key={c.name} value={c.name}>{`${c.name} (${c.category})`}</option>
+                              ))}
+                            </datalist>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            LOT 넘버 (LOT No.)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.rawMaterials?.coatingLot || ""}
-                            onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingLot", e.target.value)}
-                            placeholder="예: UF10161726927032700A"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              사용중량 (kg) *
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.rawMaterials?.coatingWeight ?? ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingWeight", e.target.value)}
+                              placeholder="0.0"
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-400 dark:border-emerald-600 text-xs font-black text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              LOT 넘버 *
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.rawMaterials?.coatingLot || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "coatingLot", e.target.value)}
+                              placeholder="LOT No."
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      {/* 심금 */}
-                      <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                      {/* 3. 심금 (Insert) */}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-black text-slate-800 dark:text-slate-200">⚙️ 심금 (Insert)</span>
-                          <span className="text-[10px] text-slate-400 font-bold">보강 심금재</span>
-                        </div>
-                        {/* Insert Chips */}
-                        <div className="flex items-center gap-1 flex-wrap">
-                          {MATERIAL_PRESETS.insert.map((im) => (
-                            <button
-                              key={im.type}
-                              type="button"
-                              onClick={() => handleNestedFieldChange("rawMaterials", "insertType", im.type)}
-                              className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold transition cursor-pointer border ${
-                                formData.rawMaterials?.insertType === im.type
-                                  ? "bg-indigo-600 text-white border-indigo-700"
-                                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:bg-slate-100"
-                              }`}
-                            >
-                              {im.type}
-                            </button>
-                          ))}
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                            <span>⚙️</span>
+                            <span>심금 (Insert)</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
+                            품목 자동연동
+                          </span>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            원자재 종류 (규격 / 재질)
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            심금 규격명 *
                           </label>
-                          <input
-                            type="text"
-                            value={formData.rawMaterials?.insertType || ""}
-                            onChange={(e) => handleNestedFieldChange("rawMaterials", "insertType", e.target.value)}
-                            placeholder="예: SK5 0.5T"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list="epdm_insert_list"
+                              value={formData.rawMaterials?.insertType || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "insertType", e.target.value)}
+                              placeholder="심금 규격 선택 또는 입력"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-black text-indigo-900 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                            <datalist id="epdm_insert_list">
+                              {EPDM_INSERTS.map((i) => (
+                                <option key={i.name} value={i.name}>{`${i.name} (${i.desc})`}</option>
+                              ))}
+                            </datalist>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            LOT 넘버 (LOT No.)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.rawMaterials?.insertLot || ""}
-                            onChange={(e) => handleNestedFieldChange("rawMaterials", "insertLot", e.target.value)}
-                            placeholder="예: LOT-260930A"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              사용중량 (kg) *
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.rawMaterials?.insertWeight ?? ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "insertWeight", e.target.value)}
+                              placeholder="0.0"
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-emerald-400 dark:border-emerald-600 text-xs font-black text-emerald-900 dark:text-emerald-200 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              LOT 넘버 *
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.rawMaterials?.insertLot || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "insertLot", e.target.value)}
+                              placeholder="LOT No."
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                          </div>
                         </div>
                       </div>
+
+                      {/* 4. 컴파운드 */}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                            <span>🧬</span>
+                            <span>컴파운드</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200">
+                            품목 자동연동
+                          </span>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            컴파운드 규격명
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list="epdm_compound_list"
+                              value={formData.rawMaterials?.compoundType || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "compoundType", e.target.value)}
+                              placeholder="컴파운드 선택 또는 입력"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-black text-indigo-900 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                            <datalist id="epdm_compound_list">
+                              {EPDM_COMPOUNDS.map((cp) => (
+                                <option key={cp.name} value={cp.name}>{`${cp.name} (${cp.unit})`}</option>
+                              ))}
+                            </datalist>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              투입중량 (kg)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.rawMaterials?.compoundWeight ?? ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "compoundWeight", e.target.value)}
+                              placeholder="0.0"
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              LOT 넘버
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.rawMaterials?.compoundLot || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "compoundLot", e.target.value)}
+                              placeholder="LOT No."
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Total Material Weight Summary Bar */}
+                    <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      <span className="flex items-center gap-1.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>총 원재료 투입합계 (연고무 + 코팅액 + 심금 + 컴파운드)</span>
+                      </span>
+                      <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                        {(
+                          (Number(formData.rawMaterials?.rubberWeight) || 0) +
+                          (Number(formData.rawMaterials?.coatingWeight) || 0) +
+                          (Number(formData.rawMaterials?.insertWeight) || 0) +
+                          (Number(formData.rawMaterials?.compoundWeight) || 0)
+                        ).toFixed(1)}{" "}
+                        <span className="text-xs font-normal text-slate-500">kg</span>
+                      </span>
                     </div>
                   </div>
 

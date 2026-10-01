@@ -223,11 +223,17 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     defectRate,
     rawMaterials: {
       rubberType: String(raw.rawMaterials?.rubberType || raw.rubberType || (raw.rawMaterials?.rubberLot?.includes("/") ? raw.rawMaterials.rubberLot.split("/")[0].trim() : "W60433")).trim(),
+      rubberWeight: raw.rawMaterials?.rubberWeight !== undefined && raw.rawMaterials?.rubberWeight !== "" ? Number(raw.rawMaterials.rubberWeight) : "",
       rubberLot: String(raw.rawMaterials?.rubberLot || raw.rubberLot || "").trim(),
-      coatingType: String(raw.rawMaterials?.coatingType || raw.coatingType || (raw.rawMaterials?.coatingLot?.includes("/") ? raw.rawMaterials.coatingLot.split("/")[0].trim() : "HSC-2000B-3")).trim(),
+      coatingType: String(raw.rawMaterials?.coatingType || raw.coatingType || (raw.rawMaterials?.coatingLot?.includes("/") ? raw.rawMaterials.coatingLot.split("/")[0].trim() : "HSC-2000-B-3")).trim(),
+      coatingWeight: raw.rawMaterials?.coatingWeight !== undefined && raw.rawMaterials?.coatingWeight !== "" ? Number(raw.rawMaterials.coatingWeight) : "",
       coatingLot: String(raw.rawMaterials?.coatingLot || raw.coatingLot || "").trim(),
-      insertType: String(raw.rawMaterials?.insertType || raw.insertType || (raw.rawMaterials?.insertLot?.includes("/") ? raw.rawMaterials.insertLot.split("/")[0].trim() : "SK5 0.5T")).trim(),
-      insertLot: String(raw.rawMaterials?.insertLot || raw.insertLot || "").trim()
+      insertType: String(raw.rawMaterials?.insertType || raw.insertType || (raw.rawMaterials?.insertLot?.includes("/") ? raw.rawMaterials.insertLot.split("/")[0].trim() : "SUS430(0.4*51*3)")).trim(),
+      insertWeight: raw.rawMaterials?.insertWeight !== undefined && raw.rawMaterials?.insertWeight !== "" ? Number(raw.rawMaterials.insertWeight) : "",
+      insertLot: String(raw.rawMaterials?.insertLot || raw.insertLot || "").trim(),
+      compoundType: String(raw.rawMaterials?.compoundType || raw.compoundType || "IA4-75B_1").trim(),
+      compoundWeight: raw.rawMaterials?.compoundWeight !== undefined && raw.rawMaterials?.compoundWeight !== "" ? Number(raw.rawMaterials.compoundWeight) : "",
+      compoundLot: String(raw.rawMaterials?.compoundLot || raw.compoundLot || "").trim()
     },
     defectBreakdown: {
       cutoffKg: Math.max(0, Number(raw.defectBreakdown?.cutoffKg || raw.cutoffKg) || 0),
@@ -1037,19 +1043,23 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
     curRow++;
   });
 
-  // 2-2. 원자재 현황 (연고무, 코팅액, 심금)
+  // 2-2. 원자재 현황 (사용연고무, 컴파운드, 코팅액, 심금)
   curRow = 10;
   ws1.mergeCells(`A${curRow}:B${curRow}`);
   ws1.getCell(`A${curRow}`).value = '원자재 구분';
   ws1.getCell(`A${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
 
   ws1.mergeCells(`C${curRow}:E${curRow}`);
-  ws1.getCell(`C${curRow}`).value = '원자재 종류 (품명 / 규격)';
+  ws1.getCell(`C${curRow}`).value = '원자재 품명 / 규격 (자동)';
   ws1.getCell(`C${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
 
-  ws1.mergeCells(`F${curRow}:K${curRow}`);
-  ws1.getCell(`F${curRow}`).value = 'LOT 넘버 (LOT No.)';
+  ws1.mergeCells(`F${curRow}:G${curRow}`);
+  ws1.getCell(`F${curRow}`).value = '투입중량 (kg)';
   ws1.getCell(`F${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
+
+  ws1.mergeCells(`H${curRow}:K${curRow}`);
+  ws1.getCell(`H${curRow}`).value = 'LOT 넘버 (LOT No.)';
+  ws1.getCell(`H${curRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: highlightIndigo } };
 
   ws1.mergeCells(`L${curRow}:M${curRow}`);
   ws1.getCell(`L${curRow}`).value = '투입 및 점검 상태';
@@ -1063,10 +1073,34 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
   }
 
   const rawMaterialItems = [
-    { cat: '연고무 #1', type: report.rawMaterials?.rubberType || 'EPDM 고무 (W60433)', lot: report.rawMaterials?.rubberLot || 'UF10161726927028200A', status: '정상 투입 (○)' },
-    { cat: '연고무 #2', type: report.rawMaterials?.rubberType || 'EPDM 고무 (W60433)', lot: report.rawMaterials?.rubberLot || 'UF10161726927032700A', status: '정상 투입 (○)' },
-    { cat: '코팅액', type: report.rawMaterials?.coatingType || '속건성 PU 코팅액', lot: report.rawMaterials?.coatingLot || 'UF10161726927032700A', status: '교반 완료 (○)' },
-    { cat: '심금(인서트)', type: report.rawMaterials?.insertType || 'SK5 0.5T 인서트 강판', lot: report.rawMaterials?.insertLot || 'LOT-260930A', status: '텐션 정상 (○)' }
+    {
+      cat: '사용연고무',
+      type: report.rawMaterials?.rubberType || 'W60433',
+      weight: report.rawMaterials?.rubberWeight !== undefined && report.rawMaterials?.rubberWeight !== '' ? `${report.rawMaterials.rubberWeight} kg` : '-',
+      lot: report.rawMaterials?.rubberLot || '-',
+      status: '정상 투입 (○)'
+    },
+    {
+      cat: '컴파운드',
+      type: report.rawMaterials?.compoundType || 'IA4-75B_1',
+      weight: report.rawMaterials?.compoundWeight !== undefined && report.rawMaterials?.compoundWeight !== '' ? `${report.rawMaterials.compoundWeight} kg` : '-',
+      lot: report.rawMaterials?.compoundLot || '-',
+      status: '정상 투입 (○)'
+    },
+    {
+      cat: '코팅액',
+      type: report.rawMaterials?.coatingType || 'HSC-2000-B-3',
+      weight: report.rawMaterials?.coatingWeight !== undefined && report.rawMaterials?.coatingWeight !== '' ? `${report.rawMaterials.coatingWeight} kg` : '-',
+      lot: report.rawMaterials?.coatingLot || '-',
+      status: '교반 완료 (○)'
+    },
+    {
+      cat: '심금(인서트)',
+      type: report.rawMaterials?.insertType || 'SUS430(0.4*51*3)',
+      weight: report.rawMaterials?.insertWeight !== undefined && report.rawMaterials?.insertWeight !== '' ? `${report.rawMaterials.insertWeight} kg` : '-',
+      lot: report.rawMaterials?.insertLot || '-',
+      status: '텐션 정상 (○)'
+    }
   ];
 
   curRow = 11;
@@ -1079,8 +1113,12 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
     ws1.getCell(curRow, 3).value = rm.type;
     ws1.getCell(curRow, 3).font = { name: '맑은 고딕', size: 8.5, bold: true, color: { argb: 'FF1E40AF' } };
 
-    ws1.mergeCells(curRow, 6, curRow, 11);
-    ws1.getCell(curRow, 6).value = rm.lot;
+    ws1.mergeCells(curRow, 6, curRow, 7);
+    ws1.getCell(curRow, 6).value = rm.weight;
+    ws1.getCell(curRow, 6).font = { name: '맑은 고딕', size: 8.5, bold: true, color: { argb: 'FF047857' } };
+
+    ws1.mergeCells(curRow, 8, curRow, 11);
+    ws1.getCell(curRow, 8).value = rm.lot;
 
     ws1.mergeCells(curRow, 12, curRow, 13);
     ws1.getCell(curRow, 12).value = rm.status;
@@ -1089,8 +1127,11 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
     for (let c = 1; c <= 13; c++) {
       const cell = ws1.getCell(curRow, c);
       cell.border = thinBorder;
-      if (c < 3 || c >= 12) cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      else cell.alignment = { horizontal: c <= 5 ? 'center' : 'left', vertical: 'middle' };
+      if (c <= 2 || (c >= 6 && c <= 7) || c >= 12) {
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      } else {
+        cell.alignment = { horizontal: c <= 5 ? 'center' : 'left', vertical: 'middle' };
+      }
       if (!cell.font) cell.font = { name: '맑은 고딕', size: 8.5 };
     }
     curRow++;
