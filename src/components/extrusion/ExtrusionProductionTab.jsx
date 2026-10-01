@@ -3,28 +3,14 @@ import {
   Plus,
   FileSpreadsheet,
   Download,
-  Calendar,
-  Layers,
-  Clock,
-  Scale,
-  Activity,
   CheckCircle2,
   AlertCircle,
-  TrendingUp,
-  Cpu,
   Trash2,
   Edit,
-  Filter,
   Search,
   Printer,
-  RefreshCw,
   Sun,
-  Moon,
-  ChevronRight,
-  Sparkles,
-  ShieldCheck,
-  Zap,
-  BarChart3
+  Moon
 } from "lucide-react";
 import {
   EXTRUSION_LINE_OPTIONS,
@@ -38,19 +24,9 @@ import {
 } from "../../services/extrusionProductionService";
 import { useAuth } from "../../context/AuthContext";
 import ExtrusionWorkReportModal from "./ExtrusionWorkReportModal";
-import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 export const ExtrusionProductionTab = () => {
   const { currentProfile, isAdmin } = useAuth();
-  const isExtrusionWorker = Boolean(
-    currentProfile?.building === "압출동" ||
-    currentProfile?.assignedProcess === "압출동" ||
-    currentProfile?.id?.startsWith("ext_") ||
-    currentProfile?.name === "공영국" ||
-    currentProfile?.department === "압출" ||
-    currentProfile?.role === "extrusion"
-  );
-
   const [reports, setReports] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
@@ -69,7 +45,7 @@ export const ExtrusionProductionTab = () => {
   }, []);
 
   // Filters
-  const [dateFilterMode, setDateFilterMode] = useState("all"); // today | 7days | month | all | custom
+  const [dateFilterMode, setDateFilterMode] = useState("all"); // all | today | 7days | custom
   const [customDate, setCustomDate] = useState("");
   const [selectedLineFilter, setSelectedLineFilter] = useState("all"); // all | pcm1 | pcm3 | pvc | tpe
   const [selectedShiftFilter, setSelectedShiftFilter] = useState("all"); // all | 주간 | 야간
@@ -239,593 +215,229 @@ export const ExtrusionProductionTab = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 1. Header & Quick Controls Bar */}
+      {/* Main Real-time Reports Ledger Table (압출 작업일보 상세 내역 대장 단독 패널) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-500/20">
-            <Cpu className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                삼랑진공장 압출 생산관리 및 실시간 작업일보
-              </h2>
-              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
-                실시간 동기화 ON
-              </span>
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+        {/* Panel Top: Title & Action Buttons */}
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-500/20">
+              <FileSpreadsheet className="w-6 h-6" />
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-              현장 작업자의 일보 작성, 실시간 수율/달성률 자동 산출 및 호기별/차종별 종합 실적 취합
-            </p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+                  압출 작업일보 상세 내역 대장
+                </h2>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                  총 <strong className="font-black text-teal-600">{filteredReports.length}</strong>건
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                현장 압출 작업일보 실시간 등록 내역 및 호기별·차종별 실적/비가동 상세 대장
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={handleOpenCreateModal}
+              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md shadow-teal-500/20 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>작업일보 신규작성</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <Download className="w-4 h-4" />
+              <span>실적 엑셀 취합</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadBlankCheckSheet}
+              className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+              title="A4 표준 압출작업 체크시트 (3개 시트 통합 서식) 다운로드"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>체크시트 표준서식</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 cursor-pointer"
+              title="인쇄"
+            >
+              <Printer className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <button
-            type="button"
-            onClick={handleOpenCreateModal}
-            className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md shadow-teal-500/20 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span>작업일보 신규작성</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
-          >
-            <Download className="w-4 h-4" />
-            <span>실적 엑셀 취합</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleDownloadBlankCheckSheet}
-            className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
-            title="A4 표준 압출작업 체크시트 (3개 시트 통합 서식) 다운로드"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>체크시트 표준서식</span>
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 cursor-pointer"
-            title="인쇄"
-          >
-            <Printer className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 1-2. 설유철 책임 전용 품목별 원재료 BOM 등록 한 줄 패널 (설유철/Admin만 노출) */}
-      {/* ========================================================================= */}
-      <ExtrusionMaterialBOMQuickPanel />
-
-      {/* ========================================================================= */}
-      {/* 2. Filter Selector Bar */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-        {/* Left Filter Group */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Date Filter Presets */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setDateFilterMode("all")}
-              className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${
-                dateFilterMode === "all"
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              전체
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateFilterMode("today")}
-              className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
-                dateFilterMode === "today"
-                  ? "bg-teal-600 text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              <span>⭐ 오늘</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setDateFilterMode("7days")}
-              className={`px-3 py-1.5 rounded-lg font-black transition cursor-pointer ${
-                dateFilterMode === "7days"
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              최근 7일
-            </button>
-          </div>
-
-          {/* Line Filter */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setSelectedLineFilter("all")}
-              className={`px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer ${
-                selectedLineFilter === "all"
-                  ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              전체 호기
-            </button>
-            {EXTRUSION_LINE_OPTIONS.map((l) => (
+        {/* Panel Sub: Integrated Filter & Search Toolbar */}
+        <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          {/* Left Filter Groups */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Date Filter */}
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
               <button
-                key={l.id}
                 type="button"
-                onClick={() => setSelectedLineFilter(l.id)}
-                className={`px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer ${
-                  selectedLineFilter === l.id
-                    ? l.id === "pcm1" ? "bg-teal-600 text-white shadow-xs" :
-                      l.id === "pcm3" ? "bg-blue-600 text-white shadow-xs" :
-                      l.id === "pvc" ? "bg-amber-600 text-white shadow-xs" :
-                      "bg-purple-600 text-white shadow-xs"
+                onClick={() => setDateFilterMode("all")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                  dateFilterMode === "all"
+                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
                     : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                 }`}
               >
-                {l.badge || l.shortName}
+                전체
               </button>
-            ))}
-          </div>
-
-          {/* Shift Filter */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setSelectedShiftFilter("all")}
-              className={`px-2 py-1.5 rounded-lg font-black transition cursor-pointer ${
-                selectedShiftFilter === "all"
-                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              주/야간 전체
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedShiftFilter("주간")}
-              className={`px-2 py-1.5 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
-                selectedShiftFilter === "주간"
-                  ? "bg-amber-500 text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              <Sun className="w-3 h-3" /> 주간
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedShiftFilter("야간")}
-              className={`px-2 py-1.5 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
-                selectedShiftFilter === "야간"
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-              }`}
-            >
-              <Moon className="w-3 h-3" /> 야간
-            </button>
-          </div>
-        </div>
-
-        {/* Right Search Input */}
-        <div className="relative min-w-[200px] sm:w-64">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="작업자, 차종, 품번, 내용 검색..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border-none text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
-          />
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 3. Executive KPI Dashboard Cards (실시간 취합 지표) */}
-      {/* ========================================================================= */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-        {/* Card 1: Total Production & Attainment */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-black">총 생산량 (계획)</span>
-            <TrendingUp className="w-4 h-4 text-teal-600" />
-          </div>
-          <div className="my-1.5">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {(metrics?.totalActual || 0).toLocaleString()}
-              <span className="text-xs font-bold text-slate-500 ml-1">m</span>
+              <button
+                type="button"
+                onClick={() => setDateFilterMode("today")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                  dateFilterMode === "today"
+                    ? "bg-teal-600 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                <span>⭐ 오늘</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDateFilterMode("7days")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                  dateFilterMode === "7days"
+                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                최근 7일
+              </button>
             </div>
-            <p className="text-[11px] text-slate-500">
-              계획: <span className="font-bold">{(metrics?.totalTarget || 0).toLocaleString()}m</span>
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-            <span className="font-bold text-slate-600 dark:text-slate-400">달성률</span>
-            <span
-              className={`font-black ${
-                (metrics?.attainmentRate || 0) >= 95 ? "text-emerald-600" : "text-amber-600"
-              }`}
-            >
-              {metrics?.attainmentRate ?? 0}%
-            </span>
-          </div>
-        </div>
 
-        {/* Card 2: Good Qty & Yield Rate */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-black">양품수량 (수율)</span>
-            <Sparkles className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="my-1.5">
-            <div className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-400 tracking-tight">
-              {(metrics?.totalGood || 0).toLocaleString()}
-              <span className="text-xs font-bold text-slate-500 ml-1">m</span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              불량: <span className="font-bold text-rose-600">{(metrics?.totalDefect || 0).toLocaleString()}m</span>
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-            <span className="font-bold text-slate-600 dark:text-slate-400">평균 양품률</span>
-            <span
-              className={`font-black ${
-                (metrics?.yieldRate || 0) >= 97 ? "text-emerald-600" : "text-amber-600"
-              }`}
-            >
-              {metrics?.yieldRate ?? 0}%
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Scrap Weight */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-black">총 스크랩 발생</span>
-            <Scale className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="my-1.5">
-            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-              {(metrics?.totalScrapKg || 0).toLocaleString()}
-              <span className="text-xs font-bold text-slate-500 ml-1">kg</span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              불량률: <span className="font-bold text-rose-500">{metrics?.defectRate ?? 0}%</span>
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-            <span className="font-bold text-slate-600 dark:text-slate-400">품질 상태</span>
-            <span className="font-black text-emerald-600">양호 (정상)</span>
-          </div>
-        </div>
-
-        {/* Card 4: Total Downtime Minutes */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-black">총 비가동 시간</span>
-            <Clock className="w-4 h-4 text-rose-600" />
-          </div>
-          <div className="my-1.5">
-            <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
-              {(metrics?.totalDowntimeMinutes || 0).toLocaleString()}
-              <span className="text-xs font-bold text-slate-500 ml-1">분</span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              시간 환산: <span className="font-bold text-slate-700 dark:text-slate-300">{metrics?.totalDowntimeHours || 0}시간</span>
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-            <span className="font-bold text-slate-600 dark:text-slate-400">비가동 건수</span>
-            <span className="font-black text-slate-700 dark:text-slate-300">
-              {(metrics?.downtimeCategoryStats || []).reduce((acc, c) => acc + (c?.occurrences || 0), 0)}건
-            </span>
-          </div>
-        </div>
-
-        {/* Card 5: Submitted Reports Count */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-[11px] font-black">작업일보 등록</span>
-            <FileSpreadsheet className="w-4 h-4 text-purple-600" />
-          </div>
-          <div className="my-1.5">
-            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {metrics?.totalReports || 0}
-              <span className="text-xs font-bold text-slate-500 ml-1">건</span>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              승인완료: <span className="font-bold text-emerald-600">{(filteredReports || []).filter((r) => r && r.approvalStatus === "승인").length}건</span>
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-            <span className="font-bold text-slate-600 dark:text-slate-400">결재 대기</span>
-            <span className="font-black text-amber-600">
-              {(filteredReports || []).filter((r) => r && r.approvalStatus === "대기").length}건
-            </span>
-          </div>
-        </div>
-
-        {/* Card 6: Quick Register CTA Card */}
-        <div
-          onClick={handleOpenCreateModal}
-          className="bg-gradient-to-br from-teal-700 to-slate-900 text-white p-4 rounded-2xl shadow-sm flex flex-col justify-between cursor-pointer hover:scale-102 transition active:scale-95 group"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-black text-teal-200">원클릭 등록</span>
-            <Zap className="w-4 h-4 text-teal-300 group-hover:rotate-12 transition" />
-          </div>
-          <div className="my-1">
-            <div className="text-sm sm:text-base font-black leading-snug">
-              신규 일보 등록
-            </div>
-            <p className="text-[10.5px] text-teal-200/80 mt-0.5">
-              지금 바로 생산 실적 입력
-            </p>
-          </div>
-          <div className="flex items-center justify-between pt-1 border-t border-teal-600/60 text-[11px] font-black text-teal-300">
-            <span>작성창 열기</span>
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 4. Line By Line Comparison Cards (호기별 실적 비교) & 5. Vehicle Breakdown (관리자/비작업자 전용 패널) */}
-      {/* ========================================================================= */}
-      {!isExtrusionWorker && (
-        <>
-          {/* 4. Line By Line Comparison Cards (호기별 실적 비교) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {(metrics?.lineStats || []).map((line) => {
-              const isSelected = selectedLineFilter === line.id;
-              return (
-                <div
-                  key={line.id}
-                  onClick={() => setSelectedLineFilter(isSelected ? "all" : line.id)}
-                  className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all cursor-pointer select-none ${
-                    isSelected
-                      ? "border-teal-500 ring-2 ring-teal-500/20 shadow-md bg-teal-50/20 dark:bg-teal-950/20"
-                      : "border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs"
+            {/* Line Filter */}
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setSelectedLineFilter("all")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                  selectedLineFilter === "all"
+                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                전체호기
+              </button>
+              {EXTRUSION_LINE_OPTIONS.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => setSelectedLineFilter(l.id)}
+                  className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                    selectedLineFilter === l.id
+                      ? l.id === "pcm1"
+                        ? "bg-teal-600 text-white shadow-xs"
+                        : l.id === "pcm3"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : l.id === "pvc"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                   }`}
                 >
-                  {/* Line Header */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-teal-500"></span>
-                      <span className="font-black text-sm text-slate-900 dark:text-white">
-                        {line.name}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {line.reportCount || 0}건 등록
-                    </span>
-                  </div>
-
-                  {/* Progress Gauges */}
-                  <div className="space-y-2 my-2 text-xs">
-                    {/* Attainment Progress */}
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                        <span>달성률 ({(line.actual || 0).toLocaleString()} / {(line.target || 0).toLocaleString()}m)</span>
-                        <span className="font-black text-slate-900 dark:text-white">{line.attainmentRate ?? 0}%</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, Number(line.attainmentRate) || 0)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* Yield Progress */}
-                    <div>
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                        <span>양품 수율 (양품 {(line.good || 0).toLocaleString()}m)</span>
-                        <span className="font-black text-blue-600 dark:text-blue-400">{line.yieldRate ?? 0}%</span>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <div
-                          className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, Number(line.yieldRate) || 0)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer Meta */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">스크랩:</span>
-                      <span className="font-bold text-amber-600">{line.scrapKg ?? 0}kg</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">비가동:</span>
-                      <span className="font-bold text-rose-600">{line.downtimeMinutes ?? 0}분</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* 5. Two Columns: Vehicle Breakdown & Downtime Pareto */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {/* Left: Vehicle / Part Breakdown */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Layers className="w-4 h-4 text-blue-600" />
-                  차종별 생산 실적 및 수율 분석
-                </h3>
-                <span className="text-[10.5px] font-bold text-slate-400">
-                  총 {(metrics?.vehicleStats || []).length}개 차종
-                </span>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 font-bold border-b border-slate-200 dark:border-slate-700">
-                      <th className="py-2 px-3">차종</th>
-                      <th className="py-2 px-2 text-right">계획(m)</th>
-                      <th className="py-2 px-2 text-right">실적(m)</th>
-                      <th className="py-2 px-2 text-right">양품(m)</th>
-                      <th className="py-2 px-2 text-right">달성률</th>
-                      <th className="py-2 px-2 text-right">수율</th>
-                      <th className="py-2 px-3 text-right">스크랩</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                    {(metrics?.vehicleStats || []).length > 0 ? (
-                      metrics.vehicleStats.map((v) => (
-                        <tr key={v.vehicle} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <td className="py-2 px-3 font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                            <span className="px-1.5 py-0.5 rounded-md bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-black text-[10.5px]">
-                              {v.vehicle}
-                            </span>
-                            <span className="text-[11px] text-slate-500 truncate max-w-[120px]">
-                              {v.itemName}
-                            </span>
-                          </td>
-                          <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">
-                            {(v.target || 0).toLocaleString()}
-                          </td>
-                          <td className="py-2 px-2 text-right font-black text-slate-900 dark:text-white">
-                            {(v.actual || 0).toLocaleString()}
-                          </td>
-                          <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400 font-bold">
-                            {(v.good || 0).toLocaleString()}
-                          </td>
-                          <td className="py-2 px-2 text-right font-bold text-emerald-600">
-                            {v.attainmentRate ?? 0}%
-                          </td>
-                          <td className="py-2 px-2 text-right font-black text-blue-600">
-                            {v.yieldRate ?? 0}%
-                          </td>
-                          <td className="py-2 px-3 text-right text-amber-600 font-bold">
-                            {v.scrapKg ?? 0}kg
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={7} className="py-6 text-center text-slate-400 text-xs">
-                          선택된 조건의 차종별 실적이 없습니다.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                  {l.badge || l.shortName}
+                </button>
+              ))}
             </div>
 
-            {/* Right: Downtime Reasons Pareto */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-rose-600" />
-                  비가동 원인별 분포 및 손실 시간
-                </h3>
-                <span className="text-[10.5px] font-bold text-slate-400">
-                  총 {metrics?.totalDowntimeMinutes || 0}분 ({metrics?.totalDowntimeHours || 0}시간)
-                </span>
-              </div>
+            {/* Shift Filter */}
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setSelectedShiftFilter("all")}
+                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer ${
+                  selectedShiftFilter === "all"
+                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                주/야간
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedShiftFilter("주간")}
+                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                  selectedShiftFilter === "주간"
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                <Sun className="w-3 h-3" /> 주간
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedShiftFilter("야간")}
+                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                  selectedShiftFilter === "야간"
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                <Moon className="w-3 h-3" /> 야간
+              </button>
+            </div>
 
-              <div className="space-y-2.5 pt-1">
-                {(metrics?.downtimeCategoryStats || []).length > 0 ? (
-                  metrics.downtimeCategoryStats.map((c) => (
-                    <div key={c.category} className="space-y-1 text-xs">
-                      <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-bold text-[11.5px]">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black">{c.category}</span>
-                          <span className="text-[10.5px] text-slate-400">({c.occurrences || 0}회 발생)</span>
-                        </div>
-                        <div className="flex items-center gap-2 font-black">
-                          <span className="text-rose-600">{c.minutes || 0}분 ({c.hours || 0}h)</span>
-                          <span className="text-slate-400 text-[10.5px]">[{c.percentage || 0}%]</span>
-                        </div>
-                      </div>
-                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                        <div
-                          className="h-full bg-rose-500 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, Number(c.percentage) || 0)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-8 text-center text-slate-400 text-xs">
-                    등록된 비가동 손실 내역이 없습니다.
-                  </div>
-                )}
-              </div>
+            {/* Approval Filter */}
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setSelectedApprovalFilter("all")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                  selectedApprovalFilter === "all"
+                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                결재전체
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedApprovalFilter("승인")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                  selectedApprovalFilter === "승인"
+                    ? "bg-emerald-600 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                승인완료
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedApprovalFilter("대기")}
+                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                  selectedApprovalFilter === "대기"
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                결재대기
+              </button>
             </div>
           </div>
-        </>
-      )}
 
-      {/* ========================================================================= */}
-      {/* 6. Main Real-time Reports Ledger Table (작업일보 대장) */}
-      {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-        {/* Table Header Controls */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <FileSpreadsheet className="w-5 h-5 text-teal-600" />
-            <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-              압출 작업일보 상세 내역 대장
-            </h3>
-            <span className="text-xs font-bold text-slate-500">
-              (총 <strong className="text-teal-600">{filteredReports.length}</strong>건)
-            </span>
-          </div>
-
-          {/* Quick Approval Status Filters */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-bold">결재구분:</span>
-            <button
-              type="button"
-              onClick={() => setSelectedApprovalFilter("all")}
-              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                selectedApprovalFilter === "all"
-                  ? "bg-slate-900 text-white dark:bg-slate-700"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              전체
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedApprovalFilter("승인")}
-              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                selectedApprovalFilter === "승인"
-                  ? "bg-emerald-600 text-white"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              승인완료
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedApprovalFilter("대기")}
-              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                selectedApprovalFilter === "대기"
-                  ? "bg-amber-500 text-white"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              결재대기
-            </button>
+          {/* Right Search Input */}
+          <div className="relative min-w-[200px] sm:w-64">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="작업자, 차종, 품번 검색..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
+            />
           </div>
         </div>
 
@@ -1107,7 +719,7 @@ export const ExtrusionProductionTab = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 7. Work Report Create / Edit Modal */}
+      {/* Work Report Create / Edit Modal */}
       {/* ========================================================================= */}
       <ExtrusionWorkReportModal
         isOpen={isModalOpen}
