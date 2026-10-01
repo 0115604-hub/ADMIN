@@ -21,6 +21,7 @@ import {
 } from "../../services/extrusionProductionService";
 import { useAuth } from "../../context/AuthContext";
 import ExtrusionWorkReportModal from "./ExtrusionWorkReportModal";
+import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 export const ExtrusionProductionTab = () => {
   const { currentProfile, isAdmin } = useAuth();
@@ -191,6 +192,11 @@ export const ExtrusionProductionTab = () => {
           <span className="text-xs sm:text-sm font-semibold">{toastMessage}</span>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* 설유철 책임 전용 품목별 원재료 BOM 등록 패널 (설유철/Admin만 노출) */}
+      {/* ========================================================================= */}
+      <ExtrusionMaterialBOMQuickPanel />
 
       {/* ========================================================================= */}
       {/* Main Real-time Reports Ledger Table (주)오륙 압출 생산관리 및 작업일보 대장) */}

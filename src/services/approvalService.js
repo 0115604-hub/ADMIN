@@ -1021,11 +1021,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
       const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
 
-      // ⭐ If active reports exist, ensure it is not blocked by old deleted tombstone
-      if (deletedIds.has(canonicalDocId) && plantReports.length > 0) {
-        deletedIds.delete(canonicalDocId);
-        saveDeletedApprovalIds(deletedIds);
-      } else if (deletedIds.has(canonicalDocId)) {
+      // ⭐ If document was deleted by user, strictly respect deletion and do not auto-resurrect
+      if (deletedIds.has(canonicalDocId)) {
         continue;
       }
 
