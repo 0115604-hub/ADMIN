@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
   FileCheck2,
+  FileSpreadsheet,
   Package,
   Sliders,
   Thermometer,
@@ -548,6 +549,16 @@ export const ExtrusionWorkReportModal = ({
   const handleDowntimeChange = (field, value) => {
     const num = value === "" ? "" : Math.max(0, Number(value));
     setFormData((prev) => ({ ...prev, [field]: num }));
+  };
+
+  const handleNestedFieldChange = (parentKey, childKey, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [parentKey]: {
+        ...(prev[parentKey] || {}),
+        [childKey]: value
+      }
+    }));
   };
 
   const handleApplyStandardSpecs = () => {
