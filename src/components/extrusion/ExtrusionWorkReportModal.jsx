@@ -25,7 +25,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Camera,
-  AlertOctagon
+  AlertOctagon,
+  Wrench
 } from "lucide-react";
 import {
   WORKER_PRESETS,
