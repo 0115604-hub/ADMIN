@@ -909,21 +909,25 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
     let allReports = Array.isArray(reports) ? reports : null;
     if (allReports === null) {
+      const repMap = new Map();
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) parsed.forEach((r) => r.id && repMap.set(r.id, r));
+          }
+        } catch (e) {}
+      }
       try {
         const snap = await getDocs(collection(db, "overtime_reports"));
         if (!snap.empty) {
-          allReports = [];
-          snap.forEach((d) => allReports.push({ id: d.id, ...d.data() }));
+          snap.forEach((d) => repMap.set(d.id, { id: d.id, ...d.data() }));
         }
       } catch (e) {
         console.warn("Could not fetch overtime_reports from Firestore in sync:", e);
       }
-      if (!allReports && typeof window !== "undefined") {
-        try {
-          const raw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
-          if (raw) allReports = JSON.parse(raw);
-        } catch (e) {}
-      }
+      allReports = Array.from(repMap.values());
     }
     if (!allReports) allReports = [];
 
@@ -957,10 +961,23 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const plantKey = targetPlant === "삼랑진공장" ? "samrangjin" : "hanlim";
 
       // Filter reports for this plant and date
-      const plantReports = allReports.filter(r => 
-        (r.plant === targetPlant || targetCompanies.includes(r.company) || (r.plant && r.plant.includes(targetPlant.replace("공장", "")))) && 
-        (r.workDate === workDateStr || (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0"))))
-      );
+      const plantReports = allReports.filter(r => {
+        if (!r) return false;
+        const matchesPlant = (
+          r.plant === targetPlant ||
+          (r.plant && r.plant.includes(targetPlant.replace("공장", ""))) ||
+          targetCompanies.some(c => cleanCompanyName(r.company) === cleanCompanyName(c)) ||
+          targetCompanies.some(c => r.title && r.title.includes(c))
+        );
+        if (!matchesPlant) return false;
+
+        const dateMatch = (
+          r.workDate === workDateStr ||
+          (r.workDate && r.workDate.endsWith(String(dayNum).padStart(2, "0")) && r.workDate.includes(String(monthNum).padStart(2, "0"))) ||
+          (r.title && r.title.includes(`${monthNum}월 ${dayNum}일`))
+        );
+        return dateMatch;
+      });
 
       // Check whether this is weekend overtime or weekday attendance
       const hasSpecialOvertimeReport = plantReports.some(
@@ -990,8 +1007,11 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
       const canonicalDocId = `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`;
 
-      // ⭐ If permanently deleted by ADMIN, never resurrect
-      if (deletedIds.has(canonicalDocId)) {
+      // ⭐ If active reports exist, ensure it is not blocked by old deleted tombstone
+      if (deletedIds.has(canonicalDocId) && plantReports.length > 0) {
+        deletedIds.delete(canonicalDocId);
+        saveDeletedApprovalIds(deletedIds);
+      } else if (deletedIds.has(canonicalDocId)) {
         continue;
       }
 
@@ -1033,21 +1053,21 @@ export const syncPlantOvertimeToApprovalBox = async ({
         continue;
       }
 
-      // Aggregate data ONLY from actual registered reports (compRep)
+      // Aggregate data directly from all matching reports for this plant
       const companySummaries = [];
       let totalPlantWorkers = 0;
       let totalPlantHours = 0;
       let totalPlantCost = 0;
-      const participatingCompanies = [];
+      const participatingCompanies = new Set();
 
-      targetCompanies.forEach(comp => {
-        // 1. Check if individual report exists
-        const compRep = plantReports.find(r => r.company === comp || (Array.isArray(r.companies) && r.companies.includes(comp)));
-        if (!compRep) return;
+      plantReports.forEach(compRep => {
+        const rawComp = compRep.company || (Array.isArray(compRep.companies) && compRep.companies[0]) || compRep.title || targetPlant;
+        const comp = cleanCompanyName(rawComp) || (targetPlant === "삼랑진공장" ? "오륙" : "한울");
+        participatingCompanies.add(comp);
 
-        let workerCount = compRep.totalWorkers || (compRep.items ? compRep.items.length : 0);
-        let workerHours = compRep.totalHours || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
-        let workerCost = compRep.cost || (workerHours * 15000);
+        let workerCount = Number(compRep.totalWorkers) || Number(compRep.headcount) || (compRep.items ? compRep.items.length : 0);
+        let workerHours = Number(compRep.totalHours) || (compRep.items ? compRep.items.reduce((s, it) => s + (Number(it.hours) || 0) * (Number(it.count) || 1), 0) : 0);
+        let workerCost = Number(compRep.cost) || (workerHours * 15000);
         let managersList = [];
         let workersList = [];
 
@@ -1076,22 +1096,19 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
         const uniqueManagers = Array.from(new Set(managersList));
         const uniqueWorkers = Array.from(new Set(workersList)).filter(w => !uniqueManagers.includes(w));
-        const actualCount = (uniqueManagers.length + uniqueWorkers.length) || workerCount;
+        const actualCount = (uniqueManagers.length + uniqueWorkers.length) || workerCount || 1;
 
-        if (actualCount > 0 || compRep) {
-          participatingCompanies.push(comp);
-          companySummaries.push({
-            company: comp,
-            workerCount: actualCount,
-            workerHours,
-            workerCost,
-            managers: uniqueManagers,
-            workers: uniqueWorkers
-          });
-          totalPlantWorkers += actualCount;
-          totalPlantHours += workerHours;
-          totalPlantCost += workerCost;
-        }
+        companySummaries.push({
+          company: comp,
+          workerCount: actualCount,
+          workerHours: workerHours || (actualCount * 8),
+          workerCost: workerCost || (actualCount * 8 * 15000),
+          managers: uniqueManagers,
+          workers: uniqueWorkers
+        });
+        totalPlantWorkers += actualCount;
+        totalPlantHours += (workerHours || (actualCount * 8));
+        totalPlantCost += (workerCost || (actualCount * 8 * 15000));
       });
 
       // If no workers or no valid companies for this plant on this date:
@@ -1144,7 +1161,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
       const drafterTitle = "선임";
       const leadName = targetPlant === "한림공장" ? "김동욱" : "윤경수";
 
-      const titleCompList = participatingCompanies.length > 0 ? participatingCompanies : targetCompanies;
+      const titleCompList = participatingCompanies.size > 0 ? Array.from(participatingCompanies) : targetCompanies;
       const title = `[특근보고서] ${monthNum}월 ${dayNum}일(${dayLabel}) ${targetPlant} 특근보고서 (${titleCompList.join(", ")})`;
       const department = targetPlant === "삼랑진공장"
         ? "생산총괄 ((주)오륙 + 유성)"
@@ -1273,9 +1290,25 @@ ${taskHeader}`;
  */
 export const syncAllOvertimeReportsToApprovalBox = async () => {
   try {
-    const snap = await getDocs(collection(db, "overtime_reports"));
-    const allReports = [];
-    snap.forEach((d) => allReports.push({ id: d.id, ...d.data() }));
+    const repMap = new Map();
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) parsed.forEach((r) => r.id && repMap.set(r.id, r));
+        }
+      } catch (e) {}
+    }
+    try {
+      const snap = await getDocs(collection(db, "overtime_reports"));
+      if (!snap.empty) {
+        snap.forEach((d) => repMap.set(d.id, { id: d.id, ...d.data() }));
+      }
+    } catch (e) {
+      console.warn("Could not fetch overtime_reports from Firestore in syncAll:", e);
+    }
+    const allReports = Array.from(repMap.values());
 
     const weekendDates = new Set();
     allReports.forEach((r) => {

@@ -227,7 +227,11 @@ export const ElectronicApprovalView = () => {
         if (found) setSelectedDoc(found);
       }
     });
-    syncAllOvertimeReportsToApprovalBox().catch((e) => console.warn("Auto-sync overtime approval error:", e));
+    syncAllOvertimeReportsToApprovalBox().then((synced) => {
+      if (Array.isArray(synced) && synced.length > 0) {
+        setApprovalDocs(getLocalApprovalDocs());
+      }
+    }).catch((e) => console.warn("Auto-sync overtime approval error:", e));
     return () => unsub();
   }, []);
 
