@@ -1557,7 +1557,7 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 3: Curing Temp, Water Temp & Coating Pressure (한줄짜리 간략한 뱃지 패널) */}
+            {/* Section 3: Curing Temp, Water Temp & Coating Pressure (제목 삭제 및 뱃지만 심플 구성) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <div className="flex items-center justify-between">
@@ -1565,22 +1565,25 @@ export const ExtrusionWorkReportModal = ({
                   <Flame className="w-4 h-4 text-orange-500" />
                   ③ 작업조건
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 border border-orange-300">
-                  가류조 · 온조기 · 코팅압력
-                </span>
+                <div className="flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10.5px] border border-orange-300">
+                    가류조
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-black text-[10.5px] border border-teal-300">
+                    온조기
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-black text-[10.5px] border border-sky-300">
+                    코팅압력
+                  </span>
+                </div>
               </div>
 
               {/* 1. 가류조 온도: 1~13존 한줄 패널 */}
               <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
-                      🔥 가류조
-                    </span>
-                    <span className="text-[11px] font-bold text-orange-900 dark:text-orange-200">
-                      가류조 (1~13존 · 표준 210±20℃)
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
+                    🔥 가류조 (210±20℃)
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -1648,15 +1651,10 @@ export const ExtrusionWorkReportModal = ({
 
               {/* 2. 온조기 온도: 1~4구간 한줄 패널 */}
               <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs">
-                      💧 온조기
-                    </span>
-                    <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200">
-                      온조기 (1~4구간 · 표준 50±5℃)
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs">
+                    💧 온조기 (50±5℃)
+                  </span>
                 </div>
 
                 {/* 4 Sections Grid */}
@@ -1706,20 +1704,15 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               </div>
 
-              {/* 3. 코팅 분사압력: 1~3번건 한줄 패널 */}
+              {/* 3. 코팅 분사압력: 1~3번건 한줄 패널 (제목 삭제 및 뱃지 3개) */}
               <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
-                      🧪 코팅압력
-                    </span>
-                    <span className="text-[11px] font-bold text-sky-900 dark:text-sky-200">
-                      코팅압력 (1~3번건 · 표준 2.5±0.3 bar)
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
+                    🧪 코팅압력 (2.5±0.3 bar)
+                  </span>
                 </div>
 
-                {/* 3 Guns Grid */}
+                {/* 3 Guns Grid (3개의 뱃지만 깔끔하게 노출) */}
                 <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                   {[
                     { id: "sprayGun1", label: "1번건", defaultVal: "2.5" },
