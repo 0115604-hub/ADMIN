@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Plus,
   FileSpreadsheet,
   Download,
   CheckCircle2,
   AlertCircle,
   Trash2,
   Edit,
-  Search,
-  Printer,
   Sun,
   Moon
 } from "lucide-react";
@@ -49,7 +46,6 @@ export const ExtrusionProductionTab = () => {
   const [customDate, setCustomDate] = useState("");
   const [selectedLineFilter, setSelectedLineFilter] = useState("all"); // all | pcm1 | pcm3 | pvc | tpe
   const [selectedShiftFilter, setSelectedShiftFilter] = useState("all"); // all | 주간 | 야간
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedApprovalFilter, setSelectedApprovalFilter] = useState("all"); // all | 승인 | 대기
 
   const showToast = (msg) => {
@@ -65,11 +61,11 @@ export const ExtrusionProductionTab = () => {
     return () => unsub();
   }, []);
 
-  // Filtered reports
+  // Filtered and Sorted reports (최근순 정렬: 최신 일자/등록순)
   const filteredReports = useMemo(() => {
     const todayStr = new Date().toISOString().split("T")[0];
 
-    return reports.filter((r) => {
+    const list = reports.filter((r) => {
       // 1. Date Filter
       if (dateFilterMode === "today") {
         if (r.date !== todayStr) return false;
@@ -96,23 +92,21 @@ export const ExtrusionProductionTab = () => {
         return false;
       }
 
-      // 5. Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const match =
-          (r.worker && r.worker.toLowerCase().includes(q)) ||
-          (r.vehicle && r.vehicle.toLowerCase().includes(q)) ||
-          (r.itemCode && r.itemCode.toLowerCase().includes(q)) ||
-          (r.itemName && r.itemName.toLowerCase().includes(q)) ||
-          (r.lineName && r.lineName.toLowerCase().includes(q)) ||
-          (r.downtimeDetail && r.downtimeDetail.toLowerCase().includes(q)) ||
-          (r.notes && r.notes.toLowerCase().includes(q));
-        if (!match) return false;
-      }
-
       return true;
     });
-  }, [reports, dateFilterMode, customDate, selectedLineFilter, selectedShiftFilter, selectedApprovalFilter, searchQuery]);
+
+    // 최근순 정렬 (날짜 내림차순 -> 등록시간/ID 내림차순)
+    return list.sort((a, b) => {
+      const dateA = String(a.date || "");
+      const dateB = String(b.date || "");
+      if (dateB !== dateA) {
+        return dateB.localeCompare(dateA);
+      }
+      const timeA = String(a.createdAt || a.id || "");
+      const timeB = String(b.createdAt || b.id || "");
+      return timeB.localeCompare(timeA);
+    });
+  }, [reports, dateFilterMode, customDate, selectedLineFilter, selectedShiftFilter, selectedApprovalFilter]);
 
   // Aggregated metrics
   const metrics = useMemo(() => {
@@ -136,7 +130,7 @@ export const ExtrusionProductionTab = () => {
     try {
       await saveExtrusionReport(reportData);
       setIsModalOpen(false);
-      showToast(editingReport ? "✅ 작업일보가 성공적으로 수정되었습니다." : "✅ 새 작업일보가 실시간 등록되었습니다.");
+      showToast(editingReport ? "✅ 작업일보가 수정되었습니다." : "✅ 작업일보가 등록되었습니다.");
     } catch (e) {
       console.error(e);
       showToast("❌ 작업일보 저장 중 오류가 발생했습니다.");
@@ -177,17 +171,6 @@ export const ExtrusionProductionTab = () => {
     showToast("📊 생산실적 및 작업일보 엑셀 파일이 다운로드되었습니다.");
   };
 
-  // Handler: Download Blank / Standard Check Sheet
-  const handleDownloadBlankCheckSheet = async () => {
-    try {
-      await exportExtrusionCheckSheetExcel(null);
-      showToast("📄 A4 압출작업 표준 체크시트 양식이 다운로드되었습니다.");
-    } catch (e) {
-      console.error(e);
-      showToast("❌ 체크시트 양식 다운로드 중 오류가 발생했습니다.");
-    }
-  };
-
   // Handler: Download Individual Report Check Sheet
   const handleDownloadCheckSheet = async (report) => {
     try {
@@ -199,13 +182,8 @@ export const ExtrusionProductionTab = () => {
     }
   };
 
-  // Handler: Print
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
-    <div className="space-y-4 animate-fadeIn max-w-[1600px] mx-auto min-w-0">
+    <div className="space-y-3 animate-fadeIn max-w-[1600px] mx-auto min-w-0">
       {/* Toast */}
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 bg-slate-900/95 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce border border-slate-700 backdrop-blur-md">
@@ -229,12 +207,12 @@ export const ExtrusionProductionTab = () => {
                 주)오륙 압출 생산관리 및 작업일보
               </h2>
               <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
-                총 <strong className="font-black text-teal-600">{filteredReports.length}</strong>건
+                총 <strong className="font-black text-teal-600">{filteredReports.length}</strong>건 (최근순)
               </span>
             </div>
           </div>
 
-          {/* Right Action: 엑셀취합 뱃지만 생성 */}
+          {/* Right Action: 엑셀취합 뱃지만 단독 생성 */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
@@ -247,188 +225,173 @@ export const ExtrusionProductionTab = () => {
           </div>
         </div>
 
-        {/* Panel Sub: Integrated Filter & Search Toolbar */}
-        <div className="px-4 py-3 bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-          {/* Left Filter Groups */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Date Filter */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setDateFilterMode("all")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                  dateFilterMode === "all"
-                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                전체
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilterMode("today")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
-                  dateFilterMode === "today"
-                    ? "bg-teal-600 text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                <span>⭐ 오늘</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDateFilterMode("7days")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                  dateFilterMode === "7days"
-                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                최근 7일
-              </button>
-            </div>
-
-            {/* Line Filter */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setSelectedLineFilter("all")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                  selectedLineFilter === "all"
-                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                전체호기
-              </button>
-              {EXTRUSION_LINE_OPTIONS.map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  onClick={() => setSelectedLineFilter(l.id)}
-                  className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                    selectedLineFilter === l.id
-                      ? l.id === "pcm1"
-                        ? "bg-teal-600 text-white shadow-xs"
-                        : l.id === "pcm3"
-                        ? "bg-blue-600 text-white shadow-xs"
-                        : l.id === "pvc"
-                        ? "bg-amber-600 text-white shadow-xs"
-                        : "bg-purple-600 text-white shadow-xs"
-                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                  }`}
-                >
-                  {l.badge || l.shortName}
-                </button>
-              ))}
-            </div>
-
-            {/* Shift Filter */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setSelectedShiftFilter("all")}
-                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer ${
-                  selectedShiftFilter === "all"
-                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                주/야간
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedShiftFilter("주간")}
-                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
-                  selectedShiftFilter === "주간"
-                    ? "bg-amber-500 text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                <Sun className="w-3 h-3" /> 주간
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedShiftFilter("야간")}
-                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
-                  selectedShiftFilter === "야간"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                <Moon className="w-3 h-3" /> 야간
-              </button>
-            </div>
-
-            {/* Approval Filter */}
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
-              <button
-                type="button"
-                onClick={() => setSelectedApprovalFilter("all")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                  selectedApprovalFilter === "all"
-                    ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                결재전체
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedApprovalFilter("승인")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                  selectedApprovalFilter === "승인"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                승인완료
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedApprovalFilter("대기")}
-                className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
-                  selectedApprovalFilter === "대기"
-                    ? "bg-amber-500 text-white shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                }`}
-              >
-                결재대기
-              </button>
-            </div>
+        {/* Panel Sub: Compact Filter Toolbar (검색창 완전 삭제 & 간결한 필터 뱃지) */}
+        <div className="px-4 py-2.5 bg-slate-50/70 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 flex-wrap text-xs">
+          {/* Date Filter */}
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setDateFilterMode("all")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                dateFilterMode === "all"
+                  ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              전체
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilterMode("today")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                dateFilterMode === "today"
+                  ? "bg-teal-600 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              <span>⭐ 오늘</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDateFilterMode("7days")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                dateFilterMode === "7days"
+                  ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              최근 7일
+            </button>
           </div>
 
-          {/* Right Search Input */}
-          <div className="relative min-w-[200px] sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="작업자, 차종, 품번 검색..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
-            />
+          {/* Line Filter */}
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setSelectedLineFilter("all")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                selectedLineFilter === "all"
+                  ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              전체호기
+            </button>
+            {EXTRUSION_LINE_OPTIONS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                onClick={() => setSelectedLineFilter(l.id)}
+                className={`px-2 py-1 rounded-lg font-black transition cursor-pointer ${
+                  selectedLineFilter === l.id
+                    ? l.id === "pcm1"
+                      ? "bg-teal-600 text-white shadow-xs"
+                      : l.id === "pcm3"
+                      ? "bg-blue-600 text-white shadow-xs"
+                      : l.id === "pvc"
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "bg-purple-600 text-white shadow-xs"
+                    : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+                }`}
+              >
+                {l.badge || l.shortName}
+              </button>
+            ))}
+          </div>
+
+          {/* Shift Filter */}
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setSelectedShiftFilter("all")}
+              className={`px-2 py-1 rounded-lg font-black transition cursor-pointer ${
+                selectedShiftFilter === "all"
+                  ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              주/야간
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedShiftFilter("주간")}
+              className={`px-2 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                selectedShiftFilter === "주간"
+                  ? "bg-amber-500 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              <Sun className="w-3 h-3" /> 주간
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedShiftFilter("야간")}
+              className={`px-2 py-1 rounded-lg font-black transition cursor-pointer flex items-center gap-1 ${
+                selectedShiftFilter === "야간"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              <Moon className="w-3 h-3" /> 야간
+            </button>
+          </div>
+
+          {/* Approval Filter */}
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setSelectedApprovalFilter("all")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                selectedApprovalFilter === "all"
+                  ? "bg-slate-900 text-white dark:bg-slate-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              결재전체
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedApprovalFilter("승인")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                selectedApprovalFilter === "승인"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              승인완료
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedApprovalFilter("대기")}
+              className={`px-2.5 py-1 rounded-lg font-black transition cursor-pointer ${
+                selectedApprovalFilter === "대기"
+                  ? "bg-amber-500 text-white shadow-xs"
+                  : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
+              }`}
+            >
+              결재대기
+            </button>
           </div>
         </div>
 
-        {/* Scrollable Table */}
+        {/* Scrollable Table (간략하고 명확한 최근순 목록표) */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-100/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700">
-                <th className="py-3 px-3 text-center w-12">No</th>
-                <th className="py-3 px-3">일자 / 근무조</th>
-                <th className="py-3 px-3">호기 / 작업자</th>
-                <th className="py-3 px-3">차종 / 품명</th>
-                <th className="py-3 px-2 text-right">계획(m)</th>
-                <th className="py-3 px-2 text-right">실적(m)</th>
-                <th className="py-3 px-2 text-right">양품(m)</th>
-                <th className="py-3 px-2 text-right">수율(%)</th>
-                <th className="py-3 px-2 text-right">스크랩</th>
-                <th className="py-3 px-3 text-right">비가동</th>
-                <th className="py-3 px-3">비가동 사유 및 조치</th>
-                <th className="py-3 px-2 text-center">결재상태</th>
-                <th className="py-3 px-3 text-center">관리</th>
+              <tr className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 text-[11px]">
+                <th className="py-2.5 px-2 text-center w-10">No</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">일자 / 조</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">호기 / 작업자</th>
+                <th className="py-2.5 px-3">차종 / 품명</th>
+                <th className="py-2.5 px-2 text-right">계획</th>
+                <th className="py-2.5 px-2 text-right">실적</th>
+                <th className="py-2.5 px-2 text-right">양품</th>
+                <th className="py-2.5 px-2 text-right">수율</th>
+                <th className="py-2.5 px-2 text-right">스크랩</th>
+                <th className="py-2.5 px-2.5 text-right">비가동</th>
+                <th className="py-2.5 px-3">비가동 내용</th>
+                <th className="py-2.5 px-2 text-center">결재</th>
+                <th className="py-2.5 px-2.5 text-center">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -438,20 +401,20 @@ export const ExtrusionProductionTab = () => {
                   return (
                     <tr
                       key={r.id}
-                      className="hover:bg-teal-50/30 dark:hover:bg-teal-950/20 transition font-medium"
+                      className="hover:bg-teal-50/40 dark:hover:bg-teal-950/25 transition font-medium"
                     >
                       {/* No */}
-                      <td className="py-3 px-3 text-center text-slate-400 font-bold text-xs">
+                      <td className="py-2.5 px-2 text-center text-slate-400 font-bold text-[11px]">
                         {idx + 1}
                       </td>
 
                       {/* Date & Shift */}
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <div className="font-black text-slate-900 dark:text-white">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="font-black text-slate-900 dark:text-white text-xs">
                           {r.date}
                         </div>
                         <span
-                          className={`inline-block text-[10px] font-black px-1.5 py-0.2 rounded-md mt-0.5 ${
+                          className={`inline-block text-[9.5px] font-black px-1.5 py-0.2 rounded mt-0.5 ${
                             r.shift === "주간"
                               ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
                               : "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
@@ -462,8 +425,8 @@ export const ExtrusionProductionTab = () => {
                       </td>
 
                       {/* Line & Worker */}
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <div className="font-black text-teal-700 dark:text-teal-400">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="font-black text-teal-700 dark:text-teal-400 text-xs">
                           {r.lineName}
                         </div>
                         <div className="text-[11px] text-slate-600 dark:text-slate-300 font-bold">
@@ -473,60 +436,49 @@ export const ExtrusionProductionTab = () => {
                       </td>
 
                       {/* Vehicle & Item */}
-                      <td className="py-3 px-3 max-w-[240px]">
+                      <td className="py-2.5 px-3 max-w-[220px]">
                         {Array.isArray(r.items) && r.items.length > 1 ? (
-                          <div className="space-y-1">
+                          <div className="space-y-0.5">
                             <div className="flex items-center gap-1">
-                              <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 text-[10px] font-black">
+                              <span className="px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 text-[9.5px] font-black">
                                 다품목 {r.items.length}종
                               </span>
-                            </div>
-                            <div className="space-y-0.5">
-                              {r.items.map((it, i) => (
-                                <div key={it.id || i} className="text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-1 truncate">
-                                  <span className="px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[9.5px] font-black shrink-0">
-                                    {it.vehicle}
-                                  </span>
-                                  <span className="truncate font-medium text-[10.5px]">{it.itemName}</span>
-                                  <span className="text-[10px] text-slate-400 shrink-0 font-bold">({it.actualQty}m)</span>
-                                </div>
-                              ))}
+                              <span className="text-[10px] text-slate-500 font-bold truncate">
+                                {r.items.map(it => it.vehicle).filter(Boolean).join(", ")}
+                              </span>
                             </div>
                           </div>
                         ) : (
-                          <div>
+                          <div className="truncate">
                             <div className="font-black text-slate-900 dark:text-white flex items-center gap-1">
-                              <span className="px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[10px] font-black">
-                                {r.vehicle}
+                              <span className="px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[9.5px] font-black shrink-0">
+                                {r.vehicle || "압출"}
                               </span>
-                              <span className="truncate text-xs">{r.itemCode || ""}</span>
-                            </div>
-                            <div className="text-[11px] text-slate-500 truncate mt-0.5 font-medium">
-                              {r.itemName || "-"}
+                              <span className="truncate text-xs font-bold">{r.itemCode || r.itemName || "-"}</span>
                             </div>
                           </div>
                         )}
                       </td>
 
                       {/* Target Qty */}
-                      <td className="py-3 px-2 text-right text-slate-500 font-bold">
-                        {r.targetQty ? r.targetQty.toLocaleString() : "-"}
+                      <td className="py-2.5 px-2 text-right text-slate-500 font-bold text-xs">
+                        {r.targetQty ? `${Number(r.targetQty).toLocaleString()}m` : "-"}
                       </td>
 
                       {/* Actual Qty */}
-                      <td className="py-3 px-2 text-right font-black text-slate-900 dark:text-white text-sm">
-                        {r.actualQty ? r.actualQty.toLocaleString() : "0"}
+                      <td className="py-2.5 px-2 text-right font-black text-slate-900 dark:text-white text-xs">
+                        {r.actualQty ? `${Number(r.actualQty).toLocaleString()}m` : "0m"}
                       </td>
 
                       {/* Good Qty */}
-                      <td className="py-3 px-2 text-right font-black text-blue-700 dark:text-blue-400">
-                        {r.goodQty ? r.goodQty.toLocaleString() : "0"}
+                      <td className="py-2.5 px-2 text-right font-black text-blue-700 dark:text-blue-400 text-xs">
+                        {r.goodQty ? `${Number(r.goodQty).toLocaleString()}m` : "0m"}
                       </td>
 
                       {/* Yield Rate */}
-                      <td className="py-3 px-2 text-right">
+                      <td className="py-2.5 px-2 text-right">
                         <span
-                          className={`font-black text-xs px-1.5 py-0.5 rounded-md ${
+                          className={`font-black text-[11px] px-1.5 py-0.5 rounded ${
                             r.yieldRate >= 97
                               ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                               : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
@@ -537,87 +489,65 @@ export const ExtrusionProductionTab = () => {
                       </td>
 
                       {/* Scrap Kg */}
-                      <td className="py-3 px-2 text-right text-amber-600 font-bold">
+                      <td className="py-2.5 px-2 text-right text-amber-600 font-bold text-xs">
                         {r.scrapKg > 0 ? `${r.scrapKg}kg` : "-"}
                       </td>
 
                       {/* Downtime */}
-                      <td className="py-3 px-3 text-right">
+                      <td className="py-2.5 px-2.5 text-right whitespace-nowrap">
                         {r.downtimeMinutes > 0 ? (
-                          <div>
-                            <span className="font-black text-rose-600 dark:text-rose-400 text-xs">
-                              {r.downtimeMinutes}분
-                            </span>
-                            <div className="text-[10px] text-slate-400 font-bold">
-                              ({(r.downtimeMinutes / 60).toFixed(1)}h)
-                            </div>
-                          </div>
+                          <span className="font-black text-rose-600 dark:text-rose-400 text-xs">
+                            {r.downtimeMinutes}분
+                          </span>
                         ) : (
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
 
                       {/* Downtime Reason / Notes */}
-                      <td className="py-3 px-3 max-w-[220px]">
-                        {r.downtimeMinutes > 0 && (
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-900 border border-rose-200">
-                                {r.downtimeCategory || "형교환"}
-                              </span>
-                              {r.downtimeScrapKg > 0 && (
-                                <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-orange-100 text-orange-900 border border-orange-200">
-                                  폐기 {r.downtimeScrapKg}kg
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-slate-700 dark:text-slate-300 text-xs truncate">
-                              {r.downtimeDetail || "-"}
-                            </div>
-                          </div>
-                        )}
-                        {(r.tpmIssueText || (Array.isArray(r.tpmIssuePhotos) && r.tpmIssuePhotos.length > 0)) && (
-                          <div className="flex items-center gap-1 text-[10.5px] font-bold text-amber-600 dark:text-amber-400 mt-0.5 truncate">
-                            <span className="px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[9.5px] font-black">
-                              🚨 TPM이상
+                      <td className="py-2.5 px-3 max-w-[200px] truncate text-xs">
+                        {r.downtimeMinutes > 0 ? (
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-900 shrink-0">
+                              {r.downtimeCategory || "형교환"}
                             </span>
-                            <span className="truncate">{r.tpmIssueText || "점검 사진 등록"}</span>
-                            {Array.isArray(r.tpmIssuePhotos) && r.tpmIssuePhotos.length > 0 && (
-                              <span className="text-[10px]">📷 {r.tpmIssuePhotos.length}장</span>
-                            )}
+                            <span className="truncate text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+                              {r.downtimeDetail || "-"}
+                            </span>
                           </div>
-                        )}
-                        {r.notes && (
-                          <p className="text-[10.5px] text-slate-500 italic truncate mt-0.5">
-                            📝 {r.notes}
-                          </p>
+                        ) : r.tpmIssueText ? (
+                          <span className="text-amber-600 dark:text-amber-400 text-[11px] font-bold truncate">
+                            🚨 {r.tpmIssueText}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-[11px]">정상 가동</span>
                         )}
                       </td>
 
                       {/* Approval Status Toggle */}
-                      <td className="py-3 px-2 text-center">
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => handleToggleApproval(r)}
                           title="클릭하여 승인/대기 토글"
-                          className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition active:scale-95 cursor-pointer border ${
+                          className={`px-2 py-0.5 rounded-lg text-[10.5px] font-black transition active:scale-95 cursor-pointer border ${
                             isApproved
                               ? "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300"
                               : "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
                           }`}
                         >
-                          {isApproved ? "✓ 승인완료" : "⏳ 결재대기"}
+                          {isApproved ? "승인" : "대기"}
                         </button>
                       </td>
 
                       {/* Action Buttons */}
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-2.5 px-2.5 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
                             onClick={() => handleDownloadCheckSheet(r)}
                             title="A4 표준 체크시트 엑셀 다운로드"
-                            className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 transition active:scale-95 cursor-pointer"
+                            className="p-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 transition active:scale-95 cursor-pointer"
                           >
                             <FileSpreadsheet className="w-3.5 h-3.5" />
                           </button>
@@ -625,7 +555,7 @@ export const ExtrusionProductionTab = () => {
                             type="button"
                             onClick={() => handleOpenEditModal(r)}
                             title="수정"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition active:scale-95 cursor-pointer"
+                            className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 transition active:scale-95 cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
@@ -633,7 +563,7 @@ export const ExtrusionProductionTab = () => {
                             type="button"
                             onClick={() => handleDeleteReport(r.id)}
                             title="삭제"
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/50 transition active:scale-95 cursor-pointer"
+                            className="p-1 rounded-md bg-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 dark:bg-slate-800 dark:hover:bg-rose-950/50 transition active:scale-95 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -644,12 +574,9 @@ export const ExtrusionProductionTab = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={13} className="py-14 text-center text-slate-400 space-y-2">
-                    <AlertCircle className="w-8 h-8 text-slate-300 mx-auto" />
-                    <p className="text-sm font-bold">등록된 작업일보 내역이 없습니다.</p>
-                    <p className="text-xs text-slate-400">
-                      상단의 [작업일보 신규작성] 버튼을 눌러 오늘 실적을 등록해보세요.
-                    </p>
+                  <td colSpan={13} className="py-12 text-center text-slate-400 space-y-1.5">
+                    <AlertCircle className="w-7 h-7 text-slate-300 mx-auto" />
+                    <p className="text-xs font-bold">등록된 작업일보 내역이 없습니다.</p>
                   </td>
                 </tr>
               )}
@@ -657,29 +584,29 @@ export const ExtrusionProductionTab = () => {
             {filteredReports.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-100 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-700 font-black text-xs text-slate-900 dark:text-white">
-                  <td colSpan={4} className="py-3 px-4 text-center font-black text-sm">
-                    ■ 생산 실적 합계 ({(filteredReports || []).length}건)
+                  <td colSpan={4} className="py-2.5 px-3 text-center font-black text-xs">
+                    ■ 합계 ({(filteredReports || []).length}건)
                   </td>
-                  <td className="py-3 px-2 text-right text-slate-600 dark:text-slate-400">
+                  <td className="py-2.5 px-2 text-right text-slate-600 dark:text-slate-400 text-xs">
                     {(metrics?.totalTarget || 0).toLocaleString()}m
                   </td>
-                  <td className="py-3 px-2 text-right text-slate-900 dark:text-white font-black text-sm">
+                  <td className="py-2.5 px-2 text-right text-slate-900 dark:text-white font-black text-xs">
                     {(metrics?.totalActual || 0).toLocaleString()}m
                   </td>
-                  <td className="py-3 px-2 text-right text-blue-700 dark:text-blue-400 font-black text-sm">
+                  <td className="py-2.5 px-2 text-right text-blue-700 dark:text-blue-400 font-black text-xs">
                     {(metrics?.totalGood || 0).toLocaleString()}m
                   </td>
-                  <td className="py-3 px-2 text-right text-emerald-600 font-black">
+                  <td className="py-2.5 px-2 text-right text-emerald-600 font-black text-xs">
                     {metrics?.yieldRate ?? 0}%
                   </td>
-                  <td className="py-3 px-2 text-right text-amber-600 font-black">
+                  <td className="py-2.5 px-2 text-right text-amber-600 font-black text-xs">
                     {metrics?.totalScrapKg ?? 0}kg
                   </td>
-                  <td className="py-3 px-3 text-right text-rose-600 font-black">
+                  <td className="py-2.5 px-2.5 text-right text-rose-600 font-black text-xs">
                     {metrics?.totalDowntimeMinutes ?? 0}분
                   </td>
-                  <td colSpan={3} className="py-3 px-3 text-slate-500 italic text-xs">
-                    (달성률: <strong>{metrics?.attainmentRate ?? 0}%</strong>, 비가동: <strong>{metrics?.totalDowntimeHours ?? 0}시간</strong>)
+                  <td colSpan={3} className="py-2.5 px-3 text-slate-500 text-[11px]">
+                    (달성률: <strong>{metrics?.attainmentRate ?? 0}%</strong>, 비가동: <strong>{metrics?.totalDowntimeHours ?? 0}h</strong>)
                   </td>
                 </tr>
               </tfoot>
