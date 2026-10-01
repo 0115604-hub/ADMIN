@@ -215,64 +215,34 @@ export const ExtrusionProductionTab = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* Main Real-time Reports Ledger Table (압출 작업일보 상세 내역 대장 단독 패널) */}
+      {/* Main Real-time Reports Ledger Table (주)오륙 압출 생산관리 및 작업일보 대장) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
-        {/* Panel Top: Title & Action Buttons */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-500/20">
-              <FileSpreadsheet className="w-6 h-6" />
+        {/* Panel Top: Title & 엑셀취합 뱃지 (한줄 구성) */}
+        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-2xl bg-teal-600 text-white shadow-md shadow-teal-500/20 shrink-0">
+              <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                  압출 작업일보 상세 내역 대장
-                </h2>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                  총 <strong className="font-black text-teal-600">{filteredReports.length}</strong>건
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                현장 압출 작업일보 실시간 등록 내역 및 호기별·차종별 실적/비가동 상세 대장
-              </p>
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white whitespace-nowrap">
+                주)오륙 압출 생산관리 및 작업일보
+              </h2>
+              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
+                총 <strong className="font-black text-teal-600">{filteredReports.length}</strong>건
+              </span>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button
-              type="button"
-              onClick={handleOpenCreateModal}
-              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md shadow-teal-500/20 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" />
-              <span>작업일보 신규작성</span>
-            </button>
+          {/* Right Action: 엑셀취합 뱃지만 생성 */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <Download className="w-4 h-4" />
-              <span>실적 엑셀 취합</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleDownloadBlankCheckSheet}
-              className="px-3.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer flex items-center gap-1.5"
-              title="A4 표준 압출작업 체크시트 (3개 시트 통합 서식) 다운로드"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>체크시트 표준서식</span>
-            </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-bold transition active:scale-95 cursor-pointer"
-              title="인쇄"
-            >
-              <Printer className="w-4 h-4" />
+              <span>엑셀취합</span>
             </button>
           </div>
         </div>

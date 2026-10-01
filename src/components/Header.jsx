@@ -103,10 +103,9 @@ export const Header = ({
                   }
                   window.dispatchEvent(new CustomEvent("open-extrusion-work-report-modal"));
                 }}
-                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-teal-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
+                className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-teal-500/20 active:scale-95 cursor-pointer ml-1 sm:ml-2 shrink-0"
                 title="압출 작업일보 작성"
               >
-                <Plus className="w-3.5 h-3.5" />
                 <span>✍️ 일보작성</span>
               </button>
             )}
