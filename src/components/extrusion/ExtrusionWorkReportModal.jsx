@@ -136,8 +136,8 @@ const createDefaultDowntimeEvent = (suffix = Date.now()) => ({
   startTime: "08:00",
   endTime: "08:30",
   minutes: 30,
-  category: "형교환",
-  detail: "",
+  category: "압개시",
+  detail: "초기 압출 승온 및 제품 인취 세팅",
   scrapKg: ""
 });
 
@@ -779,6 +779,18 @@ export const ExtrusionWorkReportModal = ({
 
       if (field === "minutes" || field === "scrapKg") {
         target[field] = value === "" ? "" : Math.max(0, Number(value));
+      } else if (field === "category") {
+        target.category = value;
+        const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
+        if (!target.detail && catObj?.defaultDetail) {
+          target.detail = catObj.defaultDetail;
+        }
+      } else if (field === "detailPreset") {
+        target.detail = value;
+        const matched = DOWNTIME_CATEGORIES.find((c) => c.defaultDetail === value || `[${c.label}] ${c.defaultDetail}` === value);
+        if (matched) {
+          target.category = matched.id;
+        }
       } else {
         target[field] = value;
       }
@@ -1937,17 +1949,20 @@ export const ExtrusionWorkReportModal = ({
                             {idx + 1}
                           </span>
                           {/* Category Select */}
-                          <select
-                            value={ev.category || "형교환"}
-                            onChange={(e) => handleDowntimeEventChange(idx, "category", e.target.value)}
-                            className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg text-xs font-black text-amber-900 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer"
-                          >
-                            {DOWNTIME_CATEGORIES.map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.label}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">구분:</span>
+                            <select
+                              value={ev.category || "압개시"}
+                              onChange={(e) => handleDowntimeEventChange(idx, "category", e.target.value)}
+                              className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-lg text-xs font-black text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                            >
+                              {DOWNTIME_CATEGORIES.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
                         <div className="flex items-center gap-1.5">
@@ -2023,16 +2038,35 @@ export const ExtrusionWorkReportModal = ({
                         </div>
                       </div>
 
-                      {/* Detail Input */}
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
-                          발생 내역 및 조치 내용
-                        </label>
+                      {/* Detail Input with Dropdown & Direct Input */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
+                          <label className="text-[10px] font-black text-slate-600 dark:text-slate-400">
+                            발생 내역 및 조치 내용 <span className="text-amber-600 dark:text-amber-400 font-bold">(드롭다운 선택 또는 직접입력)</span>
+                          </label>
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleDowntimeEventChange(idx, "detailPreset", e.target.value);
+                              }
+                            }}
+                            className="text-[10.5px] font-bold py-0.5 px-2 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 rounded-lg cursor-pointer focus:ring-1 focus:ring-amber-500"
+                          >
+                            <option value="">📋 드롭다운에서 내역 선택...</option>
+                            {DOWNTIME_CATEGORIES.map((c) => (
+                              <option key={c.id} value={c.defaultDetail || c.label}>
+                                [{c.label}] {c.defaultDetail || c.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <input
                           type="text"
+                          list="downtime-defect-presets"
                           value={ev.detail || ""}
                           onChange={(e) => handleDowntimeEventChange(idx, "detail", e.target.value)}
-                          placeholder="예: 금형 교환 및 가류조 승온 대기, 스크류 청소 진행 등"
+                          placeholder="드롭다운에서 선택하거나 직접 입력하세요 (예: 금형 교환 및 가류조 승온 30분 완료)"
                           className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-medium text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
                         />
                       </div>
@@ -2040,6 +2074,15 @@ export const ExtrusionWorkReportModal = ({
                   );
                 })}
               </div>
+
+              {/* Datalist for presets */}
+              <datalist id="downtime-defect-presets">
+                {DOWNTIME_CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.defaultDetail || c.label}>
+                    [{c.label}]
+                  </option>
+                ))}
+              </datalist>
 
               {/* Add Event Button */}
               <button

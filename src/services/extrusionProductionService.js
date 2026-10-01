@@ -103,15 +103,29 @@ export const WORKER_PRESETS = [
 ];
 
 export const DOWNTIME_CATEGORIES = [
-  { id: "형교환", label: "형교환", color: "bg-amber-100 text-amber-900 border-amber-300" },
-  { id: "승온/준비", label: "승온/준비", color: "bg-sky-100 text-sky-900 border-sky-300" },
-  { id: "설비고장", label: "설비고장", color: "bg-rose-100 text-rose-900 border-rose-300" },
-  { id: "품질불량", label: "품질불량", color: "bg-orange-100 text-orange-900 border-orange-300" },
-  { id: "자재대기", label: "자재대기", color: "bg-purple-100 text-purple-900 border-purple-300" },
-  { id: "작업자교대", label: "작업자교대", color: "bg-blue-100 text-blue-900 border-blue-300" },
-  { id: "라인정지", label: "라인정지", color: "bg-slate-200 text-slate-800 border-slate-300" },
-  { id: "청소/정리", label: "청소/정리", color: "bg-emerald-100 text-emerald-900 border-emerald-300" },
-  { id: "기타", label: "기타", color: "bg-gray-100 text-gray-800 border-gray-300" }
+  { id: "압개시", label: "압개시", color: "bg-sky-100 text-sky-900 border-sky-300", defaultDetail: "초기 압출 승온 및 제품 인취 세팅" },
+  { id: "형교환", label: "형교환", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "금형(다이스) 교체 및 치수 세팅" },
+  { id: "종료", label: "종료", color: "bg-slate-200 text-slate-800 border-slate-300", defaultDetail: "작업 종료 및 라인 클리닝/정리" },
+  { id: "뜯김", label: "뜯김", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "제품 표면 뜯김 발생으로 다이스 청소" },
+  { id: "철심", label: "철심", color: "bg-orange-100 text-orange-900 border-orange-300", defaultDetail: "인서트 철심 사행 및 틀어짐 교정" },
+  { id: "재압출", label: "재압출", color: "bg-amber-100 text-amber-900 border-amber-300", defaultDetail: "초기 규격 미달로 재압출 진행" },
+  { id: "단면형상", label: "단면형상", color: "bg-indigo-100 text-indigo-900 border-indigo-300", defaultDetail: "립/돌기 부위 단면형상 불량 수정" },
+  { id: "스코치", label: "스코치", color: "bg-red-100 text-red-900 border-red-300", defaultDetail: "스크류 과열 고무 탄화(스코치) 제거" },
+  { id: "이물", label: "이물", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "원료 내 이물 혼입 발견으로 스크린 교체" },
+  { id: "미분산", label: "미분산", color: "bg-purple-100 text-purple-900 border-purple-300", defaultDetail: "카본/배합제 미분산 덩어리 발생 조치" },
+  { id: "발포", label: "발포", color: "bg-teal-100 text-teal-900 border-teal-300", defaultDetail: "스폰지 발포 배율 불량 및 온도 조정" },
+  { id: "원인불명", label: "원인불명", color: "bg-gray-200 text-gray-800 border-gray-400", defaultDetail: "원인불명 규격 이상 점검 및 재세팅" },
+  { id: "밴딩", label: "밴딩", color: "bg-blue-100 text-blue-900 border-blue-300", defaultDetail: "제품 휨/밴딩 현상 냉각조 장력 조정" },
+  { id: "심금절단", label: "심금절단", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "인서트 심금 끊어짐/절단 연결 작업" },
+  { id: "심금노출", label: "심금노출", color: "bg-red-100 text-red-900 border-red-300", defaultDetail: "심금 노출로 폐기 처리 및 위치 교정" },
+  { id: "천공", label: "천공", color: "bg-emerald-100 text-emerald-900 border-emerald-300", defaultDetail: "홀 천공 위치 편차 및 펀칭기 점검" },
+  { id: "연고무절단", label: "연고무절단", color: "bg-orange-100 text-orange-900 border-orange-300", defaultDetail: "연질고무 끊김/절단 발생 조치" },
+  { id: "길이", label: "길이", color: "bg-cyan-100 text-cyan-900 border-cyan-300", defaultDetail: "절단 길이 편차 발생 치수 재세팅" },
+  { id: "코팅", label: "코팅", color: "bg-sky-100 text-sky-900 border-sky-300", defaultDetail: "코팅 분사 노즐 막힘 청소 및 압력 조정" },
+  { id: "설비이상", label: "설비이상", color: "bg-rose-100 text-rose-900 border-rose-300", defaultDetail: "압출 모터/감속기/인취기 설비 이상 점검" },
+  { id: "다이스수정", label: "다이스수정", color: "bg-violet-100 text-violet-900 border-violet-300", defaultDetail: "다이스 간격/각도 수정 및 샘플 확인" },
+  { id: "기술TRY", label: "기술TRY", color: "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300", defaultDetail: "신규 금형/배합 시생산 기술TRY 진행" },
+  { id: "기타", label: "기타", color: "bg-gray-100 text-gray-800 border-gray-300", defaultDetail: "기타 비가동 및 불량 조치" }
 ];
 
 export const TPM_CHECK_ITEMS = [
