@@ -1,6 +1,6 @@
 // ============================================================================
 // 삼랑진공장 압출 원재료 BOM 매핑 실시간 관리 서비스 (설유철 책임 전용)
-// 품목별 (차종 + 품명) ➔ 사용연고무, 컴파운드, 심금, 코팅액 등록 / 조회 / Firestore 동기화
+// 품목별 (차종 + 품명) ➔ 연고무 2종, 컴파운드 2종, 심금(선택/미사용), 코팅액(선택/미사용)
 // ============================================================================
 import { doc, getDoc, setDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
@@ -15,7 +15,7 @@ const MASTER_DOC_ID = "master_bom_map";
 let cachedCustomBOM = null;
 
 /**
- * Get locally stored custom BOM map (merged with static fallback)
+ * Get locally stored custom BOM map
  */
 export const getLocalCustomBOMMap = () => {
   if (cachedCustomBOM) return cachedCustomBOM;
@@ -67,13 +67,11 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
     itemName: n,
     key,
     rubberType: String(bomData.rubberType || "W60433").trim(),
+    rubberType2: String(bomData.rubberType2 || "").trim(),
     compoundType: String(bomData.compoundType || "IA4-75B_1").trim(),
-    insertType: String(bomData.insertType || "SUS430(0.4*51*3)").trim(),
-    coatingType: String(bomData.coatingType || "HSC-2000-B-3").trim(),
-    defaultRubberWeight: bomData.defaultRubberWeight !== undefined && bomData.defaultRubberWeight !== "" ? Number(bomData.defaultRubberWeight) : "",
-    defaultCompoundWeight: bomData.defaultCompoundWeight !== undefined && bomData.defaultCompoundWeight !== "" ? Number(bomData.defaultCompoundWeight) : "",
-    defaultInsertWeight: bomData.defaultInsertWeight !== undefined && bomData.defaultInsertWeight !== "" ? Number(bomData.defaultInsertWeight) : "",
-    defaultCoatingWeight: bomData.defaultCoatingWeight !== undefined && bomData.defaultCoatingWeight !== "" ? Number(bomData.defaultCoatingWeight) : "",
+    compoundType2: String(bomData.compoundType2 || "").trim(),
+    insertType: String(bomData.insertType || "").trim(), // 빈 값 또는 "미사용" 가능
+    coatingType: String(bomData.coatingType || "").trim(), // 빈 값 또는 "미사용" 가능
     registeredBy: String(registeredBy || "설유철 책임"),
     updatedAt: new Date().toISOString()
   };
@@ -121,7 +119,6 @@ export const deleteBOMMapping = async (key) => {
  * Real-time subscription to Firestore BOM master map
  */
 export const subscribeToCustomBOM = (onDataCallback) => {
-  // Push local initial
   onDataCallback(getLocalCustomBOMMap());
 
   try {
@@ -136,7 +133,6 @@ export const subscribeToCustomBOM = (onDataCallback) => {
             onDataCallback(remote);
           }
         } else {
-          // Sync default seed mappings to Firestore once if empty
           const seedMap = { ...ITEM_MATERIAL_BOM_MAP };
           setDoc(docRef, sanitizeForFirestore(seedMap), { merge: true }).catch(() => {});
           saveLocalCustomBOMMap(seedMap);

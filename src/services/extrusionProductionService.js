@@ -225,15 +225,21 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       rubberType: String(raw.rawMaterials?.rubberType || raw.rubberType || (raw.rawMaterials?.rubberLot?.includes("/") ? raw.rawMaterials.rubberLot.split("/")[0].trim() : "W60433")).trim(),
       rubberWeight: raw.rawMaterials?.rubberWeight !== undefined && raw.rawMaterials?.rubberWeight !== "" ? Number(raw.rawMaterials.rubberWeight) : "",
       rubberLot: String(raw.rawMaterials?.rubberLot || raw.rubberLot || "").trim(),
-      coatingType: String(raw.rawMaterials?.coatingType || raw.coatingType || (raw.rawMaterials?.coatingLot?.includes("/") ? raw.rawMaterials.coatingLot.split("/")[0].trim() : "HSC-2000-B-3")).trim(),
+      rubberType2: String(raw.rawMaterials?.rubberType2 || raw.rubberType2 || "").trim(),
+      rubberWeight2: raw.rawMaterials?.rubberWeight2 !== undefined && raw.rawMaterials?.rubberWeight2 !== "" ? Number(raw.rawMaterials.rubberWeight2) : "",
+      rubberLot2: String(raw.rawMaterials?.rubberLot2 || raw.rubberLot2 || "").trim(),
+      coatingType: String(raw.rawMaterials?.coatingType || raw.coatingType || "").trim(),
       coatingWeight: raw.rawMaterials?.coatingWeight !== undefined && raw.rawMaterials?.coatingWeight !== "" ? Number(raw.rawMaterials.coatingWeight) : "",
       coatingLot: String(raw.rawMaterials?.coatingLot || raw.coatingLot || "").trim(),
-      insertType: String(raw.rawMaterials?.insertType || raw.insertType || (raw.rawMaterials?.insertLot?.includes("/") ? raw.rawMaterials.insertLot.split("/")[0].trim() : "SUS430(0.4*51*3)")).trim(),
+      insertType: String(raw.rawMaterials?.insertType || raw.insertType || "").trim(),
       insertWeight: raw.rawMaterials?.insertWeight !== undefined && raw.rawMaterials?.insertWeight !== "" ? Number(raw.rawMaterials.insertWeight) : "",
       insertLot: String(raw.rawMaterials?.insertLot || raw.insertLot || "").trim(),
-      compoundType: String(raw.rawMaterials?.compoundType || raw.compoundType || "IA4-75B_1").trim(),
+      compoundType: String(raw.rawMaterials?.compoundType || raw.compoundType || "").trim(),
       compoundWeight: raw.rawMaterials?.compoundWeight !== undefined && raw.rawMaterials?.compoundWeight !== "" ? Number(raw.rawMaterials.compoundWeight) : "",
-      compoundLot: String(raw.rawMaterials?.compoundLot || raw.compoundLot || "").trim()
+      compoundLot: String(raw.rawMaterials?.compoundLot || raw.compoundLot || "").trim(),
+      compoundType2: String(raw.rawMaterials?.compoundType2 || raw.compoundType2 || "").trim(),
+      compoundWeight2: raw.rawMaterials?.compoundWeight2 !== undefined && raw.rawMaterials?.compoundWeight2 !== "" ? Number(raw.rawMaterials.compoundWeight2) : "",
+      compoundLot2: String(raw.rawMaterials?.compoundLot2 || raw.compoundLot2 || "").trim()
     },
     defectBreakdown: {
       cutoffKg: Math.max(0, Number(raw.defectBreakdown?.cutoffKg || raw.cutoffKg) || 0),
@@ -1072,36 +1078,78 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
     cell.border = thinBorder;
   }
 
-  const rawMaterialItems = [
-    {
-      cat: '사용연고무',
-      type: report.rawMaterials?.rubberType || 'W60433',
+  const rawMaterialItems = [];
+  
+  if (report.rawMaterials?.rubberType && report.rawMaterials.rubberType !== "미사용") {
+    rawMaterialItems.push({
+      cat: report.rawMaterials?.rubberType2 ? '사용연고무 #1' : '사용연고무',
+      type: report.rawMaterials.rubberType,
       weight: report.rawMaterials?.rubberWeight !== undefined && report.rawMaterials?.rubberWeight !== '' ? `${report.rawMaterials.rubberWeight} kg` : '-',
       lot: report.rawMaterials?.rubberLot || '-',
       status: '정상 투입 (○)'
-    },
-    {
-      cat: '컴파운드',
-      type: report.rawMaterials?.compoundType || 'IA4-75B_1',
+    });
+  }
+  if (report.rawMaterials?.rubberType2 && report.rawMaterials.rubberType2 !== "미사용") {
+    rawMaterialItems.push({
+      cat: '사용연고무 #2',
+      type: report.rawMaterials.rubberType2,
+      weight: report.rawMaterials?.rubberWeight2 !== undefined && report.rawMaterials?.rubberWeight2 !== '' ? `${report.rawMaterials.rubberWeight2} kg` : '-',
+      lot: report.rawMaterials?.rubberLot2 || '-',
+      status: '정상 투입 (○)'
+    });
+  }
+  if (report.rawMaterials?.compoundType && report.rawMaterials.compoundType !== "미사용") {
+    rawMaterialItems.push({
+      cat: report.rawMaterials?.compoundType2 ? '컴파운드 #1' : '컴파운드',
+      type: report.rawMaterials.compoundType,
       weight: report.rawMaterials?.compoundWeight !== undefined && report.rawMaterials?.compoundWeight !== '' ? `${report.rawMaterials.compoundWeight} kg` : '-',
       lot: report.rawMaterials?.compoundLot || '-',
       status: '정상 투입 (○)'
-    },
-    {
-      cat: '코팅액',
-      type: report.rawMaterials?.coatingType || 'HSC-2000-B-3',
-      weight: report.rawMaterials?.coatingWeight !== undefined && report.rawMaterials?.coatingWeight !== '' ? `${report.rawMaterials.coatingWeight} kg` : '-',
-      lot: report.rawMaterials?.coatingLot || '-',
-      status: '교반 완료 (○)'
-    },
-    {
+    });
+  }
+  if (report.rawMaterials?.compoundType2 && report.rawMaterials.compoundType2 !== "미사용") {
+    rawMaterialItems.push({
+      cat: '컴파운드 #2',
+      type: report.rawMaterials.compoundType2,
+      weight: report.rawMaterials?.compoundWeight2 !== undefined && report.rawMaterials?.compoundWeight2 !== '' ? `${report.rawMaterials.compoundWeight2} kg` : '-',
+      lot: report.rawMaterials?.compoundLot2 || '-',
+      status: '정상 투입 (○)'
+    });
+  }
+  if (report.rawMaterials?.insertType && report.rawMaterials.insertType !== "미사용") {
+    rawMaterialItems.push({
       cat: '심금(인서트)',
-      type: report.rawMaterials?.insertType || 'SUS430(0.4*51*3)',
+      type: report.rawMaterials.insertType,
       weight: report.rawMaterials?.insertWeight !== undefined && report.rawMaterials?.insertWeight !== '' ? `${report.rawMaterials.insertWeight} kg` : '-',
       lot: report.rawMaterials?.insertLot || '-',
       status: '텐션 정상 (○)'
-    }
-  ];
+    });
+  } else {
+    rawMaterialItems.push({
+      cat: '심금(인서트)',
+      type: '미사용 (없음)',
+      weight: '-',
+      lot: '-',
+      status: '미사용'
+    });
+  }
+  if (report.rawMaterials?.coatingType && report.rawMaterials.coatingType !== "미사용") {
+    rawMaterialItems.push({
+      cat: '코팅액',
+      type: report.rawMaterials.coatingType,
+      weight: report.rawMaterials?.coatingWeight !== undefined && report.rawMaterials?.coatingWeight !== '' ? `${report.rawMaterials.coatingWeight} kg` : '-',
+      lot: report.rawMaterials?.coatingLot || '-',
+      status: '교반 완료 (○)'
+    });
+  } else {
+    rawMaterialItems.push({
+      cat: '코팅액',
+      type: '미사용 (없음)',
+      weight: '-',
+      lot: '-',
+      status: '미사용'
+    });
+  }
 
   curRow = 11;
   rawMaterialItems.forEach(rm => {

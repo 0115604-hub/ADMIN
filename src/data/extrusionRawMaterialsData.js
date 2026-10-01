@@ -312,7 +312,9 @@ export const getMaterialBOMForItem = (vehicle, itemName) => {
   // 4. 기본 표준값 (Fallback)
   return {
     rubberType: "W60433",
+    rubberType2: "",
     compoundType: "IA4-75B_1",
+    compoundType2: "",
     insertType: "SUS430(0.4*51*3)",
     coatingType: "HSC-2000-B-3",
     defaultRubberWeight: 100.0,

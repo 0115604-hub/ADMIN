@@ -1,19 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Wrench,
-  Package,
-  Layers,
-  Sparkles,
   Save,
   CheckCircle2,
   ListFilter,
   X,
   Trash2,
-  Search,
-  ExternalLink,
-  ShieldCheck,
-  Zap,
-  Info
+  Search
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -48,12 +40,14 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const [toastMessage, setToastMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form selections
+  // Form selections (연고무 2종, 컴파운드 2종, 심금/코팅액 선택/미사용)
   const [selectedItemKey, setSelectedItemKey] = useState("");
   const [rubberType, setRubberType] = useState(EPDM_RUBBERS[0]?.name || "W60712$2");
+  const [rubberType2, setRubberType2] = useState("");
   const [compoundType, setCompoundType] = useState(EPDM_COMPOUNDS[0]?.name || "IA4-75B_1");
-  const [insertType, setInsertType] = useState(EPDM_INSERTS[0]?.name || "SUS430(0.4*51*3)");
-  const [coatingType, setCoatingType] = useState(EPDM_COATINGS[0]?.name || "HSL-770K-2(주제)");
+  const [compoundType2, setCompoundType2] = useState("");
+  const [insertType, setInsertType] = useState(""); // 빈 값 = 미사용
+  const [coatingType, setCoatingType] = useState(""); // 빈 값 = 미사용
 
   // Real-time listener for BOM updates
   useEffect(() => {
@@ -85,19 +79,25 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     });
   }, []);
 
-  // When initial item key is unset, select first item
+  // Pre-fill fields helper
+  const applyBOMToFields = (existingBOM) => {
+    if (!existingBOM) return;
+    setRubberType(existingBOM.rubberType || EPDM_RUBBERS[0]?.name || "W60712$2");
+    setRubberType2(existingBOM.rubberType2 || "");
+    setCompoundType(existingBOM.compoundType || "");
+    setCompoundType2(existingBOM.compoundType2 || "");
+    setInsertType(existingBOM.insertType === "미사용" ? "" : (existingBOM.insertType || ""));
+    setCoatingType(existingBOM.coatingType === "미사용" ? "" : (existingBOM.coatingType || ""));
+  };
+
+  // Initial item key selection
   useEffect(() => {
     if (!selectedItemKey && uniqueItems.length > 0) {
       const first = uniqueItems[0];
       const initialKey = `${first.vehicle}:::${first.itemName}`;
       setSelectedItemKey(initialKey);
       const existingBOM = getMaterialBOMForItem(first.vehicle, first.itemName);
-      if (existingBOM) {
-        if (existingBOM.rubberType) setRubberType(existingBOM.rubberType);
-        if (existingBOM.compoundType) setCompoundType(existingBOM.compoundType);
-        if (existingBOM.insertType) setInsertType(existingBOM.insertType);
-        if (existingBOM.coatingType) setCoatingType(existingBOM.coatingType);
-      }
+      applyBOMToFields(existingBOM);
     }
   }, [uniqueItems, selectedItemKey]);
 
@@ -107,12 +107,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     if (!itemKey) return;
     const [v, n] = itemKey.split(":::");
     const existing = getMaterialBOMForItem(v, n);
-    if (existing) {
-      if (existing.rubberType) setRubberType(existing.rubberType);
-      if (existing.compoundType) setCompoundType(existing.compoundType);
-      if (existing.insertType) setInsertType(existing.insertType);
-      if (existing.coatingType) setCoatingType(existing.coatingType);
-    }
+    applyBOMToFields(existing);
   };
 
   const showToast = (msg) => {
@@ -140,17 +135,28 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         v,
         n,
         {
-          rubberType,
-          compoundType,
-          insertType,
-          coatingType
+          rubberType: rubberType || "",
+          rubberType2: rubberType2 || "",
+          compoundType: compoundType || "",
+          compoundType2: compoundType2 || "",
+          insertType: insertType || "미사용",
+          coatingType: coatingType || "미사용"
         },
         currentProfile?.name ? `${currentProfile.name} ${currentProfile.title || "책임"}` : "설유철 책임"
       );
 
-      showToast(`✅ [${v}] ${n || "전체"} 원재료 BOM이 성공적으로 등록되었습니다!`);
+      showToast(`✅ [${v}] ${n || "전체"} 원재료 BOM 등록 완료!`);
       if (onBOMRegistered) {
-        onBOMRegistered({ vehicle: v, itemName: n, rubberType, compoundType, insertType, coatingType });
+        onBOMRegistered({
+          vehicle: v,
+          itemName: n,
+          rubberType,
+          rubberType2,
+          compoundType,
+          compoundType2,
+          insertType: insertType || "미사용",
+          coatingType: coatingType || "미사용"
+        });
       }
     } catch (err) {
       console.error("BOM registration error:", err);
@@ -185,9 +191,11 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         vehicle: val.vehicle || k.split(":::")[0],
         itemName: val.itemName || k.split(":::")[1] || "-",
         rubberType: val.rubberType || "-",
+        rubberType2: val.rubberType2 || "",
         compoundType: val.compoundType || "-",
-        insertType: val.insertType || "-",
-        coatingType: val.coatingType || "-",
+        compoundType2: val.compoundType2 || "",
+        insertType: val.insertType || "미사용",
+        coatingType: val.coatingType || "미사용",
         updatedAt: val.updatedAt || "",
         registeredBy: val.registeredBy || "설유철 책임"
       }))
@@ -198,7 +206,9 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           it.vehicle.toLowerCase().includes(q) ||
           it.itemName.toLowerCase().includes(q) ||
           it.rubberType.toLowerCase().includes(q) ||
+          it.rubberType2.toLowerCase().includes(q) ||
           it.compoundType.toLowerCase().includes(q) ||
+          it.compoundType2.toLowerCase().includes(q) ||
           it.insertType.toLowerCase().includes(q) ||
           it.coatingType.toLowerCase().includes(q)
         );
@@ -219,49 +229,19 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* ⭐ 설유철 책임 전용 한 줄짜리 BOM 등록 패널 (Single-Line Bar) */}
+      {/* ⭐ 깔끔한 한 줄짜리 BOM 등록 패널 (문구 삭제 완료) */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 border-2 border-teal-500/60 rounded-2xl p-3 sm:p-3.5 shadow-lg text-white space-y-2 animate-fadeIn">
-        {/* Top Header Label */}
-        <div className="flex items-center justify-between gap-2 flex-wrap pb-1 border-b border-teal-500/20 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="p-1 rounded-lg bg-teal-500/30 text-teal-300 border border-teal-400/40 shrink-0">
-              <Wrench className="w-3.5 h-3.5" />
-            </span>
-            <span className="font-black text-teal-200 tracking-tight text-xs sm:text-sm">
-              🛠️ [설유철 책임 전용] 품목별 원재료(연고무·컴파운드·심금·코팅액) BOM 퀵 등록
-            </span>
-            <span className="hidden md:inline text-[11px] text-teal-300/70 font-medium">
-              (여기서 등록하면 작업자가 품목 선택 시 해당 원재료가 일보에 자동 입력됩니다)
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsListModalOpen(true)}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-teal-200 text-[11px] font-black transition cursor-pointer flex items-center gap-1 border border-teal-400/30"
-              title="등록된 BOM 전체 목록 확인 및 관리"
-            >
-              <ListFilter className="w-3.5 h-3.5" />
-              <span>등록현황 ({registeredCount}건)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Single-Line Form Grid */}
-        <form onSubmit={handleRegisterBOM} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center text-xs">
-          {/* 1. 품목 선택 (sm: 3.5 cols) */}
-          <div className="sm:col-span-3">
-            <label className="block text-[10px] font-bold text-teal-300/80 mb-0.5">
-              📦 생산 품목 선택 *
-            </label>
+      <div className="bg-slate-900/95 border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 shadow-md text-white animate-fadeIn">
+        <form onSubmit={handleRegisterBOM} className="flex flex-wrap items-center gap-2 text-xs">
+          {/* 1. 품목 선택 */}
+          <div className="flex-1 min-w-[180px]">
             <select
               value={selectedItemKey}
               onChange={(e) => handleItemSelect(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-teal-500/50 text-white font-black text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer shadow-xs"
+              className="w-full px-2.5 py-1.5 rounded-xl bg-slate-800 border border-teal-500/60 text-white font-black text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer shadow-xs"
+              title="생산 품목 선택"
             >
-              <option value="">-- 품목을 선택하세요 ({uniqueItems.length}종) --</option>
+              <option value="">-- 품목 선택 ({uniqueItems.length}종) --</option>
               {uniqueItems.map((it) => {
                 const k = `${it.vehicle}:::${it.itemName}`;
                 const isMapped = !!customBOMMap[k];
@@ -274,16 +254,15 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
             </select>
           </div>
 
-          {/* 2. 사용연고무 (sm: 2 cols) */}
-          <div className="sm:col-span-2">
-            <label className="block text-[10px] font-bold text-teal-300/80 mb-0.5">
-              ⬛ 사용연고무 *
-            </label>
+          {/* 2. 연고무 #1 */}
+          <div className="w-[125px]">
             <select
               value={rubberType}
               onChange={(e) => setRubberType(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer"
+              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-indigo-300 font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer"
+              title="사용연고무 #1"
             >
+              <option value="">연고무1: 미사용</option>
               {EPDM_RUBBERS.map((r) => (
                 <option key={r.name} value={r.name}>
                   {r.name} ({r.type})
@@ -292,17 +271,35 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
             </select>
           </div>
 
-          {/* 3. 컴파운드 (sm: 2 cols) */}
-          <div className="sm:col-span-2">
-            <label className="block text-[10px] font-bold text-teal-300/80 mb-0.5">
-              🧬 컴파운드 *
-            </label>
+          {/* 3. 연고무 #2 (2종 투입 가능) */}
+          <div className="w-[125px]">
+            <select
+              value={rubberType2}
+              onChange={(e) => setRubberType2(e.target.value)}
+              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer ${
+                rubberType2 ? "border-indigo-500/70 text-indigo-300" : "border-slate-700 text-slate-400"
+              }`}
+              title="사용연고무 #2 (2종 투입 시 선택)"
+            >
+              <option value="">연고무2: (없음)</option>
+              {EPDM_RUBBERS.map((r) => (
+                <option key={`r2_${r.name}`} value={r.name}>
+                  + {r.name} ({r.type})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 4. 컴파운드 #1 */}
+          <div className="w-[130px]">
             <select
               value={compoundType}
               onChange={(e) => setCompoundType(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer"
+              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-emerald-300 font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer"
+              title="컴파운드 #1"
             >
-              <optgroup label="-- 컴파운드 규격 --">
+              <option value="">컴파운드1: 미사용</option>
+              <optgroup label="-- 컴파운드 --">
                 {EPDM_COMPOUNDS.map((cp) => (
                   <option key={cp.name} value={cp.name}>
                     {cp.name}
@@ -311,60 +308,100 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
               </optgroup>
               <optgroup label="-- 연고무 혼합 --">
                 {EPDM_RUBBERS.map((r) => (
-                  <option key={`r_${r.name}`} value={r.name}>
-                    {r.name} (연고무)
+                  <option key={`cp_r_${r.name}`} value={r.name}>
+                    {r.name}
                   </option>
                 ))}
               </optgroup>
             </select>
           </div>
 
-          {/* 4. 심금 (sm: 2 cols) */}
-          <div className="sm:col-span-2">
-            <label className="block text-[10px] font-bold text-teal-300/80 mb-0.5">
-              ⚙️ 심금 (Insert) *
-            </label>
+          {/* 5. 컴파운드 #2 (2종 투입 가능) */}
+          <div className="w-[130px]">
+            <select
+              value={compoundType2}
+              onChange={(e) => setCompoundType2(e.target.value)}
+              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer ${
+                compoundType2 ? "border-emerald-500/70 text-emerald-300" : "border-slate-700 text-slate-400"
+              }`}
+              title="컴파운드 #2 (2종 투입 시 선택)"
+            >
+              <option value="">컴파운드2: (없음)</option>
+              <optgroup label="-- 컴파운드 --">
+                {EPDM_COMPOUNDS.map((cp) => (
+                  <option key={`cp2_${cp.name}`} value={cp.name}>
+                    + {cp.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="-- 연고무 혼합 --">
+                {EPDM_RUBBERS.map((r) => (
+                  <option key={`cp2_r_${r.name}`} value={r.name}>
+                    + {r.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+
+          {/* 6. 심금 (미사용 가능) */}
+          <div className="w-[125px]">
             <select
               value={insertType}
               onChange={(e) => setInsertType(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer"
+              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer ${
+                insertType ? "border-amber-500/70 text-amber-300" : "border-slate-700 text-slate-400"
+              }`}
+              title="심금(Insert) - 미사용 가능"
             >
+              <option value="">심금: 미사용(없음)</option>
               {EPDM_INSERTS.map((ins) => (
                 <option key={ins.name} value={ins.name}>
-                  {ins.name}
+                  심금: {ins.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* 5. 코팅액 (sm: 2 cols) */}
-          <div className="sm:col-span-2">
-            <label className="block text-[10px] font-bold text-teal-300/80 mb-0.5">
-              🧪 코팅액 *
-            </label>
+          {/* 7. 코팅액 (미사용 가능) */}
+          <div className="w-[125px]">
             <select
               value={coatingType}
               onChange={(e) => setCoatingType(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-xl bg-slate-800 border border-slate-600 text-white font-bold text-xs focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer"
+              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer ${
+                coatingType ? "border-sky-500/70 text-sky-300" : "border-slate-700 text-slate-400"
+              }`}
+              title="코팅액 - 미사용 가능"
             >
+              <option value="">코팅액: 미사용(없음)</option>
               {EPDM_COATINGS.map((ct) => (
                 <option key={ct.name} value={ct.name}>
-                  {ct.name}
+                  코팅: {ct.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* 6. 등록 버튼 (sm: 1 col) */}
-          <div className="sm:col-span-1 pt-3 sm:pt-3.5">
+          {/* 8. 등록 버튼 & 등록현황 버튼 */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-md shadow-teal-500/30"
-              title="선택한 품목에 원재료 매핑 저장"
+              className="py-1.5 px-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-md"
+              title="선택 품목의 원재료 BOM 등록"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{isSaving ? "저장중" : "등록"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsListModalOpen(true)}
+              className="py-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-200 text-xs font-bold transition cursor-pointer flex items-center gap-1 border border-slate-700"
+              title="등록된 BOM 전체 목록 확인"
+            >
+              <ListFilter className="w-3.5 h-3.5" />
+              <span>({registeredCount})</span>
             </button>
           </div>
         </form>
@@ -377,7 +414,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-fadeIn">
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full p-5 sm:p-6 space-y-4 max-h-[85vh] flex flex-col"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-4xl w-full p-5 sm:p-6 space-y-4 max-h-[85vh] flex flex-col"
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -393,7 +430,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    설유철 책임이 등록한 품목별 사용연고무, 컴파운드, 심금, 코팅액 매핑 목록
+                    품목별 사용연고무(1·2종), 컴파운드(1·2종), 심금, 코팅액 매핑 목록
                   </p>
                 </div>
               </div>
@@ -430,8 +467,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                     <tr>
                       <th className="p-2.5">차종</th>
                       <th className="p-2.5">품명</th>
-                      <th className="p-2.5">사용연고무</th>
-                      <th className="p-2.5">컴파운드</th>
+                      <th className="p-2.5">연고무 (1·2종)</th>
+                      <th className="p-2.5">컴파운드 (1·2종)</th>
                       <th className="p-2.5">심금</th>
                       <th className="p-2.5">코팅액</th>
                       <th className="p-2.5 text-center">관리</th>
@@ -446,10 +483,32 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                           </span>
                         </td>
                         <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">{row.itemName}</td>
-                        <td className="p-2.5 font-black text-indigo-700 dark:text-indigo-400">{row.rubberType}</td>
-                        <td className="p-2.5 font-bold text-emerald-700 dark:text-emerald-400">{row.compoundType}</td>
-                        <td className="p-2.5 text-slate-700 dark:text-slate-300">{row.insertType}</td>
-                        <td className="p-2.5 text-slate-700 dark:text-slate-300">{row.coatingType}</td>
+                        <td className="p-2.5 font-black text-indigo-700 dark:text-indigo-400">
+                          <div>{row.rubberType || "-"}</div>
+                          {row.rubberType2 && (
+                            <div className="text-[10.5px] text-indigo-500 font-semibold">+ {row.rubberType2}</div>
+                          )}
+                        </td>
+                        <td className="p-2.5 font-bold text-emerald-700 dark:text-emerald-400">
+                          <div>{row.compoundType || "-"}</div>
+                          {row.compoundType2 && (
+                            <div className="text-[10.5px] text-emerald-500 font-semibold">+ {row.compoundType2}</div>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-slate-700 dark:text-slate-300">
+                          {row.insertType && row.insertType !== "미사용" ? (
+                            <span className="text-amber-700 dark:text-amber-400 font-bold">{row.insertType}</span>
+                          ) : (
+                            <span className="text-slate-400 text-[10.5px]">미사용</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-slate-700 dark:text-slate-300">
+                          {row.coatingType && row.coatingType !== "미사용" ? (
+                            <span className="text-sky-700 dark:text-sky-400 font-bold">{row.coatingType}</span>
+                          ) : (
+                            <span className="text-slate-400 text-[10.5px]">미사용</span>
+                          )}
+                        </td>
                         <td className="p-2.5 text-center">
                           <button
                             type="button"
