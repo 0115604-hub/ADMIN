@@ -82,6 +82,7 @@ export const APPROVAL_MANAGERS = {
   ],
   // 2. 책임 (중간결재자 - 관리자 및 책임/선임/반장 전체)
   LEADS: [
+    { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" },
     { name: "설유철", title: "책임", plant: "삼랑진공장", process: "압출동 관리" },
     { name: "윤경수", title: "책임", plant: "삼랑진공장", process: "가공동 관리" },
     { name: "이창엽", title: "책임", plant: "삼랑진공장", process: "품질관리" },
