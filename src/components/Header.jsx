@@ -41,7 +41,15 @@ export const Header = ({
     return `${parts[0]}년 ${parts[1]}월`;
   };
 
-  const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard");
+  const isExtrusionWorker = Boolean(
+    currentProfile?.building === "압출동" ||
+    currentProfile?.id?.startsWith("ext_") ||
+    currentProfile?.name === "공영국" ||
+    currentProfile?.department === "압출" ||
+    currentProfile?.role === "extrusion"
+  );
+
+  const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard" && !isExtrusionWorker);
 
   return (
     <header className="h-14 sm:h-15 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-2 sm:px-5 lg:px-6 flex items-center justify-between sticky top-0 z-20 transition-colors duration-200 shadow-2xs max-w-full min-w-0">
@@ -59,7 +67,7 @@ export const Header = ({
         )}
 
         {/* Operator Back Button */}
-        {showBackButton && onBackToSummary ? (
+        {showBackButton && onBackToSummary && !isExtrusionWorker ? (
           <button
             onClick={onBackToSummary}
             className="flex items-center gap-1 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/80 text-blue-700 dark:text-blue-300 text-xs font-black transition-all shadow-sm ring-1 ring-blue-500/20 active:scale-95 shrink-0"
