@@ -80,17 +80,17 @@ export const VEHICLE_PRESETS = [
 ];
 
 export const WORKER_PRESETS = [
-  { name: "공영국", title: "대리", role: "압출동 조장", plant: "삼랑진공장" },
-  { name: "심임대", title: "반장", role: "압출 1호기 반장", plant: "삼랑진공장" },
-  { name: "이상은", title: "반장", role: "압출 3호기 반장", plant: "삼랑진공장" },
-  { name: "닉", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "마이클", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "존카를로", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "지미", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "만", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "샤먼", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "쿠마루", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" },
-  { name: "이수루", title: "사원", role: "압출동 오퍼레이터", plant: "삼랑진공장" }
+  { name: "공영국", title: "대리" },
+  { name: "심임대", title: "반장" },
+  { name: "이상은", title: "반장" },
+  { name: "닉", title: "" },
+  { name: "마이클", title: "" },
+  { name: "존카를로", title: "" },
+  { name: "지미", title: "" },
+  { name: "만", title: "" },
+  { name: "샤먼", title: "" },
+  { name: "쿠마루", title: "" },
+  { name: "이수루", title: "" }
 ];
 
 export const DOWNTIME_CATEGORIES = [
