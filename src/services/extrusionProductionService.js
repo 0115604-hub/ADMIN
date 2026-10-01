@@ -19,12 +19,26 @@ const COLLECTION_NAME = "extrusion_work_reports";
 export const EXTRUSION_PROD_STORAGE_KEY = "factory_extrusion_work_reports_v1";
 
 export const EXTRUSION_STANDARD_SPECS = {
-  extruder110Rpm: "26.4", // 표준 29.0±2.9
-  extruder60Rpm: "19.2",  // 표준 20.0±2.0
-  waterTemp: "47.0",      // 온수조 표준 50±5℃ (스크류, 실린더1~3, 헤드1)
-  waterZones: [47.0, 48.5, 49.0, 47.5], // 온조기 1~4구간 표준
+  extruder110Rpm: "26.4", // Ø110 압출속도 (표준 29.0±2.9 RPM)
+  extruder70Rpm: "19.2",  // Ø70 압출속도 (표준 20.0±2.0 RPM)
+  extruder60Rpm: "19.2",  // legacy fallback
+  haulOffSpeed: "19.6",   // 라인 인취속도 (표준 20.0±1.0 m/분)
+  waterZones110: {
+    screw: "50.0",
+    cylinder1: "50.0",
+    cylinder2: "50.0",
+    cylinder3: "50.0",
+    head: "50.0"
+  },
+  waterZones70: {
+    screw: "50.0",
+    cylinder1: "50.0",
+    cylinder2: "50.0",
+    cylinder3: "50.0"
+  },
+  waterTemp: "50.0",      // 온수조 표준 50±5℃ (스크류, 실린더1~3, 헤드1)
+  waterZones: [50.0, 50.0, 50.0, 50.0], // 온조기 1~4구간 표준
   cureZoneTemp: "212.0",  // PCM 13존 표준 210±20℃ (190~230℃)
-  haulOffSpeed: "19.6",   // 라인 인취속도 20.0±1.0 m/분
   sprayGun1: "2.5",       // 코팅건 1번 2.5 bar
   sprayGun2: "2.6",       // 코팅건 2번 2.5 bar
   sprayGun3: "2.5",       // 코팅건 3번 2.5 bar
@@ -257,16 +271,30 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     },
     conditions: {
       extruder110Rpm: String(raw.conditions?.extruder110Rpm || raw.extruder110Rpm || raw.conditions?.extruderRpm || "26.4").trim(),
+      extruder70Rpm: String(raw.conditions?.extruder70Rpm || raw.extruder70Rpm || raw.conditions?.extruder60Rpm || raw.extruder60Rpm || "19.2").trim(),
       extruder60Rpm: String(raw.conditions?.extruder60Rpm || raw.extruder60Rpm || raw.conditions?.extruder70Rpm || "19.2").trim(),
-      waterTemp: String(raw.conditions?.waterTemp || raw.waterTemp || "47.0").trim(),
+      haulOffSpeed: String(raw.conditions?.haulOffSpeed || raw.haulOffSpeed || "19.6").trim(),
+      waterZones110: {
+        screw: String(raw.conditions?.waterZones110?.screw || raw.conditions?.water110Screw || "50.0").trim(),
+        cylinder1: String(raw.conditions?.waterZones110?.cylinder1 || raw.conditions?.water110Cyl1 || "50.0").trim(),
+        cylinder2: String(raw.conditions?.waterZones110?.cylinder2 || raw.conditions?.water110Cyl2 || "50.0").trim(),
+        cylinder3: String(raw.conditions?.waterZones110?.cylinder3 || raw.conditions?.water110Cyl3 || "50.0").trim(),
+        head: String(raw.conditions?.waterZones110?.head || raw.conditions?.water110Head || "50.0").trim()
+      },
+      waterZones70: {
+        screw: String(raw.conditions?.waterZones70?.screw || raw.conditions?.water70Screw || "50.0").trim(),
+        cylinder1: String(raw.conditions?.waterZones70?.cylinder1 || raw.conditions?.water70Cyl1 || "50.0").trim(),
+        cylinder2: String(raw.conditions?.waterZones70?.cylinder2 || raw.conditions?.water70Cyl2 || "50.0").trim(),
+        cylinder3: String(raw.conditions?.waterZones70?.cylinder3 || raw.conditions?.water70Cyl3 || "50.0").trim()
+      },
+      waterTemp: String(raw.conditions?.waterTemp || raw.waterTemp || "50.0").trim(),
       waterZones: Array.isArray(raw.conditions?.waterZones) && raw.conditions.waterZones.length === 4
         ? raw.conditions.waterZones.map(z => Number(z) || 50.0)
-        : (Array.isArray(raw.waterZones) && raw.waterZones.length === 4 ? raw.waterZones.map(z => Number(z) || 50.0) : [47.0, 48.5, 49.0, 47.5]),
+        : (Array.isArray(raw.waterZones) && raw.waterZones.length === 4 ? raw.waterZones.map(z => Number(z) || 50.0) : [50.0, 50.0, 50.0, 50.0]),
       cureZoneTemp: String(raw.conditions?.cureZoneTemp || raw.cureZoneTemp || raw.conditions?.cureTemp || "212.0").trim(), // 210±20℃ (존1~존13)
       pcmZones: Array.isArray(raw.conditions?.pcmZones) && raw.conditions.pcmZones.length === 13
         ? raw.conditions.pcmZones.map(z => Number(z) || 210.0)
         : (Array.isArray(raw.pcmZones) && raw.pcmZones.length === 13 ? raw.pcmZones.map(z => Number(z) || 210.0) : [...EXTRUSION_STANDARD_SPECS.pcmZones]),
-      haulOffSpeed: String(raw.conditions?.haulOffSpeed || raw.haulOffSpeed || "19.6").trim(),
       sprayGun1: String(raw.conditions?.sprayGun1 || raw.sprayGun1 || "2.5").trim(),
       sprayGun2: String(raw.conditions?.sprayGun2 || raw.sprayGun2 || "2.6").trim(),
       sprayGun3: String(raw.conditions?.sprayGun3 || raw.sprayGun3 || "2.5").trim(),

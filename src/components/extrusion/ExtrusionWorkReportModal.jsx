@@ -298,13 +298,27 @@ export const ExtrusionWorkReportModal = ({
         downtimeScrapKg: initialData?.downtimeScrapKg ?? "",
         conditions: {
           extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || EXTRUSION_STANDARD_SPECS.extruder110Rpm,
+          extruder70Rpm: initialData?.conditions?.extruder70Rpm || initialData?.conditions?.extruder60Rpm || EXTRUSION_STANDARD_SPECS.extruder70Rpm,
           extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || EXTRUSION_STANDARD_SPECS.extruder60Rpm,
+          haulOffSpeed: initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.haulOffSpeed,
+          waterZones110: {
+            screw: initialData?.conditions?.waterZones110?.screw || initialData?.conditions?.water110Screw || "50.0",
+            cylinder1: initialData?.conditions?.waterZones110?.cylinder1 || initialData?.conditions?.water110Cyl1 || "50.0",
+            cylinder2: initialData?.conditions?.waterZones110?.cylinder2 || initialData?.conditions?.water110Cyl2 || "50.0",
+            cylinder3: initialData?.conditions?.waterZones110?.cylinder3 || initialData?.conditions?.water110Cyl3 || "50.0",
+            head: initialData?.conditions?.waterZones110?.head || initialData?.conditions?.water110Head || "50.0"
+          },
+          waterZones70: {
+            screw: initialData?.conditions?.waterZones70?.screw || initialData?.conditions?.water70Screw || "50.0",
+            cylinder1: initialData?.conditions?.waterZones70?.cylinder1 || initialData?.conditions?.water70Cyl1 || "50.0",
+            cylinder2: initialData?.conditions?.waterZones70?.cylinder2 || initialData?.conditions?.water70Cyl2 || "50.0",
+            cylinder3: initialData?.conditions?.waterZones70?.cylinder3 || initialData?.conditions?.water70Cyl3 || "50.0"
+          },
           waterTemp: initialData?.conditions?.waterTemp || EXTRUSION_STANDARD_SPECS.waterTemp,
           waterZones: Array.isArray(initialData?.conditions?.waterZones) && initialData.conditions.waterZones.length === 4
             ? initialData.conditions.waterZones
-            : [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
+            : [...(EXTRUSION_STANDARD_SPECS.waterZones || [50.0, 50.0, 50.0, 50.0])],
           cureZoneTemp: initialData?.conditions?.cureZoneTemp || initialData?.conditions?.cureTemp || EXTRUSION_STANDARD_SPECS.cureZoneTemp,
-          haulOffSpeed: initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.haulOffSpeed,
           sprayGun1: initialData?.conditions?.sprayGun1 || EXTRUSION_STANDARD_SPECS.sprayGun1,
           sprayGun2: initialData?.conditions?.sprayGun2 || EXTRUSION_STANDARD_SPECS.sprayGun2,
           sprayGun3: initialData?.conditions?.sprayGun3 || EXTRUSION_STANDARD_SPECS.sprayGun3,
@@ -363,11 +377,25 @@ export const ExtrusionWorkReportModal = ({
       },
       conditions: {
         extruder110Rpm: EXTRUSION_STANDARD_SPECS.extruder110Rpm,
+        extruder70Rpm: EXTRUSION_STANDARD_SPECS.extruder70Rpm,
         extruder60Rpm: EXTRUSION_STANDARD_SPECS.extruder60Rpm,
-        waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
-        waterZones: [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
-        cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp, // PCM 13존 210±20℃
         haulOffSpeed: EXTRUSION_STANDARD_SPECS.haulOffSpeed,
+        waterZones110: {
+          screw: "50.0",
+          cylinder1: "50.0",
+          cylinder2: "50.0",
+          cylinder3: "50.0",
+          head: "50.0"
+        },
+        waterZones70: {
+          screw: "50.0",
+          cylinder1: "50.0",
+          cylinder2: "50.0",
+          cylinder3: "50.0"
+        },
+        waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
+        waterZones: [...(EXTRUSION_STANDARD_SPECS.waterZones || [50.0, 50.0, 50.0, 50.0])],
+        cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp, // PCM 13존 210±20℃
         sprayGun1: EXTRUSION_STANDARD_SPECS.sprayGun1,
         sprayGun2: EXTRUSION_STANDARD_SPECS.sprayGun2,
         sprayGun3: EXTRUSION_STANDARD_SPECS.sprayGun3,
@@ -503,13 +531,27 @@ export const ExtrusionWorkReportModal = ({
           downtimeScrapKg: initialData?.downtimeScrapKg ?? "",
           conditions: {
             extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || EXTRUSION_STANDARD_SPECS.extruder110Rpm,
+            extruder70Rpm: initialData?.conditions?.extruder70Rpm || initialData?.conditions?.extruder60Rpm || EXTRUSION_STANDARD_SPECS.extruder70Rpm,
             extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || EXTRUSION_STANDARD_SPECS.extruder60Rpm,
+            haulOffSpeed: initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.haulOffSpeed,
+            waterZones110: {
+              screw: initialData?.conditions?.waterZones110?.screw || initialData?.conditions?.water110Screw || "50.0",
+              cylinder1: initialData?.conditions?.waterZones110?.cylinder1 || initialData?.conditions?.water110Cyl1 || "50.0",
+              cylinder2: initialData?.conditions?.waterZones110?.cylinder2 || initialData?.conditions?.water110Cyl2 || "50.0",
+              cylinder3: initialData?.conditions?.waterZones110?.cylinder3 || initialData?.conditions?.water110Cyl3 || "50.0",
+              head: initialData?.conditions?.waterZones110?.head || initialData?.conditions?.water110Head || "50.0"
+            },
+            waterZones70: {
+              screw: initialData?.conditions?.waterZones70?.screw || initialData?.conditions?.water70Screw || "50.0",
+              cylinder1: initialData?.conditions?.waterZones70?.cylinder1 || initialData?.conditions?.water70Cyl1 || "50.0",
+              cylinder2: initialData?.conditions?.waterZones70?.cylinder2 || initialData?.conditions?.water70Cyl2 || "50.0",
+              cylinder3: initialData?.conditions?.waterZones70?.cylinder3 || initialData?.conditions?.water70Cyl3 || "50.0"
+            },
             waterTemp: initialData?.conditions?.waterTemp || EXTRUSION_STANDARD_SPECS.waterTemp,
             waterZones: Array.isArray(initialData?.conditions?.waterZones) && initialData.conditions.waterZones.length === 4
               ? initialData.conditions.waterZones
-              : [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
+              : [...(EXTRUSION_STANDARD_SPECS.waterZones || [50.0, 50.0, 50.0, 50.0])],
             cureZoneTemp: initialData?.conditions?.cureZoneTemp || initialData?.conditions?.cureTemp || EXTRUSION_STANDARD_SPECS.cureZoneTemp,
-            haulOffSpeed: initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.haulOffSpeed,
             sprayGun1: initialData?.conditions?.sprayGun1 || EXTRUSION_STANDARD_SPECS.sprayGun1,
             sprayGun2: initialData?.conditions?.sprayGun2 || EXTRUSION_STANDARD_SPECS.sprayGun2,
             sprayGun3: initialData?.conditions?.sprayGun3 || EXTRUSION_STANDARD_SPECS.sprayGun3,
@@ -566,11 +608,25 @@ export const ExtrusionWorkReportModal = ({
           },
           conditions: {
             extruder110Rpm: EXTRUSION_STANDARD_SPECS.extruder110Rpm,
+            extruder70Rpm: EXTRUSION_STANDARD_SPECS.extruder70Rpm,
             extruder60Rpm: EXTRUSION_STANDARD_SPECS.extruder60Rpm,
-            waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
-            waterZones: [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
-            cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp, // PCM 13존 210±20℃
             haulOffSpeed: EXTRUSION_STANDARD_SPECS.haulOffSpeed,
+            waterZones110: {
+              screw: "50.0",
+              cylinder1: "50.0",
+              cylinder2: "50.0",
+              cylinder3: "50.0",
+              head: "50.0"
+            },
+            waterZones70: {
+              screw: "50.0",
+              cylinder1: "50.0",
+              cylinder2: "50.0",
+              cylinder3: "50.0"
+            },
+            waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
+            waterZones: [...(EXTRUSION_STANDARD_SPECS.waterZones || [50.0, 50.0, 50.0, 50.0])],
+            cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp, // PCM 13존 210±20℃
             sprayGun1: EXTRUSION_STANDARD_SPECS.sprayGun1,
             sprayGun2: EXTRUSION_STANDARD_SPECS.sprayGun2,
             sprayGun3: EXTRUSION_STANDARD_SPECS.sprayGun3,
@@ -947,6 +1003,56 @@ export const ExtrusionWorkReportModal = ({
       [parentKey]: {
         ...(prev[parentKey] || {}),
         [childKey]: value
+      }
+    }));
+  };
+
+  const handleWaterZone110Change = (key, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        waterZones110: {
+          ...(prev.conditions?.waterZones110 || {}),
+          [key]: value
+        }
+      }
+    }));
+  };
+
+  const handleWaterZone70Change = (key, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        waterZones70: {
+          ...(prev.conditions?.waterZones70 || {}),
+          [key]: value
+        }
+      }
+    }));
+  };
+
+  const handleBatchWaterZones = (tempVal = "50.0") => {
+    const valStr = String(tempVal);
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        waterTemp: valStr,
+        waterZones110: {
+          screw: valStr,
+          cylinder1: valStr,
+          cylinder2: valStr,
+          cylinder3: valStr,
+          head: valStr
+        },
+        waterZones70: {
+          screw: valStr,
+          cylinder1: valStr,
+          cylinder2: valStr,
+          cylinder3: valStr
+        }
       }
     }));
   };
@@ -1885,20 +1991,23 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 3: Curing Temp, Water Temp & Coating Pressure (제목 삭제 및 뱃지만 심플 구성) */}
+            {/* Section 3: Extruder Speeds, 9-Zone Water Bath, Curing Temp & Coating Pressure */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
-              <div className="flex items-center justify-between">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-1.5">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                   <Flame className="w-4 h-4 text-orange-500" />
                   ③ 작업조건
                 </span>
-                <div className="flex items-center gap-1">
-                  <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10.5px] border border-orange-300">
-                    가류조
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 font-black text-[10.5px] border border-indigo-300">
+                    압출·인취속도
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 font-black text-[10.5px] border border-teal-300">
-                    온조기
+                    온조기(9구간)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300 font-black text-[10.5px] border border-orange-300">
+                    가류조(13존)
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-black text-[10.5px] border border-sky-300">
                     코팅압력
@@ -1906,7 +2015,200 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               </div>
 
-              {/* 1. 가류조 온도: 1~13존 한줄 패널 */}
+              {/* 1. 압출기 속도 (110Ø, 70Ø) & 인취기 속도 */}
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-indigo-300/80 dark:border-indigo-900/60 shadow-xs space-y-2">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-xs flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5" />
+                    압출속도 & 인취기속도
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    110Ø / 70Ø RPM & 라인 인취 m/분
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* 110Ø Extruder Speed */}
+                  <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
+                      <span>110Ø 압출속도</span>
+                      <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
+                        표준 29±2.9
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={formData.conditions?.extruder110Rpm ?? EXTRUSION_STANDARD_SPECS.extruder110Rpm}
+                        onChange={(e) => handleNestedFieldChange("conditions", "extruder110Rpm", e.target.value)}
+                        placeholder="26.4"
+                        className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+                        RPM
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 70Ø Extruder Speed */}
+                  <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
+                      <span>70Ø 압출속도</span>
+                      <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
+                        표준 20±2.0
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={formData.conditions?.extruder70Rpm ?? EXTRUSION_STANDARD_SPECS.extruder70Rpm}
+                        onChange={(e) => handleNestedFieldChange("conditions", "extruder70Rpm", e.target.value)}
+                        placeholder="19.2"
+                        className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+                        RPM
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Haul-off Speed */}
+                  <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
+                      <span>인취기 속도</span>
+                      <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
+                        표준 20±1.0
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={formData.conditions?.haulOffSpeed ?? EXTRUSION_STANDARD_SPECS.haulOffSpeed}
+                        onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
+                        placeholder="19.6"
+                        className="w-full text-right pr-13 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
+                        m/분
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. 온조기 조건 (표준: 50±5℃) - Ø110 5개 + Ø70 4개 = 총 9구간 */}
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-2.5">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs flex items-center gap-1">
+                    <Droplets className="w-3.5 h-3.5" />
+                    온조기 조건 (표준 50±5℃)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = prompt("온조기 9개 전체 구간에 일괄 적용할 온도를 입력하세요(℃):", "50.0");
+                      if (val && !isNaN(Number(val))) {
+                        handleBatchWaterZones(val);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200 text-[10.5px] font-black border border-teal-300 dark:border-teal-800 transition cursor-pointer"
+                  >
+                    ⚡ 50℃ 일괄적용
+                  </button>
+                </div>
+
+                {/* Group 1: Ø110 압출기 온조기 (5개 구간: 스크류, 실린더1, 실린더2, 실린더3, 헤드) */}
+                <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
+                      Ø110 압출기 온조기 (5개 구간)
+                    </span>
+                    <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                      스크류 · 실린더1~3 · 헤드 (±5℃)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-1 sm:gap-1.5">
+                    {[
+                      { key: "screw", label: "스크류" },
+                      { key: "cylinder1", label: "실린더1" },
+                      { key: "cylinder2", label: "실린더2" },
+                      { key: "cylinder3", label: "실린더3" },
+                      { key: "head", label: "헤드" }
+                    ].map((item) => {
+                      const curVal = formData.conditions?.waterZones110?.[item.key] ?? "50.0";
+                      return (
+                        <div
+                          key={`w110_${item.key}`}
+                          className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                        >
+                          <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center">
+                            {item.label}
+                          </span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={curVal}
+                            onChange={(e) => handleWaterZone110Change(item.key, e.target.value)}
+                            placeholder="50.0"
+                            className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                          />
+                          <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Group 2: Ø70 압출기 온조기 (4개 구간: 스크류, 실린더1, 실린더2, 실린더3) */}
+                <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/60 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black text-teal-900 dark:text-teal-200 flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
+                      Ø70 압출기 온조기 (4개 구간)
+                    </span>
+                    <span className="text-[9.5px] text-teal-700 dark:text-teal-400 font-bold">
+                      스크류 · 실린더1~3 (±5℃)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                    {[
+                      { key: "screw", label: "스크류" },
+                      { key: "cylinder1", label: "실린더1" },
+                      { key: "cylinder2", label: "실린더2" },
+                      { key: "cylinder3", label: "실린더3" }
+                    ].map((item) => {
+                      const curVal = formData.conditions?.waterZones70?.[item.key] ?? "50.0";
+                      return (
+                        <div
+                          key={`w70_${item.key}`}
+                          className="flex flex-col items-center justify-between p-1.5 rounded-lg bg-white dark:bg-slate-800 border border-teal-200 dark:border-teal-700/80 shadow-2xs"
+                        >
+                          <span className="text-[10px] font-black text-teal-800 dark:text-teal-300 truncate w-full text-center">
+                            {item.label}
+                          </span>
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={curVal}
+                            onChange={(e) => handleWaterZone70Change(item.key, e.target.value)}
+                            placeholder="50.0"
+                            className="w-full text-center bg-teal-50/50 dark:bg-slate-900 border border-teal-300/80 dark:border-teal-600 rounded py-1 font-black text-xs text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                          />
+                          <span className="text-[8.5px] text-slate-400 font-bold mt-0.5">℃</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. 가류조 온도: 1~13존 한줄 패널 */}
               <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
                 <div className="flex items-center justify-between gap-1">
                   <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
@@ -1977,62 +2279,7 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               </div>
 
-              {/* 2. 온조기 온도: 1~4구간 한줄 패널 */}
-              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-1">
-                  <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs">
-                    💧 온조기 (50±5℃)
-                  </span>
-                </div>
-
-                {/* 4 Sections Grid */}
-                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-                  {[
-                    { idx: 0, label: "1구간", defaultVal: 47.0 },
-                    { idx: 1, label: "2구간", defaultVal: 48.5 },
-                    { idx: 2, label: "3구간", defaultVal: 49.0 },
-                    { idx: 3, label: "4구간", defaultVal: 47.5 }
-                  ].map((sec) => {
-                    const curSecVal = formData.conditions?.waterZones?.[sec.idx] ?? EXTRUSION_STANDARD_SPECS.waterZones?.[sec.idx] ?? sec.defaultVal;
-                    return (
-                      <div
-                        key={`water_zone_${sec.idx}`}
-                        className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/80"
-                      >
-                        <span className="text-[10px] font-black text-teal-800 dark:text-teal-300">
-                          {sec.label}
-                        </span>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={curSecVal}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData((prev) => {
-                              const curWaterZones = Array.isArray(prev.conditions?.waterZones) && prev.conditions.waterZones.length === 4
-                                ? [...prev.conditions.waterZones]
-                                : [47.0, 48.5, 49.0, 47.5];
-                              curWaterZones[sec.idx] = val === "" ? "" : Number(val);
-                              return {
-                                ...prev,
-                                conditions: {
-                                  ...(prev.conditions || {}),
-                                  waterZones: curWaterZones,
-                                  waterTemp: String(curWaterZones[0] || 50.0)
-                                }
-                              };
-                            });
-                          }}
-                          className="w-full text-center bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 rounded py-1 font-black text-xs sm:text-sm text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
-                        />
-                        <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 3. 코팅 분사압력: 1~3번건 한줄 패널 (제목 삭제 및 뱃지 3개) */}
+              {/* 4. 코팅 분사압력: 1~3번건 한줄 패널 */}
               <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-1.5">
                 <div className="flex items-center justify-between gap-1">
                   <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
@@ -2040,7 +2287,7 @@ export const ExtrusionWorkReportModal = ({
                   </span>
                 </div>
 
-                {/* 3 Guns Grid (3개의 뱃지만 깔끔하게 노출) */}
+                {/* 3 Guns Grid */}
                 <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                   {[
                     { id: "sprayGun1", label: "1번건", defaultVal: "2.5" },
