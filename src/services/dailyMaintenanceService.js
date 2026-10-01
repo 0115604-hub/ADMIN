@@ -198,7 +198,7 @@ const sanitizeExtrusionMaster = async () => {
  * 2. Sanitize Electronic Approval Documents
  */
 const sanitizeApprovalDocuments = async () => {
-  const storageKey = "oryuk_approval_documents_v8_stable";
+  const storageKey = "oryuk_approval_documents_v9_master";
   let docs = [];
   try {
     const raw = localStorage.getItem(storageKey);
@@ -296,7 +296,7 @@ const createDailySnapshot = async (todayStr) => {
   try {
     // Collect snapshot of main collections
     const extrusionRaw = localStorage.getItem("factory_extrusion_downtime_user_uploaded_v5");
-    const approvalsRaw = localStorage.getItem("oryuk_approval_documents_v8_stable");
+    const approvalsRaw = localStorage.getItem("oryuk_approval_documents_v9_master");
     const workLogsRaw = localStorage.getItem("factory_daily_work_logs_v17_pure_sync");
     const overtimeRaw = localStorage.getItem("official_overtime_reports_store_v7_company_reports");
     const qualityRaw = localStorage.getItem("factory_daily_quality_records_v4_exact");

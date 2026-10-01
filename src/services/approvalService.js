@@ -20,8 +20,15 @@ import { isWeekendByDate } from "./overtimeService";
 
 const COLLECTION_NAME = "approval_documents";
 const DELETED_COLLECTION_NAME = "deleted_approval_documents";
-const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v8_stable";
-const DELETED_STORAGE_KEY = "oryuk_approval_deleted_ids_v8";
+const LOCAL_STORAGE_KEY = "oryuk_approval_documents_v9_master";
+const DELETED_STORAGE_KEY = "oryuk_approval_deleted_ids_v9";
+
+const PREV_STORAGE_KEYS = [
+  "oryuk_approval_documents_v8_stable",
+  "oryuk_approval_documents_v7_clean",
+  "oryuk_approval_documents_v6_clean",
+  "oryuk_approval_documents_v5"
+];
 
 // ⭐ Helper: Manage permanently deleted document IDs (Tombstone blacklist)
 export const getDeletedApprovalIds = () => {
@@ -355,45 +362,47 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
 // Initial authoritative approval documents (Clean empty array by default)
 export const INITIAL_APPROVAL_DOCS = [];
 
-// Filter out unwanted weekday attendance synthesis documents so the CEO approval box is not flooded with weekday attendance logs
-// ⭐ IMPORTANT: NEVER filter out manual drafts created by users!
-export const isWeekdayAttSynthDoc = (d) => {
-  if (!d) return false;
-  // Manual drafts created by users must NEVER be filtered or deleted
-  if (d.isDirectManualDraft || d.isManualDraft || (d.id && !d.id.startsWith("appr_ot_") && !d.id.startsWith("appr_att_"))) {
-    return false;
-  }
+// Helper: NEVER delete or filter any document automatically
+export const isWeekdayAttSynthDoc = () => false;
 
-  const isWk = isWeekendByDate(d.workDate || d.title || d.docNumber || d.id);
-  if (isWk) return false;
-
-  // Auto-generated synthesis docs (appr_ot_*, appr_att_*) for weekdays
-  if (d.id && (d.id.startsWith("appr_ot_") || d.id.startsWith("appr_att_"))) return true;
-  return false;
-};
-
-// Helper: Read local storage with normalization, initial docs and permanent deletion filtering
+// Helper: Read local storage with migration from older versions, normalization and deletion filtering
 export const getLocalApprovalDocs = () => {
   try {
     const deletedIds = getDeletedApprovalIds();
     let data = localStorage.getItem(LOCAL_STORAGE_KEY);
+    
+    // Auto-migration: If v9 is missing or empty array, check previous storage keys to restore existing documents
+    if (!data || data === "[]" || data === "null" || data === "undefined") {
+      for (const oldKey of PREV_STORAGE_KEYS) {
+        const oldData = localStorage.getItem(oldKey);
+        if (oldData) {
+          try {
+            const parsedOld = JSON.parse(oldData);
+            if (Array.isArray(parsedOld) && parsedOld.length > 0) {
+              localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsedOld));
+              data = oldData;
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+
     if (!data) {
       return [];
     }
 
     let parsed = [];
-    if (data) {
-      try {
-        parsed = JSON.parse(data);
-      } catch (e) {
-        parsed = [];
-      }
+    try {
+      parsed = JSON.parse(data);
+    } catch (e) {
+      parsed = [];
     }
 
     const docMap = new Map();
     if (Array.isArray(parsed)) {
       parsed.forEach((d) => {
-        if (d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
+        if (d && d.id && !deletedIds.has(d.id)) {
           docMap.set(d.id, d);
         }
       });
@@ -411,7 +420,7 @@ export const getLocalApprovalDocs = () => {
 export const saveLocalApprovalDocs = (docs) => {
   try {
     const deletedIds = getDeletedApprovalIds();
-    const cleanDocs = (docs || []).filter((d) => d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d));
+    const cleanDocs = (docs || []).filter((d) => d && d.id && !deletedIds.has(d.id));
     const normalized = cleanDocs.map(normalizeApprovalDoc);
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
   } catch (e) {
@@ -419,29 +428,9 @@ export const saveLocalApprovalDocs = (docs) => {
   }
 };
 
-// Real-time Cloud Synchronization with Robust Local Merge & Permanent Deletion Blacklist
+// Real-time Cloud Synchronization with Robust Local Merge & Permanent Document Retention
 export const subscribeApprovalDocs = (onUpdate) => {
   try {
-    // 1. Subscribe to deleted documents collection for real-time multi-device deletion
-    try {
-      onSnapshot(collection(db, DELETED_COLLECTION_NAME), (delSnap) => {
-        if (!delSnap.empty) {
-          const deletedIds = getDeletedApprovalIds();
-          let hasNewDeletes = false;
-          delSnap.forEach((d) => {
-            if (!deletedIds.has(d.id)) {
-              deletedIds.add(d.id);
-              hasNewDeletes = true;
-            }
-          });
-          if (hasNewDeletes) {
-            saveDeletedApprovalIds(deletedIds);
-            onUpdate(getLocalApprovalDocs());
-          }
-        }
-      }, () => {});
-    } catch (e) {}
-
     const colRef = collection(db, COLLECTION_NAME);
     const unsubscribe = onSnapshot(
       colRef,
@@ -450,34 +439,27 @@ export const subscribeApprovalDocs = (onUpdate) => {
         const remoteDocs = [];
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
-            if (deletedIds.has(d.id)) {
-              deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
-              return;
-            }
+            if (deletedIds.has(d.id)) return;
             const rawDoc = { id: d.id, ...d.data() };
-            if (isWeekdayAttSynthDoc(rawDoc)) {
-              deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
-              return;
-            }
             const normalized = normalizeApprovalDoc(rawDoc);
             remoteDocs.push(normalized);
           });
         }
 
-        // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so local drafts are never wiped
+        // ⭐ MERGE STRATEGY: Combine local documents with remote snapshot so documents are NEVER wiped
         const localDocs = getLocalApprovalDocs();
         const docMap = new Map();
 
         // 1. Seed with local documents
         localDocs.forEach((d) => {
-          if (d && d.id && !deletedIds.has(d.id) && !isWeekdayAttSynthDoc(d)) {
+          if (d && d.id && !deletedIds.has(d.id)) {
             docMap.set(d.id, d);
           }
         });
 
         // 2. Merge remote docs
         remoteDocs.forEach((r) => {
-          if (r && r.id && !deletedIds.has(r.id) && !isWeekdayAttSynthDoc(r)) {
+          if (r && r.id && !deletedIds.has(r.id)) {
             const existing = docMap.get(r.id);
             if (!existing) {
               docMap.set(r.id, r);
@@ -494,9 +476,9 @@ export const subscribeApprovalDocs = (onUpdate) => {
 
         // 3. Any manual drafts or valid local docs missing from Firestore -> asynchronously sync up to Firestore
         localDocs.forEach((localDoc) => {
-          if (localDoc && localDoc.id && !deletedIds.has(localDoc.id) && !isWeekdayAttSynthDoc(localDoc)) {
+          if (localDoc && localDoc.id && !deletedIds.has(localDoc.id)) {
             const inRemote = remoteDocs.some((r) => r.id === localDoc.id);
-            if (!inRemote && (localDoc.isDirectManualDraft || localDoc.isManualDraft || !localDoc.id.startsWith("appr_ot_"))) {
+            if (!inRemote) {
               setDoc(doc(db, COLLECTION_NAME, localDoc.id), sanitizeForFirestore(localDoc)).catch(() => {});
             }
           }
@@ -648,8 +630,18 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
 
 // Save or Create an Approval Document (All Workers can draft)
 export const saveApprovalDocument = async (docData, options = {}) => {
-  const current = getLocalApprovalDocs();
   const id = docData.id || `appr_${Date.now()}`;
+  
+  // Explicitly remove from deleted blacklist so newly saved/drafted docs are never suppressed
+  try {
+    const deletedIds = getDeletedApprovalIds();
+    if (deletedIds.has(id)) {
+      deletedIds.delete(id);
+      saveDeletedApprovalIds(deletedIds);
+    }
+  } catch (e) {}
+
+  const current = getLocalApprovalDocs();
   const now = new Date();
   const nowStr = now.toLocaleString("ko-KR", {
     year: "numeric",
@@ -913,21 +905,10 @@ export const deleteApprovalDocument = async (id) => {
   return updated;
 };
 
-// 🧹 Silent Remove Approval Doc (Used ONLY for auto-synthesized overtime aggregation cleanup)
-// ⭐ IMPORTANT: NEVER remove manual drafts or documents created directly by users!
+// 🧹 Silent Remove Approval Doc (Disabled: Background processes must NEVER delete approval documents)
 export const removeApprovalDocSilently = async (id) => {
-  if (!id) return;
-  const current = getLocalApprovalDocs();
-  const target = current.find((d) => d.id === id);
-  if (target && (target.isDirectManualDraft || target.isManualDraft || (!target.id.startsWith("appr_ot_") && !target.id.startsWith("appr_att_")))) {
-    // Protected: Manual draft or non-synthesis document must NEVER be removed silently
-    return;
-  }
-  const updated = current.filter((d) => d.id !== id);
-  saveLocalApprovalDocs(updated);
-  try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
-  } catch (e) {}
+  // Safe no-op to guarantee 100% document retention and avoid list flashing/disappearing
+  return;
 };
 
 // ⭐ Helper: Check if document is strictly an auto-synthesized doc (NOT a manual draft)
@@ -1079,16 +1060,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
       // Check whether this is genuine weekend overtime or legal holiday
       const isActualOvertime = isWeekend || isWeekendByDate(workDateStr);
 
-      // ⭐ 평일 근태보고서는 전자결재함에 등록하지 않고(근태/특근관리 탭에서 전담 관리), 주말/공휴일 특근보고서만 전자결재함에 연동
+      // ⭐ 평일은 전자결재함 자동 생성 생략 (근태/특근관리 탭에서 전담 관리)
       if (!isActualOvertime) {
-        // Clean up any previously created weekday synthesis document from approval box
-        const oldIds = [
-          `appr_ot_${plantKey}_${workDateStr.replace(/-/g, "")}`,
-          `appr_att_${plantKey}_${workDateStr.replace(/-/g, "")}`
-        ];
-        for (const oldId of oldIds) {
-          await removeApprovalDocSilently(oldId);
-        }
         continue;
       }
 
@@ -1106,43 +1079,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         continue;
       }
 
-      // 🧹 1. Clean duplicate auto-synthesized approval documents for this plant and date (while strictly preserving user manual drafts!)
-      const duplicateDocs = currentApprovalDocs.filter(d => 
-        isAutoSynthDoc(d) &&
-        d.id !== canonicalDocId &&
-        (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
-        d.plant === targetPlant &&
-        (
-          (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-          (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-          (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
-        )
-      );
-
-      let duplicateApprovedSteps = null;
-      for (const dup of duplicateDocs) {
-        if (Array.isArray(dup.steps) && dup.steps.some(st => st.status === "APPROVED")) {
-          duplicateApprovedSteps = dup.steps;
-        }
-        await removeApprovalDocSilently(dup.id);
-      }
-
-      // ⭐ If no reports exist for this plant on this date (e.g. user deleted them):
+      // If no reports exist for this plant on this date:
       if (plantReports.length === 0) {
-        const allMatchingDocs = getLocalApprovalDocs().filter(d => 
-          isAutoSynthDoc(d) &&
-          (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
-          d.plant === targetPlant &&
-          (
-            d.id === canonicalDocId ||
-            (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-            (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-            (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
-          )
-        );
-        for (const d of allMatchingDocs) {
-          await removeApprovalDocSilently(d.id);
-        }
         continue;
       }
 
@@ -1206,20 +1144,6 @@ export const syncPlantOvertimeToApprovalBox = async ({
 
       // If no workers or no valid companies for this plant on this date:
       if (totalPlantWorkers === 0 || companySummaries.length === 0) {
-        const allMatchingDocs = getLocalApprovalDocs().filter(d => 
-          isAutoSynthDoc(d) &&
-          (d.type === "OVERTIME" || d.type === "ATTENDANCE") &&
-          d.plant === targetPlant &&
-          (
-            d.id === canonicalDocId ||
-            (d.id && d.id.includes(workDateStr.replace(/-/g, "")) && d.id.includes(plantKey)) ||
-            (d.docNumber && d.docNumber.includes(`${String(monthNum).padStart(2, "0")}${String(dayNum).padStart(2, "0")}`) && d.docNumber.includes(targetPlant === "삼랑진공장" ? "SAM" : "HAL")) ||
-            (d.title && d.title.includes(`${monthNum}월 ${dayNum}일`) && d.title.includes(targetPlant))
-          )
-        );
-        for (const d of allMatchingDocs) {
-          await removeApprovalDocSilently(d.id);
-        }
         continue;
       }
 
@@ -1249,7 +1173,7 @@ export const syncPlantOvertimeToApprovalBox = async ({
         ? cloudDoc.steps
         : (Array.isArray(localDoc?.steps) && localDoc.steps.length > 0
             ? localDoc.steps
-            : (duplicateApprovedSteps || []));
+            : []);
 
       const drafterName = targetPlant === "삼랑진공장" ? "양인나" : "오상민";
       const drafterTitle = "선임";

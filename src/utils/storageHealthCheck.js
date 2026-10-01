@@ -9,7 +9,7 @@ export const runStorageHealthCheck = () => {
     const criticalKeys = [
       "factory_daily_work_logs_v17_pure_sync",
       "oryuk_urgent_issues_v2",
-      "oryuk_approval_documents_v8_stable",
+      "oryuk_approval_documents_v9_master",
       "official_overtime_reports_store_v7_company_reports",
       "oryuk_telegram_config_v4",
       "oryuk_telegram_templates_v1",

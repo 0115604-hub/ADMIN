@@ -56,7 +56,7 @@ import {
   parseSafeTimestamp
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
-import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
+import { useModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 
 // Client-side instant image compression (keeps Firestore & storage fast & light)
@@ -165,18 +165,28 @@ export const ElectronicApprovalView = () => {
     return () => unsub();
   }, []);
 
+  useModalHistory(Boolean(selectedDoc), () => {
+    setSelectedDoc(null);
+    setActionType("APPROVE");
+  }, "approval_doc_detail");
+
+  useModalHistory(Boolean(isDraftModalOpen), () => {
+    setIsDraftModalOpen(false);
+  }, "approval_draft");
+
+  useModalHistory(Boolean(previewImageModal), () => {
+    setPreviewImageModal(null);
+  }, "approval_img_preview");
+
   const handleOpenDocModal = (doc) => {
-    pushModalHistory("approval_doc_detail");
     setSelectedDoc(doc);
   };
 
   const handleOpenDraftModal = () => {
-    pushModalHistory("approval_draft");
     setIsDraftModalOpen(true);
   };
 
   const handleOpenImagePreview = (img) => {
-    pushModalHistory("approval_img_preview");
     setPreviewImageModal(img);
   };
 
