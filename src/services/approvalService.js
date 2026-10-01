@@ -111,6 +111,7 @@ export const APPROVAL_MANAGERS = {
 
 // Clean and Normalize Document: ensure role '이사' allows '이명재' or '최미영' (한림공장)
 // ⭐ 결재 자동 승인 방지: 4단계 모두 실제로 승인되지 않은 문서는 절대 APPROVED 상태가 되지 않도록 방어
+// Clean and Normalize Document: calculate true step statuses without altering user document data
 export const normalizeApprovalDoc = (d) => {
   if (!d) return d;
   const isHanlim = d.plant === "한림공장";
@@ -151,7 +152,7 @@ export const normalizeApprovalDoc = (d) => {
     return st;
   });
 
-  // Calculate true approval step status
+  // Calculate true approval step status based strictly on the 4 steps
   const approvedCount = fixedSteps.filter((st) => st.status === "APPROVED").length;
   let computedStatus = d.status || "IN_PROGRESS";
   let computedStep = d.currentStep || (approvedCount + 1);
@@ -164,88 +165,13 @@ export const normalizeApprovalDoc = (d) => {
   } else if (fixedSteps.some((st) => st.status === "HOLD")) {
     computedStatus = "HOLD";
   } else if (approvedCount < fixedSteps.length && computedStatus === "APPROVED") {
-    // If marked approved but not all steps are done, revert to IN_PROGRESS
+    // If marked approved but not all steps are done, keep as IN_PROGRESS
     computedStatus = "IN_PROGRESS";
     computedStep = Math.max(1, approvedCount + 1);
   }
 
-  // ⭐ Weekday Attendance vs Weekend Overtime Auto-Normalization
-  // If document title or id indicates a weekday (월, 화, 수, 목, 금) and was labeled as '특근보고서 취합', convert it to '근태보고서 취합'
-  let normalizedTitle = d.title || "";
-  let normalizedTypeName = d.typeName || "";
-  let normalizedType = d.type || "OVERTIME";
-  let normalizedContent = d.content || "";
-
-  // Dynamic weekday vs weekend/holiday determination
-  let isHolidayOrWeekend = null;
-  const dateStrToCheck = d.workDate || d.title || d.id || "";
-  const ymdMatch = String(dateStrToCheck).match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
-  if (ymdMatch) {
-    const y = parseInt(ymdMatch[1], 10);
-    const m = parseInt(ymdMatch[2], 10);
-    const day = parseInt(ymdMatch[3], 10);
-    const dt = new Date(y, m - 1, day);
-    const dow = dt.getDay();
-    isHolidayOrWeekend = dow === 0 || dow === 6 || isWeekendByDate(`${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
-  } else {
-    const mdMatch = String(dateStrToCheck).match(/(?:(\d{4})년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
-    if (mdMatch) {
-      const y = mdMatch[1] ? parseInt(mdMatch[1], 10) : 2026;
-      const m = parseInt(mdMatch[2], 10);
-      const day = parseInt(mdMatch[3], 10);
-      const dt = new Date(y, m - 1, day);
-      const dow = dt.getDay();
-      isHolidayOrWeekend = dow === 0 || dow === 6 || isWeekendByDate(`${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
-    }
-  }
-
-  const isExplicitWeekend = /\((토|일)\)|(토요일|일요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
-  const isExplicitWeekday = /\((월|화|수|목|금)\)|(월요일|화요일|수요일|목요일|금요일)/.test(normalizedTitle + " " + String(d.workDate || ""));
-
-  const isWeekdayDocument =
-    !isHolidayOrWeekend &&
-    !isExplicitWeekend &&
-    (isHolidayOrWeekend === false || isExplicitWeekday);
-
-  const hasSynthesisOvertimeLabel =
-    normalizedTitle.includes("특근보고서 취합") ||
-    normalizedTitle.includes("특근실시보고서 취합") ||
-    normalizedTypeName.includes("특근보고서 (취합)");
-
-  if (isWeekdayDocument && hasSynthesisOvertimeLabel && !normalizedTitle.includes("주말 특근 승인")) {
-    normalizedTitle = normalizedTitle
-      .replace(/특근실시보고서 취합/g, "근태보고서 취합")
-      .replace(/특근보고서 취합/g, "근태보고서 취합");
-
-    if (normalizedTypeName.includes("특근보고서")) {
-      normalizedTypeName = normalizedTypeName.replace(/특근보고서/g, "근태보고서");
-    }
-
-    if (normalizedType === "OVERTIME") {
-      normalizedType = "ATTENDANCE";
-    }
-
-    if (normalizedContent) {
-      normalizedContent = normalizedContent
-        .replace(/특근보고서 취합/g, "근태보고서 취합")
-        .replace(/특근실시보고서 취합/g, "근태보고서 취합")
-        .replace(/1\. 특근 요약/g, "1. 근태 요약")
-        .replace(/주말 가동 완료/g, "정규 생산 라인 가동 및 일일 근태 현황 취합");
-    }
-  }
-
-  // ⭐ 평일 근태 문서는 작성자 전결로 자동 완료 처리
-  if (isWeekdayDocument && (normalizedType === "ATTENDANCE" || normalizedTitle.includes("근태"))) {
-    computedStatus = "APPROVED";
-    computedStep = fixedSteps.length;
-  }
-
   return {
     ...d,
-    title: normalizedTitle,
-    typeName: normalizedTypeName,
-    type: normalizedType,
-    content: normalizedContent,
     currentStep: computedStep,
     status: computedStatus,
     steps: fixedSteps
@@ -335,18 +261,19 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
 export const INITIAL_APPROVAL_DOCS = [];
 
 // Filter out unwanted weekday attendance synthesis documents so the CEO approval box is not flooded with weekday attendance logs
+// ⭐ IMPORTANT: NEVER filter out manual drafts created by users!
 export const isWeekdayAttSynthDoc = (d) => {
   if (!d) return false;
-  // If it's a genuine weekend/holiday document, never filter it out
+  // Manual drafts created by users must NEVER be filtered or deleted
+  if (d.isDirectManualDraft || d.isManualDraft || (d.id && !d.id.startsWith("appr_ot_") && !d.id.startsWith("appr_att_"))) {
+    return false;
+  }
+
   const isWk = isWeekendByDate(d.workDate || d.title || d.docNumber || d.id);
   if (isWk) return false;
 
-  // If it's a weekday (월~금):
-  // 1. Auto-generated synthesis docs (appr_ot_*, appr_att_*) must be filtered out
+  // Auto-generated synthesis docs (appr_ot_*, appr_att_*) for weekdays
   if (d.id && (d.id.startsWith("appr_ot_") || d.id.startsWith("appr_att_"))) return true;
-  // 2. Attendance documents or synthesis reports for weekdays
-  if (d.type === "ATTENDANCE" || d.docType === "ATTENDANCE") return true;
-  if (d.title && (d.title.includes("근태보고서") || d.title.includes("근태") || d.title.includes("특근보고서 (취합)"))) return true;
   return false;
 };
 
@@ -429,7 +356,6 @@ export const subscribeApprovalDocs = (onUpdate) => {
         if (!snapshot.empty) {
           snapshot.forEach((d) => {
             if (deletedIds.has(d.id)) {
-              // Delete permanently from remote if previously marked deleted
               deleteDoc(doc(db, COLLECTION_NAME, d.id)).catch(() => {});
               return;
             }
@@ -440,43 +366,26 @@ export const subscribeApprovalDocs = (onUpdate) => {
             }
             const normalized = normalizeApprovalDoc(rawDoc);
             remoteDocs.push(normalized);
-
-            // If remote doc had wrong director name or outdated content, quietly sync correction to Firestore
-            const directorStep = rawDoc.steps?.find((st) => st.role === "이사");
-            if (rawDoc.content !== normalized.content || (directorStep && directorStep.name !== "이명재")) {
-              setDoc(doc(db, COLLECTION_NAME, d.id), normalized, { merge: true }).catch(() => {});
-            }
           });
         }
 
-        // Firestore is authoritative source of truth.
-        // Overtime Approval Deduplication: Ensure strictly ONE document per Plant per Date
-        const seenOtKeys = new Set();
+        // Keep all valid documents without deleting user drafts
         const cleanList = [];
+        const seenDocIds = new Set();
         for (const item of remoteDocs) {
+          if (!item || !item.id) continue;
           if (deletedIds.has(item.id)) continue;
-
-          if (item.type === "OVERTIME") {
-            const dateMatch = (item.title || "").match(/(\d{1,2})월\s*(\d{1,2})일/) || (item.docNumber || "").match(/09\d{2}/) || (item.id || "").match(/2026\d{4}/);
-            const dateKey = dateMatch ? dateMatch[0] : (item.createdAt?.slice(0, 10) || item.id);
-            const otKey = `${item.plant || "전사"}_${dateKey}`;
-
-            if (seenOtKeys.has(otKey)) {
-              // If a non-canonical duplicate is found, clean it from Firestore
-              if (item.id && !item.id.startsWith("appr_ot_")) {
-                try {
-                  deleteDoc(doc(db, COLLECTION_NAME, item.id));
-                } catch (e) {}
-                continue;
-              }
-            } else {
-              seenOtKeys.add(otKey);
-            }
-          }
+          if (seenDocIds.has(item.id)) continue;
+          seenDocIds.add(item.id);
           cleanList.push(item);
         }
 
-        cleanList.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        cleanList.sort((a, b) => {
+          const tA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+          const tB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+          return tB - tA;
+        });
+
         saveLocalApprovalDocs(cleanList);
         if (onUpdate) onUpdate(cleanList);
       },
@@ -635,9 +544,11 @@ export const saveApprovalDocument = async (docData, options = {}) => {
     status: docData.status || "IN_PROGRESS",
     currentStep: docData.currentStep || 2,
     createdAt: docData.createdAt || nowStr,
+    updatedAt: nowStr,
     rejectReason: docData.rejectReason || "",
     holdReason: docData.holdReason || "",
-    steps: docData.steps || getAutoApprovalSteps(docData.plant, docData.drafter, docData.drafterTitle, docData.department, docData.leadName)
+    steps: docData.steps || getAutoApprovalSteps(docData.plant, docData.drafter, docData.drafterTitle, docData.department, docData.leadName, docData.ceoName, docData.directorName),
+    isDirectManualDraft: options.isDirectManualDraft ?? docData.isDirectManualDraft ?? true
   });
 
   const existingIdx = current.findIndex((d) => d.id === id);

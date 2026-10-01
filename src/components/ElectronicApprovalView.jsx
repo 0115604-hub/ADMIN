@@ -274,32 +274,30 @@ export const ElectronicApprovalView = () => {
   // Filtered Documents
   const filteredDocs = useMemo(() => {
     const list = approvalDocs.filter((doc) => {
-      if (selectedPlant !== "ALL" && doc.plant !== selectedPlant) return false;
+      if (!doc) return false;
 
-      if (selectedTab === "PENDING") {
-        return doc.status === "IN_PROGRESS";
-      }
-      if (selectedTab === "HOLD") {
-        return doc.status === "HOLD";
-      }
-      if (selectedTab === "MY_DRAFTS") {
-        return doc.drafter === currentProfile?.name;
-      }
-      if (selectedTab === "APPROVED") {
-        return doc.status === "APPROVED";
-      }
-      if (selectedTab === "REJECTED") {
-        return doc.status === "REJECTED";
+      // 1. Plant filter
+      if (selectedPlant !== "ALL" && doc.plant && doc.plant !== selectedPlant && doc.plant !== "공통" && doc.plant !== "본사") {
+        return false;
       }
 
+      // 2. Tab filter
+      if (selectedTab === "PENDING" && doc.status !== "IN_PROGRESS") return false;
+      if (selectedTab === "HOLD" && doc.status !== "HOLD") return false;
+      if (selectedTab === "MY_DRAFTS" && doc.drafter !== currentProfile?.name) return false;
+      if (selectedTab === "APPROVED" && doc.status !== "APPROVED") return false;
+      if (selectedTab === "REJECTED" && doc.status !== "REJECTED") return false;
+
+      // 3. Search query filter
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return (
+        const q = searchQuery.toLowerCase().trim();
+        const match =
           (doc.title || "").toLowerCase().includes(q) ||
           (doc.drafter || "").toLowerCase().includes(q) ||
           (doc.docNumber || "").toLowerCase().includes(q) ||
-          (doc.content || "").toLowerCase().includes(q)
-        );
+          (doc.content || "").toLowerCase().includes(q) ||
+          (doc.typeName || "").toLowerCase().includes(q);
+        if (!match) return false;
       }
 
       return true;
