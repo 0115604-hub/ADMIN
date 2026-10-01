@@ -122,17 +122,22 @@ export const ExtrusionWorkReportModal = ({
   // Helper to check if TPM check was already done today for the specified worker (초/중/종물 3회 접속 고려)
   const isTpmAlreadyDone = (targetDate, targetWorker) => {
     if (!targetDate || !targetWorker) return false;
-    const workerClean = String(targetWorker).trim();
-    const key = `extrusion_tpm_done_${targetDate}_${workerClean}`;
-    if (localStorage.getItem(key) === "true") return true;
+    try {
+      const workerClean = String(targetWorker || "").trim();
+      if (!workerClean) return false;
+      const key = `extrusion_tpm_done_${targetDate}_${workerClean}`;
+      if (typeof window !== "undefined" && window.localStorage && localStorage.getItem(key) === "true") return true;
 
-    // Check if any report today for this worker already completed TPM
-    if (Array.isArray(existingReports) && existingReports.length > 0) {
-      const workerFirstName = workerClean.split(" ")[0];
-      const match = existingReports.some(
-        (r) => r.date === targetDate && r.worker?.includes(workerFirstName) && r.tpmStatus === "완료"
-      );
-      if (match) return true;
+      // Check if any report today for this worker already completed TPM
+      if (Array.isArray(existingReports) && existingReports.length > 0) {
+        const workerFirstName = workerClean.split(" ")[0];
+        const match = existingReports.some(
+          (r) => r && r.date === targetDate && String(r.worker || "").includes(workerFirstName) && r.tpmStatus === "완료"
+        );
+        if (match) return true;
+      }
+    } catch (e) {
+      console.warn("isTpmAlreadyDone check error:", e);
     }
     return false;
   };
@@ -306,22 +311,22 @@ export const ExtrusionWorkReportModal = ({
 
   // Items for currently selected line
   const activeLineItems = useMemo(() => {
-    return getItemsByLine(formData.lineId || "pcm1");
-  }, [formData.lineId]);
+    return getItemsByLine(formData?.lineId || "pcm1") || [];
+  }, [formData?.lineId]);
 
   // TPM completion state
   const isTpmCompleted = useMemo(() => {
     if (isEditing) return true;
     if (currentStep === "report") return true;
-    if (isTpmAlreadyDone(formData.date, formData.worker)) return true;
-    if (Array.isArray(tpmChecks) && tpmChecks.length === TPM_CHECK_ITEMS.length && tpmChecks.every(c => c.status)) return true;
+    if (isTpmAlreadyDone(formData?.date, formData?.worker)) return true;
+    if (Array.isArray(tpmChecks) && tpmChecks.length === TPM_CHECK_ITEMS.length && tpmChecks.every(c => c && c.status)) return true;
     return false;
-  }, [isEditing, currentStep, formData.date, formData.worker, tpmChecks]);
+  }, [isEditing, currentStep, formData?.date, formData?.worker, tpmChecks]);
 
   // Sync on modal open or initialData change
   useEffect(() => {
     if (isOpen) {
-      const targetWorker = initialData?.worker || formData.worker || "공영국 대리";
+      const targetWorker = initialData?.worker || formData?.worker || "공영국 대리";
       const targetDate = initialData?.date || todayStr;
       const alreadyDone = isEditing || isTpmAlreadyDone(targetDate, targetWorker);
       setCurrentStep(alreadyDone ? "report" : "tpm");
@@ -478,11 +483,12 @@ export const ExtrusionWorkReportModal = ({
   if (!isOpen) return null;
 
   // Multi-item shift-level aggregated totals
-  const totalTargetQty = formData.items.reduce((sum, it) => sum + (Number(it.targetQty) || 0), 0);
-  const totalActualQty = formData.items.reduce((sum, it) => sum + (Number(it.actualQty) || 0), 0);
-  const totalGoodQty = formData.items.reduce((sum, it) => sum + (Number(it.goodQty) || 0), 0);
-  const totalDefectQty = formData.items.reduce((sum, it) => sum + (Number(it.defectQty) || 0), 0);
-  const totalScrapKg = Number(formData.items.reduce((sum, it) => sum + (Number(it.scrapKg) || 0), 0).toFixed(1));
+  const itemsList = Array.isArray(formData?.items) ? formData.items : [];
+  const totalTargetQty = itemsList.reduce((sum, it) => sum + (Number(it?.targetQty) || 0), 0);
+  const totalActualQty = itemsList.reduce((sum, it) => sum + (Number(it?.actualQty) || 0), 0);
+  const totalGoodQty = itemsList.reduce((sum, it) => sum + (Number(it?.goodQty) || 0), 0);
+  const totalDefectQty = itemsList.reduce((sum, it) => sum + (Number(it?.defectQty) || 0), 0);
+  const totalScrapKg = Number(itemsList.reduce((sum, it) => sum + (Number(it?.scrapKg) || 0), 0).toFixed(1));
 
   const totalAttainmentRate = totalTargetQty > 0 ? ((totalActualQty / totalTargetQty) * 100).toFixed(1) : "100.0";
   const totalYieldRate = totalActualQty > 0 ? ((totalGoodQty / totalActualQty) * 100).toFixed(1) : "100.0";
@@ -1146,7 +1152,7 @@ export const ExtrusionWorkReportModal = ({
                   ② 생산 품목 현황 (다품종 교체 생산 지원)
                 </span>
                 <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-300">
-                  {formData.lineName} · 등록 품목 {formData.items.length}개
+                  {formData.lineName || "PCM #1 LINE"} · 등록 품목 {(formData.items || []).length}개
                 </span>
               </div>
 
@@ -1154,17 +1160,17 @@ export const ExtrusionWorkReportModal = ({
 
               {/* List of Item Cards */}
               <div className="space-y-3">
-                {formData.items.map((item, index) => {
-                  const itActual = Number(item.actualQty) || 0;
-                  const itGood = Number(item.goodQty) || 0;
-                  const itTarget = Number(item.targetQty) || 0;
+                {(formData.items || []).map((item, index) => {
+                  const itActual = Number(item?.actualQty) || 0;
+                  const itGood = Number(item?.goodQty) || 0;
+                  const itTarget = Number(item?.targetQty) || 0;
                   const itYield = itActual > 0 ? ((itGood / itActual) * 100).toFixed(1) : "100.0";
                   const itAttain = itTarget > 0 ? ((itActual / itTarget) * 100).toFixed(1) : "100.0";
-                  const currentVal = `${item.vehicle}:::${item.itemName}`;
+                  const currentVal = `${item?.vehicle || ""}:::${item?.itemName || ""}`;
 
                   return (
                     <div
-                      key={item.id || index}
+                      key={item?.id || index}
                       className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-200/90 dark:border-blue-900/60 shadow-xs space-y-3"
                     >
                       {/* Item Card Header */}
@@ -1178,7 +1184,7 @@ export const ExtrusionWorkReportModal = ({
                               🔄 품종 교체 생산
                             </span>
                           )}
-                          {item.vehicle && item.itemName && (
+                          {item?.vehicle && item?.itemName && (
                             <span className="font-bold text-slate-800 dark:text-slate-200 text-xs hidden sm:inline">
                               [{item.vehicle}] {item.itemName}
                             </span>
@@ -1189,7 +1195,7 @@ export const ExtrusionWorkReportModal = ({
                           <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                             수율 {itYield}% (달성 {itAttain}%)
                           </span>
-                          {formData.items.length > 1 && (
+                          {(formData.items || []).length > 1 && (
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(index)}
@@ -1214,7 +1220,7 @@ export const ExtrusionWorkReportModal = ({
                           className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-blue-500 dark:border-blue-600 text-xs sm:text-sm font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer shadow-xs"
                         >
                           <option value="">
-                            -- [{CLEAN_LINE_OPTIONS.find((l) => l.id === formData.lineId)?.name}] 아이템을 선택하세요 (총 {activeLineItems.length}개) --
+                            -- [{CLEAN_LINE_OPTIONS.find((l) => l.id === formData?.lineId || l.fullName === formData?.lineId || l.name === formData?.lineId)?.name || "라인"}] 아이템을 선택하세요 (총 {activeLineItems.length}개) --
                           </option>
                           {activeLineItems.map((it) => (
                             <option key={it.id} value={`${it.vehicle}:::${it.itemName}`}>
@@ -1225,8 +1231,8 @@ export const ExtrusionWorkReportModal = ({
 
                         {/* Minimal Raw Material BOM & Weight/LOT Direct Inputs (미사용 재료 완전 숨김) */}
                         {(() => {
-                          if (!item.vehicle || !item.itemName) return null;
-                          const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName);
+                          if (!item?.vehicle || !item?.itemName) return null;
+                          const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName) || {};
 
                           const ALL_MATERIAL_SLOTS = [
                             {
@@ -1235,7 +1241,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "rubberLot",
                               icon: "⬛",
                               label: "연고무",
-                              val: formData.rawMaterials?.rubberType || itemBOM.rubberType,
+                              val: (formData?.rawMaterials?.rubberType !== undefined && formData?.rawMaterials?.rubberType !== "") ? formData.rawMaterials.rubberType : (itemBOM.rubberType || "W60433"),
                               defaultVal: EPDM_RUBBERS[0]?.name || "W60712$2",
                               containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
                               specTextCls: "text-amber-300",
@@ -1247,7 +1253,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "rubberLot2",
                               icon: "⬛",
                               label: "연고무2",
-                              val: formData.rawMaterials?.rubberType2 !== undefined ? formData.rawMaterials?.rubberType2 : itemBOM.rubberType2,
+                              val: formData?.rawMaterials?.rubberType2 !== undefined ? formData.rawMaterials.rubberType2 : (itemBOM.rubberType2 || ""),
                               defaultVal: EPDM_RUBBERS[1]?.name || "W60712$1",
                               containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
                               specTextCls: "text-amber-300",
@@ -1259,7 +1265,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot",
                               icon: "🧬",
                               label: "컴파운드1",
-                              val: formData.rawMaterials?.compoundType || itemBOM.compoundType,
+                              val: (formData?.rawMaterials?.compoundType !== undefined && formData?.rawMaterials?.compoundType !== "") ? formData.rawMaterials.compoundType : (itemBOM.compoundType || "IA4-75B_1"),
                               defaultVal: EPDM_COMPOUNDS[0]?.name || "IA4-75B_1",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -1271,7 +1277,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot2",
                               icon: "🧬",
                               label: "컴파운드2",
-                              val: formData.rawMaterials?.compoundType2 !== undefined ? formData.rawMaterials?.compoundType2 : itemBOM.compoundType2,
+                              val: formData?.rawMaterials?.compoundType2 !== undefined ? formData.rawMaterials.compoundType2 : (itemBOM.compoundType2 || ""),
                               defaultVal: EPDM_COMPOUNDS[1]?.name || "B64E",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -1283,7 +1289,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "compoundLot3",
                               icon: "🧬",
                               label: "컴파운드3",
-                              val: formData.rawMaterials?.compoundType3 !== undefined ? formData.rawMaterials?.compoundType3 : itemBOM.compoundType3,
+                              val: formData?.rawMaterials?.compoundType3 !== undefined ? formData.rawMaterials.compoundType3 : (itemBOM.compoundType3 || ""),
                               defaultVal: EPDM_COMPOUNDS[2]?.name || "L2KIA7-35B",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
@@ -1295,7 +1301,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "insertLot",
                               icon: "⚙️",
                               label: "심금",
-                              val: formData.rawMaterials?.insertType !== undefined ? formData.rawMaterials?.insertType : itemBOM.insertType,
+                              val: (formData?.rawMaterials?.insertType !== undefined && formData?.rawMaterials?.insertType !== "") ? formData.rawMaterials.insertType : (itemBOM.insertType || "SUS430(0.4*51*3)"),
                               defaultVal: EPDM_INSERTS[0]?.name || "SUS430(0.4*51*3)",
                               containerCls: "bg-amber-950/80 dark:bg-amber-950 border-amber-700/80 text-amber-100",
                               specTextCls: "text-amber-300",
@@ -1307,7 +1313,7 @@ export const ExtrusionWorkReportModal = ({
                               lotKey: "coatingLot",
                               icon: "🧪",
                               label: "코팅액",
-                              val: formData.rawMaterials?.coatingType !== undefined ? formData.rawMaterials?.coatingType : itemBOM.coatingType,
+                              val: (formData?.rawMaterials?.coatingType !== undefined && formData?.rawMaterials?.coatingType !== "") ? formData.rawMaterials.coatingType : (itemBOM.coatingType || "HSC-2000-B-3"),
                               defaultVal: EPDM_COATINGS[0]?.name || "HSC-2000-B-3",
                               containerCls: "bg-sky-950/80 dark:bg-sky-950 border-sky-700/80 text-sky-100",
                               specTextCls: "text-sky-300",
@@ -1315,8 +1321,8 @@ export const ExtrusionWorkReportModal = ({
                             }
                           ];
 
-                          const activeSlots = ALL_MATERIAL_SLOTS.filter(s => s.val && s.val.trim() !== "" && s.val.trim() !== "미사용");
-                          const unusedSlots = ALL_MATERIAL_SLOTS.filter(s => !s.val || s.val.trim() === "" || s.val.trim() === "미사용");
+                          const activeSlots = ALL_MATERIAL_SLOTS.filter(s => s.val && typeof s.val === "string" && s.val.trim() !== "" && s.val.trim() !== "미사용");
+                          const unusedSlots = ALL_MATERIAL_SLOTS.filter(s => !s.val || typeof s.val !== "string" || s.val.trim() === "" || s.val.trim() === "미사용");
 
                           return (
                             <div className="pt-2 pb-0.5 space-y-2">
