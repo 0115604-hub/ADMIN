@@ -29,7 +29,7 @@ export const getPlantForCompany = (companyName) => {
   return "한림공장";
 };
 
-// ⭐ 2026년 대한민국 법정 공휴일 (추석 연휴, 설날, 한글날 등 법정 공휴일 특근)
+// ⭐ 2026년 대한민국 법정 공휴일 (설날, 추석 등 법정 공휴일 특근)
 export const KOREAN_PUBLIC_HOLIDAYS_2026 = new Set([
   "2026-01-01", // 신정
   "2026-02-16", "2026-02-17", "2026-02-18", // 설날 연휴
@@ -38,7 +38,7 @@ export const KOREAN_PUBLIC_HOLIDAYS_2026 = new Set([
   "2026-05-24", "2026-05-25", // 부처님오신날 및 대체공휴일
   "2026-06-06", // 현충일
   "2026-08-15", "2026-08-17", // 광복절 및 대체공휴일
-  "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27", // 추석 연휴 (9/24 목, 9/25 금, 9/26 토, 9/27 일)
+  "2026-09-26", "2026-09-27", // 추석 연휴 주말
   "2026-10-03", // 개천절
   "2026-10-09", // 한글날
   "2026-12-25"  // 성탄절
@@ -52,8 +52,6 @@ export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
     const m = month || 10;
     const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (KOREAN_PUBLIC_HOLIDAYS_2026.has(ymd)) return true;
-    if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(d)) return true;
-    if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(d)) return true;
     const dt = new Date(y, m - 1, d);
     const dayOfWeek = dt.getDay();
     return dayOfWeek === 0 || dayOfWeek === 6;
@@ -70,8 +68,6 @@ export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
     const d = parseInt(p[3], 10);
     const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (KOREAN_PUBLIC_HOLIDAYS_2026.has(ymd)) return true;
-    if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(d)) return true;
-    if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(d)) return true;
     const dt = new Date(y, m - 1, d);
     if (!isNaN(dt.getTime())) {
       const dayOfWeek = dt.getDay();
@@ -87,8 +83,6 @@ export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
     const d = parseInt(mMatch[3], 10);
     const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     if (KOREAN_PUBLIC_HOLIDAYS_2026.has(ymd)) return true;
-    if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(d)) return true;
-    if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(d)) return true;
     const dt = new Date(y, m - 1, d);
     if (!isNaN(dt.getTime())) {
       const dayOfWeek = dt.getDay();

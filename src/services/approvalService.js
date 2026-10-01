@@ -138,30 +138,18 @@ export const normalizeApprovalDoc = (d) => {
     const y = parseInt(ymdMatch[1], 10);
     const m = parseInt(ymdMatch[2], 10);
     const day = parseInt(ymdMatch[3], 10);
-    if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) {
-      isHolidayOrWeekend = true;
-    } else if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(day)) {
-      isHolidayOrWeekend = true;
-    } else {
-      const dt = new Date(y, m - 1, day);
-      const dow = dt.getDay();
-      isHolidayOrWeekend = dow === 0 || dow === 6;
-    }
+    const dt = new Date(y, m - 1, day);
+    const dow = dt.getDay();
+    isHolidayOrWeekend = dow === 0 || dow === 6 || isWeekendByDate(`${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
   } else {
     const mdMatch = String(dateStrToCheck).match(/(?:(\d{4})년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
     if (mdMatch) {
       const y = mdMatch[1] ? parseInt(mdMatch[1], 10) : 2026;
       const m = parseInt(mdMatch[2], 10);
       const day = parseInt(mdMatch[3], 10);
-      if (y === 2026 && m === 9 && [5, 6, 12, 13, 19, 20, 24, 25, 26, 27].includes(day)) {
-        isHolidayOrWeekend = true;
-      } else if (y === 2026 && m === 10 && [3, 4, 9, 10, 11, 17, 18, 24, 25, 31].includes(day)) {
-        isHolidayOrWeekend = true;
-      } else {
-        const dt = new Date(y, m - 1, day);
-        const dow = dt.getDay();
-        isHolidayOrWeekend = dow === 0 || dow === 6;
-      }
+      const dt = new Date(y, m - 1, day);
+      const dow = dt.getDay();
+      isHolidayOrWeekend = dow === 0 || dow === 6 || isWeekendByDate(`${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
     }
   }
 
@@ -288,14 +276,16 @@ export const INITIAL_APPROVAL_DOCS = [];
 // Filter out unwanted weekday attendance synthesis documents so the CEO approval box is not flooded with weekday attendance logs
 export const isWeekdayAttSynthDoc = (d) => {
   if (!d) return false;
-  // ⭐ If it's an overtime document or a weekend/holiday document, NEVER filter it out!
-  if (d.id && d.id.startsWith("appr_ot_")) return false;
-  if (d.type === "OVERTIME") return false;
-  if (isWeekendByDate(d.workDate || d.title || d.docNumber || d.id)) return false;
+  // If it's a genuine weekend/holiday document, never filter it out
+  const isWk = isWeekendByDate(d.workDate || d.title || d.docNumber || d.id);
+  if (isWk) return false;
 
-  if (d.id && d.id.startsWith("appr_att_")) return true;
-  if (d.type === "ATTENDANCE" && d.typeName && d.typeName.includes("취합")) return true;
-  if (d.title && d.title.includes("근태보고서 취합")) return true;
+  // If it's a weekday (월~금):
+  // 1. Auto-generated synthesis docs (appr_ot_*, appr_att_*) must be filtered out
+  if (d.id && (d.id.startsWith("appr_ot_") || d.id.startsWith("appr_att_"))) return true;
+  // 2. Attendance documents or synthesis reports for weekdays
+  if (d.type === "ATTENDANCE" || d.docType === "ATTENDANCE") return true;
+  if (d.title && (d.title.includes("근태보고서") || d.title.includes("근태") || d.title.includes("특근보고서 (취합)"))) return true;
   return false;
 };
 
@@ -993,11 +983,8 @@ export const syncPlantOvertimeToApprovalBox = async ({
         return dateMatch;
       });
 
-      // Check whether this is weekend overtime or weekday attendance
-      const hasSpecialOvertimeReport = plantReports.some(
-        (r) => r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))
-      );
-      const isActualOvertime = isWeekend || isWeekendByDate(workDateStr) || hasSpecialOvertimeReport;
+      // Check whether this is genuine weekend overtime or legal holiday
+      const isActualOvertime = isWeekend || isWeekendByDate(workDateStr);
 
       // ⭐ 평일 근태보고서는 전자결재함에 등록하지 않고(근태/특근관리 탭에서 전담 관리), 주말/공휴일 특근보고서만 전자결재함에 연동
       if (!isActualOvertime) {
@@ -1331,7 +1318,7 @@ export const syncAllOvertimeReportsToApprovalBox = async () => {
         const dt = new Date(y, m - 1, d);
         const dow = dt.getDay();
         const isWk = dow === 0 || dow === 6 || isWeekendByDate(r.workDate);
-        if (isWk || r.reportType === "특근보고서" || (r.title && r.title.includes("특근") && !r.title.includes("근태"))) {
+        if (isWk) {
           weekendDates.add(r.workDate);
         }
       }
