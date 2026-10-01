@@ -231,6 +231,9 @@ export const ExtrusionWorkReportModal = ({
           extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || EXTRUSION_STANDARD_SPECS.extruder110Rpm,
           extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || EXTRUSION_STANDARD_SPECS.extruder60Rpm,
           waterTemp: initialData?.conditions?.waterTemp || EXTRUSION_STANDARD_SPECS.waterTemp,
+          waterZones: Array.isArray(initialData?.conditions?.waterZones) && initialData.conditions.waterZones.length === 4
+            ? initialData.conditions.waterZones
+            : [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
           cureZoneTemp: initialData?.conditions?.cureZoneTemp || initialData?.conditions?.cureTemp || EXTRUSION_STANDARD_SPECS.cureZoneTemp,
           haulOffSpeed: initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.haulOffSpeed,
           sprayGun1: initialData?.conditions?.sprayGun1 || EXTRUSION_STANDARD_SPECS.sprayGun1,
@@ -293,6 +296,7 @@ export const ExtrusionWorkReportModal = ({
         extruder110Rpm: EXTRUSION_STANDARD_SPECS.extruder110Rpm,
         extruder60Rpm: EXTRUSION_STANDARD_SPECS.extruder60Rpm,
         waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
+        waterZones: [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
         cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp, // PCM 13존 210±20℃
         haulOffSpeed: EXTRUSION_STANDARD_SPECS.haulOffSpeed,
         sprayGun1: EXTRUSION_STANDARD_SPECS.sprayGun1,
@@ -403,6 +407,9 @@ export const ExtrusionWorkReportModal = ({
             extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || EXTRUSION_STANDARD_SPECS.extruder110Rpm,
             extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || EXTRUSION_STANDARD_SPECS.extruder60Rpm,
             waterTemp: initialData?.conditions?.waterTemp || EXTRUSION_STANDARD_SPECS.waterTemp,
+            waterZones: Array.isArray(initialData?.conditions?.waterZones) && initialData.conditions.waterZones.length === 4
+              ? initialData.conditions.waterZones
+              : [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
             cureZoneTemp: initialData?.conditions?.cureZoneTemp || initialData?.conditions?.cureTemp || EXTRUSION_STANDARD_SPECS.cureZoneTemp,
             haulOffSpeed: initialData?.conditions?.haulOffSpeed || EXTRUSION_STANDARD_SPECS.haulOffSpeed,
             sprayGun1: initialData?.conditions?.sprayGun1 || EXTRUSION_STANDARD_SPECS.sprayGun1,
@@ -463,6 +470,7 @@ export const ExtrusionWorkReportModal = ({
             extruder110Rpm: EXTRUSION_STANDARD_SPECS.extruder110Rpm,
             extruder60Rpm: EXTRUSION_STANDARD_SPECS.extruder60Rpm,
             waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
+            waterZones: [...(EXTRUSION_STANDARD_SPECS.waterZones || [47.0, 48.5, 49.0, 47.5])],
             cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp, // PCM 13존 210±20℃
             haulOffSpeed: EXTRUSION_STANDARD_SPECS.haulOffSpeed,
             sprayGun1: EXTRUSION_STANDARD_SPECS.sprayGun1,
@@ -1540,140 +1548,196 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 3: Curing Temp, Water Bath Temp & Coating Spray Pressure (1~3) */}
+            {/* Section 3: Curing Temp, Water Temp & Coating Pressure (한줄짜리 구간별 패널 3종) */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                   <Flame className="w-4 h-4 text-orange-500" />
-                  ③ 주요 작업조건 (가류조 / 온조기 / 코팅압력)
+                  ③ 주요 작업조건 (가류조 · 온조기 · 코팅압력)
                 </span>
-                <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded-full border border-teal-200 dark:border-teal-800">
-                  ⚡ 간편 모바일 입력
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
+                  구간별 실측 입력
                 </span>
               </div>
 
-              {/* 1. 온도 2종: 가류조 온도 & 온조기 온도 */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {/* 가류조 온도 */}
-                <div className="p-2.5 sm:p-3 rounded-xl bg-orange-50/70 dark:bg-orange-950/40 border-2 border-orange-300 dark:border-orange-800 shadow-2xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-black text-orange-950 dark:text-orange-200 flex items-center gap-1">
-                      <Thermometer className="w-3.5 h-3.5 text-orange-600" />
-                      <span>가류조 온도</span>
-                    </label>
-                    <span className="text-[9.5px] font-bold text-orange-700 dark:text-orange-400">
-                      표준 210℃
+              {/* 1. 가류조 온도: 1~13존 한줄 패널 */}
+              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-300/80 dark:border-orange-900/60 shadow-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-orange-600 text-white font-black text-xs">
+                      가류조
+                    </span>
+                    <span className="text-[11px] font-bold text-orange-900 dark:text-orange-200">
+                      가류조 온도 (1~13존 실측, 표준 210±20℃)
                     </span>
                   </div>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={formData.conditions?.cureZoneTemp ?? "212.0"}
-                      onChange={(e) => handleNestedFieldChange("conditions", "cureZoneTemp", e.target.value)}
-                      placeholder="210.0"
-                      className="w-full px-2.5 py-2 rounded-lg bg-white dark:bg-slate-900 border border-orange-400 text-sm sm:text-base font-black text-orange-900 dark:text-orange-200 text-right pr-7 focus:ring-2 focus:ring-orange-500 focus:outline-hidden"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-orange-400">
-                      ℃
-                    </span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = prompt("13개 가류존에 일괄 적용할 온도를 입력하세요(℃):", "210.0");
+                      if (val && !isNaN(Number(val))) {
+                        const num = Number(val);
+                        setFormData((prev) => ({
+                          ...prev,
+                          conditions: {
+                            ...(prev.conditions || {}),
+                            cureZoneTemp: String(num),
+                            pcmZones: Array(13).fill(num)
+                          }
+                        }));
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 text-[10px] font-black border border-orange-200 transition cursor-pointer"
+                  >
+                    ⚡ 13개존 일괄설정
+                  </button>
                 </div>
 
-                {/* 온조기 온도 */}
-                <div className="p-2.5 sm:p-3 rounded-xl bg-teal-50/70 dark:bg-teal-950/40 border-2 border-teal-300 dark:border-teal-800 shadow-2xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-black text-teal-950 dark:text-teal-200 flex items-center gap-1">
-                      <Droplets className="w-3.5 h-3.5 text-teal-600" />
-                      <span>온조기 온도</span>
-                    </label>
-                    <span className="text-[9.5px] font-bold text-teal-700 dark:text-teal-400">
-                      표준 50℃
-                    </span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={formData.conditions?.waterTemp ?? "47.0"}
-                      onChange={(e) => handleNestedFieldChange("conditions", "waterTemp", e.target.value)}
-                      placeholder="50.0"
-                      className="w-full px-2.5 py-2 rounded-lg bg-white dark:bg-slate-900 border border-teal-400 text-sm sm:text-base font-black text-teal-900 dark:text-teal-200 text-right pr-7 focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
-                    />
-                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-teal-400">
-                      ℃
-                    </span>
-                  </div>
+                {/* 13 Zones Horizontal Strip */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth">
+                  {Array.from({ length: 13 }).map((_, zIdx) => {
+                    const zoneNum = zIdx + 1;
+                    const currentZoneVal = formData.conditions?.pcmZones?.[zIdx] ?? EXTRUSION_STANDARD_SPECS.pcmZones[zIdx] ?? 210.0;
+                    return (
+                      <div
+                        key={`pcm_zone_${zoneNum}`}
+                        className="flex flex-col items-center justify-between min-w-[56px] sm:min-w-[62px] p-1.5 rounded-xl bg-orange-50/60 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800/80 shrink-0"
+                      >
+                        <span className="text-[9.5px] font-black text-orange-800 dark:text-orange-300">
+                          {zoneNum}존
+                        </span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={currentZoneVal}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => {
+                              const curZones = Array.isArray(prev.conditions?.pcmZones) && prev.conditions.pcmZones.length === 13
+                                ? [...prev.conditions.pcmZones]
+                                : [...EXTRUSION_STANDARD_SPECS.pcmZones];
+                              curZones[zIdx] = val === "" ? "" : Number(val);
+                              return {
+                                ...prev,
+                                conditions: {
+                                  ...(prev.conditions || {}),
+                                  pcmZones: curZones,
+                                  cureZoneTemp: String(curZones[0] || 210.0)
+                                }
+                              };
+                            });
+                          }}
+                          className="w-full text-center bg-white dark:bg-slate-800 border border-orange-300 dark:border-orange-700 rounded py-1 font-black text-xs text-orange-950 dark:text-orange-100 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
+                        />
+                        <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* 2. 코팅 분사압력 1~3번 */}
-              <div className="p-2.5 sm:p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/40 border-2 border-sky-300 dark:border-sky-800 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-black text-sky-950 dark:text-sky-200 flex items-center gap-1">
-                    <Gauge className="w-3.5 h-3.5 text-sky-600" />
-                    <span>코팅 분사압력 (1 ~ 3번)</span>
-                  </label>
-                  <span className="text-[9.5px] font-bold text-sky-700 dark:text-sky-400">
-                    표준 2.5 bar
-                  </span>
+              {/* 2. 온조기 온도: 1~4구간 한줄 패널 */}
+              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-300/80 dark:border-teal-900/60 shadow-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-teal-600 text-white font-black text-xs">
+                      온조기
+                    </span>
+                    <span className="text-[11px] font-bold text-teal-900 dark:text-teal-200">
+                      온조기 온도 (1~4구간 실측, 표준 50±5℃)
+                    </span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
-                  {/* 건 1번 */}
-                  <div className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-700 text-center">
-                    <span className="block text-[10px] font-black text-sky-800 dark:text-sky-300 mb-0.5">
-                      1번 코팅건
-                    </span>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.conditions?.sprayGun1 ?? "2.5"}
-                        onChange={(e) => handleNestedFieldChange("conditions", "sprayGun1", e.target.value)}
-                        placeholder="2.5"
-                        className="w-full text-center bg-sky-50/60 dark:bg-slate-800 border border-sky-200 dark:border-sky-700 rounded py-1.5 font-black text-xs sm:text-sm text-sky-950 dark:text-sky-200 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
-                      />
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-bold">bar</span>
-                  </div>
+                {/* 4 Sections Grid */}
+                <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                  {[
+                    { idx: 0, label: "1구간", defaultVal: 47.0 },
+                    { idx: 1, label: "2구간", defaultVal: 48.5 },
+                    { idx: 2, label: "3구간", defaultVal: 49.0 },
+                    { idx: 3, label: "4구간", defaultVal: 47.5 }
+                  ].map((sec) => {
+                    const curSecVal = formData.conditions?.waterZones?.[sec.idx] ?? EXTRUSION_STANDARD_SPECS.waterZones?.[sec.idx] ?? sec.defaultVal;
+                    return (
+                      <div
+                        key={`water_zone_${sec.idx}`}
+                        className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-teal-50/60 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/80"
+                      >
+                        <span className="text-[10px] font-black text-teal-800 dark:text-teal-300">
+                          {sec.label}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={curSecVal}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData((prev) => {
+                              const curWaterZones = Array.isArray(prev.conditions?.waterZones) && prev.conditions.waterZones.length === 4
+                                ? [...prev.conditions.waterZones]
+                                : [47.0, 48.5, 49.0, 47.5];
+                              curWaterZones[sec.idx] = val === "" ? "" : Number(val);
+                              return {
+                                ...prev,
+                                conditions: {
+                                  ...(prev.conditions || {}),
+                                  waterZones: curWaterZones,
+                                  waterTemp: String(curWaterZones[0] || 50.0)
+                                }
+                              };
+                            });
+                          }}
+                          className="w-full text-center bg-white dark:bg-slate-800 border border-teal-300 dark:border-teal-700 rounded py-1 font-black text-xs sm:text-sm text-teal-950 dark:text-teal-100 focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
+                        />
+                        <span className="text-[8.5px] text-slate-400 font-bold">℃</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                  {/* 건 2번 */}
-                  <div className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-700 text-center">
-                    <span className="block text-[10px] font-black text-sky-800 dark:text-sky-300 mb-0.5">
-                      2번 코팅건
+              {/* 3. 코팅 분사압력: 1~3번건 한줄 패널 */}
+              <div className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-300/80 dark:border-sky-900/60 shadow-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-sky-600 text-white font-black text-xs">
+                      코팅압력
                     </span>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.conditions?.sprayGun2 ?? "2.6"}
-                        onChange={(e) => handleNestedFieldChange("conditions", "sprayGun2", e.target.value)}
-                        placeholder="2.5"
-                        className="w-full text-center bg-sky-50/60 dark:bg-slate-800 border border-sky-200 dark:border-sky-700 rounded py-1.5 font-black text-xs sm:text-sm text-sky-950 dark:text-sky-200 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
-                      />
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-bold">bar</span>
+                    <span className="text-[11px] font-bold text-sky-900 dark:text-sky-200">
+                      코팅 분사압력 (1~3번건, 표준 2.5±0.3 bar)
+                    </span>
                   </div>
+                </div>
 
-                  {/* 건 3번 */}
-                  <div className="p-1.5 sm:p-2 rounded-lg bg-white dark:bg-slate-900 border border-sky-300 dark:border-sky-700 text-center">
-                    <span className="block text-[10px] font-black text-sky-800 dark:text-sky-300 mb-0.5">
-                      3번 코팅건
-                    </span>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={formData.conditions?.sprayGun3 ?? "2.5"}
-                        onChange={(e) => handleNestedFieldChange("conditions", "sprayGun3", e.target.value)}
-                        placeholder="2.5"
-                        className="w-full text-center bg-sky-50/60 dark:bg-slate-800 border border-sky-200 dark:border-sky-700 rounded py-1.5 font-black text-xs sm:text-sm text-sky-950 dark:text-sky-200 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
-                      />
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-bold">bar</span>
-                  </div>
+                {/* 3 Guns Grid */}
+                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                  {[
+                    { id: "sprayGun1", label: "1번건", defaultVal: "2.5" },
+                    { id: "sprayGun2", label: "2번건", defaultVal: "2.6" },
+                    { id: "sprayGun3", label: "3번건", defaultVal: "2.5" }
+                  ].map((gun) => {
+                    const curGunVal = formData.conditions?.[gun.id] ?? gun.defaultVal;
+                    return (
+                      <div
+                        key={gun.id}
+                        className="flex flex-col items-center justify-between p-1.5 rounded-xl bg-sky-50/60 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80"
+                      >
+                        <span className="text-[10px] font-black text-sky-800 dark:text-sky-300">
+                          {gun.label}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={curGunVal}
+                          onChange={(e) => handleNestedFieldChange("conditions", gun.id, e.target.value)}
+                          placeholder="2.5"
+                          className="w-full text-center bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded py-1 font-black text-xs sm:text-sm text-sky-950 dark:text-sky-100 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
+                        />
+                        <span className="text-[8.5px] text-slate-400 font-bold">bar</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

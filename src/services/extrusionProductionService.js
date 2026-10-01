@@ -22,6 +22,7 @@ export const EXTRUSION_STANDARD_SPECS = {
   extruder110Rpm: "26.4", // 표준 29.0±2.9
   extruder60Rpm: "19.2",  // 표준 20.0±2.0
   waterTemp: "47.0",      // 온수조 표준 50±5℃ (스크류, 실린더1~3, 헤드1)
+  waterZones: [47.0, 48.5, 49.0, 47.5], // 온조기 1~4구간 표준
   cureZoneTemp: "212.0",  // PCM 13존 표준 210±20℃ (190~230℃)
   haulOffSpeed: "19.6",   // 라인 인취속도 20.0±1.0 m/분
   sprayGun1: "2.5",       // 코팅건 1번 2.5 bar
@@ -253,7 +254,13 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       extruder110Rpm: String(raw.conditions?.extruder110Rpm || raw.extruder110Rpm || raw.conditions?.extruderRpm || "26.4").trim(),
       extruder60Rpm: String(raw.conditions?.extruder60Rpm || raw.extruder60Rpm || raw.conditions?.extruder70Rpm || "19.2").trim(),
       waterTemp: String(raw.conditions?.waterTemp || raw.waterTemp || "47.0").trim(),
+      waterZones: Array.isArray(raw.conditions?.waterZones) && raw.conditions.waterZones.length === 4
+        ? raw.conditions.waterZones.map(z => Number(z) || 50.0)
+        : (Array.isArray(raw.waterZones) && raw.waterZones.length === 4 ? raw.waterZones.map(z => Number(z) || 50.0) : [47.0, 48.5, 49.0, 47.5]),
       cureZoneTemp: String(raw.conditions?.cureZoneTemp || raw.cureZoneTemp || raw.conditions?.cureTemp || "212.0").trim(), // 210±20℃ (존1~존13)
+      pcmZones: Array.isArray(raw.conditions?.pcmZones) && raw.conditions.pcmZones.length === 13
+        ? raw.conditions.pcmZones.map(z => Number(z) || 210.0)
+        : (Array.isArray(raw.pcmZones) && raw.pcmZones.length === 13 ? raw.pcmZones.map(z => Number(z) || 210.0) : [...EXTRUSION_STANDARD_SPECS.pcmZones]),
       haulOffSpeed: String(raw.conditions?.haulOffSpeed || raw.haulOffSpeed || "19.6").trim(),
       sprayGun1: String(raw.conditions?.sprayGun1 || raw.sprayGun1 || "2.5").trim(),
       sprayGun2: String(raw.conditions?.sprayGun2 || raw.sprayGun2 || "2.6").trim(),
