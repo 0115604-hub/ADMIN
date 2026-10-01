@@ -1314,111 +1314,105 @@ export const ExtrusionWorkReportModal = ({
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-100 text-xs sm:text-sm animate-fadeIn">
 
             {/* ========================================================================= */}
-            {/* Section 1: Basic Info (Clean Line Buttons, Shift, Date, Worker Dropdown) */}
+            {/* Section 1: 기본 정보 (미니멀 & 슬림 구성) */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
-              <div className="flex items-center justify-between">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+              {/* Header & Line Segmented Pills in a single sleek row */}
+              <div className="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-slate-200/80 dark:border-slate-700/60">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                   <Cpu className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                  ① 기본 정보 (1. 공정 및 설비명)
+                  ① 기본 정보
                 </span>
-                <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
-                  삼랑진공장 압출동 · SL생산팀
-                </span>
-              </div>
 
-              {/* Clean Line Selection Buttons */}
-              <div>
-                <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1.5">
-                  생산 호기(라인명) 선택 *
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* Compact Line Selector Pills */}
+                <div className="inline-flex p-0.5 rounded-xl bg-slate-200/70 dark:bg-slate-900 border border-slate-300 dark:border-slate-700">
                   {CLEAN_LINE_OPTIONS.map((l) => {
                     const isSel = formData.lineId === l.id;
                     const activeStyle =
-                      l.id === "pcm1" ? "bg-teal-600 text-white border-teal-700 shadow-md ring-2 ring-teal-400/40" :
-                      l.id === "pcm3" ? "bg-blue-600 text-white border-blue-700 shadow-md ring-2 ring-blue-400/40" :
-                      l.id === "pvc" ? "bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-400/40" :
-                      "bg-purple-600 text-white border-purple-700 shadow-md ring-2 ring-purple-400/40";
+                      l.id === "pcm1" ? "bg-teal-600 text-white shadow-xs font-black" :
+                      l.id === "pcm3" ? "bg-blue-600 text-white shadow-xs font-black" :
+                      l.id === "pvc" ? "bg-amber-600 text-white shadow-xs font-black" :
+                      "bg-purple-600 text-white shadow-xs font-black";
 
                     return (
                       <button
                         key={l.id}
                         type="button"
                         onClick={() => handleLineSelect(l.id, l.fullName)}
-                        className={`py-2.5 px-3 rounded-xl font-black text-xs sm:text-sm transition-all border cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
                           isSel
                             ? activeStyle
-                            : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                         }`}
                       >
                         <span>{l.name}</span>
-                        {isSel && <Check className="w-3.5 h-3.5 shrink-0" />}
+                        {isSel && <Check className="w-3 h-3 shrink-0" />}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                {/* Date */}
+              {/* Date, Shift, Worker in a clean 3-column row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
+                {/* 1. Date */}
                 <div>
-                  <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    작업일자 *
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                    작업일자
                   </label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-900 dark:text-white focus:ring-1 focus:ring-teal-500 focus:outline-hidden"
                   />
                   {errors.date && <p className="text-rose-500 text-[10px] mt-0.5">{errors.date}</p>}
                 </div>
 
-                {/* Shift Toggle */}
+                {/* 2. Shift Toggle */}
                 <div>
-                  <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    근무조 *
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                    근무조
                   </label>
-                  <div className="grid grid-cols-2 gap-1 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-300 dark:border-slate-700">
+                  <div className="grid grid-cols-2 gap-1 bg-white dark:bg-slate-900 p-0.5 rounded-xl border border-slate-300 dark:border-slate-700">
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, shift: "주간" })}
-                      className={`py-1.5 rounded-lg font-black text-xs transition cursor-pointer flex items-center justify-center gap-1 ${
+                      className={`py-1 rounded-lg font-black text-xs transition cursor-pointer flex items-center justify-center gap-1 ${
                         formData.shift === "주간"
                           ? "bg-amber-500 text-white shadow-xs"
                           : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                       }`}
                     >
-                      <Sun className="w-3.5 h-3.5" />
+                      <Sun className="w-3 h-3" />
                       <span>주간</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, shift: "야간" })}
-                      className={`py-1.5 rounded-lg font-black text-xs transition cursor-pointer flex items-center justify-center gap-1 ${
+                      className={`py-1 rounded-lg font-black text-xs transition cursor-pointer flex items-center justify-center gap-1 ${
                         formData.shift === "야간"
                           ? "bg-indigo-600 text-white shadow-xs"
                           : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
                       }`}
                     >
-                      <Moon className="w-3.5 h-3.5" />
+                      <Moon className="w-3 h-3" />
                       <span>야간</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Worker Dropdown */}
+                {/* 3. Worker Dropdown */}
                 <div>
-                  <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    작업자명 (작업조장 / 담당) *
+                  <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                    작업자명 (담당 조장)
                   </label>
                   <select
                     value={formData.worker}
                     onChange={(e) => setFormData({ ...formData, worker: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border-2 border-teal-500 font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-hidden cursor-pointer shadow-xs text-xs sm:text-sm"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-teal-500 font-black text-slate-900 dark:text-white focus:ring-1 focus:ring-teal-500 focus:outline-hidden cursor-pointer text-xs"
                   >
-                    <option value="">-- 작업자를 선택하세요 --</option>
+                    <option value="">-- 작업자 선택 --</option>
                     {WORKER_PRESETS.map((w) => (
                       <option key={w.name} value={`${w.name} ${w.title}`}>
                         {w.name} {w.title} ({w.role})
