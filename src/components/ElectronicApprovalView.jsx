@@ -32,7 +32,9 @@ import {
   Eye,
   Download,
   ZoomIn,
-  UploadCloud
+  UploadCloud,
+  Edit3,
+  RotateCcw
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
@@ -148,6 +150,7 @@ export const ElectronicApprovalView = () => {
 
   // Modals
   const [isDraftModalOpen, setIsDraftModalOpen] = useState(false);
+  const [editingDocId, setEditingDocId] = useState(null);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [approvalComment, setApprovalComment] = useState("");
   const [rejectReason, setRejectReason] = useState("");
@@ -160,6 +163,7 @@ export const ElectronicApprovalView = () => {
     const unsub = subscribeCloseAllModals(() => {
       setSelectedDoc(null);
       setIsDraftModalOpen(false);
+      setEditingDocId(null);
       setPreviewImageModal(null);
       setActionType("APPROVE");
     });
@@ -173,17 +177,75 @@ export const ElectronicApprovalView = () => {
 
   useModalHistory(Boolean(isDraftModalOpen), () => {
     setIsDraftModalOpen(false);
+    setEditingDocId(null);
   }, "approval_draft");
 
   useModalHistory(Boolean(previewImageModal), () => {
     setPreviewImageModal(null);
   }, "approval_img_preview");
 
+  // ⭐ 기안서 수정 가능 여부 판단: 최종 승인(APPROVED)되지 않은 문서는 기안자(본인) 및 ADMIN이 수정 가능
+  const canEditDoc = (doc) => {
+    if (!doc || doc.status === "APPROVED") return false;
+    return isAdmin || isApprovalDocMyDraft(doc, currentProfile, isAdmin);
+  };
+
   const handleOpenDocModal = (doc) => {
     setSelectedDoc(doc);
   };
 
   const handleOpenDraftModal = () => {
+    setEditingDocId(null);
+    const defaultCeo = currentProfile?.name === "최미영" ? "최미영" : "권태형";
+    let autoLead = (currentProfile?.plant === "한림공장") ? "김동욱" : "설유철";
+    setDraftForm({
+      type: "OVERTIME",
+      typeName: "특근 신청서",
+      plant: currentProfile?.plant || "삼랑진공장",
+      department: currentProfile?.assignedProcess || "압출동 관리",
+      drafter: currentProfile?.name || "작업자",
+      drafterTitle: currentProfile?.title || "선임",
+      leadName: autoLead,
+      directorName: currentProfile?.plant === "한림공장" ? "이명재 / 최미영" : "이명재",
+      ceoName: defaultCeo,
+      title: "",
+      content: "",
+      amount: "",
+      images: []
+    });
+    setIsDraftModalOpen(true);
+  };
+
+  // ⭐ 기안서 수정 모달 열기 (기존 문서 내용 및 첨부사진, 결재선 완벽 로드)
+  const handleOpenEditModal = (doc, e) => {
+    if (e) e.stopPropagation();
+    if (!canEditDoc(doc)) {
+      alert("결재 문서를 수정할 권한이 없거나 이미 최종 승인 완료된 문서입니다.");
+      return;
+    }
+
+    const steps = Array.isArray(doc.steps) ? doc.steps : [];
+    const leadStep = steps[1] || {};
+    const directorStep = steps[2] || {};
+    const ceoStep = steps[3] || {};
+
+    setDraftForm({
+      type: doc.type || "OVERTIME",
+      typeName: doc.typeName || "특근 신청서",
+      plant: doc.plant || currentProfile?.plant || "삼랑진공장",
+      department: doc.department || currentProfile?.assignedProcess || "압출동 관리",
+      drafter: doc.drafter || currentProfile?.name || "기안자",
+      drafterTitle: doc.drafterTitle || currentProfile?.title || "선임",
+      leadName: leadStep.name || (doc.plant === "한림공장" ? "김동욱" : "설유철"),
+      directorName: directorStep.name || (doc.plant === "한림공장" ? "이명재 / 최미영" : "이명재"),
+      ceoName: ceoStep.name || (currentProfile?.name === "최미영" ? "최미영" : "권태형"),
+      title: doc.title || "",
+      content: doc.content || "",
+      amount: doc.amount || "",
+      images: Array.isArray(doc.images) ? [...doc.images] : []
+    });
+
+    setEditingDocId(doc.id);
     setIsDraftModalOpen(true);
   };
 
@@ -391,7 +453,7 @@ export const ElectronicApprovalView = () => {
     }));
   };
 
-  // Handle Save Draft (전작업자 작성 가능)
+  // Handle Save Draft (전작업자 작성 및 수정/재상신 가능)
   const handleSaveDraft = async (e) => {
     e.preventDefault();
     if (!draftForm.title.trim()) {
@@ -413,16 +475,40 @@ export const ElectronicApprovalView = () => {
       draftForm.directorName
     );
 
-    await saveApprovalDocument({
+    const isEdit = Boolean(editingDocId);
+    let docPayload = {
       ...draftForm,
       steps,
-      status: "IN_PROGRESS"
-    }, { isDirectManualDraft: true, sendDraftTelegram: true });
+      status: "IN_PROGRESS",
+      holdReason: "",
+      rejectReason: ""
+    };
+
+    if (isEdit) {
+      const existingDoc = approvalDocs.find((d) => d.id === editingDocId) || selectedDoc;
+      docPayload.id = editingDocId;
+      if (existingDoc) {
+        docPayload.docNumber = existingDoc.docNumber;
+        docPayload.createdAt = existingDoc.createdAt;
+      }
+    }
+
+    const saved = await saveApprovalDocument(docPayload, {
+      isDirectManualDraft: true,
+      sendDraftTelegram: !isEdit
+    });
 
     setApprovalDocs(getLocalApprovalDocs());
 
-    const defaultCeo = currentProfile?.name === "최미영" ? "최미영" : "권태형";
+    if (selectedDoc && selectedDoc.id === editingDocId) {
+      setSelectedDoc(saved);
+    }
+
+    setEditingDocId(null);
     setIsDraftModalOpen(false);
+
+    const defaultCeo = currentProfile?.name === "최미영" ? "최미영" : "권태형";
+    let autoLead = currentProfile?.plant === "한림공장" ? "김동욱" : "설유철";
     setDraftForm({
       type: "OVERTIME",
       typeName: "특근 신청서",
@@ -430,15 +516,16 @@ export const ElectronicApprovalView = () => {
       department: currentProfile?.assignedProcess || "압출동 관리",
       drafter: currentProfile?.name || "작업자",
       drafterTitle: currentProfile?.title || "선임",
-      leadName: "설유철",
-      directorName: "이명재",
+      leadName: autoLead,
+      directorName: currentProfile?.plant === "한림공장" ? "이명재 / 최미영" : "이명재",
       ceoName: defaultCeo,
       title: "",
       content: "",
       amount: "",
       images: []
     });
-    alert("결재 기안서(사진 첨부 포함)가 성공적으로 상신되었습니다.");
+
+    alert(isEdit ? "결재 기안서가 성공적으로 수정(재상신)되었습니다." : "결재 기안서(사진 첨부 포함)가 성공적으로 상신되었습니다.");
   };
 
   // Handle Approve Step (직급/대표 권한 체크)
@@ -864,6 +951,17 @@ export const ElectronicApprovalView = () => {
                           >
                             상세
                           </button>
+                          {canEditDoc(doc) && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenEditModal(doc, e)}
+                              className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-600 hover:text-white dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 text-xs font-bold transition-all shadow-xs flex items-center gap-1 border border-teal-200 dark:border-teal-800"
+                              title="기안서 수정 (결재 전 내용/금액/사진 수정)"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              <span>수정</span>
+                            </button>
+                          )}
                           {isAdmin && (
                             <button
                               type="button"
@@ -970,6 +1068,17 @@ export const ElectronicApprovalView = () => {
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {canEditDoc(selectedDoc) && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(selectedDoc)}
+                          className="p-1.5 sm:px-2.5 sm:py-1 rounded-xl bg-teal-950/80 hover:bg-teal-600 text-teal-300 hover:text-white font-bold text-xs flex items-center gap-1 border border-teal-800/80 transition-all cursor-pointer shadow-xs"
+                          title="기안서 수정 (결재 전 내용/금액/사진 수정)"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">기안 수정</span>
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => window.print()}
@@ -1367,18 +1476,30 @@ export const ElectronicApprovalView = () => {
             )}
 
             {/* Bottom Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={(e) => handleDelete(selectedDoc.id, e)}
-                  className="text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1"
-                  title="결재 문서 삭제 (ADMIN 전용)"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>문서 삭제 (ADMIN)</span>
-                </button>
-              )}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleDelete(selectedDoc.id, e)}
+                    className="text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
+                    title="결재 문서 삭제 (ADMIN 전용)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>문서 삭제 (ADMIN)</span>
+                  </button>
+                )}
+                {canEditDoc(selectedDoc) && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(selectedDoc)}
+                    className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-black flex items-center gap-1.5 shadow-sm shadow-teal-600/30 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>기안서 내용 수정 / 재상신</span>
+                  </button>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -1386,7 +1507,7 @@ export const ElectronicApprovalView = () => {
                   setSelectedDoc(null);
                   setActionType("APPROVE");
                 }}
-                className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto"
+                className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-slate-200 ml-auto cursor-pointer"
               >
                 닫기
               </button>
@@ -1409,22 +1530,27 @@ export const ElectronicApprovalView = () => {
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-500 text-white shadow-xs">
-                  <FileSignature className="w-4 h-4" />
+                <div className={`p-2 rounded-xl ${editingDocId ? "bg-teal-600 text-white shadow-xs" : "bg-emerald-500 text-white shadow-xs"}`}>
+                  {editingDocId ? <Edit3 className="w-4 h-4" /> : <FileSignature className="w-4 h-4" />}
                 </div>
                 <div>
                   <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    새 전자결재 기안서 작성
+                    {editingDocId ? "전자결재 기안서 수정 (재상신)" : "새 전자결재 기안서 작성"}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 결재선
+                    {editingDocId
+                      ? "기안 내용, 소요금액, 첨부사진 및 결재선을 수정한 후 재상신합니다."
+                      : "담당(전작업자) ➔ 책임(직급별) ➔ 이사(이명재) ➔ 대표(대표이사) 결재선"}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setIsDraftModalOpen(false)}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 font-bold"
+                onClick={() => {
+                  setIsDraftModalOpen(false);
+                  setEditingDocId(null);
+                }}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -1765,17 +1891,33 @@ export const ElectronicApprovalView = () => {
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setIsDraftModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold"
+                  onClick={() => {
+                    setIsDraftModalOpen(false);
+                    setEditingDocId(null);
+                  }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center gap-1.5"
+                  className={`px-6 py-2.5 rounded-xl ${
+                    editingDocId
+                      ? "bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 shadow-teal-500/25"
+                      : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/25"
+                  } text-white font-black shadow-md active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer`}
                 >
-                  <Send className="w-4 h-4" />
-                  <span>결재 상신 (기안 요청)</span>
+                  {editingDocId ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>기안서 수정 완료 (재상신)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>결재 상신 (기안 요청)</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
