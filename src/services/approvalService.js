@@ -49,17 +49,59 @@ export const PLANT_COMPANIES_MAP = {
 
 // List of authorized managers by Title / Hierarchy
 export const APPROVAL_MANAGERS = {
+  // 1. 기안자 목록 (관리자, 선임, 작업자 전체)
+  DRAFTERS: [
+    // 본사 / 임원
+    { name: "권태형", title: "대표이사", plant: "본사", process: "총괄대표", isManager: true },
+    { name: "최미영", title: "전무", plant: "본사", process: "경영총괄", isManager: true },
+    { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리", isManager: true },
+    // 삼랑진공장 관리/책임/선임
+    { name: "설유철", title: "책임", plant: "삼랑진공장", process: "압출동 관리", isManager: true },
+    { name: "윤경수", title: "책임", plant: "삼랑진공장", process: "가공동 관리", isManager: true },
+    { name: "이창엽", title: "책임", plant: "삼랑진공장", process: "품질관리", isManager: true },
+    { name: "전재율", title: "책임", plant: "삼랑진공장", process: "설비보전", isManager: true },
+    { name: "양인나", title: "선임", plant: "삼랑진공장", process: "가공동 관리", isManager: true },
+    { name: "유동길", title: "선임", plant: "삼랑진공장", process: "가공동 관리", isManager: true },
+    { name: "조인주", title: "선임", plant: "삼랑진공장", process: "경리업무", isManager: true },
+    { name: "이상기", title: "주임", plant: "삼랑진공장", process: "품질관리", isManager: true },
+    // 한림공장 관리/책임/선임
+    { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리", isManager: true },
+    { name: "오상민", title: "선임", plant: "한림공장", process: "가공동 관리", isManager: true },
+    // 압출동 작업자
+    { name: "공영국", title: "대리", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "심임대", title: "반장", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "이상은", title: "반장", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "닉", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "마이클", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "존카를로", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "지미", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "만", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "샤먼", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "쿠마루", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false },
+    { name: "이수루", title: "작업자", plant: "삼랑진공장", process: "압출동", isManager: false }
+  ],
+  // 2. 책임 (중간결재자 - 관리자 및 책임/선임/반장 전체)
   LEADS: [
     { name: "설유철", title: "책임", plant: "삼랑진공장", process: "압출동 관리" },
     { name: "윤경수", title: "책임", plant: "삼랑진공장", process: "가공동 관리" },
     { name: "이창엽", title: "책임", plant: "삼랑진공장", process: "품질관리" },
     { name: "전재율", title: "책임", plant: "삼랑진공장", process: "설비보전" },
-    { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리" }
+    { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리" },
+    { name: "양인나", title: "선임", plant: "삼랑진공장", process: "가공동 관리" },
+    { name: "유동길", title: "선임", plant: "삼랑진공장", process: "가공동 관리" },
+    { name: "조인주", title: "선임", plant: "삼랑진공장", process: "경리업무" },
+    { name: "오상민", title: "선임", plant: "한림공장", process: "가공동 관리" },
+    { name: "공영국", title: "대리", plant: "삼랑진공장", process: "압출동" },
+    { name: "심임대", title: "반장", plant: "삼랑진공장", process: "압출동" },
+    { name: "이상은", title: "반장", plant: "삼랑진공장", process: "압출동" }
   ],
+  // 3. 이사 (임원 결재자)
   DIRECTORS: [
     { name: "이명재", title: "이사", plant: "삼랑진공장", process: "총괄관리" },
-    { name: "최미영", title: "전무", plant: "본사", process: "한림공장 결재승인권한" }
+    { name: "최미영", title: "전무", plant: "본사", process: "경영총괄" },
+    { name: "이명재 / 최미영", title: "이사/전무", plant: "공통", process: "공동 결재 권한" }
   ],
+  // 4. 대표 (최종 결재자)
   CEO: [
     { name: "권태형", title: "대표이사", plant: "본사", process: "대표이사" },
     { name: "최미영", title: "전무", plant: "본사", process: "전무" }
@@ -75,7 +117,7 @@ export const normalizeApprovalDoc = (d) => {
     if (st.role === "이사") {
       const isApprovedByChoi = st.name === "최미영";
       const isApprovedByLee = st.name === "이명재";
-      let normName = "이명재";
+      let normName = st.name || "이명재";
       let normTitle = "이사";
 
       if (isApprovedByChoi) {
@@ -84,8 +126,11 @@ export const normalizeApprovalDoc = (d) => {
       } else if (isApprovedByLee) {
         normName = "이명재";
         normTitle = "이사";
-      } else if (isHanlim) {
-        normName = st.name || "이명재/최미영";
+      } else if (st.name?.includes("최미영") && st.name?.includes("이명재")) {
+        normName = "이명재 / 최미영";
+        normTitle = st.date ? "이사" : "이사/전무";
+      } else if (isHanlim && (!st.name || st.name === "이명재/최미영")) {
+        normName = "이명재 / 최미영";
         normTitle = st.date ? "이사" : "이사/전무";
       }
 
@@ -207,11 +252,16 @@ export const normalizeApprovalDoc = (d) => {
 };
 
 // Helper to construct automatic 4-step approval line
-export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, department, leadName = null, ceoName = "대표이사") => {
+export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, department, leadName = null, ceoName = "대표이사", directorName = null) => {
   let step2Name = leadName;
   let step2Title = "책임";
 
-  if (!step2Name) {
+  if (step2Name) {
+    const foundLead = APPROVAL_MANAGERS.LEADS.find((m) => m.name === step2Name);
+    if (foundLead) {
+      step2Title = foundLead.title || "책임";
+    }
+  } else {
     if (plant === "한림공장") {
       step2Name = "김동욱";
     } else {
@@ -223,8 +273,18 @@ export const getAutoApprovalSteps = (plant, drafterName, drafterTitle, departmen
   }
 
   const isHanlim = plant === "한림공장";
-  const step3Name = isHanlim ? "이명재/최미영" : "이명재";
-  const step3Title = isHanlim ? "이사/전무" : "이사";
+  let step3Name = directorName;
+  let step3Title = "이사";
+
+  if (step3Name) {
+    if (step3Name === "최미영") step3Title = "전무";
+    else if (step3Name.includes("최미영") && step3Name.includes("이명재")) step3Title = "이사/전무";
+    else step3Title = "이사";
+  } else {
+    step3Name = isHanlim ? "이명재 / 최미영" : "이명재";
+    step3Title = isHanlim ? "이사/전무" : "이사";
+  }
+
   const ceoTitle = ceoName === "최미영" ? "전무" : "대표이사";
 
   return [
@@ -474,77 +534,62 @@ export const checkApprovalPermission = (docItem, currentProfile, isAdmin) => {
     };
   }
 
-  // 3. Step 2: 책임 (직급이 '책임'인 사용자 또는 지정된 책임자)
-  // 설유철(책임), 윤경수(책임), 이창엽(책임), 전재율(책임), 김동욱(책임)
+  // 3. Step 2: 책임 (지정된 관리자/책임자 또는 관리 직급)
   if (stepRole === "책임") {
-    const isStepTarget = activeStep.name === userName;
-    const isLeadTitle = userTitle === "책임" || userTitle === "총괄";
+    const isStepTarget = activeStep.name === userName || (activeStep.name && activeStep.name.includes(userName));
+    const isLeadTitle = userTitle === "책임" || userTitle === "총괄" || userTitle === "선임" || userTitle === "대리" || userTitle === "반장";
     const isPlantLead =
-      (docItem.plant === "한림공장" && (userName === "김동욱" || isLeadTitle)) ||
-      (docItem.plant === "삼랑진공장" && (userName === "설유철" || userName === "윤경수" || userName === "이창엽" || userName === "전재율" || isLeadTitle)) ||
-      userName === "이명재"; // 이사는 상위 결재자로서 전결 가능
+      (docItem.plant === "한림공장" && (userName === "김동욱" || userName === "오상민" || isLeadTitle)) ||
+      (docItem.plant === "삼랑진공장" && (userName === "설유철" || userName === "윤경수" || userName === "이창엽" || userName === "전재율" || userName === "양인나" || userName === "유동길" || userName === "조인주" || isLeadTitle)) ||
+      userName === "이명재" || userName === "최미영" || userName === "권태형"; // 상위 결재자/임원 전결 가능
 
-    if (isStepTarget || isPlantLead || isLeadTitle) {
+    if (isStepTarget || isPlantLead || isLeadTitle || isAdmin) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
         stepRole,
-        approverName: userName
+        approverName: userName || activeStep.name
       };
     }
     return {
       canApprove: false,
-      reason: `[책임 ${activeStep.name}] 결재 권한이 필요합니다. (직급: 책임)`
+      reason: `[${activeStep.name || "책임"}] 결재 권한이 필요합니다. (지정 결재자: ${activeStep.name})`
     };
   }
 
-  // 4. Step 3: 이사 (직급이 '이사'인 임원: 이명재 이사 또는 한림공장의 경우 최미영 전무도 승인 가능)
+  // 4. Step 3: 이사 (이명재 이사, 최미영 전무 등 임원 결재)
   if (stepRole === "이사") {
-    const isHanlimDoc = docItem.plant === "한림공장";
+    const isTargetLee = !activeStep.name || activeStep.name.includes("이명재");
+    const isTargetChoi = activeStep.name?.includes("최미영");
 
-    if (isHanlimDoc) {
-      // 한림공장의 결재문서는 이명재 이사 또는 최미영 전무가 승인 가능
-      if (
-        userName === "이명재" ||
-        userName === "최미영" ||
-        userTitle === "이사" ||
-        userTitle === "전무" ||
-        isAdmin
-      ) {
-        let approver = "이명재";
-        if (userName === "최미영" || userTitle === "전무" || currentProfile?.id === "admin_choi") {
-          approver = "최미영";
-        } else if (userName === "이명재" || userTitle === "이사") {
-          approver = "이명재";
-        } else if (isAdmin) {
-          approver = currentProfile?.name === "최미영" ? "최미영" : "이명재";
-        }
-
-        return {
-          canApprove: true,
-          stepIndex: activeStepIdx,
-          stepRole,
-          approverName: approver
-        };
+    if (
+      userName === "이명재" ||
+      userName === "최미영" ||
+      userTitle === "이사" ||
+      userTitle === "전무" ||
+      isAdmin ||
+      (isTargetLee && (userName === "이명재" || userTitle === "이사")) ||
+      (isTargetChoi && (userName === "최미영" || userTitle === "전무"))
+    ) {
+      let approver = "이명재";
+      if (userName === "최미영" || userTitle === "전무" || currentProfile?.id === "admin_choi") {
+        approver = "최미영";
+      } else if (userName === "이명재" || userTitle === "이사") {
+        approver = "이명재";
+      } else if (isAdmin) {
+        approver = currentProfile?.name === "최미영" ? "최미영" : (activeStep.name === "최미영" ? "최미영" : "이명재");
       }
-      return {
-        canApprove: false,
-        reason: "[한림공장 결재] 이명재 이사 또는 최미영 전무 결재 권한이 필요합니다."
-      };
-    }
 
-    // 삼랑진공장 등 기본
-    if (userName === "이명재" || userTitle === "이사" || isAdmin) {
       return {
         canApprove: true,
         stepIndex: activeStepIdx,
         stepRole,
-        approverName: userName === "이명재" ? "이명재" : (isAdmin ? (currentProfile?.name || "이명재") : "이명재")
+        approverName: approver
       };
     }
     return {
       canApprove: false,
-      reason: "[이사 이명재] 임원 결재 권한이 필요합니다. (직급: 이사)"
+      reason: `[임원 결재] 이명재 이사 또는 최미영 전무 결재 권한이 필요합니다. (지정: ${activeStep.name})`
     };
   }
 

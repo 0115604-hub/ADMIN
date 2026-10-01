@@ -180,15 +180,9 @@ export const ElectronicApprovalView = () => {
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [isProcessingAction, setIsProcessingAction] = useState(false);
 
-  // All eligible workers for Drafter dropdown (전작업자 기안 가능)
+  // All eligible workers and managers for Drafter dropdown (전관리자 및 작업자 기안 가능)
   const allWorkers = useMemo(() => {
-    const list = [];
-    PLANTS.forEach((p) => {
-      p.workers.forEach((w) => {
-        list.push({ ...w, plantName: p.name });
-      });
-    });
-    return list;
+    return APPROVAL_MANAGERS.DRAFTERS || [];
   }, []);
 
   // ADMIN Approver Selector State (권태형 대표이사 vs 최미영 전무)
@@ -196,7 +190,7 @@ export const ElectronicApprovalView = () => {
     currentProfile?.name === "최미영" ? "최미영" : "권태형"
   );
 
-  // New Draft Form State (담당: 전작업자)
+  // New Draft Form State (담당: 전작업자 / 관리자)
   const [draftForm, setDraftForm] = useState({
     type: "OVERTIME",
     typeName: "특근 신청서",
@@ -204,7 +198,7 @@ export const ElectronicApprovalView = () => {
     department: currentProfile?.assignedProcess || "압출동 관리",
     drafter: currentProfile?.name || "권태형",
     drafterTitle: currentProfile?.title || (currentProfile?.name === "권태형" ? "대표이사" : "선임"),
-    leadName: "설유철", // Default Step 2 (책임)
+    leadName: "설유철", // Step 2 (책임)
     directorName: "이명재", // Step 3 (이사)
     ceoName: currentProfile?.name === "최미영" ? "최미영" : "권태형", // Step 4 (대표/전무)
     title: "",
@@ -429,7 +423,8 @@ export const ElectronicApprovalView = () => {
       draftForm.drafterTitle,
       draftForm.department,
       draftForm.leadName,
-      draftForm.ceoName
+      draftForm.ceoName,
+      draftForm.directorName
     );
 
     await saveApprovalDocument({
@@ -1491,10 +1486,10 @@ export const ElectronicApprovalView = () => {
                   </select>
                 </div>
 
-                {/* 1. 담당 (기안자: 전작업자 선택 가능) */}
+                {/* 1. 담당 (기안자) */}
                 <div>
                   <label className="font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                    1. 담당 (기안자: 전작업자)
+                    기안자 (작성자 선택)
                   </label>
                   <select
                     value={draftForm.drafter}
@@ -1504,17 +1499,26 @@ export const ElectronicApprovalView = () => {
                         ...draftForm,
                         drafter: e.target.value,
                         drafterTitle: sel?.title || "선임",
-                        plant: sel?.plantName || draftForm.plant,
-                        department: sel?.assignedProcess || draftForm.department
+                        plant: sel?.plant || sel?.plantName || draftForm.plant,
+                        department: sel?.process || sel?.assignedProcess || draftForm.department
                       });
                     }}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
                   >
-                    {allWorkers.map((w) => (
-                      <option key={w.id} value={w.name}>
-                        {w.name} ({w.title} • {w.plantName})
-                      </option>
-                    ))}
+                    <optgroup label="임원 및 관리자">
+                      {allWorkers.filter((w) => w.isManager).map((w) => (
+                        <option key={w.name} value={w.name}>
+                          {w.name} ({w.title} • {w.plant})
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="현장 작업자 / 반장">
+                      {allWorkers.filter((w) => !w.isManager).map((w) => (
+                        <option key={w.name} value={w.name}>
+                          {w.name} ({w.title ? `${w.title} • ` : ""}{w.plant})
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
               </div>
@@ -1660,57 +1664,98 @@ export const ElectronicApprovalView = () => {
                 )}
               </div>
 
-              {/* 자동 결재선 지정 (담당: 전작업자, 책임: 책임직급, 이사: 이명재, 대표: 대표이사) */}
+              {/* 자동 결재선 지정 (기안자, 책임, 이사, 대표 뱃지에서 관리자 및 결재자 선택) */}
               <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-black text-slate-700 dark:text-slate-300 flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>자동 결재선 지정 (직급 체계 준수)</span>
+                    <span>자동 결재선 지정 (기안자 및 결재선 관리자 선택)</span>
                   </span>
-                  <span className="text-[10px] text-slate-400">4단계 자동 배정</span>
+                  <span className="text-[10px] text-slate-400">4단계 결재자 배정</span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                  {/* 1. 담당 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">1. 담당 (기안자)</span>
-                    <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
-                      {draftForm.drafter} {draftForm.drafterTitle}
-                    </strong>
-                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">전작업자</span>
+                  {/* 1. 기안자 (담당) 뱃지 - 전체 관리자 및 작업자 선택 */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">1. 기안자 (담당)</span>
+                    <select
+                      value={draftForm.drafter}
+                      onChange={(e) => {
+                        const sel = allWorkers.find((w) => w.name === e.target.value);
+                        setDraftForm({
+                          ...draftForm,
+                          drafter: e.target.value,
+                          drafterTitle: sel?.title || "선임",
+                          plant: sel?.plant || sel?.plantName || draftForm.plant,
+                          department: sel?.process || sel?.assignedProcess || draftForm.department
+                        });
+                      }}
+                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
+                    >
+                      <optgroup label="임원 및 관리자">
+                        {allWorkers.filter((w) => w.isManager).map((w) => (
+                          <option key={w.name} value={w.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                            {w.name} ({w.title})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="현장 작업자 / 반장">
+                        {allWorkers.filter((w) => !w.isManager).map((w) => (
+                          <option key={w.name} value={w.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                            {w.name} {w.title ? `(${w.title})` : ""}
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium">기안 상신자</span>
                   </div>
 
-                  {/* 2. 책임 (선택 가능) */}
+                  {/* 2. 책임 (관리자) 뱃지 - 전체 관리자 선택 */}
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-500/20">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">2. 책임 (직급)</span>
+                    <span className="text-[9.5px] font-bold text-slate-400 block">2. 책임 (관리자)</span>
                     <select
                       value={draftForm.leadName}
                       onChange={(e) => setDraftForm({ ...draftForm, leadName: e.target.value })}
                       className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
                     >
-                      {APPROVAL_MANAGERS.LEADS.filter((m) => draftForm.plant === "한림공장" ? m.plant === "한림공장" : m.plant === "삼랑진공장").map((m) => (
+                      <optgroup label="삼랑진공장 관리자">
+                        {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "삼랑진공장").map((m) => (
+                          <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                            {m.name} ({m.title} • {m.process})
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="한림공장 관리자">
+                        {APPROVAL_MANAGERS.LEADS.filter((m) => m.plant === "한림공장").map((m) => (
+                          <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                            {m.name} ({m.title} • {m.process})
+                          </option>
+                        ))}
+                      </optgroup>
+                    </select>
+                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">책임/중간 결재</span>
+                  </div>
+
+                  {/* 3. 이사 (임원) 뱃지 - 임원 선택 */}
+                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-700 ring-1 ring-purple-500/20">
+                    <span className="text-[9.5px] font-bold text-slate-400 block">3. 이사 (임원)</span>
+                    <select
+                      value={draftForm.directorName || (draftForm.plant === "한림공장" ? "이명재 / 최미영" : "이명재")}
+                      onChange={(e) => setDraftForm({ ...draftForm, directorName: e.target.value })}
+                      className="w-full bg-transparent font-black text-slate-900 dark:text-white text-xs focus:outline-none cursor-pointer mt-0.5"
+                    >
+                      {APPROVAL_MANAGERS.DIRECTORS.map((m) => (
                         <option key={m.name} value={m.name} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
                           {m.name} ({m.title})
                         </option>
                       ))}
                     </select>
-                    <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium">책임 직급</span>
+                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">총괄/임원 승인</span>
                   </div>
 
-                  {/* 3. 이사 */}
-                  <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">3. 이사 (임원)</span>
-                    <strong className="text-slate-800 dark:text-slate-200 text-xs block truncate mt-0.5">
-                      {draftForm.plant === "한림공장" ? "이명재 / 최미영" : "이명재 이사"}
-                    </strong>
-                    <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">
-                      {draftForm.plant === "한림공장" ? "이사 / 전무 승인" : "총괄 이사"}
-                    </span>
-                  </div>
-
-                  {/* 4. 대표 (CEO/전무 선택) */}
+                  {/* 4. 대표 (CEO/전무) 뱃지 - 최종 결재자 선택 */}
                   <div className="p-2 rounded-xl bg-white dark:bg-slate-700 border border-blue-300 dark:border-blue-700 ring-1 ring-blue-500/20">
-                    <span className="text-[9.5px] font-bold text-slate-400 block">4. 대표 (CEO/전무)</span>
+                    <span className="text-[9.5px] font-bold text-slate-400 block">4. 대표 (최종)</span>
                     <select
                       value={draftForm.ceoName || "권태형"}
                       onChange={(e) => setDraftForm({ ...draftForm, ceoName: e.target.value })}
