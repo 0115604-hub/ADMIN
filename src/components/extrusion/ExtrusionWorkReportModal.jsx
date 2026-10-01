@@ -282,6 +282,15 @@ export const ExtrusionWorkReportModal = ({
     return getItemsByLine(formData.lineId || "pcm1");
   }, [formData.lineId]);
 
+  // TPM completion state
+  const isTpmCompleted = useMemo(() => {
+    if (isEditing) return true;
+    if (currentStep === "report") return true;
+    if (isTpmAlreadyDone(formData.date, formData.worker)) return true;
+    if (Array.isArray(tpmChecks) && tpmChecks.length === TPM_CHECK_ITEMS.length && tpmChecks.every(c => c.status)) return true;
+    return false;
+  }, [isEditing, currentStep, formData.date, formData.worker, tpmChecks]);
+
   // Sync on modal open or initialData change
   useEffect(() => {
     if (isOpen) {
@@ -720,9 +729,17 @@ export const ExtrusionWorkReportModal = ({
               <Zap className="w-5 h-5 text-teal-300" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-black tracking-tight">
-                {isEditing ? "압출 작업일보 및 체크시트 수정" : "압출 TPM 점검 및 작업일보 작성"}
-              </h3>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h3 className="text-base sm:text-lg font-black tracking-tight">
+                  {isEditing ? "압출 작업일보 및 체크시트 수정" : "압출 TPM 점검 및 작업일보 작성"}
+                </h3>
+                {isTpmCompleted && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 shadow-xs shrink-0 animate-fadeIn">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    TPM 완료
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-teal-200/80 font-medium">
                 {currentStep === "tpm"
                   ? "[1단계] 설비 TPM 자주보전 10대 항목 일일 점검"
@@ -982,53 +999,6 @@ export const ExtrusionWorkReportModal = ({
           /* STEP 2: 압출 작업일보 및 체크시트 화면 */
           /* ========================================================================= */
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-100 text-xs sm:text-sm animate-fadeIn">
-            {/* TPM Verification Passed Banner & Quick Preset Action Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="font-black text-emerald-900 dark:text-emerald-200 text-xs">
-                    TPM 10개 점검 완료 (기록 적격)
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep("tpm")}
-                  className="text-[11px] font-bold text-teal-700 dark:text-teal-300 hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  <span>점검표 재확인 ➔</span>
-                </button>
-              </div>
-
-              {/* ⚡ One-Click Standard Condition Preset Bar */}
-              <div className="p-2.5 rounded-2xl bg-gradient-to-r from-teal-900 to-slate-900 text-white shadow-xs flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 pl-1">
-                  <Sparkles className="w-4 h-4 text-teal-300 shrink-0" />
-                  <span className="text-xs font-black text-white">표준조건 셋팅</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={handleApplyStandardSpecs}
-                    className="px-2.5 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-sm"
-                    title="110Ø·60Ø 압출, 온수조, PCM 13존, 코팅건 표준조건을 한 번에 입력"
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    <span>⚡ 표준조건 자동완성</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadCheckSheet}
-                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-200 font-bold text-xs transition active:scale-95 cursor-pointer border border-teal-500/40 flex items-center gap-1"
-                    title="작성 중인 데이터로 A4 3시트 엑셀 다운로드"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-teal-300" />
-                    <span className="hidden sm:inline">A4 엑셀</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* Notification message */}
             {presetMessage && (
               <div className="p-3 rounded-2xl bg-teal-100 dark:bg-teal-950 text-teal-950 dark:text-teal-200 border border-teal-300 flex items-center gap-2 text-xs font-black animate-fadeIn shadow-xs">
@@ -1393,25 +1363,45 @@ export const ExtrusionWorkReportModal = ({
             {/* Section 4: 작업체크시트 상세 기록 (원자재 프리셋 / 불량 자동연동 / 110Ø·60Ø / 코팅건 1~4 / PCM 13존 매트릭스) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowCheckSheetDetails(!showCheckSheetDetails)}
-                className="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-700/50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <FileCheck2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <div className="w-full px-4 py-3 flex items-center justify-between gap-2 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/80 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowCheckSheetDetails(!showCheckSheetDetails)}
+                  className="flex items-center gap-2 text-left cursor-pointer hover:opacity-80 transition flex-1 min-w-[240px]"
+                >
+                  <FileCheck2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
                   <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                    ④ 작업체크시트 정밀 기록 (원자재 LOT · 110Ø·60Ø 압출 · 코팅두께 · PCM 13존 매트릭스)
+                    ④ 작업체크시트 정밀 기록 (원자재 LOT · 110Ø·60Ø 압출 · 코팅두께 · PCM 13존)
                   </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300">
-                    {showCheckSheetDetails ? "접기 ▲" : "체크시트 항목 펼치기 ▼"}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 shrink-0">
+                    {showCheckSheetDetails ? "접기 ▲" : "펼치기 ▼"}
                   </span>
+                </button>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleApplyStandardSpecs}
+                    className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
+                    title="110Ø·60Ø 압출, 온수조, PCM 13존, 코팅건 표준조건을 한 번에 입력"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-teal-200" />
+                    <span>⚡ 표준조건 자동완성</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadCheckSheet}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-200 font-bold text-xs transition active:scale-95 cursor-pointer border border-teal-500/40 flex items-center gap-1 shadow-2xs"
+                    title="작성 중인 데이터로 A4 3시트 엑셀 다운로드"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-teal-300" />
+                    <span>A4 엑셀</span>
+                  </button>
                 </div>
-                {showCheckSheetDetails ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
+              </div>
 
               {showCheckSheetDetails && (
-                <div className="p-4 pt-1 space-y-4 border-t border-slate-200 dark:border-slate-700/80 animate-fadeIn">
+                <div className="p-4 space-y-4 animate-fadeIn">
                   {/* 1. 원자재 현황 (연고무, 코팅액, 심금 - 종류 및 LOT 넘버 분리 & 빠른 선택 칩) */}
                   <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between">
