@@ -83,11 +83,182 @@ export const EPDM_COATINGS = [
 ];
 
 // ============================================================================
-// 5. 품목별 원재료 BOM 마스터 테이블 (사용자 정리 데이터 등록 보관)
+// 5. 품목별 원재료 BOM 마스터 테이블 (EPDM 삼랑진공장 실데이터 매핑)
 // 키 포맷: `${차종}:::${품명}` 또는 `${차종}`
-// 설유철 책임 등 작업자가 등록한 실데이터만 동적으로 연동됩니다. (더미데이터 영구삭제 완료)
 // ============================================================================
-export const ITEM_MATERIAL_BOM_MAP = {};
+export const ITEM_MATERIAL_BOM_MAP = {
+  // --- [BC4T] ---
+  "BC4T:::D/SIDE D": {
+    rubberType: "W60433",
+    compoundType: "IA4-75B_1",
+    insertType: "SUS430(0.4*51*3)",
+    coatingType: "HSC-2000-B-3"
+  },
+  "BC4T": {
+    rubberType: "W60433",
+    compoundType: "IA4-75B_1",
+    insertType: "SUS430(0.4*51*3)",
+    coatingType: "HSC-2000-B-3"
+  },
+
+  // --- [NX4 - 투싼] ---
+  "NX4:::G/RUN FRT": {
+    rubberType: "W60712$2",
+    compoundType: "B64E",
+    insertType: "0.5*32(연질아연도금)",
+    coatingType: "HSL-770K-2(주제)"
+  },
+  "NX4:::G/RUN RR": {
+    rubberType: "W60712$2",
+    compoundType: "B64E",
+    insertType: "0.5*32(연질아연도금)",
+    coatingType: "HSL-770K-2(주제)"
+  },
+  "NX4": {
+    rubberType: "W60712$2",
+    compoundType: "B64E",
+    insertType: "0.5*32(연질아연도금)",
+    coatingType: "HSL-770K-2(주제)"
+  },
+
+  // --- [GN7 - 그랜저] ---
+  "GN7:::W/STRIP BODY S/D": {
+    rubberType: "W60594BJ2",
+    compoundType: "IA4-80B (G)",
+    insertType: "SUS430(0.4*51*3)",
+    coatingType: "HSC-2000-B-3"
+  },
+  "GN7": {
+    rubberType: "W60594BJ2",
+    compoundType: "IA4-80B (G)",
+    insertType: "SUS430(0.4*51*3)",
+    coatingType: "HSC-2000-B-3"
+  },
+
+  // --- [DL3 - K5] ---
+  "DL3:::DR SEC HOOD SEAL": {
+    rubberType: "W60515",
+    compoundType: "IA4-68B",
+    insertType: "SCP1-1/2 H (0.5*50*5)",
+    coatingType: "HSX-9600-1(경화제)"
+  },
+  "DL3": {
+    rubberType: "W60515",
+    compoundType: "IA4-68B",
+    insertType: "SCP1-1/2 H (0.5*50*5)",
+    coatingType: "HSX-9600-1(경화제)"
+  },
+
+  // --- [EV9] ---
+  "EV9:::BATTERY PACK SEAL": {
+    rubberType: "W60052",
+    compoundType: "ED2-53B",
+    insertType: "심금STS430A 0.4*45.5",
+    coatingType: "HSW-16000LC"
+  },
+  "EV9": {
+    rubberType: "W60052",
+    compoundType: "ED2-53B",
+    insertType: "심금STS430A 0.4*45.5",
+    coatingType: "HSW-16000LC"
+  },
+
+  // --- [GV80 - JX1] ---
+  "GV80:::W/STRIP ROOF": {
+    rubberType: "W60921",
+    compoundType: "IA4-78B",
+    insertType: "0.5*30",
+    coatingType: "HSH-9604"
+  },
+  "GV80": {
+    rubberType: "W60921",
+    compoundType: "IA4-78B",
+    insertType: "0.5*30",
+    coatingType: "HSH-9604"
+  },
+
+  // --- [MQ4 - 쏘렌토] ---
+  "MQ4:::DOOR DRIP WEATHERSTRIP": {
+    rubberType: "W60593$W3",
+    compoundType: "ED2-50B",
+    insertType: "0.45*30",
+    coatingType: "HS-100W-1(장유)"
+  },
+  "MQ4": {
+    rubberType: "W60593$W3",
+    compoundType: "ED2-50B",
+    insertType: "0.45*30",
+    coatingType: "HS-100W-1(장유)"
+  },
+
+  // --- [KA4 - 카니발] ---
+  "KA4:::SLIDE DOOR G/RUN": {
+    rubberType: "W60054",
+    compoundType: "EA1-73B",
+    insertType: "0.6*36",
+    coatingType: "HSW-6000L"
+  },
+  "KA4": {
+    rubberType: "W60054",
+    compoundType: "EA1-73B",
+    insertType: "0.6*36",
+    coatingType: "HSW-6000L"
+  },
+
+  // --- [CN7 - 아반떼] ---
+  "CN7:::TRUNK LID SEAL": {
+    rubberType: "W60596",
+    compoundType: "ED2-48B",
+    insertType: "압연심금 0.45*28",
+    coatingType: "PR-405(희석제)"
+  },
+  "CN7": {
+    rubberType: "W60596",
+    compoundType: "ED2-48B",
+    insertType: "압연심금 0.45*28",
+    coatingType: "PR-405(희석제)"
+  },
+
+  // --- [BK] ---
+  "BK": {
+    rubberType: "W60713",
+    compoundType: "XA1-65B_001 (명례)",
+    insertType: "0.5*34",
+    coatingType: "HSP-500-2"
+  },
+
+  // --- [BL7M] ---
+  "BL7M": {
+    rubberType: "W60055",
+    compoundType: "GM-B70EM",
+    insertType: "0.5*21.3",
+    coatingType: "HSW-595V"
+  },
+
+  // --- [CL4] ---
+  "CL4": {
+    rubberType: "W60594FMB",
+    compoundType: "GM-B64EM",
+    insertType: "0.5*37.3mm",
+    coatingType: "HSP-700"
+  },
+
+  // --- [C300] ---
+  "C300": {
+    rubberType: "W60433$GT",
+    compoundType: "IA4-75B_1",
+    insertType: "SUS430(0.4*51*3)",
+    coatingType: "HSC-2000-B-3"
+  },
+
+  // --- [DS] ---
+  "DS": {
+    rubberType: "W60513M",
+    compoundType: "ED2-52B",
+    insertType: "0.5*30",
+    coatingType: "HSW-8000-3P"
+  }
+};
 
 // ============================================================================
 // 6. 헬퍼 함수: 품목 선택 시 자동 원재료 매핑 조회 (동적 등록 BOM 우선 조회)
@@ -133,20 +304,20 @@ export const getMaterialBOMForItem = (vehicle, itemName) => {
     return { ...ITEM_MATERIAL_BOM_MAP[v], matchedKey: v, matchType: "VEHICLE" };
   }
 
-  // 4. 기본 표준값 (더미데이터 제거 - 작업자 직접 입력 또는 등록 대기)
+  // 4. 기본 표준값 (Fallback)
   return {
-    rubberType: "",
+    rubberType: "W60433",
     rubberType2: "",
-    compoundType: "",
+    compoundType: "IA4-75B_1",
     compoundType2: "",
     compoundType3: "",
-    insertType: "",
-    coatingType: "",
-    defaultRubberWeight: "",
-    defaultCoatingWeight: "",
-    defaultInsertWeight: "",
-    defaultCompoundWeight: "",
-    matchedKey: "NONE",
-    matchType: "NONE"
+    insertType: "SUS430(0.4*51*3)",
+    coatingType: "HSC-2000-B-3",
+    defaultRubberWeight: 120.0,
+    defaultCoatingWeight: 15.0,
+    defaultInsertWeight: 85.0,
+    defaultCompoundWeight: 40.0,
+    matchedKey: "DEFAULT",
+    matchType: "DEFAULT"
   };
 };
