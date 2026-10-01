@@ -1,6 +1,5 @@
-// Extrusion 4-Lines Downtime Parser Utility (Clean, Robust & Universal)
 import * as XLSX from "xlsx";
-import { WEEK_CALENDAR_MAP } from "../components/ExtrusionDowntimeView";
+import { WEEK_CALENDAR_MAP } from "../data/extrusionCalendarData";
 
 export const EXTRUSION_LINES = [
   { id: "pcm1", name: "PCM #1 LINE", code: "PCM #1", color: "teal", keywords: ["pcm1", "pcm #1", "1호", "pcm-1", "pcm_1", "pcm #1 line"] },

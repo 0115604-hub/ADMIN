@@ -419,21 +419,21 @@ export const ExtrusionProductionTab = () => {
           </div>
           <div className="my-1.5">
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {metrics.totalActual.toLocaleString()}
+              {(metrics?.totalActual || 0).toLocaleString()}
               <span className="text-xs font-bold text-slate-500 ml-1">m</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              계획: <span className="font-bold">{metrics.totalTarget.toLocaleString()}m</span>
+              계획: <span className="font-bold">{(metrics?.totalTarget || 0).toLocaleString()}m</span>
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
             <span className="font-bold text-slate-600 dark:text-slate-400">달성률</span>
             <span
               className={`font-black ${
-                metrics.attainmentRate >= 95 ? "text-emerald-600" : "text-amber-600"
+                (metrics?.attainmentRate || 0) >= 95 ? "text-emerald-600" : "text-amber-600"
               }`}
             >
-              {metrics.attainmentRate}%
+              {metrics?.attainmentRate ?? 0}%
             </span>
           </div>
         </div>
@@ -446,21 +446,21 @@ export const ExtrusionProductionTab = () => {
           </div>
           <div className="my-1.5">
             <div className="text-xl sm:text-2xl font-black text-blue-700 dark:text-blue-400 tracking-tight">
-              {metrics.totalGood.toLocaleString()}
+              {(metrics?.totalGood || 0).toLocaleString()}
               <span className="text-xs font-bold text-slate-500 ml-1">m</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              불량: <span className="font-bold text-rose-600">{metrics.totalDefect.toLocaleString()}m</span>
+              불량: <span className="font-bold text-rose-600">{(metrics?.totalDefect || 0).toLocaleString()}m</span>
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
             <span className="font-bold text-slate-600 dark:text-slate-400">평균 양품률</span>
             <span
               className={`font-black ${
-                metrics.yieldRate >= 97 ? "text-emerald-600" : "text-amber-600"
+                (metrics?.yieldRate || 0) >= 97 ? "text-emerald-600" : "text-amber-600"
               }`}
             >
-              {metrics.yieldRate}%
+              {metrics?.yieldRate ?? 0}%
             </span>
           </div>
         </div>
@@ -473,11 +473,11 @@ export const ExtrusionProductionTab = () => {
           </div>
           <div className="my-1.5">
             <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-              {metrics.totalScrapKg.toLocaleString()}
+              {(metrics?.totalScrapKg || 0).toLocaleString()}
               <span className="text-xs font-bold text-slate-500 ml-1">kg</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              불량률: <span className="font-bold text-rose-500">{metrics.defectRate}%</span>
+              불량률: <span className="font-bold text-rose-500">{metrics?.defectRate ?? 0}%</span>
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
@@ -494,17 +494,17 @@ export const ExtrusionProductionTab = () => {
           </div>
           <div className="my-1.5">
             <div className="text-xl sm:text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
-              {metrics.totalDowntimeMinutes.toLocaleString()}
+              {(metrics?.totalDowntimeMinutes || 0).toLocaleString()}
               <span className="text-xs font-bold text-slate-500 ml-1">분</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              시간 환산: <span className="font-bold text-slate-700 dark:text-slate-300">{metrics.totalDowntimeHours}시간</span>
+              시간 환산: <span className="font-bold text-slate-700 dark:text-slate-300">{metrics?.totalDowntimeHours || 0}시간</span>
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
             <span className="font-bold text-slate-600 dark:text-slate-400">비가동 건수</span>
             <span className="font-black text-slate-700 dark:text-slate-300">
-              {metrics.downtimeCategoryStats.reduce((acc, c) => acc + c.occurrences, 0)}건
+              {(metrics?.downtimeCategoryStats || []).reduce((acc, c) => acc + (c?.occurrences || 0), 0)}건
             </span>
           </div>
         </div>
@@ -517,17 +517,17 @@ export const ExtrusionProductionTab = () => {
           </div>
           <div className="my-1.5">
             <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-              {metrics.totalReports}
+              {metrics?.totalReports || 0}
               <span className="text-xs font-bold text-slate-500 ml-1">건</span>
             </div>
             <p className="text-[11px] text-slate-500">
-              승인완료: <span className="font-bold text-emerald-600">{filteredReports.filter((r) => r.approvalStatus === "승인").length}건</span>
+              승인완료: <span className="font-bold text-emerald-600">{(filteredReports || []).filter((r) => r && r.approvalStatus === "승인").length}건</span>
             </p>
           </div>
           <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[11px]">
             <span className="font-bold text-slate-600 dark:text-slate-400">결재 대기</span>
             <span className="font-black text-amber-600">
-              {filteredReports.filter((r) => r.approvalStatus === "대기").length}건
+              {(filteredReports || []).filter((r) => r && r.approvalStatus === "대기").length}건
             </span>
           </div>
         </div>
@@ -560,7 +560,7 @@ export const ExtrusionProductionTab = () => {
       {/* 4. Line By Line Comparison Cards (호기별 실적 비교) */}
       {/* ========================================================================= */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {metrics.lineStats.map((line) => {
+        {(metrics?.lineStats || []).map((line) => {
           const isSelected = selectedLineFilter === line.id;
           return (
             <div
@@ -581,7 +581,7 @@ export const ExtrusionProductionTab = () => {
                   </span>
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {line.reportCount}건 등록
+                  {line.reportCount || 0}건 등록
                 </span>
               </div>
 
@@ -590,13 +590,13 @@ export const ExtrusionProductionTab = () => {
                 {/* Attainment Progress */}
                 <div>
                   <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    <span>달성률 ({line.actual.toLocaleString()} / {line.target.toLocaleString()}m)</span>
-                    <span className="font-black text-slate-900 dark:text-white">{line.attainmentRate}%</span>
+                    <span>달성률 ({(line.actual || 0).toLocaleString()} / {(line.target || 0).toLocaleString()}m)</span>
+                    <span className="font-black text-slate-900 dark:text-white">{line.attainmentRate ?? 0}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, line.attainmentRate)}%` }}
+                      style={{ width: `${Math.min(100, Number(line.attainmentRate) || 0)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -604,13 +604,13 @@ export const ExtrusionProductionTab = () => {
                 {/* Yield Progress */}
                 <div>
                   <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-0.5">
-                    <span>양품 수율 (양품 {line.good.toLocaleString()}m)</span>
-                    <span className="font-black text-blue-600 dark:text-blue-400">{line.yieldRate}%</span>
+                    <span>양품 수율 (양품 {(line.good || 0).toLocaleString()}m)</span>
+                    <span className="font-black text-blue-600 dark:text-blue-400">{line.yieldRate ?? 0}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
                       className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, line.yieldRate)}%` }}
+                      style={{ width: `${Math.min(100, Number(line.yieldRate) || 0)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -620,11 +620,11 @@ export const ExtrusionProductionTab = () => {
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">스크랩:</span>
-                  <span className="font-bold text-amber-600">{line.scrapKg}kg</span>
+                  <span className="font-bold text-amber-600">{line.scrapKg ?? 0}kg</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">비가동:</span>
-                  <span className="font-bold text-rose-600">{line.downtimeMinutes}분</span>
+                  <span className="font-bold text-rose-600">{line.downtimeMinutes ?? 0}분</span>
                 </div>
               </div>
             </div>
@@ -644,7 +644,7 @@ export const ExtrusionProductionTab = () => {
               차종별 생산 실적 및 수율 분석
             </h3>
             <span className="text-[10.5px] font-bold text-slate-400">
-              총 {metrics.vehicleStats.length}개 차종
+              총 {(metrics?.vehicleStats || []).length}개 차종
             </span>
           </div>
 
@@ -662,7 +662,7 @@ export const ExtrusionProductionTab = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                {metrics.vehicleStats.length > 0 ? (
+                {(metrics?.vehicleStats || []).length > 0 ? (
                   metrics.vehicleStats.map((v) => (
                     <tr key={v.vehicle} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
                       <td className="py-2 px-3 font-black text-slate-900 dark:text-white flex items-center gap-1.5">
@@ -674,22 +674,22 @@ export const ExtrusionProductionTab = () => {
                         </span>
                       </td>
                       <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">
-                        {v.target.toLocaleString()}
+                        {(v.target || 0).toLocaleString()}
                       </td>
                       <td className="py-2 px-2 text-right font-black text-slate-900 dark:text-white">
-                        {v.actual.toLocaleString()}
+                        {(v.actual || 0).toLocaleString()}
                       </td>
                       <td className="py-2 px-2 text-right text-blue-600 dark:text-blue-400 font-bold">
-                        {v.good.toLocaleString()}
+                        {(v.good || 0).toLocaleString()}
                       </td>
                       <td className="py-2 px-2 text-right font-bold text-emerald-600">
-                        {v.attainmentRate}%
+                        {v.attainmentRate ?? 0}%
                       </td>
                       <td className="py-2 px-2 text-right font-black text-blue-600">
-                        {v.yieldRate}%
+                        {v.yieldRate ?? 0}%
                       </td>
                       <td className="py-2 px-3 text-right text-amber-600 font-bold">
-                        {v.scrapKg}kg
+                        {v.scrapKg ?? 0}kg
                       </td>
                     </tr>
                   ))
@@ -713,28 +713,28 @@ export const ExtrusionProductionTab = () => {
               비가동 원인별 분포 및 손실 시간
             </h3>
             <span className="text-[10.5px] font-bold text-slate-400">
-              총 {metrics.totalDowntimeMinutes}분 ({metrics.totalDowntimeHours}시간)
+              총 {metrics?.totalDowntimeMinutes || 0}분 ({metrics?.totalDowntimeHours || 0}시간)
             </span>
           </div>
 
           <div className="space-y-2.5 pt-1">
-            {metrics.downtimeCategoryStats.length > 0 ? (
+            {(metrics?.downtimeCategoryStats || []).length > 0 ? (
               metrics.downtimeCategoryStats.map((c) => (
                 <div key={c.category} className="space-y-1 text-xs">
                   <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-bold text-[11.5px]">
                     <div className="flex items-center gap-2">
                       <span className="font-black">{c.category}</span>
-                      <span className="text-[10.5px] text-slate-400">({c.occurrences}회 발생)</span>
+                      <span className="text-[10.5px] text-slate-400">({c.occurrences || 0}회 발생)</span>
                     </div>
                     <div className="flex items-center gap-2 font-black">
-                      <span className="text-rose-600">{c.minutes}분 ({c.hours}h)</span>
-                      <span className="text-slate-400 text-[10.5px]">[{c.percentage}%]</span>
+                      <span className="text-rose-600">{c.minutes || 0}분 ({c.hours || 0}h)</span>
+                      <span className="text-slate-400 text-[10.5px]">[{c.percentage || 0}%]</span>
                     </div>
                   </div>
                   <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div
                       className="h-full bg-rose-500 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, c.percentage)}%` }}
+                      style={{ width: `${Math.min(100, Number(c.percentage) || 0)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -1050,28 +1050,28 @@ export const ExtrusionProductionTab = () => {
               <tfoot>
                 <tr className="bg-slate-100 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-700 font-black text-xs text-slate-900 dark:text-white">
                   <td colSpan={4} className="py-3 px-4 text-center font-black text-sm">
-                    ■ 생산 실적 합계 ({filteredReports.length}건)
+                    ■ 생산 실적 합계 ({(filteredReports || []).length}건)
                   </td>
                   <td className="py-3 px-2 text-right text-slate-600 dark:text-slate-400">
-                    {metrics.totalTarget.toLocaleString()}m
+                    {(metrics?.totalTarget || 0).toLocaleString()}m
                   </td>
                   <td className="py-3 px-2 text-right text-slate-900 dark:text-white font-black text-sm">
-                    {metrics.totalActual.toLocaleString()}m
+                    {(metrics?.totalActual || 0).toLocaleString()}m
                   </td>
                   <td className="py-3 px-2 text-right text-blue-700 dark:text-blue-400 font-black text-sm">
-                    {metrics.totalGood.toLocaleString()}m
+                    {(metrics?.totalGood || 0).toLocaleString()}m
                   </td>
                   <td className="py-3 px-2 text-right text-emerald-600 font-black">
-                    {metrics.yieldRate}%
+                    {metrics?.yieldRate ?? 0}%
                   </td>
                   <td className="py-3 px-2 text-right text-amber-600 font-black">
-                    {metrics.totalScrapKg}kg
+                    {metrics?.totalScrapKg ?? 0}kg
                   </td>
                   <td className="py-3 px-3 text-right text-rose-600 font-black">
-                    {metrics.totalDowntimeMinutes}분
+                    {metrics?.totalDowntimeMinutes ?? 0}분
                   </td>
                   <td colSpan={3} className="py-3 px-3 text-slate-500 italic text-xs">
-                    (달성률: <strong>{metrics.attainmentRate}%</strong>, 비가동: <strong>{metrics.totalDowntimeHours}시간</strong>)
+                    (달성률: <strong>{metrics?.attainmentRate ?? 0}%</strong>, 비가동: <strong>{metrics?.totalDowntimeHours ?? 0}시간</strong>)
                   </td>
                 </tr>
               </tfoot>
