@@ -26,7 +26,11 @@ import {
   ArrowLeft,
   Camera,
   AlertOctagon,
-  Wrench
+  Wrench,
+  Thermometer,
+  Gauge,
+  Flame,
+  Droplets
 } from "lucide-react";
 import {
   WORKER_PRESETS,
@@ -662,6 +666,35 @@ export const ExtrusionWorkReportModal = ({
       [parentKey]: {
         ...(prev[parentKey] || {}),
         [childKey]: value
+      }
+    }));
+  };
+
+  const handlePcmZoneChange = (zoneIndex, val) => {
+    setFormData((prev) => {
+      const curZones = Array.isArray(prev.conditions?.pcmZones) && prev.conditions.pcmZones.length === 13
+        ? [...prev.conditions.pcmZones]
+        : [...EXTRUSION_STANDARD_SPECS.pcmZones];
+      curZones[zoneIndex] = val === "" ? "" : Number(val);
+      return {
+        ...prev,
+        conditions: {
+          ...(prev.conditions || {}),
+          pcmZones: curZones
+        }
+      };
+    });
+  };
+
+  const handleApplyAllCureTemp = (tempVal) => {
+    const val = tempVal === "" ? "210.0" : String(tempVal);
+    const num = Number(val) || 210.0;
+    setFormData((prev) => ({
+      ...prev,
+      conditions: {
+        ...(prev.conditions || {}),
+        cureZoneTemp: val,
+        pcmZones: Array(13).fill(num)
       }
     }));
   };
@@ -1535,61 +1568,204 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 3: Shift Total Production Metrics (종합 실적 및 전체 수율 요약) */}
+            {/* Section 3: Curing Zone Temp & Coating Spray Pressure (3. 가류조온도 및 코팅분사압력) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                  <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  ③ 종합 실적 및 전체 수율 요약 ({formData.items.length}개 품목 합산)
+                  <Flame className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                  ③ 가류조 온도 및 코팅 분사압력 (3. 작업조건 설정/측정)
                 </span>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black text-xs border border-emerald-300">
-                    종합 달성률: {totalAttainmentRate}%
+                  <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 border border-orange-300">
+                    가류조 표준: 210±20℃
                   </span>
-                  <span className="px-2.5 py-1 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-black text-xs border border-blue-300">
-                    종합 수율: {totalYieldRate}%
-                  </span>
-                  <span className="px-2.5 py-1 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-black text-xs border border-rose-300">
-                    불량률: {totalDefectRate}%
+                  <span className="text-[10.5px] font-black px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300">
+                    코팅압력 표준: 2.5±0.3 bar
                   </span>
                 </div>
               </div>
 
-              {/* Total Summary Metric Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-center">
-                  <span className="text-[10.5px] font-bold text-slate-500">총 계획수량</span>
-                  <div className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200 mt-0.5">
-                    {totalTargetQty.toLocaleString()} <span className="text-[10px] font-normal">m</span>
+              {/* Grid 2-Column: 1. 가류조 온도 (13개존) / 2. 코팅건 분사압력 & 보조조건 */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+                {/* 1. 가류조(Curing Zone) 온도 관리 */}
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-orange-200/90 dark:border-orange-900/60 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <Thermometer className="w-4 h-4 text-orange-500" />
+                      <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                        가류조 온도 (PCM 1~13존)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyAllCureTemp(formData.conditions?.cureZoneTemp || "210.0")}
+                      className="px-2.5 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:hover:bg-orange-900/60 dark:text-orange-300 font-bold text-[10.5px] transition active:scale-95 cursor-pointer border border-orange-200 dark:border-orange-800 flex items-center gap-1"
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>13개존 일괄동기화</span>
+                    </button>
+                  </div>
+
+                  {/* Representative Temp */}
+                  <div>
+                    <label className="block text-[11px] font-black text-orange-900 dark:text-orange-300 mb-1">
+                      가류조 대표 설정온도 (℃) * [표준 210±20℃]
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={formData.conditions?.cureZoneTemp ?? "212.0"}
+                        onChange={(e) => handleNestedFieldChange("conditions", "cureZoneTemp", e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border-2 border-orange-400 font-black text-sm text-orange-700 dark:text-orange-300 focus:ring-2 focus:ring-orange-500 focus:outline-hidden"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        ℃
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 13 Zones Grid */}
+                  <div>
+                    <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-500 mb-1.5">
+                      <span>각 존별 실측온도 (Zone 1 ~ Zone 13)</span>
+                      <span className="text-orange-600 dark:text-orange-400 font-bold">190℃ ~ 230℃ 정상범위</span>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 text-center">
+                      {Array.from({ length: 13 }).map((_, zIdx) => {
+                        const zoneNum = zIdx + 1;
+                        const zoneVal = formData.conditions?.pcmZones?.[zIdx] ?? EXTRUSION_STANDARD_SPECS.pcmZones[zIdx] ?? 210.0;
+                        const isOutOfSpec = Number(zoneVal) < 190 || Number(zoneVal) > 230;
+
+                        return (
+                          <div
+                            key={`zone_${zoneNum}`}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-between ${
+                              isOutOfSpec
+                                ? "bg-rose-50 dark:bg-rose-950/40 border-rose-400 text-rose-800"
+                                : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                            }`}
+                          >
+                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">
+                              Z{zoneNum}
+                            </span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={zoneVal}
+                              onChange={(e) => handlePcmZoneChange(zIdx, e.target.value)}
+                              className="w-full text-center bg-transparent font-black text-[11.5px] text-slate-900 dark:text-white focus:outline-hidden"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 text-center">
-                  <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300">총 실적수량</span>
-                  <div className="text-sm sm:text-base font-black text-emerald-700 dark:text-emerald-400 mt-0.5">
-                    {totalActualQty.toLocaleString()} <span className="text-[10px] font-normal">m</span>
+                {/* 2. 코팅건 분사압력 및 보조조건 */}
+                <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-sky-200/90 dark:border-sky-900/60 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <Gauge className="w-4 h-4 text-sky-500" />
+                      <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">
+                        코팅건 분사압력 (4개건) &amp; 보조조건
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border border-sky-300">
+                      표준 2.5 bar
+                    </span>
                   </div>
-                </div>
 
-                <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-800 text-center">
-                  <span className="text-[10.5px] font-black text-blue-800 dark:text-blue-300">총 양품수량</span>
-                  <div className="text-sm sm:text-base font-black text-blue-700 dark:text-blue-400 mt-0.5">
-                    {totalGoodQty.toLocaleString()} <span className="text-[10px] font-normal">m</span>
+                  {/* 4 Spray Guns */}
+                  <div>
+                    <label className="block text-[11px] font-black text-sky-900 dark:text-sky-300 mb-1.5">
+                      코팅 분사압력 (건 1 ~ 4번, bar) *
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        { id: "sprayGun1", label: "건 1번", defaultVal: "2.5" },
+                        { id: "sprayGun2", label: "건 2번", defaultVal: "2.6" },
+                        { id: "sprayGun3", label: "건 3번", defaultVal: "2.5" },
+                        { id: "sprayGun4", label: "건 4번", defaultVal: "2.4" }
+                      ].map((gun) => {
+                        const currentGunVal = formData.conditions?.[gun.id] ?? gun.defaultVal;
+                        return (
+                          <div
+                            key={gun.id}
+                            className="p-2 rounded-xl bg-sky-50/60 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-center"
+                          >
+                            <span className="block text-[10px] font-black text-sky-700 dark:text-sky-300 mb-0.5">
+                              {gun.label}
+                            </span>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={currentGunVal}
+                                onChange={(e) => handleNestedFieldChange("conditions", gun.id, e.target.value)}
+                                className="w-full text-center bg-white dark:bg-slate-800 border border-sky-300 dark:border-sky-700 rounded-lg py-1 font-black text-xs sm:text-sm text-sky-900 dark:text-sky-200 focus:ring-1 focus:ring-sky-500 focus:outline-hidden"
+                              />
+                            </div>
+                            <span className="text-[9px] text-slate-400 font-bold">bar</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-200 dark:border-rose-800 text-center">
-                  <span className="text-[10.5px] font-black text-rose-800 dark:text-rose-300">총 불량수량</span>
-                  <div className="text-sm sm:text-base font-black text-rose-600 dark:text-rose-400 mt-0.5">
-                    {totalDefectQty.toLocaleString()} <span className="text-[10px] font-normal">m</span>
-                  </div>
-                </div>
-
-                <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800 text-center col-span-2 sm:col-span-1">
-                  <span className="text-[10.5px] font-black text-amber-800 dark:text-amber-300">총 스크랩</span>
-                  <div className="text-sm sm:text-base font-black text-amber-600 dark:text-amber-400 mt-0.5">
-                    {totalScrapKg.toLocaleString()} <span className="text-[10px] font-normal">kg</span>
+                  {/* Secondary Conditions: 인취속도, 온수조, 압출기 RPM */}
+                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1.5">
+                      압출 보조 조건 (인취속도, 온수조 온도, 압출기 RPM)
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* 인취속도 */}
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center">
+                        <span className="block text-[9.5px] font-bold text-slate-500">인취속도 (m/분)</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={formData.conditions?.haulOffSpeed ?? "19.6"}
+                          onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
+                          className="w-full text-center bg-white dark:bg-slate-900 rounded-md py-0.5 font-bold text-xs focus:outline-hidden"
+                        />
+                      </div>
+                      {/* 온수조 */}
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center">
+                        <span className="block text-[9.5px] font-bold text-slate-500">온수조 (℃)</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={formData.conditions?.waterTemp ?? "47.0"}
+                          onChange={(e) => handleNestedFieldChange("conditions", "waterTemp", e.target.value)}
+                          className="w-full text-center bg-white dark:bg-slate-900 rounded-md py-0.5 font-bold text-xs focus:outline-hidden"
+                        />
+                      </div>
+                      {/* 메인 RPM 110 */}
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center">
+                        <span className="block text-[9.5px] font-bold text-slate-500">메인 RPM</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={formData.conditions?.extruder110Rpm ?? "26.4"}
+                          onChange={(e) => handleNestedFieldChange("conditions", "extruder110Rpm", e.target.value)}
+                          className="w-full text-center bg-white dark:bg-slate-900 rounded-md py-0.5 font-bold text-xs focus:outline-hidden"
+                        />
+                      </div>
+                      {/* 서브 RPM 60 */}
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center">
+                        <span className="block text-[9.5px] font-bold text-slate-500">서브 RPM</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={formData.conditions?.extruder60Rpm ?? "19.2"}
+                          onChange={(e) => handleNestedFieldChange("conditions", "extruder60Rpm", e.target.value)}
+                          className="w-full text-center bg-white dark:bg-slate-900 rounded-md py-0.5 font-bold text-xs focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
