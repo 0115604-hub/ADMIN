@@ -239,7 +239,10 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
       compoundLot: String(raw.rawMaterials?.compoundLot || raw.compoundLot || "").trim(),
       compoundType2: String(raw.rawMaterials?.compoundType2 || raw.compoundType2 || "").trim(),
       compoundWeight2: raw.rawMaterials?.compoundWeight2 !== undefined && raw.rawMaterials?.compoundWeight2 !== "" ? Number(raw.rawMaterials.compoundWeight2) : "",
-      compoundLot2: String(raw.rawMaterials?.compoundLot2 || raw.compoundLot2 || "").trim()
+      compoundLot2: String(raw.rawMaterials?.compoundLot2 || raw.compoundLot2 || "").trim(),
+      compoundType3: String(raw.rawMaterials?.compoundType3 || raw.compoundType3 || "").trim(),
+      compoundWeight3: raw.rawMaterials?.compoundWeight3 !== undefined && raw.rawMaterials?.compoundWeight3 !== "" ? Number(raw.rawMaterials.compoundWeight3) : "",
+      compoundLot3: String(raw.rawMaterials?.compoundLot3 || raw.compoundLot3 || "").trim()
     },
     defectBreakdown: {
       cutoffKg: Math.max(0, Number(raw.defectBreakdown?.cutoffKg || raw.cutoffKg) || 0),
@@ -277,142 +280,38 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
   };
 };
 
-// Initial Seed Data for immediate preview
-export const INITIAL_EXTRUSION_REPORTS = [
-  {
-    id: "epr_seed_01",
-    date: new Date().toISOString().split("T")[0],
-    shift: "주간",
-    plant: "삼랑진공장",
-    lineId: "pcm1",
-    lineName: "PCM #1 LINE",
-    worker: "설유철 책임",
-    subWorkers: "유동길",
-    vehicle: "NX4",
-    itemCode: "86811-N9000",
-    itemName: "NX4 G/RUN FRT LH",
-    targetQty: 4800,
-    actualQty: 4720,
-    goodQty: 4610,
-    defectQty: 110,
-    scrapKg: 18.5,
-    yieldRate: 97.7,
-    attainmentRate: 98.3,
-    defectRate: 2.3,
-    downtimeMinutes: 45,
-    downtimeCategory: "형교환",
-    downtimeDetail: "NX4 ➔ GN7 금형 교체 및 치수 셋팅 (45분)",
-    notes: "압출 속도 12m/min 정상 유지, 외관 스크래치 없음",
-    approvalStatus: "승인",
-    approvedBy: "이명재 이사",
-    approvedAt: new Date().toISOString()
-  },
-  {
-    id: "epr_seed_02",
-    date: new Date().toISOString().split("T")[0],
-    shift: "주간",
-    plant: "삼랑진공장",
-    lineId: "pcm3",
-    lineName: "PCM #3 LINE",
-    worker: "윤경수 책임",
-    subWorkers: "조인주",
-    vehicle: "GN7",
-    itemCode: "82110-GN700",
-    itemName: "GN7 W/STRIP BODY S/D",
-    targetQty: 3600,
-    actualQty: 3550,
-    goodQty: 3480,
-    defectQty: 70,
-    scrapKg: 12.0,
-    yieldRate: 98.0,
-    attainmentRate: 98.6,
-    defectRate: 2.0,
-    downtimeMinutes: 30,
-    downtimeCategory: "승온/준비",
-    downtimeDetail: "다이헤드 승온 및 원료 수지 투입 준비 (30분)",
-    notes: "특이사항 없음, 야간조 인수인계 완료",
-    approvalStatus: "승인",
-    approvedBy: "이명재 이사",
-    approvedAt: new Date().toISOString()
-  },
-  {
-    id: "epr_seed_03",
-    date: new Date().toISOString().split("T")[0],
-    shift: "야간",
-    plant: "삼랑진공장",
-    lineId: "pvc",
-    lineName: "PVC LINE",
-    worker: "이상기 사원",
-    subWorkers: "",
-    vehicle: "DL3",
-    itemCode: "83120-L3000",
-    itemName: "DL3 DR SEC HOOD SEAL",
-    targetQty: 2400,
-    actualQty: 2310,
-    goodQty: 2240,
-    defectQty: 70,
-    scrapKg: 8.5,
-    yieldRate: 97.0,
-    attainmentRate: 96.3,
-    defectRate: 3.0,
-    downtimeMinutes: 50,
-    downtimeCategory: "설비고장",
-    downtimeDetail: "냉각수 순환 펌프 압력 저하 점검 및 필터 청소",
-    notes: "보전반 전재율 책임 점검 완료 후 재가동",
-    approvalStatus: "대기",
-    approvedBy: "",
-    approvedAt: ""
-  },
-  {
-    id: "epr_seed_04",
-    date: new Date().toISOString().split("T")[0],
-    shift: "주간",
-    plant: "삼랑진공장",
-    lineId: "tpe",
-    lineName: "TPE LINE",
-    worker: "유성 반장",
-    subWorkers: "",
-    vehicle: "EV9",
-    itemCode: "85100-EV900",
-    itemName: "EV9 BATTERY PACK SEAL",
-    targetQty: 2000,
-    actualQty: 1980,
-    goodQty: 1950,
-    defectQty: 30,
-    scrapKg: 6.2,
-    yieldRate: 98.5,
-    attainmentRate: 99.0,
-    defectRate: 1.5,
-    downtimeMinutes: 20,
-    downtimeCategory: "청소/정리",
-    downtimeDetail: "라인 주변 정리 및 다이스 표면 이물질 제거",
-    notes: "TPE 수지 점도 양호, 품질 합격 판정",
-    approvalStatus: "승인",
-    approvedBy: "이명재 이사",
-    approvedAt: new Date().toISOString()
-  }
-];
+// Initial Seed Data (더미데이터 영구삭제 완료 - 빈 배열 유지)
+export const INITIAL_EXTRUSION_REPORTS = [];
 
 // Local storage reader
 export const getLocalExtrusionReports = () => {
   try {
-    const raw = localStorage.getItem(EXTRUSION_PROD_STORAGE_KEY);
-    if (!raw) return INITIAL_EXTRUSION_REPORTS;
+    const raw = typeof window !== "undefined" ? localStorage.getItem(EXTRUSION_PROD_STORAGE_KEY) : null;
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed.map((r, i) => sanitizeExtrusionReport(r, i));
+      // Filter out legacy dummy mock seed records
+      const cleanList = parsed
+        .filter((r) => r && !String(r.id || "").startsWith("epr_seed_"))
+        .map((r, i) => sanitizeExtrusionReport(r, i));
+      if (cleanList.length !== parsed.length && typeof window !== "undefined") {
+        localStorage.setItem(EXTRUSION_PROD_STORAGE_KEY, JSON.stringify(cleanList));
+      }
+      return cleanList;
     }
-    return INITIAL_EXTRUSION_REPORTS;
+    return [];
   } catch (e) {
     console.warn("Error reading extrusion reports from localStorage:", e);
-    return INITIAL_EXTRUSION_REPORTS;
+    return [];
   }
 };
 
 // Local storage saver
 export const saveLocalExtrusionReports = (reports) => {
   try {
-    const sanitized = (reports || []).map((r, i) => sanitizeExtrusionReport(r, i));
+    const sanitized = (reports || [])
+      .filter((r) => r && !String(r.id || "").startsWith("epr_seed_"))
+      .map((r, i) => sanitizeExtrusionReport(r, i));
     localStorage.setItem(EXTRUSION_PROD_STORAGE_KEY, JSON.stringify(sanitized));
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("extrusion-production-updated", { detail: sanitized }));
@@ -441,7 +340,12 @@ export const subscribeToExtrusionReports = (onDataCallback) => {
         if (!snapshot.empty) {
           const list = [];
           snapshot.forEach((docSnap) => {
-            list.push({ id: docSnap.id, ...docSnap.data() });
+            if (String(docSnap.id || "").startsWith("epr_seed_")) {
+              // Permanently delete dummy mock seed doc from Firestore
+              deleteDoc(doc(db, COLLECTION_NAME, docSnap.id)).catch(() => {});
+            } else {
+              list.push({ id: docSnap.id, ...docSnap.data() });
+            }
           });
           // Sort by date DESC, then createdAt DESC
           list.sort((a, b) => {
@@ -452,12 +356,7 @@ export const subscribeToExtrusionReports = (onDataCallback) => {
           saveLocalExtrusionReports(sanitizedList);
           onDataCallback(sanitizedList);
         } else {
-          // If Firestore is empty, sync our initial seed reports to cloud once
-          const initialData = getLocalExtrusionReports();
-          initialData.forEach((item) => {
-            setDoc(doc(db, COLLECTION_NAME, item.id), sanitizeForFirestore(item), { merge: true }).catch(() => {});
-          });
-          onDataCallback(initialData);
+          onDataCallback([]);
         }
       },
       (error) => {
@@ -1100,7 +999,7 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
   }
   if (report.rawMaterials?.compoundType && report.rawMaterials.compoundType !== "미사용") {
     rawMaterialItems.push({
-      cat: report.rawMaterials?.compoundType2 ? '컴파운드 #1' : '컴파운드',
+      cat: (report.rawMaterials?.compoundType2 || report.rawMaterials?.compoundType3) ? '컴파운드 #1' : '컴파운드',
       type: report.rawMaterials.compoundType,
       weight: report.rawMaterials?.compoundWeight !== undefined && report.rawMaterials?.compoundWeight !== '' ? `${report.rawMaterials.compoundWeight} kg` : '-',
       lot: report.rawMaterials?.compoundLot || '-',
@@ -1113,6 +1012,15 @@ export const exportExtrusionCheckSheetExcel = async (report = {}) => {
       type: report.rawMaterials.compoundType2,
       weight: report.rawMaterials?.compoundWeight2 !== undefined && report.rawMaterials?.compoundWeight2 !== '' ? `${report.rawMaterials.compoundWeight2} kg` : '-',
       lot: report.rawMaterials?.compoundLot2 || '-',
+      status: '정상 투입 (○)'
+    });
+  }
+  if (report.rawMaterials?.compoundType3 && report.rawMaterials.compoundType3 !== "미사용") {
+    rawMaterialItems.push({
+      cat: '컴파운드 #3',
+      type: report.rawMaterials.compoundType3,
+      weight: report.rawMaterials?.compoundWeight3 !== undefined && report.rawMaterials?.compoundWeight3 !== '' ? `${report.rawMaterials.compoundWeight3} kg` : '-',
+      lot: report.rawMaterials?.compoundLot3 || '-',
       status: '정상 투입 (○)'
     });
   }

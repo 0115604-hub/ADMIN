@@ -204,7 +204,7 @@ export const ExtrusionWorkReportModal = ({
           ? initialData.tpmIssuePhotos
           : (Array.isArray(initialData?.tpmIssueReport?.photos) ? initialData.tpmIssueReport.photos : []),
         rawMaterials: {
-          rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType || "W60433")),
+          rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType || "")),
           rubberWeight: initialData?.rawMaterials?.rubberWeight ?? "",
           rubberLot: initialData?.rawMaterials?.rubberLot || "",
           rubberType2: initialData?.rawMaterials?.rubberType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType2 || "",
@@ -216,12 +216,15 @@ export const ExtrusionWorkReportModal = ({
           insertType: initialData?.rawMaterials?.insertType !== undefined ? initialData.rawMaterials.insertType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).insertType || ""),
           insertWeight: initialData?.rawMaterials?.insertWeight ?? "",
           insertLot: initialData?.rawMaterials?.insertLot || "",
-          compoundType: initialData?.rawMaterials?.compoundType !== undefined ? initialData.rawMaterials.compoundType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType || "IA4-75B_1"),
+          compoundType: initialData?.rawMaterials?.compoundType !== undefined ? initialData.rawMaterials.compoundType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType || ""),
           compoundWeight: initialData?.rawMaterials?.compoundWeight ?? "",
           compoundLot: initialData?.rawMaterials?.compoundLot || "",
           compoundType2: initialData?.rawMaterials?.compoundType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType2 || "",
           compoundWeight2: initialData?.rawMaterials?.compoundWeight2 ?? "",
-          compoundLot2: initialData?.rawMaterials?.compoundLot2 || ""
+          compoundLot2: initialData?.rawMaterials?.compoundLot2 || "",
+          compoundType3: initialData?.rawMaterials?.compoundType3 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType3 || "",
+          compoundWeight3: initialData?.rawMaterials?.compoundWeight3 ?? "",
+          compoundLot3: initialData?.rawMaterials?.compoundLot3 || ""
         },
         defectBreakdown: {
           cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
@@ -263,7 +266,7 @@ export const ExtrusionWorkReportModal = ({
       tpmIssueText: "",
       tpmIssuePhotos: [],
       rawMaterials: {
-        rubberType: defaultBOM.rubberType || "W60433",
+        rubberType: defaultBOM.rubberType || "",
         rubberWeight: "",
         rubberLot: "",
         rubberType2: defaultBOM.rubberType2 || "",
@@ -275,12 +278,15 @@ export const ExtrusionWorkReportModal = ({
         insertType: defaultBOM.insertType || "",
         insertWeight: "",
         insertLot: "",
-        compoundType: defaultBOM.compoundType || "IA4-75B_1",
+        compoundType: defaultBOM.compoundType || "",
         compoundWeight: "",
         compoundLot: "",
         compoundType2: defaultBOM.compoundType2 || "",
         compoundWeight2: "",
-        compoundLot2: ""
+        compoundLot2: "",
+        compoundType3: defaultBOM.compoundType3 || "",
+        compoundWeight3: "",
+        compoundLot3: ""
       },
       defectBreakdown: {
         cutoffKg: "",
@@ -370,7 +376,7 @@ export const ExtrusionWorkReportModal = ({
           ...initialData,
           items,
           rawMaterials: {
-            rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType || "W60433")),
+            rubberType: initialData?.rawMaterials?.rubberType || (initialData?.rawMaterials?.rubberLot?.includes("/") ? initialData.rawMaterials.rubberLot.split("/")[0].trim() : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType || "")),
             rubberWeight: initialData?.rawMaterials?.rubberWeight ?? "",
             rubberLot: initialData?.rawMaterials?.rubberLot || "",
             rubberType2: initialData?.rawMaterials?.rubberType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).rubberType2 || "",
@@ -382,12 +388,15 @@ export const ExtrusionWorkReportModal = ({
             insertType: initialData?.rawMaterials?.insertType !== undefined ? initialData.rawMaterials.insertType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).insertType || ""),
             insertWeight: initialData?.rawMaterials?.insertWeight ?? "",
             insertLot: initialData?.rawMaterials?.insertLot || "",
-            compoundType: initialData?.rawMaterials?.compoundType !== undefined ? initialData.rawMaterials.compoundType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType || "IA4-75B_1"),
+            compoundType: initialData?.rawMaterials?.compoundType !== undefined ? initialData.rawMaterials.compoundType : (getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType || ""),
             compoundWeight: initialData?.rawMaterials?.compoundWeight ?? "",
             compoundLot: initialData?.rawMaterials?.compoundLot || "",
             compoundType2: initialData?.rawMaterials?.compoundType2 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType2 || "",
             compoundWeight2: initialData?.rawMaterials?.compoundWeight2 ?? "",
-            compoundLot2: initialData?.rawMaterials?.compoundLot2 || ""
+            compoundLot2: initialData?.rawMaterials?.compoundLot2 || "",
+            compoundType3: initialData?.rawMaterials?.compoundType3 || getMaterialBOMForItem(items[0]?.vehicle, items[0]?.itemName).compoundType3 || "",
+            compoundWeight3: initialData?.rawMaterials?.compoundWeight3 ?? "",
+            compoundLot3: initialData?.rawMaterials?.compoundLot3 || ""
           },
           defectBreakdown: {
             cutoffKg: initialData?.defectBreakdown?.cutoffKg || "",
@@ -573,12 +582,13 @@ export const ExtrusionWorkReportModal = ({
       items: updatedItems.length > 0 ? updatedItems : [createDefaultItem(lineId)],
       rawMaterials: {
         ...prev.rawMaterials,
-        rubberType: bom.rubberType || prev.rawMaterials?.rubberType || "W60433",
+        rubberType: bom.rubberType || prev.rawMaterials?.rubberType || "",
         rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (prev.rawMaterials?.rubberType2 || ""),
         coatingType: bom.coatingType !== undefined ? bom.coatingType : (prev.rawMaterials?.coatingType || ""),
         insertType: bom.insertType !== undefined ? bom.insertType : (prev.rawMaterials?.insertType || ""),
-        compoundType: bom.compoundType !== undefined ? bom.compoundType : (prev.rawMaterials?.compoundType || "IA4-75B_1"),
-        compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (prev.rawMaterials?.compoundType2 || "")
+        compoundType: bom.compoundType !== undefined ? bom.compoundType : (prev.rawMaterials?.compoundType || ""),
+        compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (prev.rawMaterials?.compoundType2 || ""),
+        compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (prev.rawMaterials?.compoundType3 || "")
       }
     }));
   };
@@ -618,10 +628,11 @@ export const ExtrusionWorkReportModal = ({
         if (bom) {
           nextRawMaterials = {
             ...nextRawMaterials,
-            rubberType: bom.rubberType || nextRawMaterials.rubberType || "W60433",
+            rubberType: bom.rubberType !== undefined ? bom.rubberType : (nextRawMaterials.rubberType || ""),
             rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (nextRawMaterials.rubberType2 || ""),
-            compoundType: bom.compoundType !== undefined ? bom.compoundType : (nextRawMaterials.compoundType || "IA4-75B_1"),
+            compoundType: bom.compoundType !== undefined ? bom.compoundType : (nextRawMaterials.compoundType || ""),
             compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (nextRawMaterials.compoundType2 || ""),
+            compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (nextRawMaterials.compoundType3 || ""),
             insertType: bom.insertType !== undefined ? bom.insertType : (nextRawMaterials.insertType || ""),
             coatingType: bom.coatingType !== undefined ? bom.coatingType : (nextRawMaterials.coatingType || "")
           };
@@ -1498,10 +1509,11 @@ export const ExtrusionWorkReportModal = ({
                         ...prev,
                         rawMaterials: {
                           ...prev.rawMaterials,
-                          rubberType: bom.rubberType || prev.rawMaterials?.rubberType,
+                          rubberType: bom.rubberType !== undefined ? bom.rubberType : prev.rawMaterials?.rubberType,
                           rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (prev.rawMaterials?.rubberType2 || ""),
-                          compoundType: bom.compoundType || prev.rawMaterials?.compoundType,
+                          compoundType: bom.compoundType !== undefined ? bom.compoundType : prev.rawMaterials?.compoundType,
                           compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (prev.rawMaterials?.compoundType2 || ""),
+                          compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (prev.rawMaterials?.compoundType3 || ""),
                           insertType: bom.insertType !== undefined ? bom.insertType : (prev.rawMaterials?.insertType || ""),
                           coatingType: bom.coatingType !== undefined ? bom.coatingType : (prev.rawMaterials?.coatingType || "")
                         }
@@ -1514,16 +1526,16 @@ export const ExtrusionWorkReportModal = ({
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs sm:text-sm">
                         <Package className="w-4 h-4 text-indigo-600" />
-                        <span>1. 투입 원자재 현황 (연고무 2종 · 컴파운드 2종 · 심금 · 코팅액)</span>
+                        <span>1. 투입 원자재 현황 (연고무 2종 · 컴파운드 3종 · 심금 · 코팅액)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10.5px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800">
-                          ✨ 품목 선택 시 규격 자동입력 (심금·코팅액 미사용 지원)
+                          ✨ 품목 선택 시 규격 자동입력 (컴파운드 최대 3종 · 심금/코팅액 미사용 지원)
                         </span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                       {/* 1. 사용연고무 #1 */}
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2.5">
                         <div className="flex items-center justify-between">
@@ -1537,7 +1549,7 @@ export const ExtrusionWorkReportModal = ({
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                            연고무 #1 규격명 (EPDM) *
+                            연고무 #1 규격명 (EPDM)
                           </label>
                           <div className="relative">
                             <input
@@ -1553,7 +1565,7 @@ export const ExtrusionWorkReportModal = ({
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
-                              투입중량 (kg) *
+                              투입중량 (kg)
                             </label>
                             <input
                               type="number"
@@ -1566,7 +1578,7 @@ export const ExtrusionWorkReportModal = ({
                           </div>
                           <div>
                             <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
-                              LOT 넘버 *
+                              LOT 넘버
                             </label>
                             <input
                               type="text"
@@ -1584,7 +1596,7 @@ export const ExtrusionWorkReportModal = ({
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
                             <span>⬛</span>
-                            <span>사용연고무 #2 (2종 투입)</span>
+                            <span>사용연고무 #2 (2종)</span>
                           </span>
                           <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                             2종 투입 시
@@ -1696,7 +1708,7 @@ export const ExtrusionWorkReportModal = ({
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
                             <span>🧬</span>
-                            <span>컴파운드 #2 (2종 투입)</span>
+                            <span>컴파운드 #2 (2종)</span>
                           </span>
                           <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                             2종 투입 시
@@ -1748,7 +1760,64 @@ export const ExtrusionWorkReportModal = ({
                         </div>
                       </div>
 
-                      {/* 5. 심금 (Insert) */}
+                      {/* 5. 컴파운드 #3 (3종 투입 선택) */}
+                      <div className={`p-3 rounded-xl border space-y-2.5 transition ${formData.rawMaterials?.compoundType3 ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                            <span>🧬</span>
+                            <span>컴파운드 #3 (3종)</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            3종 투입 시
+                          </span>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                            컴파운드 #3 규격명 (선택)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              list="epdm_compound_list"
+                              value={formData.rawMaterials?.compoundType3 || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "compoundType3", e.target.value)}
+                              placeholder="3종 투입 시 입력"
+                              className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-black text-indigo-900 dark:text-indigo-200 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              투입중량 (kg)
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={formData.rawMaterials?.compoundWeight3 ?? ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "compoundWeight3", e.target.value)}
+                              placeholder="0.0"
+                              disabled={!formData.rawMaterials?.compoundType3}
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-300 mb-0.5">
+                              LOT 넘버
+                            </label>
+                            <input
+                              type="text"
+                              value={formData.rawMaterials?.compoundLot3 || ""}
+                              onChange={(e) => handleNestedFieldChange("rawMaterials", "compoundLot3", e.target.value)}
+                              placeholder="LOT No."
+                              disabled={!formData.rawMaterials?.compoundType3}
+                              className="w-full px-2 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 text-xs font-medium text-slate-800 dark:text-slate-200 disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 6. 심금 (Insert) */}
                       {(() => {
                         const isInsertUnused = !formData.rawMaterials?.insertType || formData.rawMaterials?.insertType === "미사용";
                         return (
@@ -1814,7 +1883,7 @@ export const ExtrusionWorkReportModal = ({
                         );
                       })()}
 
-                      {/* 6. 코팅액 */}
+                      {/* 7. 코팅액 */}
                       {(() => {
                         const isCoatingUnused = !formData.rawMaterials?.coatingType || formData.rawMaterials?.coatingType === "미사용";
                         return (
@@ -1909,7 +1978,7 @@ export const ExtrusionWorkReportModal = ({
                     <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                       <span className="flex items-center gap-1.5">
                         <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>총 원재료 투입합계 (연고무 2종 + 컴파운드 2종 + 심금 + 코팅액)</span>
+                        <span>총 원재료 투입합계 (연고무 2종 + 컴파운드 3종 + 심금 + 코팅액)</span>
                       </span>
                       <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
                         {(
@@ -1917,6 +1986,7 @@ export const ExtrusionWorkReportModal = ({
                           (Number(formData.rawMaterials?.rubberWeight2) || 0) +
                           (Number(formData.rawMaterials?.compoundWeight) || 0) +
                           (Number(formData.rawMaterials?.compoundWeight2) || 0) +
+                          (Number(formData.rawMaterials?.compoundWeight3) || 0) +
                           (formData.rawMaterials?.insertType !== "미사용" ? (Number(formData.rawMaterials?.insertWeight) || 0) : 0) +
                           (formData.rawMaterials?.coatingType !== "미사용" ? (Number(formData.rawMaterials?.coatingWeight) || 0) : 0)
                         ).toFixed(1)}{" "}

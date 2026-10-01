@@ -66,10 +66,11 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
     vehicle: v,
     itemName: n,
     key,
-    rubberType: String(bomData.rubberType || "W60433").trim(),
+    rubberType: String(bomData.rubberType || "").trim(),
     rubberType2: String(bomData.rubberType2 || "").trim(),
-    compoundType: String(bomData.compoundType || "IA4-75B_1").trim(),
+    compoundType: String(bomData.compoundType || "").trim(),
     compoundType2: String(bomData.compoundType2 || "").trim(),
+    compoundType3: String(bomData.compoundType3 || "").trim(),
     insertType: String(bomData.insertType || "").trim(), // 빈 값 또는 "미사용" 가능
     coatingType: String(bomData.coatingType || "").trim(), // 빈 값 또는 "미사용" 가능
     registeredBy: String(registeredBy || "설유철 책임"),
@@ -134,7 +135,9 @@ export const subscribeToCustomBOM = (onDataCallback) => {
           }
         } else {
           const seedMap = { ...ITEM_MATERIAL_BOM_MAP };
-          setDoc(docRef, sanitizeForFirestore(seedMap), { merge: true }).catch(() => {});
+          if (Object.keys(seedMap).length > 0) {
+            setDoc(docRef, sanitizeForFirestore(seedMap), { merge: true }).catch(() => {});
+          }
           saveLocalCustomBOMMap(seedMap);
           onDataCallback(seedMap);
         }

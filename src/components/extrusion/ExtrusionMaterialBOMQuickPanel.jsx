@@ -40,12 +40,13 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const [toastMessage, setToastMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form selections (연고무 2종, 컴파운드 2종, 심금/코팅액 선택/미사용)
+  // Form selections (연고무 2종, 컴파운드 3종, 심금/코팅액 선택/미사용)
   const [selectedItemKey, setSelectedItemKey] = useState("");
   const [rubberType, setRubberType] = useState(EPDM_RUBBERS[0]?.name || "W60712$2");
   const [rubberType2, setRubberType2] = useState("");
   const [compoundType, setCompoundType] = useState(EPDM_COMPOUNDS[0]?.name || "IA4-75B_1");
   const [compoundType2, setCompoundType2] = useState("");
+  const [compoundType3, setCompoundType3] = useState("");
   const [insertType, setInsertType] = useState(""); // 빈 값 = 미사용
   const [coatingType, setCoatingType] = useState(""); // 빈 값 = 미사용
 
@@ -86,6 +87,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     setRubberType2(existingBOM.rubberType2 || "");
     setCompoundType(existingBOM.compoundType || "");
     setCompoundType2(existingBOM.compoundType2 || "");
+    setCompoundType3(existingBOM.compoundType3 || "");
     setInsertType(existingBOM.insertType === "미사용" ? "" : (existingBOM.insertType || ""));
     setCoatingType(existingBOM.coatingType === "미사용" ? "" : (existingBOM.coatingType || ""));
   };
@@ -139,6 +141,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           rubberType2: rubberType2 || "",
           compoundType: compoundType || "",
           compoundType2: compoundType2 || "",
+          compoundType3: compoundType3 || "",
           insertType: insertType || "미사용",
           coatingType: coatingType || "미사용"
         },
@@ -154,6 +157,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           rubberType2,
           compoundType,
           compoundType2,
+          compoundType3,
           insertType: insertType || "미사용",
           coatingType: coatingType || "미사용"
         });
@@ -194,6 +198,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
         rubberType2: val.rubberType2 || "",
         compoundType: val.compoundType || "-",
         compoundType2: val.compoundType2 || "",
+        compoundType3: val.compoundType3 || "",
         insertType: val.insertType || "미사용",
         coatingType: val.coatingType || "미사용",
         updatedAt: val.updatedAt || "",
@@ -209,6 +214,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           it.rubberType2.toLowerCase().includes(q) ||
           it.compoundType.toLowerCase().includes(q) ||
           it.compoundType2.toLowerCase().includes(q) ||
+          it.compoundType3.toLowerCase().includes(q) ||
           it.insertType.toLowerCase().includes(q) ||
           it.coatingType.toLowerCase().includes(q)
         );
@@ -344,7 +350,35 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
             </select>
           </div>
 
-          {/* 6. 심금 (미사용 가능) */}
+          {/* 6. 컴파운드 #3 (3종 투입 가능) */}
+          <div className="w-[130px]">
+            <select
+              value={compoundType3}
+              onChange={(e) => setCompoundType3(e.target.value)}
+              className={`w-full px-2 py-1.5 rounded-xl bg-slate-800 border text-xs font-bold focus:ring-2 focus:ring-teal-400 focus:outline-hidden cursor-pointer ${
+                compoundType3 ? "border-emerald-500/70 text-emerald-300" : "border-slate-700 text-slate-400"
+              }`}
+              title="컴파운드 #3 (3종 투입 시 선택)"
+            >
+              <option value="">컴파운드3: (없음)</option>
+              <optgroup label="-- 컴파운드 --">
+                {EPDM_COMPOUNDS.map((cp) => (
+                  <option key={`cp3_${cp.name}`} value={cp.name}>
+                    + {cp.name}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="-- 연고무 혼합 --">
+                {EPDM_RUBBERS.map((r) => (
+                  <option key={`cp3_r_${r.name}`} value={r.name}>
+                    + {r.name}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+
+          {/* 7. 심금 (미사용 가능) */}
           <div className="w-[125px]">
             <select
               value={insertType}
@@ -363,7 +397,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
             </select>
           </div>
 
-          {/* 7. 코팅액 (미사용 가능) */}
+          {/* 8. 코팅액 (미사용 가능) */}
           <div className="w-[125px]">
             <select
               value={coatingType}
@@ -382,7 +416,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
             </select>
           </div>
 
-          {/* 8. 등록 버튼 & 등록현황 버튼 */}
+          {/* 9. 등록 버튼 & 등록현황 버튼 */}
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="submit"
@@ -430,7 +464,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    품목별 사용연고무(1·2종), 컴파운드(1·2종), 심금, 코팅액 매핑 목록
+                    품목별 사용연고무(1·2종), 컴파운드(1·2·3종), 심금, 코팅액 매핑 목록
                   </p>
                 </div>
               </div>
@@ -468,7 +502,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                       <th className="p-2.5">차종</th>
                       <th className="p-2.5">품명</th>
                       <th className="p-2.5">연고무 (1·2종)</th>
-                      <th className="p-2.5">컴파운드 (1·2종)</th>
+                      <th className="p-2.5">컴파운드 (1·2·3종)</th>
                       <th className="p-2.5">심금</th>
                       <th className="p-2.5">코팅액</th>
                       <th className="p-2.5 text-center">관리</th>
@@ -493,6 +527,9 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
                           <div>{row.compoundType || "-"}</div>
                           {row.compoundType2 && (
                             <div className="text-[10.5px] text-emerald-500 font-semibold">+ {row.compoundType2}</div>
+                          )}
+                          {row.compoundType3 && (
+                            <div className="text-[10.5px] text-emerald-600 font-semibold">+ {row.compoundType3}</div>
                           )}
                         </td>
                         <td className="p-2.5 text-slate-700 dark:text-slate-300">
