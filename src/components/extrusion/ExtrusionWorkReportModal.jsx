@@ -18,31 +18,20 @@ import {
   Activity,
   Plus,
   Check,
-  ChevronDown,
-  ChevronUp,
   FileCheck2,
   FileSpreadsheet,
   Package,
-  Sliders,
-  Thermometer,
-  Gauge,
-  Flame,
-  Wind,
   ShieldCheck,
   ArrowRight,
   ArrowLeft,
-  CheckSquare,
-  Wrench,
   Camera,
-  AlertOctagon,
-  Image as ImageIcon
+  AlertOctagon
 } from "lucide-react";
 import {
   WORKER_PRESETS,
   DOWNTIME_CATEGORIES,
   TPM_CHECK_ITEMS,
   EXTRUSION_STANDARD_SPECS,
-  MATERIAL_PRESETS,
   exportExtrusionCheckSheetExcel,
   sanitizeExtrusionReport
 } from "../../services/extrusionProductionService";
@@ -56,7 +45,6 @@ import {
   EPDM_COATINGS,
   getMaterialBOMForItem
 } from "../../data/extrusionRawMaterialsData";
-import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -151,13 +139,6 @@ export const ExtrusionWorkReportModal = ({
   
   // Step state: 'tpm' (1단계: TPM 점검) or 'report' (2단계: 작업일보 작성)
   const [currentStep, setCurrentStep] = useState(isEditing ? "report" : "tpm");
-  const [showCheckSheetDetails, setShowCheckSheetDetails] = useState(true);
-  const [presetMessage, setPresetMessage] = useState("");
-  const [editingSpecs, setEditingSpecs] = useState({});
-
-  const toggleEditSpec = (field) => {
-    setEditingSpecs((prev) => ({ ...prev, [field]: !prev[field] }));
-  };
 
   // Photo Capture & Preview states
   const fileInputRef = useRef(null);
@@ -678,88 +659,6 @@ export const ExtrusionWorkReportModal = ({
     }));
   };
 
-  const handleApplyStandardSpecs = () => {
-    setFormData((prev) => ({
-      ...prev,
-      rawMaterials: {
-        rubberType: prev.rawMaterials?.rubberType || EXTRUSION_STANDARD_SPECS.rubberType,
-        rubberLot: prev.rawMaterials?.rubberLot || EXTRUSION_STANDARD_SPECS.rubberLot,
-        coatingType: prev.rawMaterials?.coatingType || EXTRUSION_STANDARD_SPECS.coatingType,
-        coatingLot: prev.rawMaterials?.coatingLot || EXTRUSION_STANDARD_SPECS.coatingLot,
-        insertType: prev.rawMaterials?.insertType || EXTRUSION_STANDARD_SPECS.insertType,
-        insertLot: prev.rawMaterials?.insertLot || EXTRUSION_STANDARD_SPECS.insertLot
-      },
-      conditions: {
-        ...prev.conditions,
-        extruder110Rpm: EXTRUSION_STANDARD_SPECS.extruder110Rpm,
-        extruder60Rpm: EXTRUSION_STANDARD_SPECS.extruder60Rpm,
-        waterTemp: EXTRUSION_STANDARD_SPECS.waterTemp,
-        cureZoneTemp: EXTRUSION_STANDARD_SPECS.cureZoneTemp,
-        haulOffSpeed: EXTRUSION_STANDARD_SPECS.haulOffSpeed,
-        sprayGun1: EXTRUSION_STANDARD_SPECS.sprayGun1,
-        sprayGun2: EXTRUSION_STANDARD_SPECS.sprayGun2,
-        sprayGun3: EXTRUSION_STANDARD_SPECS.sprayGun3,
-        sprayGun4: EXTRUSION_STANDARD_SPECS.sprayGun4,
-        coatingThicknessBase: EXTRUSION_STANDARD_SPECS.coatingThicknessBase,
-        coatingThicknessOuter: EXTRUSION_STANDARD_SPECS.coatingThicknessOuter,
-        coatingThicknessInner: EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
-        pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones]
-      }
-    }));
-    setShowCheckSheetDetails(true);
-    setPresetMessage("⚡ 110Ø·60Ø 압출기, 온수조, PCM 13개 존, 코팅건 표준조건이 일괄 적용되었습니다.");
-    setTimeout(() => setPresetMessage(""), 3500);
-  };
-
-  const handleZoneChange = (zoneIdx, val) => {
-    const currentZones = Array.isArray(formData.conditions?.pcmZones) && formData.conditions.pcmZones.length === 13
-      ? [...formData.conditions.pcmZones]
-      : [...EXTRUSION_STANDARD_SPECS.pcmZones];
-    currentZones[zoneIdx] = val === "" ? "" : Number(val);
-    
-    // Auto calculate average for valid numbers
-    const validNums = currentZones.map(Number).filter((n) => !isNaN(n) && n > 0);
-    const avg = validNums.length > 0 ? (validNums.reduce((a, b) => a + b, 0) / validNums.length).toFixed(1) : "212.0";
-
-    setFormData((prev) => ({
-      ...prev,
-      conditions: {
-        ...prev.conditions,
-        pcmZones: currentZones,
-        cureZoneTemp: avg
-      }
-    }));
-  };
-
-  const handleFillAllZones = (temp = 210.0) => {
-    const newZones = Array(13).fill(Number(temp));
-    setFormData((prev) => ({
-      ...prev,
-      conditions: {
-        ...prev.conditions,
-        pcmZones: newZones,
-        cureZoneTemp: String(temp)
-      }
-    }));
-    setPresetMessage(`⚡ PCM 13개 존 전구역 온도를 ${temp}℃로 일괄 설정했습니다.`);
-    setTimeout(() => setPresetMessage(""), 3000);
-  };
-
-  const handleSyncScrapFromDefects = () => {
-    const c = Number(formData.defectBreakdown?.cutoffKg) || 0;
-    const s = Number(formData.defectBreakdown?.startLossKg) || 0;
-    const a = Number(formData.defectBreakdown?.appearanceKg) || 0;
-    const totalDefectKg = Number((c + s + a).toFixed(1));
-
-    if (formData.items.length > 0) {
-      const nextItems = [...formData.items];
-      nextItems[0] = { ...nextItems[0], scrapKg: totalDefectKg };
-      setFormData((prev) => ({ ...prev, items: nextItems }));
-      setPresetMessage(`⚡ 불량 합계 ${totalDefectKg}kg이 스크랩에 자동 반영되었습니다.`);
-      setTimeout(() => setPresetMessage(""), 3000);
-    }
-  };
-
   const handleDownloadCheckSheet = async () => {
     try {
       await exportExtrusionCheckSheetExcel({
@@ -894,7 +793,7 @@ export const ExtrusionWorkReportModal = ({
             </button>
           </div>
 
-          {currentStep === "tpm" && (
+          {currentStep === "tpm" ? (
             <button
               type="button"
               onClick={handleSetAllTpmOk}
@@ -902,6 +801,16 @@ export const ExtrusionWorkReportModal = ({
             >
               <Check className="w-3.5 h-3.5" />
               <span>⚡ 전체 양호(○) 일괄 체크</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleDownloadCheckSheet}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 font-bold text-xs transition active:scale-95 cursor-pointer border border-teal-500/40 flex items-center gap-1 shadow-2xs shrink-0"
+              title="작성 중인 데이터로 A4 3시트 엑셀 다운로드"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-teal-300" />
+              <span>A4 엑셀 출력</span>
             </button>
           )}
         </div>
@@ -1107,13 +1016,6 @@ export const ExtrusionWorkReportModal = ({
           /* STEP 2: 압출 작업일보 및 체크시트 화면 */
           /* ========================================================================= */
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 text-slate-800 dark:text-slate-100 text-xs sm:text-sm animate-fadeIn">
-            {/* Notification message */}
-            {presetMessage && (
-              <div className="p-3 rounded-2xl bg-teal-100 dark:bg-teal-950 text-teal-950 dark:text-teal-200 border border-teal-300 flex items-center gap-2 text-xs font-black animate-fadeIn shadow-xs">
-                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                <span>{presetMessage}</span>
-              </div>
-            )}
 
             {/* ========================================================================= */}
             {/* Section 1: Basic Info (Clean Line Buttons, Shift, Date, Worker Dropdown) */}
@@ -1321,56 +1223,219 @@ export const ExtrusionWorkReportModal = ({
                           ))}
                         </select>
 
-                        {/* Minimal Raw Material BOM Preview for this item (미사용 재료 완전 숨김) */}
+                        {/* Minimal Raw Material BOM & Weight/LOT Direct Inputs (미사용 재료 완전 숨김) */}
                         {(() => {
                           if (!item.vehicle || !item.itemName) return null;
                           const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName);
-                          const activeBOMList = [];
-                          if (itemBOM.rubberType && itemBOM.rubberType !== "미사용") {
-                            activeBOMList.push({ icon: "⬛", label: "연고무", val: itemBOM.rubberType, cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" });
-                          }
-                          if (itemBOM.rubberType2 && itemBOM.rubberType2 !== "미사용") {
-                            activeBOMList.push({ icon: "⬛", label: "연고무2", val: itemBOM.rubberType2, cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700" });
-                          }
-                          if (itemBOM.compoundType && itemBOM.compoundType !== "미사용") {
-                            activeBOMList.push({ icon: "🧬", label: "컴파운드1", val: itemBOM.compoundType, cls: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" });
-                          }
-                          if (itemBOM.compoundType2 && itemBOM.compoundType2 !== "미사용") {
-                            activeBOMList.push({ icon: "🧬", label: "컴파운드2", val: itemBOM.compoundType2, cls: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" });
-                          }
-                          if (itemBOM.compoundType3 && itemBOM.compoundType3 !== "미사용") {
-                            activeBOMList.push({ icon: "🧬", label: "컴파운드3", val: itemBOM.compoundType3, cls: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800" });
-                          }
-                          if (itemBOM.insertType && itemBOM.insertType !== "미사용") {
-                            activeBOMList.push({ icon: "⚙️", label: "심금", val: itemBOM.insertType, cls: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" });
-                          }
-                          if (itemBOM.coatingType && itemBOM.coatingType !== "미사용") {
-                            activeBOMList.push({ icon: "🧪", label: "코팅액", val: itemBOM.coatingType, cls: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800" });
-                          }
+
+                          const ALL_MATERIAL_SLOTS = [
+                            {
+                              id: "rubberType",
+                              weightKey: "rubberWeight",
+                              lotKey: "rubberLot",
+                              icon: "⬛",
+                              label: "연고무",
+                              val: formData.rawMaterials?.rubberType || itemBOM.rubberType,
+                              defaultVal: EPDM_RUBBERS[0]?.name || "W60712$2",
+                              containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
+                              specTextCls: "text-amber-300",
+                              required: true
+                            },
+                            {
+                              id: "rubberType2",
+                              weightKey: "rubberWeight2",
+                              lotKey: "rubberLot2",
+                              icon: "⬛",
+                              label: "연고무2",
+                              val: formData.rawMaterials?.rubberType2 !== undefined ? formData.rawMaterials?.rubberType2 : itemBOM.rubberType2,
+                              defaultVal: EPDM_RUBBERS[1]?.name || "W60712$1",
+                              containerCls: "bg-slate-900/90 dark:bg-slate-950 border-slate-700 text-slate-100",
+                              specTextCls: "text-amber-300",
+                              required: false
+                            },
+                            {
+                              id: "compoundType",
+                              weightKey: "compoundWeight",
+                              lotKey: "compoundLot",
+                              icon: "🧬",
+                              label: "컴파운드1",
+                              val: formData.rawMaterials?.compoundType || itemBOM.compoundType,
+                              defaultVal: EPDM_COMPOUNDS[0]?.name || "IA4-75B_1",
+                              containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
+                              specTextCls: "text-emerald-300",
+                              required: true
+                            },
+                            {
+                              id: "compoundType2",
+                              weightKey: "compoundWeight2",
+                              lotKey: "compoundLot2",
+                              icon: "🧬",
+                              label: "컴파운드2",
+                              val: formData.rawMaterials?.compoundType2 !== undefined ? formData.rawMaterials?.compoundType2 : itemBOM.compoundType2,
+                              defaultVal: EPDM_COMPOUNDS[1]?.name || "B64E",
+                              containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
+                              specTextCls: "text-emerald-300",
+                              required: false
+                            },
+                            {
+                              id: "compoundType3",
+                              weightKey: "compoundWeight3",
+                              lotKey: "compoundLot3",
+                              icon: "🧬",
+                              label: "컴파운드3",
+                              val: formData.rawMaterials?.compoundType3 !== undefined ? formData.rawMaterials?.compoundType3 : itemBOM.compoundType3,
+                              defaultVal: EPDM_COMPOUNDS[2]?.name || "L2KIA7-35B",
+                              containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
+                              specTextCls: "text-emerald-300",
+                              required: false
+                            },
+                            {
+                              id: "insertType",
+                              weightKey: "insertWeight",
+                              lotKey: "insertLot",
+                              icon: "⚙️",
+                              label: "심금",
+                              val: formData.rawMaterials?.insertType !== undefined ? formData.rawMaterials?.insertType : itemBOM.insertType,
+                              defaultVal: EPDM_INSERTS[0]?.name || "SUS430(0.4*51*3)",
+                              containerCls: "bg-amber-950/80 dark:bg-amber-950 border-amber-700/80 text-amber-100",
+                              specTextCls: "text-amber-300",
+                              required: false
+                            },
+                            {
+                              id: "coatingType",
+                              weightKey: "coatingWeight",
+                              lotKey: "coatingLot",
+                              icon: "🧪",
+                              label: "코팅액",
+                              val: formData.rawMaterials?.coatingType !== undefined ? formData.rawMaterials?.coatingType : itemBOM.coatingType,
+                              defaultVal: EPDM_COATINGS[0]?.name || "HSC-2000-B-3",
+                              containerCls: "bg-sky-950/80 dark:bg-sky-950 border-sky-700/80 text-sky-100",
+                              specTextCls: "text-sky-300",
+                              required: false
+                            }
+                          ];
+
+                          const activeSlots = ALL_MATERIAL_SLOTS.filter(s => s.val && s.val.trim() !== "" && s.val.trim() !== "미사용");
+                          const unusedSlots = ALL_MATERIAL_SLOTS.filter(s => !s.val || s.val.trim() === "" || s.val.trim() === "미사용");
 
                           return (
-                            <div className="pt-2">
-                              {activeBOMList.length > 0 ? (
-                                <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80">
-                                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 flex items-center gap-1 shrink-0">
-                                    <span>🌿</span> BOM 원재료:
-                                  </span>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {activeBOMList.map((m, mIdx) => (
-                                      <span
-                                        key={mIdx}
-                                        className={`text-[10.5px] font-black px-2 py-0.5 rounded-lg border shadow-2xs flex items-center gap-1 ${m.cls}`}
-                                      >
-                                        <span>{m.icon}</span>
-                                        <span className="opacity-70 font-bold text-[9.5px]">{m.label}:</span>
-                                        <span>{m.val}</span>
+                            <div className="pt-2 pb-0.5 space-y-2">
+                              {activeSlots.length > 0 ? (
+                                <div className="p-3 rounded-2xl bg-slate-900/90 dark:bg-slate-950 border-2 border-slate-700/80 shadow-md space-y-2.5">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap pb-1.5 border-b border-slate-800">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] font-black text-emerald-400 flex items-center gap-1">
+                                        <span>🌿</span> BOM 원재료 규격 &amp; 투입 중량 / LOT 넘버
                                       </span>
-                                    ))}
+                                      <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800">
+                                        실시간 입력
+                                      </span>
+                                    </div>
+
+                                    {/* Quick Add Unused Materials if needed */}
+                                    {unusedSlots.length > 0 && (
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="text-[10px] text-slate-400 font-bold">➕ 자재 추가:</span>
+                                        {unusedSlots.map((u) => (
+                                          <button
+                                            key={u.id}
+                                            type="button"
+                                            onClick={() => {
+                                              const bVal = itemBOM[u.id];
+                                              const valToSet = (bVal && bVal !== "미사용") ? bVal : u.defaultVal;
+                                              handleNestedFieldChange("rawMaterials", u.id, valToSet);
+                                            }}
+                                            className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-600 transition active:scale-95 cursor-pointer flex items-center gap-0.5"
+                                          >
+                                            <span>{u.icon}</span>
+                                            <span>+{u.label}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Grid of material cards with weight & lot inputs */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                                    {activeSlots.map((slot) => {
+                                      const currentWeight = formData.rawMaterials?.[slot.weightKey] ?? "";
+                                      const currentLot = formData.rawMaterials?.[slot.lotKey] || "";
+
+                                      return (
+                                        <div
+                                          key={slot.id}
+                                          className={`p-2.5 rounded-xl border flex flex-col justify-between gap-2 shadow-xs ${slot.containerCls}`}
+                                        >
+                                          {/* Badge Header: Icon + Name: Spec */}
+                                          <div className="flex items-center justify-between gap-1">
+                                            <div className="flex items-center gap-1.5 truncate">
+                                              <span className="text-xs">{slot.icon}</span>
+                                              <span className="opacity-80 font-bold text-[10.5px]">{slot.label}:</span>
+                                              <span className={`text-xs font-black truncate ${slot.specTextCls}`}>{slot.val}</span>
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleNestedFieldChange("rawMaterials", slot.id, "미사용")}
+                                              className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition cursor-pointer"
+                                              title="이 자재 미사용 처리 (숨김)"
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+
+                                          {/* Direct Inputs: 중량(kg) & LOT 넘버 */}
+                                          <div className="grid grid-cols-2 gap-1.5">
+                                            <div>
+                                              <label className="block text-[9.5px] font-black text-emerald-400 mb-0.5">
+                                                투입중량 (kg) *
+                                              </label>
+                                              <input
+                                                type="number"
+                                                step="0.1"
+                                                value={currentWeight}
+                                                onChange={(e) => handleNestedFieldChange("rawMaterials", slot.weightKey, e.target.value)}
+                                                placeholder="0.0"
+                                                className="w-full px-2 py-1.5 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-emerald-500/80 text-xs font-black text-emerald-300 placeholder-emerald-600/60 text-right focus:ring-2 focus:ring-emerald-400 focus:outline-hidden"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-[9.5px] font-black text-indigo-300 mb-0.5">
+                                                LOT 넘버 *
+                                              </label>
+                                              <input
+                                                type="text"
+                                                value={currentLot}
+                                                onChange={(e) => handleNestedFieldChange("rawMaterials", slot.lotKey, e.target.value)}
+                                                placeholder="LOT No."
+                                                className="w-full px-2 py-1.5 rounded-lg bg-slate-800/90 dark:bg-slate-900 border border-indigo-400/80 text-xs font-bold text-white placeholder-slate-500 focus:ring-2 focus:ring-indigo-400 focus:outline-hidden"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 </div>
                               ) : (
-                                <div className="text-[10.5px] font-bold text-slate-400 dark:text-slate-500 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
-                                  🌿 등록된 원재료 BOM 없음 (설유철 책임 등록 대기)
+                                <div className="text-xs font-bold text-slate-400 px-3 py-2 bg-slate-100 dark:bg-slate-800/60 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>🌿</span>
+                                    <span>선택된 품목에 매칭된 BOM 원재료가 없습니다.</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-[10px] text-slate-500 font-bold">자재 직접 추가:</span>
+                                    {unusedSlots.map((u) => (
+                                      <button
+                                        key={u.id}
+                                        type="button"
+                                        onClick={() => handleNestedFieldChange("rawMaterials", u.id, u.defaultVal)}
+                                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 cursor-pointer"
+                                      >
+                                        <span>{u.icon}</span>
+                                        <span>+{u.label}</span>
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -1524,738 +1589,13 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 4: 작업체크시트 상세 기록 (원자재 프리셋 / 불량 자동연동 / 110Ø·60Ø / 코팅건 1~4 / PCM 13존 매트릭스) */}
-            {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80 overflow-hidden">
-              <div className="w-full px-4 py-3 flex items-center justify-between gap-2 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/80 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => setShowCheckSheetDetails(!showCheckSheetDetails)}
-                  className="flex items-center gap-2 text-left cursor-pointer hover:opacity-80 transition flex-1 min-w-[240px]"
-                >
-                  <FileCheck2 className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-                  <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                    ④ 작업체크시트 정밀 기록 (원자재 LOT · 110Ø·60Ø 압출 · 코팅두께 · PCM 13존)
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 border border-teal-300 shrink-0">
-                    {showCheckSheetDetails ? "접기 ▲" : "펼치기 ▼"}
-                  </span>
-                </button>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleApplyStandardSpecs}
-                    className="px-2.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs transition active:scale-95 cursor-pointer flex items-center gap-1 shadow-2xs"
-                    title="110Ø·60Ø 압출, 온수조, PCM 13존, 코팅건 표준조건을 한 번에 입력"
-                  >
-                    <Zap className="w-3.5 h-3.5 text-teal-200" />
-                    <span>⚡ 표준조건 자동완성</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadCheckSheet}
-                    className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-200 font-bold text-xs transition active:scale-95 cursor-pointer border border-teal-500/40 flex items-center gap-1 shadow-2xs"
-                    title="작성 중인 데이터로 A4 3시트 엑셀 다운로드"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-teal-300" />
-                    <span>A4 엑셀</span>
-                  </button>
-                </div>
-              </div>
-
-              {showCheckSheetDetails && (
-                <div className="p-4 space-y-4 animate-fadeIn">
-                  {/* 설유철 책임 전용 BOM 빠른 등록 패널 */}
-                  <ExtrusionMaterialBOMQuickPanel
-                    onBOMRegistered={(bom) => {
-                      setFormData((prev) => ({
-                        ...prev,
-                        rawMaterials: {
-                          ...prev.rawMaterials,
-                          rubberType: bom.rubberType !== undefined ? bom.rubberType : prev.rawMaterials?.rubberType,
-                          rubberType2: bom.rubberType2 !== undefined ? bom.rubberType2 : (prev.rawMaterials?.rubberType2 || ""),
-                          compoundType: bom.compoundType !== undefined ? bom.compoundType : prev.rawMaterials?.compoundType,
-                          compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (prev.rawMaterials?.compoundType2 || ""),
-                          compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (prev.rawMaterials?.compoundType3 || ""),
-                          insertType: bom.insertType !== undefined ? bom.insertType : (prev.rawMaterials?.insertType || ""),
-                          coatingType: bom.coatingType !== undefined ? bom.coatingType : (prev.rawMaterials?.coatingType || "")
-                        }
-                      }));
-                    }}
-                  />
-
-                  {/* 1. 투입 원자재 현황 (EPDM.xlsx 마스터 연동 및 중량/LOT 기록) */}
-                  {(() => {
-                    const activeItem = formData.items[0] || {};
-                    const activeBOM = getMaterialBOMForItem(activeItem.vehicle, activeItem.itemName);
-                    const isCustomBOM = Boolean(
-                      activeBOM && (activeBOM.matchType === "CUSTOM_EXACT" || activeBOM.matchType === "CUSTOM_VEHICLE")
-                    );
-
-                    return (
-                      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border-2 border-indigo-100 dark:border-indigo-950/80 shadow-xs space-y-3.5">
-                        {/* Section Header */}
-                        <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-2 font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                            <Package className="w-4 h-4 text-indigo-600" />
-                            <span>1. 투입 원자재 현황 (연고무 2종 · 컴파운드 3종 · 심금 · 코팅액)</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[10.5px] font-black text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-full border border-indigo-200 dark:border-indigo-800">
-                              ✨ 품목 선택 시 설유철 BOM 자동연동 (작업자는 중량/LOT만 입력)
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* BOM Matched Guide Banner */}
-                        {isCustomBOM ? (
-                          <div className="p-3 rounded-xl bg-gradient-to-r from-teal-50 via-indigo-50 to-emerald-50 dark:from-teal-950/40 dark:via-indigo-950/40 dark:to-emerald-950/40 border-2 border-teal-400 dark:border-teal-700/80 flex items-center justify-between gap-3 flex-wrap animate-fadeIn">
-                            <div className="flex items-center gap-2.5">
-                              <div className="p-2 rounded-xl bg-teal-600 text-white shadow-xs">
-                                <CheckCircle2 className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs font-black text-slate-900 dark:text-white">
-                                    선택 품목: [{activeItem.vehicle}] {activeItem.itemName}
-                                  </span>
-                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-600 text-white shadow-2xs">
-                                    ✅ 설유철 책임 등록 BOM 매칭 완료 ({activeBOM.registeredBy || "설유철 책임"})
-                                  </span>
-                                </div>
-                                <p className="text-[11px] text-teal-800 dark:text-teal-300 font-bold mt-0.5">
-                                  👉 원자재 규격이 자동 지정되었습니다. 작업자는 아래 <span className="text-emerald-700 dark:text-emerald-300 font-black underline">[투입중량]</span>과 <span className="text-indigo-700 dark:text-indigo-300 font-black underline">[LOT 넘버]</span>만 입력해 주세요.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
-                            <div className="flex items-center gap-2">
-                              <span className="p-1.5 rounded-lg bg-slate-600 text-white">
-                                <Package className="w-3.5 h-3.5" />
-                              </span>
-                              <div>
-                                <span className="text-xs font-black text-slate-900 dark:text-white">
-                                  선택 품목: [{activeItem.vehicle || "-"}] {activeItem.itemName || "-"}
-                                </span>
-                                <p className="text-[10.5px] text-slate-600 dark:text-slate-400 font-medium">
-                                  상단 패널에서 설유철 책임이 BOM을 등록하면 규격이 자동 표시됩니다.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Material Cards Grid with Minimal Active Cards and Unused Hidden */}
-                        {(() => {
-                          const RAW_MATERIAL_DEFS = [
-                            {
-                              id: "rubberType",
-                              weightKey: "rubberWeight",
-                              lotKey: "rubberLot",
-                              icon: "⬛",
-                              name: "사용연고무 #1",
-                              shortName: "연고무 #1",
-                              badge: "주 원자재",
-                              colorTheme: "indigo",
-                              dataListId: "epdm_rubber_list",
-                              defaultVal: EPDM_RUBBERS[0]?.name || "W60712$2",
-                              required: true
-                            },
-                            {
-                              id: "rubberType2",
-                              weightKey: "rubberWeight2",
-                              lotKey: "rubberLot2",
-                              icon: "⬛",
-                              name: "사용연고무 #2",
-                              shortName: "연고무 #2",
-                              badge: "2종 고무",
-                              colorTheme: "indigo",
-                              dataListId: "epdm_rubber_list",
-                              defaultVal: EPDM_RUBBERS[1]?.name || "W60712$1",
-                              required: false
-                            },
-                            {
-                              id: "compoundType",
-                              weightKey: "compoundWeight",
-                              lotKey: "compoundLot",
-                              icon: "🧬",
-                              name: "컴파운드 #1",
-                              shortName: "컴파운드 #1",
-                              badge: "주 컴파운드",
-                              colorTheme: "emerald",
-                              dataListId: "epdm_compound_list",
-                              defaultVal: EPDM_COMPOUNDS[0]?.name || "IA4-75B_1",
-                              required: true
-                            },
-                            {
-                              id: "compoundType2",
-                              weightKey: "compoundWeight2",
-                              lotKey: "compoundLot2",
-                              icon: "🧬",
-                              name: "컴파운드 #2",
-                              shortName: "컴파운드 #2",
-                              badge: "2종 컴파운드",
-                              colorTheme: "emerald",
-                              dataListId: "epdm_compound_list",
-                              defaultVal: EPDM_COMPOUNDS[1]?.name || "B64E",
-                              required: false
-                            },
-                            {
-                              id: "compoundType3",
-                              weightKey: "compoundWeight3",
-                              lotKey: "compoundLot3",
-                              icon: "🧬",
-                              name: "컴파운드 #3",
-                              shortName: "컴파운드 #3",
-                              badge: "3종 컴파운드",
-                              colorTheme: "emerald",
-                              dataListId: "epdm_compound_list",
-                              defaultVal: EPDM_COMPOUNDS[2]?.name || "L2KIA7-35B",
-                              required: false
-                            },
-                            {
-                              id: "insertType",
-                              weightKey: "insertWeight",
-                              lotKey: "insertLot",
-                              icon: "⚙️",
-                              name: "심금 (Insert)",
-                              shortName: "심금",
-                              badge: "심금",
-                              colorTheme: "amber",
-                              dataListId: "epdm_insert_list",
-                              defaultVal: EPDM_INSERTS[0]?.name || "SUS430(0.4*51*3)",
-                              required: false
-                            },
-                            {
-                              id: "coatingType",
-                              weightKey: "coatingWeight",
-                              lotKey: "coatingLot",
-                              icon: "🧪",
-                              name: "코팅액 (Coating)",
-                              shortName: "코팅액",
-                              badge: "코팅액",
-                              colorTheme: "sky",
-                              dataListId: "epdm_coating_list",
-                              defaultVal: EPDM_COATINGS[0]?.name || "HSC-2000-B-3",
-                              required: false
-                            }
-                          ];
-
-                          const activeMaterials = RAW_MATERIAL_DEFS.filter((def) => {
-                            const val = formData.rawMaterials?.[def.id];
-                            return Boolean(val && val.trim() !== "" && val.trim() !== "미사용");
-                          });
-
-                          const unusedMaterials = RAW_MATERIAL_DEFS.filter((def) => {
-                            const val = formData.rawMaterials?.[def.id];
-                            return !val || val.trim() === "" || val.trim() === "미사용";
-                          });
-
-                          return (
-                            <div className="space-y-3">
-                              {/* Quick Add Buttons for Unused Materials */}
-                              {unusedMaterials.length > 0 && (
-                                <div className="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-300 dark:border-slate-700">
-                                  <span className="text-[11px] font-black text-slate-600 dark:text-slate-400 flex items-center gap-1">
-                                    <span>➕</span> 추가 투입 자재 (클릭 시 활성화):
-                                  </span>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {unusedMaterials.map((def) => (
-                                      <button
-                                        key={def.id}
-                                        type="button"
-                                        onClick={() => {
-                                          const bomVal = activeBOM[def.id];
-                                          const valToSet = (bomVal && bomVal !== "미사용") ? bomVal : def.defaultVal;
-                                          handleNestedFieldChange("rawMaterials", def.id, valToSet);
-                                        }}
-                                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/70 border border-slate-300 dark:border-slate-700 text-slate-700 hover:text-indigo-600 dark:text-slate-200 font-bold text-[11px] transition active:scale-95 cursor-pointer shadow-2xs flex items-center gap-1"
-                                      >
-                                        <span>{def.icon}</span>
-                                        <span>+{def.shortName}</span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Active Cards Grid */}
-                              {activeMaterials.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                                  {activeMaterials.map((def) => {
-                                    const specValue = formData.rawMaterials?.[def.id] || "";
-                                    const isEditingSpec = editingSpecs[def.id];
-
-                                    let borderCls = "border-indigo-200 dark:border-indigo-800/70";
-                                    let badgeCls = "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800";
-                                    let specBgCls = "bg-indigo-50/80 dark:bg-indigo-950/70 text-indigo-950 dark:text-indigo-100 border-indigo-200 dark:border-indigo-800";
-
-                                    if (def.colorTheme === "emerald") {
-                                      borderCls = "border-emerald-200 dark:border-emerald-800/70";
-                                      badgeCls = "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
-                                      specBgCls = "bg-emerald-50/80 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800";
-                                    } else if (def.colorTheme === "amber") {
-                                      borderCls = "border-amber-200 dark:border-amber-800/70";
-                                      badgeCls = "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800";
-                                      specBgCls = "bg-amber-50/80 dark:bg-amber-950/70 text-amber-950 dark:text-amber-100 border-amber-200 dark:border-amber-800";
-                                    } else if (def.colorTheme === "sky") {
-                                      borderCls = "border-sky-200 dark:border-sky-800/70";
-                                      badgeCls = "bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800";
-                                      specBgCls = "bg-sky-50/80 dark:bg-sky-950/70 text-sky-950 dark:text-sky-100 border-sky-200 dark:border-sky-800";
-                                    }
-
-                                    return (
-                                      <div
-                                        key={def.id}
-                                        className={`p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border-2 ${borderCls} space-y-2.5 shadow-2xs hover:shadow-xs transition`}
-                                      >
-                                        {/* Card Header */}
-                                        <div className="flex items-center justify-between gap-1">
-                                          <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                                            <span>{def.icon}</span>
-                                            <span>{def.name}</span>
-                                          </span>
-                                          <div className="flex items-center gap-1.5">
-                                            <span className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md border ${badgeCls}`}>
-                                              {def.badge}
-                                            </span>
-                                            <button
-                                              type="button"
-                                              onClick={() => handleNestedFieldChange("rawMaterials", def.id, "미사용")}
-                                              className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 p-1 rounded-md transition cursor-pointer"
-                                              title="이 원자재 미사용 처리 (숨김)"
-                                            >
-                                              <X className="w-3.5 h-3.5" />
-                                            </button>
-                                          </div>
-                                        </div>
-
-                                        {/* Spec Display / Direct Edit */}
-                                        <div>
-                                          <div className="flex items-center justify-between mb-1">
-                                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400">
-                                              {def.shortName} 규격명
-                                            </label>
-                                            <button
-                                              type="button"
-                                              onClick={() => toggleEditSpec(def.id)}
-                                              className="text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                                            >
-                                              {isEditingSpec ? "완료" : "✏️ 규격 변경"}
-                                            </button>
-                                          </div>
-
-                                          {specValue && !isEditingSpec ? (
-                                            <div className={`px-2.5 py-1.5 rounded-xl border flex items-center justify-between gap-1 ${specBgCls}`}>
-                                              <span className="text-xs font-black truncate">{specValue}</span>
-                                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-                                                설유철 BOM
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            <input
-                                              type="text"
-                                              list={def.dataListId}
-                                              value={specValue}
-                                              onChange={(e) => handleNestedFieldChange("rawMaterials", def.id, e.target.value)}
-                                              placeholder={`${def.shortName} 규격 선택 또는 입력`}
-                                              className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-indigo-400 text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden shadow-2xs"
-                                            />
-                                          )}
-                                        </div>
-
-                                        {/* Worker Inputs: 투입중량 & LOT */}
-                                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100 dark:border-slate-700/60">
-                                          <div>
-                                            <label className="block text-[10px] font-black text-emerald-800 dark:text-emerald-300 mb-0.5">
-                                              투입중량 (kg) *
-                                            </label>
-                                            <input
-                                              type="number"
-                                              step="0.1"
-                                              value={formData.rawMaterials?.[def.weightKey] ?? ""}
-                                              onChange={(e) => handleNestedFieldChange("rawMaterials", def.weightKey, e.target.value)}
-                                              placeholder="0.0"
-                                              className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-emerald-500 text-xs font-black text-emerald-900 dark:text-emerald-200 text-right focus:ring-2 focus:ring-emerald-400 focus:outline-hidden"
-                                            />
-                                          </div>
-                                          <div>
-                                            <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-300 mb-0.5">
-                                              LOT 넘버 *
-                                            </label>
-                                            <input
-                                              type="text"
-                                              value={formData.rawMaterials?.[def.lotKey] || ""}
-                                              onChange={(e) => handleNestedFieldChange("rawMaterials", def.lotKey, e.target.value)}
-                                              placeholder="LOT No."
-                                              className="w-full px-2 py-1.5 rounded-xl bg-white dark:bg-slate-900 border-2 border-indigo-400/90 text-xs font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-400 focus:outline-hidden"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border-2 border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
-                                  <p className="text-xs font-black text-slate-600 dark:text-slate-300">
-                                    현재 활성화된 투입 원자재가 없습니다.
-                                  </p>
-                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                    상단의 [추가 투입 자재] 버튼을 누르거나 상단 패널에서 설유철 책임 등록 BOM을 선택하세요.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-
-                        {/* Datalists for Auto-completion */}
-                        <datalist id="epdm_rubber_list">
-                          {EPDM_RUBBERS.map((r) => (
-                            <option key={r.name} value={r.name}>{`${r.name} (${r.type} / ${r.unit})`}</option>
-                          ))}
-                        </datalist>
-                        <datalist id="epdm_compound_list">
-                          {EPDM_COMPOUNDS.map((cp) => (
-                            <option key={cp.name} value={cp.name}>{`${cp.name} (${cp.unit})`}</option>
-                          ))}
-                        </datalist>
-                        <datalist id="epdm_insert_list">
-                          <option value="미사용">미사용 (심금 투입 안 함)</option>
-                          {EPDM_INSERTS.map((i) => (
-                            <option key={i.name} value={i.name}>{`${i.name} (${i.desc})`}</option>
-                          ))}
-                        </datalist>
-                        <datalist id="epdm_coating_list">
-                          <option value="미사용">미사용 (코팅액 도포 안 함)</option>
-                          {EPDM_COATINGS.map((c) => (
-                            <option key={c.name} value={c.name}>{`${c.name} (${c.category})`}</option>
-                          ))}
-                        </datalist>
-
-                        {/* Total Material Weight Summary Bar */}
-                        <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                          <span className="flex items-center gap-1.5">
-                            <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>총 원재료 투입합계 (연고무 2종 + 컴파운드 3종 + 심금 + 코팅액)</span>
-                          </span>
-                          <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
-                            {(
-                              (Number(formData.rawMaterials?.rubberWeight) || 0) +
-                              (Number(formData.rawMaterials?.rubberWeight2) || 0) +
-                              (Number(formData.rawMaterials?.compoundWeight) || 0) +
-                              (Number(formData.rawMaterials?.compoundWeight2) || 0) +
-                              (Number(formData.rawMaterials?.compoundWeight3) || 0) +
-                              (formData.rawMaterials?.insertType !== "미사용" ? (Number(formData.rawMaterials?.insertWeight) || 0) : 0) +
-                              (formData.rawMaterials?.coatingType !== "미사용" ? (Number(formData.rawMaterials?.coatingWeight) || 0) : 0)
-                            ).toFixed(1)}{" "}
-                            <span className="text-xs font-normal text-slate-500">kg</span>
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 2. 불량 세부 현황 (단연조정, 셋지/시동, 치수/외관) & 스크랩 자동 합산 연동 */}
-                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                        <span>2. 불량 세부 현황 (단연조정 / 셋지시동 / 치수외관 불량 중량)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSyncScrapFromDefects}
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 hover:bg-amber-100 border border-amber-300 transition cursor-pointer flex items-center gap-1"
-                        title="단연조정+셋지+치수외관 합계를 스크랩 중량으로 자동 동기화"
-                      >
-                        <Zap className="w-3 h-3" />
-                        <span>불량 합계 ➔ 스크랩 자동 반영</span>
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          단연조정 불량 (kg)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          value={formData.defectBreakdown?.cutoffKg || ""}
-                          onChange={(e) => handleNestedFieldChange("defectBreakdown", "cutoffKg", e.target.value)}
-                          placeholder="예: 23.2"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-rose-600 focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          셋지(시동) 불량 (kg)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          value={formData.defectBreakdown?.startLossKg || ""}
-                          onChange={(e) => handleNestedFieldChange("defectBreakdown", "startLossKg", e.target.value)}
-                          placeholder="예: 3.8"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-rose-600 focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          치수 / 외관 불량 (kg)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          value={formData.defectBreakdown?.appearanceKg || ""}
-                          onChange={(e) => handleNestedFieldChange("defectBreakdown", "appearanceKg", e.target.value)}
-                          placeholder="예: 2.5"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-rose-600 focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 3. 압출기 조건 (110Ø & 60Ø) 및 스크류/실린더 온수조 */}
-                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                        <Sliders className="w-3.5 h-3.5 text-teal-600" />
-                        <span>3. 압출 조건 (110Ø · 60Ø 압출기 속도 & 스크류/실린더 온수조 온도)</span>
-                      </div>
-                      <span className="text-[10px] text-teal-700 dark:text-teal-300 font-bold">
-                        110Ø(29±2.9) · 60Ø(20±2.0) · 온수조(50±5℃)
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          110Ø 압출기 속도 (RPM) <span className="text-[10px] text-teal-600 font-bold">[표준: 29.0±2.9]</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.conditions?.extruder110Rpm || ""}
-                          onChange={(e) => handleNestedFieldChange("conditions", "extruder110Rpm", e.target.value)}
-                          placeholder="예: 26.4"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          60Ø 압출기 속도 (RPM) <span className="text-[10px] text-teal-600 font-bold">[표준: 20.0±2.0]</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.conditions?.extruder60Rpm || ""}
-                          onChange={(e) => handleNestedFieldChange("conditions", "extruder60Rpm", e.target.value)}
-                          placeholder="예: 19.2"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          온수조 평균온도 (℃) <span className="text-[10px] text-teal-600 font-bold">[표준: 50±5℃]</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.conditions?.waterTemp || ""}
-                          onChange={(e) => handleNestedFieldChange("conditions", "waterTemp", e.target.value)}
-                          placeholder="예: 47.0"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4. 코팅건 분사압력 (1~4번) 및 코팅두께 3개소 (기저부, OUTER, INNER) 실측 */}
-                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                        <Wind className="w-3.5 h-3.5 text-blue-600" />
-                        <span>4. 코팅건 분사압력 (1번~4번 / bar) 및 코팅두께 실측 (15㎛ 이상)</span>
-                      </div>
-                      {Number(formData.conditions?.coatingThicknessBase || 16) >= 15 &&
-                       Number(formData.conditions?.coatingThicknessOuter || 16) >= 15 &&
-                       Number(formData.conditions?.coatingThicknessInner || 16) >= 15 ? (
-                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200">
-                          🟢 코팅두께 전구역 규격적합 (≥ 15㎛)
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-md border border-amber-200">
-                          ⚠️ 15㎛ 이상 유지 점검 요망
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Spray Guns */}
-                    <div>
-                      <span className="block text-[10.5px] font-bold text-slate-500 mb-1">■ 코팅건 분사압력 (bar)</span>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {['sprayGun1', 'sprayGun2', 'sprayGun3', 'sprayGun4'].map((gunKey, gIdx) => (
-                          <div key={gunKey}>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                              코팅건 #{gIdx + 1}번
-                            </label>
-                            <input
-                              type="text"
-                              value={formData.conditions?.[gunKey] || ""}
-                              onChange={(e) => handleNestedFieldChange("conditions", gunKey, e.target.value)}
-                              placeholder={`예: ${2.4 + (gIdx % 2) * 0.1}`}
-                              className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-medium text-right focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Coating Thickness 3-Point Measurements */}
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <span className="block text-[10.5px] font-bold text-slate-500 mb-1">■ 코팅두께 3개소 실측 (㎛) [표준: 15㎛ 이상]</span>
-                      <div className="grid grid-cols-3 gap-2.5">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            기저부 (Base)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.conditions?.coatingThicknessBase || ""}
-                            onChange={(e) => handleNestedFieldChange("conditions", "coatingThicknessBase", e.target.value)}
-                            placeholder="예: 16.1"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-indigo-700 dark:text-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            외측 (OUTER)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.conditions?.coatingThicknessOuter || ""}
-                            onChange={(e) => handleNestedFieldChange("conditions", "coatingThicknessOuter", e.target.value)}
-                            placeholder="예: 20.8"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-indigo-700 dark:text-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-0.5">
-                            내측 (INNER)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.conditions?.coatingThicknessInner || ""}
-                            onChange={(e) => handleNestedFieldChange("conditions", "coatingThicknessInner", e.target.value)}
-                            placeholder="예: 16.1"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold text-right text-indigo-700 dark:text-indigo-300 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 5. PCM 가류조 13개 존 실시간 온도 매트릭스 (존1번 ~ 존13번 : 표준 210℃ ± 20℃) */}
-                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-xs">
-                        <Flame className="w-3.5 h-3.5 text-rose-600" />
-                        <span>5. PCM 가류조 13개 존 실시간 온도 매트릭스 (표준: 210℃ ± 20℃ [190~230℃])</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleFillAllZones(210.0)}
-                          className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 hover:bg-rose-100 border border-rose-300 text-[10px] font-bold transition cursor-pointer"
-                        >
-                          ⚡ 13개 존 일괄 210℃ 설정
-                        </button>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
-                          13존 평균: {formData.conditions?.cureZoneTemp || "212.0"}℃
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 13-Zone Interactive Heat Matrix Grid */}
-                    <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-13 gap-1.5">
-                      {Array.from({ length: 13 }).map((_, zIdx) => {
-                        const currentZones = Array.isArray(formData.conditions?.pcmZones) && formData.conditions.pcmZones.length === 13
-                          ? formData.conditions.pcmZones
-                          : EXTRUSION_STANDARD_SPECS.pcmZones;
-                        const zVal = currentZones[zIdx] ?? 210.0;
-                        const numVal = Number(zVal) || 0;
-                        const isNormal = numVal >= 190.0 && numVal <= 230.0;
-
-                        return (
-                          <div
-                            key={zIdx}
-                            className={`p-1.5 rounded-xl border text-center transition ${
-                              isNormal
-                                ? "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
-                                : "bg-rose-50 dark:bg-rose-950 border-rose-300"
-                            }`}
-                          >
-                            <span className="block text-[10px] font-black text-slate-500">
-                              존 {zIdx + 1}
-                            </span>
-                            <input
-                              type="number"
-                              step="0.5"
-                              value={zVal}
-                              onChange={(e) => handleZoneChange(zIdx, e.target.value)}
-                              className="w-full text-center text-xs font-black bg-transparent border-0 focus:outline-hidden p-0 text-slate-900 dark:text-white"
-                            />
-                            <span className={`text-[8.5px] font-bold block ${isNormal ? "text-emerald-600" : "text-rose-600"}`}>
-                              {isNormal ? "OK" : "점검"}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          가류존 평균온도 (℃) <span className="text-[10px] text-rose-600 font-bold">[표준: 210 ± 20 ℃]</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.conditions?.cureZoneTemp || ""}
-                          onChange={(e) => handleNestedFieldChange("conditions", "cureZoneTemp", e.target.value)}
-                          placeholder="예: 212.0"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-black focus:ring-2 focus:ring-rose-500 focus:outline-hidden text-right"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10.5px] font-bold text-slate-500 mb-1">
-                          라인 인취기 속도 (m/분) <span className="text-[10px] text-teal-600 font-bold">[표준: 20.0 ± 1.0]</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.conditions?.haulOffSpeed || ""}
-                          onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
-                          placeholder="예: 19.6"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-hidden text-right"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ========================================================================= */}
-            {/* Section 5: Downtime & Loss Management */}
+            {/* Section 4: Downtime & Loss Management (비가동 시간 및 발생 사유) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
               <div className="flex items-center justify-between">
                 <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                   <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  ⑤ 비가동 시간 및 발생 사유 (2. 작업현황 - 비가동)
+                  ④ 비가동 시간 및 발생 사유 (2. 작업현황 - 비가동)
                 </span>
                 <span className="text-[11px] font-bold text-slate-500">
                   총 {formData.downtimeMinutes || 0}분 ({(Number(formData.downtimeMinutes || 0) / 60).toFixed(1)}시간)
@@ -2314,11 +1654,11 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 6: Notes & Handover */}
+            {/* Section 5: Notes & Handover */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2">
               <label className="block font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                ⑥ 특이사항 및 교대 인수인계 사항
+                ⑤ 특이사항 및 교대 인수인계 사항
               </label>
               <textarea
                 rows={2}
