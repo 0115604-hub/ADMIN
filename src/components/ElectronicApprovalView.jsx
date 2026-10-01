@@ -53,6 +53,7 @@ import {
   isApprovalDocApproved,
   isApprovalDocRejected,
   isApprovalDocMyDraft,
+  getApprovalDocSortTimestamp,
   parseSafeTimestamp
 } from "../services/approvalService";
 import { KWON_SIGNATURE_BLACK, KWON_SIGNATURE_RED } from "../assets/kwonSignature";
@@ -314,10 +315,10 @@ export const ElectronicApprovalView = () => {
       return true;
     });
 
-    // ⭐ 최근 등록순(최신 기안일시/업데이트일시 기준 내림차순) 정렬
+    // ⭐ 최근 등록순(최신 기안일시/발생일자 기준 내림차순) 정렬
     list.sort((a, b) => {
-      const tA = parseSafeTimestamp(a.updatedAt || a.createdAt || a.id || 0);
-      const tB = parseSafeTimestamp(b.updatedAt || b.createdAt || b.id || 0);
+      const tA = getApprovalDocSortTimestamp(a);
+      const tB = getApprovalDocSortTimestamp(b);
       return tB - tA;
     });
 

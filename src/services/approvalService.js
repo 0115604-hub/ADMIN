@@ -156,6 +156,68 @@ export const parseSafeTimestamp = (val) => {
   return 0;
 };
 
+// ⭐ Accurate Chronological Timestamp for Sorting Approval Documents (Today/Recent drafts always on top!)
+export function getApprovalDocSortTimestamp(doc) {
+  if (!doc) return 0;
+
+  // 1. Direct manual draft or recent submission: Use createdAt timestamp if from current/future date
+  if (doc.createdAt) {
+    const tCreated = parseSafeTimestamp(doc.createdAt);
+    // If createdAt is a valid specific timestamp and not an auto-synthesized past report
+    if (tCreated > 0 && !doc.id?.startsWith("appr_ot_") && !doc.id?.startsWith("appr_att_")) {
+      return tCreated;
+    }
+  }
+
+  // 2. Overtime report with explicit workDate (e.g. "2026-09-12" or "2026-09-19")
+  if (doc.workDate && typeof doc.workDate === "string") {
+    const m = doc.workDate.match(/(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (m) {
+      const y = parseInt(m[1], 10);
+      const mon = parseInt(m[2], 10) - 1;
+      const d = parseInt(m[3], 10);
+      return new Date(y, mon, d, 18, 0, 0).getTime();
+    }
+  }
+
+  // 3. ID containing canonical YYYYMMDD date (e.g. appr_ot_samrangjin_20260912 -> 2026-09-12)
+  if (doc.id && typeof doc.id === "string") {
+    const idDateMatch = doc.id.match(/(2026\d{4})/);
+    if (idDateMatch) {
+      const y = parseInt(idDateMatch[1].slice(0, 4), 10);
+      const mon = parseInt(idDateMatch[1].slice(4, 6), 10) - 1;
+      const d = parseInt(idDateMatch[1].slice(6, 8), 10);
+      return new Date(y, mon, d, 18, 0, 0).getTime();
+    }
+  }
+
+  // 4. Extract date from title (e.g. "9월 12일", "9월 19일")
+  if (doc.title && typeof doc.title === "string") {
+    const titleDateMatch = doc.title.match(/(\d{1,2})월\s*(\d{1,2})일/);
+    if (titleDateMatch) {
+      const mon = parseInt(titleDateMatch[1], 10) - 1;
+      const d = parseInt(titleDateMatch[2], 10);
+      return new Date(2026, mon, d, 18, 0, 0).getTime();
+    }
+  }
+
+  // 5. Fallback: createdAt -> updatedAt -> id timestamp
+  if (doc.createdAt) {
+    const t = parseSafeTimestamp(doc.createdAt);
+    if (t > 0) return t;
+  }
+  if (doc.updatedAt) {
+    const t = parseSafeTimestamp(doc.updatedAt);
+    if (t > 0) return t;
+  }
+  if (doc.id) {
+    const t = parseSafeTimestamp(doc.id);
+    if (t > 0) return t;
+  }
+
+  return 0;
+}
+
 // Helper to construct automatic 4-step approval line
 export function getAutoApprovalSteps(plant, drafterName, drafterTitle, department, leadName = null, ceoName = "대표이사", directorName = null) {
   let step2Name = leadName;
@@ -426,8 +488,8 @@ export function getLocalApprovalDocs() {
 
     const list = Array.from(docMap.values());
     list.sort((a, b) => {
-      const tA = parseSafeTimestamp(a.updatedAt || a.createdAt || a.id || 0);
-      const tB = parseSafeTimestamp(b.updatedAt || b.createdAt || b.id || 0);
+      const tA = getApprovalDocSortTimestamp(a);
+      const tB = getApprovalDocSortTimestamp(b);
       return tB - tA;
     });
 
@@ -495,8 +557,8 @@ export function subscribeApprovalDocs(onUpdate) {
             if (!existing) {
               docMap.set(r.id, r);
             } else {
-              const tRemote = parseSafeTimestamp(r.updatedAt || r.createdAt || 0);
-              const tLocal = parseSafeTimestamp(existing.updatedAt || existing.createdAt || 0);
+              const tRemote = getApprovalDocSortTimestamp(r);
+              const tLocal = getApprovalDocSortTimestamp(existing);
               if (tRemote >= tLocal) {
                 docMap.set(r.id, r);
               }
@@ -523,8 +585,8 @@ export function subscribeApprovalDocs(onUpdate) {
         });
 
         mergedList.sort((a, b) => {
-          const tA = parseSafeTimestamp(a.updatedAt || a.createdAt || a.id || 0);
-          const tB = parseSafeTimestamp(b.updatedAt || b.createdAt || b.id || 0);
+          const tA = getApprovalDocSortTimestamp(a);
+          const tB = getApprovalDocSortTimestamp(b);
           return tB - tA;
         });
 
@@ -1318,7 +1380,9 @@ ${taskHeader}`;
         department,
         drafter: step0.name,
         drafterTitle: step0.title,
-        createdAt: existingDoc?.createdAt || nowStr,
+        workDate: workDateStr,
+        createdAt: existingDoc?.createdAt || `${workDateStr} 18:00:00`,
+        updatedAt: existingDoc?.updatedAt || `${workDateStr} 18:00:00`,
         content,
         amount: `₩${totalPlantCost.toLocaleString()}`,
         status: finalDocStatus,
