@@ -195,6 +195,17 @@ export const ExtrusionWorkReportModal = ({
     }));
   });
 
+  // Dedicated Downtime & Defect Draft Input Form state
+  const [downtimeDraft, setDowntimeDraft] = useState({
+    type: "비가동",
+    category: "압개시",
+    startTime: "08:00",
+    endTime: "08:30",
+    minutes: 30,
+    scrapKg: "",
+    detail: "초기 압출 승온 및 제품 인취 세팅"
+  });
+
   const [formData, setFormData] = useState(() => {
     if (initialData) {
       const items = (Array.isArray(initialData.items) && initialData.items.length > 0)
@@ -757,30 +768,99 @@ export const ExtrusionWorkReportModal = ({
     });
   };
 
-  const handleAddDowntimeEvent = (type = "비가동", category = "압개시") => {
+  const handleDowntimeDraftChange = (field, value) => {
+    setDowntimeDraft((prev) => {
+      const next = { ...prev };
+      if (field === "minutes" || field === "scrapKg") {
+        next[field] = value === "" ? "" : Math.max(0, Number(value));
+      } else if (field === "type") {
+        next.type = value;
+        if (value === "불량" && next.category === "압개시") {
+          next.category = "뜯김";
+          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "뜯김");
+          next.detail = catObj?.defaultDetail || "";
+        } else if (value === "비가동" && next.category === "뜯김") {
+          next.category = "형교환";
+          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "형교환");
+          next.detail = catObj?.defaultDetail || "";
+        }
+      } else if (field === "category") {
+        next.category = value;
+        const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
+        if (!next.detail || DOWNTIME_CATEGORIES.some((c) => c.defaultDetail === next.detail)) {
+          next.detail = catObj?.defaultDetail || "";
+        }
+      } else if (field === "detailPreset") {
+        next.detail = value;
+        const matched = DOWNTIME_CATEGORIES.find(
+          (c) => c.defaultDetail === value || `[${c.label}] ${c.defaultDetail}` === value || c.label === value
+        );
+        if (matched) {
+          next.category = matched.id;
+        }
+      } else {
+        next[field] = value;
+      }
+
+      if (field === "startTime" || field === "endTime") {
+        const s = field === "startTime" ? value : next.startTime;
+        const e = field === "endTime" ? value : next.endTime;
+        if (s && e) {
+          const comp = calculateMinutesFromTime(s, e);
+          next.minutes = comp;
+        }
+      }
+
+      return next;
+    });
+  };
+
+  const handleAddDraftEvent = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const category = downtimeDraft.category || "압개시";
+    const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === category);
+    const detail = String(downtimeDraft.detail || "").trim() || catObj?.defaultDetail || `${category} 조치`;
+    const minutes = Number(downtimeDraft.minutes) || (downtimeDraft.startTime && downtimeDraft.endTime ? calculateMinutesFromTime(downtimeDraft.startTime, downtimeDraft.endTime) : 0);
+    const scrapKg = downtimeDraft.scrapKg !== "" && downtimeDraft.scrapKg !== undefined ? Number(downtimeDraft.scrapKg) : 0;
+
+    const newEvent = {
+      id: `dt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      type: downtimeDraft.type || "비가동",
+      category,
+      startTime: downtimeDraft.startTime || "",
+      endTime: downtimeDraft.endTime || "",
+      minutes,
+      scrapKg,
+      detail
+    };
+
     setFormData((prev) => ({
       ...prev,
-      downtimeEvents: [
-        ...(prev.downtimeEvents || []),
-        createDefaultDowntimeEvent(type, category, Date.now())
-      ]
+      downtimeEvents: [...(prev.downtimeEvents || []), newEvent]
     }));
+
+    // Smart reset for next input entry
+    setDowntimeDraft((prev) => {
+      const nextType = prev.type || "비가동";
+      const nextCat = nextType === "불량" ? "뜯김" : "형교환";
+      const nextCatObj = DOWNTIME_CATEGORIES.find((c) => c.id === nextCat);
+      return {
+        type: nextType,
+        category: nextCat,
+        startTime: prev.endTime || "",
+        endTime: "",
+        minutes: 0,
+        scrapKg: "",
+        detail: nextCatObj?.defaultDetail || ""
+      };
+    });
   };
 
   const handleRemoveDowntimeEvent = (index) => {
-    setFormData((prev) => {
-      const list = [...(prev.downtimeEvents || [])];
-      if (list.length <= 1) {
-        return {
-          ...prev,
-          downtimeEvents: [createDefaultDowntimeEvent("비가동", "압개시", Date.now())]
-        };
-      }
-      return {
-        ...prev,
-        downtimeEvents: list.filter((_, i) => i !== index)
-      };
-    });
+    setFormData((prev) => ({
+      ...prev,
+      downtimeEvents: (prev.downtimeEvents || []).filter((_, i) => i !== index)
+    }));
   };
 
   const handleDowntimeEventChange = (index, field, value) => {
@@ -792,15 +872,6 @@ export const ExtrusionWorkReportModal = ({
         target[field] = value === "" ? "" : Math.max(0, Number(value));
       } else if (field === "type") {
         target.type = value;
-        if (value === "불량" && target.category === "압개시") {
-          target.category = "뜯김";
-          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "뜯김");
-          target.detail = catObj?.defaultDetail || "";
-        } else if (value === "비가동" && target.category === "뜯김") {
-          target.category = "형교환";
-          const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === "형교환");
-          target.detail = catObj?.defaultDetail || "";
-        }
       } else if (field === "category") {
         target.category = value;
         const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === value);
@@ -895,15 +966,35 @@ export const ExtrusionWorkReportModal = ({
       console.warn("localStorage error:", e);
     }
 
-    const dtList = Array.isArray(formData?.downtimeEvents) && formData.downtimeEvents.length > 0
-      ? formData.downtimeEvents
-      : [createDefaultDowntimeEvent()];
+    let dtList = Array.isArray(formData?.downtimeEvents) ? [...formData.downtimeEvents] : [];
+    
+    // Auto-bundle draft if user filled out the form but forgot to click "내역 등록"
+    if (
+      dtList.length === 0 &&
+      (Number(downtimeDraft.minutes) > 0 ||
+        downtimeDraft.detail ||
+        downtimeDraft.scrapKg !== "" ||
+        (downtimeDraft.startTime && downtimeDraft.endTime))
+    ) {
+      const category = downtimeDraft.category || "압개시";
+      const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === category);
+      dtList.push({
+        id: `dt_${Date.now()}_auto`,
+        type: downtimeDraft.type || "비가동",
+        category,
+        startTime: downtimeDraft.startTime || "",
+        endTime: downtimeDraft.endTime || "",
+        minutes: Number(downtimeDraft.minutes) || (downtimeDraft.startTime && downtimeDraft.endTime ? calculateMinutesFromTime(downtimeDraft.startTime, downtimeDraft.endTime) : 0),
+        scrapKg: Number(downtimeDraft.scrapKg) || 0,
+        detail: String(downtimeDraft.detail || "").trim() || catObj?.defaultDetail || `${category} 조치`
+      });
+    }
 
     const sumDtMinutes = dtList.reduce((acc, ev) => acc + (Number(ev?.minutes) || 0), 0);
     const sumDtScrapKg = Number(dtList.reduce((acc, ev) => acc + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
     const primaryCategory = dtList[0]?.category || formData.downtimeCategory || "형교환";
     const primaryDetail = dtList
-      .map((e) => (e.detail ? `[${e.startTime || ""}~${e.endTime || ""} ${e.category || ""}] ${e.detail}${e.scrapKg ? ` (폐기 ${e.scrapKg}kg)` : ""}` : ""))
+      .map((e) => (e.detail ? `[${e.startTime || ""}~${e.endTime || ""} ${e.category || ""}] ${e.detail}${Number(e.scrapKg) > 0 ? ` (폐기 ${e.scrapKg}kg)` : ""}` : ""))
       .filter(Boolean)
       .join(" / ") || formData.downtimeDetail || "";
 
@@ -1928,17 +2019,17 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 4: 비가동 및 불량내역 (비가동·불량 통합 등록 & 자동 계산) */}
+            {/* Section 4: 비가동 및 불량내역 (비가동·불량 통합 등록 카드 + 등록 목록) */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
               {/* Section Header & Live Totals Badges */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     ④ 비가동 및 불량내역 등록
                   </span>
-                  <span className="text-[10.5px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-300/60">
+                  <span className="text-[10.5px] px-2 py-0.5 rounded-full font-bold bg-blue-100 dark:bg-blue-950/60 text-blue-900 dark:text-blue-300 border border-blue-300/60">
                     총 {dtEvents.length}건 (비가동 {dtEvents.filter(e => (e.type || "비가동") === "비가동").length}건 · 불량 {dtEvents.filter(e => e.type === "불량").length}건 · 복합 {dtEvents.filter(e => e.type === "복합").length}건)
                   </span>
                 </div>
@@ -1956,239 +2047,254 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               </div>
 
-              {/* Events List (비가동 / 불량 / 복합 등록 카드 목록) */}
-              <div className="space-y-3">
-                {dtEvents.map((ev, idx) => {
-                  const currentType = ev.type || "비가동";
-                  const isDefect = currentType === "불량";
-                  const isCombo = currentType === "복합";
-                  
-                  return (
-                    <div
-                      key={ev.id || `dt_card_${idx}`}
-                      className={`p-3 sm:p-3.5 bg-white dark:bg-slate-900 rounded-2xl border shadow-xs space-y-2.5 transition-all ${
-                        isDefect
-                          ? "border-rose-300 dark:border-rose-800/70 hover:border-rose-400"
-                          : isCombo
-                          ? "border-purple-300 dark:border-purple-800/70 hover:border-purple-400"
-                          : "border-amber-300 dark:border-amber-800/70 hover:border-amber-400"
-                      }`}
+              {/* Input Card Form (Matching IssueEditModal style exactly) */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-blue-400/80 dark:border-blue-700/80 shadow-md space-y-2.5">
+                {/* Top Row: Category/Type & Times & Minutes/Scrap */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2 sm:gap-2.5 items-end">
+                  {/* 1. 구분 및 불량/비가동 항목 (5 cols) */}
+                  <div className="md:col-span-5 space-y-1">
+                    <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                      <span className="flex items-center gap-1">🏷️ 구분 / 불량 항목 (직접 선택)</span>
+                      {/* Type selector segmented pills */}
+                      <span className="inline-flex rounded-md p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => handleDowntimeDraftChange("type", "비가동")}
+                          className={`px-1.5 py-0.5 rounded transition cursor-pointer ${
+                            downtimeDraft.type === "비가동"
+                              ? "bg-amber-600 text-white font-black shadow-xs"
+                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                          }`}
+                        >
+                          ⏱️비가동
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDowntimeDraftChange("type", "불량")}
+                          className={`px-1.5 py-0.5 rounded transition cursor-pointer ${
+                            downtimeDraft.type === "불량"
+                              ? "bg-rose-600 text-white font-black shadow-xs"
+                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                          }`}
+                        >
+                          ⚠️품질불량
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDowntimeDraftChange("type", "복합")}
+                          className={`px-1.5 py-0.5 rounded transition cursor-pointer ${
+                            downtimeDraft.type === "복합"
+                              ? "bg-purple-600 text-white font-black shadow-xs"
+                              : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                          }`}
+                        >
+                          🔄복합
+                        </button>
+                      </span>
+                    </label>
+                    <select
+                      value={downtimeDraft.category || "압개시"}
+                      onChange={(e) => handleDowntimeDraftChange("category", e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-slate-800 text-xs font-black text-blue-950 dark:text-blue-200 shadow-xs cursor-pointer focus:ring-1 focus:ring-blue-400"
                     >
-                      {/* Card Top: Number, Type Toggle, Category Select, Elapsed badge, Delete */}
-                      <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`w-5 h-5 rounded-full text-white font-black text-[11px] flex items-center justify-center shrink-0 ${
-                            isDefect ? "bg-rose-600" : isCombo ? "bg-purple-600" : "bg-amber-600"
-                          }`}>
-                            {idx + 1}
-                          </span>
+                      {DOWNTIME_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          [{c.label}] {c.defaultDetail || c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                          {/* Type Segmented Buttons (비가동 | 불량 | 복합) */}
-                          <div className="inline-flex rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold">
-                            <button
-                              type="button"
-                              onClick={() => handleDowntimeEventChange(idx, "type", "비가동")}
-                              className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
-                                currentType === "비가동"
-                                  ? "bg-amber-600 text-white font-black shadow-xs"
-                                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                              }`}
-                            >
-                              ⏱️ 비가동
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDowntimeEventChange(idx, "type", "불량")}
-                              className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
-                                currentType === "불량"
-                                  ? "bg-rose-600 text-white font-black shadow-xs"
-                                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                              }`}
-                            >
-                              ⚠️ 품질불량
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDowntimeEventChange(idx, "type", "복합")}
-                              className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
-                                currentType === "복합"
-                                  ? "bg-purple-600 text-white font-black shadow-xs"
-                                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900"
-                              }`}
-                            >
-                              🔄 비가동+불량
-                            </button>
-                          </div>
+                  {/* 2. 시작시간 ~ 종료시간 (4 cols) */}
+                  <div className="md:col-span-4 space-y-1">
+                    <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300 block">
+                      ⏱️ 시간 (시작 ~ 종료)
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="time"
+                        value={downtimeDraft.startTime || ""}
+                        onChange={(e) => handleDowntimeDraftChange("startTime", e.target.value)}
+                        className="w-full px-2 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-center text-slate-900 dark:text-white shadow-xs focus:ring-1 focus:ring-blue-400"
+                      />
+                      <span className="text-slate-400 font-bold text-xs">~</span>
+                      <input
+                        type="time"
+                        value={downtimeDraft.endTime || ""}
+                        onChange={(e) => handleDowntimeDraftChange("endTime", e.target.value)}
+                        className="w-full px-2 py-1.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 font-mono font-bold text-xs text-center text-slate-900 dark:text-white shadow-xs focus:ring-1 focus:ring-blue-400"
+                      />
+                    </div>
+                  </div>
 
-                          {/* Category Select (22개 항목) */}
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">항목:</span>
-                            <select
-                              value={ev.category || "압개시"}
-                              onChange={(e) => handleDowntimeEventChange(idx, "category", e.target.value)}
-                              className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 rounded-lg text-xs font-black text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer"
-                            >
-                              {DOWNTIME_CATEGORIES.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          {ev.minutes > 0 && (
-                            <span className="text-[11px] font-black px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                              ⏱️ {ev.minutes}분 소요
-                            </span>
-                          )}
-                          {dtEvents.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveDowntimeEvent(idx)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
-                              title="삭제"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Time, Minutes, Scrap Inputs Grid (시작시간/종료시간 넣으면 비가동시간 자동 계산 & 폐기량 입력) */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                        {/* 1. 시작시간 */}
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-600 dark:text-slate-400 mb-0.5">
-                            시작시간
-                          </label>
-                          <input
-                            type="time"
-                            value={ev.startTime || ""}
-                            onChange={(e) => handleDowntimeEventChange(idx, "startTime", e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
-                          />
-                        </div>
-
-                        {/* 2. 종료시간 */}
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-600 dark:text-slate-400 mb-0.5">
-                            종료시간
-                          </label>
-                          <input
-                            type="time"
-                            value={ev.endTime || ""}
-                            onChange={(e) => handleDowntimeEventChange(idx, "endTime", e.target.value)}
-                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
-                          />
-                        </div>
-
-                        {/* 3. 비가동시간(분) (자동 계산 & 수동 입력 가능) */}
-                        <div>
-                          <div className="flex items-center justify-between mb-0.5">
-                            <label className="text-[10px] font-black text-slate-600 dark:text-slate-400">
-                              비가동시간 (분)
-                            </label>
-                            {ev.startTime && ev.endTime && (
-                              <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">
-                                ⚡자동계산
-                              </span>
-                            )}
-                          </div>
-                          <input
-                            type="number"
-                            min="0"
-                            step="5"
-                            value={ev.minutes ?? ""}
-                            onChange={(e) => handleDowntimeEventChange(idx, "minutes", e.target.value)}
-                            placeholder="30"
-                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-right text-rose-600 dark:text-rose-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
-                          />
-                        </div>
-
-                        {/* 4. 폐기량(kg) */}
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-600 dark:text-slate-400 mb-0.5">
-                            폐기량 (kg)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            value={ev.scrapKg ?? ""}
-                            onChange={(e) => handleDowntimeEventChange(idx, "scrapKg", e.target.value)}
-                            placeholder="0.0"
-                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-right text-orange-600 dark:text-orange-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Detail Input with Dropdown & Direct Input */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between gap-1 flex-wrap">
-                          <label className="text-[10px] font-black text-slate-600 dark:text-slate-400">
-                            발생 내역 및 조치 내용 <span className="text-amber-600 dark:text-amber-400 font-bold">(드롭다운 선택 또는 직접입력)</span>
-                          </label>
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleDowntimeEventChange(idx, "detailPreset", e.target.value);
-                              }
-                            }}
-                            className="text-[10.5px] font-bold py-0.5 px-2 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/80 rounded-lg cursor-pointer focus:ring-1 focus:ring-amber-500"
-                          >
-                            <option value="">📋 드롭다운에서 내역 선택...</option>
-                            {DOWNTIME_CATEGORIES.map((c) => (
-                              <option key={c.id} value={c.defaultDetail || c.label}>
-                                [{c.label}] {c.defaultDetail || c.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                  {/* 3. 자동계산시간 & 폐기량 (3 cols) */}
+                  <div className="md:col-span-3 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-[11px] text-slate-700 dark:text-slate-300">
+                        ⚡ 시간(분) &amp; 폐기(kg)
+                      </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="relative">
                         <input
-                          type="text"
-                          list="downtime-defect-presets"
-                          value={ev.detail || ""}
-                          onChange={(e) => handleDowntimeEventChange(idx, "detail", e.target.value)}
-                          placeholder="드롭다운에서 선택하거나 직접 입력하세요 (예: 금형 교환 및 가류조 승온 30분 완료)"
-                          className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-medium text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          type="number"
+                          min="0"
+                          step="5"
+                          value={downtimeDraft.minutes ?? ""}
+                          onChange={(e) => handleDowntimeDraftChange("minutes", e.target.value)}
+                          placeholder="0분"
+                          className="w-full px-2 py-1.5 rounded-xl border border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-950/30 font-black text-xs text-right text-rose-700 dark:text-rose-300 shadow-xs focus:ring-1 focus:ring-rose-400"
+                          title="비가동 소요시간(분)"
                         />
+                        <span className="absolute right-1 top-2 text-[9px] text-rose-400 font-bold pointer-events-none">분</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={downtimeDraft.scrapKg ?? ""}
+                          onChange={(e) => handleDowntimeDraftChange("scrapKg", e.target.value)}
+                          placeholder="0.0"
+                          className="w-full px-2 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 font-black text-xs text-right text-amber-700 dark:text-amber-300 shadow-xs focus:ring-1 focus:ring-amber-400"
+                          title="폐기 중량(kg)"
+                        />
+                        <span className="absolute right-1 top-2 text-[9px] text-amber-400 font-bold pointer-events-none">kg</span>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
+
+                {/* Middle Row: Textarea for detail */}
+                <div>
+                  <textarea
+                    rows={2}
+                    placeholder="발생 내역 및 조치 내용을 입력해 주세요. (우측 드롭다운 템플릿 선택 또는 직접 작성)"
+                    value={downtimeDraft.detail || ""}
+                    onChange={(e) => handleDowntimeDraftChange("detail", e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-xs font-medium leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:outline-hidden min-h-[58px]"
+                  />
+                </div>
+
+                {/* Bottom Row: Buttons Bar (Left Template Select + Right [➕ 내역 등록] Button) */}
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                  <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 shrink-0">📋 빠른 템플릿:</span>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleDowntimeDraftChange("detailPreset", e.target.value);
+                        }
+                      }}
+                      className="w-full max-w-sm px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 text-[11px] font-bold cursor-pointer hover:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                    >
+                      <option value="">-- 내역 템플릿 선택 --</option>
+                      {DOWNTIME_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.defaultDetail || c.label}>
+                          [{c.label}] {c.defaultDetail || c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddDraftEvent}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition active:scale-95 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>내역 등록</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Datalist for presets */}
-              <datalist id="downtime-defect-presets">
-                {DOWNTIME_CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.defaultDetail || c.label}>
-                    [{c.label}]
-                  </option>
-                ))}
-              </datalist>
+              {/* Below Input Card: Registered Events List (등록된 내역 목록) */}
+              {dtEvents.length > 0 ? (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                      <span>📝 등록된 내역 목록</span>
+                      <span className="px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 text-[10px] font-black">
+                        {dtEvents.length}건
+                      </span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      (항목별 삭제 가능)
+                    </span>
+                  </div>
 
-              {/* Action Buttons for Adding Events */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleAddDowntimeEvent("비가동", "형교환")}
-                  className="py-2.5 px-3 border-2 border-dashed border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500 text-amber-900 dark:text-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5 text-amber-600" />
-                  <span>➕ ⏱️ 비가동 내역 추가 등록</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleAddDowntimeEvent("불량", "뜯김")}
-                  className="py-2.5 px-3 border-2 border-dashed border-rose-300 dark:border-rose-700 hover:border-rose-500 dark:hover:border-rose-500 text-rose-900 dark:text-rose-300 hover:bg-rose-50/50 dark:hover:bg-rose-950/30 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5 text-rose-600" />
-                  <span>➕ ⚠️ 불량(스크랩) 내역 추가 등록</span>
-                </button>
-              </div>
+                  <div className="space-y-1.5">
+                    {dtEvents.map((ev, idx) => {
+                      const isDefect = ev.type === "불량";
+                      const isCombo = ev.type === "복합";
+                      const catObj = DOWNTIME_CATEGORIES.find((c) => c.id === ev.category);
+
+                      return (
+                        <div
+                          key={ev.id || `dt_reg_${idx}`}
+                          className="p-2.5 sm:p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs hover:border-blue-300 dark:hover:border-blue-700 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                        >
+                          <div className="flex items-start sm:items-center gap-2 flex-1 min-w-0">
+                            <span className={`w-5 h-5 rounded-full text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 ${
+                              isDefect ? "bg-rose-600" : isCombo ? "bg-purple-600" : "bg-amber-600"
+                            }`}>
+                              {idx + 1}
+                            </span>
+
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                              <span className={`px-2 py-0.5 rounded-md text-[10.5px] font-black shrink-0 ${
+                                isDefect
+                                  ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300"
+                                  : isCombo
+                                  ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300"
+                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300"
+                              }`}>
+                                {ev.type || "비가동"} • {ev.category || "압개시"}
+                              </span>
+
+                              {(ev.startTime || ev.endTime) && (
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10.5px] font-mono font-bold shrink-0">
+                                  ⏰ {ev.startTime || "--:--"} ~ {ev.endTime || "--:--"}
+                                </span>
+                              )}
+
+                              {ev.minutes > 0 && (
+                                <span className="px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-[10.5px] font-black shrink-0 border border-rose-200 dark:border-rose-900">
+                                  ⏱️ {ev.minutes}분
+                                </span>
+                              )}
+
+                              {Number(ev.scrapKg) > 0 && (
+                                <span className="px-2 py-0.5 rounded-md bg-orange-50 dark:bg-orange-950/50 text-orange-700 dark:text-orange-300 text-[10.5px] font-black shrink-0 border border-orange-200 dark:border-orange-900">
+                                  🗑️ 폐기: {ev.scrapKg}kg
+                                </span>
+                              )}
+
+                              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate flex-1 min-w-[120px]" title={ev.detail}>
+                                {ev.detail || catObj?.defaultDetail || "-"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDowntimeEvent(idx)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer self-end sm:self-center shrink-0"
+                            title="이 내역 삭제"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-4 px-3 text-center text-xs text-slate-400 dark:text-slate-500 bg-white/60 dark:bg-slate-900/60 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                  등록된 비가동 및 불량 내역이 없습니다. 위 입력창에서 내역을 작성한 후 <strong className="text-blue-600 dark:text-blue-400">[내역 등록]</strong> 버튼을 눌러주세요.
+                </div>
+              )}
             </div>
 
             {/* ========================================================================= */}
