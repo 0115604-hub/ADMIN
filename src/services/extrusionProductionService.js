@@ -275,8 +275,30 @@ export const sanitizeExtrusionReport = (raw = {}, idx = 0) => {
     tpmIssuePhotos: Array.isArray(raw.tpmIssuePhotos)
       ? raw.tpmIssuePhotos
       : (Array.isArray(raw.tpmIssueReport?.photos) ? raw.tpmIssueReport.photos : (raw.tpmIssuePhoto ? [raw.tpmIssuePhoto] : [])),
+    downtimeEvents: Array.isArray(raw.downtimeEvents) && raw.downtimeEvents.length > 0
+      ? raw.downtimeEvents.map((e, eIdx) => ({
+          id: String(e.id || `dt_${eIdx + 1}`),
+          startTime: String(e.startTime || "").trim(),
+          endTime: String(e.endTime || "").trim(),
+          minutes: Math.max(0, Number(e.minutes) || 0),
+          category: String(e.category || "형교환").trim(),
+          detail: String(e.detail || "").trim(),
+          scrapKg: e.scrapKg !== undefined && e.scrapKg !== "" ? Number(e.scrapKg) : 0
+        }))
+      : (downtimeMinutes > 0 || raw.downtimeDetail
+          ? [{
+              id: "dt_1",
+              startTime: String(raw.startTime || "").trim(),
+              endTime: String(raw.endTime || "").trim(),
+              minutes: downtimeMinutes,
+              category: String(raw.downtimeCategory || "형교환"),
+              detail: String(raw.downtimeDetail || ""),
+              scrapKg: Number(raw.downtimeScrapKg) || 0
+            }]
+          : []),
     downtimeMinutes,
-    downtimeCategory: String(raw.downtimeCategory || "형교환"),
+    downtimeScrapKg: Math.max(0, Number(raw.downtimeScrapKg) || (Array.isArray(raw.downtimeEvents) ? raw.downtimeEvents.reduce((acc, e) => acc + (Number(e.scrapKg) || 0), 0) : 0)),
+    downtimeCategory: String(raw.downtimeCategory || (Array.isArray(raw.downtimeEvents) && raw.downtimeEvents[0]?.category) || "형교환"),
     downtimeDetail: String(raw.downtimeDetail || ""),
     notes: String(raw.notes || ""),
     approvalStatus: String(raw.approvalStatus || "대기"), // 대기 | 승인 | 반려

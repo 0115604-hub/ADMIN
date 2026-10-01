@@ -952,13 +952,20 @@ export const ExtrusionProductionTab = () => {
                       {/* Downtime Reason / Notes */}
                       <td className="py-3 px-3 max-w-[220px]">
                         {r.downtimeMinutes > 0 && (
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-900 border border-rose-200">
-                              {r.downtimeCategory}
-                            </span>
-                            <span className="text-slate-700 dark:text-slate-300 text-xs truncate">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-rose-100 text-rose-900 border border-rose-200">
+                                {r.downtimeCategory || "형교환"}
+                              </span>
+                              {r.downtimeScrapKg > 0 && (
+                                <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-orange-100 text-orange-900 border border-orange-200">
+                                  폐기 {r.downtimeScrapKg}kg
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-slate-700 dark:text-slate-300 text-xs truncate">
                               {r.downtimeDetail || "-"}
-                            </span>
+                            </div>
                           </div>
                         )}
                         {(r.tpmIssueText || (Array.isArray(r.tpmIssuePhotos) && r.tpmIssuePhotos.length > 0)) && (

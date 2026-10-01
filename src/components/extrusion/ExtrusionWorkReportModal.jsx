@@ -114,6 +114,33 @@ const createDefaultItem = (lineId, suffix = Date.now()) => {
   };
 };
 
+const calculateMinutesFromTime = (startTime, endTime) => {
+  if (!startTime || !endTime) return 0;
+  try {
+    const [sH, sM] = String(startTime).split(":").map(Number);
+    const [eH, eM] = String(endTime).split(":").map(Number);
+    if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return 0;
+    let sMin = sH * 60 + sM;
+    let eMin = eH * 60 + eM;
+    if (eMin < sMin) {
+      eMin += 24 * 60; // 야간 교대(자정 넘어가는 경우)
+    }
+    return Math.max(0, eMin - sMin);
+  } catch (e) {
+    return 0;
+  }
+};
+
+const createDefaultDowntimeEvent = (suffix = Date.now()) => ({
+  id: `dt_${suffix}_${Math.random().toString(36).substring(2, 6)}`,
+  startTime: "08:00",
+  endTime: "08:30",
+  minutes: 30,
+  category: "형교환",
+  detail: "",
+  scrapKg: ""
+});
+
 export const ExtrusionWorkReportModal = ({
   isOpen,
   onClose,
@@ -227,6 +254,31 @@ export const ExtrusionWorkReportModal = ({
           startLossKg: initialData?.defectBreakdown?.startLossKg || "",
           appearanceKg: initialData?.defectBreakdown?.appearanceKg || ""
         },
+        downtimeEvents: Array.isArray(initialData?.downtimeEvents) && initialData.downtimeEvents.length > 0
+          ? initialData.downtimeEvents.map((e, idx) => ({
+              id: e.id || `dt_${idx + 1}`,
+              startTime: e.startTime || "",
+              endTime: e.endTime || "",
+              minutes: Number(e.minutes) || 0,
+              category: e.category || "형교환",
+              detail: e.detail || "",
+              scrapKg: e.scrapKg ?? ""
+            }))
+          : (initialData?.downtimeMinutes > 0 || initialData?.downtimeDetail || initialData?.startTime
+              ? [{
+                  id: "dt_1",
+                  startTime: initialData?.startTime || "08:00",
+                  endTime: initialData?.endTime || "08:30",
+                  minutes: Number(initialData?.downtimeMinutes) || 30,
+                  category: initialData?.downtimeCategory || "형교환",
+                  detail: initialData?.downtimeDetail || "",
+                  scrapKg: initialData?.downtimeScrapKg ?? ""
+                }]
+              : [createDefaultDowntimeEvent()]),
+        downtimeMinutes: Number(initialData?.downtimeMinutes) || 30,
+        downtimeCategory: initialData?.downtimeCategory || "형교환",
+        downtimeDetail: initialData?.downtimeDetail || "",
+        downtimeScrapKg: initialData?.downtimeScrapKg ?? "",
         conditions: {
           extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || EXTRUSION_STANDARD_SPECS.extruder110Rpm,
           extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || EXTRUSION_STANDARD_SPECS.extruder60Rpm,
@@ -308,9 +360,11 @@ export const ExtrusionWorkReportModal = ({
         coatingThicknessInner: EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
         pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones]
       },
+      downtimeEvents: [createDefaultDowntimeEvent()],
       downtimeMinutes: 30,
       downtimeCategory: "형교환",
       downtimeDetail: "",
+      downtimeScrapKg: "",
       notes: "",
       approvalStatus: "대기"
     };
@@ -403,6 +457,31 @@ export const ExtrusionWorkReportModal = ({
             startLossKg: initialData?.defectBreakdown?.startLossKg || "",
             appearanceKg: initialData?.defectBreakdown?.appearanceKg || ""
           },
+          downtimeEvents: Array.isArray(initialData?.downtimeEvents) && initialData.downtimeEvents.length > 0
+            ? initialData.downtimeEvents.map((e, idx) => ({
+                id: e.id || `dt_${idx + 1}`,
+                startTime: e.startTime || "",
+                endTime: e.endTime || "",
+                minutes: Number(e.minutes) || 0,
+                category: e.category || "형교환",
+                detail: e.detail || "",
+                scrapKg: e.scrapKg ?? ""
+              }))
+            : (initialData?.downtimeMinutes > 0 || initialData?.downtimeDetail || initialData?.startTime
+                ? [{
+                    id: "dt_1",
+                    startTime: initialData?.startTime || "08:00",
+                    endTime: initialData?.endTime || "08:30",
+                    minutes: Number(initialData?.downtimeMinutes) || 30,
+                    category: initialData?.downtimeCategory || "형교환",
+                    detail: initialData?.downtimeDetail || "",
+                    scrapKg: initialData?.downtimeScrapKg ?? ""
+                  }]
+                : [createDefaultDowntimeEvent()]),
+          downtimeMinutes: Number(initialData?.downtimeMinutes) || 30,
+          downtimeCategory: initialData?.downtimeCategory || "형교환",
+          downtimeDetail: initialData?.downtimeDetail || "",
+          downtimeScrapKg: initialData?.downtimeScrapKg ?? "",
           conditions: {
             extruder110Rpm: initialData?.conditions?.extruder110Rpm || initialData?.conditions?.extruderRpm || EXTRUSION_STANDARD_SPECS.extruder110Rpm,
             extruder60Rpm: initialData?.conditions?.extruder60Rpm || initialData?.conditions?.extruder70Rpm || EXTRUSION_STANDARD_SPECS.extruder60Rpm,
@@ -482,9 +561,11 @@ export const ExtrusionWorkReportModal = ({
             coatingThicknessInner: EXTRUSION_STANDARD_SPECS.coatingThicknessInner,
             pcmZones: [...EXTRUSION_STANDARD_SPECS.pcmZones]
           },
+          downtimeEvents: [createDefaultDowntimeEvent()],
           downtimeMinutes: 30,
           downtimeCategory: "형교환",
           downtimeDetail: "",
+          downtimeScrapKg: "",
           notes: "",
           approvalStatus: "대기"
         });
@@ -506,6 +587,11 @@ export const ExtrusionWorkReportModal = ({
   const totalAttainmentRate = totalTargetQty > 0 ? ((totalActualQty / totalTargetQty) * 100).toFixed(1) : "100.0";
   const totalYieldRate = totalActualQty > 0 ? ((totalGoodQty / totalActualQty) * 100).toFixed(1) : "100.0";
   const totalDefectRate = totalActualQty > 0 ? ((totalDefectQty / totalActualQty) * 100).toFixed(1) : "0.0";
+
+  // Multi-downtime aggregated totals
+  const dtEvents = Array.isArray(formData?.downtimeEvents) ? formData.downtimeEvents : [];
+  const totalDowntimeMinutes = dtEvents.reduce((sum, ev) => sum + (Number(ev?.minutes) || 0), 0);
+  const totalDowntimeScrapKg = Number(dtEvents.reduce((sum, ev) => sum + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
 
   // TPM Handlers
   const handleTpmStatusChange = (itemId, status) => {
@@ -663,6 +749,56 @@ export const ExtrusionWorkReportModal = ({
     });
   };
 
+  const handleAddDowntimeEvent = () => {
+    setFormData((prev) => ({
+      ...prev,
+      downtimeEvents: [...(prev.downtimeEvents || []), createDefaultDowntimeEvent(Date.now())]
+    }));
+  };
+
+  const handleRemoveDowntimeEvent = (index) => {
+    setFormData((prev) => {
+      const list = [...(prev.downtimeEvents || [])];
+      if (list.length <= 1) {
+        return {
+          ...prev,
+          downtimeEvents: [createDefaultDowntimeEvent(Date.now())]
+        };
+      }
+      return {
+        ...prev,
+        downtimeEvents: list.filter((_, i) => i !== index)
+      };
+    });
+  };
+
+  const handleDowntimeEventChange = (index, field, value) => {
+    setFormData((prev) => {
+      const list = [...(prev.downtimeEvents || [])];
+      const target = { ...(list[index] || createDefaultDowntimeEvent()) };
+
+      if (field === "minutes" || field === "scrapKg") {
+        target[field] = value === "" ? "" : Math.max(0, Number(value));
+      } else {
+        target[field] = value;
+      }
+
+      if (field === "startTime" || field === "endTime") {
+        const s = field === "startTime" ? value : target.startTime;
+        const e = field === "endTime" ? value : target.endTime;
+        if (s && e) {
+          const comp = calculateMinutesFromTime(s, e);
+          if (comp > 0) {
+            target.minutes = comp;
+          }
+        }
+      }
+
+      list[index] = target;
+      return { ...prev, downtimeEvents: list };
+    });
+  };
+
   const handleDowntimeChange = (field, value) => {
     const num = value === "" ? "" : Math.max(0, Number(value));
     setFormData((prev) => ({ ...prev, [field]: num }));
@@ -677,7 +813,6 @@ export const ExtrusionWorkReportModal = ({
       }
     }));
   };
-
 
   const handleDownloadCheckSheet = async () => {
     try {
@@ -728,6 +863,18 @@ export const ExtrusionWorkReportModal = ({
       console.warn("localStorage error:", e);
     }
 
+    const dtList = Array.isArray(formData?.downtimeEvents) && formData.downtimeEvents.length > 0
+      ? formData.downtimeEvents
+      : [createDefaultDowntimeEvent()];
+
+    const sumDtMinutes = dtList.reduce((acc, ev) => acc + (Number(ev?.minutes) || 0), 0);
+    const sumDtScrapKg = Number(dtList.reduce((acc, ev) => acc + (Number(ev?.scrapKg) || 0), 0).toFixed(1));
+    const primaryCategory = dtList[0]?.category || formData.downtimeCategory || "형교환";
+    const primaryDetail = dtList
+      .map((e) => (e.detail ? `[${e.startTime || ""}~${e.endTime || ""} ${e.category || ""}] ${e.detail}${e.scrapKg ? ` (폐기 ${e.scrapKg}kg)` : ""}` : ""))
+      .filter(Boolean)
+      .join(" / ") || formData.downtimeDetail || "";
+
     const reportToSave = sanitizeExtrusionReport({
       ...formData,
       items: formData.items,
@@ -740,7 +887,11 @@ export const ExtrusionWorkReportModal = ({
       tpmChecks,
       tpmIssueText: formData.tpmIssueText || "",
       tpmIssuePhotos: formData.tpmIssuePhotos || [],
-      downtimeMinutes: Number(formData.downtimeMinutes) || 0
+      downtimeEvents: dtList,
+      downtimeMinutes: sumDtMinutes,
+      downtimeScrapKg: sumDtScrapKg,
+      downtimeCategory: primaryCategory,
+      downtimeDetail: primaryDetail
     });
 
     onSave(reportToSave);
@@ -1745,68 +1896,160 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 4: Downtime & Loss Management (비가동 시간 및 발생 사유) */}
+            {/* Section 4: 비가동 및 불량내역 */}
             {/* ========================================================================= */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3.5">
-              <div className="flex items-center justify-between">
-                <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
-                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  ④ 비가동 시간 및 발생 사유 (2. 작업현황 - 비가동)
-                </span>
-                <span className="text-[11px] font-bold text-slate-500">
-                  총 {formData.downtimeMinutes || 0}분 ({(Number(formData.downtimeMinutes || 0) / 60).toFixed(1)}시간)
-                </span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
+              {/* Header & Badges */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    ④ 비가동 및 불량내역
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300/60">
+                    총 {dtEvents.length}건
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300/60">
+                    총 비가동: {totalDowntimeMinutes}분 ({(totalDowntimeMinutes / 60).toFixed(1)}시간)
+                  </span>
+                  {totalDowntimeScrapKg > 0 && (
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-orange-100 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-300/60">
+                      총 폐기: {totalDowntimeScrapKg}kg
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Downtime Categories Chips */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10.5px] font-bold text-slate-400">사유 구분:</span>
-                {DOWNTIME_CATEGORIES.map((c) => {
-                  const isSel = formData.downtimeCategory === c.id;
+              {/* Events List */}
+              <div className="space-y-2.5">
+                {dtEvents.map((ev, idx) => {
                   return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, downtimeCategory: c.id })}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-black transition cursor-pointer border ${
-                        isSel
-                          ? "bg-amber-600 text-white border-amber-700 shadow-xs ring-2 ring-amber-300/40"
-                          : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100"
-                      }`}
+                    <div
+                      key={ev.id || `dt_card_${idx}`}
+                      className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/70 shadow-xs space-y-2.5 transition-all hover:border-amber-300 dark:hover:border-amber-700/50"
                     >
-                      {c.label}
-                    </button>
+                      {/* Card Top Row: Number, Category Select, Quick time badges, Delete button */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-amber-600 text-white font-black text-[11px] flex items-center justify-center shrink-0">
+                            {idx + 1}
+                          </span>
+                          {/* Category Select */}
+                          <select
+                            value={ev.category || "형교환"}
+                            onChange={(e) => handleDowntimeEventChange(idx, "category", e.target.value)}
+                            className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-lg text-xs font-black text-amber-900 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                          >
+                            {DOWNTIME_CATEGORIES.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {ev.minutes > 0 && (
+                            <span className="text-[11px] font-black px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              ⏱️ {ev.minutes}분 소요
+                            </span>
+                          )}
+                          {dtEvents.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDowntimeEvent(idx)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
+                              title="삭제"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Time, Minutes, Scrap Inputs Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                            시작시간
+                          </label>
+                          <input
+                            type="time"
+                            value={ev.startTime || ""}
+                            onChange={(e) => handleDowntimeEventChange(idx, "startTime", e.target.value)}
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                            종료시간
+                          </label>
+                          <input
+                            type="time"
+                            value={ev.endTime || ""}
+                            onChange={(e) => handleDowntimeEventChange(idx, "endTime", e.target.value)}
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-slate-800 dark:text-slate-100 text-center focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                            비가동(분)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="5"
+                            value={ev.minutes ?? ""}
+                            onChange={(e) => handleDowntimeEventChange(idx, "minutes", e.target.value)}
+                            placeholder="30"
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-right text-rose-600 dark:text-rose-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                            폐기중량(kg)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={ev.scrapKg ?? ""}
+                            onChange={(e) => handleDowntimeEventChange(idx, "scrapKg", e.target.value)}
+                            placeholder="0.0"
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-xs text-right text-orange-600 dark:text-orange-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Detail Input */}
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 mb-0.5">
+                          발생 내역 및 조치 내용
+                        </label>
+                        <input
+                          type="text"
+                          value={ev.detail || ""}
+                          onChange={(e) => handleDowntimeEventChange(idx, "detail", e.target.value)}
+                          placeholder="예: 금형 교환 및 가류조 승온 대기, 스크류 청소 진행 등"
+                          className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-medium text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-1 focus:ring-amber-500 focus:outline-hidden"
+                        />
+                      </div>
+                    </div>
                   );
                 })}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    비가동 시간 (분)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="5"
-                    value={formData.downtimeMinutes}
-                    onChange={(e) => handleDowntimeChange("downtimeMinutes", e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-black text-right text-rose-600 dark:text-rose-400 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                  />
-                </div>
-                <div className="sm:col-span-3">
-                  <label className="block text-[11px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                    비가동 상세 사유 및 조치 내용 (시간대 포함)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.downtimeDetail}
-                    onChange={(e) => setFormData({ ...formData, downtimeDetail: e.target.value })}
-                    placeholder="예: 08:00 - 08:50 품종교체 및 시운전 50분 완료"
-                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
-                  />
-                </div>
-              </div>
+              {/* Add Event Button */}
+              <button
+                type="button"
+                onClick={handleAddDowntimeEvent}
+                className="w-full py-2 border-2 border-dashed border-amber-300 dark:border-amber-700 hover:border-amber-500 dark:hover:border-amber-500 text-amber-800 dark:text-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 rounded-xl font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>비가동 및 불량 내역 추가 등록</span>
+              </button>
             </div>
 
             {/* ========================================================================= */}
