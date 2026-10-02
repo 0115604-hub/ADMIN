@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
-  AlertTriangle,
   AlertCircle,
   Plus,
   Send,
@@ -19,17 +18,16 @@ import {
   User,
   Factory,
   Layers,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
   Check,
-  RotateCcw
+  RotateCcw,
+  Eye,
+  Calendar,
+  Sparkles
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
   EXTRUSION_LINES,
   DEFECT_TYPES,
-  SEVERITY_LEVELS,
   subscribeExtrusionQualityIssues,
   getLocalExtrusionQualityIssues,
   saveExtrusionQualityIssue,
@@ -37,8 +35,6 @@ import {
   deleteExtrusionQualityIssue
 } from "../../services/extrusionQualityIssueService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
-
-const VEHICLE_PRESETS = ["NQ5", "DL3", "GL3", "NX4", "HR", "JA", "SP2", "MQ4", "KA4", "공통"];
 
 // Client-side instant image compression
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -88,11 +84,12 @@ const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) =
 };
 
 export const ExtrusionQualityIssueTab = () => {
-  const { currentProfile, isAdmin } = useAuth();
+  const { currentProfile } = useAuth();
   const [issues, setIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [isProcessing, setIsProcessing] = useState(false);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
+  const [detailModalIssue, setDetailModalIssue] = useState(null);
 
   // Edit Mode State
   const [editingIssueId, setEditingIssueId] = useState(null);
@@ -100,19 +97,15 @@ export const ExtrusionQualityIssueTab = () => {
   // Filter States
   const [selectedLineFilter, setSelectedLineFilter] = useState("all");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ACTIVE"); // "ALL", "ACTIVE", "RESOLVED"
-  const [selectedSeverityFilter, setSelectedSeverityFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Form State
+  // Form State (경보등급 삭제, 대상차종/품번 삭제, 조치결과 반영)
   const [form, setForm] = useState({
     line: "PCM 1호기",
-    vehicle: "NQ5",
-    itemCode: "",
     defectType: "외관 스크래치 / 찍힘",
-    severity: "CRITICAL",
     title: "",
     content: "",
-    actionGuide: "",
+    actionResult: "",
     images: []
   });
 
@@ -190,13 +183,10 @@ export const ExtrusionQualityIssueTab = () => {
       // Reset form
       setForm({
         line: "PCM 1호기",
-        vehicle: "NQ5",
-        itemCode: "",
         defectType: "외관 스크래치 / 찍힘",
-        severity: "CRITICAL",
         title: "",
         content: "",
-        actionGuide: "",
+        actionResult: "",
         images: []
       });
 
@@ -221,13 +211,10 @@ export const ExtrusionQualityIssueTab = () => {
     setEditingIssueId(issue.id);
     setForm({
       line: issue.line || "PCM 1호기",
-      vehicle: issue.vehicle || "NQ5",
-      itemCode: issue.itemCode || "",
       defectType: issue.defectType || "외관 스크래치 / 찍힘",
-      severity: issue.severity || "CRITICAL",
       title: issue.title || "",
       content: issue.content || "",
-      actionGuide: issue.actionGuide || "",
+      actionResult: issue.actionResult || issue.actionGuide || issue.resolutionNote || "",
       images: Array.isArray(issue.images) ? [...issue.images] : []
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -235,7 +222,8 @@ export const ExtrusionQualityIssueTab = () => {
 
   // Resolve Issue
   const handleResolve = async (issue) => {
-    const note = window.prompt("조치 및 해결 완료 내용을 입력해 주세요:", "작업자 교육 및 다이스 토출구 조치 완료");
+    const defaultNote = issue.actionResult || "다이스 토출구 조치 및 초물 검사 완료";
+    const note = window.prompt("조치결과 및 완료 내용을 입력해 주세요:", defaultNote);
     if (note === null) return;
 
     try {
@@ -254,6 +242,9 @@ export const ExtrusionQualityIssueTab = () => {
       await deleteExtrusionQualityIssue(id);
       if (editingIssueId === id) {
         setEditingIssueId(null);
+      }
+      if (detailModalIssue?.id === id) {
+        setDetailModalIssue(null);
       }
       alert("품질이슈가 삭제되었습니다.");
     } catch (err) {
@@ -277,37 +268,30 @@ export const ExtrusionQualityIssueTab = () => {
         if (it.line !== selectedLineFilter && it.line !== "전 라인 (공통)") return false;
       }
 
-      // Severity filter
-      if (selectedSeverityFilter !== "all") {
-        if (it.severity !== selectedSeverityFilter) return false;
-      }
-
       // Search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
+        const actionText = it.actionResult || it.actionGuide || it.resolutionNote || "";
         const match =
           (it.title || "").toLowerCase().includes(q) ||
-          (it.vehicle || "").toLowerCase().includes(q) ||
           (it.line || "").toLowerCase().includes(q) ||
           (it.content || "").toLowerCase().includes(q) ||
           (it.defectType || "").toLowerCase().includes(q) ||
-          (it.itemCode || "").toLowerCase().includes(q) ||
+          actionText.toLowerCase().includes(q) ||
           (it.author || "").toLowerCase().includes(q);
         if (!match) return false;
       }
 
       return true;
     });
-  }, [issues, selectedStatusFilter, selectedLineFilter, selectedSeverityFilter, searchQuery]);
+  }, [issues, selectedStatusFilter, selectedLineFilter, searchQuery]);
 
   // Summary Metrics
   const stats = useMemo(() => {
     const total = issues.length;
     const active = issues.filter((it) => it.status === "ACTIVE").length;
-    const critical = issues.filter((it) => it.status === "ACTIVE" && it.severity === "CRITICAL").length;
-    const warning = issues.filter((it) => it.status === "ACTIVE" && it.severity === "WARNING").length;
     const resolved = issues.filter((it) => it.status === "RESOLVED").length;
-    return { total, active, critical, warning, resolved };
+    return { total, active, resolved };
   }, [issues]);
 
   return (
@@ -315,7 +299,7 @@ export const ExtrusionQualityIssueTab = () => {
       {/* ========================================================================= */}
       {/* 1. Header Banner */}
       {/* ========================================================================= */}
-      <div className="bg-gradient-to-r from-rose-950/80 via-slate-900 to-amber-950/80 rounded-2xl p-3 sm:p-4 border border-rose-600/40 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
+      <div className="bg-gradient-to-r from-rose-950/80 via-slate-900 to-amber-950/80 rounded-2xl p-3 sm:p-4 border border-rose-600/40 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
         <div className="flex items-center gap-2.5">
           <div className="p-2.5 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-600 text-white shadow-md shadow-rose-600/30 shrink-0 animate-pulse">
             <ShieldAlert className="w-5 h-5" />
@@ -323,7 +307,7 @@ export const ExtrusionQualityIssueTab = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
-                압출동 품질이슈 공지 및 집중 점검 관리
+                압출동 품질이슈 공지 및 조치 관리
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white shadow-2xs">
                 설유철 책임 전담
@@ -338,16 +322,16 @@ export const ExtrusionQualityIssueTab = () => {
         {/* Quick KPI Badges */}
         <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
           <div className="px-3 py-1.5 rounded-xl bg-rose-950/90 border border-rose-500/60 text-center">
-            <span className="text-[10px] font-bold text-rose-300 block">🚨 조치중 긴급</span>
-            <span className="font-mono font-black text-rose-400 text-sm">{stats.critical}건</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl bg-amber-950/90 border border-amber-500/60 text-center">
-            <span className="text-[10px] font-bold text-amber-300 block">⚠️ 주의 관찰</span>
-            <span className="font-mono font-black text-amber-400 text-sm">{stats.warning}건</span>
+            <span className="text-[10px] font-bold text-rose-300 block">🚨 진행중 (조치중)</span>
+            <span className="font-mono font-black text-rose-400 text-sm">{stats.active}건</span>
           </div>
           <div className="px-3 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-500/60 text-center">
             <span className="text-[10px] font-bold text-emerald-300 block">✅ 조치 완료</span>
             <span className="font-mono font-black text-emerald-400 text-sm">{stats.resolved}건</span>
+          </div>
+          <div className="px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-center">
+            <span className="text-[10px] font-bold text-slate-400 block">전체 등록</span>
+            <span className="font-mono font-black text-slate-200 text-sm">{stats.total}건</span>
           </div>
         </div>
       </div>
@@ -355,7 +339,7 @@ export const ExtrusionQualityIssueTab = () => {
       {/* ========================================================================= */}
       {/* 2. Top Section: Quality Issue Registration Panel (품질이슈 등록 패널) */}
       {/* ========================================================================= */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border-2 border-rose-500/40 shadow-md space-y-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border-2 border-rose-500/40 shadow-sm space-y-4">
         <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <div className={`p-1.5 rounded-lg ${editingIssueId ? "bg-teal-600" : "bg-rose-600"} text-white shadow-xs`}>
@@ -366,7 +350,7 @@ export const ExtrusionQualityIssueTab = () => {
                 {editingIssueId ? "압출 품질이슈 수정" : "새 압출 품질이슈 등록 및 현장 전파"}
               </h3>
               <p className="text-[11px] text-slate-400">
-                압출 라인별 불량 현상, 집중 점검 사항 및 작업 지침을 등록합니다.
+                압출 라인별 불량 현상, 원인 및 조치결과를 등록하여 현장에 공유합니다.
               </p>
             </div>
           </div>
@@ -378,17 +362,14 @@ export const ExtrusionQualityIssueTab = () => {
                 setEditingIssueId(null);
                 setForm({
                   line: "PCM 1호기",
-                  vehicle: "NQ5",
-                  itemCode: "",
                   defectType: "외관 스크래치 / 찍힘",
-                  severity: "CRITICAL",
                   title: "",
                   content: "",
-                  actionGuide: "",
+                  actionResult: "",
                   images: []
                 });
               }}
-              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-600 dark:text-slate-300"
+              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
             >
               수정 취소
             </button>
@@ -396,17 +377,17 @@ export const ExtrusionQualityIssueTab = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
-          {/* Row 1: 라인 선택 & 중요도(경보등급) */}
+          {/* Row 1: 압출 대상 라인 & 불량 유형 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 압출 라인 */}
             <div>
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                압출 대상 라인
+                압출 대상 라인 <span className="text-rose-500">*</span>
               </label>
               <select
                 value={form.line}
                 onChange={(e) => setForm({ ...form, line: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/20"
               >
                 {EXTRUSION_LINES.map((l) => (
                   <option key={l.id} value={l.name}>
@@ -416,87 +397,15 @@ export const ExtrusionQualityIssueTab = () => {
               </select>
             </div>
 
-            {/* 중요도 / 경보 등급 */}
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                경보 등급 (중요도)
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {SEVERITY_LEVELS.map((sev) => (
-                  <button
-                    type="button"
-                    key={sev.id}
-                    onClick={() => setForm({ ...form, severity: sev.id })}
-                    className={`py-2 px-1 rounded-xl font-black text-[11px] transition-all border text-center ${
-                      form.severity === sev.id
-                        ? sev.id === "CRITICAL"
-                          ? "bg-rose-600 text-white border-rose-700 ring-2 ring-rose-500/30 shadow-xs"
-                          : sev.id === "WARNING"
-                          ? "bg-amber-500 text-slate-950 border-amber-600 ring-2 ring-amber-500/30 shadow-xs"
-                          : "bg-blue-600 text-white border-blue-700 ring-2 ring-blue-500/30 shadow-xs"
-                        : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
-                    }`}
-                  >
-                    {sev.id === "CRITICAL" ? "🚨 긴급 경보" : sev.id === "WARNING" ? "⚠️ 주의 관찰" : "ℹ️ 품질 공지"}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Row 2: 차종 선택 / 입력 & 불량 유형 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* 차종 & 품번 */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="font-bold text-slate-700 dark:text-slate-300">
-                  대상 차종 / 품번
-                </label>
-                <div className="flex items-center gap-1 overflow-x-auto">
-                  {VEHICLE_PRESETS.slice(0, 5).map((v) => (
-                    <button
-                      type="button"
-                      key={v}
-                      onClick={() => setForm({ ...form, vehicle: v })}
-                      className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold border transition ${
-                        form.vehicle === v
-                          ? "bg-rose-50 border-rose-400 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                          : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500"
-                      }`}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="차종 (예: NQ5, DL3)"
-                  value={form.vehicle}
-                  onChange={(e) => setForm({ ...form, vehicle: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
-                />
-                <input
-                  type="text"
-                  placeholder="품번/품명 (선택)"
-                  value={form.itemCode}
-                  onChange={(e) => setForm({ ...form, itemCode: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white font-mono"
-                />
-              </div>
-            </div>
-
             {/* 불량 유형 */}
             <div>
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                불량 유형
+                불량 유형 <span className="text-rose-500">*</span>
               </label>
               <select
                 value={form.defectType}
                 onChange={(e) => setForm({ ...form, defectType: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500/20"
               >
                 {DEFECT_TYPES.map((d) => (
                   <option key={d} value={d}>
@@ -507,26 +416,26 @@ export const ExtrusionQualityIssueTab = () => {
             </div>
           </div>
 
-          {/* Row 3: 품질이슈 제목 */}
+          {/* Row 2: 품질이슈 제목 */}
           <div>
             <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              품질이슈 제목 (불량 현상 핵심 요약)
+              품질이슈 제목 (불량 현상 핵심 요약) <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
               required
-              placeholder="예: PCM 1호 NQ5 다이스 토출구 이물 누적에 따른 외관 미세 스크래치 발생 주의"
+              placeholder="예: PCM 1호 다이스 토출구 이물 누적에 따른 외관 미세 스크래치 발생"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs sm:text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-black text-slate-900 dark:text-white text-xs sm:text-sm focus:ring-2 focus:ring-rose-500/20"
             />
           </div>
 
-          {/* Row 4: 세부 불량 내용 및 작업자 조치/주의 지시사항 */}
+          {/* Row 3: 세부 불량 현상 및 발생 원인 & 조치결과 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                세부 불량 현상 및 발생 원인
+                세부 불량 현상 및 발생 원인 <span className="text-rose-500">*</span>
               </label>
               <textarea
                 rows="3"
@@ -534,30 +443,30 @@ export const ExtrusionQualityIssueTab = () => {
                 placeholder="구체적인 불량 현상, 발생 부위 및 추정 원인을 작성해 주세요."
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white text-xs leading-relaxed"
+                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-rose-500/20"
               ></textarea>
             </div>
 
             <div>
-              <label className="font-bold text-rose-600 dark:text-rose-400 block mb-1">
-                작업자 현장 조치 지침 및 점검 주기
+              <label className="font-bold text-teal-700 dark:text-teal-400 block mb-1">
+                조치결과 (현장 조치 및 개선 내용)
               </label>
               <textarea
                 rows="3"
-                placeholder="예: 1. 30분 단위 버니어 캘리퍼스 측정&#10;2. 스크래치 감지 시 즉시 라인 정지 후 토출구 청소"
-                value={form.actionGuide}
-                onChange={(e) => setForm({ ...form, actionGuide: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-rose-300 dark:border-rose-800/80 bg-rose-50/40 dark:bg-rose-950/20 font-medium text-slate-900 dark:text-white text-xs leading-relaxed"
+                placeholder="예: 다이스 토출구 이물 제거 및 청소 실시 완료, 초물 측정 규격 합격 확인"
+                value={form.actionResult}
+                onChange={(e) => setForm({ ...form, actionResult: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-teal-300 dark:border-teal-800/80 bg-teal-50/40 dark:bg-teal-950/20 font-medium text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-teal-500/20"
               ></textarea>
             </div>
           </div>
 
-          {/* Row 5: 현장 사진 / 한도 견본 첨부 */}
+          {/* Row 4: 스마트폰촬영 또는 사진선택 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <ImageIcon className="w-3.5 h-3.5 text-rose-600" />
-                <span>현장 불량 사진 및 한도 견본 첨부 (선택)</span>
+                <span>현장 불량 사진 첨부 (선택)</span>
               </label>
               <span className="text-[10.5px] text-slate-400">
                 {form.images?.length || 0}/8장 첨부됨
@@ -573,15 +482,16 @@ export const ExtrusionQualityIssueTab = () => {
               onChange={(e) => handleImageFiles(e.target.files)}
             />
 
-            <div
+            <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-3 text-center cursor-pointer hover:border-rose-400 hover:bg-rose-50/20 transition-all flex items-center justify-center gap-2"
+              className="w-full border-2 border-dashed border-rose-300 dark:border-rose-800/80 bg-rose-50/30 dark:bg-rose-950/20 rounded-xl p-3 text-center cursor-pointer hover:border-rose-500 hover:bg-rose-50/60 transition-all flex items-center justify-center gap-2"
             >
-              <Camera className="w-4 h-4 text-rose-600" />
-              <span className="font-bold text-slate-700 dark:text-slate-300 text-xs">
-                {isProcessingImages ? "사진 압축 및 처리 중..." : "스마트폰 현장 불량 부위 사진 / 한도 견본 추가하기"}
+              <Camera className="w-4 h-4 text-rose-600 animate-pulse" />
+              <span className="font-black text-rose-700 dark:text-rose-300 text-xs sm:text-sm">
+                {isProcessingImages ? "사진 압축 및 처리 중..." : "📷 스마트폰촬영 또는 사진선택"}
               </span>
-            </div>
+            </button>
 
             {form.images && form.images.length > 0 && (
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1">
@@ -591,16 +501,17 @@ export const ExtrusionQualityIssueTab = () => {
                     className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-square bg-slate-100 dark:bg-slate-800"
                   >
                     <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                    <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setPreviewImage({ url: img.dataUrl, name: img.name });
                         }}
-                        className="p-1 rounded bg-white text-slate-900"
+                        className="p-1 rounded bg-white text-slate-900 cursor-pointer"
+                        title="확대보기"
                       >
-                        <ZoomIn className="w-3 h-3" />
+                        <ZoomIn className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button"
@@ -608,9 +519,10 @@ export const ExtrusionQualityIssueTab = () => {
                           e.stopPropagation();
                           handleRemoveImage(idx);
                         }}
-                        className="p-1 rounded bg-rose-600 text-white"
+                        className="p-1 rounded bg-rose-600 text-white cursor-pointer"
+                        title="삭제"
                       >
-                        <X className="w-3 h-3" />
+                        <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -643,7 +555,7 @@ export const ExtrusionQualityIssueTab = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. Bottom Section: Registered Quality Issues List (등록된 품질이슈 목록) */}
+      {/* 3. Bottom Section: 1-Line Table View for Extrusion Issues (1줄짜리 목록) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -653,7 +565,7 @@ export const ExtrusionQualityIssueTab = () => {
             </div>
             <div>
               <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                등록된 압출 품질이슈 목록
+                압출 품질이슈 목록
               </h3>
               <p className="text-[11px] text-slate-400">
                 총 {issues.length}건 등록됨 (현재 조건: {filteredIssues.length}건)
@@ -666,7 +578,7 @@ export const ExtrusionQualityIssueTab = () => {
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="제목, 차종, 라인, 불량 검색"
+              placeholder="제목, 라인, 불량유형, 조치결과 검색"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-900 dark:text-white"
@@ -679,7 +591,7 @@ export const ExtrusionQualityIssueTab = () => {
           {/* Status Filter */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
             {[
-              { id: "ACTIVE", label: "🚨 조치중 (진행)" },
+              { id: "ACTIVE", label: "🚨 진행중 (조치중)" },
               { id: "RESOLVED", label: "✅ 조치완료" },
               { id: "ALL", label: "전체보기" }
             ].map((st) => (
@@ -687,7 +599,7 @@ export const ExtrusionQualityIssueTab = () => {
                 key={st.id}
                 type="button"
                 onClick={() => setSelectedStatusFilter(st.id)}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                   selectedStatusFilter === st.id
                     ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -716,174 +628,270 @@ export const ExtrusionQualityIssueTab = () => {
           </div>
         </div>
 
-        {/* Issues List View */}
+        {/* ========================================================================= */}
+        {/* 1-Line Table Container */}
+        {/* ========================================================================= */}
         {filteredIssues.length === 0 ? (
           <div className="py-12 text-center text-xs text-slate-400 space-y-2">
             <CheckCircle2 className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-            <p>해당 조건의 품질이슈가 없습니다.</p>
+            <p>해당 조건의 압출 품질이슈가 없습니다.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredIssues.map((issue) => {
-              const isResolved = issue.status === "RESOLVED";
-              const isCritical = issue.severity === "CRITICAL";
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+            <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700 font-black text-[11px]">
+                  <th className="py-2.5 px-3 text-center w-16">상태</th>
+                  <th className="py-2.5 px-2.5 text-center w-24">등록일자</th>
+                  <th className="py-2.5 px-2.5 text-center w-24">라인</th>
+                  <th className="py-2.5 px-2.5 w-28">불량유형</th>
+                  <th className="py-2.5 px-3 min-w-[220px]">품질이슈 제목 (불량 현상)</th>
+                  <th className="py-2.5 px-3 min-w-[200px]">조치결과</th>
+                  <th className="py-2.5 px-2 text-center w-16">사진</th>
+                  <th className="py-2.5 px-2.5 text-center w-20">등록자</th>
+                  <th className="py-2.5 px-3 text-center w-28">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredIssues.map((issue) => {
+                  const isResolved = issue.status === "RESOLVED";
+                  const actionText = issue.actionResult || issue.actionGuide || issue.resolutionNote || "";
+                  const hasPhotos = Array.isArray(issue.images) && issue.images.length > 0;
 
-              return (
-                <div
-                  key={issue.id}
-                  className={`p-3.5 sm:p-4 rounded-2xl border transition-all space-y-3 ${
-                    isResolved
-                      ? "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-80"
-                      : isCritical
-                      ? "bg-rose-50/40 dark:bg-rose-950/20 border-rose-300 dark:border-rose-800/80 shadow-xs"
-                      : "bg-amber-50/30 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/80 shadow-xs"
-                  }`}
-                >
-                  {/* Issue Header */}
-                  <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Severity Badge */}
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10.5px] font-black border ${
-                          isCritical
-                            ? "bg-rose-600 text-white border-rose-700 animate-pulse"
-                            : issue.severity === "WARNING"
-                            ? "bg-amber-500 text-slate-950 border-amber-600"
-                            : "bg-blue-600 text-white border-blue-700"
-                        }`}
-                      >
-                        {isCritical ? "🚨 긴급 경보" : issue.severity === "WARNING" ? "⚠️ 주의 관찰" : "ℹ️ 품질 공지"}
-                      </span>
-
-                      {/* Status Badge */}
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10.5px] font-black border ${
-                          isResolved
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300"
-                            : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300"
-                        }`}
-                      >
-                        {isResolved ? "✓ 조치 완료" : "● 현장 조치중"}
-                      </span>
-
-                      {/* Line Badge */}
-                      <span className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
-                        {issue.line}
-                      </span>
-
-                      {/* Vehicle & Item */}
-                      <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300">
-                        {issue.vehicle} {issue.itemCode ? `(${issue.itemCode})` : ""}
-                      </span>
-
-                      <span className="text-[11px] font-mono text-slate-400">
-                        {issue.date} {issue.time || ""}
-                      </span>
-                    </div>
-
-                    {/* Author & Action Buttons */}
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <span className="text-[11px] text-slate-500 font-bold mr-2">
-                        작성: {issue.author} {issue.authorTitle || ""}
-                      </span>
-
-                      {!isResolved && (
-                        <button
-                          type="button"
-                          onClick={() => handleResolve(issue)}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer"
+                  return (
+                    <tr
+                      key={issue.id}
+                      onClick={() => setDetailModalIssue(issue)}
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition cursor-pointer group ${
+                        isResolved ? "opacity-75 bg-slate-50/30 dark:bg-slate-900/40" : ""
+                      }`}
+                    >
+                      {/* 상태 */}
+                      <td className="py-2 px-3 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                            isResolved
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-300"
+                              : "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 animate-pulse"
+                          }`}
                         >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>조치 완료</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(issue)}
-                        className="p-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300"
-                        title="수정"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(issue.id)}
-                        className="p-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 hover:text-white text-rose-600 transition"
-                        title="삭제"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Title & Defect Type */}
-                  <div>
-                    <h4 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span>{issue.title}</span>
-                    </h4>
-                    <span className="inline-block mt-0.5 px-2 py-0.2 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-[10.5px]">
-                      불량 유형: {issue.defectType}
-                    </span>
-                  </div>
-
-                  {/* Content & Action Guide */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                    <div className="p-3 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-1">
-                      <span className="font-bold text-slate-500 dark:text-slate-400 block text-[10.5px]">
-                        발생 현상 및 원인
-                      </span>
-                      <p className="text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
-                        {issue.content}
-                      </p>
-                    </div>
-
-                    {issue.actionGuide && (
-                      <div className="p-3 rounded-xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-300/80 dark:border-rose-800/80 space-y-1">
-                        <span className="font-black text-rose-700 dark:text-rose-300 block text-[10.5px]">
-                          작업자 집중 점검 및 조치 지침
+                          {isResolved ? "✓ 완료" : "● 진행"}
                         </span>
-                        <p className="text-rose-950 dark:text-rose-100 font-medium leading-relaxed whitespace-pre-wrap">
-                          {issue.actionGuide}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                      </td>
 
-                  {/* Attached Photos */}
-                  {issue.images && issue.images.length > 0 && (
-                    <div className="flex items-center gap-2 pt-1 overflow-x-auto">
-                      {issue.images.map((img, idx) => (
-                        <div
-                          key={img.id || idx}
-                          onClick={() => setPreviewImage({ url: img.dataUrl, name: img.name })}
-                          className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer group shrink-0"
-                        >
-                          <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                          <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                            <ZoomIn className="w-4 h-4 text-white" />
-                          </div>
+                      {/* 등록일자 */}
+                      <td className="py-2 px-2.5 text-center font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                        {issue.date || issue.createdAt?.slice(0, 10)}
+                      </td>
+
+                      {/* 라인 */}
+                      <td className="py-2 px-2.5 text-center">
+                        <span className="px-2 py-0.5 rounded-md font-bold text-[10.5px] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300/80 dark:border-slate-700">
+                          {issue.line}
+                        </span>
+                      </td>
+
+                      {/* 불량유형 */}
+                      <td className="py-2 px-2.5 font-bold text-rose-700 dark:text-rose-300">
+                        <span className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-[10.5px]">
+                          {issue.defectType}
+                        </span>
+                      </td>
+
+                      {/* 제목 */}
+                      <td className="py-2 px-3">
+                        <div className="font-bold text-slate-900 dark:text-white max-w-[280px] sm:max-w-[340px] truncate" title={issue.title}>
+                          {issue.title}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </td>
 
-                  {/* Resolution Note if resolved */}
-                  {isResolved && issue.resolutionNote && (
-                    <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs flex items-center justify-between text-emerald-900 dark:text-emerald-200 font-bold">
-                      <span>✓ 조치 내용: {issue.resolutionNote}</span>
-                      <span className="font-mono text-[10.5px] text-emerald-600 dark:text-emerald-400">
-                        {issue.resolvedAt} ({issue.resolvedBy || "설유철"})
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      {/* 조치결과 */}
+                      <td className="py-2 px-3">
+                        <div
+                          className={`max-w-[240px] sm:max-w-[300px] truncate text-[11px] ${
+                            actionText ? "text-teal-700 dark:text-teal-300 font-medium" : "text-slate-400 italic"
+                          }`}
+                          title={actionText || "조치 내용 없음"}
+                        >
+                          {actionText || "-"}
+                        </div>
+                      </td>
+
+                      {/* 사진 */}
+                      <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                        {hasPhotos ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ url: issue.images[0].dataUrl, name: issue.images[0].name })}
+                            className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold text-[10.5px] hover:bg-blue-100 flex items-center gap-1 mx-auto cursor-pointer"
+                            title="사진 확대보기"
+                          >
+                            <Camera className="w-3 h-3" />
+                            <span>{issue.images.length}장</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-600 text-[11px]">-</span>
+                        )}
+                      </td>
+
+                      {/* 등록자 */}
+                      <td className="py-2 px-2.5 text-center text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                        {issue.author || "설유철"}
+                      </td>
+
+                      {/* 관리 버튼 */}
+                      <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1">
+                          {!isResolved && (
+                            <button
+                              type="button"
+                              onClick={() => handleResolve(issue)}
+                              className="px-2 py-0.8 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10.5px] shadow-2xs flex items-center gap-0.5 cursor-pointer"
+                              title="조치 완료 처리"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>조치</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(issue)}
+                            className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+                            title="수정"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(issue.id)}
+                            className="p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-600 hover:text-white text-rose-600 transition cursor-pointer"
+                            title="삭제"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
+
+      {/* ========================================================================= */}
+      {/* 4. Detail Modal (When user clicks a 1-line item) */}
+      {/* ========================================================================= */}
+      {detailModalIssue && (
+        <div
+          onClick={() => setDetailModalIssue(null)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-fadeIn cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 animate-scaleUp cursor-default text-slate-900 dark:text-white"
+          >
+            <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                    detailModalIssue.status === "RESOLVED"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                      : "bg-rose-50 text-rose-700 border-rose-300"
+                  }`}
+                >
+                  {detailModalIssue.status === "RESOLVED" ? "✓ 조치완료" : "● 진행중"}
+                </span>
+                <span className="font-bold text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">
+                  {detailModalIssue.line}
+                </span>
+                <span className="font-bold text-xs text-rose-600">
+                  {detailModalIssue.defectType}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailModalIssue(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <h3 className="font-black text-base text-slate-900 dark:text-white">
+              {detailModalIssue.title}
+            </h3>
+
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+                <span className="font-bold text-slate-500 block mb-1 text-[11px]">불량 현상 및 세부 원인</span>
+                <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200">
+                  {detailModalIssue.content}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-teal-50/60 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80">
+                <span className="font-bold text-teal-800 dark:text-teal-300 block mb-1 text-[11px]">조치결과</span>
+                <p className="whitespace-pre-wrap leading-relaxed text-teal-950 dark:text-teal-100 font-medium">
+                  {detailModalIssue.actionResult || detailModalIssue.actionGuide || detailModalIssue.resolutionNote || "등록된 조치결과가 없습니다."}
+                </p>
+              </div>
+
+              {detailModalIssue.images && detailModalIssue.images.length > 0 && (
+                <div>
+                  <span className="font-bold text-slate-500 block mb-1.5 text-[11px]">첨부 사진 (클릭하여 확대)</span>
+                  <div className="flex items-center gap-2 overflow-x-auto pt-1">
+                    {detailModalIssue.images.map((img, i) => (
+                      <div
+                        key={img.id || i}
+                        onClick={() => setPreviewImage({ url: img.dataUrl, name: img.name })}
+                        className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 cursor-pointer group shrink-0"
+                      >
+                        <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                          <ZoomIn className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 text-xs">
+              <span className="text-slate-400 font-mono text-[11px]">
+                등록자: {detailModalIssue.author} {detailModalIssue.authorTitle || ""} ({detailModalIssue.date})
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                {detailModalIssue.status !== "RESOLVED" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleResolve(detailModalIssue);
+                      setDetailModalIssue(null);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black cursor-pointer shadow-xs"
+                  >
+                    ✓ 조치 완료 처리
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleEdit(detailModalIssue);
+                    setDetailModalIssue(null);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold cursor-pointer"
+                >
+                  수정
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Image Lightbox Preview Modal */}
       {previewImage && (

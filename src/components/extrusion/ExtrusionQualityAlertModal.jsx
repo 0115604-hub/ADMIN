@@ -112,7 +112,7 @@ export const ExtrusionQualityAlertModal = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400 tracking-tight">
-                  🚨 압출동 현장 품질 경보 및 작업 지침
+                  🚨 압출동 현장 품질 공지 및 작업 지침
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-rose-600 text-white shadow-2xs">
                   {activeIssues.length}건 집중 관리
@@ -146,35 +146,22 @@ export const ExtrusionQualityAlertModal = () => {
         {/* Active Issues List */}
         <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
           {activeIssues.map((issue, idx) => {
-            const isCritical = issue.severity === "CRITICAL";
             const isAcked = Array.isArray(issue.acknowledgedBy) && issue.acknowledgedBy.includes(currentProfile?.name);
+            const actionText = issue.actionResult || issue.actionGuide || issue.resolutionNote || "";
 
             return (
               <div
                 key={issue.id || idx}
-                className={`p-3.5 sm:p-4 rounded-2xl border-2 transition-all space-y-2.5 ${
-                  isCritical
-                    ? "bg-rose-50/50 dark:bg-rose-950/30 border-rose-400 dark:border-rose-700/80 shadow-xs"
-                    : "bg-amber-50/40 dark:bg-amber-950/30 border-amber-400 dark:border-amber-700/80 shadow-xs"
-                }`}
+                className="p-3.5 sm:p-4 rounded-2xl border-2 bg-rose-50/40 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/80 shadow-xs space-y-2.5"
               >
                 {/* Badges & Meta */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-[10.5px] font-black ${
-                        isCritical
-                          ? "bg-rose-600 text-white shadow-2xs animate-pulse"
-                          : "bg-amber-500 text-slate-950 font-black"
-                      }`}
-                    >
-                      {isCritical ? "🚨 긴급 경보" : "⚠️ 주의 관찰"}
+                    <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-rose-600 text-white shadow-2xs">
+                      🚨 품질 공지
                     </span>
                     <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900">
                       {issue.line}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300">
-                      {issue.vehicle} {issue.itemCode ? `(${issue.itemCode})` : ""}
                     </span>
                     <span className="px-2 py-0.5 rounded-md text-[10.5px] font-bold bg-white dark:bg-slate-800 text-rose-600 border border-rose-200 dark:border-rose-800">
                       {issue.defectType}
@@ -182,7 +169,7 @@ export const ExtrusionQualityAlertModal = () => {
                   </div>
 
                   <span className="text-[11px] font-bold text-slate-500">
-                    작성: {issue.author} {issue.authorTitle || ""}
+                    작성: {issue.author} {issue.authorTitle || ""} ({issue.date || issue.createdAt?.slice(0, 10)})
                   </span>
                 </div>
 
@@ -192,19 +179,22 @@ export const ExtrusionQualityAlertModal = () => {
                 </h4>
 
                 {/* Content */}
-                <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap bg-white/70 dark:bg-slate-900/70 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                  {issue.content}
-                </p>
+                <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1">
+                  <span className="font-bold text-[10.5px] text-slate-500 block">불량 현상 및 발생 원인</span>
+                  <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">
+                    {issue.content}
+                  </p>
+                </div>
 
-                {/* Action Guide - Most Important for Worker */}
-                {issue.actionGuide && (
-                  <div className="p-3 rounded-xl bg-rose-100/90 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 space-y-1">
-                    <span className="font-black text-rose-800 dark:text-rose-300 text-xs flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      <span>작업자 집중 점검 및 행동 요령 (필독)</span>
+                {/* Action Result / Guide */}
+                {actionText && (
+                  <div className="p-3 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-300 dark:border-teal-800/80 space-y-1">
+                    <span className="font-black text-teal-800 dark:text-teal-300 text-xs flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-teal-600" />
+                      <span>조치결과 및 개선사항</span>
                     </span>
-                    <p className="text-xs text-rose-950 dark:text-rose-100 font-bold leading-relaxed whitespace-pre-wrap">
-                      {issue.actionGuide}
+                    <p className="text-xs text-teal-950 dark:text-teal-100 font-bold leading-relaxed whitespace-pre-wrap">
+                      {actionText}
                     </p>
                   </div>
                 )}
@@ -212,7 +202,7 @@ export const ExtrusionQualityAlertModal = () => {
                 {/* Photos */}
                 {issue.images && issue.images.length > 0 && (
                   <div className="space-y-1">
-                    <span className="text-[10.5px] font-bold text-slate-400">현장 불량 사진 / 한도 견본 (클릭하여 확대):</span>
+                    <span className="text-[10.5px] font-bold text-slate-400">현장 불량 사진 (클릭하여 확대):</span>
                     <div className="flex items-center gap-2 overflow-x-auto">
                       {issue.images.map((img, i) => (
                         <div
