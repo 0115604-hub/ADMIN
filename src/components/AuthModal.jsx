@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense, lazy } from "react";
-import { useAuth, ADMIN_USERS, PLANTS, EXTRUSION_WORKERS } from "../context/AuthContext";
+import { useAuth, ADMIN_USERS, PLANTS, EXTRUSION_WORKERS, ALL_DESIGNATED_USERS } from "../context/AuthContext";
 import {
   getAnnualLeaves,
   subscribeAnnualLeaves,
@@ -905,7 +905,12 @@ export const AuthModal = () => {
       alert(isQualityAlert ? "조치결과 내용 또는 첨부파일을 입력해 주세요." : "조치 의견 내용 또는 첨부파일을 입력해 주세요.");
       return;
     }
-    const authorName = actionOpinionForm.author || currentProfile?.name || allWorkers[0]?.name || "설유철";
+    // 🔒 작성자 직접 선택 필수 검증 (선택하지 않은 경우 자동 등록 차단)
+    if (!actionOpinionForm.author || !actionOpinionForm.author.trim()) {
+      alert(isQualityAlert ? "조치자(작성자)를 직접 선택해 주세요." : "의견 작성자를 직접 선택해 주세요.");
+      return;
+    }
+    const authorName = actionOpinionForm.author.trim();
     const authorObj = allWorkers.find((w) => w.name === authorName);
     const targetDate = actionOpinionForm.actionDate || todayDateStr;
 
@@ -924,7 +929,7 @@ export const AuthModal = () => {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
           setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [], isResolved: updated.isResolved, actionResult: updated.actionResult }));
-          setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
+          setActionOpinionForm((prev) => ({ ...prev, content: "", files: [], author: "" }));
           setRestoreToast(isQualityAlert ? "✅ 품질경보 조치결과가 성공적으로 등록되었습니다." : "✅ 의견이 성공적으로 등록되었습니다.");
           setTimeout(() => setRestoreToast(""), 3500);
         }
@@ -954,14 +959,43 @@ export const AuthModal = () => {
         replies: [...(prev.replies || []), newOp],
         ...(isQualityAlert ? { actionResult: newOp.content, actionAuthor: newOp.author, actionAt: targetDate, isResolved: true } : {})
       }));
-      setActionOpinionForm((prev) => ({ ...prev, content: "", files: [] }));
+      setActionOpinionForm((prev) => ({ ...prev, content: "", files: [], author: "" }));
     }
   };
 
   const handleModalDeleteOpinion = async (opId, e) => {
     if (e) e.stopPropagation();
     const isQualityAlert = (editingIssue?.category || newIssueForm.category) === "품질경보";
-    if (!confirm(isQualityAlert ? "해당 조치결과를 삭제하시겠습니까?" : "해당 의견을 삭제하시겠습니까?")) return;
+    const targetReply = (editingIssue?.replies || newIssueForm.replies || []).find((r) => r.id === opId);
+    const authorName = targetReply?.author || "";
+
+    // 🔒 의견등록자 본인 확인 (작성자 본인만 삭제 가능)
+    if (currentProfile) {
+      const isAuthor = currentProfile.name === authorName;
+      const isAdmin = currentProfile.role === "ADMIN" || currentProfile.name === "권태형" || currentProfile.name === "최미영";
+      const isCeoOpinion = authorName === "대표이사" || authorName === "권태형" || authorName === "최미영" || authorName === "ADMIN";
+
+      if (!isAuthor && !(isAdmin && isCeoOpinion)) {
+        alert(`❌ 의견 삭제 권한이 없습니다.\n해당 의견을 작성한 [${authorName || "등록자"}] 본인만 삭제할 수 있습니다.`);
+        return;
+      }
+      if (!confirm(isQualityAlert ? "해당 조치결과를 삭제하시겠습니까?" : `[${authorName}] 님이 작성한 의견을 삭제하시겠습니까?`)) return;
+    } else {
+      // 로그인 전 첫 화면: 작성자 본인 확인용 PIN 검증
+      const inputPin = prompt(`[${authorName}] 님이 작성한 의견을 삭제하시겠습니까?\n작성자 본인 확인을 위해 [${authorName}] 님의 PIN 번호를 입력해 주세요:`);
+      if (inputPin === null) return; // 취소
+      const trimmedPin = inputPin.trim();
+      const authorUser = ALL_DESIGNATED_USERS.find((u) => u.name === authorName);
+      const isCeoOrAdmin = authorName === "권태형" || authorName === "최미영" || authorName === "대표이사" || authorName === "ADMIN";
+      const expectedPin = isCeoOrAdmin ? "0090" : (authorUser?.pin || "11");
+
+      const isValid = trimmedPin === expectedPin || trimmedPin === "0090";
+      if (!isValid) {
+        alert(`❌ PIN 번호가 일치하지 않습니다.\n해당 의견을 작성한 [${authorName}] 본인만 삭제할 수 있습니다.`);
+        return;
+      }
+    }
+
     if (editingIssue?.id) {
       try {
         const updated = await deleteIssueReply(editingIssue.id, opId);
@@ -969,6 +1003,8 @@ export const AuthModal = () => {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
           setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [], isResolved: updated.isResolved, actionResult: updated.actionResult }));
+          setRestoreToast("🗑️ 의견이 성공적으로 삭제되었습니다.");
+          setTimeout(() => setRestoreToast(""), 3000);
         }
       } catch (err) {
         console.error("Delete opinion error:", err);
@@ -993,7 +1029,7 @@ export const AuthModal = () => {
       const authorObj = allWorkers.find((w) => w.name === replyForm.author);
       if (editingIssue?.id) {
         const updated = await addIssueReply(editingIssue.id, {
-          author: replyForm.author,
+          author: replyForm.author.trim(),
           authorTitle: authorObj?.title || "선임",
           plant: authorObj?.plantName || "삼랑진공장",
           attendanceStatus: replyForm.attendanceStatus,
@@ -1003,7 +1039,9 @@ export const AuthModal = () => {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
           setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [] }));
-          setReplyForm((prev) => ({ ...prev, content: "" }));
+          setReplyForm((prev) => ({ ...prev, content: "", author: "" }));
+          setRestoreToast("✅ 회신이 성공적으로 등록되었습니다.");
+          setTimeout(() => setRestoreToast(""), 3500);
         }
       } else {
         const nowStr = new Date().toLocaleString("ko-KR", {
@@ -1012,7 +1050,7 @@ export const AuthModal = () => {
 
         const newRep = {
           id: `rep_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          author: replyForm.author,
+          author: replyForm.author.trim(),
           authorTitle: authorObj?.title || "선임",
           plant: authorObj?.plantName || newIssueForm.plant || "삼랑진공장",
           attendanceStatus: replyForm.attendanceStatus,
@@ -1020,7 +1058,7 @@ export const AuthModal = () => {
           createdAt: nowStr
         };
         setNewIssueForm((prev) => ({ ...prev, replies: [...(prev.replies || []), newRep] }));
-        setReplyForm((prev) => ({ ...prev, content: "" }));
+        setReplyForm((prev) => ({ ...prev, content: "", author: "" }));
       }
     } catch (err) {
       console.error("Add reply error:", err);
@@ -1032,7 +1070,35 @@ export const AuthModal = () => {
 
   const handleModalDeleteReply = async (repId, e) => {
     if (e) e.stopPropagation();
-    if (!confirm("해당 회신을 삭제하시겠습니까?")) return;
+    const targetReply = (editingIssue?.replies || newIssueForm.replies || []).find((r) => r.id === repId);
+    const authorName = targetReply?.author || "";
+
+    // 🔒 회신등록자 본인 확인 (작성자 본인만 삭제 가능)
+    if (currentProfile) {
+      const isAuthor = currentProfile.name === authorName;
+      const isAdmin = currentProfile.role === "ADMIN" || currentProfile.name === "권태형" || currentProfile.name === "최미영";
+      const isCeoOpinion = authorName === "대표이사" || authorName === "권태형" || authorName === "최미영" || authorName === "ADMIN";
+
+      if (!isAuthor && !(isAdmin && isCeoOpinion)) {
+        alert(`❌ 회신 삭제 권한이 없습니다.\n해당 회신을 작성한 [${authorName || "등록자"}] 본인만 삭제할 수 있습니다.`);
+        return;
+      }
+      if (!confirm(`[${authorName}] 님이 작성한 회신을 삭제하시겠습니까?`)) return;
+    } else {
+      const inputPin = prompt(`[${authorName}] 님이 작성한 회신을 삭제하시겠습니까?\n작성자 본인 확인을 위해 [${authorName}] 님의 PIN 번호를 입력해 주세요:`);
+      if (inputPin === null) return;
+      const trimmedPin = inputPin.trim();
+      const authorUser = ALL_DESIGNATED_USERS.find((u) => u.name === authorName);
+      const isCeoOrAdmin = authorName === "권태형" || authorName === "최미영" || authorName === "대표이사" || authorName === "ADMIN";
+      const expectedPin = isCeoOrAdmin ? "0090" : (authorUser?.pin || "11");
+
+      const isValid = trimmedPin === expectedPin || trimmedPin === "0090";
+      if (!isValid) {
+        alert(`❌ PIN 번호가 일치하지 않습니다.\n해당 회신을 작성한 [${authorName}] 본인만 삭제할 수 있습니다.`);
+        return;
+      }
+    }
+
     if (editingIssue?.id) {
       try {
         const updated = await deleteIssueReply(editingIssue.id, repId);
@@ -1040,6 +1106,8 @@ export const AuthModal = () => {
           setUrgentIssues((prev) => prev.map((it) => (it.id === editingIssue.id ? updated : it)));
           setEditingIssue(updated);
           setNewIssueForm((prev) => ({ ...prev, replies: updated.replies || [] }));
+          setRestoreToast("🗑️ 회신이 성공적으로 삭제되었습니다.");
+          setTimeout(() => setRestoreToast(""), 3000);
         }
       } catch (err) {
         console.error("Delete reply error:", err);

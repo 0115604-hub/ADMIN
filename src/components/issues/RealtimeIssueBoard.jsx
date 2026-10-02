@@ -236,7 +236,7 @@ export const RealtimeIssueBoard = ({
                 : "");
 
             const hasReplies = Array.isArray(item.replies) && item.replies.length > 0;
-            const hasAction = Boolean(actionContent) || hasReplies;
+            const hasAction = hasReplies || (typeof item.actionResult === "string" && item.actionResult.trim().length > 0);
 
             // 최신 의견이 위쪽으로 오도록 역순 정렬 후 최대 3건 추출
             const recentReplies = hasReplies ? [...item.replies].reverse().slice(0, 3) : [];

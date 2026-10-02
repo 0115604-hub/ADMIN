@@ -553,7 +553,7 @@ export const IssueEditModal = ({
                           : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
                       }`}
                     >
-                      <option value="">-- 작성자 선택 --</option>
+                      <option value="">-- 작성자 직접 선택 (필수) --</option>
                       <optgroup label="👑 본사 임원진">
                         {allWorkers?.filter((w) => w.plantName === "본사").map((w) => (
                           <option key={w.id} value={w.name}>본사 • {w.name} {w.title || ""}</option>
