@@ -176,6 +176,8 @@ import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegr
 import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
 import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
+import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
+import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
 
 // Lazy-loaded on-demand heavy modals
 const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
@@ -2868,6 +2870,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const startIdx = (safeLogPage - 1) * LOGS_PER_PAGE;
     return filteredLogs.slice(startIdx, startIdx + LOGS_PER_PAGE);
   }, [filteredLogs, safeLogPage]);
+
+  // 🌟 압출동 작업자 로그인 시: 중대재해공유판 + 설유철 품질이슈 공유판 + 사내공지(종료일 유효한 경우만) 표시
+  const isExtrusionOperatorWorker =
+    (isExtrusionWorker || isExtrusionWorkerProfile(currentProfile)) &&
+    currentProfile?.name !== "설유철" &&
+    !isAdmin;
+
+  if (isExtrusionOperatorWorker) {
+    return (
+      <ExtrusionWorkerDashboardView
+        onNavigateTab={onNavigateTab}
+      />
+    );
+  }
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
