@@ -20,11 +20,17 @@ import {
   Info,
   CheckSquare,
   ListTodo,
-  Users
+  Users,
+  Megaphone
 } from "lucide-react";
 import { ADMIN_USERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus, getLeaveTypeMeta } from "../../services/annualLeaveService";
 import { subscribeSevereDisasterPhotos } from "../../services/severeDisasterService";
+import {
+  subscribeExtrusionQualityIssues,
+  getLocalExtrusionQualityIssues,
+  isExtrusionWorkerProfile
+} from "../../services/extrusionQualityIssueService";
 import {
   subscribeCommonSchedules,
   getLocalCommonSchedules,
@@ -87,6 +93,15 @@ export const WorkerPinModal = ({
     return () => unsub();
   }, []);
 
+  // 4. Subscribe to Extrusion Quality Issues (설유철 책임 압출 품질이슈 실시간 구독)
+  const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
+  useEffect(() => {
+    const unsub = subscribeExtrusionQualityIssues((list) => {
+      setExtrusionQualityIssues(list || []);
+    });
+    return () => unsub();
+  }, []);
+
   // Initialize state when selectedUser changes
   useEffect(() => {
     if (selectedUser) {
@@ -139,13 +154,42 @@ export const WorkerPinModal = ({
 
   const isAdmin = selectedUser?.role === "ADMIN" || selectedUser?.id === "admin" || selectedUser?.name === "권태형" || selectedUser?.name === "최미영";
   const isExtrusionWorker =
+    isExtrusionWorkerProfile(selectedUser) ||
     selectedUser?.building === "압출동" ||
-    selectedUser?.assignedProcess === "압출동" ||
+    selectedUser?.assignedProcess?.includes("압출") ||
     selectedUser?.id?.startsWith("ext_") ||
+    selectedUser?.name === "설유철" ||
     selectedUser?.name === "공영국" ||
     selectedUser?.name === "심임대" ||
     selectedUser?.name === "이상은";
   const todayKst = getKSTDateString();
+
+  // Active Company Notices for Extrusion Worker (사내공지가 있을 때만 종료일까지 표시)
+  const activeCompanyNotices = useMemo(() => {
+    const list = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : (Array.isArray(activeIssues) ? activeIssues : []);
+    return list.filter((item) => {
+      if (!item || item.isDeleted) return false;
+      const cat = String(item.category || "").trim();
+      const isNotice =
+        cat === "사내공지" ||
+        cat === "공지사항" ||
+        cat === "공지" ||
+        cat === "사내공지사항" ||
+        cat === "공통공지";
+      if (!isNotice) return false;
+
+      const expDate = item.expireDate || item.endDate || item.targetDate || "";
+      if (expDate && expDate < todayKst) {
+        return false;
+      }
+      return true;
+    });
+  }, [urgentIssues, activeIssues, todayKst]);
+
+  // Active Extrusion Quality Issues (설유철 책임 압출 품질이슈 실시간 목록)
+  const activeExtrusionIssues = useMemo(() => {
+    return (extrusionQualityIssues || []).filter((it) => it && it.status === "ACTIVE");
+  }, [extrusionQualityIssues]);
 
   // 1. Worker's current leave status (당일 근태)
   const leaveStatus = useMemo(() => {
@@ -652,87 +696,175 @@ export const WorkerPinModal = ({
                   </div>
 
                   {/* ===================================================================== */}
-                  {/* [우측 패널 2] 압출작업자: ⚠️ 품질이슈공유판 / 비압출: 기존 일정+근태+공지판 */}
+                  {/* [우측 패널 2] 압출작업자: 🚨 압출동 품질이슈 & 📢 사내공지(종료일까지만) / 비압출: 기존 일정+근태+공지판 */}
                   {/* ===================================================================== */}
                   {isExtrusionWorker ? (
-                    <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 border-2 border-amber-300/90 dark:border-amber-700/80 flex flex-col justify-between space-y-3.5 shadow-sm">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-amber-600 text-white shadow-xs">
-                              <AlertTriangle className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm md:text-base font-black text-slate-900 dark:text-white block leading-tight">
-                                ⚠️ 품질이슈공유판
-                              </span>
-                              <span className="text-[10.5px] font-bold text-amber-800 dark:text-amber-300">
-                                압출 품질경보 및 주요 품질이슈 실시간 공유
+                    <div className="space-y-3 flex flex-col justify-between h-full">
+                      {/* 1. 사내공지 (종료일까지 등록된 공지가 있을 때만 노출) */}
+                      {activeCompanyNotices.length > 0 && (
+                        <div className="p-3.5 rounded-3xl bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-400 dark:border-blue-700 shadow-sm space-y-2 shrink-0">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
+                                <Megaphone className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="text-xs font-black text-blue-950 dark:text-blue-200">
+                                📢 사내 공지사항
                               </span>
                             </div>
+                            <span className="text-[10px] font-black text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700">
+                              {activeCompanyNotices.length}건
+                            </span>
                           </div>
 
-                          <span className="text-xs font-black text-amber-900 dark:text-amber-200 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700">
-                            {sharedNotices.length}건
-                          </span>
-                        </div>
-
-                        {/* Realtime shared quality notices & alerts */}
-                        {sharedNotices.length > 0 ? (
-                          <div className="space-y-2.5 max-h-[360px] overflow-y-auto pr-0.5">
-                            {sharedNotices.map((item) => {
-                              const isQualityAlert = item.category === "품질경보" || item.category === "품질이슈" || item.category?.includes("품질");
-                              const isMeeting = item.category === "회의일정";
-                              const badgeStyle = isQualityAlert
-                                ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300"
-                                : isMeeting
-                                ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
-                                : "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300";
-
+                          <div className="space-y-1.5 max-h-[130px] overflow-y-auto pr-0.5">
+                            {activeCompanyNotices.map((notice) => {
+                              const expDate = notice.expireDate || notice.endDate || notice.targetDate || "";
                               return (
                                 <div
-                                  key={item.id || item._docId}
-                                  className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200/90 dark:border-amber-800/60 space-y-1.5 text-xs shadow-2xs"
+                                  key={notice.id || notice._docId}
+                                  className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/80 space-y-0.5 text-xs shadow-2xs"
                                 >
-                                  <div className="flex items-center justify-between gap-1.5">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border shrink-0 ${badgeStyle}`}>
-                                        {item.category || "품질이슈"}
-                                      </span>
-                                      <span className="font-black text-slate-900 dark:text-white truncate text-xs sm:text-sm">
-                                        {item.title || item.content}
-                                      </span>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                                      {item.author || "관리자"}
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-black text-slate-900 dark:text-white truncate text-xs">
+                                      {notice.title}
                                     </span>
+                                    {expDate && (
+                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 shrink-0 font-mono">
+                                        📅 ~{expDate}
+                                      </span>
+                                    )}
                                   </div>
-                                  {item.title && item.content && (
-                                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 font-medium pl-0.5">
-                                      {item.content}
+                                  {notice.content && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-medium pl-0.5">
+                                      {notice.content}
                                     </p>
-                                  )}
-                                  {item.createdAt && (
-                                    <div className="text-[10px] text-slate-400 pl-0.5 pt-0.5">
-                                      등록일: {new Date(item.createdAt).toLocaleDateString("ko-KR")}
-                                    </div>
                                   )}
                                 </div>
                               );
                             })}
                           </div>
-                        ) : (
-                          <div className="py-16 text-center text-xs sm:text-sm text-amber-800/80 dark:text-amber-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-amber-300 dark:border-amber-700/60 flex flex-col items-center justify-center space-y-1.5">
-                            <AlertTriangle className="w-8 h-8 text-amber-500/50 mb-1" />
-                            <span>공유된 실시간 품질이슈 및 공지사항이 없습니다.</span>
-                            <span className="text-[11px] font-medium text-slate-400">품질 이상 및 공지 등록 시 즉시 표출됩니다.</span>
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
-                      <div className="pt-2.5 border-t border-amber-300/50 dark:border-amber-700/50 flex items-center justify-between text-[11px] font-bold text-amber-800/90 dark:text-amber-300/90">
-                        <span>품질이슈 실시간 연동</span>
-                        <span className="text-slate-500 dark:text-slate-400 font-normal">※ 압출 품질이슈 전용 상세 기능 순차 추가 예정</span>
+                      {/* 2. 설유철 책임 압출동 품질이슈 */}
+                      <div className={`p-4 rounded-3xl bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-rose-500/10 dark:from-rose-950/30 dark:via-amber-950/20 dark:to-rose-950/30 border-2 border-rose-300/90 dark:border-rose-800/80 flex flex-col justify-between space-y-2.5 shadow-sm ${activeCompanyNotices.length > 0 ? "flex-1" : "h-full"}`}>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
+                                <AlertTriangle className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  🚨 압출동 품질이슈
+                                </span>
+                                <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
+                                  설유철 책임 공지 • 라인별 불량 및 조치
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
+                              {activeExtrusionIssues.length}건 진행중
+                            </span>
+                          </div>
+
+                          {activeExtrusionIssues.length > 0 ? (
+                            <div className={`space-y-2.5 overflow-y-auto pr-0.5 ${activeCompanyNotices.length > 0 ? "max-h-[220px]" : "max-h-[380px]"}`}>
+                              {activeExtrusionIssues.map((issue) => {
+                                const causeImgs = Array.isArray(issue.causeImages) ? issue.causeImages : (Array.isArray(issue.images) ? issue.images : []);
+                                const actionImgs = Array.isArray(issue.actionImages) ? issue.actionImages : [];
+                                const actionText = issue.actionResult || issue.actionGuide || issue.resolutionNote || "";
+
+                                return (
+                                  <div
+                                    key={issue.id}
+                                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1.5 text-xs shadow-2xs"
+                                  >
+                                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                                          {issue.line}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                          {issue.defectType}
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] font-bold text-slate-400">
+                                        작성: {issue.author || "설유철"} ({issue.date || issue.createdAt?.slice(0, 10)})
+                                      </span>
+                                    </div>
+
+                                    <h5 className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                                      {issue.title}
+                                    </h5>
+
+                                    {/* 1) 발생원인 */}
+                                    {issue.content && (
+                                      <div className="p-2 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/40 text-[11px] space-y-1">
+                                        <span className="font-bold text-rose-700 dark:text-rose-300 block text-[10px]">
+                                          발생원인
+                                        </span>
+                                        <p className="text-slate-700 dark:text-slate-200 font-medium whitespace-pre-wrap leading-relaxed">
+                                          {issue.content}
+                                        </p>
+                                        {causeImgs.length > 0 && (
+                                          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
+                                            {causeImgs.map((img, i) => (
+                                              <div
+                                                key={img.id || i}
+                                                onClick={() => setPreviewImage({ url: img.dataUrl, name: `[원인] ${img.name}` })}
+                                                className="relative w-12 h-12 rounded-lg overflow-hidden border border-rose-300 dark:border-rose-700 cursor-pointer shrink-0"
+                                              >
+                                                <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* 2) 조치결과 */}
+                                    {actionText && (
+                                      <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-900/40 text-[11px] space-y-1">
+                                        <span className="font-bold text-teal-700 dark:text-teal-300 block text-[10px]">
+                                          조치결과
+                                        </span>
+                                        <p className="text-teal-950 dark:text-teal-100 font-bold whitespace-pre-wrap leading-relaxed">
+                                          {actionText}
+                                        </p>
+                                        {actionImgs.length > 0 && (
+                                          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
+                                            {actionImgs.map((img, i) => (
+                                              <div
+                                                key={img.id || i}
+                                                onClick={() => setPreviewImage({ url: img.dataUrl, name: `[조치] ${img.name}` })}
+                                                className="relative w-12 h-12 rounded-lg overflow-hidden border border-teal-300 dark:border-teal-700 cursor-pointer shrink-0"
+                                              >
+                                                <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="py-12 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 dark:border-rose-800 flex flex-col items-center justify-center space-y-1">
+                              <CheckCircle2 className="w-7 h-7 text-rose-400 mb-1" />
+                              <span>현재 진행 중인 압출 품질이슈가 없습니다.</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-rose-200 dark:border-rose-900/60 flex items-center justify-between text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                          <span>압출품질이슈 실시간 연동</span>
+                          <span className="text-slate-400">설유철 책임 등록 실시간 반영</span>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -1069,7 +1201,7 @@ export const WorkerPinModal = ({
             )}
           </div>
 
-          {/* 🌟 3. Footer: 다음 버튼 */}
+          {/* 🌟 3. Footer: 확인완료 작업개시 버튼 */}
           <div className="p-3.5 sm:p-4 md:px-6 md:py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 shrink-0">
             <button
               type="button"
@@ -1077,7 +1209,7 @@ export const WorkerPinModal = ({
               disabled={isLoggingIn}
               className="w-full py-3 sm:py-3.5 md:py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-sm sm:text-base md:text-lg shadow-lg shadow-blue-500/25 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              <span>다음</span>
+              <span>확인완료 작업개시</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>

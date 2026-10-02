@@ -496,7 +496,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
                       }`}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{isAcked ? "확인 완료됨" : "내용 숙지 완료 ✓"}</span>
+                      <span>{isAcked ? "확인 완료됨" : "확인완료 작업개시 ✓"}</span>
                     </button>
                   </div>
                 </div>

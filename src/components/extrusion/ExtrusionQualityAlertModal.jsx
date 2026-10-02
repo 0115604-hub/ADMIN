@@ -270,7 +270,7 @@ export const ExtrusionQualityAlertModal = () => {
                     }`}
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{isAcked ? "확인 완료됨" : "내용 숙지 완료 ✓"}</span>
+                    <span>{isAcked ? "확인 완료됨" : "확인완료 작업개시 ✓"}</span>
                   </button>
                 </div>
               </div>
@@ -293,7 +293,7 @@ export const ExtrusionQualityAlertModal = () => {
             onClick={handleClose}
             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white font-black text-xs sm:text-sm shadow-md shadow-rose-500/20 active:scale-95 transition-all cursor-pointer"
           >
-            확인 완료 (작업 시작)
+            확인완료 작업개시
           </button>
         </div>
       </div>
