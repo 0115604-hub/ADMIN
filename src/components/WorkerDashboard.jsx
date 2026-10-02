@@ -2838,11 +2838,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         approvalStatus: editingLog.approvalStatus === "반려" ? "결재대기" : (editingLog.approvalStatus || "결재대기")
       };
 
-      const updatedList = await updateWorkLog(editingLog.id, updatedFields);
+      const targetLogId = editingLog.id || editFormData.id;
+      const updatedList = await updateWorkLog(targetLogId, updatedFields, editingLog);
       setWorkLogs(updatedList);
 
-      if (selectedLogDetail && String(selectedLogDetail.id) === String(editingLog.id)) {
-        setSelectedLogDetail(updatedList.find((l) => String(l.id) === String(editingLog.id)) || null);
+      if (selectedLogDetail && String(selectedLogDetail.id) === String(targetLogId)) {
+        setSelectedLogDetail(updatedList.find((l) => String(l.id) === String(targetLogId)) || null);
       }
 
       setEditingLog(null);

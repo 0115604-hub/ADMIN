@@ -4,6 +4,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  getDoc,
   deleteDoc,
   onSnapshot,
   query,
@@ -325,31 +326,77 @@ export const saveWorkLog = async (newLog) => {
 };
 
 // Update an existing work log before approval
-export const updateWorkLog = async (id, updatedFields = {}) => {
-  const logId = String(id);
+export const updateWorkLog = async (id, updatedFields = {}, fallbackLog = null) => {
+  const logId = String(id || (fallbackLog && fallbackLog.id) || (updatedFields && updatedFields.id) || Date.now());
   const current = getLocalWorkLogs();
-  const target = current.find((l) => String(l.id) === logId);
-  if (!target) throw new Error("수정할 업무일지를 찾을 수 없습니다.");
 
-  if (isWorkLogApproved(target)) {
+  // 1. Try finding in local storage cache
+  let target = current.find((l) =>
+    String(l.id) === logId ||
+    String(l._id) === logId ||
+    String(l.docId) === logId
+  );
+
+  // 2. If not found in local cache, try fetching directly from Firestore
+  if (!target && db) {
+    try {
+      const docRef = doc(db, COLLECTION_NAME, logId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        target = normalizeWorkLogApproval({ id: docSnap.id, ...docSnap.data() });
+      }
+    } catch (e) {
+      console.warn("Firestore direct lookup warning in updateWorkLog:", e);
+    }
+  }
+
+  // 3. If still not found, check fallbackLog or search by writer & date
+  if (!target) {
+    if (fallbackLog && typeof fallbackLog === "object") {
+      target = normalizeWorkLogApproval(fallbackLog);
+    } else {
+      target = current.find((l) =>
+        l.date === updatedFields.date &&
+        l.writer === updatedFields.writer
+      );
+    }
+  }
+
+  // 4. If still not found, build target from updatedFields & fallback
+  if (!target) {
+    target = {
+      id: logId,
+      approvalStatus: "결재대기",
+      ...updatedFields
+    };
+  }
+
+  if (isWorkLogApproved(target) && !updatedFields._forceAdminEdit) {
     throw new Error("결재가 완료된 업무일지는 수정할 수 없습니다.");
   }
 
   const merged = {
     ...target,
     ...updatedFields,
-    id: logId,
+    id: String(target.id || logId),
     updatedAt: new Date().toISOString()
   };
 
   const cleanData = sanitizeLog(merged);
   const parsedClean = parseLogFields(cleanData);
-  const updatedLocal = current.map((l) => (String(l.id) === logId ? parsedClean : l));
+  const finalId = String(merged.id);
+
+  const updatedLocal = current.some((l) => String(l.id) === finalId || String(l._id) === finalId)
+    ? current.map((l) => (String(l.id) === finalId || String(l._id) === finalId ? parsedClean : l))
+    : [parsedClean, ...current];
+
   saveLocalWorkLogs(updatedLocal);
 
   try {
-    await setDoc(doc(db, COLLECTION_NAME, logId), cleanData, { merge: true });
-    console.log("Work log updated & synced to Firestore:", logId);
+    if (db) {
+      await setDoc(doc(db, COLLECTION_NAME, finalId), cleanData, { merge: true });
+      console.log("Work log updated & synced to Firestore:", finalId);
+    }
   } catch (e) {
     console.error("Firestore update sync error:", e);
   }
