@@ -22,7 +22,8 @@ import {
   RotateCcw,
   Eye,
   Calendar,
-  Sparkles
+  Sparkles,
+  ArrowRight
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -87,7 +88,8 @@ export const ExtrusionQualityIssueTab = () => {
   const { currentProfile } = useAuth();
   const [issues, setIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isProcessingImages, setIsProcessingImages] = useState(false);
+  const [isProcessingCauseImages, setIsProcessingCauseImages] = useState(false);
+  const [isProcessingActionImages, setIsProcessingActionImages] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const [detailModalIssue, setDetailModalIssue] = useState(null);
 
@@ -99,17 +101,19 @@ export const ExtrusionQualityIssueTab = () => {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ACTIVE"); // "ALL", "ACTIVE", "RESOLVED"
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Form State (경보등급 삭제, 대상차종/품번 삭제, 조치결과 반영)
+  // Form State: 발생원인 사진(causeImages)과 조치결과 사진(actionImages) 분리
   const [form, setForm] = useState({
     line: "PCM 1호기",
     defectType: "외관 스크래치 / 찍힘",
     title: "",
     content: "",
     actionResult: "",
-    images: []
+    causeImages: [],
+    actionImages: []
   });
 
-  const fileInputRef = useRef(null);
+  const causeFileInputRef = useRef(null);
+  const actionFileInputRef = useRef(null);
 
   // Real-time Cloud Sync
   useEffect(() => {
@@ -119,34 +123,65 @@ export const ExtrusionQualityIssueTab = () => {
     return () => unsub();
   }, []);
 
-  // Image Upload Handlers
-  const handleImageFiles = async (files) => {
+  // Image Upload Handlers for 발생원인 사진
+  const handleCauseImageFiles = async (files) => {
     if (!files || files.length === 0) return;
-    setIsProcessingImages(true);
+    setIsProcessingCauseImages(true);
     try {
       const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
       if (validFiles.length === 0) {
         alert("이미지 파일(JPG, PNG, GIF, WebP 등)만 첨부할 수 있습니다.");
-        setIsProcessingImages(false);
+        setIsProcessingCauseImages(false);
         return;
       }
       const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
       setForm((prev) => ({
         ...prev,
-        images: [...(prev.images || []), ...processed].slice(0, 8)
+        causeImages: [...(prev.causeImages || []), ...processed].slice(0, 8)
       }));
     } catch (err) {
-      console.error("Image upload error:", err);
-      alert("사진 첨부 중 오류가 발생했습니다.");
+      console.error("Cause image upload error:", err);
+      alert("발생원인 사진 첨부 중 오류가 발생했습니다.");
     } finally {
-      setIsProcessingImages(false);
+      setIsProcessingCauseImages(false);
     }
   };
 
-  const handleRemoveImage = (idx) => {
+  const handleRemoveCauseImage = (idx) => {
     setForm((prev) => ({
       ...prev,
-      images: (prev.images || []).filter((_, i) => i !== idx)
+      causeImages: (prev.causeImages || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  // Image Upload Handlers for 조치결과 사진
+  const handleActionImageFiles = async (files) => {
+    if (!files || files.length === 0) return;
+    setIsProcessingActionImages(true);
+    try {
+      const validFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (validFiles.length === 0) {
+        alert("이미지 파일(JPG, PNG, GIF, WebP 등)만 첨부할 수 있습니다.");
+        setIsProcessingActionImages(false);
+        return;
+      }
+      const processed = await Promise.all(validFiles.map((f) => compressImage(f)));
+      setForm((prev) => ({
+        ...prev,
+        actionImages: [...(prev.actionImages || []), ...processed].slice(0, 8)
+      }));
+    } catch (err) {
+      console.error("Action image upload error:", err);
+      alert("조치결과 사진 첨부 중 오류가 발생했습니다.");
+    } finally {
+      setIsProcessingActionImages(false);
+    }
+  };
+
+  const handleRemoveActionImage = (idx) => {
+    setForm((prev) => ({
+      ...prev,
+      actionImages: (prev.actionImages || []).filter((_, i) => i !== idx)
     }));
   };
 
@@ -187,7 +222,8 @@ export const ExtrusionQualityIssueTab = () => {
         title: "",
         content: "",
         actionResult: "",
-        images: []
+        causeImages: [],
+        actionImages: []
       });
 
       const isEdit = Boolean(editingIssueId);
@@ -209,13 +245,21 @@ export const ExtrusionQualityIssueTab = () => {
   // Load Issue into form for editing
   const handleEdit = (issue) => {
     setEditingIssueId(issue.id);
+    const causeImgs = Array.isArray(issue.causeImages)
+      ? [...issue.causeImages]
+      : Array.isArray(issue.images)
+      ? [...issue.images]
+      : [];
+    const actionImgs = Array.isArray(issue.actionImages) ? [...issue.actionImages] : [];
+
     setForm({
       line: issue.line || "PCM 1호기",
       defectType: issue.defectType || "외관 스크래치 / 찍힘",
       title: issue.title || "",
       content: issue.content || "",
       actionResult: issue.actionResult || issue.actionGuide || issue.resolutionNote || "",
-      images: Array.isArray(issue.images) ? [...issue.images] : []
+      causeImages: causeImgs,
+      actionImages: actionImgs
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -314,7 +358,7 @@ export const ExtrusionQualityIssueTab = () => {
               </span>
             </div>
             <p className="text-[11px] text-rose-200/90 font-medium mt-0.5">
-              등록된 품질이슈는 압출동 작업자(공영국, 심임대, 이상은, 닉, 마이클 등) 로그인 시 팝업창에 즉시 공지됩니다.
+              발생원인 사진 및 조치결과 사진을 분리하여 촬영·첨부할 수 있으며 작업자 로그인 시 실시간 공지됩니다.
             </p>
           </div>
         </div>
@@ -350,7 +394,7 @@ export const ExtrusionQualityIssueTab = () => {
                 {editingIssueId ? "압출 품질이슈 수정" : "새 압출 품질이슈 등록 및 현장 전파"}
               </h3>
               <p className="text-[11px] text-slate-400">
-                압출 라인별 불량 현상, 원인 및 조치결과를 등록하여 현장에 공유합니다.
+                발생원인 사진과 조치결과 사진을 분리하여 촬영·등록할 수 있습니다.
               </p>
             </div>
           </div>
@@ -366,7 +410,8 @@ export const ExtrusionQualityIssueTab = () => {
                   title: "",
                   content: "",
                   actionResult: "",
-                  images: []
+                  causeImages: [],
+                  actionImages: []
                 });
               }}
               className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
@@ -376,7 +421,7 @@ export const ExtrusionQualityIssueTab = () => {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {/* Row 1: 압출 대상 라인 & 불량 유형 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 압출 라인 */}
@@ -431,104 +476,173 @@ export const ExtrusionQualityIssueTab = () => {
             />
           </div>
 
-          {/* Row 3: 세부 불량 현상 및 발생 원인 & 조치결과 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                세부 불량 현상 및 발생 원인 <span className="text-rose-500">*</span>
-              </label>
+          {/* Row 3: 발생원인 영역 & 조치결과 영역 (각각 촬영 버튼 및 미리보기 완벽 분리) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* ========================================= */}
+            {/* 1) 발생원인 내용 및 발생원인 사진 촬영 */}
+            {/* ========================================= */}
+            <div className="p-3.5 rounded-2xl bg-rose-50/40 dark:bg-rose-950/20 border-2 border-rose-200 dark:border-rose-900/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="font-black text-rose-800 dark:text-rose-300 flex items-center gap-1.5 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                  <span>1. 세부 불량 현상 및 발생 원인</span>
+                  <span className="text-rose-600">*</span>
+                </label>
+                <span className="text-[10.5px] text-rose-600/80 font-bold">
+                  원인 사진: {form.causeImages?.length || 0}/8장
+                </span>
+              </div>
+
               <textarea
                 rows="3"
                 required
                 placeholder="구체적인 불량 현상, 발생 부위 및 추정 원인을 작성해 주세요."
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-rose-500/20"
+                className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800/80 bg-white dark:bg-slate-900 font-medium text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-rose-500/20"
               ></textarea>
+
+              {/* 발생원인 전용 사진 첨부 input & button */}
+              <input
+                ref={causeFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleCauseImageFiles(e.target.files)}
+              />
+
+              <button
+                type="button"
+                onClick={() => causeFileInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-rose-400 dark:border-rose-700 bg-white dark:bg-slate-900 rounded-xl py-2 px-3 text-center cursor-pointer hover:bg-rose-100/50 dark:hover:bg-rose-950/40 transition-all flex items-center justify-center gap-2 shadow-2xs"
+              >
+                <Camera className="w-4 h-4 text-rose-600 animate-pulse" />
+                <span className="font-black text-rose-700 dark:text-rose-300 text-xs">
+                  {isProcessingCauseImages ? "사진 압축 처리 중..." : "📷 발생원인 사진 촬영 또는 사진선택"}
+                </span>
+              </button>
+
+              {/* 발생원인 사진 썸네일 */}
+              {form.causeImages && form.causeImages.length > 0 && (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
+                  {form.causeImages.map((img, idx) => (
+                    <div
+                      key={img.id || idx}
+                      className="relative group rounded-xl overflow-hidden border border-rose-300 dark:border-rose-800 aspect-square bg-slate-100 dark:bg-slate-800"
+                    >
+                      <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewImage({ url: img.dataUrl, name: img.name });
+                          }}
+                          className="p-1 rounded bg-white text-slate-900 cursor-pointer"
+                          title="확대보기"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveCauseImage(idx);
+                          }}
+                          className="p-1 rounded bg-rose-600 text-white cursor-pointer"
+                          title="삭제"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="font-bold text-teal-700 dark:text-teal-400 block mb-1">
-                조치결과 (현장 조치 및 개선 내용)
-              </label>
+            {/* ========================================= */}
+            {/* 2) 조치결과 내용 및 조치결과 사진 촬영 */}
+            {/* ========================================= */}
+            <div className="p-3.5 rounded-2xl bg-teal-50/40 dark:bg-teal-950/20 border-2 border-teal-200 dark:border-teal-900/60 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="font-black text-teal-800 dark:text-teal-300 flex items-center gap-1.5 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-teal-600"></span>
+                  <span>2. 조치결과 (현장 조치 및 개선 내용)</span>
+                </label>
+                <span className="text-[10.5px] text-teal-600/80 font-bold">
+                  조치 사진: {form.actionImages?.length || 0}/8장
+                </span>
+              </div>
+
               <textarea
                 rows="3"
                 placeholder="예: 다이스 토출구 이물 제거 및 청소 실시 완료, 초물 측정 규격 합격 확인"
                 value={form.actionResult}
                 onChange={(e) => setForm({ ...form, actionResult: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-teal-300 dark:border-teal-800/80 bg-teal-50/40 dark:bg-teal-950/20 font-medium text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-teal-500/20"
+                className="w-full p-2.5 rounded-xl border border-teal-200 dark:border-teal-800/80 bg-white dark:bg-slate-900 font-medium text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-teal-500/20"
               ></textarea>
-            </div>
-          </div>
 
-          {/* Row 4: 스마트폰촬영 또는 사진선택 */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5 text-rose-600" />
-                <span>현장 불량 사진 첨부 (선택)</span>
-              </label>
-              <span className="text-[10.5px] text-slate-400">
-                {form.images?.length || 0}/8장 첨부됨
-              </span>
-            </div>
+              {/* 조치결과 전용 사진 첨부 input & button */}
+              <input
+                ref={actionFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleActionImageFiles(e.target.files)}
+              />
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => handleImageFiles(e.target.files)}
-            />
+              <button
+                type="button"
+                onClick={() => actionFileInputRef.current?.click()}
+                className="w-full border-2 border-dashed border-teal-400 dark:border-teal-700 bg-white dark:bg-slate-900 rounded-xl py-2 px-3 text-center cursor-pointer hover:bg-teal-100/50 dark:hover:bg-teal-950/40 transition-all flex items-center justify-center gap-2 shadow-2xs"
+              >
+                <Camera className="w-4 h-4 text-teal-600 animate-pulse" />
+                <span className="font-black text-teal-700 dark:text-teal-300 text-xs">
+                  {isProcessingActionImages ? "사진 압축 처리 중..." : "📷 조치결과 사진 촬영 또는 사진선택"}
+                </span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full border-2 border-dashed border-rose-300 dark:border-rose-800/80 bg-rose-50/30 dark:bg-rose-950/20 rounded-xl p-3 text-center cursor-pointer hover:border-rose-500 hover:bg-rose-50/60 transition-all flex items-center justify-center gap-2"
-            >
-              <Camera className="w-4 h-4 text-rose-600 animate-pulse" />
-              <span className="font-black text-rose-700 dark:text-rose-300 text-xs sm:text-sm">
-                {isProcessingImages ? "사진 압축 및 처리 중..." : "📷 스마트폰촬영 또는 사진선택"}
-              </span>
-            </button>
-
-            {form.images && form.images.length > 0 && (
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 pt-1">
-                {form.images.map((img, idx) => (
-                  <div
-                    key={img.id || idx}
-                    className="relative group rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 aspect-square bg-slate-100 dark:bg-slate-800"
-                  >
-                    <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImage({ url: img.dataUrl, name: img.name });
-                        }}
-                        className="p-1 rounded bg-white text-slate-900 cursor-pointer"
-                        title="확대보기"
-                      >
-                        <ZoomIn className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveImage(idx);
-                        }}
-                        className="p-1 rounded bg-rose-600 text-white cursor-pointer"
-                        title="삭제"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+              {/* 조치결과 사진 썸네일 */}
+              {form.actionImages && form.actionImages.length > 0 && (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
+                  {form.actionImages.map((img, idx) => (
+                    <div
+                      key={img.id || idx}
+                      className="relative group rounded-xl overflow-hidden border border-teal-300 dark:border-teal-800 aspect-square bg-slate-100 dark:bg-slate-800"
+                    >
+                      <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewImage({ url: img.dataUrl, name: img.name });
+                          }}
+                          className="p-1 rounded bg-white text-slate-900 cursor-pointer"
+                          title="확대보기"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveActionImage(idx);
+                          }}
+                          className="p-1 rounded bg-rose-600 text-white cursor-pointer"
+                          title="삭제"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Submit Button */}
@@ -646,8 +760,8 @@ export const ExtrusionQualityIssueTab = () => {
                   <th className="py-2.5 px-2.5 text-center w-24">라인</th>
                   <th className="py-2.5 px-2.5 w-28">불량유형</th>
                   <th className="py-2.5 px-3 min-w-[220px]">품질이슈 제목 (불량 현상)</th>
-                  <th className="py-2.5 px-3 min-w-[200px]">조치결과</th>
-                  <th className="py-2.5 px-2 text-center w-16">사진</th>
+                  <th className="py-2.5 px-3 min-w-[180px]">조치결과</th>
+                  <th className="py-2.5 px-2 text-center min-w-[120px]">사진 (원인/조치)</th>
                   <th className="py-2.5 px-2.5 text-center w-20">등록자</th>
                   <th className="py-2.5 px-3 text-center w-28">관리</th>
                 </tr>
@@ -656,7 +770,12 @@ export const ExtrusionQualityIssueTab = () => {
                 {filteredIssues.map((issue) => {
                   const isResolved = issue.status === "RESOLVED";
                   const actionText = issue.actionResult || issue.actionGuide || issue.resolutionNote || "";
-                  const hasPhotos = Array.isArray(issue.images) && issue.images.length > 0;
+                  const causeImgs = Array.isArray(issue.causeImages)
+                    ? issue.causeImages
+                    : Array.isArray(issue.images)
+                    ? issue.images
+                    : [];
+                  const actionImgs = Array.isArray(issue.actionImages) ? issue.actionImages : [];
 
                   return (
                     <tr
@@ -700,7 +819,7 @@ export const ExtrusionQualityIssueTab = () => {
 
                       {/* 제목 */}
                       <td className="py-2 px-3">
-                        <div className="font-bold text-slate-900 dark:text-white max-w-[280px] sm:max-w-[340px] truncate" title={issue.title}>
+                        <div className="font-bold text-slate-900 dark:text-white max-w-[260px] sm:max-w-[320px] truncate" title={issue.title}>
                           {issue.title}
                         </div>
                       </td>
@@ -708,7 +827,7 @@ export const ExtrusionQualityIssueTab = () => {
                       {/* 조치결과 */}
                       <td className="py-2 px-3">
                         <div
-                          className={`max-w-[240px] sm:max-w-[300px] truncate text-[11px] ${
+                          className={`max-w-[200px] sm:max-w-[260px] truncate text-[11px] ${
                             actionText ? "text-teal-700 dark:text-teal-300 font-medium" : "text-slate-400 italic"
                           }`}
                           title={actionText || "조치 내용 없음"}
@@ -717,21 +836,35 @@ export const ExtrusionQualityIssueTab = () => {
                         </div>
                       </td>
 
-                      {/* 사진 */}
+                      {/* 사진 (원인/조치 분리 표시) */}
                       <td className="py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                        {hasPhotos ? (
-                          <button
-                            type="button"
-                            onClick={() => setPreviewImage({ url: issue.images[0].dataUrl, name: issue.images[0].name })}
-                            className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-bold text-[10.5px] hover:bg-blue-100 flex items-center gap-1 mx-auto cursor-pointer"
-                            title="사진 확대보기"
-                          >
-                            <Camera className="w-3 h-3" />
-                            <span>{issue.images.length}장</span>
-                          </button>
-                        ) : (
-                          <span className="text-slate-300 dark:text-slate-600 text-[11px]">-</span>
-                        )}
+                        <div className="flex items-center justify-center gap-1">
+                          {causeImgs.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImage({ url: causeImgs[0].dataUrl, name: `[원인] ${causeImgs[0].name}` })}
+                              className="px-1.5 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-[10px] hover:bg-rose-100 flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                              title="발생원인 사진 확대보기"
+                            >
+                              <Camera className="w-2.5 h-2.5" />
+                              <span>원인 {causeImgs.length}</span>
+                            </button>
+                          )}
+                          {actionImgs.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImage({ url: actionImgs[0].dataUrl, name: `[조치] ${actionImgs[0].name}` })}
+                              className="px-1.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 border border-teal-300 dark:border-teal-800 text-teal-700 dark:text-teal-300 font-bold text-[10px] hover:bg-teal-100 flex items-center gap-0.5 cursor-pointer shadow-2xs"
+                              title="조치결과 사진 확대보기"
+                            >
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              <span>조치 {actionImgs.length}</span>
+                            </button>
+                          )}
+                          {causeImgs.length === 0 && actionImgs.length === 0 && (
+                            <span className="text-slate-300 dark:text-slate-600 text-[11px]">-</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* 등록자 */}
@@ -790,7 +923,7 @@ export const ExtrusionQualityIssueTab = () => {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 rounded-2xl max-w-xl w-full p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5 animate-scaleUp cursor-default text-slate-900 dark:text-white"
+            className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 animate-scaleUp cursor-default text-slate-900 dark:text-white max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
@@ -823,40 +956,84 @@ export const ExtrusionQualityIssueTab = () => {
               {detailModalIssue.title}
             </h3>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
-                <span className="font-bold text-slate-500 block mb-1 text-[11px]">불량 현상 및 세부 원인</span>
-                <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200">
-                  {detailModalIssue.content}
-                </p>
-              </div>
+            {/* 1) 발생원인 내용 및 사진 */}
+            <div className="p-3.5 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 space-y-2 text-xs">
+              <span className="font-black text-rose-800 dark:text-rose-300 block text-[11.5px] flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                <span>1. 세부 불량 현상 및 발생 원인</span>
+              </span>
+              <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200 font-medium">
+                {detailModalIssue.content}
+              </p>
 
-              <div className="p-3 rounded-xl bg-teal-50/60 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80">
-                <span className="font-bold text-teal-800 dark:text-teal-300 block mb-1 text-[11px]">조치결과</span>
-                <p className="whitespace-pre-wrap leading-relaxed text-teal-950 dark:text-teal-100 font-medium">
-                  {detailModalIssue.actionResult || detailModalIssue.actionGuide || detailModalIssue.resolutionNote || "등록된 조치결과가 없습니다."}
-                </p>
-              </div>
-
-              {detailModalIssue.images && detailModalIssue.images.length > 0 && (
-                <div>
-                  <span className="font-bold text-slate-500 block mb-1.5 text-[11px]">첨부 사진 (클릭하여 확대)</span>
-                  <div className="flex items-center gap-2 overflow-x-auto pt-1">
-                    {detailModalIssue.images.map((img, i) => (
-                      <div
-                        key={img.id || i}
-                        onClick={() => setPreviewImage({ url: img.dataUrl, name: img.name })}
-                        className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 cursor-pointer group shrink-0"
-                      >
-                        <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                        <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                          <ZoomIn className="w-4 h-4 text-white" />
+              {/* 발생원인 사진 */}
+              {(() => {
+                const causeImgs = Array.isArray(detailModalIssue.causeImages)
+                  ? detailModalIssue.causeImages
+                  : Array.isArray(detailModalIssue.images)
+                  ? detailModalIssue.images
+                  : [];
+                if (causeImgs.length === 0) return null;
+                return (
+                  <div className="pt-1.5 border-t border-rose-200/60 dark:border-rose-900/40">
+                    <span className="font-bold text-rose-700 dark:text-rose-300 block mb-1.5 text-[10.5px]">
+                      📸 발생원인 사진 ({causeImgs.length}장 - 클릭하여 확대)
+                    </span>
+                    <div className="flex items-center gap-2 overflow-x-auto pt-0.5">
+                      {causeImgs.map((img, i) => (
+                        <div
+                          key={img.id || i}
+                          onClick={() => setPreviewImage({ url: img.dataUrl, name: `[원인] ${img.name}` })}
+                          className="relative w-20 h-20 rounded-xl overflow-hidden border border-rose-300 dark:border-rose-700 cursor-pointer group shrink-0"
+                        >
+                          <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                          <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <ZoomIn className="w-4 h-4 text-white" />
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
+            </div>
+
+            {/* 2) 조치결과 내용 및 사진 */}
+            <div className="p-3.5 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-900/60 space-y-2 text-xs">
+              <span className="font-black text-teal-800 dark:text-teal-300 block text-[11.5px] flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                <span>2. 조치결과 (현장 조치 및 개선 내용)</span>
+              </span>
+              <p className="whitespace-pre-wrap leading-relaxed text-teal-950 dark:text-teal-100 font-medium">
+                {detailModalIssue.actionResult || detailModalIssue.actionGuide || detailModalIssue.resolutionNote || "등록된 조치결과가 없습니다."}
+              </p>
+
+              {/* 조치결과 사진 */}
+              {(() => {
+                const actionImgs = Array.isArray(detailModalIssue.actionImages) ? detailModalIssue.actionImages : [];
+                if (actionImgs.length === 0) return null;
+                return (
+                  <div className="pt-1.5 border-t border-teal-200/60 dark:border-teal-900/40">
+                    <span className="font-bold text-teal-700 dark:text-teal-300 block mb-1.5 text-[10.5px]">
+                      📸 조치결과 사진 ({actionImgs.length}장 - 클릭하여 확대)
+                    </span>
+                    <div className="flex items-center gap-2 overflow-x-auto pt-0.5">
+                      {actionImgs.map((img, i) => (
+                        <div
+                          key={img.id || i}
+                          onClick={() => setPreviewImage({ url: img.dataUrl, name: `[조치] ${img.name}` })}
+                          className="relative w-20 h-20 rounded-xl overflow-hidden border border-teal-300 dark:border-teal-700 cursor-pointer group shrink-0"
+                        >
+                          <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                          <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <ZoomIn className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 text-xs">

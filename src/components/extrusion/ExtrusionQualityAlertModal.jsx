@@ -148,11 +148,17 @@ export const ExtrusionQualityAlertModal = () => {
           {activeIssues.map((issue, idx) => {
             const isAcked = Array.isArray(issue.acknowledgedBy) && issue.acknowledgedBy.includes(currentProfile?.name);
             const actionText = issue.actionResult || issue.actionGuide || issue.resolutionNote || "";
+            const causeImgs = Array.isArray(issue.causeImages)
+              ? issue.causeImages
+              : Array.isArray(issue.images)
+              ? issue.images
+              : [];
+            const actionImgs = Array.isArray(issue.actionImages) ? issue.actionImages : [];
 
             return (
               <div
                 key={issue.id || idx}
-                className="p-3.5 sm:p-4 rounded-2xl border-2 bg-rose-50/40 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/80 shadow-xs space-y-2.5"
+                className="p-3.5 sm:p-4 rounded-2xl border-2 bg-rose-50/40 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800/80 shadow-xs space-y-3"
               >
                 {/* Badges & Meta */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -178,45 +184,73 @@ export const ExtrusionQualityAlertModal = () => {
                   {issue.title}
                 </h4>
 
-                {/* Content */}
-                <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 space-y-1">
-                  <span className="font-bold text-[10.5px] text-slate-500 block">불량 현상 및 발생 원인</span>
+                {/* 1) 발생원인 내용 및 사진 */}
+                <div className="bg-white/80 dark:bg-slate-900/80 p-3 rounded-xl border border-rose-200 dark:border-rose-900/60 space-y-2">
+                  <span className="font-bold text-[10.5px] text-rose-700 dark:text-rose-300 block flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 text-rose-600" />
+                    <span>1. 세부 불량 현상 및 발생 원인</span>
+                  </span>
                   <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">
                     {issue.content}
                   </p>
+
+                  {/* 발생원인 사진 */}
+                  {causeImgs.length > 0 && (
+                    <div className="pt-1 border-t border-rose-100 dark:border-rose-900/40">
+                      <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 block mb-1">
+                        📸 발생원인 사진 ({causeImgs.length}장):
+                      </span>
+                      <div className="flex items-center gap-2 overflow-x-auto">
+                        {causeImgs.map((img, i) => (
+                          <div
+                            key={img.id || i}
+                            onClick={() => setPreviewImage({ url: img.dataUrl, name: `[원인] ${img.name}` })}
+                            className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 border-rose-300 dark:border-rose-700 cursor-pointer group shrink-0 shadow-2xs"
+                          >
+                            <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                            <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                              <ZoomIn className="w-4 h-4 text-white" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Action Result / Guide */}
+                {/* 2) 조치결과 내용 및 사진 */}
                 {actionText && (
-                  <div className="p-3 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-300 dark:border-teal-800/80 space-y-1">
+                  <div className="p-3 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-300 dark:border-teal-800/80 space-y-2">
                     <span className="font-black text-teal-800 dark:text-teal-300 text-xs flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5 text-teal-600" />
-                      <span>조치결과 및 개선사항</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                      <span>2. 조치결과 및 개선사항</span>
                     </span>
                     <p className="text-xs text-teal-950 dark:text-teal-100 font-bold leading-relaxed whitespace-pre-wrap">
                       {actionText}
                     </p>
-                  </div>
-                )}
 
-                {/* Photos */}
-                {issue.images && issue.images.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[10.5px] font-bold text-slate-400">현장 불량 사진 (클릭하여 확대):</span>
-                    <div className="flex items-center gap-2 overflow-x-auto">
-                      {issue.images.map((img, i) => (
-                        <div
-                          key={img.id || i}
-                          onClick={() => setPreviewImage({ url: img.dataUrl, name: img.name })}
-                          className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 border-slate-300 dark:border-slate-700 cursor-pointer group shrink-0 shadow-2xs"
-                        >
-                          <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                          <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                            <ZoomIn className="w-4 h-4 text-white" />
-                          </div>
+                    {/* 조치결과 사진 */}
+                    {actionImgs.length > 0 && (
+                      <div className="pt-1 border-t border-teal-200 dark:border-teal-900/40">
+                        <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 block mb-1">
+                          📸 조치결과 사진 ({actionImgs.length}장):
+                        </span>
+                        <div className="flex items-center gap-2 overflow-x-auto">
+                          {actionImgs.map((img, i) => (
+                            <div
+                              key={img.id || i}
+                              onClick={() => setPreviewImage({ url: img.dataUrl, name: `[조치] ${img.name}` })}
+                              className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 border-teal-300 dark:border-teal-700 cursor-pointer group shrink-0 shadow-2xs"
+                            >
+                              <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                              <div className="absolute inset-0 bg-slate-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <ZoomIn className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

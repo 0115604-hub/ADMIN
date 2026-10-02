@@ -156,6 +156,13 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
+  const causeImages = Array.isArray(issueData.causeImages)
+    ? issueData.causeImages
+    : Array.isArray(issueData.images)
+    ? issueData.images
+    : [];
+  const actionImages = Array.isArray(issueData.actionImages) ? issueData.actionImages : [];
+
   const fullItem = {
     ...issueData,
     id,
@@ -167,7 +174,9 @@ export const saveExtrusionQualityIssue = async (issueData) => {
     status: issueData.status || "ACTIVE",
     content: issueData.content || "",
     actionResult: issueData.actionResult || issueData.actionGuide || issueData.resolutionNote || "",
-    images: Array.isArray(issueData.images) ? issueData.images : [],
+    causeImages,
+    actionImages,
+    images: [...causeImages, ...actionImages],
     author: issueData.author || "설유철",
     authorTitle: issueData.authorTitle || "책임",
     createdAt: issueData.createdAt || nowStr,
@@ -197,7 +206,12 @@ export const saveExtrusionQualityIssue = async (issueData) => {
 };
 
 // Resolve Quality Issue
-export const resolveExtrusionQualityIssue = async (id, resolutionNote = "조치 및 해결 완료", resolverName = "설유철") => {
+export const resolveExtrusionQualityIssue = async (
+  id,
+  resolutionNote = "조치 및 해결 완료",
+  resolverName = "설유철",
+  newActionImages = null
+) => {
   const current = getLocalExtrusionQualityIssues();
   const target = current.find((it) => it.id === id);
   if (!target) return current;
@@ -211,11 +225,16 @@ export const resolveExtrusionQualityIssue = async (id, resolutionNote = "조치 
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
+  const existingActionImages = Array.isArray(target.actionImages) ? target.actionImages : [];
+  const finalActionImages = Array.isArray(newActionImages) ? newActionImages : existingActionImages;
+
   const updatedItem = {
     ...target,
     status: "RESOLVED",
     resolvedAt: nowStr,
     resolutionNote: resolutionNote || "조치 완료",
+    actionResult: resolutionNote || target.actionResult || "조치 완료",
+    actionImages: finalActionImages,
     resolvedBy: resolverName || "설유철",
     updatedAt: nowStr
   };
