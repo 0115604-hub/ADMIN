@@ -1,0 +1,294 @@
+import {
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  getDocs,
+  onSnapshot
+} from "firebase/firestore";
+import { db } from "../firebase";
+
+const COLLECTION_NAME = "extrusion_quality_issues";
+const LOCAL_STORAGE_KEY = "factory_extrusion_quality_issues_v2";
+
+export const EXTRUSION_LINES = [
+  { id: "pcm1", name: "PCM 1호기", badge: "PCM 1호", color: "teal" },
+  { id: "pcm3", name: "PCM 3호기", badge: "PCM 3호", color: "blue" },
+  { id: "pvc", name: "PVC 라인", badge: "PVC", color: "amber" },
+  { id: "tpe", name: "TPE 라인", badge: "TPE", color: "purple" },
+  { id: "common", name: "전 라인 (공통)", badge: "공통", color: "rose" }
+];
+
+export const DEFECT_TYPES = [
+  "외관 스크래치 / 찍힘",
+  "치수 편차 / 두께 불량",
+  "이물 혼입 / 표면 돌기",
+  "스코치 / 탄화 불량",
+  "형상 변형 / 휨",
+  "원료 배합 / 비중 불량",
+  "원료 공급 / 토출 불량",
+  "기타 특이 불량"
+];
+
+export const SEVERITY_LEVELS = [
+  { id: "CRITICAL", label: "🚨 긴급 경보 (작업 전 필독)", color: "rose", bg: "bg-rose-500", text: "text-rose-600" },
+  { id: "WARNING", label: "⚠️ 주의 관찰 (품질 집중 점검)", color: "amber", bg: "bg-amber-500", text: "text-amber-600" },
+  { id: "INFO", label: "ℹ️ 품질 공지 (작업 표준 안내)", color: "blue", bg: "bg-blue-500", text: "text-blue-600" }
+];
+
+// Initial starter mock issues if database is clean
+export const INITIAL_EXTRUSION_QUALITY_ISSUES = [
+  {
+    id: "ext_qual_demo_1",
+    date: "2026-10-02",
+    time: "08:30",
+    line: "PCM 1호기",
+    vehicle: "NQ5",
+    itemCode: "86811-N9000",
+    title: "다이스 토출부 이물로 인한 표면 미세 스크래치 발생 주의",
+    defectType: "외관 스크래치 / 찍힘",
+    severity: "CRITICAL",
+    status: "ACTIVE",
+    content: "PCM 1호기 NQ5 가동 시 다이스 토출구 이물 누적으로 외관 스크래치가 발생할 수 있습니다. 메쉬망 상태 점검 및 다이스 토출면 수시 확인 필수.",
+    actionGuide: "1. 30분 단위 표면 육안 검사 및 조도 확보\n2. 스크래치 발생 즉시 라인 일시 정지 후 토출구 청소\n3. 초중종물 외관 한도 견본과 대조 확인",
+    images: [],
+    author: "설유철",
+    authorTitle: "책임",
+    createdAt: "2026-10-02 08:30:00",
+    updatedAt: "2026-10-02 08:30:00",
+    acknowledgedBy: []
+  },
+  {
+    id: "ext_qual_demo_2",
+    date: "2026-10-01",
+    time: "14:20",
+    line: "PCM 3호기",
+    vehicle: "DL3",
+    itemCode: "86821-L2000",
+    title: "성형 치수(폭/두께) 규격 공차(±0.2mm) 집중 관리",
+    defectType: "치수 편차 / 두께 불량",
+    severity: "WARNING",
+    status: "ACTIVE",
+    content: "온도 편차에 따른 수축량 변동으로 폭 치수 편차가 발생할 수 있습니다. 냉각 수조 온도 및 인취기 속도 일정 유지 관리 바랍니다.",
+    actionGuide: "1. 버니어 캘리퍼스 측정 (외경/두께)\n2. 냉각수 온도 20±2℃ 상시 체크\n3. 규격 이탈 시 설유철 책임 즉시 보고",
+    images: [],
+    author: "설유철",
+    authorTitle: "책임",
+    createdAt: "2026-10-01 14:20:00",
+    updatedAt: "2026-10-01 14:20:00",
+    acknowledgedBy: []
+  }
+];
+
+// Helper: Read local storage
+export const getLocalExtrusionQualityIssues = () => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.error("Local storage read error for extrusion quality issues:", e);
+  }
+  return INITIAL_EXTRUSION_QUALITY_ISSUES;
+};
+
+// Helper: Save local storage
+export const saveLocalExtrusionQualityIssues = (items) => {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items || []));
+  } catch (e) {
+    console.error("Local storage write error for extrusion quality issues:", e);
+  }
+};
+
+// Real-time Cloud Synchronization
+export const subscribeExtrusionQualityIssues = (onUpdate) => {
+  try {
+    const colRef = collection(db, COLLECTION_NAME);
+    const unsubscribe = onSnapshot(
+      colRef,
+      (snapshot) => {
+        const remoteList = [];
+        if (!snapshot.empty) {
+          snapshot.forEach((d) => {
+            remoteList.push({ id: d.id, ...d.data() });
+          });
+        }
+
+        const localList = getLocalExtrusionQualityIssues();
+        const map = new Map();
+
+        // 1. Seed with local
+        localList.forEach((it) => {
+          if (it && it.id) map.set(it.id, it);
+        });
+
+        // 2. Merge remote
+        remoteList.forEach((it) => {
+          if (it && it.id) map.set(it.id, it);
+        });
+
+        const merged = Array.from(map.values());
+        merged.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+
+        saveLocalExtrusionQualityIssues(merged);
+        if (onUpdate) onUpdate(merged);
+      },
+      (error) => {
+        console.warn("Firestore extrusion quality issues sync warning:", error);
+        if (onUpdate) onUpdate(getLocalExtrusionQualityIssues());
+      }
+    );
+    return unsubscribe;
+  } catch (e) {
+    console.error("subscribeExtrusionQualityIssues error:", e);
+    if (onUpdate) onUpdate(getLocalExtrusionQualityIssues());
+    return () => {};
+  }
+};
+
+// Save (Create or Update) Extrusion Quality Issue
+export const saveExtrusionQualityIssue = async (issueData) => {
+  const id = issueData.id || `ext_qual_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const now = new Date();
+  const nowStr = now.toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const fullItem = {
+    ...issueData,
+    id,
+    date: issueData.date || now.toISOString().slice(0, 10),
+    time: issueData.time || now.toTimeString().slice(0, 5),
+    line: issueData.line || "PCM 1호기",
+    vehicle: issueData.vehicle || "NQ5",
+    itemCode: issueData.itemCode || "",
+    title: issueData.title || "압출 품질 관리 이슈",
+    defectType: issueData.defectType || "외관 스크래치 / 찍힘",
+    severity: issueData.severity || "WARNING",
+    status: issueData.status || "ACTIVE",
+    content: issueData.content || "",
+    actionGuide: issueData.actionGuide || "",
+    images: Array.isArray(issueData.images) ? issueData.images : [],
+    author: issueData.author || "설유철",
+    authorTitle: issueData.authorTitle || "책임",
+    createdAt: issueData.createdAt || nowStr,
+    updatedAt: nowStr,
+    acknowledgedBy: Array.isArray(issueData.acknowledgedBy) ? issueData.acknowledgedBy : []
+  };
+
+  const current = getLocalExtrusionQualityIssues();
+  const existingIdx = current.findIndex((it) => it.id === id);
+  let updated;
+  if (existingIdx >= 0) {
+    updated = [...current];
+    updated[existingIdx] = fullItem;
+  } else {
+    updated = [fullItem, ...current];
+  }
+
+  saveLocalExtrusionQualityIssues(updated);
+
+  try {
+    await setDoc(doc(db, COLLECTION_NAME, id), fullItem);
+  } catch (e) {
+    console.warn("Firestore save extrusion quality issue fallback to local:", e);
+  }
+
+  return fullItem;
+};
+
+// Resolve Quality Issue
+export const resolveExtrusionQualityIssue = async (id, resolutionNote = "조치 및 해결 완료", resolverName = "설유철") => {
+  const current = getLocalExtrusionQualityIssues();
+  const target = current.find((it) => it.id === id);
+  if (!target) return current;
+
+  const nowStr = new Date().toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).replace(/\. /g, "-").replace(/\./g, "");
+
+  const updatedItem = {
+    ...target,
+    status: "RESOLVED",
+    resolvedAt: nowStr,
+    resolutionNote: resolutionNote || "조치 완료",
+    resolvedBy: resolverName || "설유철",
+    updatedAt: nowStr
+  };
+
+  return await saveExtrusionQualityIssue(updatedItem);
+};
+
+// Delete Quality Issue
+export const deleteExtrusionQualityIssue = async (id) => {
+  const current = getLocalExtrusionQualityIssues();
+  const updated = current.filter((it) => it.id !== id);
+  saveLocalExtrusionQualityIssues(updated);
+
+  try {
+    await deleteDoc(doc(db, COLLECTION_NAME, id));
+  } catch (e) {
+    console.warn("Firestore delete extrusion quality issue fallback to local:", e);
+  }
+
+  return updated;
+};
+
+// Acknowledge Quality Issue (작업자가 공지 확인 완료 클릭 시)
+export const acknowledgeExtrusionQualityIssue = async (id, workerName) => {
+  if (!id || !workerName) return;
+  const current = getLocalExtrusionQualityIssues();
+  const target = current.find((it) => it.id === id);
+  if (!target) return;
+
+  const currentAck = Array.isArray(target.acknowledgedBy) ? target.acknowledgedBy : [];
+  if (currentAck.includes(workerName)) return target;
+
+  const updatedItem = {
+    ...target,
+    acknowledgedBy: [...currentAck, workerName]
+  };
+
+  return await saveExtrusionQualityIssue(updatedItem);
+};
+
+// Check if worker is an extrusion worker
+export const isExtrusionWorkerProfile = (profile) => {
+  if (!profile) return false;
+  const name = profile.name || "";
+  const building = profile.building || "";
+  const process = profile.assignedProcess || "";
+  const id = profile.id || "";
+
+  return (
+    name === "설유철" ||
+    name === "공영국" ||
+    name === "심임대" ||
+    name === "이상은" ||
+    name === "닉" ||
+    name === "마이클" ||
+    name === "존카를로" ||
+    name === "지미" ||
+    name === "만" ||
+    name === "샤먼" ||
+    name === "쿠마루" ||
+    name === "이수루" ||
+    building.includes("압출") ||
+    process.includes("압출") ||
+    id.startsWith("ext_") ||
+    id === "sam_yc"
+  );
+};
