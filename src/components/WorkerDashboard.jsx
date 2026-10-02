@@ -2668,16 +2668,32 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       images: Array.isArray(log.images) ? [...log.images] : []
     });
 
+    const isJaeyulLog = log.process === "설비보전" || log.writer === "전재율" || (log.line && log.line.includes("설비보전")) || isJaeyul;
     if (Array.isArray(log.maintenanceItems) && log.maintenanceItems.length > 0) {
       setEditMaintenanceItems(
-        log.maintenanceItems.map((it, idx) => ({
-          id: it.id || idx + 1,
-          category: it.category || "압출기",
-          equipmentName: it.equipmentName || "PCM 1호",
-          customEquipmentName: it.customEquipmentName || "",
-          content: it.content || ""
-        }))
+        log.maintenanceItems.map((it, idx) => {
+          const category = it.category || "압출기";
+          const standardList = JAEYUL_CATEGORY_EQUIPMENT_MAP[category] || JAEYUL_EQUIPMENT_OPTIONS;
+          const isStandard = standardList.includes(it.equipmentName) && it.equipmentName !== "내용직접입력" && it.equipmentName !== "직접입력" && it.equipmentName !== "내용입력 (직접입력)";
+          return {
+            id: it.id || Date.now() + idx,
+            category: category,
+            equipmentName: isStandard ? it.equipmentName : "내용직접입력",
+            customEquipmentName: isStandard ? "" : (it.customEquipmentName || it.equipmentName || ""),
+            content: it.content || it.workContent || ""
+          };
+        })
       );
+    } else if (isJaeyulLog) {
+      setEditMaintenanceItems([
+        {
+          id: 1,
+          category: "압출기",
+          equipmentName: "PCM 1호",
+          customEquipmentName: "",
+          content: log.workContent || ""
+        }
+      ]);
     } else {
       setEditMaintenanceItems([]);
     }
@@ -2768,25 +2784,38 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     let lineSummary = editFormData.line;
     let formattedItems = [];
 
-    if (editFormData.process === "설비보전" || editingLog.process === "설비보전" || editMaintenanceItems.length > 0) {
-      formattedItems = editMaintenanceItems.filter((it) => it.content && it.content.trim());
+    const isJaeyulLog =
+      editFormData.process === "설비보전" ||
+      editingLog.process === "설비보전" ||
+      editingLog.writer === "전재율" ||
+      editMaintenanceItems.length > 0;
+
+    if (isJaeyulLog && editMaintenanceItems.length > 0) {
+      formattedItems = editMaintenanceItems
+        .filter((it) => it.content && it.content.trim())
+        .map((it) => {
+          const isCustom =
+            it.equipmentName === "내용직접입력" ||
+            it.equipmentName === "직접입력" ||
+            it.equipmentName === "내용입력 (직접입력)" ||
+            !JAEYUL_CATEGORY_EQUIPMENT_MAP[it.category]?.includes(it.equipmentName);
+          const finalEqName = isCustom ? (it.customEquipmentName?.trim() || "직접입력") : it.equipmentName;
+          return {
+            id: it.id,
+            category: it.category || "기타",
+            equipmentName: finalEqName,
+            customEquipmentName: isCustom ? (it.customEquipmentName?.trim() || "") : "",
+            content: it.content.trim()
+          };
+        });
+
       if (formattedItems.length > 0) {
         formattedWorkContent = formattedItems
-          .map((it, idx) => {
-            const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
-              ? (it.customEquipmentName?.trim() || "직접입력")
-              : it.equipmentName;
-            return `[${idx + 1}] ${it.category} > ${eqName}\n• 설비보전내용: ${it.content.trim()}`;
-          })
+          .map((it, idx) => `[${idx + 1}] ${it.category} > ${it.equipmentName}\n• 설비보전내용: ${it.content}`)
           .join("\n\n");
 
         lineSummary = formattedItems
-          .map((it) => {
-            const eqName = (it.equipmentName === "내용직접입력" || it.equipmentName === "직접입력" || it.equipmentName === "내용입력 (직접입력)")
-              ? (it.customEquipmentName?.trim() || "직접입력")
-              : it.equipmentName;
-            return `${it.category}(${eqName})`;
-          })
+          .map((it) => `${it.category}(${it.equipmentName})`)
           .join(", ");
       }
     }
@@ -2803,7 +2832,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         shift: editFormData.shift,
         line: lineSummary || editFormData.line,
         workContent: formattedWorkContent,
-        issues: editFormData.issues || "특이사항 없음",
+        issues: editFormData.issues === "" ? "-" : (editFormData.issues || "특이사항 없음"),
         images: editFormData.images || [],
         maintenanceItems: formattedItems.length > 0 ? formattedItems : (editingLog.maintenanceItems || []),
         approvalStatus: editingLog.approvalStatus === "반려" ? "결재대기" : (editingLog.approvalStatus || "결재대기")
@@ -5368,62 +5397,124 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
               {/* 설비보전 항목 편집 (설비보전 일지인 경우) */}
               {editMaintenanceItems && editMaintenanceItems.length > 0 && (
-                <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                  <div className="flex items-center justify-between pb-1 border-b border-slate-200 dark:border-slate-700">
+                <div className="space-y-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-700">
                     <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <Wrench className="w-3.5 h-3.5 text-blue-600" />
-                      <span>설비보전 항목 ({editMaintenanceItems.length}건)</span>
+                      <span>설비보전 항목 수정 ({editMaintenanceItems.length}건)</span>
                     </span>
                     <button
                       type="button"
                       onClick={handleAddEditMaintenanceItem}
-                      className="px-2 py-0.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10.5px] font-bold transition-all"
+                      className="px-2.5 py-1 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[11px] font-bold transition-all cursor-pointer"
                     >
                       + 항목 추가
                     </button>
                   </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {editMaintenanceItems.map((item, idx) => (
-                      <div key={item.id || idx} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-bold text-[10.5px] text-slate-400">#{idx + 1}</span>
-                          <select
-                            value={item.category}
-                            onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "category", e.target.value)}
-                            className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold"
-                          >
-                            {JAEYUL_EQUIPMENT_CATEGORIES.map((c) => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                          <select
-                            value={item.equipmentName}
-                            onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "equipmentName", e.target.value)}
-                            className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold flex-1"
-                          >
-                            {(JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category] || JAEYUL_EQUIPMENT_OPTIONS).map((eq) => (
-                              <option key={eq} value={eq}>{eq}</option>
-                            ))}
-                          </select>
-                          {editMaintenanceItems.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveEditMaintenanceItem(item.id)}
-                              className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                    {editMaintenanceItems.map((item, idx) => {
+                      const isCustom =
+                        item.equipmentName === "내용직접입력" ||
+                        item.equipmentName === "직접입력" ||
+                        item.equipmentName === "내용입력 (직접입력)" ||
+                        !JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category]?.includes(item.equipmentName);
+
+                      return (
+                        <div key={item.id || idx} className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-[11px] text-blue-600 dark:text-blue-400">보전 #{idx + 1}</span>
+                            {editMaintenanceItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEditMaintenanceItem(item.id)}
+                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                                title="항목 삭제"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                                대분류
+                              </label>
+                              <select
+                                value={item.category}
+                                onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "category", e.target.value)}
+                                className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                              >
+                                {JAEYUL_EQUIPMENT_CATEGORIES.map((c) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                                설비명 ({item.category})
+                              </label>
+                              {isCustom ? (
+                                <div className="relative flex items-center">
+                                  <input
+                                    type="text"
+                                    placeholder={item.category === "치공구" ? "치공구명 직접 입력" : "설비명 직접 입력"}
+                                    value={item.customEquipmentName || ""}
+                                    onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "customEquipmentName", e.target.value)}
+                                    className="w-full px-2.5 py-1.5 pr-14 rounded-xl border-2 border-blue-500 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none shadow-2xs"
+                                  />
+                                  {JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category]?.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const firstEq = JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category][0];
+                                        handleUpdateEditMaintenanceItem(item.id, "equipmentName", firstEq);
+                                        handleUpdateEditMaintenanceItem(item.id, "customEquipmentName", "");
+                                      }}
+                                      className="absolute right-1 top-1 bottom-1 px-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-0.5 cursor-pointer"
+                                      title="목록에서 다시 선택하기"
+                                    >
+                                      <span>목록</span>
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                <select
+                                  value={item.equipmentName}
+                                  onChange={(e) => {
+                                    handleUpdateEditMaintenanceItem(item.id, "equipmentName", e.target.value);
+                                    if (e.target.value === "내용직접입력") {
+                                      handleUpdateEditMaintenanceItem(item.id, "customEquipmentName", "");
+                                    }
+                                  }}
+                                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
+                                >
+                                  {(JAEYUL_CATEGORY_EQUIPMENT_MAP[item.category] || ["내용직접입력"]).map((eq) => (
+                                    <option key={eq} value={eq}>
+                                      {eq === "내용직접입력" ? "✏️ 내용직접입력 (직접입력)" : eq}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
+                              설비보전내용 <span className="text-rose-500">*</span>
+                            </label>
+                            <textarea
+                              rows="2"
+                              value={item.content}
+                              onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "content", e.target.value)}
+                              placeholder="설비보전 작업 및 조치 내용 입력..."
+                              className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
                         </div>
-                        <textarea
-                          rows="2"
-                          value={item.content}
-                          onChange={(e) => handleUpdateEditMaintenanceItem(item.id, "content", e.target.value)}
-                          placeholder="설비보전 작업 및 조치 내용 입력..."
-                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-medium"
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
