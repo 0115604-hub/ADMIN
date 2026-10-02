@@ -2871,10 +2871,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return filteredLogs.slice(startIdx, startIdx + LOGS_PER_PAGE);
   }, [filteredLogs, safeLogPage]);
 
-  // 🌟 압출동 작업자 로그인 시: 중대재해공유판 + 설유철 품질이슈 공유판 + 사내공지(종료일 유효한 경우만) 표시
+  // 🌟 압출동 일반 현장작업자 로그인 시: 중대재해공유판 + 설유철 품질이슈 공유판 + 사내공지(종료일 유효한 경우만) 표시 (설유철 책임은 관리자이므로 제외)
   const isExtrusionOperatorWorker =
-    (isExtrusionWorker || isExtrusionWorkerProfile(currentProfile)) &&
+    isExtrusionWorkerProfile(currentProfile) &&
     currentProfile?.name !== "설유철" &&
+    currentProfile?.id !== "sam_yc" &&
     !isAdmin;
 
   if (isExtrusionOperatorWorker) {
@@ -2887,8 +2888,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
-      {/* 🌟 압출동 작업자 전용 상단 배너 (압출 생산관리 및 작업일보 바로가기) */}
-      {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && (
+      {/* 🌟 압출동 일반작업자 전용 상단 배너 (설유철 책임은 관리자이므로 제외) */}
+      {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && currentProfile?.name !== "설유철" && currentProfile?.id !== "sam_yc" && (
         <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-teal-800 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-xl bg-white/20 backdrop-blur-xs text-white shrink-0">

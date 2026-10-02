@@ -117,11 +117,13 @@ export const App = () => {
 
     if (currentProfile) {
       const isExtrusionWorker =
-        currentProfile.building === "압출동" ||
-        currentProfile.assignedProcess === "압출동" ||
+        (currentProfile.building === "압출동" ||
         currentProfile.id?.startsWith("ext_") ||
         currentProfile.name === "공영국" ||
-        currentProfile.name === "설유철";
+        currentProfile.name === "심임대" ||
+        currentProfile.name === "이상은") &&
+        currentProfile.name !== "설유철" &&
+        currentProfile.id !== "sam_yc";
 
       const targetTab = isExtrusionWorker ? "extrusion_downtime" : "worker_dashboard";
       if (isExtrusionWorker) {

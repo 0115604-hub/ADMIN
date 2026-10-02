@@ -275,16 +275,20 @@ export const acknowledgeExtrusionQualityIssue = async (id, workerName) => {
   return await saveExtrusionQualityIssue(updatedItem);
 };
 
-// Check if worker is an extrusion worker
+// Check if worker is a dedicated extrusion line operator/worker (설유철 책임은 관리자이므로 일반 작업자에서 제외)
 export const isExtrusionWorkerProfile = (profile) => {
   if (!profile) return false;
   const name = profile.name || "";
-  const building = profile.building || "";
-  const process = profile.assignedProcess || "";
   const id = profile.id || "";
 
+  // 🌟 설유철 책임은 압출 관리자/책임자이므로 일반 현장 압출작업자에서 명확히 분리 제외
+  if (name === "설유철" || id === "sam_yc") {
+    return false;
+  }
+
+  const building = profile.building || "";
+
   return (
-    name === "설유철" ||
     name === "공영국" ||
     name === "심임대" ||
     name === "이상은" ||
@@ -296,9 +300,7 @@ export const isExtrusionWorkerProfile = (profile) => {
     name === "샤먼" ||
     name === "쿠마루" ||
     name === "이수루" ||
-    building.includes("압출") ||
-    process.includes("압출") ||
     id.startsWith("ext_") ||
-    id === "sam_yc"
+    (building === "압출동" && profile.role === "OPERATOR")
   );
 };

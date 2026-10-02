@@ -154,14 +154,14 @@ export const WorkerPinModal = ({
 
   const isAdmin = selectedUser?.role === "ADMIN" || selectedUser?.id === "admin" || selectedUser?.name === "권태형" || selectedUser?.name === "최미영";
   const isExtrusionWorker =
-    isExtrusionWorkerProfile(selectedUser) ||
+    (isExtrusionWorkerProfile(selectedUser) ||
     selectedUser?.building === "압출동" ||
-    selectedUser?.assignedProcess?.includes("압출") ||
     selectedUser?.id?.startsWith("ext_") ||
-    selectedUser?.name === "설유철" ||
     selectedUser?.name === "공영국" ||
     selectedUser?.name === "심임대" ||
-    selectedUser?.name === "이상은";
+    selectedUser?.name === "이상은") &&
+    selectedUser?.name !== "설유철" &&
+    selectedUser?.id !== "sam_yc";
   const todayKst = getKSTDateString();
 
   // Active Company Notices for Extrusion Worker (사내공지가 있을 때만 종료일까지 표시)

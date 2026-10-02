@@ -42,11 +42,13 @@ export const Header = ({
   };
 
   const isExtrusionWorker = Boolean(
-    currentProfile?.building === "압출동" ||
+    (currentProfile?.building === "압출동" ||
     currentProfile?.id?.startsWith("ext_") ||
     currentProfile?.name === "공영국" ||
-    currentProfile?.department === "압출" ||
-    currentProfile?.role === "extrusion"
+    currentProfile?.name === "심임대" ||
+    currentProfile?.name === "이상은") &&
+    currentProfile?.name !== "설유철" &&
+    currentProfile?.id !== "sam_yc"
   );
 
   const showBackButton = Boolean(activeTab && activeTab !== "worker_dashboard" && !isExtrusionWorker);
