@@ -543,20 +543,69 @@ export const ElectronicApprovalView = () => {
         ? adminApprover
         : (currentPermission.approverName || currentProfile?.name || "결재자");
 
+      const isRep = isAdmin || approverName === "권태형" || approverName === "최미영" || approverName === "대표이사";
       const updated = await approveDocumentStep(
         selectedDoc.id,
         currentPermission.stepIndex,
         approverName,
-        approvalComment || (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "승인")
+        approvalComment || (isAdmin ? `${approverName === "최미영" ? "전무" : "대표이사"} 최종 승인` : "승인"),
+        { isAdmin, isRepresentative: isRep }
       );
 
       setSelectedDoc(updated);
+      setApprovalDocs(getLocalApprovalDocs());
       setApprovalComment("");
       setActionType("APPROVE");
       alert(`[${approverName}] 전자 도장 날인 및 결재 승인이 완료되었습니다.`);
     } catch (err) {
       console.error("Approval error:", err);
       alert("결재 승인 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      setIsProcessingAction(false);
+    }
+  };
+
+  // Handle Batch Approve All Pending (ADMIN/대표 일괄 결재 승인)
+  const handleBatchApprovePending = async () => {
+    if (!isAdmin) {
+      alert("일괄 결재 권한이 없습니다. (총괄관리자 ADMIN 전용)");
+      return;
+    }
+    const pendingList = approvalDocs.filter(isApprovalDocPending);
+    if (pendingList.length === 0) {
+      alert("현재 결재 대기(미결) 중인 문서가 없습니다.");
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `현재 미결 상태인 결재 문서 ${pendingList.length}건을 [${adminApprover} ${adminApprover === "최미영" ? "전무" : "대표이사"}] 최종 결재(전결)로 일괄 승인 처리하시겠습니까?\n모든 결재선이 완료(4/4) 처리되어 최종 결재완료 상태로 즉시 변경됩니다.`
+      )
+    ) {
+      return;
+    }
+
+    setIsProcessingAction(true);
+    try {
+      for (const docItem of pendingList) {
+        await approveDocumentStep(
+          docItem.id,
+          3,
+          adminApprover,
+          `${adminApprover === "최미영" ? "전무" : "대표이사"} 일괄 최종 승인`,
+          { isAdmin: true, isRepresentative: true }
+        );
+      }
+      const refreshed = getLocalApprovalDocs();
+      setApprovalDocs(refreshed);
+      if (selectedDoc) {
+        const found = refreshed.find((d) => d.id === selectedDoc.id);
+        if (found) setSelectedDoc(found);
+      }
+      alert(`🎉 미결 문서 ${pendingList.length}건이 성공적으로 대표이사 최종 승인(결재완료) 처리되었습니다.`);
+    } catch (err) {
+      console.error("Batch approval error:", err);
+      alert("일괄 결재 승인 중 오류가 발생했습니다: " + err.message);
     } finally {
       setIsProcessingAction(false);
     }
@@ -711,13 +760,27 @@ export const ElectronicApprovalView = () => {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleOpenDraftModal}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0"
-          >
-            <span>새 결재 기안서 작성</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isAdmin && stats.pending > 0 && (
+              <button
+                type="button"
+                onClick={handleBatchApprovePending}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-md shadow-amber-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                title="미결 문서 전체를 대표이사 최종 결재(전결)로 일괄 승인"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                <span>미결 문서 일괄 최종 승인 ({stats.pending}건)</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleOpenDraftModal}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-500/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <span>새 결재 기안서 작성</span>
+            </button>
+          </div>
         </div>
 
         {/* 5 KPI Summary Status Cards (시인성 극대화 및 컴팩트 최소화) */}
