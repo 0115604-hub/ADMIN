@@ -40,13 +40,14 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   const [toastMessage, setToastMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form selections (연고무 2종, 컴파운드 3종, 심금/코팅액 선택/미사용)
+  // Form selections (연고무 2종, 컴파운드 4종, 심금/코팅액 선택/미사용)
   const [selectedItemKey, setSelectedItemKey] = useState("");
   const [rubberType, setRubberType] = useState(EPDM_RUBBERS[0]?.name || "W60712$2");
   const [rubberType2, setRubberType2] = useState("");
   const [compoundType, setCompoundType] = useState(EPDM_COMPOUNDS[0]?.name || "IA4-75B_1");
   const [compoundType2, setCompoundType2] = useState("");
   const [compoundType3, setCompoundType3] = useState("");
+  const [compoundType4, setCompoundType4] = useState("");
   const [insertType, setInsertType] = useState(""); // 빈 값 = 미사용
   const [coatingType, setCoatingType] = useState(""); // 빈 값 = 미사용
 
@@ -83,11 +84,12 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
   // Pre-fill fields helper
   const applyBOMToFields = (existingBOM) => {
     if (!existingBOM) return;
-    setRubberType(existingBOM.rubberType || EPDM_RUBBERS[0]?.name || "W60712$2");
+    setRubberType(existingBOM.rubberType || "");
     setRubberType2(existingBOM.rubberType2 || "");
     setCompoundType(existingBOM.compoundType || "");
     setCompoundType2(existingBOM.compoundType2 || "");
     setCompoundType3(existingBOM.compoundType3 || "");
+    setCompoundType4(existingBOM.compoundType4 || "");
     setInsertType(existingBOM.insertType === "미사용" ? "" : (existingBOM.insertType || ""));
     setCoatingType(existingBOM.coatingType === "미사용" ? "" : (existingBOM.coatingType || ""));
   };
@@ -142,6 +144,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           compoundType: compoundType || "",
           compoundType2: compoundType2 || "",
           compoundType3: compoundType3 || "",
+          compoundType4: compoundType4 || "",
           insertType: insertType || "미사용",
           coatingType: coatingType || "미사용"
         },
@@ -158,6 +161,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
           compoundType,
           compoundType2,
           compoundType3,
+          compoundType4,
           insertType: insertType || "미사용",
           coatingType: coatingType || "미사용"
         });

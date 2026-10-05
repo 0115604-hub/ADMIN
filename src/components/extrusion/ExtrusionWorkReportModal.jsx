@@ -599,7 +599,10 @@ export const ExtrusionWorkReportModal = ({
             compoundLot2: "",
             compoundType3: defBOM.compoundType3 || "",
             compoundWeight3: "",
-            compoundLot3: ""
+            compoundLot3: "",
+            compoundType4: defBOM.compoundType4 || "",
+            compoundWeight4: "",
+            compoundLot4: ""
           },
           defectBreakdown: {
             cutoffKg: "",
@@ -774,7 +777,7 @@ export const ExtrusionWorkReportModal = ({
     });
 
     const activeItem = updatedItems[0] || defaultNewItem;
-    const bom = getMaterialBOMForItem(activeItem.vehicle, activeItem.itemName);
+    const bom = getMaterialBOMForItem(activeItem.vehicle, activeItem.itemName, lineId);
 
     setFormData((prev) => ({
       ...prev,
@@ -789,7 +792,8 @@ export const ExtrusionWorkReportModal = ({
         insertType: bom.insertType !== undefined ? bom.insertType : (prev.rawMaterials?.insertType || ""),
         compoundType: bom.compoundType !== undefined ? bom.compoundType : (prev.rawMaterials?.compoundType || ""),
         compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (prev.rawMaterials?.compoundType2 || ""),
-        compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (prev.rawMaterials?.compoundType3 || "")
+        compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (prev.rawMaterials?.compoundType3 || ""),
+        compoundType4: bom.compoundType4 !== undefined ? bom.compoundType4 : (prev.rawMaterials?.compoundType4 || "")
       }
     }));
   };
@@ -824,8 +828,8 @@ export const ExtrusionWorkReportModal = ({
         targetItem.vehicle = v || "";
         targetItem.itemName = n || "";
 
-        // Auto-match BOM from master EPDM data
-        const bom = getMaterialBOMForItem(targetItem.vehicle, targetItem.itemName);
+        // Auto-match BOM from master EPDM & Excel BOM data
+        const bom = getMaterialBOMForItem(targetItem.vehicle, targetItem.itemName, prev.lineId);
         if (bom) {
           nextRawMaterials = {
             ...nextRawMaterials,
@@ -834,6 +838,7 @@ export const ExtrusionWorkReportModal = ({
             compoundType: bom.compoundType !== undefined ? bom.compoundType : (nextRawMaterials.compoundType || ""),
             compoundType2: bom.compoundType2 !== undefined ? bom.compoundType2 : (nextRawMaterials.compoundType2 || ""),
             compoundType3: bom.compoundType3 !== undefined ? bom.compoundType3 : (nextRawMaterials.compoundType3 || ""),
+            compoundType4: bom.compoundType4 !== undefined ? bom.compoundType4 : (nextRawMaterials.compoundType4 || ""),
             insertType: bom.insertType !== undefined ? bom.insertType : (nextRawMaterials.insertType || ""),
             coatingType: bom.coatingType !== undefined ? bom.coatingType : (nextRawMaterials.coatingType || "")
           };
@@ -1680,7 +1685,7 @@ export const ExtrusionWorkReportModal = ({
                         {/* Minimal Raw Material BOM & Weight/LOT Direct Inputs (한줄짜리 간략한 뱃지) */}
                         {(() => {
                           if (!item?.vehicle || !item?.itemName) return null;
-                          const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName) || {};
+                          const itemBOM = getMaterialBOMForItem(item.vehicle, item.itemName, formData?.lineId) || {};
 
                           const ALL_MATERIAL_SLOTS = [
                             {
@@ -1739,6 +1744,18 @@ export const ExtrusionWorkReportModal = ({
                               label: "컴파운드3",
                               val: formData?.rawMaterials?.compoundType3 !== undefined ? formData.rawMaterials.compoundType3 : (itemBOM.compoundType3 || ""),
                               defaultVal: EPDM_COMPOUNDS[2]?.name || "L2KIA7-35B",
+                              containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
+                              specTextCls: "text-emerald-300",
+                              required: false
+                            },
+                            {
+                              id: "compoundType4",
+                              weightKey: "compoundWeight4",
+                              lotKey: "compoundLot4",
+                              icon: "🧬",
+                              label: "컴파운드4",
+                              val: formData?.rawMaterials?.compoundType4 !== undefined ? formData.rawMaterials.compoundType4 : (itemBOM.compoundType4 || ""),
+                              defaultVal: EPDM_COMPOUNDS[3]?.name || "ED2-53B",
                               containerCls: "bg-emerald-950/80 dark:bg-emerald-950 border-emerald-700/80 text-emerald-100",
                               specTextCls: "text-emerald-300",
                               required: false

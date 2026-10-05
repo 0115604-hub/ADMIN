@@ -71,6 +71,7 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
     compoundType: String(bomData.compoundType || "").trim(),
     compoundType2: String(bomData.compoundType2 || "").trim(),
     compoundType3: String(bomData.compoundType3 || "").trim(),
+    compoundType4: String(bomData.compoundType4 || "").trim(),
     insertType: String(bomData.insertType || "").trim(), // 빈 값 또는 "미사용" 가능
     coatingType: String(bomData.coatingType || "").trim(), // 빈 값 또는 "미사용" 가능
     registeredBy: String(registeredBy || "설유철 책임"),
