@@ -1247,7 +1247,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       : (approvalCommentInput.trim() || "확인 및 전자결재 승인 완료");
 
     const targetLog = workLogs.find((l) => String(l.id) === String(logId));
-    const targetPlant = targetLog?.plant || (["김동욱", "우창용", "TEST", "오상민", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
+    const targetPlant = targetLog?.plant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
     const approver = {
       name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
       title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
@@ -1306,7 +1306,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     if (!reason) return;
 
     const targetLog = workLogs.find((l) => String(l.id) === String(logId));
-    const targetPlant = targetLog?.plant || (["김동욱", "우창용", "TEST", "오상민", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
+    const targetPlant = targetLog?.plant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(targetLog?.writer) ? "한림공장" : (currentProfile?.plant || workerPlant));
     const approver = {
       name: currentProfile?.name || (targetPlant === "한림공장" ? "김동욱" : "이명재"),
       title: currentProfile?.title || (targetPlant === "한림공장" ? "책임" : "이사"),
@@ -2872,7 +2872,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
           line.includes(term) ||
           issues.includes(term);
 
-        const logPlant = log.plant || log.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "부림텍", "한울"].includes(log.writer) ? "한림공장" : "삼랑진공장");
+        const logPlant = log.plant || log.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(log.writer) ? "한림공장" : "삼랑진공장");
 
         const matchPlant =
           filterPlant === "all" ||

@@ -19,7 +19,7 @@ import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory
 // Standard Workers list for un-registration check (Excludes general managers: 이명재, 김동욱)
 const TARGET_WORKERS = {
   "삼랑진공장": ["설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"],
-  "한림공장": ["오상민", "TEST"]
+  "한림공장": ["오상민", "정현규", "TEST"]
 };
 
 export const RecentWorkLogsSummaryModal = ({
@@ -79,12 +79,12 @@ export const RecentWorkLogsSummaryModal = ({
 
   // Group by plant
   const samLogs = useMemo(() => dateLogs.filter((l) => {
-    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
+    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
     return plant === "삼랑진공장";
   }), [dateLogs]);
 
   const hanLogs = useMemo(() => dateLogs.filter((l) => {
-    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
+    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
     return plant === "한림공장";
   }), [dateLogs]);
 

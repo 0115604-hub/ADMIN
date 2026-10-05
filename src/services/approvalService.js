@@ -71,9 +71,10 @@ export const APPROVAL_MANAGERS = {
     { name: "유동길", title: "선임", plant: "삼랑진공장", process: "가공동 관리", isManager: true },
     { name: "조인주", title: "선임", plant: "삼랑진공장", process: "경리업무", isManager: true },
     { name: "이상기", title: "주임", plant: "삼랑진공장", process: "품질관리", isManager: true },
-    // 한림공장 관리/책임/선임
+    // 한림공장 관리/책임/선임/사원
     { name: "김동욱", title: "책임", plant: "한림공장", process: "총괄관리", isManager: true },
     { name: "오상민", title: "선임", plant: "한림공장", process: "가공동 관리", isManager: true },
+    { name: "정현규", title: "사원", plant: "한림공장", process: "가공동 관리", isManager: true },
     // 압출동 작업자
     { name: "공영국", title: "대리", plant: "삼랑진공장", process: "압출동", isManager: false },
     { name: "심임대", title: "반장", plant: "삼랑진공장", process: "압출동", isManager: false },
@@ -1122,7 +1123,7 @@ const isAutoSynthDoc = (d) => {
 // 주말 (토~일) 또는 특근 지정: 특근보고서 취합 (Overtime)
 
 const KNOWN_MANAGERS = [
-  "이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "우창용", "오상민", "TEST", "권태형", "최미영"
+  "이명재", "설유철", "윤경수", "이창엽", "전재율", "김동욱", "우창용", "오상민", "정현규", "TEST", "권태형", "최미영"
 ];
 
 export const syncPlantOvertimeToApprovalBox = async ({

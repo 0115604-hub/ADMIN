@@ -1168,7 +1168,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 
     // 미등록 검사 대상 작업자 (이명재, 김동욱 제외, 협력사 제외)
     const samTargetWorkers = ["설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"];
-    const halTargetWorkers = ["오상민", "TEST"];
+    const halTargetWorkers = ["오상민", "정현규", "TEST"];
 
     const isWorkerRegistered = (targetName) => {
       const t = normWorkerName(targetName);
