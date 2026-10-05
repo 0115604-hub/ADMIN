@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }) => {
           (u) => u.id === targetId || u.name === targetId || u.id === savedProfile.id || u.name === savedProfile.name
         );
         if (matched) {
-          const titleStr = matched.title && matched.title !== "사원" ? ` ${matched.title}` : "";
+          const titleStr = matched.title ? ` ${matched.title}` : "";
           const refreshed = {
             ...matched,
             displayName: matched.role === "ADMIN" ? "ADMIN" : `${matched.name}${titleStr}`.trim(),
@@ -199,7 +199,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
 
-    const titleStr = target.title && target.title !== "사원" ? ` ${target.title}` : "";
+    const titleStr = target.title ? ` ${target.title}` : "";
     const profileToSave = {
       ...target,
       displayName: target.role === "ADMIN" ? "ADMIN" : `${target.name}${titleStr}`.trim(),

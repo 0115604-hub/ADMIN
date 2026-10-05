@@ -131,7 +131,7 @@ export const WorkerLoginSection = ({
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
                       ) : (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">
-                          {worker.title && worker.title !== "사원"
+                          {worker.title
                             ? worker.title
                             : worker.assignedProcess === "품질관리"
                             ? "품질"
@@ -253,7 +253,7 @@ export const WorkerLoginSection = ({
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">협력</span>
                       ) : (
                         <span className="text-[10.5px] sm:text-[11.5px] font-bold">
-                          {worker.title && worker.title !== "사원"
+                          {worker.title
                             ? worker.title
                             : worker.assignedProcess === "품질관리"
                             ? "품질"

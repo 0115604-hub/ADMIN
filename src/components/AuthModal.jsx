@@ -1710,14 +1710,14 @@ export const AuthModal = () => {
                         : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs hover:border-teal-400"
                     }`}
                   >
-                    <div className={`${worker.title && worker.title !== "사원" ? "w-[45%]" : "w-full"} flex items-center justify-center px-1 text-center shrink-0 ${
+                    <div className={`${worker.title ? "w-[45%]" : "w-full"} flex items-center justify-center px-1 text-center shrink-0 ${
                       isLead ? "bg-teal-800 text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
                     }`}>
                       <span className="font-black text-xs tracking-tight truncate">
                         {worker.name}
                       </span>
                     </div>
-                    {worker.title && worker.title !== "사원" && (
+                    {worker.title && (
                       <div className={`w-[55%] flex items-center justify-center text-center px-1 py-0.5 ${
                         isLead ? "bg-teal-600 text-white" : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                       }`}>
