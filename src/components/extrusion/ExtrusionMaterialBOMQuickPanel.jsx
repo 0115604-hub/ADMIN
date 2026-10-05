@@ -100,7 +100,7 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
       const first = uniqueItems[0];
       const initialKey = `${first.vehicle}:::${first.itemName}`;
       setSelectedItemKey(initialKey);
-      const existingBOM = getMaterialBOMForItem(first.vehicle, first.itemName);
+      const existingBOM = getMaterialBOMForItem(first.vehicle, first.itemName, first.lineBadge);
       applyBOMToFields(existingBOM);
     }
   }, [uniqueItems, selectedItemKey]);
@@ -110,7 +110,8 @@ export const ExtrusionMaterialBOMQuickPanel = ({ onBOMRegistered = null }) => {
     setSelectedItemKey(itemKey);
     if (!itemKey) return;
     const [v, n] = itemKey.split(":::");
-    const existing = getMaterialBOMForItem(v, n);
+    const found = uniqueItems.find((it) => it.vehicle === v && it.itemName === n);
+    const existing = getMaterialBOMForItem(v, n, found?.lineBadge);
     applyBOMToFields(existing);
   };
 

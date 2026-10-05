@@ -340,15 +340,16 @@ export const getMaterialBOMForItem = (vehicle, itemName, lineId = "") => {
   }
 
   // 4. Default Fallback
+  const isPcmLine = String(lineId).toLowerCase().includes("pcm") || lineId === "pcm1" || lineId === "pcm3";
   return {
-    rubberType: "W60433",
+    rubberType: isPcmLine ? "W60712$2" : "W60433",
     rubberType2: "",
-    compoundType: "IA4-75B_1",
+    compoundType: isPcmLine ? "" : "IA4-75B_1",
     compoundType2: "",
     compoundType3: "",
     compoundType4: "",
-    insertType: "SUS430(0.4*51*3)",
-    coatingType: "HSC-2000-B-3",
+    insertType: isPcmLine ? "미사용" : "SUS430(0.4*51*3)",
+    coatingType: isPcmLine ? "미사용" : "HSC-2000-B-3",
     defaultRubberWeight: 120.0,
     defaultCoatingWeight: 15.0,
     defaultInsertWeight: 85.0,

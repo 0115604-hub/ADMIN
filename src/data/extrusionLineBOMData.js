@@ -1,6 +1,12 @@
 // ============================================================================
 // 삼랑진공장 압출라인별 BOM 마스터 데이터
 // 원본: 압출라인별 BOM자료.xls (PCM1호, PCM3호, TPE라인, PVC라인)
+// 규칙:
+// - 솔리드/스폰지 구분 없이 연고무1, 연고무2에 순차 할당
+// - 심금 '무'는 '미사용' 처리
+// - PCM 1, 3호는 컴파운드 미사용 (항상 공란)
+// - TPE는 콤파운드 1~4 사용
+// - PVC는 콤파운드, 심금, 후로킹(코팅) 사용
 // ============================================================================
 
 export const EXCEL_EXTRUSION_BOM_LIST = [
@@ -12,8 +18,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "EN",
     "itemName": "DR SIDE RR",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -29,8 +35,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "EN",
     "itemName": "DR SIDE FRT",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -46,8 +52,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "LM",
     "itemName": "DR SIDE",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -63,8 +69,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "FS",
     "itemName": "DR SIDE",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -114,8 +120,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "VF",
     "itemName": "DR SIDE B",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -641,8 +647,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "LQ2",
     "itemName": "HOOD SIDE",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60593$W3",
+    "rubberType": "W60593$W3",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -828,8 +834,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "WK",
     "itemName": "CUTLINE SEAL",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60052",
+    "rubberType": "W60052",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -896,8 +902,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "RP",
     "itemName": "DR SIDE",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -1168,8 +1174,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "Y400(Q200)",
     "itemName": "DR SIDE A FRT",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -1185,8 +1191,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "Y400",
     "itemName": "DR SIDE A RR",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -1202,8 +1208,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "Q200",
     "itemName": "DR SIDE A RR",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -1219,8 +1225,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "Y400(Q200)",
     "itemName": "DR SIDE D",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60594BJ2",
+    "rubberType": "W60594BJ2",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -1882,8 +1888,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "EJ",
     "itemName": "DR SILL SEAL FRT",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60052",
+    "rubberType": "W60052",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -1899,8 +1905,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "EJ",
     "itemName": "DR SILL SEAL RR",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60052",
+    "rubberType": "W60052",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2018,8 +2024,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "RS4",
     "itemName": "C-PLR PART'G",
     "isAS": false,
-    "rubberType": "",
-    "rubberType2": "W60052",
+    "rubberType": "W60052",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2171,8 +2177,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "HI(RS4)",
     "itemName": "C-PLR PART'G A RR (A/S)",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60052",
+    "rubberType": "W60052",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2273,8 +2279,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "SA",
     "itemName": "DR SIDE B (A/S)",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60594",
+    "rubberType": "W60594",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2358,8 +2364,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "XM",
     "itemName": "DR SIDE A (A/S)",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60594",
+    "rubberType": "W60594",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2375,8 +2381,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "TB",
     "itemName": "UPPER SEAL A (A/S)",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60052",
+    "rubberType": "W60052",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2426,8 +2432,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "HG",
     "itemName": "DR SIDE C (A/S)",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60594",
+    "rubberType": "W60594",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -2443,8 +2449,8 @@ export const EXCEL_EXTRUSION_BOM_LIST = [
     "vehicle": "BK",
     "itemName": "DR SIDE B (A/S)",
     "isAS": true,
-    "rubberType": "",
-    "rubberType2": "W60594",
+    "rubberType": "W60594",
+    "rubberType2": "",
     "compoundType": "",
     "compoundType2": "",
     "compoundType3": "",
@@ -3242,13 +3248,10 @@ export const findExcelBOMMatch = (vehicle = "", itemName = "", lineId = "") => {
   const vNorm = normalizeBOMKey(v);
   const nNorm = normalizeBOMKey(n);
 
-  // 4. Search in list for fuzzy match
+  // 4. Search in list for exact normalized match
   for (const item of EXCEL_EXTRUSION_BOM_LIST) {
     if (item.normName === fullNorm) {
       return { ...item, matchType: "EXCEL_LIST_EXACT" };
-    }
-    if (fullNorm.length >= 4 && (item.normName.includes(fullNorm) || fullNorm.includes(item.normName))) {
-      return { ...item, matchType: "EXCEL_LIST_SUBSTRING" };
     }
   }
 
@@ -3266,7 +3269,14 @@ export const findExcelBOMMatch = (vehicle = "", itemName = "", lineId = "") => {
     if (ybMatch) return { ...ybMatch, matchType: "EXCEL_ALIAS_YB" };
   }
 
-  // 6. Vehicle match with item suffix match
+  // 6. Substring match
+  for (const item of EXCEL_EXTRUSION_BOM_LIST) {
+    if (fullNorm.length >= 4 && (item.normName.includes(fullNorm) || fullNorm.includes(item.normName))) {
+      return { ...item, matchType: "EXCEL_LIST_SUBSTRING" };
+    }
+  }
+
+  // 7. Vehicle match with item suffix match
   if (vNorm) {
     for (const item of EXCEL_EXTRUSION_BOM_LIST) {
       if (item.normName.startsWith(vNorm)) {
@@ -3277,7 +3287,7 @@ export const findExcelBOMMatch = (vehicle = "", itemName = "", lineId = "") => {
     }
   }
 
-  // 7. Vehicle default fallback
+  // 8. Vehicle default fallback
   if (v && EXCEL_EXTRUSION_BOM_MAP[v]) {
     return { ...EXCEL_EXTRUSION_BOM_MAP[v], matchType: "EXCEL_VEHICLE" };
   }
@@ -3285,7 +3295,7 @@ export const findExcelBOMMatch = (vehicle = "", itemName = "", lineId = "") => {
     return { ...EXCEL_EXTRUSION_BOM_MAP[vNorm], matchType: "EXCEL_VEHICLE_NORM" };
   }
 
-  // 8. Line-based smart defaults (for TEST or unknown items)
+  // 9. Line-based smart defaults (for TEST or unknown items)
   if (lineId === "tpe" || vNorm.includes("TPE")) {
     return {
       sheetName: "TPE라인",
@@ -3319,6 +3329,10 @@ export const findExcelBOMMatch = (vehicle = "", itemName = "", lineId = "") => {
       itemName: n || "DR SIDE",
       rubberType: "W60513M",
       rubberType2: "W60052",
+      compoundType: "",
+      compoundType2: "",
+      compoundType3: "",
+      compoundType4: "",
       insertType: "미사용",
       coatingType: "HSC-2000B-3",
       matchType: "LINE_DEFAULT_PCM3"
@@ -3331,6 +3345,10 @@ export const findExcelBOMMatch = (vehicle = "", itemName = "", lineId = "") => {
       itemName: n || "HOOD SEAL",
       rubberType: "W60712$2",
       rubberType2: "W60594BJ2",
+      compoundType: "",
+      compoundType2: "",
+      compoundType3: "",
+      compoundType4: "",
       insertType: "미사용",
       coatingType: "HSC-2000B-3",
       matchType: "LINE_DEFAULT_PCM1"
