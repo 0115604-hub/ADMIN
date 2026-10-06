@@ -21,7 +21,6 @@ const TelegramView = lazy(() => import("./components/TelegramView").then(m => ({
 const SettingsView = lazy(() => import("./components/SettingsView").then(m => ({ default: m.SettingsView || m.default })));
 const TransactionModal = lazy(() => import("./components/TransactionModal").then(m => ({ default: m.TransactionModal || m.default })));
 const ExcelUploadModal = lazy(() => import("./components/ExcelUploadModal").then(m => ({ default: m.ExcelUploadModal || m.default })));
-import { ExtrusionQualityAlertModal } from "./components/extrusion/ExtrusionQualityAlertModal";
 
 // Smooth view skeleton loader
 const ViewLoadingFallback = () => (
@@ -575,9 +574,6 @@ export const App = () => {
           />
         </Suspense>
       )}
-
-      {/* Extrusion Worker Quality Alert Popup Modal */}
-      <ExtrusionQualityAlertModal />
     </div>
   );
 };

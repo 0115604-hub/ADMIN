@@ -21,7 +21,14 @@ import {
   CheckSquare,
   ListTodo,
   Users,
-  Megaphone
+  Megaphone,
+  Wrench,
+  TrendingDown,
+  Layers,
+  FileSpreadsheet,
+  Plus,
+  Check,
+  ZoomIn
 } from "lucide-react";
 import { ADMIN_USERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus, getLeaveTypeMeta } from "../../services/annualLeaveService";
@@ -42,6 +49,21 @@ import {
   calculateDailySummary,
   COMPANIES
 } from "../../services/overtimeSmartService";
+import {
+  subscribeFourMChangePoints,
+  getLocalFourMChangePoints
+} from "../../services/fourMChangePointService";
+import {
+  subscribeToExtrusionReports
+} from "../../services/extrusionProductionService";
+import {
+  subscribeWorkLogs,
+  getWorkLogs
+} from "../../services/workLogService";
+import {
+  subscribeUrgentIssues,
+  getLocalUrgentIssues
+} from "../../services/urgentIssueService";
 import { getKSTDateString } from "../../utils/dateUtils";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import { useModalHistory, clearModalStack } from "../../utils/modalHistory";
@@ -62,44 +84,41 @@ export const WorkerPinModal = ({
   const [pinInput, setPinInput] = useState("");
   const [isPinVerified, setIsPinVerified] = useState(false);
   const [pinError, setPinError] = useState(false);
+
+  // Real-time Service Streams
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+  const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
+  const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
+  const [extrusionReports, setExtrusionReports] = useState([]);
+  const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
+  const [localUrgentIssues, setLocalUrgentIssues] = useState(() => getLocalUrgentIssues());
 
   const bodyRef = useRef(null);
   const pinInputRef = useRef(null);
   const overlayRef = useRef(null);
 
-  // 1. Subscribe to Lee Myeong-jae's Severe Disaster photos
+  // Subscriptions
   useEffect(() => {
-    const unsub = subscribeSevereDisasterPhotos((photos) => {
-      setDisasterPhotos(photos || []);
-    });
-    return () => unsub();
-  }, []);
+    const unsubDisaster = subscribeSevereDisasterPhotos((photos) => setDisasterPhotos(photos || []));
+    const unsubSched = subscribeCommonSchedules((scheds) => setCommonSchedules(scheds || []));
+    const unsubOvertime = subscribeSmartOvertimeData((data) => { if (data) setSmartOvertimeData(data); });
+    const unsubExtQual = subscribeExtrusionQualityIssues((list) => setExtrusionQualityIssues(list || []));
+    const unsub4M = subscribeFourMChangePoints((list) => setFourMLedgerRecords(list || []));
+    const unsubExtRep = subscribeToExtrusionReports((reps) => setExtrusionReports(reps || []));
+    const unsubLogs = subscribeWorkLogs((logs) => setWorkLogs(logs || []));
+    const unsubUrg = subscribeUrgentIssues((issues) => setLocalUrgentIssues(issues || []));
 
-  // 2. Subscribe to Company Common Schedules (사내 공통일정 실시간 구독)
-  useEffect(() => {
-    const unsub = subscribeCommonSchedules((scheds) => {
-      setCommonSchedules(scheds || []);
-    });
-    return () => unsub();
-  }, []);
-
-  // 3. Subscribe to Smart Overtime Data (5개사 근태 및 출근 데이터 실시간 구독)
-  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
-  useEffect(() => {
-    const unsub = subscribeSmartOvertimeData((data) => {
-      if (data) setSmartOvertimeData(data);
-    });
-    return () => unsub();
-  }, []);
-
-  // 4. Subscribe to Extrusion Quality Issues (설유철 책임 압출 품질이슈 실시간 구독)
-  const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
-  useEffect(() => {
-    const unsub = subscribeExtrusionQualityIssues((list) => {
-      setExtrusionQualityIssues(list || []);
-    });
-    return () => unsub();
+    return () => {
+      if (unsubDisaster) unsubDisaster();
+      if (unsubSched) unsubSched();
+      if (unsubOvertime) unsubOvertime();
+      if (unsubExtQual) unsubExtQual();
+      if (unsub4M) unsub4M();
+      if (unsubExtRep) unsubExtRep();
+      if (unsubLogs) unsubLogs();
+      if (unsubUrg) unsubUrg();
+    };
   }, []);
 
   // Initialize state when selectedUser changes
@@ -126,7 +145,7 @@ export const WorkerPinModal = ({
     }
   }, [selectedUser]);
 
-  // Register with browser history for Back button (인터넷 뒤로가기 시 팝업 닫고 첫화면 유지)
+  // Register with browser history for Back button
   useModalHistory(Boolean(selectedUser), () => setSelectedUser(null), "workerPinModal");
 
   // Close on Escape key
@@ -152,52 +171,223 @@ export const WorkerPinModal = ({
     }
   }, [isPinVerified]);
 
-  const isAdmin = selectedUser?.role === "ADMIN" || selectedUser?.id === "admin" || selectedUser?.name === "권태형" || selectedUser?.name === "최미영";
-  const isExtrusionWorker =
-    (isExtrusionWorkerProfile(selectedUser) ||
-    selectedUser?.building === "압출동" ||
-    selectedUser?.id?.startsWith("ext_") ||
-    selectedUser?.name === "공영국" ||
-    selectedUser?.name === "심임대" ||
-    selectedUser?.name === "이상은") &&
-    selectedUser?.name !== "설유철" &&
-    selectedUser?.id !== "sam_yc";
+  // =========================================================================
+  // 🌟 Role Identification
+  // =========================================================================
+  const isAdminUser = useMemo(() => {
+    if (!selectedUser) return false;
+    return (
+      selectedUser.role === "ADMIN" ||
+      selectedUser.id === "admin" ||
+      selectedUser.name === "권태형" ||
+      selectedUser.name === "최미영" ||
+      selectedUser.name === "이명재" ||
+      selectedUser.name === "김동욱" ||
+      selectedUser.assignedProcess === "총괄관리" ||
+      ADMIN_USERS.some((a) => a.id === selectedUser.id || a.name === selectedUser.name)
+    );
+  }, [selectedUser]);
+
+  const isExtrusionWorker = useMemo(() => {
+    if (!selectedUser || isAdminUser) return false;
+    return Boolean(
+      isExtrusionWorkerProfile(selectedUser) ||
+      selectedUser.building === "압출동" ||
+      selectedUser.assignedProcess?.includes("압출") ||
+      selectedUser.id?.startsWith("ext_") ||
+      selectedUser.name === "설유철" ||
+      selectedUser.name === "공영국" ||
+      selectedUser.name === "심임대" ||
+      selectedUser.name === "이상은"
+    );
+  }, [selectedUser, isAdminUser]);
+
+  const isProcessingWorker = useMemo(() => {
+    return !isAdminUser && !isExtrusionWorker;
+  }, [isAdminUser, isExtrusionWorker]);
+
   const todayKst = getKSTDateString();
 
-  // Active Company Notices for Extrusion Worker (사내공지가 있을 때만 종료일까지 표시)
-  const activeCompanyNotices = useMemo(() => {
-    const list = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : (Array.isArray(activeIssues) ? activeIssues : []);
-    return list.filter((item) => {
-      if (!item || item.isDeleted) return false;
-      const cat = String(item.category || "").trim();
-      const isNotice =
-        cat === "사내공지" ||
-        cat === "공지사항" ||
-        cat === "공지" ||
-        cat === "사내공지사항" ||
-        cat === "공통공지";
-      if (!isNotice) return false;
+  // =========================================================================
+  // 🌟 1. 4M 변동점 데이터 실시간 통합 파싱 (설비수리 + 비가동 + TPM + 불량 + 품질경보)
+  // =========================================================================
+  const allUnified4MRecords = useMemo(() => {
+    const unified = [];
+    const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
 
-      const expDate = item.expireDate || item.endDate || item.targetDate || "";
-      if (expDate && expDate < todayKst) {
-        return false;
-      }
-      return true;
+    // 1-1. 품질경보 (Method)
+    (sourceIssues || []).forEach((issue) => {
+      if (!issue || issue.isDeleted) return;
+      const rawCat = String(issue.category || "").trim();
+      const isQualityAlert =
+        rawCat === "품질경보" ||
+        rawCat === "품질 경보" ||
+        rawCat === "품질이슈" ||
+        rawCat.includes("품질");
+      if (!isQualityAlert) return;
+
+      const lineStr = String(issue.line || issue.process || "").trim();
+      const titleStr = String(issue.title || "").trim();
+      const isExt = lineStr.includes("압출") || lineStr.includes("PCM") || lineStr.includes("PVC") || lineStr.includes("TPE") || titleStr.includes("압출");
+
+      unified.push({
+        id: `urg_${issue.id || issue._docId || Math.random()}`,
+        fourM: "Method",
+        origin: "품질경보",
+        plant: issue.plant || "삼랑진공장",
+        line: lineStr || (isExt ? "압출라인" : "가공/품질"),
+        title: issue.title || issue.content || "(품질경보 발령)",
+        content: issue.content || issue.details || "",
+        actionResult: issue.actionResult || "",
+        date: issue.date || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayKst),
+        isResolved: Boolean(issue.isResolved || (issue.actionResult && issue.actionResult.trim())),
+        isExtrusion: isExt
+      });
     });
-  }, [urgentIssues, activeIssues, todayKst]);
 
-  // Active Extrusion Quality Issues (설유철 책임 압출 품질이슈 실시간 목록)
+    // 1-2. 설비수리 (전재율 책임 - Machine)
+    (workLogs || []).forEach((log) => {
+      if (log.isDeleted) return;
+      const isJeonOrMaintenance = log.writer === "전재율" || log.process === "설비보전" || (Array.isArray(log.maintenanceItems) && log.maintenanceItems.length > 0);
+      if (!isJeonOrMaintenance) return;
+
+      let mItems = [];
+      if (Array.isArray(log.maintenanceItems)) {
+        mItems = log.maintenanceItems;
+      } else if (typeof log.maintenanceItems === "string" && log.maintenanceItems.startsWith("[")) {
+        try { mItems = JSON.parse(log.maintenanceItems); } catch (e) {}
+      }
+
+      let repairSummary = mItems.map((m) => `[${m.equipmentName || m.category || "설비"}] ${m.content || ""}`.trim()).filter(Boolean).join(" / ");
+      if (!repairSummary && log.workContent) {
+        repairSummary = log.workContent.split("\n")[0];
+      }
+      const lineOrEq = log.line || (mItems[0] ? `${mItems[0].category}` : "설비보전");
+      const isExt = String(lineOrEq || repairSummary).includes("압출") || String(lineOrEq || repairSummary).includes("PCM") || String(lineOrEq || repairSummary).includes("PVC") || String(lineOrEq || repairSummary).includes("TPE");
+
+      unified.push({
+        id: `wl_${log.id}`,
+        fourM: "Machine",
+        origin: "설비수리",
+        plant: log.plant || "삼랑진공장",
+        line: lineOrEq,
+        title: repairSummary || `[${lineOrEq}] 설비 점검 및 보전수리`,
+        content: log.workContent || repairSummary,
+        actionResult: log.approvalComment || "수리 및 점검 조치 완료",
+        date: log.date || todayKst,
+        isResolved: true,
+        isExtrusion: isExt
+      });
+    });
+
+    // 1-3. 압출 작업일보 비가동 & TPM 이상신고 (Machine & Material)
+    (extrusionReports || []).forEach((report) => {
+      if (report.tpmIssueText) {
+        unified.push({
+          id: `ext_tpm_${report.id}`,
+          fourM: "Machine",
+          origin: "TPM 이상신고",
+          plant: report.plant || "삼랑진공장",
+          line: report.lineName || report.lineId || "압출라인",
+          title: `[${report.lineName || report.lineId || "압출"}] ${report.tpmIssueText}`,
+          content: report.tpmIssueText,
+          actionResult: report.notes || "",
+          date: report.date || todayKst,
+          isResolved: report.approvalStatus === "승인",
+          isExtrusion: true
+        });
+      }
+
+      (report.downtimeEvents || []).forEach((ev, evIdx) => {
+        const isDefect = ev.type === "불량" || ["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "발포"].includes(ev.category);
+        unified.push({
+          id: `ext_dt_${report.id}_${evIdx}`,
+          fourM: isDefect ? "Material" : "Machine",
+          origin: isDefect ? "불량손실" : "비가동",
+          plant: report.plant || "삼랑진공장",
+          line: report.lineName || report.lineId || "압출라인",
+          title: `[${report.lineName || report.lineId || "압출"}] ${ev.category} ${ev.detail ? `(${ev.detail})` : ""}`,
+          content: ev.detail || `${ev.category} 발생`,
+          actionResult: report.notes || "현장 즉시 조치 완료",
+          date: report.date || todayKst,
+          isResolved: true,
+          isExtrusion: true
+        });
+      });
+    });
+
+    // 1-4. 압출 품질이슈 (Method)
+    (extrusionQualityIssues || []).forEach((alert) => {
+      if (String(alert.id).startsWith("demo_") || alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2") return;
+      unified.push({
+        id: `ext_q_${alert.id}`,
+        fourM: "Method",
+        origin: "품질경보",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.line || alert.lineId || "압출라인",
+        title: alert.title || `[품질경보] ${alert.defectType}`,
+        content: alert.content || alert.defectType || "",
+        actionResult: alert.actionResult || alert.actionNotes || "",
+        date: alert.date || todayKst,
+        isResolved: alert.status === "RESOLVED" || Boolean(alert.actionResult),
+        isExtrusion: true
+      });
+    });
+
+    return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, todayKst]);
+
+  // 압출동 전용 변동점 발생상황 (압출 라인 한정)
+  const extrusion4MRecords = useMemo(() => {
+    return allUnified4MRecords.filter((r) => r.isExtrusion).slice(0, 5);
+  }, [allUnified4MRecords]);
+
+  // 가공동 전용 변동점 발생상황 (가공 라인 + 설비보전 + 전사 품질)
+  const processing4MRecords = useMemo(() => {
+    const plantFilter = selectedUser?.plant?.replace("공장", "") || "";
+    return allUnified4MRecords
+      .filter((r) => !r.isExtrusion || r.origin === "설비수리" || r.origin === "품질경보")
+      .filter((r) => !plantFilter || !r.plant || r.plant.includes(plantFilter))
+      .slice(0, 5);
+  }, [allUnified4MRecords, selectedUser]);
+
+  // 관리자 전용 4M 통계
+  const stats4M = useMemo(() => {
+    const officialCount = fourMLedgerRecords.length;
+    const machineCount = allUnified4MRecords.filter((r) => r.fourM === "Machine").length;
+    const materialCount = allUnified4MRecords.filter((r) => r.fourM === "Material").length;
+    const methodCount = allUnified4MRecords.filter((r) => r.fourM === "Method").length;
+    return {
+      officialCount,
+      machineCount,
+      materialCount,
+      methodCount,
+      totalCount: allUnified4MRecords.length
+    };
+  }, [fourMLedgerRecords, allUnified4MRecords]);
+
+  // =========================================================================
+  // 🌟 2. 역할별 품질이슈 및 공지 데이터
+  // =========================================================================
+  // 2-1. 압출동 품질이슈 (설유철 책임 등록)
   const activeExtrusionIssues = useMemo(() => {
     return (extrusionQualityIssues || []).filter((it) => it && it.status === "ACTIVE");
   }, [extrusionQualityIssues]);
 
-  // 1. Worker's current leave status (당일 근태)
-  const leaveStatus = useMemo(() => {
-    if (!selectedUser) return null;
-    return getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true });
-  }, [selectedUser, annualLeaves]);
+  // 2-2. 가공동 품질이슈 (품질경보 및 긴급 품질안건)
+  const processingQualityIssues = useMemo(() => {
+    const list = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
+    return (list || []).filter((it) => {
+      if (!it || it.isDeleted) return false;
+      const cat = String(it.category || "").trim();
+      return cat === "품질경보" || cat === "품질 경보" || cat === "품질이슈" || cat.includes("품질");
+    }).slice(0, 4);
+  }, [urgentIssues, localUrgentIssues]);
 
-  // 2. ⭐ [ADMIN 전용] 완료되지 않은 사내 공통일정 목록 (Uncompleted Common Schedules)
+  // =========================================================================
+  // 🌟 3. 관리자 일정 및 근태 통계
+  // =========================================================================
+  // 미완료 사내 공통일정
   const uncompletedCommonSchedules = useMemo(() => {
     return (commonSchedules || [])
       .filter((s) => !s.isCompleted && !isScheduleExpired(s))
@@ -205,99 +395,12 @@ export const WorkerPinModal = ({
         const aStart = a.startDate || a.date || "";
         const bStart = b.startDate || b.date || "";
         if (aStart !== bStart) return aStart.localeCompare(bStart);
-        const aEnd = a.endDate || aStart;
-        const bEnd = b.endDate || bStart;
-        if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
         return (a.time || "").localeCompare(b.time || "");
       });
   }, [commonSchedules]);
 
-  // 3. ⭐ [일반 작업자 전용: 이상기, 우창용 등] 등록된 일정 중 '미완료 항목만' 엄격 필터링 (공유 복사본 중복 완전 방지)
-  const workerSchedules = useMemo(() => {
-    if (!selectedUser || !annualLeaves || annualLeaves.length === 0) return [];
-    const uId = selectedUser.id ? String(selectedUser.id).trim() : "";
-    const uName = selectedUser.name ? String(selectedUser.name).trim() : "";
-
-    const filtered = annualLeaves.filter((l) => {
-      if (!l) return false;
-
-      // 💡 1. 완료된 항목 완전 배제 (완료, 삭제, 거절, 마감 플래그)
-      if (l.isCompleted || l.isDismissed || l.completed || l.done) return false;
-      if (
-        l.status === "completed" ||
-        l.status === "완료" ||
-        l.status === "DONE" ||
-        l.status === "REPLIED" ||
-        l.replyStatus === "REPLIED" ||
-        Boolean(l.replyText)
-      ) {
-        return false;
-      }
-      if (l.state === "completed" || l.state === "done") return false;
-
-      // 💡 2. 사용자 식별 매칭:
-      // 본인에게 직접 등록된 일정 (본인 작성 원본 또는 본인 수신용 공유 레코드)
-      const lUserId = l.userId ? String(l.userId).trim() : "";
-      const lUserName = l.userName ? String(l.userName).trim() : "";
-      const isDirectMine = Boolean(
-        (uId && (lUserId === uId || lUserId === `user_${uName}`)) ||
-        (uName && (lUserName === uName || lUserName.startsWith(uName) || uName.startsWith(lUserName)))
-      );
-
-      // 타인이 보낸 원본 일정의 경우, 본인 전용 수신 복사본이 없을 때만 폴백으로 허용 (중복 노출 방지)
-      const isSharedToMeOnlyFallback = !isDirectMine && Array.isArray(l.sharedWith) &&
-        (l.sharedWith.includes(uName) || l.sharedWith.includes(uId)) &&
-        !annualLeaves.some((other) => other.originLeaveId === (l.originLeaveId || l.id) && (other.userName === uName || other.userId === uId));
-
-      if (!isDirectMine && !isSharedToMeOnlyFallback) return false;
-
-      // 💡 3. 공유받은 일정 세부 상태 확인 (해당 작업자가 이미 완료/답장한 경우 배제)
-      if (Array.isArray(l.sharedWithDetails)) {
-        const userDetail = l.sharedWithDetails.find((d) => d.name === uName || (uId && d.id === uId));
-        if (userDetail && (userDetail.status === "REPLIED" || userDetail.isCompleted || userDetail.completed)) {
-          return false;
-        }
-      }
-
-      // 💡 4. 날짜 만료 검증: 오늘 이전으로 이미 종료된 과거 일정은 미완료 목록에서 배제
-      const rawEnd = l.endDate || l.startDate || l.date;
-      if (rawEnd && String(rawEnd).slice(0, 10) < todayKst) {
-        return false;
-      }
-
-      return true;
-    });
-
-    // 💡 5. originLeaveId 기준 중복 방지 (동일한 공유 일정에 대해 2건 노출 원천 차단)
-    const seenOriginIds = new Set();
-    const result = [];
-    filtered.forEach((item) => {
-      const originKey = item.originLeaveId || item.id;
-      if (!seenOriginIds.has(originKey)) {
-        seenOriginIds.add(originKey);
-        result.push(item);
-      }
-    });
-
-    return result.sort((a, b) => {
-      const dateA = a.startDate || a.date || "";
-      const dateB = b.startDate || b.date || "";
-      return dateA.localeCompare(dateB);
-    });
-  }, [selectedUser, annualLeaves, todayKst]);
-
-  // 4. Realtime shared issues / quality alerts / company notices (공유 공지 및 긴급 안건)
-  const sharedNotices = useMemo(() => {
-    const list = Array.isArray(activeIssues) ? activeIssues : [];
-    return list.filter((it) => !it.isDeleted).slice(0, 4);
-  }, [activeIssues]);
-
-  // 5. 🌟 [근태현황정보] 당일 일자 번호 및 일일 근태 요약 집계
-  const todayDayNum = useMemo(() => {
-    const d = new Date();
-    return d.getDate();
-  }, []);
-
+  // 당일 일자 및 일일 근태 요약
+  const todayDayNum = useMemo(() => new Date().getDate(), []);
   const dailyOvertimeSummary = useMemo(() => {
     if (!smartOvertimeData || !smartOvertimeData.attendanceMatrix) return null;
     return calculateDailySummary(smartOvertimeData.attendanceMatrix, todayDayNum);
@@ -317,28 +420,19 @@ export const WorkerPinModal = ({
 
   const isAfter9AM = useMemo(() => new Date().getHours() >= 9, []);
 
-  // 6. 🌟 [공장별 근태 매칭]: 삼랑진 관리자 -> 오륙, 유성 / 한림 관리자 -> 조영, 한울, 부림텍 / Admin -> 전체 5개사
-  const targetCompanies = useMemo(() => {
-    if (!selectedUser) return [];
-    if (isAdmin || selectedUser.plant === "본사") {
-      return ["오륙", "유성", "조영", "한울", "부림텍"];
-    }
-    if (selectedUser.plant === "삼랑진공장") {
-      return ["오륙", "유성"];
-    }
-    if (selectedUser.plant === "한림공장") {
-      return ["조영", "한울", "부림텍"];
-    }
-    return ["오륙", "유성"];
-  }, [selectedUser, isAdmin]);
+  // 당일 근태
+  const leaveStatus = useMemo(() => {
+    if (!selectedUser) return null;
+    return getUserLeaveStatus(selectedUser.id, selectedUser.name, annualLeaves, { excludeTodo: true });
+  }, [selectedUser, annualLeaves]);
 
   if (!selectedUser) return null;
 
-  const expectedPin = selectedUser?.pin || (isAdmin ? "0090" : "11");
+  const expectedPin = selectedUser?.pin || (isAdminUser ? "0090" : "11");
 
   const checkPinValidity = (val) => {
     const trimmed = String(val || "").trim();
-    if (isAdmin) {
+    if (isAdminUser) {
       return trimmed === "0090" || trimmed === selectedUser.pin;
     }
     return trimmed === "11" || trimmed === expectedPin || trimmed === "1234";
@@ -349,7 +443,6 @@ export const WorkerPinModal = ({
     setPinInput(val);
     setPinError(false);
 
-    // Auto-verify when matching PIN is entered & dismiss mobile keyboard
     if (checkPinValidity(val)) {
       setIsPinVerified(true);
       if (pinInputRef.current) pinInputRef.current.blur();
@@ -427,53 +520,69 @@ export const WorkerPinModal = ({
           className="bg-white dark:bg-slate-900 w-full max-w-lg md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-[0_25px_80px_-15px_rgba(0,0,0,0.6)] overflow-hidden animate-scaleUp relative flex flex-col my-2 sm:my-4"
         >
           {/* Top Decorative Accent Line */}
-          <div className={`h-1.5 w-full shrink-0 ${
-            isAdmin
-              ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500"
-              : selectedUser.plant === "한림공장"
-              ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
-              : "bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600"
-          }`} />
+          <div
+            className={`h-1.5 w-full shrink-0 ${
+              isAdminUser
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500"
+                : isExtrusionWorker
+                ? "bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600"
+                : selectedUser.plant === "한림공장"
+                ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
+                : "bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600"
+            }`}
+          />
 
-          {/* 🌟 1. Header: 작업자 이름 + 바로 옆 PIN 번호 입력 뱃지 */}
+          {/* 🌟 1. Header: Avatar + Name + PIN input */}
           <div className="p-3.5 sm:p-4 md:px-6 md:py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 bg-slate-50/90 dark:bg-slate-900/90">
             <div className="flex items-center gap-3 min-w-0 flex-wrap">
-              {/* Avatar */}
-              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-white flex items-center justify-center font-black text-lg md:text-xl shadow-md shrink-0 ${
-                isAdmin
-                  ? selectedUser.name === "최미영" ? "bg-indigo-600 ring-2 ring-indigo-400/40" : "bg-blue-600 ring-2 ring-blue-400/40"
-                  : selectedUser.plant === "한림공장"
-                  ? "bg-emerald-600 ring-2 ring-emerald-400/40"
-                  : "bg-amber-600 ring-2 ring-amber-400/40"
-              }`}>
+              <div
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-white flex items-center justify-center font-black text-lg md:text-xl shadow-md shrink-0 ${
+                  isAdminUser
+                    ? "bg-blue-600 ring-2 ring-blue-400/40"
+                    : isExtrusionWorker
+                    ? "bg-indigo-600 ring-2 ring-indigo-400/40"
+                    : selectedUser.plant === "한림공장"
+                    ? "bg-emerald-600 ring-2 ring-emerald-400/40"
+                    : "bg-amber-600 ring-2 ring-amber-400/40"
+                }`}
+              >
                 {selectedUser.avatar || selectedUser.name?.charAt(0)}
               </div>
 
-              {/* Worker Name & Title */}
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <h3 className="font-black text-base sm:text-lg md:text-xl text-slate-900 dark:text-white tracking-tight truncate">
-                  {selectedUser.name} {selectedUser.title || (isAdmin ? "대표이사" : "작업자")}
+                  {selectedUser.name} {selectedUser.title || (isAdminUser ? "대표이사" : "작업자")}
                 </h3>
-                <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
-                  isAdmin
-                    ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                    : selectedUser.plant === "한림공장"
-                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                    : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                }`}>
-                  {selectedUser.plant || (isAdmin ? "경영총괄" : "삼랑진공장")}
+                <span
+                  className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+                    isAdminUser
+                      ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      : isExtrusionWorker
+                      ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                      : selectedUser.plant === "한림공장"
+                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                      : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                  }`}
+                >
+                  {isAdminUser ? "경영총괄/관리자" : isExtrusionWorker ? "압출동" : selectedUser.plant || "가공동"}
                 </span>
 
-                {/* 🌟 핀번호 넣는 뱃지 (이름 바로 옆 배치) */}
+                {/* PIN Input Badge */}
                 <form onSubmit={handlePinSubmit} className="flex items-center gap-1.5 shrink-0">
-                  <div className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border-2 transition-all ${
-                    isPinVerified
-                      ? "bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-2 ring-emerald-400/30"
-                      : pinError
-                      ? "bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-700 dark:text-rose-300 animate-pulse"
-                      : "bg-white dark:bg-slate-800 border-blue-400 dark:border-blue-500 focus-within:ring-2 focus-within:ring-blue-400 shadow-2xs"
-                  }`}>
-                    <KeyRound className={`w-3.5 h-3.5 shrink-0 ${isPinVerified ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"}`} />
+                  <div
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-xl border-2 transition-all ${
+                      isPinVerified
+                        ? "bg-emerald-50 dark:bg-emerald-950/80 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-2 ring-emerald-400/30"
+                        : pinError
+                        ? "bg-rose-50 dark:bg-rose-950/80 border-rose-500 text-rose-700 dark:text-rose-300 animate-pulse"
+                        : "bg-white dark:bg-slate-800 border-blue-400 dark:border-blue-500 focus-within:ring-2 focus-within:ring-blue-400 shadow-2xs"
+                    }`}
+                  >
+                    <KeyRound
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isPinVerified ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"
+                      }`}
+                    />
                     <span className="text-[10px] font-black text-slate-400 select-none">PIN:</span>
                     <input
                       ref={pinInputRef}
@@ -504,30 +613,6 @@ export const WorkerPinModal = ({
               </div>
             </div>
 
-            {/* Admin Switcher Pills (If Admin Role) */}
-            {isAdmin && (
-              <div className="hidden sm:flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shrink-0">
-                {ADMIN_USERS.map((admin) => {
-                  const isSelected = selectedUser.name === admin.name;
-                  return (
-                    <button
-                      key={admin.id}
-                      type="button"
-                      onClick={() => setSelectedUser(admin)}
-                      className={`py-1 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                        isSelected
-                          ? "bg-blue-600 text-white shadow-xs"
-                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      <span>{admin.name === "권태형" ? "👑" : "💎"}</span>
-                      <span>{admin.name} {admin.title}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
             <button
               type="button"
               onClick={() => setSelectedUser(null)}
@@ -538,15 +623,10 @@ export const WorkerPinModal = ({
             </button>
           </div>
 
-          {/* 🌟 2. Body: 핀번호 입력 전/후 상태 전환 */}
-          <div
-            ref={bodyRef}
-            className="p-3.5 sm:p-5 md:p-6 space-y-4"
-          >
+          {/* 🌟 2. Body: 핀번호 입력 전/후 뷰 */}
+          <div ref={bodyRef} className="p-3.5 sm:p-5 md:p-6 space-y-4">
             {!isPinVerified ? (
-              /* ========================================================================= */
-              /* 🔒 핀번호 입력 대기 안내 화면 (PIN 번호 입력 시 하단 내용 노출) */
-              /* ========================================================================= */
+              /* 🔒 PIN 입력 전 화면 */
               <div className="py-16 sm:py-20 px-4 text-center flex flex-col items-center justify-center space-y-4 max-w-lg mx-auto animate-fadeIn">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-blue-50 dark:bg-blue-950/60 border-2 border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-md">
                   <Lock className="w-8 h-8 sm:w-10 sm:h-10 animate-bounce" />
@@ -555,29 +635,29 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || ""}님, <br className="hidden sm:inline" />
-                    중대재해알림판과 품질이슈 꼭 확인바랍니다.
+                    중대재해공유판, 품질이슈 및 변동점 발생상황을 확인바랍니다.
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {isExtrusionWorker
-                      ? "인증 완료 시 중대재해공유판과 품질이슈공유판이 표시됩니다."
-                      : `인증 완료 시 중대재해 안전공유판, 품질경보 및 ${isAdmin ? "미완료 공통일정" : "등록된 일정"}이 표시됩니다.`}
+                      ? "인증 시 [중대재해공유판 + 압출 품질이슈 + 변동점 발생상황]이 표시됩니다."
+                      : isProcessingWorker
+                      ? "인증 시 [중대재해공유판 + 가공 품질이슈 + 변동점 발생상황]이 표시됩니다."
+                      : "인증 시 [중대재해공유판 + 사내일정 + 근태정보 + 변동점 발생상황]이 표시됩니다."}
                   </p>
                 </div>
               </div>
             ) : (
-              /* ========================================================================= */
-              /* ✅ 핀번호 인증 완료 시 노출되는 하단 콘텐츠: 안전공유판 + 실시간 상태창 & 등록된 일정 */
-              /* ========================================================================= */
+              /* ✅ PIN 인증 완료 시 역할별 통합 화면 */
               <div className="space-y-4 animate-fadeIn">
-                {/* 당일 근태 등록 알림 (있을 경우 상단 배너 강조) */}
+                {/* 당일 근태 알림 */}
                 {leaveStatus && (
-                  <div className="p-2.5 sm:p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-300 dark:border-rose-800/80 flex items-center justify-between gap-2 text-xs shadow-2xs animate-pulse">
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-300 dark:border-rose-800/80 flex items-center justify-between gap-2 text-xs shadow-2xs">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="p-1 rounded-lg bg-rose-600 text-white shrink-0">
                         <Calendar className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className="font-black text-rose-950 dark:text-rose-100 block text-xs sm:text-sm truncate">
+                        <span className="font-black text-rose-950 dark:text-rose-100 block text-xs truncate">
                           당일 근태 알림: {selectedUser.name} {selectedUser.title} ({leaveStatus.fullLabel || leaveStatus.label})
                         </span>
                         {leaveStatus.reason && (
@@ -593,10 +673,10 @@ export const WorkerPinModal = ({
                   </div>
                 )}
 
-                {/* PC 2-Column Wide Grid / Mobile Stacked */}
+                {/* 2-Column Responsive Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 items-stretch">
                   {/* ===================================================================== */}
-                  {/* [좌측 패널 1] 🚨 중대재해공유판 (이명재 이사 중대재해 및 안전 공유판) */}
+                  {/* [좌측 패널] 🚨 중대재해공유판 (모든 사용자 공통) */}
                   {/* ===================================================================== */}
                   <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-rose-500/5 to-amber-500/10 dark:from-amber-950/30 dark:via-rose-950/20 dark:to-amber-950/30 border-2 border-amber-300/90 dark:border-amber-700/80 flex flex-col justify-between space-y-3.5 shadow-sm">
                     <div className="space-y-3">
@@ -620,22 +700,24 @@ export const WorkerPinModal = ({
                         </span>
                       </div>
 
-                      {/* 🌟 2배 확대된 안전 사진 그리드 (2단 대형 뷰) */}
+                      {/* 대형 안전 사진 그리드 */}
                       {disasterPhotos.length > 0 ? (
                         <div className="space-y-2.5">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                             {disasterPhotos.slice(0, 4).map((photo, index) => (
                               <div
                                 key={photo.id}
-                                onClick={() => setPreviewImage({
-                                  list: disasterPhotos.map((p) => ({
-                                    url: p.url || p.dataUrl,
-                                    name: `${p.name || "중대재해·안전 점검 사진"} (${p.uploaderName || "이명재 이사"})`
-                                  })),
-                                  index: index,
-                                  url: photo.url || photo.dataUrl,
-                                  name: `${photo.name || "중대재해·안전 점검 사진"} (${photo.uploaderName || "이명재 이사"})`
-                                })}
+                                onClick={() =>
+                                  setPreviewImage({
+                                    list: disasterPhotos.map((p) => ({
+                                      url: p.url || p.dataUrl,
+                                      name: `${p.name || "중대재해·안전 점검 사진"} (${p.uploaderName || "이명재 이사"})`
+                                    })),
+                                    index: index,
+                                    url: photo.url || photo.dataUrl,
+                                    name: `${photo.name || "중대재해·안전 점검 사진"} (${photo.uploaderName || "이명재 이사"})`
+                                  })
+                                }
                                 className="group relative aspect-16/10 rounded-2xl overflow-hidden border-2 border-amber-300 dark:border-amber-700 hover:border-rose-500 cursor-pointer shadow-md transition-all hover:scale-102 bg-slate-950"
                                 title={`${photo.name} (${photo.uploaderName || "이명재 이사"}) - 클릭 시 확대`}
                               >
@@ -664,19 +746,21 @@ export const WorkerPinModal = ({
 
                           {disasterPhotos.length > 4 && (
                             <div
-                              onClick={() => setPreviewImage({
-                                list: disasterPhotos.map((p) => ({
-                                  url: p.url || p.dataUrl,
-                                  name: `${p.name || "중대재해·안전 점검 사진"} (${p.uploaderName || "이명재 이사"})`
-                                })),
-                                index: 4,
-                                url: disasterPhotos[4]?.url || disasterPhotos[4]?.dataUrl,
-                                name: `${disasterPhotos[4]?.name || "중대재해·안전 점검 사진"} (${disasterPhotos[4]?.uploaderName || "이명재 이사"})`
-                              })}
+                              onClick={() =>
+                                setPreviewImage({
+                                  list: disasterPhotos.map((p) => ({
+                                    url: p.url || p.dataUrl,
+                                    name: `${p.name || "중대재해·안전 점검 사진"} (${p.uploaderName || "이명재 이사"})`
+                                  })),
+                                  index: 4,
+                                  url: disasterPhotos[4]?.url || disasterPhotos[4]?.dataUrl,
+                                  name: `${disasterPhotos[4]?.name || "중대재해·안전 점검 사진"} (${disasterPhotos[4]?.uploaderName || "이명재 이사"})`
+                                })
+                              }
                               className="text-right pt-1 cursor-pointer group"
                             >
                               <span className="text-xs font-bold text-amber-800 dark:text-amber-300 group-hover:underline group-hover:text-rose-600 transition-colors">
-                                외 {disasterPhotos.length - 4}장의 안전 사진이 더 등록되어 있습니다. (전체 {disasterPhotos.length}장 넘겨보기 ➡️)
+                                외 {disasterPhotos.length - 4}장의 안전 사진 더보기 (전체 {disasterPhotos.length}장 ➡️)
                               </span>
                             </div>
                           )}
@@ -696,501 +780,433 @@ export const WorkerPinModal = ({
                   </div>
 
                   {/* ===================================================================== */}
-                  {/* [우측 패널 2] 압출작업자: 🚨 압출동 품질이슈 & 📢 사내공지(종료일까지만) / 비압출: 기존 일정+근태+공지판 */}
+                  {/* [우측 패널] 역할별 맞춤 화면 (압출동 / 가공동 / 관리자) */}
                   {/* ===================================================================== */}
-                  {isExtrusionWorker ? (
-                    <div className="space-y-3 flex flex-col justify-between h-full">
-                      {/* 1. 사내공지 (종료일까지 등록된 공지가 있을 때만 노출) */}
-                      {activeCompanyNotices.length > 0 && (
-                        <div className="p-3.5 rounded-3xl bg-blue-50/90 dark:bg-blue-950/40 border-2 border-blue-400 dark:border-blue-700 shadow-sm space-y-2 shrink-0">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <div className="p-1 rounded-lg bg-blue-600 text-white shadow-xs">
-                                <Megaphone className="w-3.5 h-3.5" />
-                              </div>
-                              <span className="text-xs font-black text-blue-950 dark:text-blue-200">
-                                📢 사내 공지사항
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-black text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700">
-                              {activeCompanyNotices.length}건
-                            </span>
-                          </div>
 
-                          <div className="space-y-1.5 max-h-[130px] overflow-y-auto pr-0.5">
-                            {activeCompanyNotices.map((notice) => {
-                              const expDate = notice.expireDate || notice.endDate || notice.targetDate || "";
-                              return (
-                                <div
-                                  key={notice.id || notice._docId}
-                                  className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/80 space-y-0.5 text-xs shadow-2xs"
-                                >
-                                  <div className="flex items-center justify-between gap-1">
-                                    <span className="font-black text-slate-900 dark:text-white truncate text-xs">
-                                      {notice.title}
-                                    </span>
-                                    {expDate && (
-                                      <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 shrink-0 font-mono">
-                                        📅 ~{expDate}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {notice.content && (
-                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-medium pl-0.5">
-                                      {notice.content}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 2. 설유철 책임 압출동 품질이슈 */}
-                      <div className={`p-4 rounded-3xl bg-gradient-to-br from-rose-500/10 via-amber-500/5 to-rose-500/10 dark:from-rose-950/30 dark:via-amber-950/20 dark:to-rose-950/30 border-2 border-rose-300/90 dark:border-rose-800/80 flex flex-col justify-between space-y-2.5 shadow-sm ${activeCompanyNotices.length > 0 ? "flex-1" : "h-full"}`}>
-                        <div className="space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
-                                <AlertTriangle className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  🚨 압출동 품질이슈
-                                </span>
-                                <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
-                                  설유철 책임 공지 • 라인별 불량 및 조치
-                                </span>
-                              </div>
-                            </div>
-
-                            <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
-                              {activeExtrusionIssues.length}건 진행중
-                            </span>
-                          </div>
-
-                          {activeExtrusionIssues.length > 0 ? (
-                            <div className={`space-y-2.5 overflow-y-auto pr-0.5 ${activeCompanyNotices.length > 0 ? "max-h-[220px]" : "max-h-[380px]"}`}>
-                              {activeExtrusionIssues.map((issue) => {
-                                const causeImgs = Array.isArray(issue.causeImages) ? issue.causeImages : (Array.isArray(issue.images) ? issue.images : []);
-                                const actionImgs = Array.isArray(issue.actionImages) ? issue.actionImages : [];
-                                const actionText = issue.actionResult || issue.actionGuide || issue.resolutionNote || "";
-
-                                return (
-                                  <div
-                                    key={issue.id}
-                                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1.5 text-xs shadow-2xs"
-                                  >
-                                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-                                          {issue.line}
-                                        </span>
-                                        <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                                          {issue.defectType}
-                                        </span>
-                                      </div>
-                                      <span className="text-[10px] font-bold text-slate-400">
-                                        작성: {issue.author || "설유철"} ({issue.date || issue.createdAt?.slice(0, 10)})
-                                      </span>
-                                    </div>
-
-                                    <h5 className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
-                                      {issue.title}
-                                    </h5>
-
-                                    {/* 1) 발생원인 */}
-                                    {issue.content && (
-                                      <div className="p-2 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/40 text-[11px] space-y-1">
-                                        <span className="font-bold text-rose-700 dark:text-rose-300 block text-[10px]">
-                                          발생원인
-                                        </span>
-                                        <p className="text-slate-700 dark:text-slate-200 font-medium whitespace-pre-wrap leading-relaxed">
-                                          {issue.content}
-                                        </p>
-                                        {causeImgs.length > 0 && (
-                                          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
-                                            {causeImgs.map((img, i) => (
-                                              <div
-                                                key={img.id || i}
-                                                onClick={() => setPreviewImage({ url: img.dataUrl, name: `[원인] ${img.name}` })}
-                                                className="relative w-12 h-12 rounded-lg overflow-hidden border border-rose-300 dark:border-rose-700 cursor-pointer shrink-0"
-                                              >
-                                                <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {/* 2) 조치결과 */}
-                                    {actionText && (
-                                      <div className="p-2 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200/80 dark:border-teal-900/40 text-[11px] space-y-1">
-                                        <span className="font-bold text-teal-700 dark:text-teal-300 block text-[10px]">
-                                          조치결과
-                                        </span>
-                                        <p className="text-teal-950 dark:text-teal-100 font-bold whitespace-pre-wrap leading-relaxed">
-                                          {actionText}
-                                        </p>
-                                        {actionImgs.length > 0 && (
-                                          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
-                                            {actionImgs.map((img, i) => (
-                                              <div
-                                                key={img.id || i}
-                                                onClick={() => setPreviewImage({ url: img.dataUrl, name: `[조치] ${img.name}` })}
-                                                className="relative w-12 h-12 rounded-lg overflow-hidden border border-teal-300 dark:border-teal-700 cursor-pointer shrink-0"
-                                              >
-                                                <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="py-12 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 dark:border-rose-800 flex flex-col items-center justify-center space-y-1">
-                              <CheckCircle2 className="w-7 h-7 text-rose-400 mb-1" />
-                              <span>현재 진행 중인 압출 품질이슈가 없습니다.</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="pt-2 border-t border-rose-200 dark:border-rose-900/60 flex items-center justify-between text-[11px] font-bold text-rose-700 dark:text-rose-300">
-                          <span>압출품질이슈 실시간 연동</span>
-                          <span className="text-slate-400">설유철 책임 등록 실시간 반영</span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3.5 flex flex-col justify-between">
-                      {/* ================================================================= */}
-                      {/* 2. 일정 섹션: ADMIN -> 📌 미완료 공통일정 / Worker -> 📅 미완료 개인일정 */}
-                      {/* ================================================================= */}
-                      {isAdmin ? (
-                        /* ⭐ [ADMIN 전용] 완료되지 않은 사내 공통일정 (미완료 공통 일정 표출) */
-                        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                                <Calendar className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  📌 사내 공통일정 (미완료 일정)
-                                </span>
-                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                  전사 및 공장별 진행 중인 미완료 공통 일정
-                                </span>
-                              </div>
-                            </div>
-
-                            <span className="text-xs font-black text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
-                              {uncompletedCommonSchedules.length}건 진행중
-                            </span>
-                          </div>
-
-                          {/* Uncompleted Common Schedules List */}
-                          {uncompletedCommonSchedules.length > 0 ? (
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                              {uncompletedCommonSchedules.map((schedule) => {
-                                const startDate = schedule.startDate || schedule.date;
-                                const endDate = schedule.endDate || startDate;
-                                const isSingleDay = startDate === endDate || !endDate;
-                                const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
-                                const timeDisplay = schedule.time && schedule.time !== "종일" ? ` (${schedule.time})` : "";
-                                const targetBadge = schedule.target || "공통";
-
-                                return (
-                                  <div
-                                    key={schedule.id || schedule._docId}
-                                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs space-y-1 text-xs"
-                                  >
-                                    <div className="flex items-center justify-between gap-1.5">
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
-                                          {targetBadge}
-                                        </span>
-                                        <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
-                                          {schedule.title || "사내 공통일정"}
-                                        </span>
-                                      </div>
-
-                                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
-                                        {dateDisplay}{timeDisplay}
-                                      </span>
-                                    </div>
-
-                                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
-                                      <span className="truncate">작성: {schedule.author || "ADMIN"}</span>
-                                      {Array.isArray(schedule.comments) && schedule.comments.length > 0 && (
-                                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                                          💬 의견 {schedule.comments.length}건
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
-                              <Calendar className="w-4 h-4 text-slate-400" />
-                              <span>현재 진행 중인 미완료 공통일정이 없습니다.</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        /* ⭐ [일반 작업자 전용: 이상기, 우창용 등] 등록된 일정 (미완료 항목만 표출) */
-                        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs">
-                                <Calendar className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  📅 나의 등록된 일정
-                                </span>
-                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                  연차, 반차, 외출, 출장, 공장방문 (미완료)
-                                </span>
-                              </div>
-                            </div>
-
-                            <span className="text-xs font-black text-blue-800 dark:text-blue-300 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
-                              {workerSchedules.length}건 등록됨
-                            </span>
-                          </div>
-
-                          {/* Schedule Items List (Only Incomplete / Active) */}
-                          {workerSchedules.length > 0 ? (
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                              {workerSchedules.map((schedule) => {
-                                const meta = getLeaveTypeMeta(schedule.leaveType || schedule.type);
-                                const startDate = schedule.startDate || schedule.date;
-                                const endDate = schedule.endDate || startDate;
-                                const isSingleDay = startDate === endDate || !endDate;
-                                const dateDisplay = isSingleDay ? startDate : `${startDate} ~ ${endDate}`;
-
-                                return (
-                                  <div
-                                    key={schedule.id || schedule._docId}
-                                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1 text-xs"
-                                  >
-                                    <div className="flex items-center justify-between gap-1.5">
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 shrink-0 ${meta.scheduledBadge || "bg-blue-500 text-white"}`}>
-                                          <span>{meta.emoji}</span>
-                                          <span>{schedule.leaveType || "일정"}</span>
-                                        </span>
-                                        <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
-                                          {dateDisplay}
-                                        </span>
-                                      </div>
-
-                                      {schedule.daysCount && (
-                                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 shrink-0">
-                                          {schedule.daysCount}일간
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {schedule.reason && (
-                                      <p className="text-[11.5px] text-slate-600 dark:text-slate-300 font-medium pl-1 truncate">
-                                        사유: {schedule.reason}
-                                      </p>
-                                    )}
-
-                                    {Array.isArray(schedule.sharedWith) && schedule.sharedWith.length > 0 && (
-                                      <div className="text-[10px] text-slate-400 pl-1">
-                                        공유: {schedule.sharedWith.join(", ")}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2">
-                              <Calendar className="w-4 h-4 text-slate-400" />
-                              <span>현재 등록된 미완료 개인 일정이 없습니다.</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* ================================================================= */}
-                      {/* 🌟 2-2. 실시간 공장별 근태현황정보 패널 (오륙·유성: 삼랑진 / 조영·한울·부림텍: 한림 / Admin: 전체) */}
-                      {/* ================================================================= */}
-                      {targetCompanies.length > 0 && (
-                        <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
-                                <Users className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                  👥 {isAdmin ? "전사 실시간 근태현황정보" : selectedUser?.plant === "한림공장" ? "한림공장 근태현황정보" : "삼랑진공장 근태현황정보"}
-                                </span>
-                                <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                  {isAdmin
-                                    ? "오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)"
-                                    : selectedUser?.plant === "한림공장"
-                                    ? "조영산업, 한울, 부림텍 당일 출근 및 잔업"
-                                    : "오륙, 유성 당일 출근 및 잔업"}
-                                </span>
-                              </div>
-                            </div>
-
-                            <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800">
-                              당일 {todayDayNum}일 기준
-                            </span>
-                          </div>
-
-                          {/* Company Attendance Cards Grid */}
-                          <div className={`grid gap-2 ${targetCompanies.length === 2 ? "grid-cols-2" : targetCompanies.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-3"}`}>
-                            {targetCompanies.map((compName) => {
-                              const breakdown = dailyOvertimeSummary?.companyBreakdown?.[compName] || {
-                                total: 0,
-                                attended: 0,
-                                absent: 0,
-                                leave: 0,
-                                otWorkers: 0,
-                                otHours: 0
-                              };
-                              const isUnwritten = unwrittenCompanies.includes(compName);
-                              const isWritten = !isUnwritten;
-                              const dotColor = compName.includes("오륙") ? "bg-blue-500" :
-                                               compName.includes("조영") ? "bg-amber-500" :
-                                               compName.includes("한울") ? "bg-emerald-500" :
-                                               compName.includes("부림") ? "bg-purple-500" : "bg-cyan-500";
-
-                              return (
-                                <div
-                                  key={compName}
-                                  className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-1.5"
-                                >
-                                  <div className="flex items-center justify-between gap-1">
-                                    <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
-                                      <span className={`w-2 h-2 rounded-full ${dotColor} shrink-0`}></span>
-                                      <span className="truncate">{compName}</span>
-                                    </span>
-                                    {isWritten ? (
-                                      <span className="text-xs px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-black flex items-center gap-0.5 shrink-0 shadow-2xs" title="작성완료">
-                                        <span>✅</span>
-                                      </span>
-                                    ) : (
-                                      <span className={`text-[9px] px-1 py-0.5 rounded-md border shrink-0 font-bold ${
-                                        isAfter9AM
-                                          ? "bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse"
-                                          : "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                                      }`}>
-                                        {isAfter9AM ? "09:00 미작성" : "작성전"}
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="grid grid-cols-2 gap-1 text-[10px]">
-                                    <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
-                                      <span className="text-slate-400 block text-[9px]">출근/총원</span>
-                                      <span className="font-black text-slate-900 dark:text-white">
-                                        {breakdown.attended}/{breakdown.total}명
-                                      </span>
-                                    </div>
-                                    <div className="p-1 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
-                                      <span className="text-slate-400 block text-[9px]">당일 잔업</span>
-                                      <span className="font-black text-amber-600 dark:text-amber-400">
-                                        {breakdown.otWorkers}명
-                                        {breakdown.otHours > 0 && <span className="text-[9px] text-amber-500/80"> (+{breakdown.otHours}h)</span>}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  {breakdown.absent > 0 && (
-                                    <div className="text-[9.5px] font-bold text-rose-600 dark:text-rose-400 text-center bg-rose-50 dark:bg-rose-950/50 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60">
-                                      결근 {breakdown.absent}명
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 3. 📢 실시간 공유 공지 & 회의/품질 이슈 */}
-                      <div className="p-4 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-slate-200 dark:border-slate-700 shadow-sm space-y-2.5">
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {/* CASE 1: 압출동 작업자 -> 압출 품질이슈 + 압출 변동점 발생상황 */}
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {isExtrusionWorker && (
+                    <div className="space-y-3.5 flex flex-col justify-between h-full">
+                      {/* 1. 압출동 품질이슈 */}
+                      <div className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-amber-600 text-white shadow-xs">
-                              <BellRing className="w-4 h-4" />
+                            <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
+                              <AlertTriangle className="w-4 h-4" />
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📢 전사/공장 공유 공지 및 안건
+                                🚨 압출동 품질이슈
                               </span>
-                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                품질경보, 사내공지, 긴급 회의일정
+                              <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
+                                설유철 책임 공지 • 라인별 불량 원인 및 조치
                               </span>
                             </div>
                           </div>
 
-                          <span className="text-xs font-black text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
-                            {sharedNotices.length}건
+                          <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
+                            {activeExtrusionIssues.length}건 진행중
                           </span>
                         </div>
 
-                        {sharedNotices.length > 0 ? (
-                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
-                            {sharedNotices.map((item) => {
-                              const isQualityAlert = item.category === "품질경보";
-                              const isMeeting = item.category === "회의일정";
-                              const isNotice = item.category === "공지사항" || item.category === "사내공지" || item.category === "공유사항";
-
-                              const badgeStyle = isQualityAlert
-                                ? "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950 dark:text-rose-300"
-                                : isMeeting
-                                ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300"
-                                : isNotice
-                                ? "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
-                                : "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-300";
-
-                              return (
-                                <div
-                                  key={item.id || item._docId}
-                                  className="p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-0.5 text-xs shadow-2xs"
-                                >
-                                  <div className="flex items-center justify-between gap-1.5">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <span className={`text-[9.5px] font-black px-1.5 py-0.2 rounded-md border shrink-0 ${badgeStyle}`}>
-                                        {item.category || "공지"}
-                                      </span>
-                                      <span className="font-black text-slate-900 dark:text-white truncate text-xs">
-                                        {item.title || item.content}
-                                      </span>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                                      {item.author || "관리자"}
+                        {activeExtrusionIssues.length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {activeExtrusionIssues.map((issue) => (
+                              <div
+                                key={issue.id}
+                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1 text-xs shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                                      {issue.line}
+                                    </span>
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                      {issue.defectType}
                                     </span>
                                   </div>
-                                  {item.title && item.content && (
-                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1 font-medium pl-0.5">
-                                      {item.content}
-                                    </p>
-                                  )}
+                                  <span className="text-[10px] text-slate-400 font-mono">{issue.date || issue.createdAt?.slice(0, 10)}</span>
+                                </div>
+                                <h5 className="font-black text-slate-900 dark:text-white text-xs">{issue.title}</h5>
+                                {issue.content && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
+                                    {issue.content}
+                                  </p>
+                                )}
+                                {(issue.actionResult || issue.actionGuide) && (
+                                  <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
+                                    ↳ 🟢 <b>[조치]</b> {issue.actionResult || issue.actionGuide}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-rose-400" />
+                            <span>현재 진행 중인 압출 품질이슈가 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. 압출동 변동점 발생상황 */}
+                      <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Activity className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📋 압출동 변동점 발생상황
+                              </span>
+                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
+                                PCM 1·3호 / PVC / TPE 설비수리·비가동·불량·TPM
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
+                            {extrusion4MRecords.length}건 최근
+                          </span>
+                        </div>
+
+                        {extrusion4MRecords.length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {extrusion4MRecords.map((item) => (
+                              <div
+                                key={item.id}
+                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
+                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
+                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
+                                      "bg-rose-100 text-rose-800 border border-rose-300"
+                                    }`}>
+                                      {item.origin}
+                                    </span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">{item.line}</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                </div>
+                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.actionResult && (
+                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md">
+                                    ↳ 🟢 <b>[조치]</b> {item.actionResult}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                            <span>최근 등록된 압출 변동점이 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {/* CASE 2: 가공동 작업자 -> 가공 품질이슈 + 가공 변동점 발생상황 */}
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {isProcessingWorker && (
+                    <div className="space-y-3.5 flex flex-col justify-between h-full">
+                      {/* 1. 가공동 품질이슈 */}
+                      <div className="p-4 rounded-3xl bg-rose-50/70 dark:bg-rose-950/30 border-2 border-rose-300 dark:border-rose-800/80 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-rose-600 text-white shadow-xs">
+                              <AlertTriangle className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                🚨 가공동 품질이슈 & 품질경보
+                              </span>
+                              <span className="text-[10.5px] font-bold text-rose-700 dark:text-rose-300">
+                                {selectedUser.plant || "가공동"} 품질경보 및 중점 불량 관리
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-black text-rose-900 dark:text-rose-200 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700">
+                            {processingQualityIssues.length}건 발령중
+                          </span>
+                        </div>
+
+                        {processingQualityIssues.length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {processingQualityIssues.map((issue) => (
+                              <div
+                                key={issue.id || issue._docId}
+                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 space-y-1 text-xs shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <div className="flex items-center gap-1">
+                                    <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-rose-600 text-white">
+                                      {issue.category || "품질경보"}
+                                    </span>
+                                    <span className="text-slate-500 font-bold text-[10.5px]">{issue.plant}</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono">{issue.date || issue.startDate || todayKst}</span>
+                                </div>
+                                <h5 className="font-black text-slate-900 dark:text-white text-xs">{issue.title}</h5>
+                                {issue.content && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-pre-line leading-relaxed">
+                                    {issue.content}
+                                  </p>
+                                )}
+                                {issue.actionResult && (
+                                  <div className="text-[10.5px] text-teal-800 dark:text-teal-300 font-bold bg-teal-50 dark:bg-teal-950/40 p-1.5 rounded-lg border border-teal-200 dark:border-teal-800">
+                                    ↳ 🟢 <b>[조치]</b> {issue.actionResult}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-rose-800/80 dark:text-rose-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-rose-300 flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-rose-400" />
+                            <span>현재 진행 중인 가공 품질이슈가 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. 가공동 변동점 발생상황 */}
+                      <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Activity className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📋 가공동 변동점 발생상황
+                              </span>
+                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
+                                전재율 책임 설비수리·가공불량·비가동 현황
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
+                            {processing4MRecords.length}건 최근
+                          </span>
+                        </div>
+
+                        {processing4MRecords.length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                            {processing4MRecords.map((item) => (
+                              <div
+                                key={item.id}
+                                className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
+                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
+                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
+                                      "bg-rose-100 text-rose-800 border border-rose-300"
+                                    }`}>
+                                      {item.origin}
+                                    </span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">{item.line}</span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                </div>
+                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.actionResult && (
+                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md">
+                                    ↳ 🟢 <b>[조치]</b> {item.actionResult}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                            <span>최근 등록된 가공 변동점이 없습니다.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {/* CASE 3: 관리자 -> 사내일정 + 근태정보 + 전사 변동점 발생상황 */}
+                  {/* ───────────────────────────────────────────────────────────────── */}
+                  {isAdminUser && (
+                    <div className="space-y-3.5 flex flex-col justify-between h-full">
+                      {/* 1. 사내 공통일정 */}
+                      <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Calendar className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📌 사내 공통일정 (미완료 일정)
+                              </span>
+                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                전사 및 공장별 진행 중인 일정
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-xs font-black text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
+                            {uncompletedCommonSchedules.length}건 진행중
+                          </span>
+                        </div>
+
+                        {uncompletedCommonSchedules.length > 0 ? (
+                          <div className="space-y-1.5 max-h-28 overflow-y-auto pr-0.5">
+                            {uncompletedCommonSchedules.map((schedule) => {
+                              const sDate = schedule.startDate || schedule.date;
+                              const eDate = schedule.endDate || sDate;
+                              const dateText = sDate === eDate || !eDate ? sDate : `${sDate}~${eDate}`;
+                              return (
+                                <div
+                                  key={schedule.id || schedule._docId}
+                                  className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs text-xs flex items-center justify-between gap-1.5"
+                                >
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 shrink-0">
+                                      {schedule.target || "공통"}
+                                    </span>
+                                    <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
+                                      {schedule.title}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-slate-400 shrink-0">{dateText}</span>
                                 </div>
                               );
                             })}
                           </div>
                         ) : (
-                          <div className="py-3 text-center text-xs text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                            공유된 실시간 공지 및 긴급 안건이 없습니다.
+                          <div className="py-2.5 text-center text-xs text-slate-400 font-bold bg-white dark:bg-slate-900 rounded-xl border border-dashed border-slate-200">
+                            진행 중인 미완료 공통일정이 없습니다.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. 실시간 근태정보 */}
+                      <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-emerald-600 text-white shadow-xs">
+                              <Users className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                👥 전사 실시간 근태현황정보
+                              </span>
+                              <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
+                                오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)
+                              </span>
+                            </div>
+                          </div>
+
+                          <span className="text-[10.5px] font-black text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 border border-emerald-200">
+                            당일 {todayDayNum}일 기준
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-5 gap-1 text-[10px]">
+                          {["오륙", "유성", "조영", "한울", "부림텍"].map((comp) => {
+                            const b = dailyOvertimeSummary?.companyBreakdown?.[comp] || { attended: 0, total: 0, otWorkers: 0 };
+                            const isUn = unwrittenCompanies.includes(comp);
+                            return (
+                              <div key={comp} className="p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
+                                <span className="font-black text-slate-800 dark:text-slate-200 block truncate">{comp}</span>
+                                <span className="font-bold text-slate-900 dark:text-white block">{b.attended}/{b.total}명</span>
+                                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold block">잔업 {b.otWorkers}명</span>
+                                {isUn ? (
+                                  <span className="text-[8.5px] text-rose-500 font-bold block">{isAfter9AM ? "미작성" : "작성전"}</span>
+                                ) : (
+                                  <span className="text-[8.5px] text-emerald-500 font-bold block">완료</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 3. 전사 변동점 발생상황 */}
+                      <div className="p-3.5 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Activity className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📋 4M 변동점 발생상황 (통합 관리대장)
+                              </span>
+                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
+                                삼랑진·한림 공장 설비수리·비가동·불량·품질경보
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black">
+                              ⭐ 대장 {stats4M.officialCount}건
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
+                              설비 {stats4M.machineCount}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300">
+                              불량 {stats4M.materialCount}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                              경보 {stats4M.methodCount}
+                            </span>
+                          </div>
+                        </div>
+
+                        {allUnified4MRecords.length > 0 ? (
+                          <div className="space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
+                            {allUnified4MRecords.slice(0, 4).map((item) => (
+                              <div
+                                key={item.id}
+                                className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs space-y-0.5 shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
+                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800" :
+                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800" :
+                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800" :
+                                      "bg-rose-100 text-rose-800"
+                                    }`}>
+                                      {item.origin}
+                                    </span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
+                                      {item.plant?.replace("공장", "")} • {item.line}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                </div>
+                                <h6 className="font-black text-slate-900 dark:text-white text-xs truncate">{item.title}</h6>
+                                {item.actionResult && (
+                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold truncate">
+                                    ↳ 🟢 [조치] {item.actionResult}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-2 text-center text-xs text-slate-400 font-bold">
+                            등록된 변동점이 없습니다.
                           </div>
                         )}
                       </div>
