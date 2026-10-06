@@ -954,15 +954,15 @@ export const UnifiedAbnormalityControlPanel = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]">
-                  <th className="py-2.5 px-2.5 text-center w-8">No</th>
-                  <th className="py-2.5 px-2 text-center w-20">4M 구분</th>
-                  <th className="py-2.5 px-2 w-24">구분</th>
-                  <th className="py-2.5 px-2.5 w-24">일시</th>
-                  <th className="py-2.5 px-2.5 w-28">공장/설비</th>
-                  <th className="py-2.5 px-3 min-w-[280px]">변동 및 발생내용 (클릭 시 상세)</th>
-                  <th className="py-2.5 px-2 text-center w-16">손실</th>
-                  <th className="py-2.5 px-2 text-center w-20">조치</th>
-                  <th className="py-2.5 px-2 text-center w-14">사진</th>
+                  <th className="py-2.5 px-2 text-center w-7">No</th>
+                  <th className="py-2.5 px-1.5 text-center w-14">4M</th>
+                  <th className="py-2.5 px-2 text-center w-18">구분</th>
+                  <th className="py-2.5 px-2 text-center w-20">일시</th>
+                  <th className="py-2.5 px-2 text-center w-18">공장/설비</th>
+                  <th className="py-2.5 px-3 min-w-[320px] w-full">변동 및 발생내용 (클릭 시 상세 팝업)</th>
+                  <th className="py-2.5 px-2 text-center w-14">손실</th>
+                  <th className="py-2.5 px-2 text-center w-16">조치</th>
+                  <th className="py-2.5 px-1.5 text-center w-12">사진</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
@@ -992,63 +992,68 @@ export const UnifiedAbnormalityControlPanel = ({
                         ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300"
                         : "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300";
 
-                    // Short plant & line formatting
+                    // Ultra-short plant & equipment formatting (e.g. 삼/1호, 삼/3호, 삼/TPE, 삼/PVC, 삼/300T, 한/가공)
                     const pShort = item.plant?.includes("한림") ? "한" : "삼";
-                    const cleanLine = (item.line || "-")
-                      .replace(/^압출기\((.*)\)$/, "$1")
-                      .replace(/^사출기\((.*)\)$/, "$1")
-                      .replace(/^기타\((.*)\)$/, "$1")
-                      .replace(/^컴프레셔\((.*)\)$/, "$1")
-                      .replace(/^코팅설비\((.*)\)$/, "$1");
+                    const cleanEq = (item.line || "-")
+                      .replace(/^(압출기|사출기|기타|컴프레셔|코팅설비)\((.*)\)$/, "$2")
+                      .replace(/PCM\s*1호기?/i, "1호")
+                      .replace(/PCM\s*3호기?/i, "3호")
+                      .replace(/TPE\s*1호기?/i, "TPE")
+                      .replace(/(\d+)TON/i, "$1T")
+                      .replace(/(\d+)톤\s*인젝션/i, "$1T")
+                      .replace(/전기\s*집진기/i, "집진기")
+                      .replace(/가공동\s*관리/i, "가공")
+                      .replace(/설비보전팀?/i, "보전")
+                      .replace(/품질\/제조/i, "품질")
+                      .trim();
 
                     return (
                       <tr
                         key={item.id}
                         onClick={() => handleOpenDetailModal(item)}
-                        className="hover:bg-indigo-50/50 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group whitespace-nowrap"
-                        title="클릭하여 상세 정보 및 조치 등록 팝업 열기"
+                        className="hover:bg-indigo-50/60 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group"
+                        title="클릭하여 상세 내용 및 조치 등록 팝업 열기"
                       >
                         {/* No */}
-                        <td className="py-2.5 px-2.5 text-center font-mono text-slate-400 text-[11px]">
+                        <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-[10.5px] whitespace-nowrap">
                           {idx + 1}
                         </td>
 
                         {/* 4M 구분 */}
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-2.5 px-1.5 text-center whitespace-nowrap">
                           <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
                             [{item.fourM}]
                           </span>
                         </td>
 
                         {/* 구분 */}
-                        <td className="py-2.5 px-2">
-                          <span className={`inline-block px-1.5 py-0.2 rounded text-[10.5px] font-bold border ${badgeClass}`}>
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                          <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${badgeClass}`}>
                             {item.origin}
                           </span>
                         </td>
 
                         {/* 일시 */}
-                        <td className="py-2.5 px-2.5 font-mono text-slate-600 dark:text-slate-400 text-[11px]">
+                        <td className="py-2.5 px-2 text-center font-mono text-slate-600 dark:text-slate-400 text-[10.5px] whitespace-nowrap">
                           {item.date}
                         </td>
 
-                        {/* 공장 / 라인·설비 (삼/한 초간결) */}
-                        <td className="py-2.5 px-2.5 font-bold text-slate-900 dark:text-white text-xs">
-                          <span className="inline-block px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px] font-black mr-1">
-                            {pShort}
+                        {/* 공장/설비 (초간결: 삼/1호, 삼/TPE 등) */}
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-black text-[10.5px]">
+                            {pShort}/{cleanEq}
                           </span>
-                          <span>{cleanLine}</span>
                         </td>
 
-                        {/* 변동 및 발생내용 (1줄 요약) */}
-                        <td className="py-2.5 px-3 max-w-[340px] truncate" title={item.title}>
-                          <span className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        {/* 변동 및 발생내용 (화면 공간을 최대로 활용하여 풍부하게 표시) */}
+                        <td className="py-2.5 px-3 min-w-[320px] w-full">
+                          <div className="font-bold text-slate-900 dark:text-white text-xs leading-relaxed group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors break-words">
                             {item.title}
-                          </span>
+                          </div>
                         </td>
 
                         {/* 손실 (분/kg) */}
-                        <td className="py-2.5 px-2 text-center font-mono text-[11px]">
+                        <td className="py-2.5 px-2 text-center font-mono text-[10.5px] whitespace-nowrap">
                           {item.downtimeMinutes > 0 ? (
                             <span className="text-orange-600 dark:text-orange-400 font-bold">{item.downtimeMinutes}분</span>
                           ) : item.scrapKg > 0 ? (
@@ -1059,9 +1064,9 @@ export const UnifiedAbnormalityControlPanel = ({
                         </td>
 
                         {/* 조치 (조치완료 vs 조치중) */}
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10.5px] font-black ${
+                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black ${
                               item.isResolved
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                                 : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse"
@@ -1072,7 +1077,7 @@ export const UnifiedAbnormalityControlPanel = ({
                         </td>
 
                         {/* 사진 */}
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-2.5 px-1.5 text-center whitespace-nowrap">
                           {hasPhotos ? (
                             <button
                               type="button"
@@ -1082,10 +1087,10 @@ export const UnifiedAbnormalityControlPanel = ({
                                 const src = typeof firstImg === "object" ? firstImg.dataUrl || firstImg.url : firstImg;
                                 if (src) setPreviewImage(src);
                               }}
-                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10.5px] font-bold hover:scale-105"
+                              className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-bold hover:scale-105"
                               title="사진 미리보기"
                             >
-                              <Camera className="w-3 h-3 text-amber-600" />
+                              <Camera className="w-2.5 h-2.5 text-amber-600" />
                               <span>{photoCount}</span>
                             </button>
                           ) : (
