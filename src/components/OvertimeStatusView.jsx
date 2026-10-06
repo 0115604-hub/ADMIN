@@ -415,12 +415,12 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
   // 1. Try finding canonical plant-level synthesis approval doc
   let matchedDoc = (approvalDocs || []).find((d) => d.id === canonicalDocId);
 
-  // 2. Try matching by type, plant, and workDate
+  // 2. Try matching by docType/type, plant, and workDate
   if (!matchedDoc && workDateStr) {
     matchedDoc = (approvalDocs || []).find(
       (d) =>
-        d.type === "OVERTIME" &&
-        (d.plant === plantName || d.company === report.company) &&
+        (d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "특근보고서") &&
+        (d.plant === plantName || d.company === report.company || (d.id && d.id.includes(plantKey))) &&
         (d.workDate === workDateStr ||
           (d.id && d.id.includes(workDateStr.replace(/-/g, ""))) ||
           (d.title && d.title.includes(workDateStr)) ||
@@ -436,8 +436,8 @@ export const getLiveApprovalForReport = (report, approvalDocs = []) => {
     if (dayMatch) {
       matchedDoc = (approvalDocs || []).find(
         (d) =>
-          d.type === "OVERTIME" &&
-          (d.plant === plantName || (d.title && d.title.includes(plantName))) &&
+          (d.type === "OVERTIME" || d.docType === "OVERTIME" || d.category === "특근보고서") &&
+          (d.plant === plantName || (d.title && d.title.includes(plantName)) || (d.id && d.id.includes(plantKey))) &&
           d.title &&
           d.title.includes(dayMatch[0])
       );
