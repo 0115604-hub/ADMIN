@@ -32,6 +32,7 @@ import {
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
 import { getWorkLogText } from "../../services/workLogI18nService";
+import ExtrusionMaterialBOMQuickPanel from "./ExtrusionMaterialBOMQuickPanel";
 
 export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const { currentProfile } = useAuth();
@@ -170,6 +171,11 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
           )}
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 설유철 작업자 전용 BOM 등록 및 오탈자/재료변경 수정 패널 */}
+      {/* ========================================================================= */}
+      <ExtrusionMaterialBOMQuickPanel />
 
       {/* ========================================================================= */}
       {/* 🚨 1. 중대재해공유판 (항상 최상단 안전 공유) */}

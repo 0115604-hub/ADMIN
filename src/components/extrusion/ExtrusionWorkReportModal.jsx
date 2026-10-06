@@ -1936,52 +1936,56 @@ export const ExtrusionWorkReportModal = ({
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
                         <div>
                           <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                            지시/계획수량 (m)
+                            지시/계획수량 (EA)
                           </label>
                           <input
                             type="number"
                             min="0"
                             value={item.targetQty}
                             onChange={(e) => handleItemFieldChange(index, "targetQty", e.target.value)}
+                            placeholder="EA"
                             className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-xs focus:ring-2 focus:ring-teal-500 focus:outline-hidden"
                           />
                         </div>
 
                         <div>
                           <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                            작업/총실적 (m) *
+                            작업/총실적 (EA) *
                           </label>
                           <input
                             type="number"
                             min="0"
                             value={item.actualQty}
                             onChange={(e) => handleItemFieldChange(index, "actualQty", e.target.value)}
+                            placeholder="EA"
                             className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border-2 border-emerald-500 font-black text-right text-emerald-700 dark:text-emerald-400 text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
                           />
                         </div>
 
                         <div>
                           <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                            양품수량 (m) *
+                            양품수량 (EA) *
                           </label>
                           <input
                             type="number"
                             min="0"
                             value={item.goodQty}
                             onChange={(e) => handleItemFieldChange(index, "goodQty", e.target.value)}
+                            placeholder="EA"
                             className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-blue-700 dark:text-blue-400 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                           />
                         </div>
 
                         <div>
                           <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 mb-1">
-                            불량수량 (m)
+                            불량수량 (EA)
                           </label>
                           <input
                             type="number"
                             min="0"
                             value={item.defectQty}
                             onChange={(e) => handleItemFieldChange(index, "defectQty", e.target.value)}
+                            placeholder="EA"
                             className="w-full px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-black text-right text-rose-600 dark:text-rose-400 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-hidden"
                           />
                         </div>
@@ -2058,17 +2062,14 @@ export const ExtrusionWorkReportModal = ({
                   <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
                     <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
                       <span>110Ø 압출속도</span>
-                      <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
-                        표준 29±2.9
-                      </span>
                     </div>
                     <div className="relative">
                       <input
                         type="number"
                         step="0.1"
-                        value={formData.conditions?.extruder110Rpm ?? EXTRUSION_STANDARD_SPECS.extruder110Rpm}
+                        value={formData.conditions?.extruder110Rpm ?? ""}
                         onChange={(e) => handleNestedFieldChange("conditions", "extruder110Rpm", e.target.value)}
-                        placeholder="26.4"
+                        placeholder="속도 입력"
                         className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
@@ -2081,17 +2082,14 @@ export const ExtrusionWorkReportModal = ({
                   <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
                     <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
                       <span>70Ø 압출속도</span>
-                      <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
-                        표준 20±2.0
-                      </span>
                     </div>
                     <div className="relative">
                       <input
                         type="number"
                         step="0.1"
-                        value={formData.conditions?.extruder70Rpm ?? EXTRUSION_STANDARD_SPECS.extruder70Rpm}
+                        value={formData.conditions?.extruder70Rpm ?? ""}
                         onChange={(e) => handleNestedFieldChange("conditions", "extruder70Rpm", e.target.value)}
-                        placeholder="19.2"
+                        placeholder="속도 입력"
                         className="w-full text-right pr-11 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">
@@ -2104,17 +2102,14 @@ export const ExtrusionWorkReportModal = ({
                   <div className="p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/80 space-y-1">
                     <div className="flex items-center justify-between text-[11px] font-black text-indigo-900 dark:text-indigo-300">
                       <span>인취기 속도</span>
-                      <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold">
-                        표준 20±1.0
-                      </span>
                     </div>
                     <div className="relative">
                       <input
                         type="number"
                         step="0.1"
-                        value={formData.conditions?.haulOffSpeed ?? EXTRUSION_STANDARD_SPECS.haulOffSpeed}
+                        value={formData.conditions?.haulOffSpeed ?? ""}
                         onChange={(e) => handleNestedFieldChange("conditions", "haulOffSpeed", e.target.value)}
-                        placeholder="19.6"
+                        placeholder="속도 입력"
                         className="w-full text-right pr-13 pl-2.5 py-1.5 bg-white dark:bg-slate-800 border border-indigo-300 dark:border-indigo-700 rounded-lg font-black text-xs sm:text-sm text-indigo-950 dark:text-indigo-100 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden"
                       />
                       <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-500 pointer-events-none">

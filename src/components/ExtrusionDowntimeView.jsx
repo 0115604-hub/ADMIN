@@ -513,7 +513,7 @@ export const ExtrusionDowntimeView = () => {
                 {(metrics?.totalScrapKg || 0).toLocaleString()} kg
               </div>
               <div className="text-[10.5px] font-bold text-slate-400 mt-0.5">
-                불량수량: {(metrics?.totalDefect || 0).toLocaleString()}m
+                불량수량: {(metrics?.totalDefect || 0).toLocaleString()} EA
               </div>
             </div>
 
@@ -538,10 +538,10 @@ export const ExtrusionDowntimeView = () => {
                 <span>총 양품 생산량</span>
               </div>
               <div className="text-lg font-black text-blue-700 dark:text-blue-400 mt-1">
-                {(metrics?.totalGood || 0).toLocaleString()} m
+                {(metrics?.totalGood || 0).toLocaleString()} EA
               </div>
               <div className="text-[10.5px] font-bold text-slate-400 mt-0.5">
-                실적: {(metrics?.totalActual || 0).toLocaleString()}m
+                실적: {(metrics?.totalActual || 0).toLocaleString()} EA
               </div>
             </div>
 
@@ -814,7 +814,7 @@ export const ExtrusionDowntimeView = () => {
                         {metrics?.totalDowntimeMinutes ?? 0}분
                       </td>
                       <td colSpan={2} className="py-2.5 px-3 text-center text-slate-500 text-[11px]">
-                        (총 비가동: <strong>{metrics?.totalDowntimeHours ?? 0}시간</strong>, 양품생산량: <strong>{(metrics?.totalGood || 0).toLocaleString()}m</strong>)
+                        (총 비가동: <strong>{metrics?.totalDowntimeHours ?? 0}시간</strong>, 양품생산량: <strong>{(metrics?.totalGood || 0).toLocaleString()} EA</strong>)
                       </td>
                     </tr>
                   </tfoot>
