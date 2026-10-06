@@ -182,6 +182,8 @@ import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
 import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
+import { LanguageSelectBadge } from "./common/LanguageSelectBadge";
+import { getWorkLogText } from "../services/workLogI18nService";
 
 // Lazy-loaded on-demand heavy modals
 const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
@@ -2944,6 +2946,33 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
+      {/* 🌐 가공동 / 압출동 작업자 작업일보 최상단 언어 선택 및 현장 바 */}
+      <div className="bg-slate-900/95 dark:bg-slate-950 border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 shadow-sm flex-wrap">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs shrink-0">
+            <Factory className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-black text-xs sm:text-sm text-white">
+                🏭 {workerPlant} {isExtrusionWorker ? getWorkLogText("extrusion_shop") : getWorkLogText("machining_shop")} ({getWorkLogText("work_log_title")})
+              </span>
+              <span className="text-[11px] px-2 py-0.2 rounded-md bg-blue-950 text-blue-300 font-bold border border-blue-700/60">
+                {workerFullName} {officialTitle} [{assignedProcess}]
+              </span>
+            </div>
+            <span className="text-[10.5px] text-slate-400 block truncate">
+              {getWorkLogText("safety_first")}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {/* 🌐 11개국어 언어 선택 뱃지 */}
+          <LanguageSelectBadge />
+        </div>
+      </div>
+
       {/* 🌟 압출동 일반작업자 전용 상단 배너 (설유철 책임은 관리자이므로 제외) */}
       {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && currentProfile?.name !== "설유철" && currentProfile?.id !== "sam_yc" && (
         <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-600 via-teal-700 to-teal-800 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -6635,12 +6664,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  <LanguageSelectBadge showLabel={false} />
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={handleSaveLog} className="space-y-3.5 text-xs">
@@ -6864,12 +6896,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  <LanguageSelectBadge showLabel={false} />
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               {/* 2 Dedicated Panes Grid */}
@@ -7190,12 +7225,15 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <FileText className="w-5 h-5 text-blue-600" />
                   <span>오늘의 업무일지 작성</span>
                 </h3>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-1 text-slate-400 hover:text-slate-600 text-sm font-black"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-2">
+                  <LanguageSelectBadge showLabel={false} />
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <form onSubmit={handleSaveLog} className="space-y-3.5 text-xs">

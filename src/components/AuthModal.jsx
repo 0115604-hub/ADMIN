@@ -44,6 +44,7 @@ import { RealtimeIssueBoard } from "./issues/RealtimeIssueBoard";
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { SevereDisasterModal } from "./common/SevereDisasterModal";
 import { ExtrusionWorkReportModal } from "./extrusion/ExtrusionWorkReportModal";
+import { LanguageSelectBadge } from "./common/LanguageSelectBadge";
 import { saveExtrusionReport } from "../services/extrusionProductionService";
 import {
   ShieldAlert,
@@ -1414,8 +1415,11 @@ export const AuthModal = () => {
               </div>
             </div>
 
-            {/* Right: 2 Badges: [압출동] & [가공동] */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Right: Language Selector & 2 Badges: [압출동] & [가공동] */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap">
+              {/* 🌐 11개국어 언어 선택 뱃지 */}
+              <LanguageSelectBadge />
+
               <button
                 type="button"
                 onClick={() => setIsExtrusionModalOpen(true)}

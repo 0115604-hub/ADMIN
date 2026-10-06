@@ -50,6 +50,8 @@ import {
   EPDM_COATINGS,
   getMaterialBOMForItem
 } from "../../data/extrusionRawMaterialsData";
+import { LanguageSelectBadge } from "../common/LanguageSelectBadge";
+import { getWorkLogText } from "../../services/workLogI18nService";
 
 // Client-side image compression for fast sync & light Firestore storage
 const compressImage = (file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) => {
@@ -1177,7 +1179,7 @@ export const ExtrusionWorkReportModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-fadeIn">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-auto max-h-[94vh]">
         {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-teal-800 via-teal-900 to-slate-900 text-white flex items-center justify-between shrink-0 shadow-md">
+        <div className="px-5 sm:px-6 py-3.5 sm:py-4 bg-gradient-to-r from-teal-800 via-teal-900 to-slate-900 text-white flex items-center justify-between shrink-0 shadow-md">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/10 rounded-xl backdrop-blur-xs">
               <Zap className="w-5 h-5 text-teal-300" />
@@ -1185,7 +1187,7 @@ export const ExtrusionWorkReportModal = ({
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h3 className="text-base sm:text-lg font-black tracking-tight">
-                  {isEditing ? "압출 작업일보 및 체크시트 수정" : "압출 TPM 점검 및 작업일보 작성"}
+                  {isEditing ? getWorkLogText("work_log_title") + " (수정)" : getWorkLogText("extrusion_shop") + " " + getWorkLogText("work_log_title")}
                 </h3>
                 {isTpmCompleted && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 shadow-xs shrink-0 animate-fadeIn">
@@ -1196,18 +1198,22 @@ export const ExtrusionWorkReportModal = ({
               </div>
               <p className="text-[11px] text-teal-200/80 font-medium">
                 {currentStep === "tpm"
-                  ? "[1단계] 설비 TPM 자주보전 10대 항목 일일 점검"
-                  : "[2단계] 다품종 생산실적 & 실시간 작업체크시트"}
+                  ? `[1단계] ${getWorkLogText("step_1_tpm")}`
+                  : `[2단계] ${getWorkLogText("step_2_production")}`}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 🌐 언어 선택 드롭다운 뱃지 (11개국어) */}
+            <LanguageSelectBadge showLabel={false} />
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Step Progression Tabs Header */}

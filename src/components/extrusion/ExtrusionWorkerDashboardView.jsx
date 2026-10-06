@@ -31,6 +31,8 @@ import {
   subscribeUrgentIssues,
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
+import { LanguageSelectBadge } from "../common/LanguageSelectBadge";
+import { getWorkLogText } from "../../services/workLogI18nService";
 
 export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   const { currentProfile } = useAuth();
@@ -128,7 +130,7 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16 max-w-[1600px] mx-auto min-w-0">
       {/* ========================================================================= */}
-      {/* 🌟 0. Top Extrusion Worker Welcome & Quick Link Banner */}
+      {/* 🌟 0. Top Extrusion Worker Welcome & Quick Link Banner & Language Selector */}
       {/* ========================================================================= */}
       <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-teal-700 via-slate-900 to-teal-900 text-white shadow-md border border-teal-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -138,33 +140,38 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-black text-sm sm:text-base leading-tight">
-                🏭 삼랑진공장 압출동 작업자 모드
+                🏭 삼랑진공장 {getWorkLogText("extrusion_shop")} ({getWorkLogText("work_log_title")})
               </h2>
               <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-teal-500 text-slate-950">
                 {currentProfile?.name} {currentProfile?.title || "작업자"}
               </span>
             </div>
             <p className="text-xs text-teal-200/90 font-medium mt-0.5">
-              오늘도 안전을 최우선으로 준수하며, 아래 품질이슈 및 지침을 숙지 후 작업해 주시기 바랍니다.
+              {getWorkLogText("safety_first")}
             </p>
           </div>
         </div>
 
-        {onNavigateTab && (
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                localStorage.setItem("factory_extrusion_active_subtab", "production");
-              } catch (e) {}
-              onNavigateTab("extrusion_downtime");
-            }}
-            className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer text-center flex items-center justify-center gap-1.5"
-          >
-            <span>작업일보 관리대장 이동</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* 🌐 언어 선택 드롭다운 뱃지 (11개국어) */}
+          <LanguageSelectBadge />
+
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.setItem("factory_extrusion_active_subtab", "production");
+                } catch (e) {}
+                onNavigateTab("extrusion_downtime");
+              }}
+              className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs sm:text-sm active:scale-95 transition-all shadow-md shrink-0 cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              <span>{getWorkLogText("work_log_title")} 바로가기</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ========================================================================= */}
