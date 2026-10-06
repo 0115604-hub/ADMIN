@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import {
   subscribeUrgentIssues,
+  getLocalUrgentIssues,
   addIssueReply,
   updateUrgentIssueActionResult
 } from "../../services/urgentIssueService";
@@ -95,7 +96,7 @@ export const UnifiedAbnormalityControlPanel = ({
   currentProfile = null
 }) => {
   // Real-time state streams
-  const [urgentIssues, setUrgentIssues] = useState([]);
+  const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [extrusionQualityAlerts, setExtrusionQualityAlerts] = useState(() => getLocalExtrusionQualityIssues());
   const [isLoading, setIsLoading] = useState(true);
@@ -156,6 +157,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
   const handleManualRefresh = () => {
     setLastRefreshedAt(new Date());
+    setUrgentIssues(getLocalUrgentIssues());
     setExtrusionQualityAlerts(getLocalExtrusionQualityIssues());
   };
 
@@ -177,15 +179,29 @@ export const UnifiedAbnormalityControlPanel = ({
     // 1. [Method] 관리자 품질경보만 취합 (오픈이슈, 회의일정, 사내공지 제외!)
     // -----------------------------------------------------------------------
     (urgentIssues || []).forEach((issue) => {
-      if (issue.isDeleted) return;
+      if (!issue) return;
+      if (issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
 
-      const catStr = String(issue.category || "").trim();
+      const rawCat = String(issue.category || "").trim();
+      const catLower = rawCat.toLowerCase();
+      const titleLower = String(issue.title || "").toLowerCase();
+      const contentLower = String(issue.content || "").toLowerCase();
+
       const isQualityAlert =
-        catStr === "품질경보" ||
-        catStr === "quality_alert" ||
-        catStr === "품질이슈" ||
-        catStr.includes("품질경보") ||
-        catStr.includes("품질");
+        rawCat === "품질경보" ||
+        rawCat === "품질 경보" ||
+        rawCat === "품질이슈" ||
+        rawCat === "품질 이슈" ||
+        catLower === "quality_alert" ||
+        catLower === "quality_issue" ||
+        catLower === "quality" ||
+        rawCat.includes("품질경보") ||
+        rawCat.includes("품질") ||
+        issue.type === "QUALITY_ALERT" ||
+        issue.type === "품질경보" ||
+        titleLower.includes("품질경보") ||
+        contentLower.includes("품질경보");
+
       if (!isQualityAlert) return; // 품질경보만 엄선 수집
 
       const rawDate =
@@ -1022,11 +1038,10 @@ export const UnifiedAbnormalityControlPanel = ({
               <thead>
                 <tr className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]">
                   <th className="py-2.5 px-2 text-center w-7">No</th>
-                  <th className="py-2.5 px-1.5 text-center w-14">4M</th>
-                  <th className="py-2.5 px-2 text-center w-18">구분</th>
+                  <th className="py-2.5 px-2 text-center w-20">구분</th>
                   <th className="py-2.5 px-2 text-center w-20">일시</th>
-                  <th className="py-2.5 px-2 text-center w-18">공장/설비</th>
-                  <th className="py-2.5 px-3 min-w-[320px] w-full">변동 및 발생내용 (클릭 시 상세 팝업)</th>
+                  <th className="py-2.5 px-2 text-center w-12">공장</th>
+                  <th className="py-2.5 px-3 min-w-[340px] w-full">변동 및 발생내용 (클릭 시 상세 팝업)</th>
                   <th className="py-2.5 px-2 text-center w-14">손실</th>
                   <th className="py-2.5 px-2 text-center w-16">조치</th>
                   <th className="py-2.5 px-1.5 text-center w-12">사진</th>
@@ -1035,7 +1050,7 @@ export const UnifiedAbnormalityControlPanel = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-slate-400">
+                    <td colSpan={8} className="py-10 text-center text-slate-400">
                       <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
                       <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
                         해당 조건의 변동점 내역이 없습니다.
@@ -1047,7 +1062,7 @@ export const UnifiedAbnormalityControlPanel = ({
                     const hasPhotos = (item.images && item.images.length > 0) || (item.actionImages && item.actionImages.length > 0);
                     const photoCount = (item.images?.length || 0) + (item.actionImages?.length || 0);
 
-                    // 4M Badge Color
+                    // Origin Badge Color
                     const badgeClass =
                       item.origin === "설비수리"
                         ? "bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border-indigo-300"
@@ -1059,20 +1074,8 @@ export const UnifiedAbnormalityControlPanel = ({
                         ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300"
                         : "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300";
 
-                    // Ultra-short plant & equipment formatting (e.g. 삼/1호, 삼/3호, 삼/TPE, 삼/PVC, 삼/300T, 한/가공)
+                    // Plant formatting (초간결: 삼 / 한)
                     const pShort = item.plant?.includes("한림") ? "한" : "삼";
-                    const cleanEq = (item.line || "-")
-                      .replace(/^(압출기|사출기|기타|컴프레셔|코팅설비)\((.*)\)$/, "$2")
-                      .replace(/PCM\s*1호기?/i, "1호")
-                      .replace(/PCM\s*3호기?/i, "3호")
-                      .replace(/TPE\s*1호기?/i, "TPE")
-                      .replace(/(\d+)TON/i, "$1T")
-                      .replace(/(\d+)톤\s*인젝션/i, "$1T")
-                      .replace(/전기\s*집진기/i, "집진기")
-                      .replace(/가공동\s*관리/i, "가공")
-                      .replace(/설비보전팀?/i, "보전")
-                      .replace(/품질\/제조/i, "품질")
-                      .trim();
 
                     return (
                       <tr
@@ -1086,16 +1089,9 @@ export const UnifiedAbnormalityControlPanel = ({
                           {idx + 1}
                         </td>
 
-                        {/* 4M 구분 */}
-                        <td className="py-2.5 px-1.5 text-center whitespace-nowrap">
-                          <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                            [{item.fourM}]
-                          </span>
-                        </td>
-
                         {/* 구분 */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                          <span className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold border ${badgeClass}`}>
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>
                             {item.origin}
                           </span>
                         </td>
@@ -1105,10 +1101,10 @@ export const UnifiedAbnormalityControlPanel = ({
                           {item.date}
                         </td>
 
-                        {/* 공장/설비 (초간결: 삼/1호, 삼/TPE 등) */}
+                        {/* 공장 (삼 / 한) */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                          <span className="inline-block px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-black text-[10.5px]">
-                            {pShort}/{cleanEq}
+                          <span className="inline-block px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-black text-[11px]">
+                            {pShort}
                           </span>
                         </td>
 
@@ -1193,10 +1189,18 @@ export const UnifiedAbnormalityControlPanel = ({
             >
               <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-black bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200 border border-indigo-300">
-                    [{item.fourM}] {item.origin}
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                    item.origin === "설비수리"
+                      ? "bg-indigo-100 text-indigo-900 border-indigo-300"
+                      : item.origin === "비가동"
+                      ? "bg-orange-100 text-orange-900 border-orange-300"
+                      : item.origin === "TPM 이상신고"
+                      ? "bg-amber-100 text-amber-900 border-amber-300"
+                      : "bg-rose-100 text-rose-900 border-rose-300"
+                  }`}>
+                    {item.origin}
                   </span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{item.plant} • {item.line}</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{item.plant}</span>
                   <span className="text-slate-500">작성자: {item.writer}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
