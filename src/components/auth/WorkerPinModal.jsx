@@ -173,57 +173,82 @@ export const WorkerPinModal = ({
 
   // =========================================================================
   // 🌟 Role Identification
+  // 1. 압출동 작업자: EXTRUSION_WORKERS (11명) / building === "압출동" / id starts with "ext_"
+  // 2. 관리자: 첫화면의 모든 명찰(본사 대표이사/전무, 삼랑진공장, 한림공장)은 관리자임!
   // =========================================================================
-  const isAdminUser = useMemo(() => {
+  const isExtrusionWorker = useMemo(() => {
     if (!selectedUser) return false;
-    return (
-      selectedUser.role === "ADMIN" ||
-      selectedUser.id === "admin" ||
-      selectedUser.name === "권태형" ||
-      selectedUser.name === "최미영" ||
-      selectedUser.name === "이명재" ||
-      selectedUser.name === "김동욱" ||
-      selectedUser.assignedProcess === "총괄관리" ||
-      ADMIN_USERS.some((a) => a.id === selectedUser.id || a.name === selectedUser.name)
+    return Boolean(
+      EXTRUSION_WORKERS.some((w) => w.id === selectedUser.id || w.name === selectedUser.name) ||
+      selectedUser.building === "압출동" ||
+      selectedUser.id?.startsWith("ext_")
     );
   }, [selectedUser]);
 
-  const isExtrusionWorker = useMemo(() => {
-    if (!selectedUser || isAdminUser) return false;
-    return Boolean(
-      isExtrusionWorkerProfile(selectedUser) ||
-      selectedUser.building === "압출동" ||
-      selectedUser.assignedProcess?.includes("압출") ||
-      selectedUser.id?.startsWith("ext_") ||
-      selectedUser.name === "설유철" ||
-      selectedUser.name === "공영국" ||
-      selectedUser.name === "심임대" ||
-      selectedUser.name === "이상은"
+  const isAdminUser = useMemo(() => {
+    if (!selectedUser) return false;
+    return !isExtrusionWorker;
+  }, [selectedUser, isExtrusionWorker]);
+
+  const isSamrangjinManager = useMemo(() => {
+    if (!selectedUser) return false;
+    return selectedUser.plant === "삼랑진공장" || String(selectedUser.id || "").startsWith("sam_");
+  }, [selectedUser]);
+
+  const isHallimManager = useMemo(() => {
+    if (!selectedUser) return false;
+    return selectedUser.plant === "한림공장" || String(selectedUser.id || "").startsWith("hal_");
+  }, [selectedUser]);
+
+  const isHeadquarterAdmin = useMemo(() => {
+    if (!selectedUser) return false;
+    return (
+      selectedUser.plant === "본사" ||
+      selectedUser.role === "ADMIN" ||
+      selectedUser.name === "권태형" ||
+      selectedUser.name === "최미영" ||
+      selectedUser.id === "admin" ||
+      selectedUser.id === "admin_kwon" ||
+      selectedUser.id === "admin_choi"
     );
-  }, [selectedUser, isAdminUser]);
+  }, [selectedUser]);
+
+  // 삼랑진 관리자 = 오륙, 유성 / 한림 관리자 = 조영, 한울, 부림텍 / 본사 = 전체
+  const visibleAttendanceCompanies = useMemo(() => {
+    if (isSamrangjinManager) return ["오륙", "유성"];
+    if (isHallimManager) return ["조영", "한울", "부림텍"];
+    return ["오륙", "유성", "조영", "한울", "부림텍"];
+  }, [isSamrangjinManager, isHallimManager]);
 
   const isProcessingWorker = useMemo(() => {
-    return !isAdminUser && !isExtrusionWorker;
-  }, [isAdminUser, isExtrusionWorker]);
+    return false;
+  }, []);
 
   const todayKst = getKSTDateString();
 
   // =========================================================================
-  // 🌟 1. 4M 변동점 데이터 실시간 통합 파싱 (설비수리 + 비가동 + TPM + 불량 + 품질경보)
+  // 🌟 1. 4M 변동점 데이터 실시간 통합 파싱 (설비수리 + 비가동 + TPM + 불량 + 품질경보 3건 전체)
   // =========================================================================
   const allUnified4MRecords = useMemo(() => {
     const unified = [];
     const sourceIssues = Array.isArray(urgentIssues) && urgentIssues.length > 0 ? urgentIssues : localUrgentIssues;
 
-    // 1-1. 품질경보 (Method)
+    // 1-1. 품질경보 (Method) - 전체 품질경보 3건 누락 없이 수집
     (sourceIssues || []).forEach((issue) => {
-      if (!issue || issue.isDeleted) return;
+      if (!issue || issue.isDeleted === true || issue.isDeleted === "true" || issue.deleted === true) return;
       const rawCat = String(issue.category || "").trim();
       const isQualityAlert =
         rawCat === "품질경보" ||
         rawCat === "품질 경보" ||
         rawCat === "품질이슈" ||
-        rawCat.includes("품질");
+        rawCat === "품질 이슈" ||
+        rawCat.includes("품질") ||
+        rawCat.toLowerCase().includes("quality") ||
+        String(issue.title || "").includes("품질경보") ||
+        String(issue.content || "").includes("품질경보") ||
+        issue.type === "QUALITY_ALERT" ||
+        issue.type === "품질경보";
+
       if (!isQualityAlert) return;
 
       const lineStr = String(issue.line || issue.process || "").trim();
@@ -428,14 +453,14 @@ export const WorkerPinModal = ({
 
   if (!selectedUser) return null;
 
-  const expectedPin = selectedUser?.pin || (isAdminUser ? "0090" : "11");
+  const expectedPin = selectedUser?.pin || (isHeadquarterAdmin ? "0090" : "11");
 
   const checkPinValidity = (val) => {
     const trimmed = String(val || "").trim();
-    if (isAdminUser) {
+    if (isHeadquarterAdmin) {
       return trimmed === "0090" || trimmed === selectedUser.pin;
     }
-    return trimmed === "11" || trimmed === expectedPin || trimmed === "1234";
+    return trimmed === "11" || trimmed === selectedUser.pin || trimmed === "0090" || trimmed === "1234";
   };
 
   const handlePinChange = (e) => {
@@ -522,13 +547,15 @@ export const WorkerPinModal = ({
           {/* Top Decorative Accent Line */}
           <div
             className={`h-1.5 w-full shrink-0 ${
-              isAdminUser
+              isHeadquarterAdmin
                 ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500"
-                : isExtrusionWorker
-                ? "bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600"
-                : selectedUser.plant === "한림공장"
+                : isSamrangjinManager
+                ? "bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600"
+                : isHallimManager
                 ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"
-                : "bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600"
+                : isExtrusionWorker
+                ? "bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600"
+                : "bg-gradient-to-r from-slate-500 via-blue-500 to-slate-600"
             }`}
           />
 
@@ -537,13 +564,15 @@ export const WorkerPinModal = ({
             <div className="flex items-center gap-3 min-w-0 flex-wrap">
               <div
                 className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl text-white flex items-center justify-center font-black text-lg md:text-xl shadow-md shrink-0 ${
-                  isAdminUser
+                  isHeadquarterAdmin
                     ? "bg-blue-600 ring-2 ring-blue-400/40"
+                    : isSamrangjinManager
+                    ? "bg-amber-600 ring-2 ring-amber-400/40"
+                    : isHallimManager
+                    ? "bg-emerald-600 ring-2 ring-emerald-400/40"
                     : isExtrusionWorker
                     ? "bg-indigo-600 ring-2 ring-indigo-400/40"
-                    : selectedUser.plant === "한림공장"
-                    ? "bg-emerald-600 ring-2 ring-emerald-400/40"
-                    : "bg-amber-600 ring-2 ring-amber-400/40"
+                    : "bg-slate-700 ring-2 ring-slate-400/40"
                 }`}
               >
                 {selectedUser.avatar || selectedUser.name?.charAt(0)}
@@ -551,20 +580,30 @@ export const WorkerPinModal = ({
 
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <h3 className="font-black text-base sm:text-lg md:text-xl text-slate-900 dark:text-white tracking-tight truncate">
-                  {selectedUser.name} {selectedUser.title || (isAdminUser ? "대표이사" : "작업자")}
+                  {selectedUser.name} {selectedUser.title || (isHeadquarterAdmin ? "대표이사" : "관리자")}
                 </h3>
                 <span
                   className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
-                    isAdminUser
+                    isHeadquarterAdmin
                       ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      : isSamrangjinManager
+                      ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                      : isHallimManager
+                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                       : isExtrusionWorker
                       ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                      : selectedUser.plant === "한림공장"
-                      ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                      : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-300 border border-slate-200"
                   }`}
                 >
-                  {isAdminUser ? "경영총괄/관리자" : isExtrusionWorker ? "압출동" : selectedUser.plant || "가공동"}
+                  {isHeadquarterAdmin
+                    ? "경영총괄/대표이사"
+                    : isSamrangjinManager
+                    ? "삼랑진공장 관리자"
+                    : isHallimManager
+                    ? "한림공장 관리자"
+                    : isExtrusionWorker
+                    ? "압출동 작업자"
+                    : "관리자"}
                 </span>
 
                 {/* PIN Input Badge */}
@@ -1097,7 +1136,7 @@ export const WorkerPinModal = ({
                         )}
                       </div>
 
-                      {/* 2. 실시간 근태정보 */}
+                      {/* 2. 실시간 근태정보 (공장별 필터: 삼랑진=오륙·유성 / 한림=조영·한울·부림텍 / 본사=전사) */}
                       <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1106,10 +1145,14 @@ export const WorkerPinModal = ({
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                👥 전사 실시간 근태현황정보
+                                👥 실시간 근태현황정보
                               </span>
                               <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)
+                                {isSamrangjinManager
+                                  ? "오륙 • 유성 (삼랑진공장)"
+                                  : isHallimManager
+                                  ? "조영 • 한울 • 부림텍 (한림공장)"
+                                  : "오륙·유성 (삼랑진) / 조영·한울·부림텍 (한림)"}
                               </span>
                             </div>
                           </div>
@@ -1119,19 +1162,23 @@ export const WorkerPinModal = ({
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-5 gap-1 text-[10px]">
-                          {["오륙", "유성", "조영", "한울", "부림텍"].map((comp) => {
+                        <div className={`grid gap-1.5 text-[10px] ${
+                          visibleAttendanceCompanies.length === 2 ? "grid-cols-2" :
+                          visibleAttendanceCompanies.length === 3 ? "grid-cols-3" :
+                          "grid-cols-5"
+                        }`}>
+                          {visibleAttendanceCompanies.map((comp) => {
                             const b = dailyOvertimeSummary?.companyBreakdown?.[comp] || { attended: 0, total: 0, otWorkers: 0 };
                             const isUn = unwrittenCompanies.includes(comp);
                             return (
-                              <div key={comp} className="p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-0.5">
-                                <span className="font-black text-slate-800 dark:text-slate-200 block truncate">{comp}</span>
-                                <span className="font-bold text-slate-900 dark:text-white block">{b.attended}/{b.total}명</span>
-                                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-bold block">잔업 {b.otWorkers}명</span>
+                              <div key={comp} className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center space-y-0.5 shadow-2xs">
+                                <span className="font-black text-slate-800 dark:text-slate-200 block truncate text-[11px]">{comp}</span>
+                                <span className="font-bold text-slate-900 dark:text-white block text-xs">{b.attended}/{b.total}명</span>
+                                <span className="text-[9.5px] text-amber-600 dark:text-amber-400 font-bold block">잔업 {b.otWorkers}명</span>
                                 {isUn ? (
-                                  <span className="text-[8.5px] text-rose-500 font-bold block">{isAfter9AM ? "미작성" : "작성전"}</span>
+                                  <span className="text-[9px] text-rose-500 font-bold block">{isAfter9AM ? "미작성" : "작성전"}</span>
                                 ) : (
-                                  <span className="text-[8.5px] text-emerald-500 font-bold block">완료</span>
+                                  <span className="text-[9px] text-emerald-500 font-bold block">완료</span>
                                 )}
                               </div>
                             );
@@ -1139,7 +1186,7 @@ export const WorkerPinModal = ({
                         </div>
                       </div>
 
-                      {/* 3. 전사 변동점 발생상황 */}
+                      {/* 3. 변동점 발생상황 (작업자가 보는 내용과 동일하게 표시) */}
                       <div className="p-3.5 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1148,17 +1195,17 @@ export const WorkerPinModal = ({
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 4M 변동점 발생상황 (통합 관리대장)
+                                📋 4M 변동점 발생상황
                               </span>
                               <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                삼랑진·한림 공장 설비수리·비가동·불량·품질경보
+                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
                               </span>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-1 text-[10px] font-bold">
                             <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black">
-                              ⭐ 대장 {stats4M.officialCount}건
+                              ⭐ 대장 {stats4M.officialCount}
                             </span>
                             <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
                               설비 {stats4M.machineCount}
@@ -1173,19 +1220,19 @@ export const WorkerPinModal = ({
                         </div>
 
                         {allUnified4MRecords.length > 0 ? (
-                          <div className="space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
-                            {allUnified4MRecords.slice(0, 4).map((item) => (
+                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
+                            {allUnified4MRecords.map((item) => (
                               <div
                                 key={item.id}
-                                className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs space-y-0.5 shadow-2xs"
+                                className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs space-y-1 shadow-2xs"
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
-                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800" :
-                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800" :
-                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800" :
-                                      "bg-rose-100 text-rose-800"
+                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
+                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
+                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
+                                      "bg-rose-100 text-rose-800 border border-rose-300"
                                     }`}>
                                       {item.origin}
                                     </span>
@@ -1195,17 +1242,22 @@ export const WorkerPinModal = ({
                                   </div>
                                   <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
                                 </div>
-                                <h6 className="font-black text-slate-900 dark:text-white text-xs truncate">{item.title}</h6>
+                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.content && item.content !== item.title && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                  </p>
+                                )}
                                 {item.actionResult && (
-                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold truncate">
-                                    ↳ 🟢 [조치] {item.actionResult}
+                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                    ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
                                   </div>
                                 )}
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="py-2 text-center text-xs text-slate-400 font-bold">
+                          <div className="py-3 text-center text-xs text-slate-400 font-bold">
                             등록된 변동점이 없습니다.
                           </div>
                         )}
