@@ -34,7 +34,9 @@ import {
   ZoomIn,
   UploadCloud,
   Edit3,
-  RotateCcw
+  RotateCcw,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { useAuth, PLANTS } from "../context/AuthContext";
 import {
@@ -55,6 +57,8 @@ import {
   isApprovalDocApproved,
   isApprovalDocRejected,
   isApprovalDocMyDraft,
+  isOvertimeApprovalDoc,
+  isGeneralApprovalDoc,
   getApprovalDocSortTimestamp,
   parseSafeTimestamp
 } from "../services/approvalService";
@@ -144,6 +148,7 @@ export const formatConciseApprovalTitle = (rawTitle) => {
 export const ElectronicApprovalView = () => {
   const { currentProfile, isAdmin } = useAuth();
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
+  const [docCategoryFilter, setDocCategoryFilter] = useState("ALL"); // ALL, OVERTIME, GENERAL
   const [selectedTab, setSelectedTab] = useState("ALL"); // ALL, PENDING, HOLD, MY_DRAFTS, APPROVED, REJECTED
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlant, setSelectedPlant] = useState("ALL");
@@ -345,9 +350,34 @@ export const ElectronicApprovalView = () => {
     }));
   };
 
+  // 🌟 서류 구분별 통계 집계 (특근보고서 vs 일반결재서류)
+  const categoryCounts = useMemo(() => {
+    const total = approvalDocs.length;
+    const overtimeList = approvalDocs.filter(isOvertimeApprovalDoc);
+    const generalList = approvalDocs.filter(isGeneralApprovalDoc);
+    const overtime = overtimeList.length;
+    const general = generalList.length;
+    const overtimePending = overtimeList.filter(isApprovalDocPending).length;
+    const generalPending = generalList.filter(isApprovalDocPending).length;
+    return {
+      total,
+      overtime,
+      general,
+      overtimePending,
+      generalPending
+    };
+  }, [approvalDocs]);
+
+  // Scoped documents according to selected category
+  const categoryScopedDocs = useMemo(() => {
+    if (docCategoryFilter === "OVERTIME") return approvalDocs.filter(isOvertimeApprovalDoc);
+    if (docCategoryFilter === "GENERAL") return approvalDocs.filter(isGeneralApprovalDoc);
+    return approvalDocs;
+  }, [approvalDocs, docCategoryFilter]);
+
   // Filtered Documents
   const filteredDocs = useMemo(() => {
-    const list = approvalDocs.filter((doc) => {
+    const list = categoryScopedDocs.filter((doc) => {
       if (!doc) return false;
 
       // 1. Plant filter
@@ -385,18 +415,18 @@ export const ElectronicApprovalView = () => {
     });
 
     return list;
-  }, [approvalDocs, selectedTab, selectedPlant, searchQuery, currentProfile, isAdmin]);
+  }, [categoryScopedDocs, selectedTab, selectedPlant, searchQuery, currentProfile, isAdmin]);
 
-  // Statistics (100% unified with filteredDocs)
+  // Statistics (100% unified with current category scope)
   const stats = useMemo(() => {
-    const total = approvalDocs.length;
-    const pending = approvalDocs.filter(isApprovalDocPending).length;
-    const hold = approvalDocs.filter(isApprovalDocHold).length;
-    const approved = approvalDocs.filter(isApprovalDocApproved).length;
-    const rejected = approvalDocs.filter(isApprovalDocRejected).length;
-    const myDrafts = approvalDocs.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
+    const total = categoryScopedDocs.length;
+    const pending = categoryScopedDocs.filter(isApprovalDocPending).length;
+    const hold = categoryScopedDocs.filter(isApprovalDocHold).length;
+    const approved = categoryScopedDocs.filter(isApprovalDocApproved).length;
+    const rejected = categoryScopedDocs.filter(isApprovalDocRejected).length;
+    const myDrafts = categoryScopedDocs.filter((d) => isApprovalDocMyDraft(d, currentProfile, isAdmin)).length;
     return { total, pending, hold, approved, rejected, myDrafts };
-  }, [approvalDocs, currentProfile, isAdmin]);
+  }, [categoryScopedDocs, currentProfile, isAdmin]);
 
   // Permission evaluation for currently opened document
   const currentPermission = useMemo(() => {
@@ -883,12 +913,124 @@ export const ElectronicApprovalView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. Filter Navigation (전체공장/검색 뱃지 제거 및 탭 바 컴팩트화) */}
+      {/* 2. Document Category Switcher: [전체 서류] vs [특근보고서] vs [일반결재서류] */}
+      {/* ========================================================================= */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        {/* Category Switcher Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800/80 overflow-x-auto">
+          {/* 1. 전체 서류 */}
+          <button
+            type="button"
+            onClick={() => setDocCategoryFilter("ALL")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              docCategoryFilter === "ALL"
+                ? "bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-sm scale-102"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>전체 결재서류</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
+              docCategoryFilter === "ALL"
+                ? "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900"
+                : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+            }`}>
+              {categoryCounts.total}
+            </span>
+          </button>
+
+          {/* 2. 특근보고서 */}
+          <button
+            type="button"
+            onClick={() => setDocCategoryFilter("OVERTIME")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              docCategoryFilter === "OVERTIME"
+                ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/20 scale-102 ring-2 ring-purple-400/40"
+                : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>🌙 특근보고서 (주말/공휴일)</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
+              docCategoryFilter === "OVERTIME"
+                ? "bg-purple-900/80 text-purple-200 border border-purple-400/50"
+                : "bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300"
+            }`}>
+              {categoryCounts.overtime}
+            </span>
+            {categoryCounts.overtimePending > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                미결 {categoryCounts.overtimePending}
+              </span>
+            )}
+          </button>
+
+          {/* 3. 일반결재서류 */}
+          <button
+            type="button"
+            onClick={() => setDocCategoryFilter("GENERAL")}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              docCategoryFilter === "GENERAL"
+                ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-md shadow-teal-500/20 scale-102 ring-2 ring-teal-400/40"
+                : "text-slate-600 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-300"
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>📄 일반결재서류 (품의·기안·휴가)</span>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10.5px] font-mono font-black ${
+              docCategoryFilter === "GENERAL"
+                ? "bg-teal-900/80 text-teal-200 border border-teal-400/50"
+                : "bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300"
+            }`}>
+              {categoryCounts.general}
+            </span>
+            {categoryCounts.generalPending > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-pulse">
+                미결 {categoryCounts.generalPending}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Right Plant & Search Filters */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+            {["ALL", "삼랑진공장", "한림공장"].map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setSelectedPlant(p)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedPlant === p
+                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs font-black"
+                    : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                {p === "ALL" ? "전체공장" : p === "삼랑진공장" ? "삼랑진" : "한림"}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="문서명/기안자 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-3 py-1 text-xs rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-cyan-400 w-36 sm:w-44 font-bold"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 3. Status Filter Tabs Bar (미결/대기, 보류, 승인완료, 내 기안함, 반려) */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-xl p-2 sm:p-2.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center overflow-x-auto">
         <div className="flex items-center gap-1.5 overflow-x-auto w-full">
           {[
-            { id: "ALL", label: `전체 목록 (${stats.total})` },
+            { id: "ALL", label: `전체 (${stats.total})` },
             { id: "PENDING", label: `🔴 미결/대기 (${stats.pending})`, highlight: stats.pending > 0 },
             { id: "HOLD", label: `⏸️ 보류 (${stats.hold})`, holdLight: stats.hold > 0 },
             { id: "APPROVED", label: `✓ 승인완료 (${stats.approved})` },
@@ -915,7 +1057,7 @@ export const ElectronicApprovalView = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 3. 1-Line Row Approval Table List */}
+      {/* 4. 1-Line Row Approval Table List */}
       {/* ========================================================================= */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         {filteredDocs.length === 0 ? (
@@ -962,9 +1104,26 @@ export const ElectronicApprovalView = () => {
                         </span>
                       </td>
 
-                      {/* 2. 문서제목 (기안자 텍스트 크기 text-xs와 동일하게 일치) */}
+                      {/* 2. 문서제목 (문서 종류 뱃지 + 간결 제목) */}
                       <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {isOvertimeApprovalDoc(doc) ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-800 shrink-0">
+                              특근보고서
+                            </span>
+                          ) : doc.type === "LEAVE" || doc.title?.includes("휴가") || doc.title?.includes("휴무") ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-800 shrink-0">
+                              휴가/연차
+                            </span>
+                          ) : doc.type === "EXPENSE" || doc.title?.includes("품의") || doc.title?.includes("구매") || doc.title?.includes("교체") ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shrink-0">
+                              품의/지출
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-teal-100 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-300 dark:border-teal-800 shrink-0">
+                              일반기안
+                            </span>
+                          )}
                           <span className="hover:underline text-slate-900 dark:text-white text-xs font-bold leading-tight">
                             {formatConciseApprovalTitle(doc.title)}
                           </span>

@@ -458,6 +458,21 @@ export function isApprovalDocMyDraft(doc, currentProfile, isAdmin) {
   );
 }
 
+// ⭐ 특근보고서 여부 판정 (주말/공휴일 공장 취합 및 특근 신청 서류)
+export function isOvertimeApprovalDoc(doc) {
+  if (!doc) return false;
+  if (doc.id && doc.id.startsWith("appr_ot_")) return true;
+  if (doc.type === "OVERTIME" || doc.docType === "OVERTIME") return true;
+  if (doc.category === "특근보고서" || doc.typeName?.includes("특근")) return true;
+  if (doc.title && (doc.title.includes("특근") || doc.title.includes("특근보고서"))) return true;
+  return false;
+}
+
+// ⭐ 일반 결재서류 여부 판정 (품의서, 기안서, 연차/휴가 신청서 등)
+export function isGeneralApprovalDoc(doc) {
+  return !isOvertimeApprovalDoc(doc);
+}
+
 // Initial authoritative approval documents (Clean empty array by default)
 export const INITIAL_APPROVAL_DOCS = [];
 
