@@ -35,9 +35,17 @@ import {
   Table as TableIcon,
   LayoutList
 } from "lucide-react";
-import { subscribeUrgentIssues, addIssueReply } from "../../services/urgentIssueService";
+import {
+  subscribeUrgentIssues,
+  addIssueReply,
+  updateUrgentIssueActionResult
+} from "../../services/urgentIssueService";
 import { subscribeToExtrusionReports } from "../../services/extrusionProductionService";
-import { getLocalExtrusionQualityIssues } from "../../services/extrusionQualityIssueService";
+import {
+  subscribeExtrusionQualityIssues,
+  getLocalExtrusionQualityIssues,
+  saveExtrusionQualityIssue
+} from "../../services/extrusionQualityIssueService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import * as XLSX from "xlsx";
 
@@ -120,7 +128,7 @@ export const UnifiedAbnormalityControlPanel = ({
   useEffect(() => {
     setIsLoading(true);
 
-    // 1. Urgent Issues (품질경보만 필터링 수신)
+    // 1. Urgent Issues (품질경보 실시간 수신)
     const unsubIssues = subscribeUrgentIssues((issues) => {
       setUrgentIssues(issues || []);
       setLastRefreshedAt(new Date());
@@ -133,9 +141,16 @@ export const UnifiedAbnormalityControlPanel = ({
       setLastRefreshedAt(new Date());
     });
 
+    // 3. Extrusion Quality Issues (압출 품질경보 실시간 수신)
+    const unsubExtQuality = subscribeExtrusionQualityIssues((alerts) => {
+      setExtrusionQualityAlerts(alerts || []);
+      setLastRefreshedAt(new Date());
+    });
+
     return () => {
       if (unsubIssues) unsubIssues();
       if (unsubExt) unsubExt();
+      if (unsubExtQuality) unsubExtQuality();
     };
   }, []);
 
@@ -163,10 +178,30 @@ export const UnifiedAbnormalityControlPanel = ({
     // -----------------------------------------------------------------------
     (urgentIssues || []).forEach((issue) => {
       if (issue.isDeleted) return;
-      if (issue.category !== "품질경보") return; // 품질경보만 수집
 
-      const dateStr = issue.date || (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayStr);
-      const isResolved = Boolean(issue.isResolved || issue.actionResult);
+      const catStr = String(issue.category || "").trim();
+      const isQualityAlert =
+        catStr === "품질경보" ||
+        catStr === "quality_alert" ||
+        catStr === "품질이슈" ||
+        catStr.includes("품질경보") ||
+        catStr.includes("품질");
+      if (!isQualityAlert) return; // 품질경보만 엄선 수집
+
+      const rawDate =
+        issue.date ||
+        issue.expireDate ||
+        issue.startDate ||
+        issue.targetDate ||
+        (issue.createdAt ? String(issue.createdAt).slice(0, 10) : todayStr);
+      const dateStr = String(rawDate).slice(0, 10);
+
+      const isResolved = Boolean(
+        issue.isResolved || (issue.actionResult && issue.actionResult.trim())
+      );
+
+      const displayTitle = issue.title || issue.content || "(품질경보 발령)";
+      const displayContent = issue.content || issue.details || "";
 
       unified.push({
         id: `urg_${issue.id || issue._docId || Math.random()}`,
@@ -175,12 +210,12 @@ export const UnifiedAbnormalityControlPanel = ({
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-800",
         plant: issue.plant || "삼랑진공장",
-        line: issue.line || "품질/제조",
+        line: issue.line || issue.process || "품질/제조",
         writer: issue.author ? `${issue.author} ${issue.authorTitle || ""}`.trim() : "품질관리자",
-        title: issue.title || "(품질경보 발령)",
+        title: displayTitle,
         date: dateStr,
         time: issue.time || (issue.createdAt && issue.createdAt.includes(":") ? issue.createdAt.slice(11, 16) : ""),
-        content: issue.content || "",
+        content: displayContent,
         actionResult: issue.actionResult || "",
         actionAuthor: issue.actionAuthor || "",
         actionAt: issue.actionAt || "",
@@ -386,26 +421,41 @@ export const UnifiedAbnormalityControlPanel = ({
     // -----------------------------------------------------------------------
     (extrusionQualityAlerts || []).forEach((alert) => {
       if (alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
+
+      const title = alert.title
+        ? `[품질경보] ${alert.title}`
+        : `[품질경보] ${alert.defectType || "압출 품질이상"}`;
+      const content = alert.content || alert.details || alert.description || alert.defectType || "";
+      const rawDate = alert.date || (alert.createdAt ? String(alert.createdAt).slice(0, 10) : todayStr);
+      const isResolved = alert.status === "RESOLVED" || Boolean(alert.actionResult && alert.actionResult.trim());
+
+      const causeImages = Array.isArray(alert.causeImages)
+        ? alert.causeImages
+        : Array.isArray(alert.images)
+        ? alert.images
+        : [];
+      const actionImages = Array.isArray(alert.actionImages) ? alert.actionImages : [];
+
       unified.push({
         id: `ext_q_${alert.id}`,
         fourM: "Method",
         origin: "품질경보",
         sourceType: "QUALITY_ALERT",
         badgeColor: "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-700",
-        plant: "삼랑진공장",
-        line: alert.line || "압출라인",
-        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}` : "설유철 책임",
-        title: `[품질경보] ${alert.title || alert.defectType}`,
-        date: alert.date || todayStr,
-        time: alert.time || "",
-        content: alert.content || alert.details || "",
-        actionResult: alert.actionResult || alert.actionNotes || "",
-        actionAuthor: alert.author || "",
-        actionAt: alert.updatedAt || "",
-        images: Array.isArray(alert.images) ? alert.images : [],
-        actionImages: [],
-        replies: [],
-        isResolved: alert.status === "RESOLVED",
+        plant: alert.plant || "삼랑진공장",
+        line: alert.line || alert.lineId || "압출라인",
+        writer: alert.author ? `${alert.author} ${alert.authorTitle || ""}`.trim() : "설유철 책임",
+        title: title,
+        date: String(rawDate).slice(0, 10),
+        time: alert.time || (alert.createdAt && alert.createdAt.includes(":") ? alert.createdAt.slice(11, 16) : ""),
+        content: content,
+        actionResult: alert.actionResult || alert.actionNotes || alert.actionGuide || "",
+        actionAuthor: alert.actionAuthor || alert.author || "",
+        actionAt: alert.updatedAt || alert.actionAt || "",
+        images: causeImages,
+        actionImages: actionImages,
+        replies: Array.isArray(alert.replies) ? alert.replies : [],
+        isResolved: isResolved,
         severity: "HIGH",
         downtimeMinutes: 0,
         scrapKg: 0,
@@ -569,15 +619,32 @@ export const UnifiedAbnormalityControlPanel = ({
     }).replace(/\. /g, "-").replace(/\./g, "");
 
     try {
+      const newActionImages = actionPhotos.map((p) => p.dataUrl || p);
       if (selectedItemForDetail.sourceType === "QUALITY_ALERT") {
         const rawIssue = selectedItemForDetail.raw;
         if (rawIssue && rawIssue.id) {
-          await addIssueReply(rawIssue.id, {
-            author: actionAuthorInput || "TEST 선임",
-            content: actionInputText.trim(),
-            files: actionPhotos.map((p) => p.dataUrl || p),
-            actionDate: nowStr
-          });
+          if (String(selectedItemForDetail.id).startsWith("urg_")) {
+            await updateUrgentIssueActionResult(
+              rawIssue.id,
+              actionInputText.trim(),
+              actionAuthorInput || "TEST 선임",
+              newActionImages
+            );
+            await addIssueReply(rawIssue.id, {
+              author: actionAuthorInput || "TEST 선임",
+              content: `[4M 조치등록] ${actionInputText.trim()}`,
+              files: newActionImages,
+              actionDate: nowStr
+            }).catch(() => {});
+          } else if (String(selectedItemForDetail.id).startsWith("ext_q_")) {
+            await saveExtrusionQualityIssue({
+              ...rawIssue,
+              actionResult: actionInputText.trim(),
+              actionAuthor: actionAuthorInput || "TEST 선임",
+              actionImages: [...(rawIssue.actionImages || []), ...newActionImages],
+              status: "RESOLVED"
+            });
+          }
         }
       }
 
@@ -586,7 +653,7 @@ export const UnifiedAbnormalityControlPanel = ({
         actionResult: actionInputText.trim(),
         actionAuthor: actionAuthorInput || "TEST 선임",
         actionAt: nowStr,
-        actionImages: [...(prev.actionImages || []), ...actionPhotos.map((p) => p.dataUrl || p)],
+        actionImages: [...(prev.actionImages || []), ...newActionImages],
         isResolved: true
       }));
 
@@ -1045,11 +1112,21 @@ export const UnifiedAbnormalityControlPanel = ({
                           </span>
                         </td>
 
-                        {/* 변동 및 발생내용 (화면 공간을 최대로 활용하여 풍부하게 표시) */}
-                        <td className="py-2.5 px-3 min-w-[320px] w-full">
-                          <div className="font-bold text-slate-900 dark:text-white text-xs leading-relaxed group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors break-words">
+                        {/* 변동 및 발생내용 (화면 공간을 최대로 활용하여 제목과 상세 내용 모두 표출) */}
+                        <td className="py-2.5 px-3 min-w-[340px] w-full">
+                          <div className="font-black text-slate-900 dark:text-white text-xs leading-relaxed group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors break-words">
                             {item.title}
                           </div>
+                          {item.content && item.content.trim() !== item.title.trim() && (
+                            <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line break-words leading-relaxed font-normal">
+                              {item.content}
+                            </div>
+                          )}
+                          {item.actionResult && (
+                            <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
+                              <span>↳ 🟢 [조치] {item.actionResult}</span>
+                            </div>
+                          )}
                         </td>
 
                         {/* 손실 (분/kg) */}
@@ -1130,8 +1207,13 @@ export const UnifiedAbnormalityControlPanel = ({
                 </div>
               </div>
               <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">{item.title}</h4>
+              {item.content && item.content.trim() !== item.title.trim() && (
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line">
+                  {item.content}
+                </p>
+              )}
               {item.actionResult && (
-                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-[11px] text-emerald-900 dark:text-emerald-200">
+                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-[11px] text-emerald-900 dark:text-emerald-200 font-medium">
                   <b>조치결과:</b> {item.actionResult}
                 </div>
               )}
