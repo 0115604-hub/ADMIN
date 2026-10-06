@@ -494,13 +494,15 @@ export const UnifiedAbnormalityControlPanel = ({
       });
     });
 
-    const ledgerSet = new Set((fourMLedgerRecords || []).map((r) => r.originalId || r.id));
+    const ledgerSet = new Set(
+      (fourMLedgerRecords || []).flatMap((r) => [r.originalId, r.id, `ledger_${r.originalId}`, `ledger_${r.id}`].filter(Boolean))
+    );
 
     // 최신 발생일자 DESC, ID DESC 정렬 및 대장 등록 여부 매핑
     return unified
       .map((item) => ({
         ...item,
-        isRegisteredInLedger: ledgerSet.has(item.id)
+        isRegisteredInLedger: ledgerSet.has(item.id) || ledgerSet.has(`ledger_${item.id}`)
       }))
       .sort((a, b) => {
         if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
@@ -513,12 +515,14 @@ export const UnifiedAbnormalityControlPanel = ({
   // 🔍 필터링 연산
   // =========================================================================
   const filteredRecords = useMemo(() => {
-    const ledgerSet = new Set((fourMLedgerRecords || []).map((r) => r.originalId || r.id));
+    const ledgerSet = new Set(
+      (fourMLedgerRecords || []).flatMap((r) => [r.originalId, r.id, `ledger_${r.originalId}`, `ledger_${r.id}`].filter(Boolean))
+    );
 
     return allUnifiedRecords.filter((rec) => {
       // 0. 공식 변동점 관리대장 필터
       if (selectedOriginFilter === "OFFICIAL_LEDGER" || selected4MTab === "OFFICIAL_LEDGER") {
-        if (!ledgerSet.has(rec.id) && !rec.isOfficialLedger) return false;
+        if (!ledgerSet.has(rec.id) && !ledgerSet.has(`ledger_${rec.id}`) && !rec.isOfficialLedger) return false;
       }
 
       // 1. 공장 필터
@@ -715,14 +719,30 @@ export const UnifiedAbnormalityControlPanel = ({
 
   // 🌟 공식 변동점 관리대장 등록 및 해제 (복사본 저장)
   const handleToggleLedger = async (item) => {
-    const isAlready = fourMLedgerRecords.some((r) => r.originalId === item.id || r.id === item.id);
+    if (!item) return;
+    const isAlready = fourMLedgerRecords.some(
+      (r) =>
+        r.originalId === item.id ||
+        r.id === item.id ||
+        r.id === `ledger_${item.id}` ||
+        `ledger_${r.originalId}` === item.id
+    );
+
     if (isAlready) {
-      if (window.confirm(`[${item.title}]\n\n항목을 공식 변동점 관리대장에서 등록 해제하시겠습니까?`)) {
-        await unregisterFromFourMLedger(item.id);
+      if (window.confirm(`[${item.title}]\n\n항목을 공식 변동점 관리대장에서 등록 해제(삭제)하시겠습니까?`)) {
+        const updated = await unregisterFromFourMLedger(item.id);
+        setFourMLedgerRecords(updated || []);
+        alert(`[${item.title}]\n\n변동점 관리대장에서 정상적으로 등록 해제되었습니다.`);
       }
     } else {
-      await registerToFourMLedger(item, currentProfile?.name || "TEST 선임");
-      alert(`[${item.title}]\n\n항목이 공식 변동점 관리대장에 복사본으로 저장되었습니다.`);
+      const newItem = await registerToFourMLedger(item, currentProfile?.name || "TEST 선임");
+      if (newItem) {
+        setFourMLedgerRecords((prev) => [
+          newItem,
+          ...prev.filter((it) => it.id !== newItem.id && it.originalId !== newItem.originalId)
+        ]);
+        alert(`[${item.title}]\n\n항목이 공식 변동점 관리대장에 복사본으로 저장되었습니다.`);
+      }
     }
   };
 

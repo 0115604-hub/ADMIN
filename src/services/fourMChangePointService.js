@@ -33,7 +33,7 @@ export const saveLocalFourMChangePoints = (items) => {
   }
 };
 
-// Real-time Cloud Synchronization
+// Real-time Cloud Synchronization (Firestore authoritative stream)
 export const subscribeFourMChangePoints = (onUpdate) => {
   try {
     const colRef = collection(db, COLLECTION_NAME);
@@ -47,25 +47,13 @@ export const subscribeFourMChangePoints = (onUpdate) => {
           });
         }
 
-        const localList = getLocalFourMChangePoints();
-        const map = new Map();
-
-        localList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        remoteList.forEach((it) => {
-          if (it && it.id) map.set(it.id, it);
-        });
-
-        const merged = Array.from(map.values());
-        merged.sort((a, b) => {
+        remoteList.sort((a, b) => {
           if (b.registeredAt !== a.registeredAt) return (b.registeredAt || "").localeCompare(a.registeredAt || "");
           return (b.date || "").localeCompare(a.date || "");
         });
 
-        saveLocalFourMChangePoints(merged);
-        if (onUpdate) onUpdate(merged);
+        saveLocalFourMChangePoints(remoteList);
+        if (onUpdate) onUpdate(remoteList);
       },
       (error) => {
         console.warn("Firestore four_m_change_points sync warning:", error);
@@ -106,7 +94,9 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
   };
 
   const current = getLocalFourMChangePoints();
-  const existingIdx = current.findIndex((it) => it.id === ledgerId || it.originalId === record.id);
+  const existingIdx = current.findIndex(
+    (it) => it.id === ledgerId || it.originalId === record.id || it.id === record.id
+  );
   let updated;
   if (existingIdx >= 0) {
     updated = [...current];
@@ -129,16 +119,34 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
 // Unregister (Delete) from Official 4M Change Point Ledger
 export const unregisterFromFourMLedger = async (ledgerOrOriginalId) => {
   const current = getLocalFourMChangePoints();
-  const target = current.find(
-    (it) => it.id === ledgerOrOriginalId || it.originalId === ledgerOrOriginalId
-  );
-  if (!target) return current;
+  const idStr = String(ledgerOrOriginalId || "").trim();
 
-  const updated = current.filter((it) => it.id !== target.id && it.originalId !== target.originalId);
+  // Find target item
+  const target = current.find(
+    (it) =>
+      it.id === idStr ||
+      it.originalId === idStr ||
+      `ledger_${it.originalId}` === idStr ||
+      it.id === `ledger_${idStr}`
+  );
+
+  const docIdToDelete = target ? target.id : (idStr.startsWith("ledger_") ? idStr : `ledger_${idStr}`);
+  const origIdToDelete = target ? target.originalId : idStr;
+
+  const updated = current.filter(
+    (it) =>
+      it.id !== docIdToDelete &&
+      it.id !== idStr &&
+      it.originalId !== origIdToDelete &&
+      it.originalId !== idStr
+  );
   saveLocalFourMChangePoints(updated);
 
   try {
-    await deleteDoc(doc(db, COLLECTION_NAME, target.id));
+    await deleteDoc(doc(db, COLLECTION_NAME, docIdToDelete));
+    if (docIdToDelete !== idStr) {
+      await deleteDoc(doc(db, COLLECTION_NAME, idStr)).catch(() => {});
+    }
   } catch (e) {
     console.warn("Firestore delete four_m_change_point error:", e);
   }
