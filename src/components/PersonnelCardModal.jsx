@@ -32,6 +32,8 @@ import {
   POSITIONS_LIST,
   SKILL_LEVEL_META,
   INSPECTOR_GRADES,
+  NATIONALITY_LIST,
+  getNationalityMeta,
   getSkillMeta,
   getInspectorGradeMeta,
   calculateTenureFromJoinDate,
@@ -447,11 +449,35 @@ export default function PersonnelCardModal({
                   </select>
                 </div>
 
-                {/* 자동 상태 뱃지 */}
-                <div className="flex flex-col justify-end pb-0.5">
-                  <div className="px-2.5 py-1.5 rounded-xl bg-purple-950/50 border border-purple-800 text-center">
-                    <span className="text-[10px] text-purple-300 font-bold block">인사카드 등록상태</span>
-                    <span className="text-xs font-black text-emerald-400">정상 인증 관리중</span>
+                {/* 🌍 국적 선택 (필리핀, 베트남, 태국, 스리랑카, 우즈벡, 인도네시아, 대한민국, 기타 등) */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">국적 (Nationality)</label>
+                  <div className="space-y-1">
+                    <select
+                      value={formData.nationality || "대한민국"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleChange("nationality", val);
+                        if (val !== "기타") {
+                          handleChange("nationalityOther", "");
+                        }
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold cursor-pointer"
+                    >
+                      {NATIONALITY_LIST.map((nat) => (
+                        <option key={nat.code} value={nat.code}>{nat.label}</option>
+                      ))}
+                    </select>
+                    {formData.nationality === "기타" && (
+                      <input
+                        type="text"
+                        placeholder="국적 직접 입력 (예: 미얀마, 몽골)"
+                        value={formData.nationalityOther || ""}
+                        onChange={(e) => handleChange("nationalityOther", e.target.value)}
+                        className="w-full px-2.5 py-1 rounded-lg bg-slate-950 border border-cyan-500/80 focus:border-cyan-400 text-cyan-300 text-xs font-bold placeholder:text-slate-500 animate-fadeIn"
+                        autoFocus
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -819,6 +845,12 @@ export default function PersonnelCardModal({
                     <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-purple-950 text-purple-300 border border-purple-800">
                       {formData.position || "사원"}
                     </span>
+                    {formData.nationality && formData.nationality !== "대한민국" && (
+                      <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-cyan-950 text-cyan-300 border border-cyan-800 flex items-center gap-1">
+                        <span>{getNationalityMeta(formData.nationality).flag}</span>
+                        <span>{formData.nationality === "기타" ? (formData.nationalityOther || "기타") : formData.nationality}</span>
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
                     <span className="font-bold text-slate-300">{formData.dept}</span>

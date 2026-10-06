@@ -52,6 +52,7 @@ import {
   getWorkerPersonnelCard,
   saveWorkerPersonnelCard,
   getSkillMeta,
+  getNationalityMeta,
   SKILL_LEVEL_META,
   calculateTenureFromJoinDate,
   calculateProcessYearFromJoinDate,
@@ -3210,6 +3211,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                   <span className="truncate">{worker.name}</span>
                                   {card.isMultiSkill && (
                                     <Zap className="w-3 h-3 text-cyan-400 shrink-0" title="다기능공" />
+                                  )}
+                                  {card.nationality && card.nationality !== "대한민국" && (
+                                    <span
+                                      className="px-1 py-0.2 rounded text-[9.5px] font-bold bg-slate-100 dark:bg-slate-800 text-cyan-700 dark:text-cyan-300 border border-slate-300 dark:border-slate-700 shrink-0"
+                                      title={`국적: ${card.nationality === "기타" ? (card.nationalityOther || "기타") : card.nationality}`}
+                                    >
+                                      {getNationalityMeta(card.nationality).flag} {card.nationality === "기타" ? (card.nationalityOther || "기타") : card.nationality}
+                                    </span>
                                   )}
                                 </div>
                                 <div className="font-mono text-[10px] text-slate-400">

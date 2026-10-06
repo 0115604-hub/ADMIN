@@ -37,6 +37,28 @@ export const POSITIONS_LIST = [
   "이사"
 ];
 
+// ⭐ 표준 국적 목록 (필리핀, 베트남, 태국, 스리랑카, 우즈벡, 인도네시아, 대한민국, 네팔, 캄보디아, 몽골, 기타)
+export const NATIONALITY_LIST = [
+  { code: "대한민국", label: "🇰🇷 대한민국", flag: "🇰🇷" },
+  { code: "필리핀", label: "🇵🇭 필리핀", flag: "🇵🇭" },
+  { code: "베트남", label: "🇻🇳 베트남", flag: "🇻🇳" },
+  { code: "태국", label: "🇹🇭 태국", flag: "🇹🇭" },
+  { code: "스리랑카", label: "🇱🇰 스리랑카", flag: "🇱🇰" },
+  { code: "우즈벡", label: "🇺🇿 우즈벡 (우즈베키스탄)", flag: "🇺🇿" },
+  { code: "인도네시아", label: "🇮🇩 인도네시아", flag: "🇮🇩" },
+  { code: "네팔", label: "🇳🇵 네팔", flag: "🇳🇵" },
+  { code: "캄보디아", label: "🇰🇭 캄보디아", flag: "🇰🇭" },
+  { code: "몽골", label: "🇲🇳 몽골", flag: "🇲🇳" },
+  { code: "기타", label: "🌐 기타 (직접 입력)", flag: "🌐" }
+];
+
+export const getNationalityMeta = (code) => {
+  if (!code) return NATIONALITY_LIST[0];
+  const found = NATIONALITY_LIST.find((n) => n.code === code || n.label.includes(code));
+  if (found) return found;
+  return { code, label: `🌐 ${code}`, flag: "🌐" };
+};
+
 // ⭐ 검사원 자격 등급 정의 (검사 공정 선택 시 개별 평가)
 export const INSPECTOR_GRADES = [
   {
@@ -341,7 +363,9 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 검사원 등급 (주공정이 검사이거나 지정된 경우)
   const inspectorGrade = existingCard.inspectorGrade || (defaultMainProcess === "검사" ? "B등급 (일반검사원)" : "");
   const inspectorCertDate = existingCard.inspectorCertDate || (defaultMainProcess === "검사" ? joinDate : "");
-  const photoUrl = existingCard.photoUrl || worker.photoUrl || "";
+  // 국적 (기본값: 대한민국)
+  const nationality = existingCard.nationality || worker.nationality || "대한민국";
+  const nationalityOther = existingCard.nationalityOther || worker.nationalityOther || "";
 
   return {
     empNo,
@@ -349,6 +373,8 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     dept,
     name,
     position,
+    nationality,
+    nationalityOther,
     photoUrl,
     joinDate,
     tenure,
@@ -399,6 +425,8 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
       company: cleanCompanyName(cardData.company),
       dept: normalizeStandardDept(cardData.dept),
       position: normalizeStandardPosition(cardData.position),
+      nationality: cardData.nationality || "대한민국",
+      nationalityOther: cardData.nationality === "기타" ? (cardData.nationalityOther || "") : "",
       skillGrade: getSkillMeta(cardData.skillLevel).grade,
       tenure,
       processYear,
