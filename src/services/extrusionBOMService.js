@@ -1,11 +1,10 @@
 // ============================================================================
 // 삼랑진공장 압출 원재료 BOM 매핑 실시간 관리 서비스 (설유철 책임 전용)
-// 품목별 (차종 + 품명) ➔ 연고무 2종, 컴파운드 2종, 심금(선택/미사용), 코팅액(선택/미사용)
+// 품목별 (차종 + 품명) ➔ 연고무 2종, 컴파운드 4종, 심금(선택/미사용), 코팅액(선택/미사용)
 // ============================================================================
 import { doc, getDoc, setDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
-import { ITEM_MATERIAL_BOM_MAP } from "../data/extrusionRawMaterialsData";
 
 const STORAGE_KEY = "factory_extrusion_custom_bom_v1";
 const COLLECTION_NAME = "extrusion_bom_mappings";
@@ -72,8 +71,8 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
     compoundType2: String(bomData.compoundType2 || "").trim(),
     compoundType3: String(bomData.compoundType3 || "").trim(),
     compoundType4: String(bomData.compoundType4 || "").trim(),
-    insertType: String(bomData.insertType || "").trim(), // 빈 값 또는 "미사용" 가능
-    coatingType: String(bomData.coatingType || "").trim(), // 빈 값 또는 "미사용" 가능
+    insertType: String(bomData.insertType || "").trim() || "미사용",
+    coatingType: String(bomData.coatingType || "").trim() || "미사용",
     registeredBy: String(registeredBy || "설유철 책임"),
     updatedAt: new Date().toISOString()
   };
@@ -86,19 +85,21 @@ export const saveBOMMapping = async (vehicle, itemName, bomData, registeredBy = 
   saveLocalCustomBOMMap(nextMap);
 
   // Cloud Sync to Firestore
-  try {
-    await setDoc(doc(db, COLLECTION_NAME, MASTER_DOC_ID), sanitizeForFirestore(nextMap), { merge: true });
-    const docKey = encodeURIComponent(key);
-    await setDoc(doc(db, COLLECTION_NAME, docKey), sanitizeForFirestore(record), { merge: true });
-  } catch (e) {
-    console.warn("Firestore BOM save error (cached locally):", e);
+  if (db) {
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, MASTER_DOC_ID), sanitizeForFirestore(nextMap), { merge: true });
+      const docKey = encodeURIComponent(key);
+      await setDoc(doc(db, COLLECTION_NAME, docKey), sanitizeForFirestore(record), { merge: true });
+    } catch (e) {
+      console.warn("Firestore BOM save error (cached locally):", e);
+    }
   }
 
   return record;
 };
 
 /**
- * Delete a BOM mapping
+ * Delete a BOM mapping (revert to Excel baseline)
  */
 export const deleteBOMMapping = async (key) => {
   const currentMap = getLocalCustomBOMMap();
@@ -107,12 +108,29 @@ export const deleteBOMMapping = async (key) => {
 
   saveLocalCustomBOMMap(nextMap);
 
-  try {
-    await setDoc(doc(db, COLLECTION_NAME, MASTER_DOC_ID), sanitizeForFirestore(nextMap));
-    const docKey = encodeURIComponent(key);
-    await deleteDoc(doc(db, COLLECTION_NAME, docKey));
-  } catch (e) {
-    console.warn("Firestore BOM delete error:", e);
+  if (db) {
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, MASTER_DOC_ID), sanitizeForFirestore(nextMap));
+      const docKey = encodeURIComponent(key);
+      await deleteDoc(doc(db, COLLECTION_NAME, docKey));
+    } catch (e) {
+      console.warn("Firestore BOM delete error:", e);
+    }
+  }
+  return true;
+};
+
+/**
+ * Purge all custom overrides and reset to pure baseline
+ */
+export const resetAllCustomBOM = async () => {
+  saveLocalCustomBOMMap({});
+  if (db) {
+    try {
+      await setDoc(doc(db, COLLECTION_NAME, MASTER_DOC_ID), {});
+    } catch (e) {
+      console.warn("Firestore BOM reset error:", e);
+    }
   }
   return true;
 };
@@ -122,6 +140,8 @@ export const deleteBOMMapping = async (key) => {
  */
 export const subscribeToCustomBOM = (onDataCallback) => {
   onDataCallback(getLocalCustomBOMMap());
+
+  if (!db) return () => {};
 
   try {
     const docRef = doc(db, COLLECTION_NAME, MASTER_DOC_ID);
@@ -134,13 +154,6 @@ export const subscribeToCustomBOM = (onDataCallback) => {
             saveLocalCustomBOMMap(remote);
             onDataCallback(remote);
           }
-        } else {
-          const seedMap = { ...ITEM_MATERIAL_BOM_MAP };
-          if (Object.keys(seedMap).length > 0) {
-            setDoc(docRef, sanitizeForFirestore(seedMap), { merge: true }).catch(() => {});
-          }
-          saveLocalCustomBOMMap(seedMap);
-          onDataCallback(seedMap);
         }
       },
       (err) => {
