@@ -529,11 +529,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     const daily = calculateDailySummary(matrix, todayDayNum);
     const defaultMeta = {
-      "오륙": { workers: 67, attended: 67, otWorkers: 43, otHours: 97, totalHours: 633, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
-      "조영": { workers: 18, attended: 18, otWorkers: 14, otHours: 36, totalHours: 180, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
-      "한울": { workers: 12, attended: 12, otWorkers: 8, otHours: 21, totalHours: 117, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
-      "부림텍": { workers: 10, attended: 10, otWorkers: 6, otHours: 14, totalHours: 94, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
-      "유성": { workers: 5, attended: 5, otWorkers: 3, otHours: 6, totalHours: 44, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
+      "오륙": { workers: 53, attended: 53, otWorkers: 35, otHours: 80, totalHours: 504, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
+      "조영": { workers: 44, attended: 44, otWorkers: 30, otHours: 72, totalHours: 424, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
+      "한울": { workers: 26, attended: 26, otWorkers: 18, otHours: 42, totalHours: 250, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
+      "부림텍": { workers: 6, attended: 6, otWorkers: 4, otHours: 8, totalHours: 56, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
+      "유성": { workers: 14, attended: 14, otWorkers: 10, otHours: 20, totalHours: 132, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
     };
 
     const companies = ["오륙", "조영", "한울", "부림텍", "유성"].map((name) => {

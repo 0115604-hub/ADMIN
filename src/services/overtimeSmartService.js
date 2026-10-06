@@ -591,39 +591,74 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
   return matrix;
 };
 
+export const YUSEONG_WORKER_NAMES = new Set([
+  "이성기", "조마루", "쏘탈", "론나차이", "마리오", "제날드", "팔라", "누리",
+  "데란스", "포티퐁", "린", "넷플립", "제인", "그레이스"
+]);
+
 export const ensureAllCompaniesPresent = (data) => {
   if (!data || !Array.isArray(data.attendanceMatrix) || data.attendanceMatrix.length === 0) {
     return INITIAL_SMART_OVERTIME_DATA;
   }
 
-  let matrix = data.attendanceMatrix.map((w, idx) => {
+  // 1. Filter out duplicate dummy single worker if present
+  let filteredMatrix = data.attendanceMatrix.filter((w) => {
+    if (w.company === "유성" && w.dept === "관리부" && w.line === "관리부" && w.name === "이성기") {
+      const hasRealYuseongLee = data.attendanceMatrix.some(
+        (o) => o.name === "이성기" && (o.line?.includes("유성") || o.dept === "압출동")
+      );
+      if (hasRealYuseongLee) return false;
+    }
+    return true;
+  });
+
+  let matrix = filteredMatrix.map((w, idx) => {
+    const rawName = (w.name || "").trim();
+    let comp = cleanCompanyName(w.company);
+    // Auto-fix if Yuseong worker was mistakenly grouped in Oryuk
+    if (YUSEONG_WORKER_NAMES.has(rawName)) {
+      comp = "유성";
+    }
+
     return {
       ...w,
-      no: idx + 1,
-      company: cleanCompanyName(w.company),
+      company: comp,
       dept: normalizeDept(w.dept),
       line: w.line || normalizeDept(w.dept),
-      name: (w.name || "").trim(),
+      name: rawName,
       position: w.position || "작업원",
       daily: { ...(w.daily || {}) }
     };
   });
 
   let master = (data.masterWorkers && Array.isArray(data.masterWorkers) && data.masterWorkers.length === matrix.length)
-    ? data.masterWorkers.map((w, idx) => ({
-        ...w,
-        no: idx + 1,
-        company: w.company || matrix[idx]?.company || "오륙",
-        dept: normalizeDept(w.dept || matrix[idx]?.dept),
-        line: w.line || matrix[idx]?.line || normalizeDept(w.dept),
-        name: (w.name || matrix[idx]?.name || "").trim(),
-        position: w.position || matrix[idx]?.position || "작업원",
-        employmentType: w.employmentType || "정규직",
-        status: w.status || "재직",
-        note: w.note || ""
-      }))
-    : matrix.map((w, idx) => ({
-        no: idx + 1,
+    ? data.masterWorkers
+        .filter((w) => {
+          if (w.company === "유성" && w.dept === "관리부" && w.line === "관리부" && w.name === "이성기") {
+            const hasReal = data.masterWorkers.some((o) => o.name === "이성기" && (o.line?.includes("유성") || o.dept === "압출동"));
+            if (hasReal) return false;
+          }
+          return true;
+        })
+        .map((w, idx) => {
+          const rawName = (w.name || matrix[idx]?.name || "").trim();
+          let comp = cleanCompanyName(w.company || matrix[idx]?.company || "오륙");
+          if (YUSEONG_WORKER_NAMES.has(rawName)) {
+            comp = "유성";
+          }
+          return {
+            ...w,
+            company: comp,
+            dept: normalizeDept(w.dept || matrix[idx]?.dept),
+            line: w.line || matrix[idx]?.line || normalizeDept(w.dept),
+            name: rawName,
+            position: w.position || matrix[idx]?.position || "작업원",
+            employmentType: w.employmentType || "정규직",
+            status: w.status || "재직",
+            note: w.note || ""
+          };
+        })
+    : matrix.map((w) => ({
         company: w.company,
         dept: normalizeDept(w.dept),
         line: w.line || normalizeDept(w.dept),
@@ -636,7 +671,7 @@ export const ensureAllCompaniesPresent = (data) => {
 
   const existingCompanies = new Set(matrix.map((w) => w.company));
 
-  // Check if any company from INITIAL_SMART_OVERTIME_DATA (like '유성') is completely missing
+  // Check if any company from INITIAL_SMART_OVERTIME_DATA is completely missing
   COMPANIES.forEach((comp) => {
     if (!existingCompanies.has(comp)) {
       const initialWorkersForComp = (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []).filter((w) => w.company === comp);
@@ -687,9 +722,27 @@ export const getFirestoreDocIdForMonth = (yearMonth = "2026-10") => {
   return `overtime_${clean}`;
 };
 
-// 당월(10월 등) 작성중인 빈 월간 근태 대장 템플릿 생성
+// 당월(10월 등) 작성중인 빈 월간 근태 대장 템플릿 생성 (143명 마스터 전원 포함, 일자별 데이터는 신규 입력용)
 export const createEmptySmartOvertimeData = (year = 2026, month = 10) => {
-  return INITIAL_SMART_OVERTIME_DATA;
+  const master = (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []).map((w, idx) => ({
+    ...w,
+    no: w.no || idx + 1
+  }));
+  const matrix = (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []).map((w, idx) => ({
+    no: w.no || idx + 1,
+    company: w.company,
+    dept: w.dept,
+    line: w.line,
+    name: w.name,
+    position: w.position || "작업원",
+    daily: {}
+  }));
+  return {
+    year: Number(year) || 2026,
+    month: Number(month) || 10,
+    masterWorkers: master,
+    attendanceMatrix: matrix
+  };
 };
 
 export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
@@ -697,7 +750,19 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
     const ym = targetYearMonth || "2026-10";
     const key = getStorageKeyForMonth(ym);
 
-    // 1. Check month-specific key
+    // 1. If requesting September (2026-09), return authoritative INITIAL_SMART_OVERTIME_DATA
+    if (ym === "2026-09" || ym === "2026_09") {
+      const raw = localStorage.getItem(key) || localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length >= 100) {
+          return ensureAllCompaniesPresent(parsed);
+        }
+      }
+      return ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
+    }
+
+    // 2. Check month-specific key (e.g. 2026-10)
     const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -706,21 +771,13 @@ export const getLocalSmartOvertimeData = (targetYearMonth = null) => {
       }
     }
 
-    // 2. Check legacy storage key
-    const septRaw = localStorage.getItem(STORAGE_KEY);
-    if (septRaw) {
-      const parsed = JSON.parse(septRaw);
-      if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-        return ensureAllCompaniesPresent(parsed);
-      }
-    }
-
-    // 3. Fallback to full master initial data
-    return INITIAL_SMART_OVERTIME_DATA;
+    // 3. Fallback for new months (e.g. 10월): create fresh template with 143 workers
+    const parts = ym.split("-").map(Number);
+    return createEmptySmartOvertimeData(parts[0] || 2026, parts[1] || 10);
   } catch (err) {
     console.warn("Failed to load local smart overtime data:", err);
   }
-  return INITIAL_SMART_OVERTIME_DATA;
+  return ensureAllCompaniesPresent(INITIAL_SMART_OVERTIME_DATA);
 };
 
 export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
@@ -731,7 +788,9 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
 
     const normalizedData = ensureAllCompaniesPresent(data);
     localStorage.setItem(key, JSON.stringify(normalizedData));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
+    if (ym === "2026-09" || ym === "2026_09") {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
+    }
 
     // Dispatch custom event for immediate same-page multi-component updates
     if (typeof window !== "undefined") {

@@ -1,3 +1,4 @@
+// 2026년 9월 마스터 근태 및 잔업 스마트 대장 데이터 (5개사 143명 정밀 데이터)
 export const INITIAL_SMART_OVERTIME_DATA = {
   "year": 2026,
   "month": 9,
@@ -586,8 +587,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 54,
-      "company": "오륙",
+      "no": 1,
+      "company": "유성",
       "dept": "압출동",
       "line": "유성-15",
       "name": "이성기",
@@ -597,8 +598,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 55,
-      "company": "오륙",
+      "no": 2,
+      "company": "유성",
       "dept": "압출동",
       "line": "유성-15",
       "name": "조마루",
@@ -608,8 +609,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 56,
-      "company": "오륙",
+      "no": 3,
+      "company": "유성",
       "dept": "압출동",
       "line": "소재준비",
       "name": "쏘탈",
@@ -619,8 +620,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 57,
-      "company": "오륙",
+      "no": 4,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "론나차이",
@@ -630,8 +631,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 58,
-      "company": "오륙",
+      "no": 5,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "마리오",
@@ -641,8 +642,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 59,
-      "company": "오륙",
+      "no": 6,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "제날드",
@@ -652,8 +653,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 60,
-      "company": "오륙",
+      "no": 7,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "팔라",
@@ -663,8 +664,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 61,
-      "company": "오륙",
+      "no": 8,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "누리",
@@ -674,8 +675,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 62,
-      "company": "오륙",
+      "no": 9,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "데란스",
@@ -685,8 +686,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 63,
-      "company": "오륙",
+      "no": 10,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "포티퐁",
@@ -696,8 +697,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 64,
-      "company": "오륙",
+      "no": 11,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "린",
@@ -707,8 +708,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 65,
-      "company": "오륙",
+      "no": 12,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "넷플립",
@@ -718,8 +719,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 66,
-      "company": "오륙",
+      "no": 13,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "제인",
@@ -729,8 +730,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "note": ""
     },
     {
-      "no": 67,
-      "company": "오륙",
+      "no": 14,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "그레이스",
@@ -800,17 +801,6 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "박선영",
-      "position": "작업원",
-      "employmentType": "정규직",
-      "status": "재직",
-      "note": ""
-    },
-    {
-      "no": 1,
-      "company": "유성",
-      "dept": "관리부",
-      "line": "관리부",
-      "name": "이성기",
       "position": "작업원",
       "employmentType": "정규직",
       "status": "재직",
@@ -3709,8 +3699,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 54,
-      "company": "오륙",
+      "no": 1,
+      "company": "유성",
       "dept": "압출동",
       "line": "유성-15",
       "name": "이성기",
@@ -3749,8 +3739,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 55,
-      "company": "오륙",
+      "no": 2,
+      "company": "유성",
       "dept": "압출동",
       "line": "유성-15",
       "name": "조마루",
@@ -3789,8 +3779,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 56,
-      "company": "오륙",
+      "no": 3,
+      "company": "유성",
       "dept": "압출동",
       "line": "소재준비",
       "name": "쏘탈",
@@ -3829,8 +3819,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 57,
-      "company": "오륙",
+      "no": 4,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "론나차이",
@@ -3869,8 +3859,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 58,
-      "company": "오륙",
+      "no": 5,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "마리오",
@@ -3909,8 +3899,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 59,
-      "company": "오륙",
+      "no": 6,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "제날드",
@@ -3949,8 +3939,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 60,
-      "company": "오륙",
+      "no": 7,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "팔라",
@@ -3989,8 +3979,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 61,
-      "company": "오륙",
+      "no": 8,
+      "company": "유성",
       "dept": "압출동",
       "line": "DT",
       "name": "누리",
@@ -4029,8 +4019,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 62,
-      "company": "오륙",
+      "no": 9,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "데란스",
@@ -4069,8 +4059,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 63,
-      "company": "오륙",
+      "no": 10,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "포티퐁",
@@ -4109,8 +4099,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 64,
-      "company": "오륙",
+      "no": 11,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "린",
@@ -4149,8 +4139,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 65,
-      "company": "오륙",
+      "no": 12,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "넷플립",
@@ -4189,8 +4179,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 66,
-      "company": "오륙",
+      "no": 13,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "제인",
@@ -4229,8 +4219,8 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       }
     },
     {
-      "no": 67,
-      "company": "오륙",
+      "no": 14,
+      "company": "유성",
       "dept": "압출동",
       "line": "JK1",
       "name": "그레이스",
@@ -4474,46 +4464,6 @@ export const INITIAL_SMART_OVERTIME_DATA = {
       "dept": "가공동",
       "line": "HOOD 제단",
       "name": "박선영",
-      "position": "작업원",
-      "daily": {
-        "1": "🟢",
-        "2": "🟢",
-        "3": "🟢",
-        "4": "🟢",
-        "5": "-",
-        "6": "-",
-        "7": "🟢",
-        "8": "🟢",
-        "9": "",
-        "10": "",
-        "11": "",
-        "12": "-",
-        "13": "-",
-        "14": "",
-        "15": "",
-        "16": "",
-        "17": "",
-        "18": "",
-        "19": "-",
-        "20": "-",
-        "21": "",
-        "22": "",
-        "23": "",
-        "24": "",
-        "25": "",
-        "26": "-",
-        "27": "-",
-        "28": "",
-        "29": "",
-        "30": ""
-      }
-    },
-    {
-      "no": 1,
-      "company": "유성",
-      "dept": "관리부",
-      "line": "관리부",
-      "name": "이성기",
       "position": "작업원",
       "daily": {
         "1": "🟢",
