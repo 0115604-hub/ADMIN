@@ -775,6 +775,46 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const getDayFullLabel = (d) => getDayOfWeekFullKorean(d, currentYear, currentMonthNum);
   const isWeekendDay = (d) => isWeekendByDate(d, currentYear, currentMonthNum);
 
+  // 🗓️ 지난달 (Previous Month) 자동 계산 (예: 2026-10 -> 2026-09)
+  const prevYearMonth = useMemo(() => {
+    let y = currentYear;
+    let m = currentMonthNum - 1;
+    if (m < 1) {
+      m = 12;
+      y -= 1;
+    }
+    return `${y}-${String(m).padStart(2, "0")}`;
+  }, [currentYear, currentMonthNum]);
+
+  const [prevYear, prevMonthNum] = useMemo(() => {
+    const parts = prevYearMonth.split("-").map(Number);
+    return [parts[0] || 2026, parts[1] || 9];
+  }, [prevYearMonth]);
+
+  // ⭐ 월간 종합현황 대장 전용 조회 월 (기본값: 지난달 9월 마감 실적)
+  const [matrixViewMonth, setMatrixViewMonth] = useState(() => "2026-09");
+
+  // 헤더 월 변경 시 기본 matrixViewMonth 동기화
+  useEffect(() => {
+    if (prevYearMonth) {
+      setMatrixViewMonth(prevYearMonth);
+    }
+  }, [prevYearMonth]);
+
+  const [matrixYear, matrixMonthNum] = useMemo(() => {
+    const ym = matrixViewMonth || prevYearMonth || "2026-09";
+    const parts = ym.split("-").map(Number);
+    return [parts[0] || 2026, parts[1] || 9];
+  }, [matrixViewMonth, prevYearMonth]);
+
+  const matrixDaysInMonth = useMemo(() => {
+    return new Date(matrixYear, matrixMonthNum, 0).getDate();
+  }, [matrixYear, matrixMonthNum]);
+
+  const getMatrixDayLabel = (d) => getDayOfWeekKorean(d, matrixYear, matrixMonthNum);
+  const getMatrixDayFullLabel = (d) => getDayOfWeekFullKorean(d, matrixYear, matrixMonthNum);
+  const isMatrixWeekendDay = (d) => isWeekendByDate(d, matrixYear, matrixMonthNum);
+
   // Daily views state (로그인 및 접속 시점의 실시간 당일 일자로 기본 선택)
   const [selectedDay, setSelectedDay] = useState(() => {
     try {
@@ -1856,6 +1896,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               type="button"
               onClick={() => {
                 setActiveTab("detail");
+                setDetailSubTab("monthly_matrix");
+                setMatrixViewMonth(prevYearMonth || "2026-09");
               }}
               className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                 activeTab === "detail" || activeTab === "monthly_matrix" || activeTab === "daily_summary" || activeTab === "worker_management"
@@ -2397,15 +2439,21 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           <div className="flex items-center gap-1.5 p-1 bg-slate-900 dark:bg-slate-950 rounded-2xl border border-slate-700/80 w-fit flex-wrap shadow-sm">
             <button
               type="button"
-              onClick={() => setDetailSubTab("monthly_matrix")}
+              onClick={() => {
+                setDetailSubTab("monthly_matrix");
+                setMatrixViewMonth(prevYearMonth || "2026-09");
+              }}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
                 detailSubTab === "monthly_matrix"
-                  ? "bg-purple-600 text-white shadow-md font-black"
+                  ? "bg-purple-600 text-white shadow-md font-black ring-2 ring-purple-400/50"
                   : "text-slate-400 hover:text-white hover:bg-slate-800"
               }`}
             >
               <CalendarDays className="w-3.5 h-3.5" />
               <span>📅 월간 종합현황 대장</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-950 text-purple-200 border border-purple-700/60 font-mono font-bold">
+                {matrixMonthNum}월 ({matrixViewMonth === prevYearMonth ? "지난달 실적" : "당월"})
+              </span>
             </button>
 
             <button
@@ -2636,40 +2684,93 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               return true;
             });
 
-            // Calculate aggregated metrics for filtered workers
+            // Calculate aggregated metrics for filtered workers based on matrixDaysInMonth
             let sumWorkDays = 0;
             let sumWeekdayOt = 0;
             let sumWeekendOt = 0;
             let sumTotalHours = 0;
 
             filteredMatrixList.forEach((w) => {
-              const t = calculateWorkerMonthlyTotals(w);
+              const t = calculateWorkerMonthlyTotals(w, matrixDaysInMonth);
               sumWorkDays += t.workDays;
               sumWeekdayOt += t.weekdayOtHours;
               sumWeekendOt += t.weekendOtHours;
               sumTotalHours += t.totalHours;
             });
 
+            const isPrevMonth = (matrixViewMonth === prevYearMonth);
+
             return (
               <>
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+                {/* 🌟 월 선택 퀵 배너 & 타이틀 바 */}
+                <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="w-5 h-5 text-indigo-500" />
-                      <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
-                        {currentMonthNum}월 {daysInMonth}일 근태 및 잔업 전체 매트릭스
-                      </h3>
+                    <div className="flex items-center gap-2.5">
+                      <span className="p-2 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-300 ring-1 ring-purple-400/40">
+                        <CalendarDays className="w-5 h-5 text-purple-500" />
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white">
+                            {matrixYear}년 {matrixMonthNum}월 근태 및 특근·잔업 종합현황 대장
+                          </h3>
+                          <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                            isPrevMonth
+                              ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-800"
+                              : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800"
+                          }`}>
+                            {isPrevMonth ? `🗓️ ${matrixMonthNum}월 (지난달 마감 실적)` : `⚡ ${matrixMonthNum}월 (당월 실시간)`}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {isPrevMonth
+                            ? `지난달(${prevYear}년 ${prevMonthNum}월) 5개 협력사의 전체 출근, 평일잔업, 주말특근, 총공수 실적 대장입니다. (총 ${matrixDaysInMonth}일)`
+                            : `당월(${currentYear}년 ${currentMonthNum}월) 5개 협력사의 실시간 근태 및 투입공수 현황입니다. (총 ${matrixDaysInMonth}일)`}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 🗓️ 월 전환 토글 바 (지난달 vs 당월 원클릭) */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-700 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => setMatrixViewMonth(prevYearMonth || "2026-09")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                          matrixViewMonth === (prevYearMonth || "2026-09")
+                            ? "bg-purple-600 text-white shadow-md ring-1 ring-purple-300 font-black"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800 font-bold"
+                        }`}
+                      >
+                        <Calendar className="w-3.5 h-3.5 text-purple-300" />
+                        <span>🗓️ {prevYear}년 {prevMonthNum}월 (지난달 실적)</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-950 text-purple-200 border border-purple-700/60 font-bold">마감</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setMatrixViewMonth(selectedMonth || "2026-10")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                          matrixViewMonth === (selectedMonth || "2026-10")
+                            ? "bg-indigo-600 text-white shadow-md ring-1 ring-indigo-300 font-black"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800 font-bold"
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5 text-indigo-300" />
+                        <span>🗓️ {currentYear}년 {currentMonthNum}월 (당월 대장)</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-950 text-indigo-200 border border-indigo-700/60 font-bold">진행</span>
+                      </button>
                     </div>
 
                     {/* Company Dropdown Select (공장별 그룹화) */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">업체 선택:</span>
+                    <div className="flex items-center gap-1.5">
                       <select
                         value={matrixCompanyFilter}
                         onChange={(e) => setMatrixCompanyFilter(e.target.value)}
                         className="bg-slate-950 text-white font-black text-xs sm:text-sm border-2 border-indigo-400 focus:border-indigo-300 rounded-xl px-3 py-1.5 cursor-pointer shadow-sm"
                       >
-                        <option value="전체" className="bg-slate-900 text-white font-bold">전체 (5개 협력사 통합)</option>
+                        <option value="전체" className="bg-slate-900 text-white font-bold">🏢 전체 (5개 협력사 통합)</option>
                         <optgroup label="🏭 삼랑진공장" className="bg-slate-950 text-amber-300 font-bold">
                           <option value="오륙" className="bg-slate-900 text-white font-bold">오륙</option>
                           <option value="유성" className="bg-slate-900 text-white font-bold">유성</option>
@@ -2682,8 +2783,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       </select>
                     </div>
                   </div>
+                </div>
 
-                  {/* Company Quick Filter Pills (삼랑진 & 한림 분리 체계) */}
+                {/* Company Quick Filter Pills (삼랑진 & 한림 분리 체계) & Download */}
+                <div className="flex items-center justify-between gap-2 flex-wrap pb-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
@@ -2694,7 +2797,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
                       }`}
                     >
-                      전체
+                      전체 5개사
                     </button>
 
                     {/* 삼랑진 그룹 */}
@@ -2741,6 +2844,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       ))}
                     </div>
                   </div>
+
+                  {/* 엑셀 다운로드 버튼 연동 */}
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition-all cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{matrixMonthNum}월 대장 엑셀 다운로드</span>
+                  </button>
                 </div>
 
                 {/* Filtered Company Summary KPI Bar */}
@@ -2750,7 +2863,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <span className="font-mono font-black text-sm sm:text-base text-indigo-600 dark:text-indigo-400">{filteredMatrixList.length}명</span>
                   </div>
                   <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">{currentMonthNum}월 총 출근일수</span>
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 block font-bold">{matrixMonthNum}월 총 출근일수</span>
                     <span className="font-mono font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400">{sumWorkDays}일</span>
                   </div>
                   <div className="bg-slate-100 dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -2776,11 +2889,20 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <th className="hidden sm:table-cell p-2 w-20 sticky left-10 bg-slate-900 z-30">업체</th>
                         <th className="hidden sm:table-cell p-2 w-20">부서</th>
                         <th className="p-2 w-20 sticky left-10 sm:left-28 bg-slate-900 z-30">성명</th>
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => (
-                          <th key={d} className={`p-1 text-center w-7 ${getDayLabel(d) === "일" ? "bg-rose-950/80 text-rose-300" : getDayLabel(d) === "토" ? "bg-blue-950/80 text-blue-300" : ""}`}>
-                            {d}
-                          </th>
-                        ))}
+                        {Array.from({ length: matrixDaysInMonth }, (_, i) => i + 1).map((d) => {
+                          const dow = getMatrixDayLabel(d);
+                          return (
+                            <th
+                              key={d}
+                              className={`p-1 text-center w-7 ${
+                                dow === "일" ? "bg-rose-950/80 text-rose-300" : dow === "토" ? "bg-blue-950/80 text-blue-300" : ""
+                              }`}
+                            >
+                              <span className="block text-[10px] font-mono leading-tight">{d}</span>
+                              <span className="block text-[8.5px] font-bold opacity-80">{dow}</span>
+                            </th>
+                          );
+                        })}
                         <th className="p-2 text-center w-14 bg-slate-800">출근일</th>
                         <th className="p-2 text-center w-14 bg-slate-800 text-amber-300">평일잔업</th>
                         <th className="p-2 text-center w-14 bg-slate-800 text-purple-300">특근(H)</th>
@@ -2789,7 +2911,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {filteredMatrixList.map((w, idx) => {
-                        const totals = calculateWorkerMonthlyTotals(w);
+                        const totals = calculateWorkerMonthlyTotals(w, matrixDaysInMonth);
                         const cleanWorkerName = w.name ? w.name.split(" ")[0].replace(/\([^)]*\)/g, "").trim() : "";
                         return (
                           <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
@@ -2797,7 +2919,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <td className="hidden sm:table-cell p-1.5 font-bold sticky left-10 bg-white dark:bg-slate-900 z-10 truncate max-w-[80px]">{w.company}</td>
                             <td className="hidden sm:table-cell p-1.5 text-slate-500 truncate max-w-[80px]">{normalizeDept(w.dept)}</td>
                             <td className="p-1.5 font-black sticky left-10 sm:left-28 bg-white dark:bg-slate-900 z-10">{cleanWorkerName}</td>
-                            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
+                            {Array.from({ length: matrixDaysInMonth }, (_, i) => i + 1).map((d) => {
                               const val = w.daily ? w.daily[d] : "";
                               return (
                                 <td key={d} className="p-0.5 text-center font-mono text-[10px]">
@@ -2808,6 +2930,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     val === "22" ? "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300" :
                                     val === "특근" ? "bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300" :
                                     val === "야간" ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300" :
+                                    val === "결근" ? "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 font-black" :
+                                    val === "휴가" || val === "연차" ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300" :
+                                    val === "반차" ? "bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300" :
                                     val === "-" ? "text-slate-300 dark:text-slate-600" : ""
                                   }`}>
                                     {val || "-"}

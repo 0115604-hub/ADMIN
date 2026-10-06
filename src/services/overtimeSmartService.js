@@ -241,7 +241,7 @@ export const calculateWorkerDailyHours = (code) => {
   return { isAttended: true, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 8 };
 };
 
-export const calculateWorkerMonthlyTotals = (workerRecord) => {
+export const calculateWorkerMonthlyTotals = (workerRecord, daysCount = 30) => {
   let workDays = 0;
   let weekdayOtHours = 0;
   let weekendOtHours = 0;
@@ -252,7 +252,8 @@ export const calculateWorkerMonthlyTotals = (workerRecord) => {
     return { workDays: 0, weekdayOtHours: 0, weekendOtHours: 0, nightDays: 0, totalHours: 0 };
   }
 
-  for (let d = 1; d <= 30; d++) {
+  const maxDay = typeof daysCount === "number" ? daysCount : 30;
+  for (let d = 1; d <= maxDay; d++) {
     const val = workerRecord.daily[d];
     const { isAttended, weekdayOt, weekendOt, nightDay, workHours } = calculateWorkerDailyHours(val);
     if (isAttended) workDays++;
