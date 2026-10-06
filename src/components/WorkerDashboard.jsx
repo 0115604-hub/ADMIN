@@ -485,7 +485,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return getWorkerPersonnelCard(currentProfile || {});
   }, [currentProfile]);
 
-  const workerDept = workerCard?.dept || (isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀");
+  const isJaeyulWorker = isJaeyul || currentProfile?.name === "전재율" || currentProfile?.assignedProcess === "설비보전";
+  const workerDept = workerCard?.dept || (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀");
   const workerPosition = officialTitle || workerCard?.position || "선임";
 
   // General Manager Identification

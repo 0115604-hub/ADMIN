@@ -31,12 +31,13 @@ export const COMPANY_LIST = [
   "부림텍"
 ];
 
-// ⭐ 표준 5대 부서 목록 (생산팀 / 압출관리팀 / 가공관리팀 / 품질관리팀 / 관리팀)
+// ⭐ 표준 6대 부서 목록 (생산팀 / 압출관리팀 / 가공관리팀 / 품질관리팀 / 설비보전팀 / 관리팀)
 export const DEPARTMENTS_LIST = [
   "생산팀",
   "압출관리팀",
   "가공관리팀",
   "품질관리팀",
+  "설비보전팀",
   "관리팀"
 ];
 
@@ -138,16 +139,17 @@ export const normalizeStandardCompany = (comp) => {
   return str;
 };
 
-// 부서 정규화 헬퍼 (생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 관리팀 5개로 표준화)
+// 부서 정규화 헬퍼 (생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 관리팀 6개로 표준화)
 export const normalizeStandardDept = (dept) => {
   if (!dept) return "생산팀";
   const str = String(dept).trim();
   if (DEPARTMENTS_LIST.includes(str)) return str;
+  if (str === "설비보전팀" || str === "설비보전" || str === "설비팀" || str === "보전팀" || str === "공무팀" || str.includes("설비") || str.includes("보전") || str.includes("공무")) return "설비보전팀";
   if (str === "품질관리팀" || str === "품질팀" || str === "품질부" || str.includes("품질")) return "품질관리팀";
   if (str === "생산팀" || str === "생산") return "생산팀";
   if (str === "압출관리팀" || str === "압출동" || (str.includes("압출") && !str.includes("생산"))) return "압출관리팀";
   if (str === "가공관리팀" || str === "가공동" || str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장") || str.includes("조인트") || str.includes("사상") || str.includes("코팅")) return "가공관리팀";
-  if (str === "관리팀" || str === "관리부" || str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("설비") || str.includes("기술") || str.includes("출하") || str.includes("총괄")) return "관리팀";
+  if (str === "관리팀" || str === "관리부" || str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("기술") || str.includes("출하") || str.includes("총괄")) return "관리팀";
   if (str.includes("생산")) return "생산팀";
   return "생산팀";
 };
