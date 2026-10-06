@@ -709,7 +709,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const handleOpenManageWorkers = (compName) => {
     // 인원관리 탭으로 바로 전환하며 해당 업체를 기본 필터로 설정
     setWorkerMgmtCompanyFilter(cleanCompanyName(compName));
-    setActiveTab("worker_management");
+    setActiveTab("detail");
+    setDetailSubTab("worker_management");
   };
 
   const handleOpenLegacyReport = (report) => {
@@ -730,7 +731,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // Smart Overtime Ledger State (5개사 통합 잔업 스마트 대장)
   const [smartData, setSmartData] = useState(() => getLocalSmartOvertimeData());
-  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input', 'daily_summary', 'monthly_matrix', 'worker_management', 'legacy_reports'
+  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' | 'detail' | 'legacy_reports'
+  const [detailSubTab, setDetailSubTab] = useState("monthly_matrix"); // 'monthly_matrix' | 'daily_summary' | 'worker_management'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // ⭐ 인원관리 및 인사카드 전용 State
@@ -1781,7 +1783,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       {/* Header Toolbar */}
       <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-700 shadow-xl text-white space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="p-1.5 sm:p-2 rounded-xl bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400/40">
@@ -1812,6 +1814,65 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 )}
               </h1>
             </div>
+          </div>
+
+          {/* 🧭 3대 뱃지 탭 네비게이션: [⚡ 근태등록] | [📊 상세] | [📑 근태보고서 관리] */}
+          <div className="flex items-center gap-1.5 bg-slate-950/90 p-1 rounded-2xl border border-slate-800 shrink-0 shadow-inner">
+            {/* 1. 근태등록 */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("daily_input")}
+              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                activeTab === "daily_input"
+                  ? "bg-white text-slate-950 shadow-md font-black"
+                  : "bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80"
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-cyan-400" />
+              <span>근태등록</span>
+              {hasUnsavedChanges && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-bold animate-pulse">
+                  미저장
+                </span>
+              )}
+            </button>
+
+            {/* 2. 상세 */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("detail");
+              }}
+              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                activeTab === "detail" || activeTab === "monthly_matrix" || activeTab === "daily_summary" || activeTab === "worker_management"
+                  ? "bg-white text-slate-950 shadow-md font-black"
+                  : "bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80"
+              }`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-400" />
+              <span>상세</span>
+            </button>
+
+            {/* 3. 근태보고서 관리 */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("legacy_reports")}
+              className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                activeTab === "legacy_reports"
+                  ? "bg-white text-slate-950 shadow-md font-black"
+                  : "bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/80"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5 text-purple-400" />
+              <span>근태보고서 관리</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                activeTab === "legacy_reports"
+                  ? "bg-purple-100 text-purple-900"
+                  : "bg-purple-950 text-purple-300 border border-purple-800"
+              }`}>
+                {legacyReports.length}건
+              </span>
+            </button>
           </div>
         </div>
 
@@ -1962,48 +2023,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 🧭 MAIN TAB NAVIGATION (근태등록 / 일자별 / 종합현황 / 인원관리 / 관리) */}
-      {/* ========================================================================= */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-b border-slate-200 dark:border-slate-800">
-        {[
-          { id: "daily_input", label: "근태등록", icon: Zap, badge: hasUnsavedChanges ? "미저장" : null, highlight: true },
-          { id: "daily_summary", label: "일자별", icon: FileSpreadsheet },
-          { id: "monthly_matrix", label: "종합현황", icon: CalendarDays },
-          { id: "worker_management", label: "인원관리", icon: Users, badge: `${smartData.attendanceMatrix?.length || 0}명` },
-          { id: "legacy_reports", label: "관리", icon: FileText, badge: `${legacyReports.length}건` }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg font-bold text-xs whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                isActive
-                  ? tab.highlight
-                    ? "bg-cyan-600 text-white shadow-sm ring-1 ring-cyan-400"
-                    : "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs"
-                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800"
-              }`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? (tab.highlight ? "text-white" : "text-cyan-400") : "text-slate-400"}`} />
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                  isActive 
-                    ? "bg-white/20 text-white" 
-                    : tab.badge === "미저장"
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"
-                    : "bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300"
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
 
       {/* ========================================================================= */}
       {/* 📝 TAB 1: 근태/잔업/특근 등록 (PRIMARY WORKSPACE - 한 줄 상단 제어바) */}
@@ -2347,9 +2366,57 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📋 TAB 2: 일자별 종합 집계 (DAILY SUMMARY TABLE) */}
+      {/* 📊 TAB 2: 상세 (월간 종합현황 대장 / 일자별 종합 집계 / 인원관리 & 인사카드) */}
       {/* ========================================================================= */}
-      {activeTab === "daily_summary" && (
+      {(activeTab === "detail" || activeTab === "monthly_matrix" || activeTab === "daily_summary" || activeTab === "worker_management") && (
+        <div className="space-y-4">
+          {/* Sub-Tab Navigation Bar within Detail */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-900 dark:bg-slate-950 rounded-2xl border border-slate-700/80 w-fit flex-wrap shadow-sm">
+            <button
+              type="button"
+              onClick={() => setDetailSubTab("monthly_matrix")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                detailSubTab === "monthly_matrix"
+                  ? "bg-purple-600 text-white shadow-md font-black"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>📅 월간 종합현황 대장</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDetailSubTab("daily_summary")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                detailSubTab === "daily_summary"
+                  ? "bg-cyan-600 text-white shadow-md font-black"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>📊 일자별 종합 집계</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setDetailSubTab("worker_management")}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                detailSubTab === "worker_management"
+                  ? "bg-emerald-600 text-white shadow-md font-black"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>👥 인원관리 & 인사카드</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-950 text-emerald-300 font-mono font-bold">
+                {smartData.attendanceMatrix?.length || 0}명
+              </span>
+            </button>
+          </div>
+
+          {/* 📋 Sub-View 1: 일자별 종합 집계 */}
+          {detailSubTab === "daily_summary" && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
@@ -2524,9 +2591,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📊 TAB 3: 당월 전사 종합현황판 (업체별 드롭다운 & 전체 매트릭스) */}
+      {/* 📊 Sub-View 2: 당월 전사 종합현황 대장 (업체별 드롭다운 & 전체 매트릭스) */}
       {/* ========================================================================= */}
-      {activeTab === "monthly_matrix" && (
+      {detailSubTab === "monthly_matrix" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
           {/* Top Controls: Company Dropdown & Pills + Dynamic Summary */}
           {(() => {
@@ -2742,9 +2809,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 🪪 TAB 4: 인원관리 및 제조현장 인사카드 (PERSONNEL MANAGEMENT & SKILL CARDS) */}
+      {/* 🪪 Sub-View 3: 인원관리 및 제조현장 인사카드 (PERSONNEL MANAGEMENT & SKILL CARDS) */}
       {/* ========================================================================= */}
-      {activeTab === "worker_management" && (
+      {detailSubTab === "worker_management" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
           {/* 1. Header & Summary Stats */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
@@ -3233,9 +3300,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           </div>
         </div>
       )}
+        </div>
+      )}
 
       {/* ========================================================================= */}
-      {/* 📑 TAB 5: 근태/특근보고서 관리 (WEEKDAY ATTENDANCE, WEEKEND OVERTIME & PLANT SYNTHESIS) */}
+      {/* 📑 TAB 3: 근태/특근보고서 관리 (WEEKDAY ATTENDANCE, WEEKEND OVERTIME & PLANT SYNTHESIS) */}
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
