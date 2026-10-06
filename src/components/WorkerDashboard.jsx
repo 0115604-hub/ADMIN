@@ -202,6 +202,31 @@ const TIME_OPTIONS_30MIN = [
   "03:00", "03:30", "04:00", "04:30", "05:00", "05:30"
 ];
 
+// ⭐ 부적합 분류 드롭다운 옵션 그룹 (제품부적합 / 공정부적합)
+export const DEFECT_TYPE_GROUPS = [
+  {
+    category: "제품부적합",
+    label: "📦 제품부적합",
+    items: [
+      { value: "[제품부적합] 치수", name: "치수" },
+      { value: "[제품부적합] 외관", name: "외관" },
+      { value: "[제품부적합] 조립", name: "조립" },
+      { value: "[제품부적합] 누락/혼입", name: "누락/혼입" }
+    ]
+  },
+  {
+    category: "공정부적합",
+    label: "⚙️ 공정부적합",
+    items: [
+      { value: "[공정부적합] 작업조건미준수", name: "작업조건미준수" },
+      { value: "[공정부적합] 검사누락", name: "검사누락" },
+      { value: "[공정부적합] 설비조건이상", name: "설비조건이상" },
+      { value: "[공정부적합] 금형이상", name: "금형이상" },
+      { value: "[공정부적합] 치공구이상", name: "치공구이상" }
+    ]
+  }
+];
+
 // Storage key for Extrusion 4-Lines Downtime Data (Synced directly with ExtrusionDowntimeView)
 const STORAGE_KEY_EXTRUSION = "factory_extrusion_downtime_user_uploaded_v5";
 
@@ -1121,6 +1146,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     shift: "주간",
     line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? "전라인 품질 검사 및 불량 분석" : "9BQC 압출 1호기",
     workContent: "",
+    defectType: "",
     issues: "",
     images: [], // 전체 첨부 사진 목록
     imagesBefore: [], // 🔴 개선 전 (Before) 사진 목록
@@ -2687,6 +2713,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         return;
       }
 
+      let finalIssues = formData.issues?.trim() || "";
+      if (formData.defectType && formData.defectType !== "[직접입력] 기타부적합" && !finalIssues.includes(formData.defectType)) {
+        finalIssues = finalIssues ? `${formData.defectType} ${finalIssues}` : formData.defectType;
+      }
+      if (!finalIssues) finalIssues = "-";
+
       const newLog = {
         id: String(Date.now()),
         date: formData.date || getKSTDateString(),
@@ -2698,7 +2730,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         shift: formData.shift || "주간",
         line: isInjoo ? "본사/현장 정산 및 전표 마감" : isQualityWorker ? (formData.line || "전라인 품질 검사 및 불량 분석") : (formData.line || "생산 라인"),
         workContent: formData.workContent,
-        issues: formData.issues || "-",
+        defectType: formData.defectType || "",
+        issues: finalIssues,
         images: formData.images || [...(formData.imagesBefore || []), ...(formData.imagesAfter || [])],
         imagesBefore: formData.imagesBefore || [],
         imagesAfter: formData.imagesAfter || [],
@@ -2719,6 +2752,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       setFormData((prev) => ({
         ...prev,
         workContent: "",
+        defectType: "",
         issues: "",
         images: [],
         imagesBefore: [],
@@ -2750,6 +2784,21 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     }
     pushModalHistory("worklog_edit");
     setEditingLog(log);
+    let defectType = log.defectType || "";
+    let cleanIssues = log.issues === "-" ? "" : (log.issues || "");
+    if (!defectType && cleanIssues) {
+      for (const grp of DEFECT_TYPE_GROUPS) {
+        for (const it of grp.items) {
+          if (cleanIssues.startsWith(it.value)) {
+            defectType = it.value;
+            cleanIssues = cleanIssues.replace(it.value, "").trim();
+            break;
+          }
+        }
+        if (defectType) break;
+      }
+    }
+
     setEditFormData({
       id: log.id,
       date: log.date || getKSTDateString(),
@@ -2760,7 +2809,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       shift: log.shift || "주간",
       line: log.line || "",
       workContent: log.workContent || "",
-      issues: log.issues === "-" ? "" : (log.issues || ""),
+      defectType: defectType,
+      issues: cleanIssues,
       images: Array.isArray(log.images) ? [...log.images] : [],
       imagesBefore: Array.isArray(log.imagesBefore) ? [...log.imagesBefore] : [],
       imagesAfter: Array.isArray(log.imagesAfter) ? [...log.imagesAfter] : []
@@ -2923,6 +2973,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       return;
     }
 
+    let finalEditIssues = editFormData.issues?.trim() || "";
+    if (editFormData.defectType && editFormData.defectType !== "[직접입력] 기타부적합" && !finalEditIssues.includes(editFormData.defectType)) {
+      finalEditIssues = finalEditIssues ? `${editFormData.defectType} ${finalEditIssues}` : editFormData.defectType;
+    }
+
     try {
       const updatedFields = {
         date: editFormData.date,
@@ -2930,7 +2985,8 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         shift: editFormData.shift,
         line: lineSummary || editFormData.line,
         workContent: formattedWorkContent,
-        issues: editFormData.issues === "" ? "-" : (editFormData.issues || "특이사항 없음"),
+        defectType: editFormData.defectType || "",
+        issues: finalEditIssues === "" ? "-" : finalEditIssues,
         images: editFormData.images || [],
         imagesBefore: editFormData.imagesBefore || [],
         imagesAfter: editFormData.imagesAfter || [],
@@ -5741,16 +5797,46 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
               {/* 부적합사항 및 개선조치 (설비보전 일지에는 비노출) */}
               {(!editMaintenanceItems || editMaintenanceItems.length === 0) && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    ⚠️ 부적합사항 및 개선조치
-                  </label>
+                <div className="space-y-1.5 p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-black text-amber-900 dark:text-amber-300">
+                      ⚠️ 부적합사항 및 개선조치
+                    </label>
+                    {editFormData.defectType && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData((prev) => ({ ...prev, defectType: "" }))}
+                        className="text-[9.5px] text-slate-400 hover:text-rose-600 underline font-bold cursor-pointer"
+                      >
+                        선택 해제
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    value={editFormData.defectType || ""}
+                    onChange={(e) => setEditFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                  >
+                    <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                    {DEFECT_TYPE_GROUPS.map((grp) => (
+                      <optgroup key={grp.category} label={grp.label}>
+                        {grp.items.map((it) => (
+                          <option key={it.value} value={it.value}>
+                            {it.name} ({grp.category})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                  </select>
+
                   <textarea
-                    rows="2"
+                    rows={2.5}
                     value={editFormData.issues}
                     onChange={(e) => setEditFormData({ ...editFormData, issues: e.target.value })}
-                    placeholder="부적합 발생 내용, 원인 및 개선 조치 사항 입력 (없을 시 비워두기)"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs text-slate-900 dark:text-white"
+                    placeholder={editFormData.defectType ? `선택된 ${editFormData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
+                    className="w-full px-3 py-2 rounded-xl border border-amber-300/80 dark:border-amber-800 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white"
                   />
                 </div>
               )}
@@ -6151,20 +6237,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
                           <span className="text-[10.5px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                            <span>부적합사항 및 개선조치</span>
+                            <span>2. 부적합사항 및 개선조치</span>
                           </span>
                           <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
                             사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
                           </span>
                         </div>
 
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="특이사항 및 개선 조치 내용 입력 (선택, 없을 시 비워두기)"
+                        {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                              부적합 분류 선택
+                            </label>
+                            {formData.defectType && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
+                                className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
+                              >
+                                선택 해제
+                              </button>
+                            )}
+                          </div>
+
+                          <select
+                            value={formData.defectType || ""}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                          >
+                            <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                            {DEFECT_TYPE_GROUPS.map((grp) => (
+                              <optgroup key={grp.category} label={grp.label}>
+                                {grp.items.map((it) => (
+                                  <option key={it.value} value={it.value}>
+                                    {it.name} ({grp.category})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                          </select>
+
+                          <textarea
+                            rows={2.5}
+                            placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
                             value={formData.issues}
-                            onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+                            onChange={(e) => setFormData((prev) => ({ ...formData, issues: e.target.value }))}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
                           />
                         </div>
 
@@ -6928,20 +7048,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
                     <span className="text-[11px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      <span>부적합사항 및 개선조치</span>
+                      <span>2. 부적합사항 및 개선조치</span>
                     </span>
                     <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
                       사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
                     </span>
                   </div>
 
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="부적합 내용 및 조치사항 입력 (예: 압출 표면 스크래치 발생 -> 다이스 청소 및 냉각수 온도 조정 완료)"
+                  {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        부적합 분류 선택
+                      </label>
+                      {formData.defectType && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
+                          className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
+                        >
+                          선택 해제
+                        </button>
+                      )}
+                    </div>
+
+                    <select
+                      value={formData.defectType || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                    >
+                      <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                      {DEFECT_TYPE_GROUPS.map((grp) => (
+                        <optgroup key={grp.category} label={grp.label}>
+                          {grp.items.map((it) => (
+                            <option key={it.value} value={it.value}>
+                              {it.name} ({grp.category})
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                    </select>
+
+                    <textarea
+                      rows={2.5}
+                      placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
                       value={formData.issues}
-                      onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+                      onChange={(e) => setFormData((prev) => ({ ...formData, issues: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
 
@@ -7233,20 +7387,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
                           <span className="text-[10.5px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
                             <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                            <span>부적합사항 및 개선조치</span>
+                            <span>2. 부적합사항 및 개선조치</span>
                           </span>
                           <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
                             사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
                           </span>
                         </div>
 
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="부적합 내용 및 조치사항 입력 (예: HR G-RUN 어퍼떨어짐 불량 발생 -> 접착온도 상향 및 롤러 압력 조정 완료)"
+                        {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                              부적합 분류 선택
+                            </label>
+                            {formData.defectType && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
+                                className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
+                              >
+                                선택 해제
+                              </button>
+                            )}
+                          </div>
+
+                          <select
+                            value={formData.defectType || ""}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                          >
+                            <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                            {DEFECT_TYPE_GROUPS.map((grp) => (
+                              <optgroup key={grp.category} label={grp.label}>
+                                {grp.items.map((it) => (
+                                  <option key={it.value} value={it.value}>
+                                    {it.name} ({grp.category})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                          </select>
+
+                          <textarea
+                            rows={2.5}
+                            placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
                             value={formData.issues}
-                            onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+                            onChange={(e) => setFormData((prev) => ({ ...formData, issues: e.target.value }))}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
                           />
                         </div>
 
@@ -7621,20 +7809,54 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
                     <span className="text-[11px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                      <span>부적합사항 및 개선조치</span>
+                      <span>2. 부적합사항 및 개선조치</span>
                     </span>
                     <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
                       사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
                     </span>
                   </div>
 
-                  <div>
-                    <input
-                      type="text"
-                      placeholder="설비 이상, 원료 교체, 부적합 품질 이슈 및 조치사항 입력 (선택)"
+                  {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        부적합 분류 선택
+                      </label>
+                      {formData.defectType && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
+                          className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
+                        >
+                          선택 해제
+                        </button>
+                      )}
+                    </div>
+
+                    <select
+                      value={formData.defectType || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                    >
+                      <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                      {DEFECT_TYPE_GROUPS.map((grp) => (
+                        <optgroup key={grp.category} label={grp.label}>
+                          {grp.items.map((it) => (
+                            <option key={it.value} value={it.value}>
+                              {it.name} ({grp.category})
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                    </select>
+
+                    <textarea
+                      rows={2.5}
+                      placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
                       value={formData.issues}
                       onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+                      className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
 
