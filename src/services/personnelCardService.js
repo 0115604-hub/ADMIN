@@ -22,10 +22,20 @@ export const STANDARD_PROCESS_LIST = [
   "검사"
 ];
 
-// ⭐ 표준 3대 부서 목록 (생산팀 / 생산관리팀 / 관리팀)
+// ⭐ 표준 5대 소속 업체 목록 (주)오륙, 주)조영, 유성, 한울, 부림텍)
+export const COMPANY_LIST = [
+  "주)오륙",
+  "주)조영",
+  "유성",
+  "한울",
+  "부림텍"
+];
+
+// ⭐ 표준 4대 부서 목록 (생산팀 / 압출관리팀 / 가공관리팀 / 관리팀)
 export const DEPARTMENTS_LIST = [
   "생산팀",
-  "생산관리팀",
+  "압출관리팀",
+  "가공관리팀",
   "관리팀"
 ];
 
@@ -96,13 +106,27 @@ export const getInspectorGradeMeta = (grade) => {
   );
 };
 
-// 부서 정규화 헬퍼 (생산팀, 생산관리팀, 관리팀 3개로 표준화)
+// 소속 업체 정규화 헬퍼 (주)오륙, 주)조영, 유성, 한울, 부림텍 5개사로 표준화)
+export const normalizeStandardCompany = (comp) => {
+  if (!comp) return "주)오륙";
+  const str = String(comp).trim();
+  if (str === "주)오륙" || str === "(주)오륙" || str.includes("오륙")) return "주)오륙";
+  if (str === "주)조영" || str === "(주)조영" || str.includes("조영")) return "주)조영";
+  if (str.includes("유성")) return "유성";
+  if (str.includes("한울")) return "한울";
+  if (str.includes("부림")) return "부림텍";
+  return str;
+};
+
+// 부서 정규화 헬퍼 (생산팀, 압출관리팀, 가공관리팀, 관리팀 4개로 표준화)
 export const normalizeStandardDept = (dept) => {
   if (!dept) return "생산팀";
   const str = String(dept).trim();
-  if (str === "생산팀" || str === "생산관리팀" || str === "관리팀") return str;
-  if (str.includes("생산관리") || str.includes("공정관리") || str.includes("자재") || str.includes("출하")) return "생산관리팀";
-  if (str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계")) return "관리팀";
+  if (DEPARTMENTS_LIST.includes(str)) return str;
+  if (str.includes("압출")) return "압출관리팀";
+  if (str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장") || str.includes("조인트") || str.includes("사상") || str.includes("코팅")) return "가공관리팀";
+  if (str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("품질") || str.includes("설비")) return "관리팀";
+  if (str.includes("생산")) return "생산팀";
   return "생산팀";
 };
 
@@ -305,7 +329,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 이미 카드 데이터가 존재하는 경우 병합하여 반환
   const existingCard = worker.personnelCard || {};
 
-  const company = cleanCompanyName(worker.company || existingCard.company || "오륙");
+  const company = normalizeStandardCompany(worker.company || existingCard.company || "주)오륙");
   const dept = normalizeStandardDept(worker.dept || existingCard.dept || "생산팀");
   const name = String(worker.name || existingCard.name || "").trim();
   const position = normalizeStandardPosition(worker.position || existingCard.position || "사원");
@@ -424,7 +448,7 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
 
     const cleanData = {
       ...cardData,
-      company: cleanCompanyName(cardData.company),
+      company: normalizeStandardCompany(cardData.company),
       dept: normalizeStandardDept(cardData.dept),
       position: normalizeStandardPosition(cardData.position),
       nationality: cardData.nationality || "대한민국",

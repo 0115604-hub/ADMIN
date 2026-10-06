@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import {
   STANDARD_PROCESS_LIST,
+  COMPANY_LIST,
   DEPARTMENTS_LIST,
   POSITIONS_LIST,
   SKILL_LEVEL_META,
@@ -39,6 +40,7 @@ import {
   calculateTenureFromJoinDate,
   calculateProcessYearFromJoinDate,
   getWorkerPersonnelCard,
+  normalizeStandardCompany,
   normalizeStandardDept,
   normalizeStandardPosition,
   compressImageToBase64
@@ -411,26 +413,30 @@ export default function PersonnelCardModal({
                   />
                 </div>
 
+                {/* 소속 업체 선택: 주)오륙, 주)조영, 유성, 한울, 부림텍 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">소속 업체</label>
-                  <input
-                    type="text"
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">소속 업체 (5대 업체)</label>
+                  <select
                     value={formData.company}
                     onChange={(e) => handleChange("company", e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
-                  />
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold cursor-pointer"
+                  >
+                    {COMPANY_LIST.map((compName) => (
+                      <option key={compName} value={compName} className="bg-slate-900 text-white font-bold">{compName}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* 부서 선택: 생산팀 / 생산관리팀 / 관리팀 */}
+                {/* 부서 선택: 생산팀 / 압출관리팀 / 가공관리팀 / 관리팀 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서 (3대 부서)</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서 (4대 부서)</label>
                   <select
                     value={formData.dept}
                     onChange={(e) => handleChange("dept", e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold cursor-pointer"
                   >
                     {DEPARTMENTS_LIST.map((deptName) => (
-                      <option key={deptName} value={deptName}>{deptName}</option>
+                      <option key={deptName} value={deptName} className="bg-slate-900 text-white font-bold">{deptName}</option>
                     ))}
                   </select>
                 </div>
