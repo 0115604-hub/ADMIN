@@ -366,6 +366,8 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 국적 (기본값: 대한민국)
   const nationality = existingCard.nationality || worker.nationality || "대한민국";
   const nationalityOther = existingCard.nationalityOther || worker.nationalityOther || "";
+  // 작업자 사진
+  const photoUrl = existingCard.photoUrl || worker.photoUrl || "";
 
   return {
     empNo,
