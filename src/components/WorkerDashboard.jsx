@@ -514,10 +514,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const workerDept = workerCard?.dept || (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀");
   const workerPosition = officialTitle || workerCard?.position || "선임";
 
-  // General Manager Identification
+  // General Manager & Management Staff Identification (관리자 및 관리팀 여부)
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
   const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
+  const isManagerOrAdmin = isGeneralManager || isAdmin || workerDept === "관리팀" || currentProfile?.assignedProcess === "총괄관리" || currentProfile?.assignedProcess === "경리업무" || currentProfile?.role === "ADMIN" || currentProfile?.title === "이사" || currentProfile?.title === "대표이사" || currentProfile?.title === "전무" || isInjoo;
 
   // Approval Documents Subscription (Real-time for Top Panel)
   // 5 Company Smart Overtime Ledger Subscription for Panel 4
@@ -3074,27 +3075,29 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   return (
     <div className="space-y-2.5 sm:space-y-3 animate-fadeIn pb-12 max-w-[1600px] w-full mx-auto px-0.5 sm:px-0 min-w-0 max-w-full">
-      {/* 🌐 가공동 / 압출동 작업자 작업일보 최상단 언어 선택 및 현장 바 */}
-      <div className="bg-slate-900/95 dark:bg-slate-950 border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 shadow-sm flex-wrap">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs shrink-0">
-            <Factory className="w-4 h-4 sm:w-5 sm:h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-black text-xs sm:text-sm text-white">
-                🏭 {workerPlant} {isExtrusionWorker ? getWorkLogText("extrusion_shop") : getWorkLogText("machining_shop")} ({getWorkLogText("work_log_title")})
-              </span>
-              <span className="text-[11px] px-2 py-0.2 rounded-md bg-blue-950 text-blue-300 font-bold border border-blue-700/60">
-                {workerFullName} {officialTitle} [{assignedProcess}]
+      {/* 🌐 가공동 / 압출동 현장 작업자 전용 최상단 바 (관리자는 단순화를 위해 숨김) */}
+      {!isManagerOrAdmin && (
+        <div className="bg-slate-900/95 dark:bg-slate-950 border border-slate-700/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2.5 shadow-sm flex-wrap">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs shrink-0">
+              <Factory className="w-4 h-4 sm:w-5 sm:h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-black text-xs sm:text-sm text-white">
+                  🏭 {workerPlant} {isExtrusionWorker ? getWorkLogText("extrusion_shop") : getWorkLogText("machining_shop")} ({getWorkLogText("work_log_title")})
+                </span>
+                <span className="text-[11px] px-2 py-0.2 rounded-md bg-blue-950 text-blue-300 font-bold border border-blue-700/60">
+                  {workerFullName} {officialTitle} [{assignedProcess}]
+                </span>
+              </div>
+              <span className="text-[10.5px] text-slate-400 block truncate">
+                {getWorkLogText("safety_first")}
               </span>
             </div>
-            <span className="text-[10.5px] text-slate-400 block truncate">
-              {getWorkLogText("safety_first")}
-            </span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 🌟 압출동 일반작업자 전용 상단 배너 (설유철 책임은 관리자이므로 제외) */}
       {(currentProfile?.building === "압출동" || currentProfile?.id?.startsWith("ext_") || currentProfile?.name === "공영국") && currentProfile?.name !== "설유철" && currentProfile?.id !== "sam_yc" && (
