@@ -190,6 +190,7 @@ export const ATTENDANCE_OPTIONS = [
   { code: "야간", label: "🌌 야간근무 (8H, 야간)", shortLabel: "야간근무", otHours: 0, workHours: 8, bg: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-300" },
   { code: "주야", label: "⚡ 주야맞교대 (+4H, 12H)", shortLabel: "주야교대", otHours: 4, workHours: 12, bg: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-300" },
   { code: "-", label: "- 휴무/공휴일 (0H)", shortLabel: "휴무", otHours: 0, workHours: 0, bg: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border-slate-300" },
+  { code: "휴가", label: "🏖️ 휴가 (휴무, 0H)", shortLabel: "휴가", otHours: 0, workHours: 0, bg: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border-teal-300" },
   { code: "연차", label: "🌴 연차휴가 (휴무, 0H)", shortLabel: "연차", otHours: 0, workHours: 0, bg: "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border-sky-300" },
   { code: "반차", label: "⛅ 오전/오후 반차 (4H)", shortLabel: "반차", otHours: 0, workHours: 4, bg: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300" },
   { code: "결근", label: "❌ 결근/무단결근 (0H)", shortLabel: "결근", otHours: 0, workHours: 0, bg: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 border-red-300" }
@@ -210,7 +211,7 @@ export const getOptionMeta = (code) => {
 export const calculateWorkerDailyHours = (code) => {
   if (!code) return { isAttended: false, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 0 };
   const strCode = String(code).trim();
-  if (strCode === "-" || strCode === "휴무" || strCode === "결근" || strCode === "연차" || strCode === "") {
+  if (strCode === "-" || strCode === "휴무" || strCode === "결근" || strCode === "휴가" || strCode === "연차" || strCode === "") {
     return { isAttended: false, weekdayOt: 0, weekendOt: 0, nightDay: 0, workHours: 0 };
   }
   if (strCode === "반차") {

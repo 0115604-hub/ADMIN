@@ -71,7 +71,7 @@ export default function Absence4MModal({
     company: initialCompany || "오륙",
     process: "압출",
     absentWorkerName: "",
-    absentReason: "병결",
+    absentReason: "휴가",
     customReason: "",
     substituteWorkerName: "",
     firstPieceCheck: true,
@@ -144,7 +144,7 @@ export default function Absence4MModal({
   const detectedAbsentWorkers = useMemo(() => {
     return allWorkers.filter((w) => {
       const code = String(w.dailyCode || "").trim();
-      return code === "결근" || code === "무단결근" || code === "연차" || code === "반차";
+      return code === "결근" || code === "무단결근" || code === "휴가" || code === "연차" || code === "반차";
     });
   }, [allWorkers]);
 
@@ -179,10 +179,12 @@ export default function Absence4MModal({
         const managerInfo = COMPANY_APPROVAL_MANAGERS[w.company] || COMPANY_APPROVAL_MANAGERS["오륙"];
         const defaultSup = `${managerInfo.drafter || "관리감독자"} ${managerInfo.drafterRole || "선임"}`;
 
-        let reason = "병결";
-        if (w.dailyCode === "연차") reason = "연차";
+        let reason = "휴가";
+        if (w.dailyCode === "휴가") reason = "휴가";
+        else if (w.dailyCode === "연차") reason = "연차";
         else if (w.dailyCode === "반차") reason = "반차";
         else if (w.dailyCode === "무단결근") reason = "무단결근";
+        else if (w.dailyCode === "결근") reason = "병결";
 
         const tempId = `auto_${dateStr}_${w.company}_${w.name}`;
 
@@ -204,7 +206,7 @@ export default function Absence4MModal({
           },
           substituteWorker: null,
           riskLevel: "UNKNOWN",
-          riskWarningText: "대체 투입 작업자를 지정해주세요.",
+          riskWarningText: "대체 투입 작업자를 지정하거나 라인비가동을 선택해주세요.",
           checkpoints: {
             firstPieceCheck: true,
             firstPieceChecker: defaultSup,
@@ -568,10 +570,19 @@ export default function Absence4MModal({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">대체 투입 작업자 이름</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-400">대체 투입 작업자</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewEntry({ ...newEntry, substituteWorkerName: "라인비가동" })}
+                    className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 hover:bg-amber-950 text-amber-300 border border-slate-700 hover:border-amber-600 font-bold cursor-pointer"
+                  >
+                    ⏸️ 라인비가동
+                  </button>
+                </div>
                 <input
                   type="text"
-                  placeholder="예: 김선임"
+                  placeholder="예: 김선임 또는 라인비가동"
                   value={newEntry.substituteWorkerName}
                   onChange={(e) => setNewEntry({ ...newEntry, substituteWorkerName: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1.5 text-white font-bold"
@@ -607,7 +618,29 @@ export default function Absence4MModal({
                   }
                   const comp = cleanCompanyName(newEntry.company);
                   const absentCard = personnelCardsMap[`${comp}_${newEntry.absentWorkerName.trim()}`] || {};
+                  const isLineStop = newEntry.substituteWorkerName.trim() === "라인비가동";
                   const subCard = newEntry.substituteWorkerName ? (personnelCardsMap[`${comp}_${newEntry.substituteWorkerName.trim()}`] || {}) : null;
+
+                  const substituteObj = isLineStop ? {
+                    name: "라인비가동",
+                    isLineStopped: true,
+                    position: "비가동",
+                    dept: absentCard.dept || "생산팀",
+                    mainProcess: newEntry.process,
+                    subProcesses: [],
+                    isMultiSkill: false,
+                    skillLevel: 0,
+                    skillGrade: "라인비가동"
+                  } : (newEntry.substituteWorkerName.trim() ? {
+                    name: newEntry.substituteWorkerName.trim(),
+                    position: subCard?.position || "사원",
+                    dept: subCard?.dept || "생산팀",
+                    mainProcess: subCard?.mainProcess || newEntry.process,
+                    subProcesses: subCard?.subProcesses || [],
+                    isMultiSkill: subCard?.isMultiSkill || false,
+                    skillLevel: subCard?.skillLevel || 3,
+                    skillGrade: subCard?.skillGrade || "Lv.3 보통"
+                  } : null);
 
                   const entryData = {
                     date: dateStr,
@@ -623,23 +656,14 @@ export default function Absence4MModal({
                       reason: newEntry.absentReason,
                       customReason: newEntry.customReason
                     },
-                    substituteWorker: newEntry.substituteWorkerName.trim() ? {
-                      name: newEntry.substituteWorkerName.trim(),
-                      position: subCard?.position || "사원",
-                      dept: subCard?.dept || "생산팀",
-                      mainProcess: subCard?.mainProcess || newEntry.process,
-                      subProcesses: subCard?.subProcesses || [],
-                      isMultiSkill: subCard?.isMultiSkill || false,
-                      skillLevel: subCard?.skillLevel || 3,
-                      skillGrade: subCard?.skillGrade || "Lv.3 보통"
-                    } : null,
+                    substituteWorker: substituteObj,
                     checkpoints: {
-                      firstPieceCheck: newEntry.firstPieceCheck,
+                      firstPieceCheck: isLineStop ? false : newEntry.firstPieceCheck,
                       firstPieceChecker: newEntry.firstPieceChecker || newEntry.supervisorName,
-                      workInstructionTold: newEntry.workInstructionTold,
+                      workInstructionTold: isLineStop ? false : newEntry.workInstructionTold,
                       supervisorApproval: newEntry.supervisorApproval,
                       supervisorName: newEntry.supervisorName,
-                      qualityStatus: newEntry.qualityStatus
+                      qualityStatus: isLineStop ? "NORMAL" : newEntry.qualityStatus
                     },
                     remarks: newEntry.remarks
                   };
@@ -785,8 +809,43 @@ function Absence4MCardItem({
         ...formState,
         substituteWorker: null,
         riskLevel: "UNKNOWN",
-        riskWarningText: "대체 투입 작업자를 선택해주세요."
+        riskWarningText: "대체 투입 작업자를 선택하거나 라인비가동을 지정해주세요."
       };
+      setFormState(updated);
+      return;
+    }
+
+    if (workerName === "라인비가동") {
+      const subWorkerData = {
+        name: "라인비가동",
+        isLineStopped: true,
+        position: "비가동",
+        dept: formState.absentWorker?.dept || "생산팀",
+        mainProcess: formState.process || "압출",
+        subProcesses: [],
+        isMultiSkill: false,
+        skillLevel: 0,
+        skillGrade: "라인비가동"
+      };
+
+      const risk = calculate4MRisk(
+        formState.absentWorker,
+        subWorkerData,
+        formState.process || formState.absentWorker?.mainProcess || "압출"
+      );
+
+      const updated = {
+        ...formState,
+        substituteWorker: subWorkerData,
+        riskLevel: risk.level,
+        riskWarningText: risk.warningMsg,
+        checkpoints: {
+          ...formState.checkpoints,
+          firstPieceCheck: false,
+          workInstructionTold: false
+        }
+      };
+
       setFormState(updated);
       return;
     }
@@ -907,7 +966,7 @@ function Absence4MCardItem({
           <div className="flex items-center gap-2 pt-1">
             <span className="text-[11px] font-bold text-slate-400 shrink-0">결근사유:</span>
             <select
-              value={absentCard.reason || "병결"}
+              value={absentCard.reason || "휴가"}
               onChange={(e) => setFormState({
                 ...formState,
                 absentWorker: { ...absentCard, reason: e.target.value }
@@ -950,6 +1009,9 @@ function Absence4MCardItem({
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-black text-emerald-300 cursor-pointer"
             >
               <option value="">-- 4M 대체 투입 작업자 선택 --</option>
+              <option value="라인비가동" className="text-amber-400 font-bold bg-slate-900">
+                ⏸️ [라인비가동] 대체인원 미투입 (공정 정지/비가동)
+              </option>
               {sortedCandidates.map((w) => {
                 const card = personnelCardsMap[w.cardKey] || w.personnelCard || {};
                 const isTargetProcess = card.mainProcess === (formState.process || "압출") || (card.subProcesses || []).includes(formState.process || "압출");
@@ -963,7 +1025,16 @@ function Absence4MCardItem({
             </select>
           </div>
 
-          {subCard.name ? (
+          {subCard.name === "라인비가동" || subCard.isLineStopped ? (
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-amber-300 font-bold flex items-center gap-1">
+                <span>⏸️ 라인 비가동 (대체 미투입 / 공정 일시정지)</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-900 text-slate-400 border border-slate-700 font-bold">
+                품질영향 없음
+              </span>
+            </div>
+          ) : subCard.name ? (
             <div className="flex items-center justify-between text-xs pt-0.5">
               <span className="text-slate-300 font-bold">
                 {subCard.position} · {subCard.mainProcess}
@@ -975,7 +1046,7 @@ function Absence4MCardItem({
             </div>
           ) : (
             <p className="text-[11px] text-amber-400/90 font-medium">
-              💡 위 드롭다운에서 당일 대체 투입할 작업자를 지정하세요.
+              💡 위 드롭다운에서 당일 대체 투입할 작업자를 지정하거나 [라인비가동]을 선택하세요.
             </p>
           )}
         </div>

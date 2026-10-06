@@ -16,6 +16,7 @@ const LOCAL_STORAGE_KEY = "oryuk_4m_absence_logs_v1";
 
 // ⭐ 표준 결근 사유 목록
 export const ABSENCE_REASONS = [
+  { code: "휴가", label: "🏖️ 휴가 (연차/포상/하계휴가)", severity: "normal" },
   { code: "병결", label: "🏥 병결 (질병/통원치료)", severity: "normal" },
   { code: "개인사정", label: "🏠 개인사정 (가사/용무)", severity: "normal" },
   { code: "연차", label: "🌴 연차휴가", severity: "normal" },
@@ -40,6 +41,16 @@ export const calculate4MRisk = (absentWorker, substituteWorker, processName) => 
       label: "대체자 미지정",
       badgeClass: "bg-slate-800 text-slate-400 border-slate-700",
       warningMsg: "대체 투입 작업자를 선택해주세요."
+    };
+  }
+
+  // ⏸️ 라인비가동 (대체 미투입) 선택 시
+  if (substituteWorker.name === "라인비가동" || substituteWorker.isLineStopped || substituteWorker.name?.includes("라인비가동")) {
+    return {
+      level: "STOPPED",
+      label: "⏸️ 라인비가동 (대체 미투입)",
+      badgeClass: "bg-slate-800 text-slate-300 border-slate-600",
+      warningMsg: "해당 라인/공정 비가동 상태로 대체 인원을 투입하지 않습니다 (품질 이상 없음)."
     };
   }
 
@@ -103,7 +114,7 @@ export const generate4MOneLineLog = (entry) => {
   const absentName = entry.absentWorker?.name || "결근자";
   const absentPos = entry.absentWorker?.position || "사원";
   const absentSkill = entry.absentWorker?.skillLevel ? `Lv.${entry.absentWorker.skillLevel}` : "Lv.3";
-  const reason = entry.absentWorker?.reason || "병결";
+  const reason = entry.absentWorker?.reason || "휴가";
 
   const subName = entry.substituteWorker?.name || "대체자 미지정";
   const subPos = entry.substituteWorker?.position || "";
@@ -113,8 +124,13 @@ export const generate4MOneLineLog = (entry) => {
   const firstPiece = entry.checkpoints?.firstPieceCheck ? "초물검사 완료" : "초물검사 미실시";
   const supervisor = entry.checkpoints?.supervisorName || "현장선임";
 
+  // ⏸️ 라인비가동 (대체 미투입)인 경우의 1줄 로그
+  if (entry.substituteWorker?.name === "라인비가동" || entry.substituteWorker?.isLineStopped || entry.substituteWorker?.name?.includes("라인비가동")) {
+    return `📌 [4M Man 결근] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ [⏸️ 라인비가동 / 대체 미투입] | [감독: ${supervisor}]`;
+  }
+
   if (!entry.substituteWorker?.name) {
-    return `📌 [4M Man 결근] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos}, ${absentSkill}, ${reason}) ➔ 대체인원 미배치 (라인 비가동/조정)`;
+    return `📌 [4M Man 결근] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체인원 미배치 (라인 비가동/조정)`;
   }
 
   return `📌 [4M Man 변경] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체: ${subName}(${subPos} ${subSkill}${isMulti}) 투입 | [${firstPiece} / 지도: ${supervisor}]`;
