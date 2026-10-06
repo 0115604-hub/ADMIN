@@ -363,19 +363,16 @@ export const WorkerPinModal = ({
     return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, todayKst]);
 
-  // 압출동 전용 변동점 발생상황 (압출 라인 한정)
-  const extrusion4MRecords = useMemo(() => {
-    return allUnified4MRecords.filter((r) => r.isExtrusion).slice(0, 5);
+  // 🌟 최근 2건의 4M 변동점 발생공지 (압출동 작업자 및 관리자 공통 동일 노출)
+  const recent4MRecords = useMemo(() => {
+    return allUnified4MRecords.slice(0, 2);
   }, [allUnified4MRecords]);
 
-  // 가공동 전용 변동점 발생상황 (가공 라인 + 설비보전 + 전사 품질)
-  const processing4MRecords = useMemo(() => {
-    const plantFilter = selectedUser?.plant?.replace("공장", "") || "";
-    return allUnified4MRecords
-      .filter((r) => !r.isExtrusion || r.origin === "설비수리" || r.origin === "품질경보")
-      .filter((r) => !plantFilter || !r.plant || r.plant.includes(plantFilter))
-      .slice(0, 5);
-  }, [allUnified4MRecords, selectedUser]);
+  // 압출동 전용 변동점 발생공지 (동일 내용 2건)
+  const extrusion4MRecords = recent4MRecords;
+
+  // 가공동 전용 변동점 발생공지 (동일 내용 2건)
+  const processing4MRecords = recent4MRecords;
 
   // 관리자 전용 4M 통계
   const stats4M = useMemo(() => {
@@ -743,14 +740,14 @@ export const WorkerPinModal = ({
                 <div className="space-y-1.5">
                   <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
                     {selectedUser.name} {selectedUser.title || ""}님, <br className="hidden sm:inline" />
-                    중대재해공유판, 품질이슈 및 변동점 발생상황을 확인바랍니다.
+                    중대재해공유판, 품질이슈 및 4M 변동점 발생공지를 확인바랍니다.
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">
                     {isExtrusionWorker
-                      ? "인증 시 [중대재해공유판 + 압출 품질이슈 + 변동점 발생상황]이 표시됩니다."
+                      ? "인증 시 [중대재해공유판 + 압출 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
                       : isProcessingWorker
-                      ? "인증 시 [중대재해공유판 + 가공 품질이슈 + 변동점 발생상황]이 표시됩니다."
-                      : "인증 시 [중대재해공유판 + 사내일정 + 근태정보 + 변동점 발생상황]이 표시됩니다."}
+                      ? "인증 시 [중대재해공유판 + 가공 품질이슈 + 4M 변동점 발생공지]가 표시됩니다."
+                      : "인증 시 [중대재해공유판 + 관리자 일정 + 4M 변동점 발생공지 + 근태정보]가 표시됩니다."}
                   </p>
                 </div>
               </div>
@@ -958,7 +955,7 @@ export const WorkerPinModal = ({
                         )}
                       </div>
 
-                      {/* 2. 압출동 변동점 발생상황 */}
+                      {/* 2. 4M 변동점 발생공지 (동일 내용 최근 2건) */}
                       <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -967,28 +964,28 @@ export const WorkerPinModal = ({
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 압출동 변동점 발생상황
+                                📋 4M 변동점 발생공지
                               </span>
                               <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                PCM 1·3호 / PVC / TPE 설비수리·비가동·불량·TPM
+                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
                               </span>
                             </div>
                           </div>
 
                           <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
-                            {extrusion4MRecords.length}건 최근
+                            최근 {recent4MRecords.length}건
                           </span>
                         </div>
 
-                        {extrusion4MRecords.length > 0 ? (
+                        {recent4MRecords.length > 0 ? (
                           <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {extrusion4MRecords.map((item) => (
+                            {recent4MRecords.map((item) => (
                               <div
                                 key={item.id}
                                 className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
                                       item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
                                       item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
@@ -997,13 +994,20 @@ export const WorkerPinModal = ({
                                     }`}>
                                       {item.origin}
                                     </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">{item.line}</span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                                      {item.plant?.replace("공장", "")} • {item.line}
+                                    </span>
                                   </div>
                                   <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
                                 </div>
                                 <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.content && item.content !== item.title && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                  </p>
+                                )}
                                 {item.actionResult && (
-                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md">
+                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
                                     ↳ 🟢 <b>[조치]</b> {item.actionResult}
                                   </div>
                                 )}
@@ -1013,7 +1017,7 @@ export const WorkerPinModal = ({
                         ) : (
                           <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                            <span>최근 등록된 압출 변동점이 없습니다.</span>
+                            <span>최근 등록된 변동점이 없습니다.</span>
                           </div>
                         )}
                       </div>
@@ -1021,7 +1025,7 @@ export const WorkerPinModal = ({
                   )}
 
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 2: 가공동 작업자 -> 가공 품질이슈 + 가공 변동점 발생상황 */}
+                  {/* CASE 2: 가공동 작업자 -> 가공 품질이슈 + 4M 변동점 발생공지 */}
                   {/* ───────────────────────────────────────────────────────────────── */}
                   {isProcessingWorker && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
@@ -1085,7 +1089,7 @@ export const WorkerPinModal = ({
                         )}
                       </div>
 
-                      {/* 2. 가공동 변동점 발생상황 */}
+                      {/* 2. 4M 변동점 발생공지 */}
                       <div className="p-4 rounded-3xl bg-indigo-50/70 dark:bg-indigo-950/30 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1094,28 +1098,28 @@ export const WorkerPinModal = ({
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 가공동 변동점 발생상황
+                                📋 4M 변동점 발생공지
                               </span>
                               <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                전재율 책임 설비수리·가공불량·비가동 현황
+                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
                               </span>
                             </div>
                           </div>
 
                           <span className="text-xs font-black text-indigo-900 dark:text-indigo-200 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700">
-                            {processing4MRecords.length}건 최근
+                            최근 {recent4MRecords.length}건
                           </span>
                         </div>
 
-                        {processing4MRecords.length > 0 ? (
+                        {recent4MRecords.length > 0 ? (
                           <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
-                            {processing4MRecords.map((item) => (
+                            {recent4MRecords.map((item) => (
                               <div
                                 key={item.id}
                                 className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 space-y-1 text-xs shadow-2xs"
                               >
                                 <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
                                       item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
                                       item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
@@ -1124,13 +1128,20 @@ export const WorkerPinModal = ({
                                     }`}>
                                       {item.origin}
                                     </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">{item.line}</span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                                      {item.plant?.replace("공장", "")} • {item.line}
+                                    </span>
                                   </div>
                                   <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
                                 </div>
                                 <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.content && item.content !== item.title && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                  </p>
+                                )}
                                 {item.actionResult && (
-                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md">
+                                  <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
                                     ↳ 🟢 <b>[조치]</b> {item.actionResult}
                                   </div>
                                 )}
@@ -1140,7 +1151,7 @@ export const WorkerPinModal = ({
                         ) : (
                           <div className="py-4 text-center text-xs text-indigo-800/80 dark:text-indigo-300/80 font-bold bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-dashed border-indigo-300 flex items-center justify-center gap-1.5">
                             <CheckCircle2 className="w-4 h-4 text-indigo-400" />
-                            <span>최근 등록된 가공 변동점이 없습니다.</span>
+                            <span>최근 등록된 변동점이 없습니다.</span>
                           </div>
                         )}
                       </div>
@@ -1148,11 +1159,11 @@ export const WorkerPinModal = ({
                   )}
 
                   {/* ───────────────────────────────────────────────────────────────── */}
-                  {/* CASE 3: 관리자 -> 사내일정 + 근태정보 + 전사 변동점 발생상황 */}
+                  {/* CASE 3: 관리자 -> 일정 + 변동점 + 근태정보 순으로 표시 */}
                   {/* ───────────────────────────────────────────────────────────────── */}
                   {isAdminUser && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 1. 사내 공통일정 */}
+                      {/* 1. 사내 공통일정 / 관리자 일정 */}
                       <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1213,7 +1224,84 @@ export const WorkerPinModal = ({
                         )}
                       </div>
 
-                      {/* 2. 실시간 근태정보 (공장별 필터: 삼랑진=오륙·유성 / 한림=조영·한울·부림텍 / 본사=전사) */}
+                      {/* 2. 4M 변동점 발생공지 (최근 2건 및 4M 현황) */}
+                      <div className="p-3.5 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                              <Activity className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                📋 4M 변동점 발생공지
+                              </span>
+                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
+                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-[10px] font-bold">
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black">
+                              ⭐ 대장 {stats4M.officialCount}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
+                              설비 {stats4M.machineCount}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300">
+                              불량 {stats4M.materialCount}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                              경보 {stats4M.methodCount}
+                            </span>
+                          </div>
+                        </div>
+
+                        {recent4MRecords.length > 0 ? (
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto pr-0.5">
+                            {recent4MRecords.map((item) => (
+                              <div
+                                key={item.id}
+                                className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs space-y-1 shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
+                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
+                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
+                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
+                                      "bg-rose-100 text-rose-800 border border-rose-300"
+                                    }`}>
+                                      {item.origin}
+                                    </span>
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
+                                      {item.plant?.replace("공장", "")} • {item.line}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
+                                </div>
+                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
+                                {item.content && item.content !== item.title && (
+                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                  </p>
+                                )}
+                                {item.actionResult && (
+                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                                    ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-3 text-center text-xs text-slate-400 font-bold">
+                            등록된 변동점이 없습니다.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 3. 실시간 근태정보 (공장별 필터: 삼랑진=오륙·유성 / 한림=조영·한울·부림텍 / 본사=전사) */}
                       <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-emerald-200 dark:border-emerald-800/80 shadow-sm space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -1261,83 +1349,6 @@ export const WorkerPinModal = ({
                             );
                           })}
                         </div>
-                      </div>
-
-                      {/* 3. 변동점 발생상황 (작업자가 보는 내용과 동일하게 표시) */}
-                      <div className="p-3.5 rounded-3xl bg-indigo-50/80 dark:bg-indigo-950/40 border-2 border-indigo-300 dark:border-indigo-800/80 shadow-sm space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
-                              <Activity className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📋 4M 변동점 발생상황
-                              </span>
-                              <span className="text-[10.5px] font-bold text-indigo-700 dark:text-indigo-300">
-                                설비수리 • 비가동 • TPM • 불량손실 • 품질경보
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-[10px] font-bold">
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black">
-                              ⭐ 대장 {stats4M.officialCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300">
-                              설비 {stats4M.machineCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-900 border border-rose-300">
-                              불량 {stats4M.materialCount}
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                              경보 {stats4M.methodCount}
-                            </span>
-                          </div>
-                        </div>
-
-                        {allUnified4MRecords.length > 0 ? (
-                          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
-                            {allUnified4MRecords.map((item) => (
-                              <div
-                                key={item.id}
-                                className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/60 text-xs space-y-1 shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-black ${
-                                      item.origin === "설비수리" ? "bg-indigo-100 text-indigo-800 border border-indigo-300" :
-                                      item.origin === "비가동" ? "bg-orange-100 text-orange-800 border border-orange-300" :
-                                      item.origin === "TPM 이상신고" ? "bg-amber-100 text-amber-800 border border-amber-300" :
-                                      "bg-rose-100 text-rose-800 border border-rose-300"
-                                    }`}>
-                                      {item.origin}
-                                    </span>
-                                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[10.5px]">
-                                      {item.plant?.replace("공장", "")} • {item.line}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] text-slate-400 font-mono">{item.date}</span>
-                                </div>
-                                <h6 className="font-black text-slate-900 dark:text-white text-xs">{item.title}</h6>
-                                {item.content && item.content !== item.title && (
-                                  <p className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-                                    {item.content}
-                                  </p>
-                                )}
-                                {item.actionResult && (
-                                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/40 p-1 rounded-md border border-emerald-200 dark:border-emerald-800">
-                                    ↳ 🟢 <b>[조치결과]</b> {item.actionResult}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="py-3 text-center text-xs text-slate-400 font-bold">
-                            등록된 변동점이 없습니다.
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
