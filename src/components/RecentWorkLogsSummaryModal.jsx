@@ -79,12 +79,12 @@ export const RecentWorkLogsSummaryModal = ({
 
   // Group by plant
   const samLogs = useMemo(() => dateLogs.filter((l) => {
-    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
+    const plant = l.plant || l.approverPlant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
     return plant === "삼랑진공장";
   }), [dateLogs]);
 
   const hanLogs = useMemo(() => dateLogs.filter((l) => {
-    const plant = l.plant || l.approverPlant || (["김동욱", "우창용", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
+    const plant = l.plant || l.approverPlant || (["김동욱", "TEST", "오상민", "정현규", "부림텍", "한울"].includes(l.writer) ? "한림공장" : "삼랑진공장");
     return plant === "한림공장";
   }), [dateLogs]);
 

@@ -1012,21 +1012,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     const prevDayWeekName = ["일", "월", "화", "수", "목", "금", "토"][prevDateObj.getDay()];
     const prevDateFormatted = `${prevDateObj.getMonth() + 1}월 ${prevDayNum}일(${prevDayWeekName})`;
 
-    // 1. 전일 근태실적 (스마트 통합관리대장 Matrix 기준 집계 - 총원, 출근, 결근, 연차)
-    let smartMatrix = [];
-    try {
-      const smartData = getLocalSmartOvertimeData();
-      if (smartData && Array.isArray(smartData.attendanceMatrix)) {
-        smartMatrix = smartData.attendanceMatrix;
-      }
-    } catch (e) {
-      smartMatrix = INITIAL_SMART_OVERTIME_DATA?.attendanceMatrix || [];
-    }
-    if (!smartMatrix || smartMatrix.length === 0) {
-      smartMatrix = INITIAL_SMART_OVERTIME_DATA?.attendanceMatrix || [];
-    }
-
-    const leaves = getLocalAnnualLeaves();
+    // 연차 데이터 조회 (전일 기준)
+    const leaves = getLocalAnnualLeaves() || [];
     const prevDayLeaves = leaves.filter((l) => {
       if (!l.startDate || l.isCompleted || l.isDismissed || l.isSharedRecipient || l.sharedBy) return false;
       const start = l.startDate;
@@ -1036,83 +1023,122 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 
     const samPrevLeaves = prevDayLeaves.filter((l) => !l.plant?.includes("한림"));
     const hanPrevLeaves = prevDayLeaves.filter((l) => l.plant?.includes("한림"));
+    const samLeaveDetailStr = samPrevLeaves.length > 0 ? ` (${samPrevLeaves.map((l) => `${l.userName} ${l.title || "선임"}`).join(", ")})` : "";
+    const hanLeaveDetailStr = hanPrevLeaves.length > 0 ? ` (${hanPrevLeaves.map((l) => `${l.userName} ${l.title || "선임"}`).join(", ")})` : "";
 
-    let samTotal = 0, samAtt = 0, samLeaveCount = 0, samExplicitAbsent = 0;
-    let hanTotal = 0, hanAtt = 0, hanLeaveCount = 0, hanExplicitAbsent = 0;
+    // 1. 전일 근태실적 (휴일 또는 특근인 경우 특근보고서 기준 집계)
+    const overtimeReports = getLocalOvertimeReports() || [];
+    const prevDayOtReports = overtimeReports.filter((r) => !r.isDeleted && !r.deleted && r.workDate === prevDayStr);
+    const isWeekendOrHoliday = prevDateObj.getDay() === 0 || prevDateObj.getDay() === 6;
 
-    smartMatrix.forEach((w) => {
-      const comp = cleanCompanyName(w.company);
-      const isSam = comp === "오륙" || comp === "유성" || (w.plant && w.plant.includes("삼랑진"));
-      const v = String((w.daily && (w.daily[prevDayNum] ?? w.daily[String(prevDayNum)])) || "").trim();
+    let samStr = "";
+    let hanStr = "";
 
-      const isAtt = v === "🟢" || v === "정시" || v === "17" || v === "19" || v === "19시" ||
-                    v === "21" || v === "21시" || v === "22" || v === "22시" ||
-                    v === "특근" || v === "주말특근" || v === "야간" || v === "주야" || v === "반차";
-      const isLv = v === "연차";
-      const isAbs = v === "결근" || v === "무단결근";
+    if (isWeekendOrHoliday || prevDayOtReports.length > 0) {
+      // 🌟 휴일 / 주말 / 특근일: 특근보고서 기준으로 집계
+      const samOtList = prevDayOtReports.filter((r) => r.plant?.includes("삼랑진") || ["오륙", "유성"].includes(cleanCompanyName(r.company)));
+      const hanOtList = prevDayOtReports.filter((r) => r.plant?.includes("한림") || ["조영", "한울", "부림텍", "조영산업"].includes(cleanCompanyName(r.company)));
 
-      if (isSam) {
-        samTotal++;
-        if (isAtt) samAtt++;
-        else if (isLv) samLeaveCount++;
-        else if (isAbs) samExplicitAbsent++;
-      } else {
-        hanTotal++;
-        if (isAtt) hanAtt++;
-        else if (isLv) hanLeaveCount++;
-        else if (isAbs) hanExplicitAbsent++;
+      const samOtCount = samOtList.reduce((sum, r) => sum + Number(r.headcount || r.totalWorkers || 0), 0);
+      const hanOtCount = hanOtList.reduce((sum, r) => sum + Number(r.headcount || r.totalWorkers || 0), 0);
+
+      const samBreakdown = samOtList.map((r) => `${cleanCompanyName(r.company)} ${r.headcount || r.totalWorkers || 0}명`).join(", ");
+      const hanBreakdown = hanOtList.map((r) => `${cleanCompanyName(r.company)} ${r.headcount || r.totalWorkers || 0}명`).join(", ");
+
+      samStr = samOtCount > 0
+        ? `특근 ${samOtCount}명${samBreakdown ? ` (${samBreakdown})` : ""} / 연차 ${samPrevLeaves.length}명${samLeaveDetailStr}`
+        : `휴무 (특근 없음) / 연차 ${samPrevLeaves.length}명${samLeaveDetailStr}`;
+
+      hanStr = hanOtCount > 0
+        ? `특근 ${hanOtCount}명${hanBreakdown ? ` (${hanBreakdown})` : ""} / 연차 ${hanPrevLeaves.length}명${hanLeaveDetailStr}`
+        : `휴무 (특근 없음) / 연차 ${hanPrevLeaves.length}명${hanLeaveDetailStr}`;
+    } else {
+      // 평일 정규 근무일: 스마트 대장 Matrix 집계
+      let smartMatrix = [];
+      try {
+        const smartData = getLocalSmartOvertimeData();
+        if (smartData && Array.isArray(smartData.attendanceMatrix)) {
+          smartMatrix = smartData.attendanceMatrix;
+        }
+      } catch (e) {
+        smartMatrix = INITIAL_SMART_OVERTIME_DATA?.attendanceMatrix || [];
       }
-    });
+      if (!smartMatrix || smartMatrix.length === 0) {
+        smartMatrix = INITIAL_SMART_OVERTIME_DATA?.attendanceMatrix || [];
+      }
 
-    const samLeave = Math.max(samPrevLeaves.length, samLeaveCount);
-    const hanLeave = Math.max(hanPrevLeaves.length, hanLeaveCount);
+      let samAtt = 0, samReg = 0, sam19 = 0, sam21 = 0, sam22 = 0, samSpec = 0, samNight = 0;
+      let hanAtt = 0, hanReg = 0, han19 = 0, han21 = 0, han22 = 0, hanSpec = 0, hanNight = 0;
 
-    const samAbsent = Math.max(samExplicitAbsent, Math.max(0, samTotal - samAtt - samLeave));
-    const hanAbsent = Math.max(hanExplicitAbsent, Math.max(0, hanTotal - hanAtt - hanLeave));
+      smartMatrix.forEach((w) => {
+        const comp = cleanCompanyName(w.company);
+        const isSam = comp === "오륙" || comp === "유성" || (w.plant && w.plant.includes("삼랑진"));
+        const v = String((w.daily && (w.daily[prevDayNum] ?? w.daily[String(prevDayNum)])) || "").trim();
 
-    const samStr = `총원 ${samTotal}명 / 출근 ${samAtt}명 / 결근 ${samAbsent}명 / 연차 ${samLeave}명`;
-    const hanStr = `총원 ${hanTotal}명 / 출근 ${hanAtt}명 / 결근 ${hanAbsent}명 / 연차 ${hanLeave}명`;
+        if (isSam) {
+          if (v === "🟢" || v === "정시" || v === "17") { samAtt++; samReg++; }
+          else if (v === "19" || v === "19시") { samAtt++; sam19++; }
+          else if (v === "21" || v === "21시") { samAtt++; sam21++; }
+          else if (v === "22" || v === "22시") { samAtt++; sam22++; }
+          else if (v === "특근" || v === "주말특근") { samAtt++; samSpec++; }
+          else if (v === "야간" || v === "주야") { samAtt++; samNight++; }
+        } else {
+          if (v === "🟢" || v === "정시" || v === "17") { hanAtt++; hanReg++; }
+          else if (v === "19" || v === "19시") { hanAtt++; han19++; }
+          else if (v === "21" || v === "21시") { hanAtt++; han21++; }
+          else if (v === "22" || v === "22시") { hanAtt++; han22++; }
+          else if (v === "특근" || v === "주말특근") { hanAtt++; hanSpec++; }
+          else if (v === "야간" || v === "주야") { hanAtt++; hanNight++; }
+        }
+      });
 
-    // 2. 전일 전자결재 미결 (특근보고서 및 결재대기 문서) - 최신 등록순 정렬
-    const approvalDocs = getLocalApprovalDocs();
-    const overtimeReports = getLocalOvertimeReports();
+      const samOtParts = [];
+      if (samReg > 0) samOtParts.push(`정시 ${samReg}`);
+      if (sam19 > 0) samOtParts.push(`19시 ${sam19}`);
+      if (sam21 > 0) samOtParts.push(`21시 ${sam21}`);
+      if (sam22 > 0) samOtParts.push(`22시 ${sam22}`);
+      if (samSpec > 0) samOtParts.push(`특근 ${samSpec}`);
+      if (samNight > 0) samOtParts.push(`야간 ${samNight}`);
+      const samOtBreakdown = samOtParts.length > 0 ? ` (${samOtParts.join(", ")})` : "";
 
-    const allPendingDocsMap = new Map();
+      const hanOtParts = [];
+      if (hanReg > 0) hanOtParts.push(`정시 ${hanReg}`);
+      if (han19 > 0) hanOtParts.push(`19시 ${han19}`);
+      if (han21 > 0) hanOtParts.push(`21시 ${han21}`);
+      if (han22 > 0) hanOtParts.push(`22시 ${han22}`);
+      if (hanSpec > 0) hanOtParts.push(`특근 ${hanSpec}`);
+      if (hanNight > 0) hanOtParts.push(`야간 ${hanNight}`);
+      const hanOtBreakdown = hanOtParts.length > 0 ? ` (${hanOtParts.join(", ")})` : "";
 
-    (approvalDocs || []).forEach((d) => {
-      if (d.status === "IN_PROGRESS" || d.status === "HOLD") {
-        allPendingDocsMap.set(d.id, {
+      samStr = samAtt > 0
+        ? `출근 ${samAtt}명${samOtBreakdown} / 연차 ${samPrevLeaves.length}명${samLeaveDetailStr}`
+        : `휴무 / 연차 ${samPrevLeaves.length}명${samLeaveDetailStr}`;
+
+      hanStr = hanAtt > 0
+        ? `출근 ${hanAtt}명${hanOtBreakdown} / 연차 ${hanPrevLeaves.length}명${hanLeaveDetailStr}`
+        : `휴무 / 연차 ${hanPrevLeaves.length}명${hanLeaveDetailStr}`;
+    }
+
+    // 2. 전일 전자결재 미결 (미결재 결재대기 문서만 정확히 집계)
+    const approvalDocs = getLocalApprovalDocs() || [];
+    const pendingDocsList = approvalDocs
+      .filter((d) => !d.isDeleted && !d.deleted && (d.status === "IN_PROGRESS" || d.status === "HOLD"))
+      .map((d) => {
+        const nextApproverObj = d.approvers?.find((a) => a.status === "PENDING") ||
+                               d.steps?.find((s) => s.status === "PENDING") ||
+                               (d.steps && d.steps[d.currentStep - 1]);
+        const nextApprover = nextApproverObj?.name || "결재자";
+        const nextTitle = nextApproverObj?.title || nextApproverObj?.role || "책임";
+        return {
+          id: d.id,
           title: d.title,
           drafter: d.drafter || "작성자",
-          nextApprover: d.approvers?.find((a) => a.status === "PENDING")?.name || 
-                        d.steps?.find((s) => s.status === "PENDING")?.name || 
-                        (d.steps && d.steps[d.currentStep - 1]?.name) || "결재자",
-          nextTitle: d.steps?.find((s) => s.status === "PENDING")?.title || 
-                     d.steps?.find((s) => s.status === "PENDING")?.role || "책임",
+          nextApprover,
+          nextTitle,
           date: d.workDate || d.date || d.createdAt || ""
-        });
-      }
-    });
-
-    (overtimeReports || []).forEach((r) => {
-      if (r.status !== "APPROVED" && r.status !== "REJECTED") {
-        const key = r.id || `rep_${r.plant}_${r.workDate}`;
-        if (!allPendingDocsMap.has(key)) {
-          const compClean = cleanCompanyName(r.company || "");
-          const plantClean = r.plant || "전사";
-          const title = r.title || `[특근보고서] ${r.workDate} ${plantClean} (${compClean})`;
-          allPendingDocsMap.set(key, {
-            title,
-            drafter: r.author || "선임",
-            nextApprover: r.plant === "한림공장" ? "김동욱" : "윤경수",
-            nextTitle: "책임",
-            date: r.workDate || r.updatedAt || ""
-          });
-        }
-      }
-    });
-
-    const pendingDocsList = Array.from(allPendingDocsMap.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+        };
+      })
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
     let approvalDocLines = "• 없음 (전건 결재완료)";
     if (pendingDocsList.length > 0) {
@@ -1132,25 +1158,37 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
       extrusionReports = [];
     }
 
-    const pendingLogs = workLogs.filter((l) => l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려" && !l.isDeleted);
+    const pendingLogs = workLogs.filter((l) => !l.isDeleted && !l.deleted && l.approvalStatus !== "결재완료" && l.approvalStatus !== "반려");
 
     const normDateStr = (d) => String(d || "").slice(0, 10).replace(/[./]/g, "-");
     const normWorkerName = (name) => String(name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
 
     // 전일 작성된 일반 업무일지 목록
     const prevDayWorkLogs = workLogs.filter(
-      (l) => !l.isDeleted && (normDateStr(l.date) === prevDayStr || normDateStr(l.createdAt) === prevDayStr)
+      (l) => !l.isDeleted && !l.deleted && (normDateStr(l.date) === prevDayStr || normDateStr(l.createdAt) === prevDayStr)
     );
 
     // 전일 작성된 압출 작업일보 목록
     const prevDayExtrusionReports = extrusionReports.filter(
-      (r) => !r.isDeleted && (normDateStr(r.date) === prevDayStr || normDateStr(r.createdAt) === prevDayStr)
+      (r) => !r.isDeleted && !r.deleted && (normDateStr(r.date) === prevDayStr || normDateStr(r.createdAt) === prevDayStr)
     );
 
     const registeredWriters = new Set();
     prevDayWorkLogs.forEach((l) => {
       const wName = normWorkerName(l.writer || l.author || l.userName || l.name);
       if (wName) registeredWriters.add(wName);
+      if (l.sharedWorkers) {
+        String(l.sharedWorkers).split(/[,/]/).forEach((sw) => {
+          const subW = normWorkerName(sw);
+          if (subW) registeredWriters.add(subW);
+        });
+      }
+      if (l.coworkers) {
+        String(l.coworkers).split(/[,/]/).forEach((sw) => {
+          const subW = normWorkerName(sw);
+          if (subW) registeredWriters.add(subW);
+        });
+      }
     });
 
     prevDayExtrusionReports.forEach((r) => {
@@ -1168,7 +1206,7 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
 
     // 미등록 검사 대상 작업자 (이명재, 김동욱 제외, 협력사 제외)
     const samTargetWorkers = ["설유철", "윤경수", "이창엽", "전재율", "양인나", "유동길", "조인주", "이상기"];
-    const halTargetWorkers = ["오상민", "정현규", "TEST"];
+    const halTargetWorkers = ["오상민", "정현규"];
 
     const isWorkerRegistered = (targetName) => {
       const t = normWorkerName(targetName);
@@ -1191,7 +1229,8 @@ export const sendDailyMorningBriefingTelegram = async (targetDateStr = null, tar
     if (pendingLogs.length > 0) {
       const pLines = pendingLogs.slice(0, 5).map((l) => {
         const plantShort = l.plant?.includes("한림") ? "한림" : "삼랑진";
-        return `  - ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${l.approverName || "관리자"})`;
+        const approver = l.approverName || (plantShort === "한림" ? "김동욱 책임" : "이명재 부장");
+        return `  - ${plantShort} ${l.writer || "작업자"} (${l.process || "생산"}일지 ➜ 결재대기: ${approver})`;
       });
       const more = pendingLogs.length > 5 ? `\n  - 외 ${pendingLogs.length - 5}건` : "";
       pendingLineStr = `• <b>결재대기 (${pendingLogs.length}건):</b>\n${pLines.join("\n")}${more}`;
