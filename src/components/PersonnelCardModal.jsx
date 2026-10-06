@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   X,
   Save,
@@ -18,19 +18,28 @@ import {
   FileCheck,
   Tag,
   Briefcase,
-  AlertCircle
+  AlertCircle,
+  Camera,
+  Upload,
+  Trash2,
+  Search,
+  Check,
+  RefreshCw
 } from "lucide-react";
 import {
   STANDARD_PROCESS_LIST,
   DEPARTMENTS_LIST,
   POSITIONS_LIST,
   SKILL_LEVEL_META,
+  INSPECTOR_GRADES,
   getSkillMeta,
+  getInspectorGradeMeta,
   calculateTenureFromJoinDate,
   calculateProcessYearFromJoinDate,
   getWorkerPersonnelCard,
   normalizeStandardDept,
-  normalizeStandardPosition
+  normalizeStandardPosition,
+  compressImageToBase64
 } from "../services/personnelCardService.js";
 import { COMPANY_THEMES, cleanCompanyName } from "../services/overtimeSmartService.js";
 
@@ -53,10 +62,107 @@ export default function PersonnelCardModal({
   const [isSaving, setIsSaving] = useState(false);
   const [activeMobileView, setActiveMobileView] = useState("form"); // "form" or "preview"
 
+  // 📷 Camera Modal & Stream State
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const mobileCameraInputRef = useRef(null);
+
   // Sync state if worker changes
   useEffect(() => {
     setFormData(getWorkerPersonnelCard(worker, workerIndex));
   }, [worker, workerIndex]);
+
+  // Clean up camera stream on unmount or when camera modal closes
+  useEffect(() => {
+    return () => {
+      stopCameraStream();
+    };
+  }, []);
+
+  // Stop WebCam Stream
+  const stopCameraStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  // Start WebCam Stream
+  const handleStartCamera = async () => {
+    setCameraError("");
+    setIsCameraOpen(true);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("브라우저에서 카메라를 지원하지 않습니다. 모바일 카메라나 파일 선택을 이용해주세요.");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user"
+        },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      console.warn("Camera access error:", err);
+      setCameraError(err.message || "카메라에 접근할 수 없습니다. 권한을 확인해주세요.");
+    }
+  };
+
+  // Capture Snapshot from WebCam
+  const handleCapturePhoto = () => {
+    if (!videoRef.current) return;
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement("canvas");
+      const size = Math.min(video.videoWidth, video.videoHeight) || 360;
+      canvas.width = 360;
+      canvas.height = 360;
+      const ctx = canvas.getContext("2d");
+
+      // Center Crop Square
+      const startX = (video.videoWidth - size) / 2;
+      const startY = (video.videoHeight - size) / 2;
+      ctx.drawImage(video, startX, startY, size, size, 0, 0, 360, 360);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      handleChange("photoUrl", dataUrl);
+      handleCloseCamera();
+    } catch (err) {
+      console.error("Capture error:", err);
+      alert("사진 캡처 중 오류가 발생했습니다: " + err.message);
+    }
+  };
+
+  // Close Camera
+  const handleCloseCamera = () => {
+    stopCameraStream();
+    setIsCameraOpen(false);
+    setCameraError("");
+  };
+
+  // File Upload Handlers
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressedDataUrl = await compressImageToBase64(file, 360, 360, 0.85);
+      handleChange("photoUrl", compressedDataUrl);
+    } catch (err) {
+      console.error("Image load error:", err);
+      alert("이미지 처리 중 오류가 발생했습니다: " + err.message);
+    } finally {
+      if (e.target) e.target.value = "";
+    }
+  };
 
   // Handle Input Changes
   const handleChange = (field, value) => {
@@ -74,6 +180,10 @@ export default function PersonnelCardModal({
       // 주공정 변경 시 지원 공정에서 해당 주공정 제거
       if (field === "mainProcess") {
         next.subProcesses = (prev.subProcesses || []).filter((p) => p !== value);
+        // 검사 공정 선택 시 기본 검사원 등급 자동 부여
+        if (value === "검사" && !prev.inspectorGrade) {
+          next.inspectorGrade = "B등급 (일반검사원)";
+        }
       }
       return next;
     });
@@ -111,9 +221,11 @@ export default function PersonnelCardModal({
     }
   };
 
-  // Company Theme & Skill Meta
+  // Company Theme & Skill Meta & Inspector Meta
   const companyTheme = COMPANY_THEMES[cleanCompanyName(formData.company)] || COMPANY_THEMES["오륙"];
   const currentSkillMeta = getSkillMeta(formData.skillLevel);
+  const isInspectionSelected = formData.mainProcess === "검사" || (formData.subProcesses || []).includes("검사");
+  const currentInspectorMeta = getInspectorGradeMeta(formData.inspectorGrade);
 
   return (
     <div
@@ -172,16 +284,109 @@ export default function PersonnelCardModal({
         <div className="p-3 sm:p-5 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 text-xs">
           {/* 📝 LEFT COLUMN: Interactive Edit Form (7 cols) */}
           <div className={`lg:col-span-7 space-y-4 ${activeMobileView === "preview" ? "hidden sm:block" : "block"}`}>
-            {/* Section 1: 기본 인적사항 (소속, 부서: 생산팀/생산관리팀/관리팀, 직위: 이사/책임/선임/사원) */}
+            
+            {/* Section 1: 사진 촬영/선택 & 기본 인적사항 (소속, 부서: 생산팀/생산관리팀/관리팀, 직위: 이사/책임/선임/사원) */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
                 <span className="font-black text-xs sm:text-sm text-purple-300 flex items-center gap-1.5">
                   <User className="w-4 h-4 text-purple-400" />
-                  <span>기본 인적사항 및 소속</span>
+                  <span>증명사진 및 기본 인적사항</span>
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono">사번: {formData.empNo}</span>
               </div>
 
+              {/* ⭐ 증명사진 촬영 또는 파일 선택 컨트롤 영역 */}
+              <div className="flex flex-col sm:flex-row items-center gap-3.5 p-3 rounded-xl bg-slate-900/90 border border-slate-800">
+                {/* Photo Thumbnail */}
+                <div className="relative group shrink-0">
+                  {formData.photoUrl ? (
+                    <img
+                      src={formData.photoUrl}
+                      alt={formData.name}
+                      className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-purple-400 shadow-md shadow-purple-950/60"
+                    />
+                  ) : (
+                    <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-slate-800 border-2 border-dashed border-slate-600 flex flex-col items-center justify-center text-slate-400">
+                      <User className="w-7 h-7 text-slate-500 mb-0.5" />
+                      <span className="text-[9.5px] font-bold text-slate-500">사진 미등록</span>
+                    </div>
+                  )}
+
+                  {formData.photoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange("photoUrl", "")}
+                      className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-600 text-white hover:bg-rose-500 shadow-md cursor-pointer transition-all active:scale-90"
+                      title="사진 삭제"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Photo Action Buttons */}
+                <div className="flex-1 space-y-1.5 text-center sm:text-left">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5 flex-wrap">
+                    <span className="font-bold text-xs text-white">근로자 프로필 사진</span>
+                    <span className="text-[10.5px] text-slate-400">(카메라 촬영 또는 파일 선택)</span>
+                  </div>
+
+                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                    {/* 📷 촬영 버튼 */}
+                    <button
+                      type="button"
+                      onClick={handleStartCamera}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center gap-1.5 cursor-pointer shadow-sm shadow-purple-900/40 active:scale-95 transition-all"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>카메라 촬영</span>
+                    </button>
+
+                    {/* 📁 파일 선택 버튼 */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold text-xs flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>파일 선택</span>
+                    </button>
+
+                    {/* Hidden File Inputs */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <input
+                      type="file"
+                      ref={mobileCameraInputRef}
+                      accept="image/*"
+                      capture="user"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    {formData.photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => handleChange("photoUrl", "")}
+                        className="px-2.5 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 font-bold text-xs flex items-center gap-1 cursor-pointer active:scale-95 transition-all"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-400" />
+                        <span>삭제</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    인사카드에 인쇄 및 표시될 증명 사진을 등록합니다 (자동 압축 최적화).
+                  </p>
+                </div>
+              </div>
+
+              {/* 기본 정보 입력 그리드 (성명, 사번, 소속업체, 부서: 3대 부서, 직위: 4대 직위) */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="text-[11px] font-bold text-slate-400 block pb-1">성명 *</label>
@@ -242,15 +447,12 @@ export default function PersonnelCardModal({
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">배속 라인/세부공정</label>
-                  <input
-                    type="text"
-                    placeholder="예: 2호기 라인"
-                    value={formData.line || ""}
-                    onChange={(e) => handleChange("line", e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
-                  />
+                {/* 자동 상태 뱃지 */}
+                <div className="flex flex-col justify-end pb-0.5">
+                  <div className="px-2.5 py-1.5 rounded-xl bg-purple-950/50 border border-purple-800 text-center">
+                    <span className="text-[10px] text-purple-300 font-bold block">인사카드 등록상태</span>
+                    <span className="text-xs font-black text-emerald-400">정상 인증 관리중</span>
+                  </div>
                 </div>
               </div>
 
@@ -293,24 +495,29 @@ export default function PersonnelCardModal({
               </div>
             </div>
 
-            {/* Section 2: 주공정 (압출 / 소재준비 / 조인트 / 사상 / 검사) & 숙련등급 별점 */}
+            {/* Section 2: 주 담당 공정 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사) & 숙련등급 별점 */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
                 <span className="font-black text-xs sm:text-sm text-amber-300 flex items-center gap-1.5">
                   <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  <span>주공정 구분 & 숙련등급 평가</span>
+                  <span>주 담당 공정 & 숙련등급 평가</span>
                 </span>
                 <span className={`px-2 py-0.5 rounded-md text-[11px] font-black border ${currentSkillMeta.badgeClass}`}>
                   {currentSkillMeta.grade}
                 </span>
               </div>
 
-              {/* 주공정 5가지 선택 버튼 그룹 */}
+              {/* 주공정 6가지 (코팅 포함) 선택 버튼 그룹 */}
               <div>
-                <label className="text-[11px] font-bold text-slate-400 block pb-1.5">
-                  주 담당 공정 선택 (5대 공정):
-                </label>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="flex items-center justify-between pb-1.5">
+                  <label className="text-[11px] font-bold text-slate-400">
+                    주 담당 공정 선택 (6대 표준 공정):
+                  </label>
+                  <span className="text-[10.5px] text-amber-400 font-bold">
+                    현재: {formData.mainProcess}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                   {STANDARD_PROCESS_LIST.map((proc) => {
                     const isSelected = formData.mainProcess === proc;
                     return (
@@ -320,8 +527,8 @@ export default function PersonnelCardModal({
                         onClick={() => handleChange("mainProcess", proc)}
                         className={`py-2 px-1 rounded-xl font-black text-xs transition-all cursor-pointer text-center ${
                           isSelected
-                            ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 scale-102"
-                            : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700"
+                            ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 scale-102 font-black"
+                            : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700 font-bold"
                         }`}
                       >
                         {proc}
@@ -380,7 +587,75 @@ export default function PersonnelCardModal({
               </div>
             </div>
 
-            {/* Section 3: 다기능공 (Multi-Skill) & 지원 공정 다중 선택 */}
+            {/* ⭐ Section 3: 검사 공정 전용 - 검사원 등급 평가 (검사 선택 시에만 표시) */}
+            {isInspectionSelected && (
+              <div className="bg-gradient-to-br from-emerald-950/40 via-slate-950 to-slate-950 p-3.5 sm:p-4 rounded-2xl border-2 border-emerald-500/60 shadow-lg shadow-emerald-950/30 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between pb-1 border-b border-emerald-900/60">
+                  <span className="font-black text-xs sm:text-sm text-emerald-300 flex items-center gap-1.5">
+                    <Search className="w-4 h-4 text-emerald-400" />
+                    <span>🔍 품질 검사원 자격 등급 평가 (검사 공정 전용)</span>
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-md text-[11px] font-black border ${currentInspectorMeta.badgeClass}`}>
+                    {currentInspectorMeta.grade}
+                  </span>
+                </div>
+
+                {/* Inspector Grade Selector Cards */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-slate-300 block">
+                    검사원 자격 등급 선택 (A/B/C 등급):
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {INSPECTOR_GRADES.map((ig) => {
+                      const isSelected = formData.inspectorGrade === ig.grade;
+                      return (
+                        <div
+                          key={ig.grade}
+                          onClick={() => handleChange("inspectorGrade", ig.grade)}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer space-y-1 ${
+                            isSelected
+                              ? "bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-md shadow-emerald-950/80"
+                              : "bg-slate-900/90 border-slate-700 hover:border-slate-600 hover:bg-slate-800/80 opacity-75"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`font-black text-xs ${isSelected ? "text-emerald-300" : "text-white"}`}>
+                              {ig.grade}
+                            </span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-tight">
+                            {ig.desc}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 검사원 취득일자/메모 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <div>
+                    <label className="text-[10.5px] font-bold text-slate-400 block pb-1">검사원 자격 취득/인증일자</label>
+                    <input
+                      type="date"
+                      value={formData.inspectorCertDate || formData.joinDate}
+                      onChange={(e) => handleChange("inspectorCertDate", e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-emerald-800/80 focus:border-emerald-400 text-white text-xs font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10.5px] font-bold text-slate-400 block pb-1">검사원 세부 판정 권한</label>
+                    <div className="px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-[11px] text-emerald-300 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>{currentInspectorMeta.desc.split(",")[0] || "공정 자주검사 및 외관 판정"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section 4: 다기능공 (Multi-Skill) & 지원 공정 다중 선택 */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
                 <span className="font-black text-xs sm:text-sm text-cyan-300 flex items-center gap-1.5">
@@ -420,7 +695,7 @@ export default function PersonnelCardModal({
                 </button>
               </div>
 
-              {/* ⭐ 지원 공정 다중 선택 버튼 (압출 / 소재준비 / 조인트 / 사상 / 검사) */}
+              {/* ⭐ 지원 공정 다중 선택 버튼 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold text-slate-400 block">
@@ -430,7 +705,7 @@ export default function PersonnelCardModal({
                     {(formData.subProcesses || []).length}개 공정 선택됨
                   </span>
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                   {STANDARD_PROCESS_LIST.map((proc) => {
                     const isSelected = (formData.subProcesses || []).includes(proc);
                     const isMain = formData.mainProcess === proc;
@@ -466,7 +741,7 @@ export default function PersonnelCardModal({
               </div>
             </div>
 
-            {/* Section 4: 특기사항 및 평가 메모 */}
+            {/* Section 5: 특기사항 및 평가 메모 */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-2">
               <label className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
                 <FileCheck className="w-3.5 h-3.5 text-purple-400" />
@@ -476,7 +751,7 @@ export default function PersonnelCardModal({
                 rows={2}
                 value={formData.notes || ""}
                 onChange={(e) => handleChange("notes", e.target.value)}
-                placeholder="예: 공정 트러블 조치 능숙, 사상 및 검사 공정 원활한 백업 가능"
+                placeholder="예: 공정 트러블 조치 능숙, 코팅/사상/검사 공정 원활한 백업 가능"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-medium text-xs focus:border-purple-400 placeholder:text-slate-500"
               />
             </div>
@@ -513,12 +788,27 @@ export default function PersonnelCardModal({
                 </div>
               </div>
 
-              {/* Profile Main Row */}
+              {/* Profile Main Row (Photo + Name + Dept + Position) */}
               <div className="flex items-center gap-3 relative z-10">
-                {/* Avatar Placeholder */}
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-purple-400/60 flex flex-col items-center justify-center shrink-0 shadow-md">
-                  <User className="w-6 h-6 text-purple-300" />
-                  <span className="text-[9.5px] font-black text-purple-300 mt-0.5">{formData.position}</span>
+                {/* Avatar / Photo */}
+                <div className="shrink-0 relative">
+                  {formData.photoUrl ? (
+                    <img
+                      src={formData.photoUrl}
+                      alt={formData.name}
+                      className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover border-2 border-purple-400 shadow-md shadow-purple-950/60"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-purple-400/60 flex flex-col items-center justify-center shadow-md">
+                      <User className="w-6 h-6 text-purple-300" />
+                      <span className="text-[9.5px] font-black text-purple-300 mt-0.5">{formData.position}</span>
+                    </div>
+                  )}
+                  {formData.photoUrl && (
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-slate-950 flex items-center justify-center text-[9px] font-bold" title="사진 인증 완료">
+                      ✓
+                    </span>
+                  )}
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-0.5">
@@ -533,7 +823,7 @@ export default function PersonnelCardModal({
                   <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
                     <span className="font-bold text-slate-300">{formData.dept}</span>
                     <span>•</span>
-                    <span className="text-slate-400">{formData.line || formData.dept}</span>
+                    <span className="text-amber-300 font-bold">{formData.mainProcess} 공정</span>
                   </div>
                 </div>
               </div>
@@ -562,6 +852,24 @@ export default function PersonnelCardModal({
                   </span>
                 </div>
               </div>
+
+              {/* ⭐ 검사원 등급 뱃지 (검사 공정 해당 시 실시간 표시) */}
+              {isInspectionSelected && (
+                <div className="bg-gradient-to-r from-emerald-950/80 to-slate-900 p-2.5 rounded-xl border border-emerald-500/70 space-y-1 relative z-10 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10.5px] font-black text-emerald-300 flex items-center gap-1">
+                      <Search className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>품질 검사원 자격 등급</span>
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${currentInspectorMeta.badgeClass}`}>
+                      {currentInspectorMeta.shortGrade}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-300 font-medium truncate">
+                    자격: {currentInspectorMeta.desc}
+                  </div>
+                </div>
+              )}
 
               {/* 2-Column Grid: [입사일 / 근속기간 (자동계산)] & [주공정 / 공정년차 (자동계산)] */}
               <div className="grid grid-cols-2 gap-2 text-[11px] relative z-10">
@@ -671,6 +979,93 @@ export default function PersonnelCardModal({
           </div>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 📷 MODAL: 실시간 웹캠 사진 촬영 팝업 */}
+      {/* ========================================================================= */}
+      {isCameraOpen && (
+        <div
+          onClick={handleCloseCamera}
+          className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-150 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border-2 border-purple-500 rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3.5 cursor-default text-white relative"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
+                  <Camera className="w-4 h-4" />
+                </span>
+                <span className="font-black text-sm text-white">근로자 프로필 사진 촬영</span>
+              </div>
+              <button
+                onClick={handleCloseCamera}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Video Viewport with Guide Frame */}
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-square border-2 border-purple-500/50 flex items-center justify-center shadow-inner">
+              {cameraError ? (
+                <div className="p-4 text-center space-y-2 text-rose-300 text-xs font-bold">
+                  <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
+                  <p>{cameraError}</p>
+                  <button
+                    type="button"
+                    onClick={() => mobileCameraInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-xl bg-purple-600 text-white font-bold text-xs"
+                  >
+                    기본 카메라 앱 열기
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Face Guide Circle Overlay */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full border-2 border-dashed border-purple-400/80 shadow-[0_0_15px_rgba(168,85,247,0.4)] flex items-center justify-center">
+                      <span className="text-[10px] text-purple-200/80 font-bold bg-slate-950/60 px-2 py-0.5 rounded-full">
+                        얼굴을 원 안에 맞춰주세요
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Capture Actions */}
+            <div className="flex items-center justify-between pt-1 gap-2">
+              <button
+                type="button"
+                onClick={handleCloseCamera}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer active:scale-95 transition-all"
+              >
+                취소
+              </button>
+
+              {!cameraError && (
+                <button
+                  type="button"
+                  onClick={handleCapturePhoto}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-purple-900/50 active:scale-95 transition-all"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>📸 찰칵! 사진 촬영 및 적용</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

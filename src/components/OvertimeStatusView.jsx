@@ -2870,13 +2870,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </select>
                 </div>
                 <div className="sm:col-span-2">
-                  <input
-                    type="text"
-                    placeholder="주공정/라인 (예: 압출)"
-                    value={quickNewWorkerLine}
+                  <select
+                    value={quickNewWorkerLine || "압출"}
                     onChange={(e) => setQuickNewWorkerLine(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
-                  />
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    {STANDARD_PROCESS_LIST.map((proc) => (
+                      <option key={proc} value={proc}>{proc}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="sm:col-span-2">
                   <select
@@ -3052,9 +3054,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <tr>
                       <th className="py-2.5 px-2 text-center w-10 font-mono text-slate-400">No</th>
                       <th className="py-2.5 px-2 w-20">소속</th>
-                      <th className="hidden sm:table-cell py-2.5 px-2 w-24">부서/라인</th>
+                      <th className="hidden sm:table-cell py-2.5 px-2 w-24">부서</th>
                       <th className="py-2.5 px-2 w-16 text-center">직위</th>
-                      <th className="py-2.5 px-2.5 w-28">성명 (사번)</th>
+                      <th className="py-2.5 px-2.5 w-32">성명 (사번)</th>
                       <th className="hidden md:table-cell py-2.5 px-2 w-32">입사일 / 근속</th>
                       <th className="py-2.5 px-2 w-28">주공정(년차)</th>
                       <th className="py-2.5 px-2 w-36 text-center">숙련등급 (별점)</th>
@@ -3086,14 +3088,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             </span>
                           </td>
 
-                          {/* 부서/라인 */}
+                          {/* 부서 (라인 삭제) */}
                           <td className="hidden sm:table-cell py-2 px-2">
-                            <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px] truncate">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
                               {worker.dept}
-                            </div>
-                            <div className="text-slate-400 text-[10px] truncate">
-                              {worker.line || worker.dept}
-                            </div>
+                            </span>
                           </td>
 
                           {/* 직위 */}
@@ -3103,16 +3102,31 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             </span>
                           </td>
 
-                          {/* 성명 & 사번 */}
+                          {/* 성명 & 사번 & 프로필 사진 */}
                           <td className="py-2 px-2.5">
-                            <div className="font-black text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
-                              <span>{worker.name}</span>
-                              {card.isMultiSkill && (
-                                <Zap className="w-3 h-3 text-cyan-400 shrink-0" title="다기능공" />
+                            <div className="flex items-center gap-2">
+                              {card.photoUrl ? (
+                                <img
+                                  src={card.photoUrl}
+                                  alt={worker.name}
+                                  className="w-7 h-7 rounded-lg object-cover border border-purple-400 shrink-0 shadow-2xs"
+                                />
+                              ) : (
+                                <div className="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                                  <User className="w-3.5 h-3.5 text-purple-400" />
+                                </div>
                               )}
-                            </div>
-                            <div className="font-mono text-[10px] text-slate-400">
-                              {card.empNo || "250101"}
+                              <div className="min-w-0">
+                                <div className="font-black text-slate-900 dark:text-white text-xs flex items-center gap-1">
+                                  <span className="truncate">{worker.name}</span>
+                                  {card.isMultiSkill && (
+                                    <Zap className="w-3 h-3 text-cyan-400 shrink-0" title="다기능공" />
+                                  )}
+                                </div>
+                                <div className="font-mono text-[10px] text-slate-400">
+                                  {card.empNo || "250101"}
+                                </div>
+                              </div>
                             </div>
                           </td>
 
@@ -3126,12 +3140,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             </div>
                           </td>
 
-                          {/* 주공정 (년차) */}
+                          {/* 주공정 (년차 / 검사원 등급) */}
                           <td className="py-2 px-2">
-                            <span className="font-black text-amber-600 dark:text-amber-300 text-xs block truncate">
-                              {card.mainProcess || "압출"}
-                            </span>
-                            <span className="text-[10.5px] text-slate-400 font-bold">
+                            <div className="flex items-center gap-1">
+                              <span className="font-black text-amber-600 dark:text-amber-300 text-xs truncate">
+                                {card.mainProcess || "압출"}
+                              </span>
+                              {card.mainProcess === "검사" && card.inspectorGrade && (
+                                <span className="px-1 py-0.2 rounded text-[9.5px] font-black bg-emerald-950 text-emerald-300 border border-emerald-800">
+                                  {card.inspectorGrade.split(" ")[0]}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10.5px] text-slate-400 font-bold block">
                               {card.processYear || "3년차"}
                             </span>
                           </td>
@@ -4097,13 +4118,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   </select>
                 </div>
                 <div className="sm:col-span-3">
-                  <input
-                    type="text"
-                    placeholder="주공정/라인 (예: 압출)"
-                    value={quickNewWorkerLine}
+                  <select
+                    value={quickNewWorkerLine || "압출"}
                     onChange={(e) => setQuickNewWorkerLine(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
-                  />
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    {STANDARD_PROCESS_LIST.map((proc) => (
+                      <option key={proc} value={proc}>{proc}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="sm:col-span-2">
                   <select
@@ -4159,7 +4182,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         <th className="py-1.5 px-2.5 text-center w-10 text-slate-500 font-mono">No</th>
                         <th className="py-1.5 px-2.5 w-20">부서</th>
                         <th className="py-1.5 px-2.5 w-24">성명</th>
-                        <th className="py-1.5 px-2.5">라인/공정</th>
+                        <th className="py-1.5 px-2.5">주공정</th>
                         <th className="py-1.5 px-2.5 text-center w-16">직위</th>
                         <th className="py-1.5 px-2.5 text-center w-16">삭제</th>
                       </tr>

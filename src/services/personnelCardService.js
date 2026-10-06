@@ -12,12 +12,13 @@ import { cleanCompanyName } from "./overtimeSmartService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_personnel_cards_v1";
 
-// ⭐ 표준 5대 제조 공정 목록 (압출 / 소재준비 / 조인트 / 사상 / 검사)
+// ⭐ 표준 6대 제조 공정 목록 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
 export const STANDARD_PROCESS_LIST = [
   "압출",
   "소재준비",
   "조인트",
   "사상",
+  "코팅",
   "검사"
 ];
 
@@ -35,6 +36,43 @@ export const POSITIONS_LIST = [
   "책임",
   "이사"
 ];
+
+// ⭐ 검사원 자격 등급 정의 (검사 공정 선택 시 개별 평가)
+export const INSPECTOR_GRADES = [
+  {
+    grade: "A등급 (정검사원)",
+    shortGrade: "A등급(정)",
+    level: "A",
+    color: "text-emerald-400",
+    badgeClass: "bg-emerald-950 text-emerald-300 border-emerald-700 ring-1 ring-emerald-400/50",
+    desc: "최종 출하검사 승인, 초중종물 한도견본 판정, 정밀 측정기기 운용"
+  },
+  {
+    grade: "B등급 (일반검사원)",
+    shortGrade: "B등급(일반)",
+    level: "B",
+    color: "text-blue-400",
+    badgeClass: "bg-blue-950 text-blue-300 border-blue-700",
+    desc: "양산 공정 자주검사, 치수 측정(버니어/마이크로미터), 불량 식별"
+  },
+  {
+    grade: "C등급 (보조검사원)",
+    shortGrade: "C등급(보조)",
+    level: "C",
+    color: "text-amber-400",
+    badgeClass: "bg-amber-950 text-amber-300 border-amber-700",
+    desc: "외관 육안 검사, 포장 전 수량 및 라벨 식별 검사"
+  }
+];
+
+export const getInspectorGradeMeta = (grade) => {
+  if (!grade) return INSPECTOR_GRADES[1]; // 기본값: B등급 (일반검사원)
+  return (
+    INSPECTOR_GRADES.find(
+      (g) => g.grade === grade || g.level === grade || g.shortGrade === grade
+    ) || INSPECTOR_GRADES[1]
+  );
+};
 
 // 부서 정규화 헬퍼 (생산팀, 생산관리팀, 관리팀 3개로 표준화)
 export const normalizeStandardDept = (dept) => {
@@ -197,7 +235,48 @@ export const generateDefaultEmpNo = (worker, idx = 1) => {
   return `${yearPrefix}${seq}`;
 };
 
-// 근로자 초기 인사카드 기본값 생성기 (5대 주공정 및 3대 부서, 4대 직급 적용)
+// ⭐ 이미지 압축 헬퍼 (파일 또는 Blob을 최대 360x360 캔버스로 리사이징하여 경량 Base64 DataURL 생성)
+export const compressImageToBase64 = (fileOrBlob, maxWidth = 360, maxHeight = 360, quality = 0.85) => {
+  return new Promise((resolve, reject) => {
+    if (!fileOrBlob) {
+      resolve("");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = (err) => reject(err);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = (err) => reject(err);
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(fileOrBlob);
+  });
+};
+
+// 근로자 초기 인사카드 기본값 생성기 (6대 주공정 및 3대 부서, 4대 직급, 검사원 등급 및 사진 연동)
 export const getWorkerPersonnelCard = (worker, idx = 1) => {
   if (!worker) return null;
 
@@ -208,16 +287,17 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   const dept = normalizeStandardDept(worker.dept || existingCard.dept || "생산팀");
   const name = String(worker.name || existingCard.name || "").trim();
   const position = normalizeStandardPosition(worker.position || existingCard.position || "사원");
-  const line = worker.line || existingCard.line || dept;
 
-  // 기본 주공정 추정 (압출 / 소재준비 / 조인트 / 사상 / 검사)
+  // 기본 주공정 추정 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
   let defaultMainProcess = existingCard.mainProcess;
   if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
-    if (line.includes("압출") || dept.includes("압출")) defaultMainProcess = "압출";
-    else if (line.includes("소재") || line.includes("원자재") || line.includes("절단")) defaultMainProcess = "소재준비";
-    else if (line.includes("조인트") || line.includes("용접") || line.includes("체결")) defaultMainProcess = "조인트";
-    else if (line.includes("사상") || line.includes("가공") || line.includes("후가공") || line.includes("포밍")) defaultMainProcess = "사상";
-    else if (line.includes("검사") || line.includes("품질") || dept.includes("관리")) defaultMainProcess = "검사";
+    const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
+    if (hint.includes("압출")) defaultMainProcess = "압출";
+    else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
+    else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
+    else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
+    else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
+    else if (hint.includes("검사") || hint.includes("품질") || dept.includes("관리")) defaultMainProcess = "검사";
     else defaultMainProcess = "압출";
   }
 
@@ -236,20 +316,21 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 기본 다기능공 여부
   const isMultiSkill = existingCard.isMultiSkill !== undefined ? existingCard.isMultiSkill : (defaultSkillLevel >= 4);
 
-  // 기본 서브 지원공정 (압출, 소재준비, 조인트, 사상, 검사 중 선택)
+  // 기본 서브 지원공정 (압출, 소재준비, 조인트, 사상, 코팅, 검사 중 선택)
   let subProcesses = existingCard.subProcesses;
   if (!subProcesses || !Array.isArray(subProcesses) || subProcesses.length === 0) {
     if (isMultiSkill) {
       if (defaultMainProcess === "압출") subProcesses = ["소재준비", "사상", "검사"];
-      else if (defaultMainProcess === "조인트") subProcesses = ["사상", "검사"];
+      else if (defaultMainProcess === "조인트") subProcesses = ["사상", "코팅", "검사"];
       else if (defaultMainProcess === "소재준비") subProcesses = ["압출", "사상"];
-      else subProcesses = ["조인트", "검사"];
+      else if (defaultMainProcess === "코팅") subProcesses = ["사상", "검사"];
+      else subProcesses = ["조인트", "사상", "검사"];
     } else {
       subProcesses = [];
     }
   }
 
-  // 지원 공정 중 표준 5대 공정에 해당하는 항목만 필터링
+  // 지원 공정 중 표준 6대 공정에 해당하는 항목만 필터링
   subProcesses = subProcesses.filter((p) => STANDARD_PROCESS_LIST.includes(p) && p !== defaultMainProcess);
 
   const joinDate = existingCard.joinDate || "2022-03-15";
@@ -257,13 +338,18 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   const processYear = calculateProcessYearFromJoinDate(joinDate);
   const empNo = existingCard.empNo || worker.empNo || generateDefaultEmpNo(worker, idx);
 
+  // 검사원 등급 (주공정이 검사이거나 지정된 경우)
+  const inspectorGrade = existingCard.inspectorGrade || (defaultMainProcess === "검사" ? "B등급 (일반검사원)" : "");
+  const inspectorCertDate = existingCard.inspectorCertDate || (defaultMainProcess === "검사" ? joinDate : "");
+  const photoUrl = existingCard.photoUrl || worker.photoUrl || "";
+
   return {
     empNo,
     company,
     dept,
-    line,
     name,
     position,
+    photoUrl,
     joinDate,
     tenure,
     mainProcess: defaultMainProcess,
@@ -272,6 +358,8 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     skillGrade: getSkillMeta(defaultSkillLevel).grade,
     isMultiSkill,
     subProcesses,
+    inspectorGrade,
+    inspectorCertDate,
     notes: existingCard.notes || `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`,
     updatedAt: existingCard.updatedAt || new Date().toISOString()
   };
@@ -314,6 +402,8 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
       skillGrade: getSkillMeta(cardData.skillLevel).grade,
       tenure,
       processYear,
+      photoUrl: cardData.photoUrl || "",
+      inspectorGrade: cardData.mainProcess === "검사" ? (cardData.inspectorGrade || "B등급 (일반검사원)") : (cardData.inspectorGrade || ""),
       updatedAt: new Date().toISOString()
     };
 
