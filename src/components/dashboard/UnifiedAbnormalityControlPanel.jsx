@@ -495,14 +495,14 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     const ledgerSet = new Set(
-      (fourMLedgerRecords || []).flatMap((r) => [r.originalId, r.id, `ledger_${r.originalId}`, `ledger_${r.id}`].filter(Boolean))
+      (fourMLedgerRecords || []).flatMap((r) => [r.originalId, r.id, r.rawId, `ledger_${r.originalId}`, `ledger_${r.id}`].filter(Boolean))
     );
 
     // 최신 발생일자 DESC, ID DESC 정렬 및 대장 등록 여부 매핑
     return unified
       .map((item) => ({
         ...item,
-        isRegisteredInLedger: ledgerSet.has(item.id) || ledgerSet.has(`ledger_${item.id}`)
+        isRegisteredInLedger: ledgerSet.has(item.id) || ledgerSet.has(`ledger_${item.id}`) || Boolean(item.raw?.id && ledgerSet.has(item.raw.id))
       }))
       .sort((a, b) => {
         if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
@@ -516,13 +516,13 @@ export const UnifiedAbnormalityControlPanel = ({
   // =========================================================================
   const filteredRecords = useMemo(() => {
     const ledgerSet = new Set(
-      (fourMLedgerRecords || []).flatMap((r) => [r.originalId, r.id, `ledger_${r.originalId}`, `ledger_${r.id}`].filter(Boolean))
+      (fourMLedgerRecords || []).flatMap((r) => [r.originalId, r.id, r.rawId, `ledger_${r.originalId}`, `ledger_${r.id}`].filter(Boolean))
     );
 
     return allUnifiedRecords.filter((rec) => {
       // 0. 공식 변동점 관리대장 필터
       if (selectedOriginFilter === "OFFICIAL_LEDGER" || selected4MTab === "OFFICIAL_LEDGER") {
-        if (!ledgerSet.has(rec.id) && !ledgerSet.has(`ledger_${rec.id}`) && !rec.isOfficialLedger) return false;
+        if (!ledgerSet.has(rec.id) && !ledgerSet.has(`ledger_${rec.id}`) && !Boolean(rec.raw?.id && ledgerSet.has(rec.raw.id)) && !rec.isOfficialLedger) return false;
       }
 
       // 1. 공장 필터
@@ -720,17 +720,19 @@ export const UnifiedAbnormalityControlPanel = ({
   // 🌟 공식 변동점 관리대장 등록 및 해제 (복사본 저장)
   const handleToggleLedger = async (item) => {
     if (!item) return;
+    const rawId = item.raw?.id || "";
     const isAlready = fourMLedgerRecords.some(
       (r) =>
         r.originalId === item.id ||
         r.id === item.id ||
         r.id === `ledger_${item.id}` ||
-        `ledger_${r.originalId}` === item.id
+        `ledger_${r.originalId}` === item.id ||
+        (rawId && (r.rawId === rawId || r.originalId === rawId || r.id === rawId || r.id === `ledger_${rawId}`))
     );
 
     if (isAlready) {
       if (window.confirm(`[${item.title}]\n\n항목을 공식 변동점 관리대장에서 등록 해제(삭제)하시겠습니까?`)) {
-        const updated = await unregisterFromFourMLedger(item.id);
+        const updated = await unregisterFromFourMLedger(item);
         setFourMLedgerRecords(updated || []);
         alert(`[${item.title}]\n\n변동점 관리대장에서 정상적으로 등록 해제되었습니다.`);
       }

@@ -82,20 +82,53 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
     hour12: false
   }).replace(/\. /g, "-").replace(/\./g, "");
 
-  const ledgerId = `ledger_${record.id || Date.now()}`;
+  const originalId = String(record.id || "").trim();
+  const rawId = String(record.raw?.id || record.id || "").trim();
+  const ledgerId = originalId.startsWith("ledger_") ? originalId : `ledger_${originalId || Date.now()}`;
 
+  // Sanitize record to avoid undefined keys or complex non-serializable objects (such as circular refs in raw)
   const ledgerItem = {
-    ...record,
     id: ledgerId,
-    originalId: record.id,
+    originalId: originalId,
+    rawId: rawId,
+    fourM: record.fourM || "Machine",
+    origin: record.origin || "변동점",
+    sourceType: record.sourceType || "",
+    badgeColor: record.badgeColor || "",
+    plant: record.plant || "삼랑진공장",
+    line: record.line || "",
+    writer: record.writer || "",
+    title: record.title || "",
+    date: record.date || nowStr.slice(0, 10),
+    time: record.time || "",
+    content: record.content || "",
+    actionResult: record.actionResult || "",
+    actionAuthor: record.actionAuthor || "",
+    actionAt: record.actionAt || "",
+    images: Array.isArray(record.images) ? record.images : [],
+    actionImages: Array.isArray(record.actionImages) ? record.actionImages : [],
+    replies: Array.isArray(record.replies) ? record.replies : [],
+    isResolved: Boolean(record.isResolved),
+    severity: record.severity || "NORMAL",
+    downtimeMinutes: Number(record.downtimeMinutes) || 0,
+    scrapKg: Number(record.scrapKg) || 0,
     registeredAt: nowStr,
     registeredBy: registeredBy || "관리자",
     isOfficialLedger: true
   };
 
+  // Strip any undefined keys
+  Object.keys(ledgerItem).forEach((k) => {
+    if (ledgerItem[k] === undefined) delete ledgerItem[k];
+  });
+
   const current = getLocalFourMChangePoints();
   const existingIdx = current.findIndex(
-    (it) => it.id === ledgerId || it.originalId === record.id || it.id === record.id
+    (it) =>
+      it.id === ledgerId ||
+      it.originalId === originalId ||
+      (rawId && (it.rawId === rawId || it.originalId === rawId)) ||
+      it.id === originalId
   );
   let updated;
   if (existingIdx >= 0) {
@@ -118,37 +151,51 @@ export const registerToFourMLedger = async (record, registeredBy = "관리자") 
 
 // Unregister (Delete) from Official 4M Change Point Ledger
 export const unregisterFromFourMLedger = async (ledgerOrOriginalId) => {
-  const current = getLocalFourMChangePoints();
-  const idStr = String(ledgerOrOriginalId || "").trim();
+  const targetId = typeof ledgerOrOriginalId === "object"
+    ? String(ledgerOrOriginalId?.id || ledgerOrOriginalId?.originalId || ledgerOrOriginalId?.raw?.id || "").trim()
+    : String(ledgerOrOriginalId || "").trim();
 
-  // Find target item
-  const target = current.find(
+  if (!targetId) return getLocalFourMChangePoints();
+
+  const current = getLocalFourMChangePoints();
+
+  // Find all matched records
+  const matched = current.filter(
     (it) =>
-      it.id === idStr ||
-      it.originalId === idStr ||
-      `ledger_${it.originalId}` === idStr ||
-      it.id === `ledger_${idStr}`
+      it.id === targetId ||
+      it.originalId === targetId ||
+      it.rawId === targetId ||
+      it.id === `ledger_${targetId}` ||
+      `ledger_${it.originalId}` === targetId ||
+      (it.originalId && targetId.includes(it.originalId)) ||
+      (it.id && targetId.includes(it.id))
   );
 
-  const docIdToDelete = target ? target.id : (idStr.startsWith("ledger_") ? idStr : `ledger_${idStr}`);
-  const origIdToDelete = target ? target.originalId : idStr;
+  const matchedDocIds = new Set(matched.map((m) => m.id));
+  if (targetId.startsWith("ledger_")) {
+    matchedDocIds.add(targetId);
+  } else {
+    matchedDocIds.add(`ledger_${targetId}`);
+  }
+  matchedDocIds.add(targetId);
 
   const updated = current.filter(
     (it) =>
-      it.id !== docIdToDelete &&
-      it.id !== idStr &&
-      it.originalId !== origIdToDelete &&
-      it.originalId !== idStr
+      !matchedDocIds.has(it.id) &&
+      it.originalId !== targetId &&
+      it.rawId !== targetId &&
+      !matched.some((m) => m.id === it.id)
   );
+
   saveLocalFourMChangePoints(updated);
 
-  try {
-    await deleteDoc(doc(db, COLLECTION_NAME, docIdToDelete));
-    if (docIdToDelete !== idStr) {
-      await deleteDoc(doc(db, COLLECTION_NAME, idStr)).catch(() => {});
+  // Delete matching documents from Firestore
+  for (const docId of matchedDocIds) {
+    try {
+      await deleteDoc(doc(db, COLLECTION_NAME, docId));
+    } catch (e) {
+      console.warn("Firestore delete four_m_change_point error:", docId, e);
     }
-  } catch (e) {
-    console.warn("Firestore delete four_m_change_point error:", e);
   }
 
   return updated;

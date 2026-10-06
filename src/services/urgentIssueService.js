@@ -249,7 +249,7 @@ export const subscribeUrgentIssues = (onUpdate) => {
 };
 
 // Add or update an urgent issue
-export const saveUrgentIssue = async (issueData) => {
+export const saveUrgentIssue = async (issueData, options = {}) => {
   const current = getLocalUrgentIssues();
   const id = issueData.id || issueData._docId || issueData.customId || `issue_${Date.now()}`;
   const nowStr = new Date().toLocaleString("ko-KR", {
@@ -316,10 +316,17 @@ export const saveUrgentIssue = async (issueData) => {
     console.warn("Firestore save urgent issue fallback to local:", e);
   }
 
-  // Trigger real-time Telegram notification for items (경영방 및 통합방 실시간 모니터링)
-  if (!fullItem.isDeleted) {
-    if (existingIdx < 0) {
-      // 1. 신규 등록 즉시 알림
+  // 🔒 텔레그램 발송 가드: skipTelegram인 경우 완전 생략
+  const skipTelegram = Boolean(options.skipTelegram);
+  // 신규 등록(CREATE)은 오직 options.isNew === true 이거나 (기존 ID/생성일시가 없고 로컬스토리지에도 없는 최초 등록 시)에만 발송
+  const isTrulyNew = !skipTelegram && (
+    options.isNew === true ||
+    (existingIdx < 0 && !issueData.id && !issueData._docId && !issueData.createdAt)
+  );
+
+  if (!fullItem.isDeleted && !skipTelegram) {
+    if (isTrulyNew) {
+      // 1. 신규 등록 즉시 알림 (오직 신규 생성 시에만 발송)
       if (fullItem.category === "품질경보") {
         sendQualityAlertTelegram(fullItem).catch((err) => {
           console.warn("Telegram alert error:", err);
@@ -333,7 +340,7 @@ export const saveUrgentIssue = async (issueData) => {
           console.warn("Telegram meeting/notice alert error:", err);
         });
       }
-    } else {
+    } else if (existingIdx >= 0 && !options.isNew) {
       // 2. 기존 항목 수정 / 상태 변경 / 조치완료 시 알림
       const prevItem = current[existingIdx];
       const isNewlyResolved = !prevItem?.isResolved && fullItem.isResolved;
@@ -375,9 +382,23 @@ export const saveUrgentIssue = async (issueData) => {
 // Add a Reply / Attendance Response (회신란 / 조치결과 등록)
 export const addIssueReply = async (issueId, replyData) => {
   const current = getLocalUrgentIssues();
-  const target = current.find(
+  let target = current.find(
     (i) => i.id === issueId || (i._docId && i._docId === issueId) || (i.customId && i.customId === issueId)
   );
+
+  if (!target) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      snap.forEach((d) => {
+        if (d.id === issueId || d.data()?.id === issueId) {
+          target = sanitizeUrgentIssueItem({ id: d.id, _docId: d.id, ...d.data() });
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore fetch in addIssueReply fallback:", e);
+    }
+  }
+
   if (!target) return null;
 
   const nowStr = new Date().toLocaleString("ko-KR", {
@@ -420,19 +441,60 @@ export const addIssueReply = async (issueId, replyData) => {
       : {})
   };
 
-  const saved = await saveUrgentIssue(updatedItem);
+  const saved = await saveUrgentIssue(updatedItem, { isNew: false, skipTelegram: true });
+
+  // 개별 의견/회신 전용 텔레그램 알림 발송
+  try {
+    if (target.category === "품질경보") {
+      sendQualityOpinionTelegram(target, newReply).catch(() => {});
+    } else if (target.category === "오픈이슈" || target.category === "open_issue" || target.category === "품질이슈") {
+      sendOpenIssueReplyTelegram(target, newReply).catch(() => {});
+    } else if (target.category === "회의일정" || target.category === "공지사항" || target.category === "사내공지" || target.category === "공유사항") {
+      sendMeetingNoticeReplyTelegram(target, newReply).catch(() => {});
+    }
+  } catch (err) {
+    console.warn("Telegram reply alert error:", err);
+  }
+
   return saved;
 };
 
 // Delete a Reply
 export const deleteIssueReply = async (issueId, replyId) => {
   const current = getLocalUrgentIssues();
-  const target = current.find(
+  let target = current.find(
     (i) => i.id === issueId || (i._docId && i._docId === issueId) || (i.customId && i.customId === issueId)
   );
+
+  if (!target) {
+    try {
+      const snap = await getDocs(collection(db, COLLECTION_NAME));
+      snap.forEach((d) => {
+        if (d.id === issueId || d.data()?.id === issueId) {
+          target = sanitizeUrgentIssueItem({ id: d.id, _docId: d.id, ...d.data() });
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore fetch in deleteIssueReply fallback:", e);
+    }
+  }
+
   if (!target) return null;
 
-  const updatedReplies = (target.replies || []).filter((r) => r.id !== replyId);
+  const currentReplies = Array.isArray(target.replies) ? [...target.replies] : [];
+  // 🔒 정확히 대상 1개만 식별하여 삭제 (중복 등록된 동일 내용 의견도 1개만 안전하게 삭제)
+  const targetIdx = currentReplies.findIndex(
+    (r, idx) => r.id === replyId || String(idx) === String(replyId) || (r.id && String(r.id) === String(replyId))
+  );
+
+  let updatedReplies;
+  if (targetIdx >= 0) {
+    currentReplies.splice(targetIdx, 1);
+    updatedReplies = currentReplies;
+  } else {
+    updatedReplies = currentReplies.filter((r) => r.id !== replyId);
+  }
+
   const isQuality = target.category === "품질경보";
   const lastReply = updatedReplies[updatedReplies.length - 1];
 
@@ -450,7 +512,8 @@ export const deleteIssueReply = async (issueId, replyId) => {
       : {})
   };
 
-  return await saveUrgentIssue(updatedItem);
+  // 🔒 skipTelegram: true 및 isNew: false를 명시하여 의견 삭제 시 신규등록 텔레그램 발송 원천 차단
+  return await saveUrgentIssue(updatedItem, { isNew: false, skipTelegram: true });
 };
 
 // In-flight deletion lock to prevent duplicate Telegram messages and race conditions

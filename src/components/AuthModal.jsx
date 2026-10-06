@@ -625,7 +625,8 @@ export const AuthModal = () => {
         delete itemToSave.createdAt;
       }
 
-      const saved = await saveUrgentIssue(itemToSave);
+      const isNew = !editingIssue || !editingIssue.id;
+      const saved = await saveUrgentIssue(itemToSave, { isNew });
       if (saved) {
         setUrgentIssues((prev) => {
           const targetId = saved.id || saved._docId;
