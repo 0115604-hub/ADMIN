@@ -325,6 +325,21 @@ export const WorkerPinModal = ({
       }
 
       (report.downtimeEvents || []).forEach((ev, evIdx) => {
+        const catClean = String(ev.category || "").replace(/\s+/g, "").toUpperCase();
+        // ⭐ 사용자 요청: 압개시, 형교환, 종료, 기술TRY 항목은 일상 셋업/정상 공정 비가동이므로 4M 변동점 적용에서 완전 제외
+        if (
+          catClean === "압개시" ||
+          catClean === "형교환" ||
+          catClean === "종료" ||
+          catClean === "기술TRY" ||
+          catClean.startsWith("압개시") ||
+          catClean.startsWith("형교환") ||
+          catClean.startsWith("종료") ||
+          catClean.startsWith("기술TRY")
+        ) {
+          return;
+        }
+
         const isDefect = ev.type === "불량" || ["뜯김", "철심", "재압출", "단면형상", "스코치", "이물", "발포"].includes(ev.category);
         unified.push({
           id: `ext_dt_${report.id}_${evIdx}`,
