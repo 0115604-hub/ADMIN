@@ -677,38 +677,119 @@ export const ensureAllCompaniesPresent = (data) => {
   };
 };
 
-export const getLocalSmartOvertimeData = () => {
+export const getStorageKeyForMonth = (yearMonth = "2026-10") => {
+  const clean = String(yearMonth || "2026-10").replace(/-/g, "_");
+  return `oryuk_smart_overtime_data_${clean}`;
+};
+
+export const getFirestoreDocIdForMonth = (yearMonth = "2026-10") => {
+  const clean = String(yearMonth || "2026-10").replace(/-/g, "_");
+  return `overtime_${clean}`;
+};
+
+// 당월(10월 등) 작성중인 빈 월간 근태 대장 템플릿 생성
+export const createEmptySmartOvertimeData = (year = 2026, month = 10) => {
+  const baseMaster = INITIAL_SMART_OVERTIME_DATA.masterWorkers || [];
+  const compCounters = {};
+  const masterWorkers = baseMaster.map((w) => {
+    const comp = cleanCompanyName(w.company);
+    compCounters[comp] = (compCounters[comp] || 0) + 1;
+    return {
+      ...w,
+      company: comp,
+      companyNo: compCounters[comp],
+      no: compCounters[comp]
+    };
+  });
+
+  const matrixCounters = {};
+  const attendanceMatrix = masterWorkers.map((w) => {
+    const comp = cleanCompanyName(w.company);
+    matrixCounters[comp] = (matrixCounters[comp] || 0) + 1;
+    return {
+      no: matrixCounters[comp],
+      companyNo: matrixCounters[comp],
+      company: comp,
+      dept: normalizeDept(w.dept),
+      line: w.line || normalizeDept(w.dept),
+      name: w.name,
+      position: w.position || "작업원",
+      daily: {} // 💡 당월 작성중: 입력된 일자만 기록되고 미작성/미래 일자는 빈칸(-)
+    };
+  });
+
+  return {
+    year,
+    month,
+    masterWorkers,
+    attendanceMatrix
+  };
+};
+
+export const getLocalSmartOvertimeData = (targetYearMonth = "2026-10") => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const ym = targetYearMonth || "2026-10";
+    const [y, m] = ym.split("-").map(Number);
+    const key = getStorageKeyForMonth(ym);
+
+    // 1. 2026년 9월 (지난달 실적 마감 대장)
+    if (ym === "2026-09") {
+      const septRaw = localStorage.getItem(key) || localStorage.getItem(STORAGE_KEY);
+      if (septRaw) {
+        const parsed = JSON.parse(septRaw);
+        if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
+          return ensureAllCompaniesPresent(parsed);
+        }
+      }
+      return INITIAL_SMART_OVERTIME_DATA;
+    }
+
+    // 2. 2026년 10월 등 당월/선택 월 (작성중 대장)
+    const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
         return ensureAllCompaniesPresent(parsed);
       }
     }
+
+    // 3. 신규 월 기본 생성 (마스터 인원 그대로 유지, daily는 작성중 빈 상태)
+    const initialEmpty = createEmptySmartOvertimeData(y || 2026, m || 10);
+    try {
+      localStorage.setItem(key, JSON.stringify(initialEmpty));
+    } catch (e) {}
+    return initialEmpty;
   } catch (err) {
     console.warn("Failed to load local smart overtime data:", err);
   }
-  return INITIAL_SMART_OVERTIME_DATA;
+  return createEmptySmartOvertimeData(2026, 10);
 };
 
-export const saveSmartOvertimeData = async (data) => {
+export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
   try {
+    const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : "2026-10");
+    const key = getStorageKeyForMonth(ym);
+    const docId = getFirestoreDocIdForMonth(ym);
+
     const normalizedData = ensureAllCompaniesPresent(data);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
+    localStorage.setItem(key, JSON.stringify(normalizedData));
+
+    if (ym === "2026-09") {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedData));
+    }
 
     // Dispatch custom event for immediate same-page multi-component updates
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: normalizedData }));
+      window.dispatchEvent(new CustomEvent("oryuk_smart_overtime_updated", { detail: { ...normalizedData, yearMonth: ym } }));
     }
 
     if (db) {
-      const ref = doc(db, "smart_overtime_ledger", FIRESTORE_DOC_ID);
+      const ref = doc(db, "smart_overtime_ledger", docId);
       await setDoc(
         ref,
         sanitizeForFirestore({
-          year: normalizedData.year || 2026,
-          month: normalizedData.month || 9,
+          year: normalizedData.year || parseInt(ym.split("-")[0], 10) || 2026,
+          month: normalizedData.month || parseInt(ym.split("-")[1], 10) || 10,
           masterWorkers: normalizedData.masterWorkers || [],
           attendanceMatrix: normalizedData.attendanceMatrix || [],
           updatedAt: new Date().toISOString()
@@ -723,11 +804,17 @@ export const saveSmartOvertimeData = async (data) => {
   }
 };
 
-export const subscribeSmartOvertimeData = (callback) => {
+export const subscribeSmartOvertimeData = (callback, targetYearMonth = "2026-10") => {
   try {
+    const ym = targetYearMonth || "2026-10";
+    const key = getStorageKeyForMonth(ym);
+    const docId = getFirestoreDocIdForMonth(ym);
+
     const handleCustom = (e) => {
       if (e && e.detail) {
-        callback(e.detail);
+        if (!e.detail.yearMonth || e.detail.yearMonth === ym) {
+          callback(e.detail);
+        }
       }
     };
     if (typeof window !== "undefined") {
@@ -735,7 +822,7 @@ export const subscribeSmartOvertimeData = (callback) => {
     }
 
     if (!db) {
-      callback(getLocalSmartOvertimeData());
+      callback(getLocalSmartOvertimeData(ym));
       return () => {
         if (typeof window !== "undefined") {
           window.removeEventListener("oryuk_smart_overtime_updated", handleCustom);
@@ -743,7 +830,7 @@ export const subscribeSmartOvertimeData = (callback) => {
       };
     }
 
-    const ref = doc(db, "smart_overtime_ledger", FIRESTORE_DOC_ID);
+    const ref = doc(db, "smart_overtime_ledger", docId);
     const unsubscribe = onSnapshot(
       ref,
       (docSnap) => {
@@ -751,16 +838,16 @@ export const subscribeSmartOvertimeData = (callback) => {
           const cloudData = docSnap.data();
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
             const normalized = ensureAllCompaniesPresent(cloudData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+            localStorage.setItem(key, JSON.stringify(normalized));
             callback(normalized);
             return;
           }
         }
-        callback(getLocalSmartOvertimeData());
+        callback(getLocalSmartOvertimeData(ym));
       },
       (error) => {
         console.warn("Firestore smart overtime listener error:", error);
-        callback(getLocalSmartOvertimeData());
+        callback(getLocalSmartOvertimeData(ym));
       }
     );
     return () => {
@@ -771,7 +858,7 @@ export const subscribeSmartOvertimeData = (callback) => {
     };
   } catch (err) {
     console.error("Failed to subscribe smart overtime data:", err);
-    callback(getLocalSmartOvertimeData());
+    callback(getLocalSmartOvertimeData(targetYearMonth));
     return () => {};
   }
 };
@@ -779,22 +866,26 @@ export const subscribeSmartOvertimeData = (callback) => {
 // Excel Export (6 Sheets)
 export const exportSmartOvertimeToExcel = (data) => {
   const currentData = ensureAllCompaniesPresent(data || getLocalSmartOvertimeData());
+  const year = currentData.year || 2026;
+  const month = currentData.month || 10;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const sampleDay = Math.min(8, daysInMonth);
   const wb = XLSX.utils.book_new();
 
   // Sheet 0: 일자별_근태정리본
   const s0Rows = [
-    ["2026년 9월 일자별 근태 및 잔업 일일 종합 정리본 (5개사 통합)"],
+    [`${year}년 ${month}월 일자별 근태 및 잔업 일일 종합 정리본 (5개사 통합)`],
     ["※ [B4] 셀에서 날짜를 선택하면 5개사 전사 일일 실적 요약표 및 전 작업자 상세 근태/잔업 내역이 실시간 자동 정리되어 표시됩니다."],
     ["📅 조회 대상 일자", null, "👥 당일 출근총원", "🟢 정시(0H)", "🟡 19시(+2H)", "🟠 21시(+4H)", "🔴 22시(+5H)", "🌙 특근/야간", "⚡ 당일 잔업합계(H)", null, "⏱ 당일 총투입공수"]
   ];
-  const daySummary = calculateDailySummary(currentData.attendanceMatrix, 8);
-  s0Rows.push(["9월 8일", null, daySummary.totalAttended, daySummary.regularCount, daySummary.ot19Count, daySummary.ot21Count, daySummary.ot22Count, daySummary.specialNightCount, daySummary.dayOtHours, null, daySummary.dayTotalHours]);
+  const daySummary = calculateDailySummary(currentData.attendanceMatrix, sampleDay);
+  s0Rows.push([`${month}월 ${sampleDay}일`, null, daySummary.totalAttended, daySummary.regularCount, daySummary.ot19Count, daySummary.ot21Count, daySummary.ot22Count, daySummary.specialNightCount, daySummary.dayOtHours, null, daySummary.dayTotalHours]);
   s0Rows.push([]);
   s0Rows.push(["🏢 5개사별 당일 근태 및 투입공수 요약"]);
   s0Rows.push(["No.", "소속 업체", "소속 부서", "차종 / 라인", "작업자 성명", "직급", "근태/잔업", "잔업시간(H)", "총근무시간(H)", "비고"]);
 
   currentData.attendanceMatrix.forEach((w, idx) => {
-    const val = w.daily ? w.daily[8] : "";
+    const val = w.daily ? w.daily[sampleDay] : "";
     const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
     s0Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, w.position || "작업원", val || "-", weekdayOt + weekendOt, workHours, ""]);
   });
@@ -803,33 +894,37 @@ export const exportSmartOvertimeToExcel = (data) => {
 
   // Sheet 1: 일일근태_간편입력
   const s1Rows = [
-    ["일일 근태 및 잔업 스마트 간편 등록 대장 (5개사 통합)"],
+    [`${year}년 ${month}월 일일 근태 및 잔업 스마트 간편 등록 대장 (5개사 통합)`],
     ["💡 [사용안내] ① [A4] 일자 및 [C4] 업체를 선택하세요. ② [F열]에서 [🟢(정시) / 19 / 21 / 22 / 야간 / 특근] 드롭다운을 선택하면 잔업 및 총 근무시간이 실시간 자동 계산됩니다."],
     ["📅 작성 대상 일자", null, "🏢 관리 대상 업체", "🟢 정시근무", "🟡 19시 (+2H)", "🟠 21시 (+4H)", "🔴 22시 (+5H)", "⚡ 당일 잔업합계", "⏱ 당일 총근무공수"],
-    ["9월 8일", null, "전체(5개사)", daySummary.regularCount, daySummary.ot19Count, daySummary.ot21Count, daySummary.ot22Count, daySummary.dayOtHours, daySummary.dayTotalHours],
+    [`${month}월 ${sampleDay}일`, null, "전체(5개사)", daySummary.regularCount, daySummary.ot19Count, daySummary.ot21Count, daySummary.ot22Count, daySummary.dayOtHours, daySummary.dayTotalHours],
     [],
     ["No.", "소속 업체", "소속 부서", "차종 / 라인", "작업자 성명", "⭐ 잔업/근태 선택 (🟢/19/21/22)", "잔업시간 (H)", "총 근무시간 (H)", "비고 (조출/특이사항)"]
   ];
   currentData.attendanceMatrix.forEach((w, idx) => {
-    const val = w.daily ? w.daily[8] : "";
+    const val = w.daily ? w.daily[sampleDay] : "";
     const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
     s1Rows.push([idx + 1, w.company, normalizeDept(w.dept), w.line, w.name, val || "-", weekdayOt + weekendOt, workHours, ""]);
   });
   const ws1 = XLSX.utils.aoa_to_sheet(s1Rows);
   XLSX.utils.book_append_sheet(wb, ws1, "📝 일일근태_간편입력");
 
-  // Sheet 2: 9월_종합_현황판
+  // Sheet 2: 월간_종합_현황판
+  const daysHeader = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    daysHeader.push(`${month}월 ${d}일`);
+  }
   const s2Rows = [
-    ["2026년 9월 5개사 통합 근태 및 잔업 스마트 종합관리대장 (오륙 / 조영산업 / 한울 / 부림텍 / 유성)"],
-    ["※ [A4] 셀에서 일자(9월 1일~9월 30일)를 선택하면 5개사 전체 및 업체별 당일 실적이 실시간 자동 집계됩니다. (🟢=정시, 19=+2H, 21=+4H, 22=+5H)"],
-    ["📅 조회 대상 일자", null, "👥 5개사 전사 총원", null, "🟢 정시근무(0H)", null, null, "🟡 19시(+2H)", null, null, "🟠 21시(+4H)", null, null, "🔴 22시(+5H)", null, null, "🌙 야간/특근", null, null, "⚡ 9월 평일잔업 누적", null, null, null, "🎯 9월 주말특근 누적", null, null, null, "⏱ 9월 전사 총 누적 투입공수 (기본근무 + 평일잔업 + 주말특근)"],
-    ["9월 8일", null, currentData.attendanceMatrix.length, null, daySummary.regularCount, null, null, daySummary.ot19Count, null, null, daySummary.ot21Count, null, null, daySummary.ot22Count, null, null, daySummary.specialNightCount, null, null, 1680, null, null, null, 440, null, null, null, 25200],
-    ["No.", "소속 업체", "소속 부서", "차종/라인", "성명", "화", "수", "목", "금", "토", "일", "월", "화", "수", "목", "금", "토", "일", "월", "화", "수", "목", "금", "토", "일", "월", "화", "수", "목", "금", "토", "일", "월", "화", "수", "출근일수", "평일잔업(H)", "주말특근(H)", "야간(일)", "총공수(H)"],
-    [null, null, null, null, null, "9월 1일", "9월 2일", "9월 3일", "9월 4일", "9월 5일", "9월 6일", "9월 7일", "9월 8일", "9월 9일", "9월 10일", "9월 11일", "9월 12일", "9월 13일", "9월 14일", "9월 15일", "9월 16일", "9월 17일", "9월 18일", "9월 19일", "9월 20일", "9월 21일", "9월 22일", "9월 23일", "9월 24일", "9월 25일", "9월 26일", "9월 27일", "9월 28일", "9월 29일", "9월 30일"]
+    [`${year}년 ${month}월 5개사 통합 근태 및 잔업 스마트 종합관리대장 (오륙 / 조영 / 한울 / 부림텍 / 유성)`],
+    [`※ [A4] 셀에서 일자(${month}월 1일~${month}월 ${daysInMonth}일)를 선택하면 5개사 전체 및 업체별 당일 실적이 실시간 자동 집계됩니다. (🟢=정시, 19=+2H, 21=+4H, 22=+5H)`],
+    ["📅 조회 대상 일자", null, "👥 5개사 전사 총원", null, "🟢 정시근무(0H)", null, null, "🟡 19시(+2H)", null, null, "🟠 21시(+4H)", null, null, "🔴 22시(+5H)", null, null, "🌙 야간/특근", null, null, `⚡ ${month}월 평일잔업 누적`, null, null, null, `🎯 ${month}월 주말특근 누적`, null, null, null, `⏱ ${month}월 전사 총 누적 투입공수`],
+    [`${month}월 ${sampleDay}일`, null, currentData.attendanceMatrix.length, null, daySummary.regularCount, null, null, daySummary.ot19Count, null, null, daySummary.ot21Count, null, null, daySummary.ot22Count, null, null, daySummary.specialNightCount, null, null, 1680, null, null, null, 440, null, null, null, 25200],
+    ["No.", "소속 업체", "소속 부서", "차종/라인", "성명", ...Array.from({ length: daysInMonth }, (_, i) => `${i + 1}일`), "출근일수", "평일잔업(H)", "주말특근(H)", "야간(일)", "총공수(H)"],
+    [null, null, null, null, null, ...daysHeader]
   ];
 
   currentData.attendanceMatrix.forEach((w, idx) => {
-    const totals = calculateWorkerMonthlyTotals(w);
+    const totals = calculateWorkerMonthlyTotals(w, daysInMonth);
     const row = [
       idx + 1,
       w.company,
@@ -837,18 +932,18 @@ export const exportSmartOvertimeToExcel = (data) => {
       w.line,
       w.name
     ];
-    for (let d = 1; d <= 30; d++) {
+    for (let d = 1; d <= daysInMonth; d++) {
       row.push(w.daily ? w.daily[d] || "" : "");
     }
     row.push(totals.workDays, totals.weekdayOtHours, totals.weekendOtHours, totals.nightDays, totals.totalHours);
     s2Rows.push(row);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(s2Rows);
-  XLSX.utils.book_append_sheet(wb, ws2, "📊 9월_종합_현황판");
+  XLSX.utils.book_append_sheet(wb, ws2, `📊 ${month}월_종합_현황판`);
 
   // Sheet 3: 업체별_통합_결산요약
   const s3Rows = [
-    ["2026년 9월 5개사 업체별 근태 및 잔업 투입공수 통합 결산표"],
+    [`${year}년 ${month}월 5개사 업체별 근태 및 잔업 투입공수 통합 결산표`],
     [],
     ["구분 (업체명)", "관리 인원수", "누적 출근일수", "평일잔업 누계(H)", "주말특근 누계(H)", "야간근무 누계(일)", "총 투입공수(H)", "공수 비중(%)"]
   ];
@@ -861,11 +956,11 @@ export const exportSmartOvertimeToExcel = (data) => {
 
   // Sheet 4: 부서별_투입공수_분석
   const s4Rows = [
-    ["2026년 9월 5개사 부서별 인원 및 투입공수 현황 분석표"],
+    [`${year}년 ${month}월 5개사 부서별 인원 및 투입공수 현황 분석표`],
     [],
     ["소속 업체", "소속 부서", "배속 인원수", "당일 출근인원", "정시근무 인원", "잔업자 수", "당일 잔업시간(H)", "당일 총투입공수(H)"]
   ];
-  const deptSummary = calculateDeptSummary(currentData.attendanceMatrix, 8);
+  const deptSummary = calculateDeptSummary(currentData.attendanceMatrix, sampleDay);
   deptSummary.forEach((d) => {
     s4Rows.push([d.company, d.dept, d.workerCount, d.attendedCount, d.regularCount, d.otCount, d.otHours, d.totalHours]);
   });
@@ -874,7 +969,7 @@ export const exportSmartOvertimeToExcel = (data) => {
 
   // Sheet 5: 마스터_인원관리대장
   const s5Rows = [
-    ["2026년 9월 5개사 전사 마스터 인원 관리 대장"],
+    [`${year}년 ${month}월 5개사 전사 마스터 인원 관리 대장`],
     [],
     ["No.", "소속 업체", "소속 부서", "차종 / 라인", "성명", "직급", "고용 형태", "재직 상태", "비고"]
   ];
@@ -885,7 +980,7 @@ export const exportSmartOvertimeToExcel = (data) => {
   XLSX.utils.book_append_sheet(wb, ws5, "👥 마스터_인원관리대장");
 
   // Download Excel File
-  const filename = `2026년09월_5개사_잔업스마트통합관리대장_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const filename = `${year}년${String(month).padStart(2, "0")}월_5개사_잔업스마트통합관리대장_${new Date().toISOString().slice(0, 10)}.xlsx`;
   XLSX.writeFile(wb, filename);
   return filename;
 };

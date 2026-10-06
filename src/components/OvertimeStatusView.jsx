@@ -739,26 +739,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setIsPersonnelModalOpen(true);
   };
 
-  // Smart Overtime Ledger State (5개사 통합 잔업 스마트 대장)
-  const [smartData, setSmartData] = useState(() => getLocalSmartOvertimeData());
-  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' | 'detail' | 'legacy_reports'
-  const [detailSubTab, setDetailSubTab] = useState("monthly_matrix"); // 'monthly_matrix' | 'daily_summary' | 'worker_management'
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  // ⭐ 4M 결근 관리 모달 State
-  const [isAbsence4MModalOpen, setIsAbsence4MModalOpen] = useState(false);
-  const [absence4MCompany, setAbsence4MCompany] = useState("오륙");
-
-  // ⭐ 인원관리 및 인사카드 전용 State
-  const [selectedPersonnelWorker, setSelectedPersonnelWorker] = useState(null);
-  const [selectedPersonnelWorkerIndex, setSelectedPersonnelWorkerIndex] = useState(-1);
-  const [isPersonnelModalOpen, setIsPersonnelModalOpen] = useState(false);
-  const [workerMgmtCompanyFilter, setWorkerMgmtCompanyFilter] = useState("전체");
-  const [workerMgmtSearch, setWorkerMgmtSearch] = useState("");
-  const [workerMgmtSkillFilter, setWorkerMgmtSkillFilter] = useState("ALL");
-  const [workerMgmtMultiSkillOnly, setWorkerMgmtMultiSkillOnly] = useState(false);
-  const [showAddWorkerDrawer, setShowAddWorkerDrawer] = useState(false);
-  
   // Dynamic Month & Year from global Header context
   const { selectedMonth = getCurrentYearMonth() } = useMonth() || {};
   const [currentYear, currentMonthNum] = useMemo(() => {
@@ -790,6 +770,27 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const parts = prevYearMonth.split("-").map(Number);
     return [parts[0] || 2026, parts[1] || 9];
   }, [prevYearMonth]);
+
+  // Smart Overtime Ledger State (5개사 통합 잔업 스마트 대장 - 당월 작성중 vs 지난달 마감 분리)
+  const [smartData, setSmartData] = useState(() => getLocalSmartOvertimeData(selectedMonth || "2026-10"));
+  const [prevMonthData, setPrevMonthData] = useState(() => getLocalSmartOvertimeData(prevYearMonth || "2026-09"));
+  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' | 'detail' | 'legacy_reports'
+  const [detailSubTab, setDetailSubTab] = useState("monthly_matrix"); // 'monthly_matrix' | 'daily_summary' | 'worker_management'
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // ⭐ 4M 결근 관리 모달 State
+  const [isAbsence4MModalOpen, setIsAbsence4MModalOpen] = useState(false);
+  const [absence4MCompany, setAbsence4MCompany] = useState("오륙");
+
+  // ⭐ 인원관리 및 인사카드 전용 State
+  const [selectedPersonnelWorker, setSelectedPersonnelWorker] = useState(null);
+  const [selectedPersonnelWorkerIndex, setSelectedPersonnelWorkerIndex] = useState(-1);
+  const [isPersonnelModalOpen, setIsPersonnelModalOpen] = useState(false);
+  const [workerMgmtCompanyFilter, setWorkerMgmtCompanyFilter] = useState("전체");
+  const [workerMgmtSearch, setWorkerMgmtSearch] = useState("");
+  const [workerMgmtSkillFilter, setWorkerMgmtSkillFilter] = useState("ALL");
+  const [workerMgmtMultiSkillOnly, setWorkerMgmtMultiSkillOnly] = useState(false);
+  const [showAddWorkerDrawer, setShowAddWorkerDrawer] = useState(false);
 
   // ⭐ 월간 종합현황 대장 전용 조회 월 (기본값: 지난달 9월 마감 실적)
   const [matrixViewMonth, setMatrixViewMonth] = useState(() => "2026-09");
@@ -892,11 +893,24 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // Subscribe to real-time updates from Firestore
   useEffect(() => {
+    const currentYM = selectedMonth || "2026-10";
+    const prevYM = prevYearMonth || "2026-09";
+
+    // Immediate sync from local storage
+    setSmartData(getLocalSmartOvertimeData(currentYM));
+    setPrevMonthData(getLocalSmartOvertimeData(prevYM));
+
     const unsubSmart = subscribeSmartOvertimeData((newData) => {
       if (newData && newData.attendanceMatrix) {
         setSmartData(newData);
       }
-    });
+    }, currentYM);
+
+    const unsubPrev = subscribeSmartOvertimeData((newData) => {
+      if (newData && newData.attendanceMatrix) {
+        setPrevMonthData(newData);
+      }
+    }, prevYM);
 
     const unsubLegacy = subscribeOvertimeReports((reports) => {
       setLegacyReports(reports);
@@ -913,17 +927,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     return () => {
       unsubSmart();
+      unsubPrev();
       unsubLegacy();
       unsubApproval();
     };
-  }, []);
+  }, [selectedMonth, prevYearMonth]);
 
   // Sync state to local/cloud (Explicit Save Action)
-  const handleSaveLedger = async (updatedData) => {
+  const handleSaveLedger = async (updatedData, targetYM = null) => {
     setIsSaving(true);
     try {
-      setSmartData(updatedData);
-      await saveSmartOvertimeData(updatedData);
+      const ym = targetYM || selectedMonth || "2026-10";
+      if (ym === (selectedMonth || "2026-10")) {
+        setSmartData(updatedData);
+      } else {
+        setPrevMonthData(updatedData);
+      }
+      await saveSmartOvertimeData(updatedData, ym);
       
       setHasUnsavedChanges(false);
     } catch (err) {
@@ -949,12 +969,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     const newLedger = {
       ...smartData,
+      year: currentYear,
+      month: currentMonthNum,
       attendanceMatrix: updatedMatrix
     };
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    await saveSmartOvertimeData(newLedger);
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
   };
 
   // 1-Click Copy Closest Previous Weekday's Attendance to Selected Day (Excluding Calendar Special Work Days)
@@ -1043,6 +1065,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     const newLedger = {
       ...smartData,
+      year: currentYear,
+      month: currentMonthNum,
       attendanceMatrix: updatedMatrix
     };
 
@@ -1052,7 +1076,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const msg = `📋 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명에게 직전 평일(${currentMonthNum}월 ${targetSourceDay}일 ${sourceDayLabel}요일)과 동일한 근태가 적용되었습니다. (특근일 제외)`;
 
     triggerToast(msg);
-    await saveSmartOvertimeData(newLedger);
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
   };
 
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
@@ -1073,13 +1097,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     const newLedger = {
       ...smartData,
+      year: currentYear,
+      month: currentMonthNum,
       attendanceMatrix: updatedMatrix
     };
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
     triggerToast(`🟢 [${selectedCompanyFilter}] ${filteredAttendanceWorkers.length}명 전원 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
-    await saveSmartOvertimeData(newLedger);
+    await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
   };
 
   // ⭐ USER ACTION: [ 💾 등록 ] 클릭 시 보고서 팝업창 오픈 (선택된 업체 관리자 결재선 자동 배정)
@@ -1150,7 +1176,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     try {
       // 1. Save smart overtime ledger to Firestore & LocalStorage
       if (smartData) {
-        await saveSmartOvertimeData(smartData);
+        await saveSmartOvertimeData(smartData, selectedMonth || "2026-10");
       }
       
       // 2. Generate and save company-specific report record
@@ -1483,7 +1509,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // Excel Export Handler
   const handleExportExcel = () => {
     try {
-      const filename = exportSmartOvertimeToExcel(smartData);
+      const isPrev = (matrixViewMonth === prevYearMonth || matrixViewMonth === "2026-09");
+      const targetData = isPrev ? (prevMonthData || getLocalSmartOvertimeData(prevYearMonth || "2026-09")) : smartData;
+      const filename = exportSmartOvertimeToExcel(targetData);
       triggerToast(`📥 엑셀 다운로드 완료 (${filename})`);
     } catch (err) {
       alert("엑셀 내보내기 중 오류가 발생했습니다: " + err.message);
@@ -2668,8 +2696,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
           {/* Top Controls: Company Dropdown & Pills + Dynamic Summary */}
           {(() => {
+            const isPrevMonth = (matrixViewMonth === prevYearMonth || matrixViewMonth === "2026-09");
+            const activeDataset = isPrevMonth
+              ? (prevMonthData || getLocalSmartOvertimeData(prevYearMonth || "2026-09"))
+              : (smartData || getLocalSmartOvertimeData(selectedMonth || "2026-10"));
+
             const compCounters = {};
-            const matrixWithCompanyNo = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
+            const matrixWithCompanyNo = (activeDataset.attendanceMatrix || []).map((w, originalIdx) => {
               const c = cleanCompanyName(w.company);
               compCounters[c] = (compCounters[c] || 0) + 1;
               return {
@@ -2697,8 +2730,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               sumWeekendOt += t.weekendOtHours;
               sumTotalHours += t.totalHours;
             });
-
-            const isPrevMonth = (matrixViewMonth === prevYearMonth);
 
             return (
               <>
@@ -2848,7 +2879,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   {/* 엑셀 다운로드 버튼 연동 */}
                   <button
                     type="button"
-                    onClick={handleExportExcel}
+                    onClick={() => {
+                      try {
+                        const filename = exportSmartOvertimeToExcel(activeDataset);
+                        triggerToast(`📥 엑셀 다운로드 완료 (${filename})`);
+                      } catch (err) {
+                        alert("엑셀 내보내기 중 오류가 발생했습니다: " + err.message);
+                      }
+                    }}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition-all cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
