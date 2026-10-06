@@ -31,7 +31,6 @@ import {
   subscribeUrgentIssues,
   getLocalUrgentIssues
 } from "../../services/urgentIssueService";
-import { LanguageSelectBadge } from "../common/LanguageSelectBadge";
 import { getWorkLogText } from "../../services/workLogI18nService";
 
 export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
@@ -153,8 +152,6 @@ export const ExtrusionWorkerDashboardView = ({ onNavigateTab }) => {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap shrink-0">
-          {/* 🌐 언어 선택 드롭다운 뱃지 (11개국어) */}
-          <LanguageSelectBadge />
 
           {onNavigateTab && (
             <button

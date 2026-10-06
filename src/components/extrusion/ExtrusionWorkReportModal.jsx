@@ -50,7 +50,6 @@ import {
   EPDM_COATINGS,
   getMaterialBOMForItem
 } from "../../data/extrusionRawMaterialsData";
-import { LanguageSelectBadge } from "../common/LanguageSelectBadge";
 import { getWorkLogText } from "../../services/workLogI18nService";
 
 // Client-side image compression for fast sync & light Firestore storage
@@ -1204,8 +1203,6 @@ export const ExtrusionWorkReportModal = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* 🌐 언어 선택 드롭다운 뱃지 (11개국어) */}
-            <LanguageSelectBadge showLabel={false} />
             <button
               type="button"
               onClick={onClose}

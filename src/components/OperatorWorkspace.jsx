@@ -16,7 +16,6 @@ import { parseExcelFile } from "../utils/excelHelper";
 import { useAuth } from "../context/AuthContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useMonth } from "../context/MonthContext";
-import { LanguageSelectBadge } from "./common/LanguageSelectBadge";
 import { getWorkLogText } from "../services/workLogI18nService";
 
 export const OperatorWorkspace = ({ onBulkUpload }) => {
@@ -168,10 +167,6 @@ export const OperatorWorkspace = ({ onBulkUpload }) => {
               {plantName} {getWorkLogText("machining_shop")} 매입·매출 및 작업 실적 워크스페이스
             </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <LanguageSelectBadge />
         </div>
       </div>
 

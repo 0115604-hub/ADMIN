@@ -182,7 +182,6 @@ import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
 import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
 import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
-import { LanguageSelectBadge } from "./common/LanguageSelectBadge";
 import { getWorkLogText } from "../services/workLogI18nService";
 
 // Lazy-loaded on-demand heavy modals
@@ -2965,11 +2964,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
               {getWorkLogText("safety_first")}
             </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {/* 🌐 11개국어 언어 선택 뱃지 */}
-          <LanguageSelectBadge />
         </div>
       </div>
 
@@ -6665,7 +6659,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <LanguageSelectBadge showLabel={false} />
                   <button
                     onClick={() => setIsModalOpen(false)}
                     className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -6897,7 +6890,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <LanguageSelectBadge showLabel={false} />
                   <button
                     onClick={() => setIsModalOpen(false)}
                     className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-base font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -7226,7 +7218,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <span>오늘의 업무일지 작성</span>
                 </h3>
                 <div className="flex items-center gap-2">
-                  <LanguageSelectBadge showLabel={false} />
                   <button
                     onClick={() => setIsModalOpen(false)}
                     className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm font-black rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
