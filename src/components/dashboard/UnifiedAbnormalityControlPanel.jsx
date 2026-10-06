@@ -33,7 +33,8 @@ import {
   Upload,
   Plus,
   Table as TableIcon,
-  LayoutList
+  LayoutList,
+  Users
 } from "lucide-react";
 import {
   subscribeUrgentIssues,
@@ -580,26 +581,30 @@ export const UnifiedAbnormalityControlPanel = ({
   }, [allUnifiedRecords, fourMLedgerRecords, selectedPlant, selected4MTab, selectedOriginFilter, selectedStatusFilter, selectedPhotoFilter, selectedDateFilter, customDateInput, searchQuery, todayStr]);
 
   // =========================================================================
-  // 📊 4M 통계 집계
+  // 📊 4M 통계 집계 (변동점 관리대장 / Machine / Man / Method / Material)
   // =========================================================================
   const stats = useMemo(() => {
     const totalCount = allUnifiedRecords.length;
     const officialLedgerCount = fourMLedgerRecords.length;
 
     // 1. Machine: 설비수리 + 비가동 + TPM
-    const machineRecords = allUnifiedRecords.filter((r) => r.fourM === "Machine");
+    const machineRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "MACHINE");
     const repairCount = machineRecords.filter((r) => r.origin === "설비수리").length;
     const downtimeCount = machineRecords.filter((r) => r.origin === "비가동").length;
     const tpmCount = machineRecords.filter((r) => r.origin === "TPM 이상신고").length;
     const totalDowntimeMin = machineRecords.reduce((acc, r) => acc + (r.downtimeMinutes || 0), 0);
 
-    // 2. Material: 불량손실
-    const materialRecords = allUnifiedRecords.filter((r) => r.fourM === "Material");
-    const totalScrapKg = Number(materialRecords.reduce((acc, r) => acc + (r.scrapKg || 0), 0).toFixed(1));
+    // 2. Man: 작업자 변동 / 교대 / 지원
+    const manRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "MAN");
+    const manCount = manRecords.length;
 
     // 3. Method: 품질경보
-    const methodRecords = allUnifiedRecords.filter((r) => r.fourM === "Method");
+    const methodRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "METHOD");
     const methodPending = methodRecords.filter((r) => !r.isResolved).length;
+
+    // 4. Material: 불량손실
+    const materialRecords = allUnifiedRecords.filter((r) => r.fourM?.toUpperCase() === "MATERIAL");
+    const totalScrapKg = Number(materialRecords.reduce((acc, r) => acc + (r.scrapKg || 0), 0).toFixed(1));
 
     // 사진 총 건수
     const totalPhotos = allUnifiedRecords.reduce((acc, r) => acc + (r.images?.length || 0) + (r.actionImages?.length || 0), 0);
@@ -612,6 +617,7 @@ export const UnifiedAbnormalityControlPanel = ({
       downtimeCount,
       tpmCount,
       totalDowntimeMin,
+      manCount,
       materialCount: materialRecords.length,
       totalScrapKg,
       methodCount: methodRecords.length,
@@ -858,9 +864,15 @@ export const UnifiedAbnormalityControlPanel = ({
           </div>
         </div>
 
-        {/* 4 Core KPI Cards (공식 변동점 대장 + Machine + Material + Method) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
-          {/* 0. Official Ledger: 공식 변동점 관리대장 */}
+        {/* 5 Core KPI Badges in user-specified order:
+            1. 변동점 관리대장
+            2. MACHINE
+            3. MAN
+            4. METHOD (MATHOD)
+            5. MATERIAL
+        */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-0.5">
+          {/* 1. 변동점 관리대장 */}
           <div
             onClick={() => {
               setSelected4MTab(selected4MTab === "OFFICIAL_LEDGER" ? "ALL" : "OFFICIAL_LEDGER");
@@ -873,21 +885,21 @@ export const UnifiedAbnormalityControlPanel = ({
             }`}
           >
             <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold">
-              <span className="flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3 text-emerald-400" />
-                <span>📋 변동점 관리대장</span>
+              <span className="flex items-center gap-1 truncate">
+                <ShieldAlert className="w-3 h-3 text-emerald-400 shrink-0" />
+                <span className="truncate">📋 변동점 관리대장</span>
               </span>
-              <span className="text-[10px] text-emerald-200">
+              <span className="text-[10px] text-emerald-200 shrink-0">
                 공식 대장
               </span>
             </div>
             <div className="mt-0.5 flex items-baseline justify-between">
               <span className="text-base sm:text-lg font-black text-white">{stats.officialLedgerCount}건</span>
-              <span className="text-[10px] text-emerald-300">공식 등록 목록</span>
+              <span className="text-[10px] text-emerald-300 truncate">공식 등록 목록</span>
             </div>
           </div>
 
-          {/* Machine: 설비수리·비가동·TPM */}
+          {/* 2. MACHINE */}
           <div
             onClick={() => {
               setSelected4MTab(selected4MTab === "MACHINE" ? "ALL" : "MACHINE");
@@ -895,53 +907,53 @@ export const UnifiedAbnormalityControlPanel = ({
             }}
             className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
               selected4MTab === "MACHINE"
-                ? "bg-indigo-950/90 border-indigo-400 ring-1 ring-indigo-400/40"
+                ? "bg-indigo-950/90 border-indigo-400 ring-2 ring-indigo-400/50"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
             <div className="flex items-center justify-between text-[11px] text-indigo-300 font-bold">
-              <span className="flex items-center gap-1">
-                <Wrench className="w-3 h-3 text-indigo-400" />
-                <span>[Machine] 설비</span>
+              <span className="flex items-center gap-1 truncate">
+                <Wrench className="w-3 h-3 text-indigo-400 shrink-0" />
+                <span>🔧 MACHINE</span>
               </span>
-              <span className="text-[10px] text-indigo-200">
+              <span className="text-[10px] text-indigo-200 shrink-0">
                 비가동 {stats.totalDowntimeMin}분
               </span>
             </div>
             <div className="mt-0.5 flex items-baseline justify-between">
               <span className="text-base sm:text-lg font-black text-white">{stats.machineCount}건</span>
-              <span className="text-[10px] text-indigo-300">수리 {stats.repairCount} · 비가동 {stats.downtimeCount} · TPM {stats.tpmCount}</span>
+              <span className="text-[10px] text-indigo-300 truncate">수리 {stats.repairCount} · 비가동 {stats.downtimeCount}</span>
             </div>
           </div>
 
-          {/* Material: 불량손실 */}
+          {/* 3. MAN */}
           <div
             onClick={() => {
-              setSelected4MTab(selected4MTab === "MATERIAL" ? "ALL" : "MATERIAL");
+              setSelected4MTab(selected4MTab === "MAN" ? "ALL" : "MAN");
               if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
             }}
             className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-              selected4MTab === "MATERIAL"
-                ? "bg-rose-950/90 border-rose-400 ring-1 ring-rose-400/40"
+              selected4MTab === "MAN"
+                ? "bg-sky-950/90 border-sky-400 ring-2 ring-sky-400/50"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] text-rose-300 font-bold">
-              <span className="flex items-center gap-1">
-                <TrendingDown className="w-3 h-3 text-rose-400" />
-                <span>[Material] 불량</span>
+            <div className="flex items-center justify-between text-[11px] text-sky-300 font-bold">
+              <span className="flex items-center gap-1 truncate">
+                <Users className="w-3 h-3 text-sky-400 shrink-0" />
+                <span>👥 MAN</span>
               </span>
-              <span className="text-[10px] text-rose-200">
-                손실 {stats.totalScrapKg} kg
+              <span className="text-[10px] text-sky-200 shrink-0">
+                작업자·근태
               </span>
             </div>
             <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-base sm:text-lg font-black text-white">{stats.materialCount}건</span>
-              <span className="text-[10px] text-rose-300">뜯김/철심/스코치</span>
+              <span className="text-base sm:text-lg font-black text-white">{stats.manCount}건</span>
+              <span className="text-[10px] text-sky-300 truncate">인원 변동</span>
             </div>
           </div>
 
-          {/* Method: 품질경보 */}
+          {/* 4. METHOD (MATHOD) */}
           <div
             onClick={() => {
               setSelected4MTab(selected4MTab === "METHOD" ? "ALL" : "METHOD");
@@ -949,204 +961,73 @@ export const UnifiedAbnormalityControlPanel = ({
             }}
             className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
               selected4MTab === "METHOD"
-                ? "bg-amber-950/90 border-amber-400 ring-1 ring-amber-400/40"
+                ? "bg-amber-950/90 border-amber-400 ring-2 ring-amber-400/50"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
             <div className="flex items-center justify-between text-[11px] text-amber-300 font-bold">
-              <span className="flex items-center gap-1">
-                <AlertOctagon className="w-3 h-3 text-amber-400" />
-                <span>[Method] 품질경보</span>
+              <span className="flex items-center gap-1 truncate">
+                <AlertOctagon className="w-3 h-3 text-amber-400 shrink-0" />
+                <span>🚨 METHOD</span>
               </span>
-              <span className="text-[10px] text-amber-200">
+              <span className="text-[10px] text-amber-200 shrink-0">
                 미조치 {stats.methodPending}건
               </span>
             </div>
             <div className="mt-0.5 flex items-baseline justify-between">
               <span className="text-base sm:text-lg font-black text-white">{stats.methodCount}건</span>
-              <span className="text-[10px] text-amber-300">관리자 발령</span>
+              <span className="text-[10px] text-amber-300 truncate">품질경보</span>
+            </div>
+          </div>
+
+          {/* 5. MATERIAL */}
+          <div
+            onClick={() => {
+              setSelected4MTab(selected4MTab === "MATERIAL" ? "ALL" : "MATERIAL");
+              if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
+            }}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+              selected4MTab === "MATERIAL"
+                ? "bg-rose-950/90 border-rose-400 ring-2 ring-rose-400/50"
+                : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
+            }`}
+          >
+            <div className="flex items-center justify-between text-[11px] text-rose-300 font-bold">
+              <span className="flex items-center gap-1 truncate">
+                <TrendingDown className="w-3 h-3 text-rose-400 shrink-0" />
+                <span>📉 MATERIAL</span>
+              </span>
+              <span className="text-[10px] text-rose-200 shrink-0">
+                손실 {stats.totalScrapKg} kg
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between">
+              <span className="text-base sm:text-lg font-black text-white">{stats.materialCount}건</span>
+              <span className="text-[10px] text-rose-300 truncate">뜯김/철심/스코치</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* 2. Filter Bar */}
-      {/* ========================================================================= */}
-      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
-        {/* Row 1: 4M Tab Buttons */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar flex-nowrap">
+      {/* Active Filter Indicator */}
+      {selected4MTab !== "ALL" && (
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-xs font-bold text-indigo-900 dark:text-indigo-200">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+            <span>
+              현재 <strong>{selected4MTab === "OFFICIAL_LEDGER" ? "변동점 관리대장" : selected4MTab}</strong> 필터 적용 중 ({filteredRecords.length}건)
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => { setSelected4MTab("ALL"); setSelectedOriginFilter("ALL"); }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer ${
-              selected4MTab === "ALL" && selectedOriginFilter === "ALL"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
+            className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5 cursor-pointer font-bold"
           >
-            전체 ({allUnifiedRecords.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSelected4MTab("OFFICIAL_LEDGER");
-              setSelectedOriginFilter("OFFICIAL_LEDGER");
-            }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-              selectedOriginFilter === "OFFICIAL_LEDGER"
-                ? "bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400"
-                : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
-            }`}
-          >
-            <ShieldAlert className="w-3 h-3 text-emerald-500" />
-            <span>⭐ 공식 대장</span>
-            <span className="text-[10px] opacity-90 font-mono">({stats.officialLedgerCount})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setSelected4MTab("MACHINE"); setSelectedOriginFilter("설비수리"); }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-              selectedOriginFilter === "설비수리"
-                ? "bg-indigo-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>🔧 설비수리</span>
-            <span className="text-[10px] opacity-80">({stats.repairCount})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setSelected4MTab("MACHINE"); setSelectedOriginFilter("비가동"); }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-              selectedOriginFilter === "비가동"
-                ? "bg-orange-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>⏸️ 비가동</span>
-            <span className="text-[10px] opacity-80">({stats.downtimeCount})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setSelected4MTab("MACHINE"); setSelectedOriginFilter("TPM 이상신고"); }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-              selectedOriginFilter === "TPM 이상신고"
-                ? "bg-amber-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>⚡ TPM 이상신고</span>
-            <span className="text-[10px] opacity-80">({stats.tpmCount})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setSelected4MTab("MATERIAL"); setSelectedOriginFilter("불량손실"); }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-              selectedOriginFilter === "불량손실"
-                ? "bg-rose-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>🛑 불량손실</span>
-            <span className="text-[10px] opacity-80">({stats.materialCount})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => { setSelected4MTab("METHOD"); setSelectedOriginFilter("품질경보"); }}
-            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
-              selectedOriginFilter === "품질경보"
-                ? "bg-rose-600 text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
-            }`}
-          >
-            <span>🚨 품질경보</span>
-            <span className="text-[10px] opacity-80">({stats.methodCount})</span>
+            <X className="w-3 h-3" />
+            <span>전체 보기</span>
           </button>
         </div>
-
-        {/* Row 2: Select Filters & Search */}
-        <div className="grid grid-cols-2 sm:grid-cols-12 gap-1.5 items-center text-xs">
-          <div className="sm:col-span-2">
-            <select
-              value={selectedPlant}
-              onChange={(e) => setSelectedPlant(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs"
-            >
-              <option value="ALL">전 공장</option>
-              <option value="삼랑진공장">삼랑진</option>
-              <option value="한림공장">한림</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <select
-              value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs"
-            >
-              <option value="ALL">전체 상태</option>
-              <option value="PENDING">🚨 미조치</option>
-              <option value="RESOLVED">✅ 조치완료</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <select
-              value={selectedPhotoFilter}
-              onChange={(e) => setSelectedPhotoFilter(e.target.value)}
-              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs"
-            >
-              <option value="ALL">전체 사진</option>
-              <option value="ONLY_PHOTOS">📷 사진 첨부만</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <select
-              value={selectedDateFilter}
-              onChange={(e) => {
-                setSelectedDateFilter(e.target.value);
-                if (e.target.value !== "CUSTOM") setCustomDateInput("");
-              }}
-              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-white text-xs"
-            >
-              <option value="ALL">전체 기간</option>
-              <option value="TODAY">오늘</option>
-              <option value="WEEK">최근 7일</option>
-              <option value="CUSTOM">직접선택</option>
-            </select>
-          </div>
-
-          <div className="col-span-2 sm:col-span-4">
-            {selectedDateFilter === "CUSTOM" ? (
-              <input
-                type="date"
-                value={customDateInput}
-                onChange={(e) => setCustomDateInput(e.target.value)}
-                className="w-full px-2 py-1.5 rounded-lg border border-indigo-400 bg-indigo-50 dark:bg-slate-800 text-xs font-bold"
-              />
-            ) : (
-              <div className="relative">
-                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="설비/품목/작업자/내용 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-7 pr-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. 1줄짜리 초간결 목록표 (High-Density 1-Line Table View) */}
