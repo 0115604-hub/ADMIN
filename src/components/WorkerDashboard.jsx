@@ -514,11 +514,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const workerDept = workerCard?.dept || (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀");
   const workerPosition = officialTitle || workerCard?.position || "선임";
 
-  // General Manager & Management Staff Identification (관리자 및 관리팀 여부)
+  // General Manager Identification
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";
   const isDongwook = currentProfile?.name === "김동욱" || currentProfile?.id === "hal_dw";
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
-  const isManagerOrAdminWorker = isGeneralManager || isAdmin || workerDept === "관리팀" || currentProfile?.assignedProcess === "총괄관리" || currentProfile?.assignedProcess === "경리업무" || currentProfile?.role === "ADMIN" || currentProfile?.title === "이사" || currentProfile?.title === "대표이사" || currentProfile?.title === "전무" || isInjoo;
 
   // Approval Documents Subscription (Real-time for Top Panel)
   // 5 Company Smart Overtime Ledger Subscription for Panel 4
@@ -5780,90 +5779,67 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                 </div>
               )}
 
-              {/* 작업 내용 전문 (표준 / 관리자는 확장 텍스트 영역) */}
-              {(() => {
-                const isEditingManagerLog =
-                  editFormData.dept === "관리팀" ||
-                  editFormData.process === "총괄관리" ||
-                  editFormData.process === "경리업무" ||
-                  editFormData.writer === "조인주" ||
-                  editFormData.writer === "권태형" ||
-                  editFormData.writer === "최미영" ||
-                  editFormData.writer === "이명재" ||
-                  editFormData.writer === "김동욱" ||
-                  editFormData.title === "대표이사" ||
-                  editFormData.title === "이사" ||
-                  editFormData.title === "전무";
+              {/* 작업 내용 전문 (표준) */}
+              {(!editMaintenanceItems || editMaintenanceItems.length === 0) && (
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    주요 작업 실적 및 상세 내용
+                  </label>
+                  <textarea
+                    rows="5"
+                    value={editFormData.workContent}
+                    onChange={(e) => setEditFormData({ ...editFormData, workContent: e.target.value })}
+                    placeholder="작업 실적, 생산 수량, 공정 진행 내용 등을 수정해 주세요."
+                    className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs leading-relaxed text-slate-900 dark:text-white"
+                  ></textarea>
+                </div>
+              )}
 
-                return (
-                  <>
-                    {(!editMaintenanceItems || editMaintenanceItems.length === 0) && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                          {isEditingManagerLog ? "주요 업무 내용 및 관리 실적" : "주요 작업 실적 및 상세 내용"}
-                        </label>
-                        <textarea
-                          rows={isEditingManagerLog ? 8 : 5}
-                          value={editFormData.workContent}
-                          onChange={(e) => setEditFormData({ ...editFormData, workContent: e.target.value })}
-                          placeholder={
-                            isEditingManagerLog
-                              ? "주요 업무 내용, 총괄 관리 사항 및 결산/정산 실적 등을 수정해 주세요."
-                              : "작업 실적, 생산 수량, 공정 진행 내용 등을 수정해 주세요."
-                          }
-                          className="w-full px-3 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-medium text-xs leading-relaxed text-slate-900 dark:text-white"
-                        ></textarea>
-                      </div>
+              {/* 부적합사항 및 개선조치 (설비보전 일지에는 비노출) */}
+              {(!editMaintenanceItems || editMaintenanceItems.length === 0) && (
+                <div className="space-y-1.5 p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-black text-amber-900 dark:text-amber-300">
+                      ⚠️ 부적합사항 및 개선조치
+                    </label>
+                    {editFormData.defectType && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData((prev) => ({ ...prev, defectType: "" }))}
+                        className="text-[9.5px] text-slate-400 hover:text-rose-600 underline font-bold cursor-pointer"
+                      >
+                        선택 해제
+                      </button>
                     )}
+                  </div>
 
-                    {/* 부적합사항 및 개선조치 (설비보전 및 관리자 일지에는 비노출) */}
-                    {(!editMaintenanceItems || editMaintenanceItems.length === 0) && !isEditingManagerLog && (
-                      <div className="space-y-1.5 p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60">
-                        <div className="flex items-center justify-between">
-                          <label className="block text-[11px] font-black text-amber-900 dark:text-amber-300">
-                            ⚠️ 부적합사항 및 개선조치
-                          </label>
-                          {editFormData.defectType && (
-                            <button
-                              type="button"
-                              onClick={() => setEditFormData((prev) => ({ ...prev, defectType: "" }))}
-                              className="text-[9.5px] text-slate-400 hover:text-rose-600 underline font-bold cursor-pointer"
-                            >
-                              선택 해제
-                            </button>
-                          )}
-                        </div>
+                  <select
+                    value={editFormData.defectType || ""}
+                    onChange={(e) => setEditFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                    className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                  >
+                    <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                    {DEFECT_TYPE_GROUPS.map((grp) => (
+                      <optgroup key={grp.category} label={grp.label}>
+                        {grp.items.map((it) => (
+                          <option key={it.value} value={it.value}>
+                            {it.name} ({grp.category})
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                    <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                  </select>
 
-                        <select
-                          value={editFormData.defectType || ""}
-                          onChange={(e) => setEditFormData((prev) => ({ ...prev, defectType: e.target.value }))}
-                          className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
-                        >
-                          <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
-                          {DEFECT_TYPE_GROUPS.map((grp) => (
-                            <optgroup key={grp.category} label={grp.label}>
-                              {grp.items.map((it) => (
-                                <option key={it.value} value={it.value}>
-                                  {it.name} ({grp.category})
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                          <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
-                        </select>
-
-                        <textarea
-                          rows={2.5}
-                          value={editFormData.issues}
-                          onChange={(e) => setEditFormData({ ...editFormData, issues: e.target.value })}
-                          placeholder={editFormData.defectType ? `선택된 ${editFormData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
-                          className="w-full px-3 py-2 rounded-xl border border-amber-300/80 dark:border-amber-800 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white"
-                        />
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+                  <textarea
+                    rows={2.5}
+                    value={editFormData.issues}
+                    onChange={(e) => setEditFormData({ ...editFormData, issues: e.target.value })}
+                    placeholder={editFormData.defectType ? `선택된 ${editFormData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
+                    className="w-full px-3 py-2 rounded-xl border border-amber-300/80 dark:border-amber-800 bg-white dark:bg-slate-900 font-medium text-xs text-slate-900 dark:text-white"
+                  />
+                </div>
+              )}
 
               {/* 사진 첨부 관리 */}
               <div className="space-y-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
@@ -6242,18 +6218,236 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                         </div>
                       </div>
 
-                      {/* Row 2: 주요 작업 내용 (경리 / 결산 / 정산 - 심플한 대형 텍스트창) */}
-                      <div className="flex-1 flex flex-col">
+                      {/* Row 2: 1. 주요 작업 내용 (2배 대형 패널) */}
+                      <div>
                         <label className="block text-[10.5px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                           주요 작업 내용 (경리 / 결산 / 정산) <span className="text-rose-500">*</span>
                         </label>
                         <textarea
-                          rows={11}
+                          rows={6}
                           placeholder="예: 매입매출 마감 전표 대조, 전자세금계산서 발행 및 현장 정산 정리 내역 입력"
                           value={formData.workContent}
                           onChange={(e) => setFormData({ ...formData, workContent: e.target.value })}
-                          className="w-full flex-1 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 min-h-[190px]"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                         ></textarea>
+                      </div>
+
+                      {/* Row 3: 2. ⚠️ 부적합사항 및 개선조치 + 사진 첨부 (통합 카테고리, 최대 3장) */}
+                      <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-300/80 dark:border-amber-800/60 p-2.5 rounded-2xl space-y-2">
+                        <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
+                          <span className="text-[10.5px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            <span>2. 부적합사항 및 개선조치</span>
+                          </span>
+                          <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
+                            사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
+                          </span>
+                        </div>
+
+                        {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                              부적합 분류 선택
+                            </label>
+                            {formData.defectType && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
+                                className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
+                              >
+                                선택 해제
+                              </button>
+                            )}
+                          </div>
+
+                          <select
+                            value={formData.defectType || ""}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                          >
+                            <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                            {DEFECT_TYPE_GROUPS.map((grp) => (
+                              <optgroup key={grp.category} label={grp.label}>
+                                {grp.items.map((it) => (
+                                  <option key={it.value} value={it.value}>
+                                    {it.name} ({grp.category})
+                                  </option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                          </select>
+
+                          <textarea
+                            rows={2.5}
+                            placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
+                            value={formData.issues}
+                            onChange={(e) => setFormData((prev) => ({ ...formData, issues: e.target.value }))}
+                            className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+
+                        {/* 개선 전(Before) / 개선 후(After) 사진 첨부란 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                          {/* 🔴 개선 전 (Before) */}
+                          <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-rose-300 dark:border-rose-900/60 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">
+                                🔴 개선 전 (Before)
+                              </span>
+                              <span className="text-[9px] font-mono text-rose-500 font-bold">
+                                {formData.imagesBefore?.length || 0}장
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                              <div>
+                                <input
+                                  type="file"
+                                  id="worklog-camera-injoo-before"
+                                  accept="image/*"
+                                  capture="environment"
+                                  disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      handleWorkLogImageFiles(e.target.files, "before");
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="worklog-camera-injoo-before"
+                                  className={`w-full py-1.5 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer text-center text-[10px] font-bold ${
+                                    ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                      ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                      : "border-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-200 font-bold"
+                                  }`}
+                                >
+                                  <Camera className="w-3 h-3 text-rose-600" />
+                                  <span>촬영</span>
+                                </label>
+                              </div>
+                              <div>
+                                <input
+                                  type="file"
+                                  id="worklog-gallery-injoo-before"
+                                  accept="image/*"
+                                  multiple
+                                  disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      handleWorkLogImageFiles(e.target.files, "before");
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="worklog-gallery-injoo-before"
+                                  className={`w-full py-1.5 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer text-center text-[10px] font-bold ${
+                                    ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                      ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                  }`}
+                                >
+                                  <UploadCloud className="w-3 h-3 text-slate-400" />
+                                  <span>앨범</span>
+                                </label>
+                              </div>
+                            </div>
+                            {formData.imagesBefore && formData.imagesBefore.length > 0 && (
+                              <div className="grid grid-cols-3 gap-1 pt-1">
+                                {formData.imagesBefore.map((img, idx) => (
+                                  <div key={img.id || idx} className="relative group rounded-md overflow-hidden border border-rose-300 dark:border-rose-800 aspect-square">
+                                    <img src={img.dataUrl} alt="Before" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImageModal({ url: img.dataUrl, name: "개선 전 사진" })} />
+                                    <span className="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-rose-600 text-white text-[8px] font-black">Before</span>
+                                    <button type="button" onClick={() => handleRemoveWorkLogImage(idx, "before")} className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/70 text-white flex items-center justify-center text-[8px] font-black">✕</button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 🟢 개선 후 (After) */}
+                          <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-300 dark:border-emerald-900/60 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                                🟢 개선 후 (After)
+                              </span>
+                              <span className="text-[9px] font-mono text-emerald-500 font-bold">
+                                {formData.imagesAfter?.length || 0}장
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                              <div>
+                                <input
+                                  type="file"
+                                  id="worklog-camera-injoo-after"
+                                  accept="image/*"
+                                  capture="environment"
+                                  disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      handleWorkLogImageFiles(e.target.files, "after");
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="worklog-camera-injoo-after"
+                                  className={`w-full py-1.5 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer text-center text-[10px] font-bold ${
+                                    ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                      ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                      : "border-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 font-bold"
+                                  }`}
+                                >
+                                  <Camera className="w-3 h-3 text-emerald-600" />
+                                  <span>촬영</span>
+                                </label>
+                              </div>
+                              <div>
+                                <input
+                                  type="file"
+                                  id="worklog-gallery-injoo-after"
+                                  accept="image/*"
+                                  multiple
+                                  disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                                  onChange={(e) => {
+                                    if (e.target.files) {
+                                      handleWorkLogImageFiles(e.target.files, "after");
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor="worklog-gallery-injoo-after"
+                                  className={`w-full py-1.5 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer text-center text-[10px] font-bold ${
+                                    ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                      ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                      : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                                  }`}
+                                >
+                                  <UploadCloud className="w-3 h-3 text-slate-400" />
+                                  <span>앨범</span>
+                                </label>
+                              </div>
+                            </div>
+                            {formData.imagesAfter && formData.imagesAfter.length > 0 && (
+                              <div className="grid grid-cols-3 gap-1 pt-1">
+                                {formData.imagesAfter.map((img, idx) => (
+                                  <div key={img.id || idx} className="relative group rounded-md overflow-hidden border border-emerald-300 dark:border-emerald-800 aspect-square">
+                                    <img src={img.dataUrl} alt="After" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImageModal({ url: img.dataUrl, name: "개선 후 사진" })} />
+                                    <span className="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-emerald-600 text-white text-[8px] font-black">After</span>
+                                    <button type="button" onClick={() => handleRemoveWorkLogImage(idx, "after")} className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/70 text-white flex items-center justify-center text-[8px] font-black">✕</button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -7596,243 +7790,237 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   </div>
                 </div>
 
-                {/* Row 2: 1. 주요 작업 실적 (관리자는 10줄 대형 텍스트 영역) */}
+                {/* Row 2: 1. 주요 작업 실적 (2배 대형 패널) */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    {isManagerOrAdminWorker ? "주요 업무 내용 및 관리 실적" : "주요 작업 실적"} <span className="text-rose-500">*</span>
+                    주요 작업 실적 <span className="text-rose-500">*</span>
                   </label>
                   <textarea
-                    rows={isManagerOrAdminWorker ? 10 : 6}
-                    placeholder={
-                      isManagerOrAdminWorker
-                        ? "오늘 진행한 주요 업무 내용, 총괄 관리 사항 및 회의/보고 실적을 입력해 주세요."
-                        : "오늘 진행한 주요 작업 내용 및 생산 수량, 품번별 실적을 입력해 주세요."
-                    }
+                    rows={6}
+                    placeholder="오늘 진행한 주요 작업 내용 및 생산 수량, 품번별 실적을 입력해 주세요."
                     value={formData.workContent}
                     onChange={(e) => setFormData({ ...formData, workContent: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                   ></textarea>
                 </div>
 
-                {/* Row 3: 2. ⚠️ 부적합사항 및 개선조치 + 사진 첨부 (현장 작업자 전용, 관리자는 단순화를 위해 삭제) */}
-                {!isManagerOrAdminWorker && (
-                  <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-300/80 dark:border-amber-800/60 p-3 rounded-2xl space-y-2.5">
-                    <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
-                      <span className="text-[11px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                        <span>2. 부적합사항 및 개선조치</span>
-                      </span>
-                      <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
-                        사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
-                      </span>
+                {/* Row 3: 2. ⚠️ 부적합사항 및 개선조치 + 사진 첨부 (통합 카테고리, 최대 3장) */}
+                <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-300/80 dark:border-amber-800/60 p-3 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between pb-1 border-b border-amber-200 dark:border-amber-900/50">
+                    <span className="text-[11px] font-black text-amber-900 dark:text-amber-300 flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>2. 부적합사항 및 개선조치</span>
+                    </span>
+                    <span className="text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400">
+                      사진 {((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0))} / 최대 3장
+                    </span>
+                  </div>
+
+                  {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        부적합 분류 선택
+                      </label>
+                      {formData.defectType && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
+                          className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
+                        >
+                          선택 해제
+                        </button>
+                      )}
                     </div>
 
-                    {/* 부적합 유형 선택 (드롭다운 선택 또는 직접 작성) */}
-                    <div className="space-y-1.5">
+                    <select
+                      value={formData.defectType || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
+                    >
+                      <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
+                      {DEFECT_TYPE_GROUPS.map((grp) => (
+                        <optgroup key={grp.category} label={grp.label}>
+                          {grp.items.map((it) => (
+                            <option key={it.value} value={it.value}>
+                              {it.name} ({grp.category})
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
+                    </select>
+
+                    <textarea
+                      rows={2.5}
+                      placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
+                      value={formData.issues}
+                      onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+
+                  {/* 개선 전(Before) / 개선 후(After) 사진 첨부란 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                    {/* 🔴 개선 전 (Before) */}
+                    <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-rose-300 dark:border-rose-900/60 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                          부적합 분류 선택
-                        </label>
-                        {formData.defectType && (
-                          <button
-                            type="button"
-                            onClick={() => setFormData((prev) => ({ ...prev, defectType: "" }))}
-                            className="text-[9.5px] text-slate-400 hover:text-rose-500 underline font-bold cursor-pointer"
-                          >
-                            선택 해제
-                          </button>
-                        )}
+                        <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">
+                          🔴 개선 전 (Before)
+                        </span>
+                        <span className="text-[9px] font-mono text-rose-500 font-bold">
+                          {formData.imagesBefore?.length || 0}장
+                        </span>
                       </div>
-
-                      <select
-                        value={formData.defectType || ""}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, defectType: e.target.value }))}
-                        className="w-full px-2.5 py-1.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-900 text-xs font-bold text-amber-950 dark:text-amber-200 focus:ring-1 focus:ring-amber-500 cursor-pointer shadow-inner"
-                      >
-                        <option value="">✏️ 내용 직접 작성 (선택 안함)</option>
-                        {DEFECT_TYPE_GROUPS.map((grp) => (
-                          <optgroup key={grp.category} label={grp.label}>
-                            {grp.items.map((it) => (
-                              <option key={it.value} value={it.value}>
-                                {it.name} ({grp.category})
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                        <option value="[직접입력] 기타부적합">✏️ 기타 직접 입력</option>
-                      </select>
-
-                      <textarea
-                        rows={2.5}
-                        placeholder={formData.defectType ? `선택된 ${formData.defectType} 관련 상세 내용 및 조치사항 입력...` : "부적합 발생 내용, 원인 및 개선 조치 사항 입력 (드롭다운 선택 또는 직접 작성)"}
-                        value={formData.issues}
-                        onChange={(e) => setFormData({ ...formData, issues: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-1 focus:ring-amber-500"
-                      />
+                      <div className="grid grid-cols-2 gap-1">
+                        <div>
+                          <input
+                            type="file"
+                            id="worklog-camera-standard-before"
+                            accept="image/*"
+                            capture="environment"
+                            disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                handleWorkLogImageFiles(e.target.files, "before");
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="worklog-camera-standard-before"
+                            className={`w-full py-2 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
+                              ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                : "border-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-200 font-bold"
+                            }`}
+                          >
+                            <Camera className="w-3.5 h-3.5 text-rose-600" />
+                            <span>촬영</span>
+                          </label>
+                        </div>
+                        <div>
+                          <input
+                            type="file"
+                            id="worklog-gallery-standard-before"
+                            accept="image/*"
+                            multiple
+                            disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                handleWorkLogImageFiles(e.target.files, "before");
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="worklog-gallery-standard-before"
+                            className={`w-full py-2 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
+                              ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            }`}
+                          >
+                            <UploadCloud className="w-3.5 h-3.5 text-slate-400" />
+                            <span>앨범</span>
+                          </label>
+                        </div>
+                      </div>
+                      {formData.imagesBefore && formData.imagesBefore.length > 0 && (
+                        <div className="grid grid-cols-3 gap-1 pt-1">
+                          {formData.imagesBefore.map((img, idx) => (
+                            <div key={img.id || idx} className="relative group rounded-md overflow-hidden border border-rose-300 dark:border-rose-800 aspect-square">
+                              <img src={img.dataUrl} alt="Before" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImageModal({ url: img.dataUrl, name: "개선 전 사진" })} />
+                              <span className="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-rose-600 text-white text-[8px] font-black">Before</span>
+                              <button type="button" onClick={() => handleRemoveWorkLogImage(idx, "before")} className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/70 text-white flex items-center justify-center text-[8px] font-black">✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    {/* 개선 전(Before) / 개선 후(After) 사진 첨부란 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
-                      {/* 🔴 개선 전 (Before) */}
-                      <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-rose-300 dark:border-rose-900/60 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">
-                            🔴 개선 전 (Before)
-                          </span>
-                          <span className="text-[9px] font-mono text-rose-500 font-bold">
-                            {formData.imagesBefore?.length || 0}장
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          <div>
-                            <input
-                              type="file"
-                              id="worklog-camera-standard-before"
-                              accept="image/*"
-                              capture="environment"
-                              disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  handleWorkLogImageFiles(e.target.files, "before");
-                                  e.target.value = "";
-                                }
-                              }}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="worklog-camera-standard-before"
-                              className={`w-full py-2 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
-                                ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
-                                  ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                                  : "border-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-200 font-bold"
-                              }`}
-                            >
-                              <Camera className="w-3.5 h-3.5 text-rose-600" />
-                              <span>촬영</span>
-                            </label>
-                          </div>
-                          <div>
-                            <input
-                              type="file"
-                              id="worklog-gallery-standard-before"
-                              accept="image/*"
-                              multiple
-                              disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  handleWorkLogImageFiles(e.target.files, "before");
-                                  e.target.value = "";
-                                }
-                              }}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="worklog-gallery-standard-before"
-                              className={`w-full py-2 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
-                                ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
-                                  ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                                  : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                              }`}
-                            >
-                              <UploadCloud className="w-3.5 h-3.5 text-slate-400" />
-                              <span>앨범</span>
-                            </label>
-                          </div>
-                        </div>
-                        {formData.imagesBefore && formData.imagesBefore.length > 0 && (
-                          <div className="grid grid-cols-3 gap-1 pt-1">
-                            {formData.imagesBefore.map((img, idx) => (
-                              <div key={img.id || idx} className="relative group rounded-md overflow-hidden border border-rose-300 dark:border-rose-800 aspect-square">
-                                <img src={img.dataUrl} alt="Before" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImageModal({ url: img.dataUrl, name: "개선 전 사진" })} />
-                                <span className="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-rose-600 text-white text-[8px] font-black">Before</span>
-                                <button type="button" onClick={() => handleRemoveWorkLogImage(idx, "before")} className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/70 text-white flex items-center justify-center text-[8px] font-black">✕</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                    {/* 🟢 개선 후 (After) */}
+                    <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-300 dark:border-emerald-900/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                          🟢 개선 후 (After)
+                        </span>
+                        <span className="text-[9px] font-mono text-emerald-500 font-bold">
+                          {formData.imagesAfter?.length || 0}장
+                        </span>
                       </div>
-
-                      {/* 🟢 개선 후 (After) */}
-                      <div className="p-2 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-300 dark:border-emerald-900/60 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                            🟢 개선 후 (After)
-                          </span>
-                          <span className="text-[9px] font-mono text-emerald-500 font-bold">
-                            {formData.imagesAfter?.length || 0}장
-                          </span>
+                      <div className="grid grid-cols-2 gap-1">
+                        <div>
+                          <input
+                            type="file"
+                            id="worklog-camera-standard-after"
+                            accept="image/*"
+                            capture="environment"
+                            disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                handleWorkLogImageFiles(e.target.files, "after");
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="worklog-camera-standard-after"
+                            className={`w-full py-2 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
+                              ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                : "border-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 font-bold"
+                            }`}
+                          >
+                            <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>촬영</span>
+                          </label>
                         </div>
-                        <div className="grid grid-cols-2 gap-1">
-                          <div>
-                            <input
-                              type="file"
-                              id="worklog-camera-standard-after"
-                              accept="image/*"
-                              capture="environment"
-                              disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  handleWorkLogImageFiles(e.target.files, "after");
-                                  e.target.value = "";
-                                }
-                              }}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="worklog-camera-standard-after"
-                              className={`w-full py-2 px-1 rounded-lg border flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
-                                ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
-                                  ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                                  : "border-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-200 font-bold"
-                              }`}
-                            >
-                              <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>촬영</span>
-                            </label>
-                          </div>
-                          <div>
-                            <input
-                              type="file"
-                              id="worklog-gallery-standard-after"
-                              accept="image/*"
-                              multiple
-                              disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
-                              onChange={(e) => {
-                                if (e.target.files) {
-                                  handleWorkLogImageFiles(e.target.files, "after");
-                                  e.target.value = "";
-                                }
-                              }}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="worklog-gallery-standard-after"
-                              className={`w-full py-2 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
-                                ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
-                                  ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
-                                  : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
-                              }`}
-                            >
-                              <UploadCloud className="w-3.5 h-3.5 text-slate-400" />
-                              <span>앨범</span>
-                            </label>
-                          </div>
+                        <div>
+                          <input
+                            type="file"
+                            id="worklog-gallery-standard-after"
+                            accept="image/*"
+                            multiple
+                            disabled={isProcessingImages || (((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3)}
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                handleWorkLogImageFiles(e.target.files, "after");
+                                e.target.value = "";
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <label
+                            htmlFor="worklog-gallery-standard-after"
+                            className={`w-full py-2 px-1 rounded-lg border border-dashed flex items-center justify-center gap-1 cursor-pointer text-center text-[10.5px] font-bold ${
+                              ((formData.imagesBefore?.length || 0) + (formData.imagesAfter?.length || 0)) >= 3
+                                ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+                                : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            }`}
+                          >
+                            <UploadCloud className="w-3.5 h-3.5 text-slate-400" />
+                            <span>앨범</span>
+                          </label>
                         </div>
-                        {formData.imagesAfter && formData.imagesAfter.length > 0 && (
-                          <div className="grid grid-cols-3 gap-1 pt-1">
-                            {formData.imagesAfter.map((img, idx) => (
-                              <div key={img.id || idx} className="relative group rounded-md overflow-hidden border border-emerald-300 dark:border-emerald-800 aspect-square">
-                                <img src={img.dataUrl} alt="After" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImageModal({ url: img.dataUrl, name: "개선 후 사진" })} />
-                                <span className="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-emerald-600 text-white text-[8px] font-black">After</span>
-                                <button type="button" onClick={() => handleRemoveWorkLogImage(idx, "after")} className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/70 text-white flex items-center justify-center text-[8px] font-black">✕</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
+                      {formData.imagesAfter && formData.imagesAfter.length > 0 && (
+                        <div className="grid grid-cols-3 gap-1 pt-1">
+                          {formData.imagesAfter.map((img, idx) => (
+                            <div key={img.id || idx} className="relative group rounded-md overflow-hidden border border-emerald-300 dark:border-emerald-800 aspect-square">
+                              <img src={img.dataUrl} alt="After" className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewImageModal({ url: img.dataUrl, name: "개선 후 사진" })} />
+                              <span className="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-emerald-600 text-white text-[8px] font-black">After</span>
+                              <button type="button" onClick={() => handleRemoveWorkLogImage(idx, "after")} className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-black/70 text-white flex items-center justify-center text-[8px] font-black">✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
 
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
