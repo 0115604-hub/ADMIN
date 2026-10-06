@@ -458,17 +458,16 @@ export const TelegramView = () => {
       const replyBadge = replyCount > 0 ? ` [의견 ${replyCount}건]` : "";
       let line = `• [오픈이슈] ${dText}${o.title || o.content} (${o.plant?.replace("공장", "") || "삼랑진"})${replyBadge}`;
 
-      // 🌟 의견이 있는 경우 작성자 및 내용 표시
+      // 🌟 가장 최근 의견 1건만 표시
       if (Array.isArray(o.replies) && o.replies.length > 0) {
-        const replyDetails = o.replies.map((rep) => {
-          const authorText = rep.author || "작업자";
-          const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
-          const contentText = rep.content || rep.text || "내용 없음";
-          const repDate = rep.actionDate || rep.createdAt?.slice(0, 10);
-          const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
-          return `  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
-        }).join("\n");
-        line += `\n${replyDetails}`;
+        const sortedReplies = [...o.replies].sort((a, b) => (a.actionDate || a.createdAt || "").localeCompare(b.actionDate || b.createdAt || ""));
+        const lastRep = sortedReplies[sortedReplies.length - 1];
+        const authorText = lastRep.author || "작업자";
+        const titleText = lastRep.authorTitle ? ` ${lastRep.authorTitle}` : "";
+        const contentText = (lastRep.content || lastRep.text || "내용 없음").replace(/\r?\n+/g, " ").trim();
+        const repDate = lastRep.actionDate || lastRep.createdAt?.slice(0, 10);
+        const repDateStr = repDate ? ` (${formatMMDDWithWeekday(repDate)})` : "";
+        line += `\n  └ 💬 ${authorText}${titleText}: ${contentText}${repDateStr}`;
       }
       return line;
     });
@@ -490,13 +489,12 @@ export const TelegramView = () => {
       const dText = d ? `${formatMMDDWithWeekday(d)}${t} ` : "";
       let mLine = `• [회의] ${dText}${m.title || m.content} (${m.plant?.replace("공장", "") || "삼랑진"})`;
       if (Array.isArray(m.replies) && m.replies.length > 0) {
-        const replyDetails = m.replies.map((rep) => {
-          const authorText = rep.author || "참석자";
-          const titleText = rep.authorTitle ? ` ${rep.authorTitle}` : "";
-          const contentText = rep.content || rep.text || "참석";
-          return `  └ 💬 ${authorText}${titleText}: ${contentText}`;
-        }).join("\n");
-        mLine += `\n${replyDetails}`;
+        const sortedReplies = [...m.replies].sort((a, b) => (a.actionDate || a.createdAt || "").localeCompare(b.actionDate || b.createdAt || ""));
+        const lastRep = sortedReplies[sortedReplies.length - 1];
+        const authorText = lastRep.author || "참석자";
+        const titleText = lastRep.authorTitle ? ` ${lastRep.authorTitle}` : "";
+        const contentText = (lastRep.content || lastRep.text || "참석").replace(/\r?\n+/g, " ").trim();
+        mLine += `\n  └ 💬 ${authorText}${titleText}: ${contentText}`;
       }
       combined.push(mLine);
     });
