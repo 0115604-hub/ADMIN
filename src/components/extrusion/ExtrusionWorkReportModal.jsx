@@ -2341,7 +2341,7 @@ export const ExtrusionWorkReportModal = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* Section 4: 비가동 및 불량내역 (간결하고 직관적인 통합 등록) */}
+            {/* Section 4: 비가동 및 부적합품 발생내역 (간결하고 직관적인 통합 등록) */}
             {/* ========================================================================= */}
             <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-2.5">
               {/* Header & Badges */}
@@ -2349,7 +2349,7 @@ export const ExtrusionWorkReportModal = ({
                 <div className="flex items-center gap-2">
                   <span className="font-black text-slate-900 dark:text-white flex items-center gap-1.5 text-xs sm:text-sm">
                     <Clock className="w-4 h-4 text-amber-500" />
-                    ④ 비가동 및 불량내역
+                    ④ 비가동 및 부적합품 발생내역
                   </span>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                     총 {dtEvents.length}건
@@ -2374,7 +2374,7 @@ export const ExtrusionWorkReportModal = ({
                   {/* 항목 선택 (4 cols) */}
                   <div className="col-span-2 sm:col-span-4">
                     <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 mb-0.5">
-                      불량/비가동 항목 (22종)
+                      부적합품/비가동 항목 (22종)
                     </label>
                     <select
                       value={downtimeDraft.category || "압개시"}
@@ -2383,7 +2383,7 @@ export const ExtrusionWorkReportModal = ({
                     >
                       {DOWNTIME_CATEGORIES.map((c) => (
                         <option key={c.id} value={c.id}>
-                          {c.label} ({["압개시", "형교환", "종료", "설비이상", "다이스수정", "기술TRY"].includes(c.id) ? "비가동" : "불량"})
+                          {c.label} ({["압개시", "형교환", "종료", "설비이상", "다이스수정", "기술TRY"].includes(c.id) ? "비가동" : "부적합"})
                         </option>
                       ))}
                     </select>
@@ -2518,7 +2518,7 @@ export const ExtrusionWorkReportModal = ({
                 </div>
               ) : (
                 <div className="py-2.5 text-center text-xs text-slate-400 bg-white/50 dark:bg-slate-900/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
-                  등록된 비가동 및 불량 내역이 없습니다.
+                  등록된 비가동 및 부적합품 발생 내역이 없습니다.
                 </div>
               )}
             </div>
