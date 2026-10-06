@@ -178,6 +178,7 @@ import { pushModalHistory, subscribeCloseAllModals } from "../utils/modalHistory
 import { ImagePreviewModal } from "./common/ImagePreviewModal";
 import { ExtrusionWorkerDashboardView } from "./extrusion/ExtrusionWorkerDashboardView";
 import { isExtrusionWorkerProfile } from "../services/extrusionQualityIssueService";
+import { UnifiedAbnormalityControlPanel } from "./dashboard/UnifiedAbnormalityControlPanel";
 
 // Lazy-loaded on-demand heavy modals
 const HanulSettlementModal = lazy(() => import("./HanulSettlementModal").then(m => ({ default: m.HanulSettlementModal || m.default })));
@@ -470,6 +471,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출") || (assignedProcess?.includes("압출"));
   const isChangyong = currentProfile?.name === "우창용" || currentProfile?.name === "TEST" || currentProfile?.id === "hal_cy" || currentProfile?.id === "hal_test";
   const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울");
+  const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
   const [selectedOvertimeReportForModal, setSelectedOvertimeReportForModal] = useState(null);
@@ -2947,6 +2949,26 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
             🏭 압출 생산관리 및 작업일보 바로가기 ➡️
           </button>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🛡️ [한림공장 TEST 전용] 전사 이상발생 / 품질경보 / TPM / 비가동 및 불량 / 일지 통합 관제 패널 */}
+      {/* ========================================================================= */}
+      {isTestUser && (
+        <UnifiedAbnormalityControlPanel
+          workLogs={workLogs}
+          currentProfile={currentProfile}
+          onOpenWorkLogDetail={(log) => setSelectedLogDetail(log)}
+          onOpenExtrusionReport={(rep) => {
+            try {
+              localStorage.setItem("factory_extrusion_active_subtab", "production");
+            } catch (e) {}
+            if (onNavigateTab) onNavigateTab("extrusion_downtime");
+          }}
+          onOpenIssueModal={(issue) => {
+            if (onNavigateTab) onNavigateTab("quality_control");
+          }}
+        />
       )}
 
       {/* ========================================================================= */}
