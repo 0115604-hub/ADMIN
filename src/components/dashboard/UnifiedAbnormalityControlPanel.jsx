@@ -196,28 +196,71 @@ export const UnifiedAbnormalityControlPanel = ({
     });
 
     // -----------------------------------------------------------------------
-    // 2. [Machine] 전재율 책임의 설비수리이력만 취합 (타 관리자 일반일지 제외!)
+    // 2. [Machine] 전재율 책임의 설비수리이력만 취합 (실제 등록된 수리내역 추출)
     // -----------------------------------------------------------------------
     (workLogs || []).forEach((log) => {
       if (log.isDeleted) return;
 
       // 전재율 책임 또는 설비보전 일지만 엄격 필터링
-      const isJeonOrMaintenance = log.writer === "전재율" || log.process === "설비보전" || (Array.isArray(log.maintenanceItems) && log.maintenanceItems.length > 0);
+      const isJeonOrMaintenance = log.writer === "전재율" || log.process === "설비보전" || (Array.isArray(log.maintenanceItems) && log.maintenanceItems.length > 0) || (typeof log.maintenanceItems === "string" && log.maintenanceItems.includes("content"));
       if (!isJeonOrMaintenance) return;
 
-      const mItems = Array.isArray(log.maintenanceItems) ? log.maintenanceItems : [];
-      const maintSummary = mItems
-        .map((m, idx) => `• [${m.category || "설비"}] ${m.equipmentName || "일반"}: ${m.content || ""}`)
-        .join("\n");
+      // 1. maintenanceItems 안전 파싱
+      let mItems = [];
+      if (Array.isArray(log.maintenanceItems)) {
+        mItems = log.maintenanceItems;
+      } else if (typeof log.maintenanceItems === "string" && log.maintenanceItems.trim().startsWith("[")) {
+        try {
+          mItems = JSON.parse(log.maintenanceItems);
+        } catch (e) {
+          mItems = [];
+        }
+      }
+
+      // 2. 실제 구체적인 수리 내용 요약 (한줄 제목용)
+      let repairSummaryTitle = "";
+      if (mItems.length > 0) {
+        repairSummaryTitle = mItems
+          .map((m) => {
+            const eq = m.equipmentName && m.equipmentName !== "직접입력" && m.equipmentName !== "내용직접입력" ? `[${m.equipmentName}] ` : "";
+            return `${eq}${m.content || ""}`.trim();
+          })
+          .filter(Boolean)
+          .join(" / ");
+      }
+
+      if (!repairSummaryTitle && log.workContent) {
+        const cleanLines = log.workContent
+          .split("\n")
+          .map((l) => l.replace(/^[•\-\*\[\d\]\s>]+/, "").replace(/설비보전내용:\s*/, "").trim())
+          .filter(Boolean);
+        repairSummaryTitle = cleanLines.slice(0, 2).join(" / ");
+      }
+
+      // 대표 설비명 요약
+      const lineOrEquipment = log.line || (mItems[0] ? `${mItems[0].category}(${mItems[0].equipmentName || ""})` : "설비보전");
+      const displayTitle = repairSummaryTitle || `[${lineOrEquipment}] 점검 및 보전수리`;
+
+      // 상세 내용 서식화
+      const maintDetailList = mItems
+        .map((m, idx) => `[${idx + 1}] ${m.category || "설비"} > ${m.equipmentName || "일반"}\n• 설비보전내용: ${m.content || ""}`)
+        .join("\n\n");
 
       const fullContent = [
-        maintSummary ? `[설비보전 및 수리점검 내역]\n${maintSummary}` : "",
-        log.workContent ? `[작업 상세]\n${log.workContent}` : "",
+        maintDetailList ? `[설비보전 및 수리점검 내역]\n${maintDetailList}` : "",
+        !maintDetailList && log.workContent ? `[작업 상세]\n${log.workContent}` : "",
         log.issues && log.issues !== "-" && log.issues !== "없음" ? `[특이 이상발생]\n${log.issues}` : ""
       ].filter(Boolean).join("\n\n");
 
-      // 대표 설비명 요약
-      const lineOrEquipment = log.line || (mItems[0] ? `${mItems[0].category}(${mItems[0].equipmentName})` : "설비보전");
+      // 사진 파싱
+      let parsedImages = [];
+      if (Array.isArray(log.images)) parsedImages = log.images;
+      else if (Array.isArray(log.photos)) parsedImages = log.photos;
+      else if (typeof log.images === "string" && log.images.trim().startsWith("[")) {
+        try { parsedImages = JSON.parse(log.images); } catch (e) {}
+      } else if (typeof log.photos === "string" && log.photos.trim().startsWith("[")) {
+        try { parsedImages = JSON.parse(log.photos); } catch (e) {}
+      }
 
       unified.push({
         id: `wl_maint_${log.id}`,
@@ -228,14 +271,14 @@ export const UnifiedAbnormalityControlPanel = ({
         plant: log.plant || "삼랑진공장",
         line: lineOrEquipment,
         writer: "전재율 책임",
-        title: `[설비수리] ${lineOrEquipment} 점검 및 수리 이력`,
+        title: displayTitle,
         date: log.date || todayStr,
         time: log.createdAt ? log.createdAt.slice(11, 16) : "",
-        content: fullContent || log.workContent || "설비 점검 및 보전 수리 완료",
+        content: fullContent || log.workContent || displayTitle,
         actionResult: log.approvalComment || "수리 및 점검 조치 완료",
         actionAuthor: log.approverName || "전재율",
         actionAt: log.approvalDate || log.date || "",
-        images: Array.isArray(log.images) ? log.images : (Array.isArray(log.photos) ? log.photos : []),
+        images: parsedImages,
         actionImages: [],
         replies: [],
         isResolved: true,
@@ -265,6 +308,10 @@ export const UnifiedAbnormalityControlPanel = ({
           abnormalChecks.length > 0 ? `[TPM 10대 자주보전 점검]\n${checkSummary}` : ""
         ].filter(Boolean).join("\n\n");
 
+        const tpmDisplayTitle = report.tpmIssueText
+          ? `[${report.lineName || report.lineId || "압출"}] ${report.tpmIssueText}`
+          : `[TPM 이상] ${report.lineName || report.lineId} 자주보전 이상신고`;
+
         unified.push({
           id: `ext_tpm_${report.id}`,
           fourM: "Machine",
@@ -274,7 +321,7 @@ export const UnifiedAbnormalityControlPanel = ({
           plant: report.plant || "삼랑진공장",
           line: report.lineName || report.lineId || "압출라인",
           writer: report.worker || "압출 작업자",
-          title: `[TPM 이상] ${report.lineName || report.lineId} 자주보전 이상신고`,
+          title: tpmDisplayTitle,
           date: report.date || todayStr,
           time: report.createdAt ? report.createdAt.slice(11, 16) : "",
           content: fullContent,
@@ -314,7 +361,7 @@ export const UnifiedAbnormalityControlPanel = ({
             plant: report.plant || "삼랑진공장",
             line: report.lineName || report.lineId || "압출라인",
             writer: report.worker || "압출 작업자",
-            title: `[${originName}] ${ev.category} (${minutes > 0 ? `${minutes}분 ` : ""}${scrapKg > 0 ? `${scrapKg}kg` : ""})`,
+            title: `[${report.lineName || report.lineId || "압출"}] ${ev.category} ${ev.detail ? `(${ev.detail})` : ""}`,
             date: report.date || todayStr,
             time: ev.startTime ? `${ev.startTime}~${ev.endTime}` : (report.createdAt ? report.createdAt.slice(11, 16) : ""),
             content: ev.detail || `${ev.category} 발생으로 인한 ${originName}`,
@@ -338,6 +385,7 @@ export const UnifiedAbnormalityControlPanel = ({
     // 4. [Method] 압출 전용 품질 이슈 (품질경보)
     // -----------------------------------------------------------------------
     (extrusionQualityAlerts || []).forEach((alert) => {
+      if (alert.id === "ext_qual_demo_1" || alert.id === "ext_qual_demo_2" || String(alert.id).startsWith("demo_")) return;
       unified.push({
         id: `ext_q_${alert.id}`,
         fourM: "Method",

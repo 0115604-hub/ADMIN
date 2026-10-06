@@ -36,43 +36,8 @@ export const SEVERITY_LEVELS = [
   { id: "INFO", label: "ℹ️ 품질 공지 (작업 표준 안내)", color: "blue", bg: "bg-blue-500", text: "text-blue-600" }
 ];
 
-// Initial starter mock issues if database is clean
-export const INITIAL_EXTRUSION_QUALITY_ISSUES = [
-  {
-    id: "ext_qual_demo_1",
-    date: "2026-10-02",
-    time: "08:30",
-    line: "PCM 1호기",
-    title: "다이스 토출부 이물로 인한 표면 미세 스크래치 발생 주의",
-    defectType: "외관 스크래치 / 찍힘",
-    status: "ACTIVE",
-    content: "PCM 1호기 가동 시 다이스 토출구 이물 누적으로 외관 스크래치가 발생할 수 있습니다. 메쉬망 상태 점검 및 다이스 토출면 수시 확인 필수.",
-    actionResult: "1. 30분 단위 표면 육안 검사 및 조도 확보\n2. 스크래치 발생 즉시 라인 일시 정지 후 토출구 청소\n3. 초중종물 외관 한도 견본과 대조 확인",
-    images: [],
-    author: "설유철",
-    authorTitle: "책임",
-    createdAt: "2026-10-02 08:30:00",
-    updatedAt: "2026-10-02 08:30:00",
-    acknowledgedBy: []
-  },
-  {
-    id: "ext_qual_demo_2",
-    date: "2026-10-01",
-    time: "14:20",
-    line: "PCM 3호기",
-    title: "성형 치수(폭/두께) 규격 공차(±0.2mm) 집중 관리",
-    defectType: "치수 편차 / 두께 불량",
-    status: "ACTIVE",
-    content: "온도 편차에 따른 수축량 변동으로 폭 치수 편차가 발생할 수 있습니다. 냉각 수조 온도 및 인취기 속도 일정 유지 관리 바랍니다.",
-    actionResult: "1. 버니어 캘리퍼스 측정 (외경/두께)\n2. 냉각수 온도 20±2℃ 상시 체크\n3. 규격 이탈 시 설유철 책임 즉시 보고",
-    images: [],
-    author: "설유철",
-    authorTitle: "책임",
-    createdAt: "2026-10-01 14:20:00",
-    updatedAt: "2026-10-01 14:20:00",
-    acknowledgedBy: []
-  }
-];
+// Initial starter mock issues (Empty by default)
+export const INITIAL_EXTRUSION_QUALITY_ISSUES = [];
 
 // Helper: Read local storage
 export const getLocalExtrusionQualityIssues = () => {
@@ -80,12 +45,18 @@ export const getLocalExtrusionQualityIssues = () => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        const clean = parsed.filter(i => i.id !== "ext_qual_demo_1" && i.id !== "ext_qual_demo_2");
+        if (clean.length !== parsed.length) {
+          saveLocalExtrusionQualityIssues(clean);
+        }
+        return clean;
+      }
     }
   } catch (e) {
     console.error("Local storage read error for extrusion quality issues:", e);
   }
-  return INITIAL_EXTRUSION_QUALITY_ISSUES;
+  return [];
 };
 
 // Helper: Save local storage
