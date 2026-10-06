@@ -428,9 +428,9 @@ export default function PersonnelCardModal({
                   </select>
                 </div>
 
-                {/* 부서 선택: 생산팀 / 압출관리팀 / 가공관리팀 / 관리팀 */}
+                {/* 부서 선택: 생산팀 / 압출관리팀 / 가공관리팀 / 품질관리팀 / 관리팀 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서 (4대 부서)</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서 (5대 부서)</label>
                   <select
                     value={formData.dept}
                     onChange={(e) => handleChange("dept", e.target.value)}
