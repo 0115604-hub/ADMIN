@@ -527,16 +527,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     const isAfter9 = currentHour >= 9;
 
     const daily = calculateDailySummary(matrix, todayDayNum);
-    const defaultMeta = {
-      "오륙": { workers: 53, attended: 53, otWorkers: 35, otHours: 80, totalHours: 504, dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
-      "조영": { workers: 44, attended: 44, otWorkers: 30, otHours: 72, totalHours: 424, dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
-      "한울": { workers: 26, attended: 26, otWorkers: 18, otHours: 42, totalHours: 250, dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
-      "부림텍": { workers: 6, attended: 6, otWorkers: 4, otHours: 8, totalHours: 56, dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
-      "유성": { workers: 14, attended: 14, otWorkers: 10, otHours: 20, totalHours: 132, dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
+    const companyStyles = {
+      "오륙": { dot: "bg-blue-500", borderHover: "hover:border-blue-400 dark:hover:border-blue-500", badgeColor: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border-blue-200 dark:border-blue-800" },
+      "조영": { dot: "bg-purple-500", borderHover: "hover:border-purple-400 dark:hover:border-purple-500", badgeColor: "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-200 dark:border-purple-800" },
+      "한울": { dot: "bg-emerald-500", borderHover: "hover:border-emerald-400 dark:hover:border-emerald-500", badgeColor: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800" },
+      "부림텍": { dot: "bg-amber-500", borderHover: "hover:border-amber-400 dark:hover:border-amber-500", badgeColor: "text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border-amber-200 dark:border-amber-800" },
+      "유성": { dot: "bg-cyan-500", borderHover: "hover:border-cyan-400 dark:hover:border-cyan-500", badgeColor: "text-cyan-700 dark:text-cyan-300 bg-cyan-100 dark:bg-cyan-950/80 border-cyan-200 dark:border-cyan-800" }
     };
 
     const companies = ["오륙", "조영", "한울", "부림텍", "유성"].map((name) => {
-      const meta = defaultMeta[name];
+      const styles = companyStyles[name] || companyStyles["오륙"];
       const b = daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => w.company === name || (name.includes("조영") && (w.company || "").includes("조영")));
       const enteredCount = compWorkers.filter((w) => {
@@ -547,10 +547,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const isWritten = enteredCount > 0;
       const shortName = name.replace(/[()주]/g, "");
 
-      const calcOtWorkers = b ? ((b.ot19 || 0) + (b.ot21 || 0) + (b.ot22 || 0) + (b.specialNight || 0)) : meta.otWorkers;
-      const workers = b?.total && b.total > 0 ? b.total : (compWorkers.length > 0 ? compWorkers.length : meta.workers);
-      const attended = b?.attended ?? (isWritten ? meta.attended : 0);
-      const absent = b?.absent ?? (isWritten ? Math.max(0, workers - attended) : 0);
+      const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
+      const attended = b ? (b.attended || 0) : 0;
+      const absent = b ? (b.absent || 0) : 0;
+      const otWorkers = b ? (b.otWorkers || 0) : 0;
+      const otHours = b ? (b.otHours || 0) : 0;
+      const totalHours = b ? (b.totalHours || 0) : 0;
 
       const statusBadgeText = isWritten ? "작성완료" : (isAfter9 ? "09:00 미작성" : "작성전");
       const statusBadgeClass = isWritten
@@ -569,12 +571,12 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         workers,
         attended,
         absent,
-        otWorkers: (calcOtWorkers && calcOtWorkers > 0) ? calcOtWorkers : (isWritten ? meta.otWorkers : 0),
-        otHours: b?.otHours ?? (isWritten ? meta.otHours : 0),
-        totalHours: b?.totalHours ?? (isWritten ? meta.totalHours : 0),
-        dot: meta.dot,
-        borderHover: meta.borderHover,
-        badgeColor: meta.badgeColor,
+        otWorkers,
+        otHours,
+        totalHours,
+        dot: styles.dot,
+        borderHover: styles.borderHover,
+        badgeColor: styles.badgeColor,
         isTotal: false
       };
     });

@@ -2046,9 +2046,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 compName === "한울" ? "bg-emerald-400" :
                 compName === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
 
-              const otWorkersCount = breakdown.otWorkers !== undefined
-                ? breakdown.otWorkers
-                : (breakdown.ot19 + breakdown.ot21 + breakdown.ot22 + (breakdown.specialNight || 0));
+              const otWorkersCount = breakdown.otWorkers || 0;
 
               const absentCount = breakdown.absent || 0;
 
