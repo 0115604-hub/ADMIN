@@ -878,24 +878,18 @@ export const UnifiedAbnormalityControlPanel = ({
               setSelected4MTab(selected4MTab === "OFFICIAL_LEDGER" ? "ALL" : "OFFICIAL_LEDGER");
               setSelectedOriginFilter(selectedOriginFilter === "OFFICIAL_LEDGER" ? "ALL" : "OFFICIAL_LEDGER");
             }}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+            className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selected4MTab === "OFFICIAL_LEDGER" || selectedOriginFilter === "OFFICIAL_LEDGER"
-                ? "bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50"
+                ? "bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50 shadow-md"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold">
-              <span className="flex items-center gap-1 truncate">
-                <ShieldAlert className="w-3 h-3 text-emerald-400 shrink-0" />
-                <span className="truncate">📋 변동점 관리대장</span>
-              </span>
-              <span className="text-[10px] text-emerald-200 shrink-0">
-                공식 대장
-              </span>
+            <div className="flex items-center gap-1.5 text-xs text-emerald-300 font-bold truncate">
+              <ShieldAlert className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span className="truncate">📋 변동점 관리대장</span>
             </div>
-            <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-base sm:text-lg font-black text-white">{stats.officialLedgerCount}건</span>
-              <span className="text-[10px] text-emerald-300 truncate">공식 등록 목록</span>
+            <div className="mt-1">
+              <span className="text-base sm:text-xl font-black text-white">{stats.officialLedgerCount}건</span>
             </div>
           </div>
 
@@ -905,24 +899,18 @@ export const UnifiedAbnormalityControlPanel = ({
               setSelected4MTab(selected4MTab === "MACHINE" ? "ALL" : "MACHINE");
               if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
             }}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+            className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selected4MTab === "MACHINE"
-                ? "bg-indigo-950/90 border-indigo-400 ring-2 ring-indigo-400/50"
+                ? "bg-indigo-950/90 border-indigo-400 ring-2 ring-indigo-400/50 shadow-md"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] text-indigo-300 font-bold">
-              <span className="flex items-center gap-1 truncate">
-                <Wrench className="w-3 h-3 text-indigo-400 shrink-0" />
-                <span>🔧 MACHINE</span>
-              </span>
-              <span className="text-[10px] text-indigo-200 shrink-0">
-                비가동 {stats.totalDowntimeMin}분
-              </span>
+            <div className="flex items-center gap-1.5 text-xs text-indigo-300 font-bold truncate">
+              <Wrench className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="truncate">🔧 MACHINE</span>
             </div>
-            <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-base sm:text-lg font-black text-white">{stats.machineCount}건</span>
-              <span className="text-[10px] text-indigo-300 truncate">수리 {stats.repairCount} · 비가동 {stats.downtimeCount}</span>
+            <div className="mt-1">
+              <span className="text-base sm:text-xl font-black text-white">{stats.machineCount}건</span>
             </div>
           </div>
 
@@ -932,24 +920,18 @@ export const UnifiedAbnormalityControlPanel = ({
               setSelected4MTab(selected4MTab === "MAN" ? "ALL" : "MAN");
               if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
             }}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+            className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selected4MTab === "MAN"
-                ? "bg-sky-950/90 border-sky-400 ring-2 ring-sky-400/50"
+                ? "bg-sky-950/90 border-sky-400 ring-2 ring-sky-400/50 shadow-md"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] text-sky-300 font-bold">
-              <span className="flex items-center gap-1 truncate">
-                <Users className="w-3 h-3 text-sky-400 shrink-0" />
-                <span>👥 MAN</span>
-              </span>
-              <span className="text-[10px] text-sky-200 shrink-0">
-                작업자·근태
-              </span>
+            <div className="flex items-center gap-1.5 text-xs text-sky-300 font-bold truncate">
+              <Users className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span className="truncate">👥 MAN</span>
             </div>
-            <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-base sm:text-lg font-black text-white">{stats.manCount}건</span>
-              <span className="text-[10px] text-sky-300 truncate">인원 변동</span>
+            <div className="mt-1">
+              <span className="text-base sm:text-xl font-black text-white">{stats.manCount}건</span>
             </div>
           </div>
 
@@ -959,24 +941,18 @@ export const UnifiedAbnormalityControlPanel = ({
               setSelected4MTab(selected4MTab === "METHOD" ? "ALL" : "METHOD");
               if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
             }}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+            className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selected4MTab === "METHOD"
-                ? "bg-amber-950/90 border-amber-400 ring-2 ring-amber-400/50"
+                ? "bg-amber-950/90 border-amber-400 ring-2 ring-amber-400/50 shadow-md"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] text-amber-300 font-bold">
-              <span className="flex items-center gap-1 truncate">
-                <AlertOctagon className="w-3 h-3 text-amber-400 shrink-0" />
-                <span>🚨 METHOD</span>
-              </span>
-              <span className="text-[10px] text-amber-200 shrink-0">
-                미조치 {stats.methodPending}건
-              </span>
+            <div className="flex items-center gap-1.5 text-xs text-amber-300 font-bold truncate">
+              <AlertOctagon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="truncate">🚨 METHOD</span>
             </div>
-            <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-base sm:text-lg font-black text-white">{stats.methodCount}건</span>
-              <span className="text-[10px] text-amber-300 truncate">품질경보</span>
+            <div className="mt-1">
+              <span className="text-base sm:text-xl font-black text-white">{stats.methodCount}건</span>
             </div>
           </div>
 
@@ -986,24 +962,18 @@ export const UnifiedAbnormalityControlPanel = ({
               setSelected4MTab(selected4MTab === "MATERIAL" ? "ALL" : "MATERIAL");
               if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
             }}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+            className={`p-2.5 sm:p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
               selected4MTab === "MATERIAL"
-                ? "bg-rose-950/90 border-rose-400 ring-2 ring-rose-400/50"
+                ? "bg-rose-950/90 border-rose-400 ring-2 ring-rose-400/50 shadow-md"
                 : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
             }`}
           >
-            <div className="flex items-center justify-between text-[11px] text-rose-300 font-bold">
-              <span className="flex items-center gap-1 truncate">
-                <TrendingDown className="w-3 h-3 text-rose-400 shrink-0" />
-                <span>📉 MATERIAL</span>
-              </span>
-              <span className="text-[10px] text-rose-200 shrink-0">
-                손실 {stats.totalScrapKg} kg
-              </span>
+            <div className="flex items-center gap-1.5 text-xs text-rose-300 font-bold truncate">
+              <TrendingDown className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+              <span className="truncate">📉 MATERIAL</span>
             </div>
-            <div className="mt-0.5 flex items-baseline justify-between">
-              <span className="text-base sm:text-lg font-black text-white">{stats.materialCount}건</span>
-              <span className="text-[10px] text-rose-300 truncate">뜯김/철심/스코치</span>
+            <div className="mt-1">
+              <span className="text-base sm:text-xl font-black text-white">{stats.materialCount}건</span>
             </div>
           </div>
         </div>
