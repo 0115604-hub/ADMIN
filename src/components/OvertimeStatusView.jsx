@@ -47,6 +47,7 @@ import {
   Star
 } from "lucide-react";
 import PersonnelCardModal from "./PersonnelCardModal.jsx";
+import Absence4MModal from "./Absence4MModal.jsx";
 import {
   getWorkerPersonnelCard,
   saveWorkerPersonnelCard,
@@ -692,6 +693,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       setSelectedLegacyReport(null);
       setIsPersonnelModalOpen(false);
       setSelectedPersonnelWorker(null);
+      setIsAbsence4MModalOpen(false);
     });
     return () => unsub();
   }, []);
@@ -711,6 +713,13 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setWorkerMgmtCompanyFilter(cleanCompanyName(compName));
     setActiveTab("detail");
     setDetailSubTab("worker_management");
+  };
+
+  // ⭐ 결근 관리 및 4M Man 작업자 변경점 모달 열기 핸들러
+  const handleOpenAbsence4M = (compName) => {
+    pushModalHistory("absence_4m_modal");
+    setAbsence4MCompany(cleanCompanyName(compName || "오륙"));
+    setIsAbsence4MModalOpen(true);
   };
 
   const handleOpenLegacyReport = (report) => {
@@ -734,6 +743,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' | 'detail' | 'legacy_reports'
   const [detailSubTab, setDetailSubTab] = useState("monthly_matrix"); // 'monthly_matrix' | 'daily_summary' | 'worker_management'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // ⭐ 4M 결근 관리 모달 State
+  const [isAbsence4MModalOpen, setIsAbsence4MModalOpen] = useState(false);
+  const [absence4MCompany, setAbsence4MCompany] = useState("오륙");
 
   // ⭐ 인원관리 및 인사카드 전용 State
   const [selectedPersonnelWorker, setSelectedPersonnelWorker] = useState(null);
@@ -1985,7 +1998,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     </div>
                   </div>
 
-                  {/* 🔘 하단 액션 버튼: [인원관리] & [상세] */}
+                  {/* 🔘 하단 액션 버튼: [인원관리] & [결근관리] */}
                   <div className="grid grid-cols-2 gap-1.5 pt-0.5">
                     <button
                       type="button"
@@ -2007,13 +2020,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleOpenCompanyPopup(compName);
+                        handleOpenAbsence4M(compName);
                       }}
-                      className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl bg-slate-800/90 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 border border-slate-700/80 hover:border-cyan-500 font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95"
-                      title="오늘자 근태 현황 상세 보기"
+                      className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border font-bold text-[11px] transition-all cursor-pointer shadow-2xs active:scale-95 ${
+                        absentCount > 0
+                          ? "bg-rose-950/80 hover:bg-rose-900 text-rose-300 border-rose-600/80 hover:border-rose-400 ring-1 ring-rose-500/50"
+                          : "bg-slate-800/90 hover:bg-rose-950 text-slate-300 hover:text-rose-300 border-slate-700/80 hover:border-rose-500"
+                      }`}
+                      title="결근 관리 및 4M 작업자 대체투입 관리 (품질 추적성 1줄 기록)"
                     >
-                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>상세</span>
+                      <UserMinus className="w-3.5 h-3.5 text-rose-400" />
+                      <span>결근관리</span>
+                      {absentCount > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-mono font-bold animate-pulse">
+                          {absentCount}
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -4729,6 +4751,30 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           worker={selectedPersonnelWorker}
           workerIndex={selectedPersonnelWorkerIndex}
           onSave={handleSavePersonnelCard}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🏭 MODAL: 결근 관리 및 대체인원 투입 (4M Man 작업자 변경점 대장) */}
+      {/* ========================================================================= */}
+      {isAbsence4MModalOpen && (
+        <Absence4MModal
+          isOpen={isAbsence4MModalOpen}
+          onClose={() => setIsAbsence4MModalOpen(false)}
+          initialCompany={absence4MCompany}
+          selectedDay={selectedDay}
+          currentYear={currentYear}
+          currentMonth={currentMonthNum}
+          attendanceMatrix={smartData.attendanceMatrix || []}
+          onSaveSyncWithReports={(lines) => {
+            if (lines && lines.length > 0) {
+              const logText = lines.join("\n");
+              setReportModalNotes((prev) => {
+                if (prev && prev.includes(lines[0])) return prev;
+                return prev ? `${prev}\n\n[4M Man 작업자 변경점 대장]\n${logText}` : `[4M Man 작업자 변경점 대장]\n${logText}`;
+              });
+            }
+          }}
         />
       )}
     </div>
