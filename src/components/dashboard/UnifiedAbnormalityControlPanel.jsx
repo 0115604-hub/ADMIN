@@ -47,6 +47,12 @@ import {
   getLocalExtrusionQualityIssues,
   saveExtrusionQualityIssue
 } from "../../services/extrusionQualityIssueService";
+import {
+  subscribeFourMChangePoints,
+  getLocalFourMChangePoints,
+  registerToFourMLedger,
+  unregisterFromFourMLedger
+} from "../../services/fourMChangePointService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import * as XLSX from "xlsx";
 
@@ -99,6 +105,7 @@ export const UnifiedAbnormalityControlPanel = ({
   const [urgentIssues, setUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [extrusionQualityAlerts, setExtrusionQualityAlerts] = useState(() => getLocalExtrusionQualityIssues());
+  const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
 
@@ -107,8 +114,8 @@ export const UnifiedAbnormalityControlPanel = ({
 
   // Filter States
   const [selectedPlant, setSelectedPlant] = useState("ALL"); // ALL | 삼랑진공장 | 한림공장
-  const [selected4MTab, setSelected4MTab] = useState("ALL"); // ALL | MACHINE | MATERIAL | METHOD
-  const [selectedOriginFilter, setSelectedOriginFilter] = useState("ALL"); // ALL | 설비수리 | 비가동 | 불량손실 | TPM이상신고 | 품질경보
+  const [selected4MTab, setSelected4MTab] = useState("ALL"); // ALL | MACHINE | MATERIAL | METHOD | OFFICIAL_LEDGER
+  const [selectedOriginFilter, setSelectedOriginFilter] = useState("ALL"); // ALL | OFFICIAL_LEDGER | 설비수리 | 비가동 | 불량손실 | TPM이상신고 | 품질경보
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL"); // ALL | PENDING | RESOLVED
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState("ALL"); // ALL | ONLY_PHOTOS
   const [searchQuery, setSearchQuery] = useState("");
@@ -148,10 +155,17 @@ export const UnifiedAbnormalityControlPanel = ({
       setLastRefreshedAt(new Date());
     });
 
+    // 4. Official 4M Change Point Ledger (공식 변동점 관리대장 실시간 수신)
+    const unsubLedger = subscribeFourMChangePoints((ledgerList) => {
+      setFourMLedgerRecords(ledgerList || []);
+      setLastRefreshedAt(new Date());
+    });
+
     return () => {
       if (unsubIssues) unsubIssues();
       if (unsubExt) unsubExt();
       if (unsubExtQuality) unsubExtQuality();
+      if (unsubLedger) unsubLedger();
     };
   }, []);
 
@@ -159,6 +173,7 @@ export const UnifiedAbnormalityControlPanel = ({
     setLastRefreshedAt(new Date());
     setUrgentIssues(getLocalUrgentIssues());
     setExtrusionQualityAlerts(getLocalExtrusionQualityIssues());
+    setFourMLedgerRecords(getLocalFourMChangePoints());
   };
 
   const todayStr = useMemo(() => {
@@ -479,31 +494,45 @@ export const UnifiedAbnormalityControlPanel = ({
       });
     });
 
-    // 최신 발생일자 DESC, ID DESC 정렬
-    return unified.sort((a, b) => {
-      if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
-      if (b.time !== a.time) return (b.time || "").localeCompare(a.time || "");
-      return String(b.id || "").localeCompare(String(a.id || ""));
-    });
-  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, todayStr]);
+    const ledgerSet = new Set((fourMLedgerRecords || []).map((r) => r.originalId || r.id));
+
+    // 최신 발생일자 DESC, ID DESC 정렬 및 대장 등록 여부 매핑
+    return unified
+      .map((item) => ({
+        ...item,
+        isRegisteredInLedger: ledgerSet.has(item.id)
+      }))
+      .sort((a, b) => {
+        if (b.date !== a.date) return (b.date || "").localeCompare(a.date || "");
+        if (b.time !== a.time) return (b.time || "").localeCompare(a.time || "");
+        return String(b.id || "").localeCompare(String(a.id || ""));
+      });
+  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, fourMLedgerRecords, todayStr]);
 
   // =========================================================================
   // 🔍 필터링 연산
   // =========================================================================
   const filteredRecords = useMemo(() => {
+    const ledgerSet = new Set((fourMLedgerRecords || []).map((r) => r.originalId || r.id));
+
     return allUnifiedRecords.filter((rec) => {
+      // 0. 공식 변동점 관리대장 필터
+      if (selectedOriginFilter === "OFFICIAL_LEDGER" || selected4MTab === "OFFICIAL_LEDGER") {
+        if (!ledgerSet.has(rec.id) && !rec.isOfficialLedger) return false;
+      }
+
       // 1. 공장 필터
       if (selectedPlant !== "ALL") {
         if (!rec.plant || !rec.plant.includes(selectedPlant.replace("공장", ""))) return false;
       }
 
-      // 2. 4M 구분 탭 필터
-      if (selected4MTab !== "ALL") {
+      // 2. 4M 구분 탭 필터 (OFFICIAL_LEDGER 제외 시 적용)
+      if (selected4MTab !== "ALL" && selected4MTab !== "OFFICIAL_LEDGER") {
         if (rec.fourM.toUpperCase() !== selected4MTab.toUpperCase()) return false;
       }
 
-      // 3. 출처 구분 필터
-      if (selectedOriginFilter !== "ALL") {
+      // 3. 출처 구분 필터 (OFFICIAL_LEDGER 제외 시 적용)
+      if (selectedOriginFilter !== "ALL" && selectedOriginFilter !== "OFFICIAL_LEDGER") {
         if (rec.origin !== selectedOriginFilter) return false;
       }
 
@@ -544,13 +573,14 @@ export const UnifiedAbnormalityControlPanel = ({
 
       return true;
     });
-  }, [allUnifiedRecords, selectedPlant, selected4MTab, selectedOriginFilter, selectedStatusFilter, selectedPhotoFilter, selectedDateFilter, customDateInput, searchQuery, todayStr]);
+  }, [allUnifiedRecords, fourMLedgerRecords, selectedPlant, selected4MTab, selectedOriginFilter, selectedStatusFilter, selectedPhotoFilter, selectedDateFilter, customDateInput, searchQuery, todayStr]);
 
   // =========================================================================
   // 📊 4M 통계 집계
   // =========================================================================
   const stats = useMemo(() => {
     const totalCount = allUnifiedRecords.length;
+    const officialLedgerCount = fourMLedgerRecords.length;
 
     // 1. Machine: 설비수리 + 비가동 + TPM
     const machineRecords = allUnifiedRecords.filter((r) => r.fourM === "Machine");
@@ -572,6 +602,7 @@ export const UnifiedAbnormalityControlPanel = ({
 
     return {
       totalCount,
+      officialLedgerCount,
       machineCount: machineRecords.length,
       repairCount,
       downtimeCount,
@@ -583,7 +614,7 @@ export const UnifiedAbnormalityControlPanel = ({
       methodPending,
       totalPhotos
     };
-  }, [allUnifiedRecords]);
+  }, [allUnifiedRecords, fourMLedgerRecords]);
 
   // 상세 모달 열기
   const handleOpenDetailModal = (item) => {
@@ -682,6 +713,19 @@ export const UnifiedAbnormalityControlPanel = ({
     }
   };
 
+  // 🌟 공식 변동점 관리대장 등록 및 해제 (복사본 저장)
+  const handleToggleLedger = async (item) => {
+    const isAlready = fourMLedgerRecords.some((r) => r.originalId === item.id || r.id === item.id);
+    if (isAlready) {
+      if (window.confirm(`[${item.title}]\n\n항목을 공식 변동점 관리대장에서 등록 해제하시겠습니까?`)) {
+        await unregisterFromFourMLedger(item.id);
+      }
+    } else {
+      await registerToFourMLedger(item, currentProfile?.name || "TEST 선임");
+      alert(`[${item.title}]\n\n항목이 공식 변동점 관리대장에 복사본으로 저장되었습니다.`);
+    }
+  };
+
   // 현대차형 4M 엑셀 추출
   const handleExportExcel = () => {
     if (filteredRecords.length === 0) {
@@ -706,6 +750,7 @@ export const UnifiedAbnormalityControlPanel = ({
       "조치 내용": r.actionResult || "-",
       "조치자": r.actionAuthor || "-",
       "조치일시": r.actionAt || "-",
+      "대장등록여부": r.isRegisteredInLedger ? "등록" : "미등록",
       "첨부사진 수": (r.images?.length || 0) + (r.actionImages?.length || 0)
     }));
 
@@ -736,7 +781,7 @@ export const UnifiedAbnormalityControlPanel = ({
                 </span>
               </div>
               <p className="text-[11px] text-indigo-200/90 font-medium">
-                작업일보 <b>비가동·불량·TPM</b> + 전재율 <b>설비수리</b> + 관리자 <b>품질경보</b> 핵심 변동점을 1줄로 취합합니다.
+                작업일보 <b>비가동·불량·TPM</b> + 전재율 <b>설비수리</b> + 관리자 <b>품질경보</b>를 취합하고 <b>변동점 관리대장</b>으로 공식 등록합니다.
               </p>
             </div>
           </div>
@@ -791,11 +836,41 @@ export const UnifiedAbnormalityControlPanel = ({
           </div>
         </div>
 
-        {/* 3 Core 4M KPI Cards */}
-        <div className="grid grid-cols-3 gap-2 pt-0.5">
+        {/* 4 Core KPI Cards (공식 변동점 대장 + Machine + Material + Method) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+          {/* 0. Official Ledger: 공식 변동점 관리대장 */}
+          <div
+            onClick={() => {
+              setSelected4MTab(selected4MTab === "OFFICIAL_LEDGER" ? "ALL" : "OFFICIAL_LEDGER");
+              setSelectedOriginFilter(selectedOriginFilter === "OFFICIAL_LEDGER" ? "ALL" : "OFFICIAL_LEDGER");
+            }}
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+              selected4MTab === "OFFICIAL_LEDGER" || selectedOriginFilter === "OFFICIAL_LEDGER"
+                ? "bg-emerald-950/90 border-emerald-400 ring-2 ring-emerald-400/50"
+                : "bg-slate-900/80 border-slate-700/80 hover:bg-slate-800/80"
+            }`}
+          >
+            <div className="flex items-center justify-between text-[11px] text-emerald-300 font-bold">
+              <span className="flex items-center gap-1">
+                <ShieldAlert className="w-3 h-3 text-emerald-400" />
+                <span>📋 변동점 관리대장</span>
+              </span>
+              <span className="text-[10px] text-emerald-200">
+                공식 대장
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-baseline justify-between">
+              <span className="text-base sm:text-lg font-black text-white">{stats.officialLedgerCount}건</span>
+              <span className="text-[10px] text-emerald-300">공식 등록 목록</span>
+            </div>
+          </div>
+
           {/* Machine: 설비수리·비가동·TPM */}
           <div
-            onClick={() => setSelected4MTab("MACHINE")}
+            onClick={() => {
+              setSelected4MTab(selected4MTab === "MACHINE" ? "ALL" : "MACHINE");
+              if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
+            }}
             className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
               selected4MTab === "MACHINE"
                 ? "bg-indigo-950/90 border-indigo-400 ring-1 ring-indigo-400/40"
@@ -819,7 +894,10 @@ export const UnifiedAbnormalityControlPanel = ({
 
           {/* Material: 불량손실 */}
           <div
-            onClick={() => setSelected4MTab("MATERIAL")}
+            onClick={() => {
+              setSelected4MTab(selected4MTab === "MATERIAL" ? "ALL" : "MATERIAL");
+              if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
+            }}
             className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
               selected4MTab === "MATERIAL"
                 ? "bg-rose-950/90 border-rose-400 ring-1 ring-rose-400/40"
@@ -843,7 +921,10 @@ export const UnifiedAbnormalityControlPanel = ({
 
           {/* Method: 품질경보 */}
           <div
-            onClick={() => setSelected4MTab("METHOD")}
+            onClick={() => {
+              setSelected4MTab(selected4MTab === "METHOD" ? "ALL" : "METHOD");
+              if (selectedOriginFilter === "OFFICIAL_LEDGER") setSelectedOriginFilter("ALL");
+            }}
             className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
               selected4MTab === "METHOD"
                 ? "bg-amber-950/90 border-amber-400 ring-1 ring-amber-400/40"
@@ -883,6 +964,23 @@ export const UnifiedAbnormalityControlPanel = ({
             }`}
           >
             전체 ({allUnifiedRecords.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelected4MTab("OFFICIAL_LEDGER");
+              setSelectedOriginFilter("OFFICIAL_LEDGER");
+            }}
+            className={`px-2.5 py-1 rounded-lg font-black text-xs shrink-0 transition-all cursor-pointer flex items-center gap-1 ${
+              selectedOriginFilter === "OFFICIAL_LEDGER"
+                ? "bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-400"
+                : "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
+            }`}
+          >
+            <ShieldAlert className="w-3 h-3 text-emerald-500" />
+            <span>⭐ 공식 대장</span>
+            <span className="text-[10px] opacity-90 font-mono">({stats.officialLedgerCount})</span>
           </button>
 
           <button
@@ -1042,8 +1140,8 @@ export const UnifiedAbnormalityControlPanel = ({
                   <th className="py-2.5 px-2 text-center w-20">일시</th>
                   <th className="py-2.5 px-2 text-center w-12">공장</th>
                   <th className="py-2.5 px-3 min-w-[340px] w-full">변동 및 발생내용 (클릭 시 상세 팝업)</th>
-                  <th className="py-2.5 px-2 text-center w-14">손실</th>
-                  <th className="py-2.5 px-2 text-center w-16">조치</th>
+                  <th className="py-2.5 px-2 text-center w-18">조치</th>
+                  <th className="py-2.5 px-2 text-center w-24">변동점대장</th>
                   <th className="py-2.5 px-1.5 text-center w-12">사진</th>
                 </tr>
               </thead>
@@ -1108,7 +1206,7 @@ export const UnifiedAbnormalityControlPanel = ({
                           </span>
                         </td>
 
-                        {/* 변동 및 발생내용 (화면 공간을 최대로 활용하여 제목과 상세 내용 모두 표출) */}
+                        {/* 변동 및 발생내용 (내용 + 조치결과가 있으면 표시) */}
                         <td className="py-2.5 px-3 min-w-[340px] w-full">
                           <div className="font-black text-slate-900 dark:text-white text-xs leading-relaxed group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors break-words">
                             {item.title}
@@ -1118,28 +1216,17 @@ export const UnifiedAbnormalityControlPanel = ({
                               {item.content}
                             </div>
                           )}
-                          {item.actionResult && (
-                            <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
-                              <span>↳ 🟢 [조치] {item.actionResult}</span>
+                          {item.actionResult && item.actionResult.trim() && (
+                            <div className="text-[10.5px] text-emerald-700 dark:text-emerald-400 font-bold mt-1.5 flex items-center gap-1 bg-emerald-50/80 dark:bg-emerald-950/40 px-2 py-1 rounded-md border border-emerald-200 dark:border-emerald-800">
+                              <span>↳ 🟢 <b>[조치결과]</b> {item.actionResult}</span>
                             </div>
                           )}
                         </td>
 
-                        {/* 손실 (분/kg) */}
-                        <td className="py-2.5 px-2 text-center font-mono text-[10.5px] whitespace-nowrap">
-                          {item.downtimeMinutes > 0 ? (
-                            <span className="text-orange-600 dark:text-orange-400 font-bold">{item.downtimeMinutes}분</span>
-                          ) : item.scrapKg > 0 ? (
-                            <span className="text-rose-600 dark:text-rose-400 font-bold">{item.scrapKg}kg</span>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-700">-</span>
-                          )}
-                        </td>
-
-                        {/* 조치 (조치완료 vs 조치중) */}
+                        {/* 조치 (조치완료 vs 조치중만 간결히 표시) */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
                           <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black ${
                               item.isResolved
                                 ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
                                 : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse"
@@ -1147,6 +1234,33 @@ export const UnifiedAbnormalityControlPanel = ({
                           >
                             {item.isResolved ? "조치완료" : "조치중"}
                           </span>
+                        </td>
+
+                        {/* 변동점대장 등록 (탭 시 상단 관리대장으로 복사본 저장) */}
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          {item.isRegisteredInLedger ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLedger(item)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-rose-600 text-white text-[10.5px] font-black transition-all shadow-2xs group/btn cursor-pointer"
+                              title="클릭 시 변동점 관리대장에서 등록 해제"
+                            >
+                              <Check className="w-3 h-3 group-hover/btn:hidden" />
+                              <X className="w-3 h-3 hidden group-hover/btn:inline" />
+                              <span className="group-hover/btn:hidden">대장등록됨</span>
+                              <span className="hidden group-hover/btn:inline">등록해제</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleLedger(item)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-600 text-indigo-700 dark:text-indigo-300 hover:text-white border border-indigo-300 dark:border-indigo-700 text-[10.5px] font-bold transition-all cursor-pointer shadow-2xs"
+                              title="클릭 시 상단 변동점 관리대장으로 복사본 저장"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>대장등록</span>
+                            </button>
+                          )}
                         </td>
 
                         {/* 사진 */}
@@ -1160,7 +1274,7 @@ export const UnifiedAbnormalityControlPanel = ({
                                 const src = typeof firstImg === "object" ? firstImg.dataUrl || firstImg.url : firstImg;
                                 if (src) setPreviewImage(src);
                               }}
-                              className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-bold hover:scale-105"
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-bold hover:scale-105 cursor-pointer"
                               title="사진 미리보기"
                             >
                               <Camera className="w-2.5 h-2.5 text-amber-600" />
@@ -1379,22 +1493,43 @@ export const UnifiedAbnormalityControlPanel = ({
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-1.5 pt-1">
+                <div className="flex items-center justify-between gap-1.5 pt-1">
                   <button
                     type="button"
-                    onClick={handleCloseDetailModal}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                    onClick={() => {
+                      handleToggleLedger(selectedItemForDetail);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-black text-xs transition-all flex items-center gap-1 cursor-pointer ${
+                      fourMLedgerRecords.some((r) => r.originalId === selectedItemForDetail.id || r.id === selectedItemForDetail.id)
+                        ? "bg-emerald-600 text-white shadow-xs"
+                        : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-600 hover:text-white"
+                    }`}
                   >
-                    닫기
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>
+                      {fourMLedgerRecords.some((r) => r.originalId === selectedItemForDetail.id || r.id === selectedItemForDetail.id)
+                        ? "공식 대장 등록됨 (클릭 시 해제)"
+                        : "➕ 공식 변동점 대장 등록"}
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveActionResult}
-                    disabled={isSavingAction}
-                    className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs transition cursor-pointer"
-                  >
-                    {isSavingAction ? "저장 중..." : "조치 저장"}
-                  </button>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleCloseDetailModal}
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+                    >
+                      닫기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveActionResult}
+                      disabled={isSavingAction}
+                      className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs shadow-xs transition cursor-pointer"
+                    >
+                      {isSavingAction ? "저장 중..." : "조치 저장"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
