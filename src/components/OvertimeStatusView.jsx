@@ -52,7 +52,13 @@ import {
   saveWorkerPersonnelCard,
   getSkillMeta,
   SKILL_LEVEL_META,
-  calculateTenureFromJoinDate
+  calculateTenureFromJoinDate,
+  calculateProcessYearFromJoinDate,
+  DEPARTMENTS_LIST,
+  POSITIONS_LIST,
+  STANDARD_PROCESS_LIST,
+  normalizeStandardDept,
+  normalizeStandardPosition
 } from "../services/personnelCardService.js";
 import { useAuth } from "../context/AuthContext";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
@@ -808,9 +814,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [manageWorkerSearch, setManageWorkerSearch] = useState("");
   const [popupShowAddWorker, setPopupShowAddWorker] = useState(false);
   const [quickNewWorkerName, setQuickNewWorkerName] = useState("");
-  const [quickNewWorkerDept, setQuickNewWorkerDept] = useState("가공동");
+  const [quickNewWorkerDept, setQuickNewWorkerDept] = useState("생산팀");
   const [quickNewWorkerLine, setQuickNewWorkerLine] = useState("");
-  const [quickNewWorkerPos, setQuickNewWorkerPos] = useState("작업원");
+  const [quickNewWorkerPos, setQuickNewWorkerPos] = useState("사원");
 
   // Legacy overtime reports state (특근보고서 관리)
   const [legacyReports, setLegacyReports] = useState(() => getLocalOvertimeReports());
@@ -1297,10 +1303,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return;
     }
     const company = cleanCompanyName(selectedCompanyManageWorkers || selectedCompanyPopup || "오륙");
-    const dept = normalizeDept(quickNewWorkerDept || "가공동");
+    const dept = normalizeStandardDept(quickNewWorkerDept || "생산팀");
     const line = quickNewWorkerLine.trim() || dept;
     const name = quickNewWorkerName.trim();
-    const position = quickNewWorkerPos || "작업원";
+    const position = normalizeStandardPosition(quickNewWorkerPos || "사원");
 
     // Build standard attendance record for current month
     const emptyDaily = {};
@@ -2858,15 +2864,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     onChange={(e) => setQuickNewWorkerDept(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
+                    {DEPARTMENTS_LIST.map((d) => (
+                      <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
                     ))}
                   </select>
                 </div>
                 <div className="sm:col-span-2">
                   <input
                     type="text"
-                    placeholder="주공정/라인"
+                    placeholder="주공정/라인 (예: 압출)"
                     value={quickNewWorkerLine}
                     onChange={(e) => setQuickNewWorkerLine(e.target.value)}
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
@@ -2878,14 +2884,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     onChange={(e) => setQuickNewWorkerPos(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
-                    <option value="작업원">작업원</option>
-                    <option value="조장">조장</option>
-                    <option value="반장">반장</option>
-                    <option value="선임">선임</option>
-                    <option value="책임">책임</option>
-                    <option value="주임">주임</option>
-                    <option value="대리">대리</option>
-                    <option value="과장">과장</option>
+                    {POSITIONS_LIST.map((pos) => (
+                      <option key={pos} value={pos} className="bg-slate-900 text-white font-bold">{pos}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="sm:col-span-1">
@@ -4090,7 +4091,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     onChange={(e) => setQuickNewWorkerDept(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
-                    {DEPARTMENTS.map((d) => (
+                    {DEPARTMENTS_LIST.map((d) => (
                       <option key={d} value={d} className="bg-slate-900 text-white font-bold">{d}</option>
                     ))}
                   </select>
@@ -4098,7 +4099,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 <div className="sm:col-span-3">
                   <input
                     type="text"
-                    placeholder="라인/공정 (선택)"
+                    placeholder="주공정/라인 (예: 압출)"
                     value={quickNewWorkerLine}
                     onChange={(e) => setQuickNewWorkerLine(e.target.value)}
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
@@ -4108,21 +4109,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   <select
                     value={quickNewWorkerPos}
                     onChange={(e) => setQuickNewWorkerPos(e.target.value)}
-                    className="w-full px-2 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
-                    <option value="작업원" className="bg-slate-900 text-white">작업원</option>
-                    <option value="반장/조장" className="bg-slate-900 text-white">반장/조장</option>
-                    <option value="조장" className="bg-slate-900 text-white">조장</option>
-                    <option value="반장" className="bg-slate-900 text-white">반장</option>
-                    <option value="담당" className="bg-slate-900 text-white">담당</option>
-                    <option value="선임" className="bg-slate-900 text-white">선임</option>
-                    <option value="책임" className="bg-slate-900 text-white">책임</option>
-                    <option value="주임" className="bg-slate-900 text-white">주임</option>
-                    <option value="대리" className="bg-slate-900 text-white">대리</option>
-                    <option value="과장" className="bg-slate-900 text-white">과장</option>
-                    <option value="차장" className="bg-slate-900 text-white">차장</option>
-                    <option value="부장" className="bg-slate-900 text-white">부장</option>
-                    <option value="이사" className="bg-slate-900 text-white">이사</option>
+                    {POSITIONS_LIST.map((pos) => (
+                      <option key={pos} value={pos} className="bg-slate-900 text-white font-bold">{pos}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="sm:col-span-2">

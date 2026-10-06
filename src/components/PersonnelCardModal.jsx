@@ -22,12 +22,17 @@ import {
 } from "lucide-react";
 import {
   STANDARD_PROCESS_LIST,
+  DEPARTMENTS_LIST,
+  POSITIONS_LIST,
   SKILL_LEVEL_META,
   getSkillMeta,
   calculateTenureFromJoinDate,
-  getWorkerPersonnelCard
+  calculateProcessYearFromJoinDate,
+  getWorkerPersonnelCard,
+  normalizeStandardDept,
+  normalizeStandardPosition
 } from "../services/personnelCardService.js";
-import { COMPANY_THEMES, cleanCompanyName, normalizeDept } from "../services/overtimeSmartService.js";
+import { COMPANY_THEMES, cleanCompanyName } from "../services/overtimeSmartService.js";
 
 export default function PersonnelCardModal({
   isOpen,
@@ -57,19 +62,24 @@ export default function PersonnelCardModal({
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
-      // 입사일 변경 시 근속기간 자동 계산
+      // 입사일 변경 시 근속기간 및 공정년차 동시 자동 계산
       if (field === "joinDate") {
         next.tenure = calculateTenureFromJoinDate(value);
+        next.processYear = calculateProcessYearFromJoinDate(value);
       }
       // 숙련등급 변경 시 등급 라벨 자동 업데이트
       if (field === "skillLevel") {
         next.skillGrade = getSkillMeta(value).grade;
       }
+      // 주공정 변경 시 지원 공정에서 해당 주공정 제거
+      if (field === "mainProcess") {
+        next.subProcesses = (prev.subProcesses || []).filter((p) => p !== value);
+      }
       return next;
     });
   };
 
-  // Toggle Sub-Process Tag
+  // Toggle Sub-Process Tag (다중 선택 지원)
   const handleToggleSubProcess = (processName) => {
     setFormData((prev) => {
       const current = prev.subProcesses || [];
@@ -162,7 +172,7 @@ export default function PersonnelCardModal({
         <div className="p-3 sm:p-5 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 text-xs">
           {/* 📝 LEFT COLUMN: Interactive Edit Form (7 cols) */}
           <div className={`lg:col-span-7 space-y-4 ${activeMobileView === "preview" ? "hidden sm:block" : "block"}`}>
-            {/* Section 1: 기본 인적사항 */}
+            {/* Section 1: 기본 인적사항 (소속, 부서: 생산팀/생산관리팀/관리팀, 직위: 이사/책임/선임/사원) */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
                 <span className="font-black text-xs sm:text-sm text-purple-300 flex items-center gap-1.5">
@@ -204,36 +214,31 @@ export default function PersonnelCardModal({
                   />
                 </div>
 
+                {/* 부서 선택: 생산팀 / 생산관리팀 / 관리팀 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서 (3대 부서)</label>
                   <select
                     value={formData.dept}
                     onChange={(e) => handleChange("dept", e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
-                    <option value="압출동">압출동</option>
-                    <option value="가공동">가공동</option>
-                    <option value="관리부">관리부</option>
+                    {DEPARTMENTS_LIST.map((deptName) => (
+                      <option key={deptName} value={deptName}>{deptName}</option>
+                    ))}
                   </select>
                 </div>
 
+                {/* 직위 선택: 이사 / 책임 / 선임 / 사원 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">직위/직급</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">직위/직급 (4대 직위)</label>
                   <select
                     value={formData.position}
                     onChange={(e) => handleChange("position", e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   >
-                    <option value="작업원">작업원</option>
-                    <option value="조장">조장</option>
-                    <option value="반장">반장</option>
-                    <option value="선임">선임</option>
-                    <option value="책임">책임</option>
-                    <option value="주임">주임</option>
-                    <option value="대리">대리</option>
-                    <option value="과장">과장</option>
-                    <option value="차장">차장</option>
-                    <option value="부장">부장</option>
+                    {POSITIONS_LIST.map((posName) => (
+                      <option key={posName} value={posName}>{posName}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -242,95 +247,87 @@ export default function PersonnelCardModal({
                   <input
                     type="text"
                     placeholder="예: 2호기 라인"
-                    value={formData.line}
+                    value={formData.line || ""}
                     onChange={(e) => handleChange("line", e.target.value)}
                     className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
                   />
                 </div>
               </div>
 
-              {/* 입사일자 & 근속기간 & 총 제조경력 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>입사일자</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.joinDate}
-                    onChange={(e) => handleChange("joinDate", e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold font-mono"
-                  />
-                </div>
+              {/* ⭐ 입사일자 입력 시 근속기간 & 공정년차만 자동계산 표시 */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-400 block pb-1 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>입사일자 *</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.joinDate}
+                      onChange={(e) => handleChange("joinDate", e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border-2 border-cyan-500/50 focus:border-cyan-400 text-white text-xs font-bold font-mono shadow-inner"
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>근속기간 (자동계산)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.tenure}
-                    onChange={(e) => handleChange("tenure", e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-emerald-300 text-xs font-bold"
-                  />
-                </div>
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-center">
+                    <span className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>근속기간 (자동계산)</span>
+                    </span>
+                    <span className="font-mono font-black text-sm text-emerald-400 pt-0.5">
+                      {formData.tenure || calculateTenureFromJoinDate(formData.joinDate)}
+                    </span>
+                  </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1 flex items-center gap-1">
-                    <Briefcase className="w-3.5 h-3.5 text-amber-400" />
-                    <span>총 제조경력</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="예: 총 8년"
-                    value={formData.career}
-                    onChange={(e) => handleChange("career", e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
-                  />
+                  <div className="bg-slate-900/90 p-2.5 rounded-xl border border-slate-800 flex flex-col justify-center">
+                    <span className="text-[10.5px] font-bold text-slate-400 flex items-center gap-1">
+                      <Briefcase className="w-3.5 h-3.5 text-amber-400" />
+                      <span>공정년차 (자동계산)</span>
+                    </span>
+                    <span className="font-mono font-black text-sm text-amber-300 pt-0.5">
+                      {formData.processYear || calculateProcessYearFromJoinDate(formData.joinDate)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Section 2: 주공정 및 숙련등급 (1~5 별점 피커) */}
+            {/* Section 2: 주공정 (압출 / 소재준비 / 조인트 / 사상 / 검사) & 숙련등급 별점 */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
                 <span className="font-black text-xs sm:text-sm text-amber-300 flex items-center gap-1.5">
                   <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  <span>주공정 & 숙련등급 평가</span>
+                  <span>주공정 구분 & 숙련등급 평가</span>
                 </span>
                 <span className={`px-2 py-0.5 rounded-md text-[11px] font-black border ${currentSkillMeta.badgeClass}`}>
                   {currentSkillMeta.grade}
                 </span>
               </div>
 
-              {/* 주공정 & 공정년차 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">주 담당 공정 *</label>
-                  <div className="flex gap-1.5">
-                    <select
-                      value={formData.mainProcess}
-                      onChange={(e) => handleChange("mainProcess", e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-amber-400 text-white text-xs font-black"
-                    >
-                      {STANDARD_PROCESS_LIST.map((proc) => (
-                        <option key={proc} value={proc}>{proc}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">해당 공정 경력/년차</label>
-                  <input
-                    type="text"
-                    placeholder="예: 5년차"
-                    value={formData.processYear}
-                    onChange={(e) => handleChange("processYear", e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-amber-400 text-white text-xs font-bold"
-                  />
+              {/* 주공정 5가지 선택 버튼 그룹 */}
+              <div>
+                <label className="text-[11px] font-bold text-slate-400 block pb-1.5">
+                  주 담당 공정 선택 (5대 공정):
+                </label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {STANDARD_PROCESS_LIST.map((proc) => {
+                    const isSelected = formData.mainProcess === proc;
+                    return (
+                      <button
+                        key={proc}
+                        type="button"
+                        onClick={() => handleChange("mainProcess", proc)}
+                        className={`py-2 px-1 rounded-xl font-black text-xs transition-all cursor-pointer text-center ${
+                          isSelected
+                            ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-300 scale-102"
+                            : "bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-700"
+                        }`}
+                      >
+                        {proc}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -383,12 +380,12 @@ export default function PersonnelCardModal({
               </div>
             </div>
 
-            {/* Section 3: 다기능공 (Multi-Skill) & 지원 가능 공정 태그 */}
+            {/* Section 3: 다기능공 (Multi-Skill) & 지원 공정 다중 선택 */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
               <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
                 <span className="font-black text-xs sm:text-sm text-cyan-300 flex items-center gap-1.5">
                   <Zap className="w-4 h-4 text-cyan-400" />
-                  <span>다기능공 (Multi-Skill) 지정 & 지원 가능 공정</span>
+                  <span>다기능공 (Multi-Skill) & 지원 공정 다중 선택</span>
                 </span>
                 {formData.isMultiSkill ? (
                   <span className="px-2 py-0.5 rounded-full text-[10.5px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700/80 flex items-center gap-1 shadow-sm animate-pulse">
@@ -405,8 +402,8 @@ export default function PersonnelCardModal({
               {/* Multi-skill toggle switch */}
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800">
                 <div>
-                  <span className="font-black text-xs text-white block">다기능공 (Multi-Skilled Worker) 여부</span>
-                  <span className="text-[10.5px] text-slate-400">주공정 외 2개 이상의 생산 라인/공정을 능숙하게 백업 지원 가능한 근로자</span>
+                  <span className="font-black text-xs text-white block">다기능공 (Multi-Skilled Worker) 지정</span>
+                  <span className="text-[10.5px] text-slate-400">주공정({formData.mainProcess}) 외 다른 공정을 지원 가능한 근로자</span>
                 </div>
                 <button
                   type="button"
@@ -423,12 +420,17 @@ export default function PersonnelCardModal({
                 </button>
               </div>
 
-              {/* Sub-process selection pills */}
+              {/* ⭐ 지원 공정 다중 선택 버튼 (압출 / 소재준비 / 조인트 / 사상 / 검사) */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 block">
-                  지원 가능 서브 공정 선택 (클릭하여 추가/해제):
-                </label>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-400 block">
+                    지원 가능 공정 선택 (다중 선택 가능):
+                  </label>
+                  <span className="text-[10.5px] text-cyan-400 font-bold">
+                    {(formData.subProcesses || []).length}개 공정 선택됨
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
                   {STANDARD_PROCESS_LIST.map((proc) => {
                     const isSelected = (formData.subProcesses || []).includes(proc);
                     const isMain = formData.mainProcess === proc;
@@ -438,19 +440,22 @@ export default function PersonnelCardModal({
                         type="button"
                         disabled={isMain}
                         onClick={() => handleToggleSubProcess(proc)}
-                        className={`px-2.5 py-1 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                        className={`py-2 px-1 rounded-xl font-bold text-xs transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                           isMain
-                            ? "bg-amber-950 text-amber-300 border border-amber-700/60 opacity-60 cursor-not-allowed"
+                            ? "bg-amber-950/60 text-amber-300 border border-amber-700/60 opacity-60 cursor-not-allowed"
                             : isSelected
-                            ? "bg-cyan-600 text-white shadow-xs ring-1 ring-cyan-400"
+                            ? "bg-cyan-600 text-white shadow-xs ring-2 ring-cyan-400 font-black scale-102"
                             : "bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-700"
                         }`}
                       >
                         {isMain ? (
-                          <span>★ {proc} (주공정)</span>
+                          <>
+                            <span className="text-[9.5px] text-amber-400">★ 주공정</span>
+                            <span>{proc}</span>
+                          </>
                         ) : (
                           <>
-                            <span>{isSelected ? "✓" : "+"}</span>
+                            <span className="text-[10px]">{isSelected ? "✓ 지원" : "+"}</span>
                             <span>{proc}</span>
                           </>
                         )}
@@ -461,7 +466,7 @@ export default function PersonnelCardModal({
               </div>
             </div>
 
-            {/* Section 4: 특기사항 및 현장 평가 메모 */}
+            {/* Section 4: 특기사항 및 평가 메모 */}
             <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-2">
               <label className="font-bold text-slate-300 block text-xs flex items-center gap-1.5">
                 <FileCheck className="w-3.5 h-3.5 text-purple-400" />
@@ -471,7 +476,7 @@ export default function PersonnelCardModal({
                 rows={2}
                 value={formData.notes || ""}
                 onChange={(e) => handleChange("notes", e.target.value)}
-                placeholder="예: 설비 셋업 및 트러블 대응 능숙, 포밍/후가공 전 공정 백업 가능"
+                placeholder="예: 공정 트러블 조치 능숙, 사상 및 검사 공정 원활한 백업 가능"
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-medium text-xs focus:border-purple-400 placeholder:text-slate-500"
               />
             </div>
@@ -513,7 +518,7 @@ export default function PersonnelCardModal({
                 {/* Avatar Placeholder */}
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-purple-400/60 flex flex-col items-center justify-center shrink-0 shadow-md">
                   <User className="w-6 h-6 text-purple-300" />
-                  <span className="text-[9px] font-bold text-slate-400 mt-0.5">{formData.position}</span>
+                  <span className="text-[9.5px] font-black text-purple-300 mt-0.5">{formData.position}</span>
                 </div>
 
                 <div className="min-w-0 flex-1 space-y-0.5">
@@ -521,14 +526,14 @@ export default function PersonnelCardModal({
                     <h3 className="font-black text-base sm:text-lg text-white tracking-tight truncate">
                       {formData.name || "근로자"}
                     </h3>
-                    <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
-                      {formData.position || "작업원"}
+                    <span className="px-2 py-0.5 rounded-md text-[10.5px] font-black bg-purple-950 text-purple-300 border border-purple-800">
+                      {formData.position || "사원"}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                    <span>{formData.dept}</span>
+                    <span className="font-bold text-slate-300">{formData.dept}</span>
                     <span>•</span>
-                    <span className="text-slate-300">{formData.line || formData.dept}</span>
+                    <span className="text-slate-400">{formData.line || formData.dept}</span>
                   </div>
                 </div>
               </div>
@@ -558,30 +563,30 @@ export default function PersonnelCardModal({
                 </div>
               </div>
 
-              {/* 2-Column Career & Process Info Grid */}
+              {/* 2-Column Grid: [입사일 / 근속기간 (자동계산)] & [주공정 / 공정년차 (자동계산)] */}
               <div className="grid grid-cols-2 gap-2 text-[11px] relative z-10">
-                <div className="bg-slate-900/70 p-2 rounded-xl border border-slate-800/80">
+                <div className="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800/80 space-y-0.5">
                   <span className="text-[10px] font-bold text-slate-400 block">입사일 / 근속기간</span>
-                  <div className="font-bold text-white pt-0.5">
+                  <div className="font-bold text-white font-mono text-[11px]">
                     {formData.joinDate}
                   </div>
-                  <div className="text-emerald-400 font-black text-[10.5px]">
-                    {formData.tenure}
+                  <div className="text-emerald-400 font-black text-xs">
+                    {formData.tenure || calculateTenureFromJoinDate(formData.joinDate)}
                   </div>
                 </div>
 
-                <div className="bg-slate-900/70 p-2 rounded-xl border border-slate-800/80">
-                  <span className="text-[10px] font-bold text-slate-400 block">주공정 / 경력년차</span>
-                  <div className="font-bold text-amber-300 pt-0.5">
+                <div className="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800/80 space-y-0.5">
+                  <span className="text-[10px] font-bold text-slate-400 block">주공정 / 공정년차</span>
+                  <div className="font-black text-amber-300 text-xs">
                     {formData.mainProcess}
                   </div>
-                  <div className="text-slate-300 font-bold text-[10.5px]">
-                    {formData.processYear || "3년차"}
+                  <div className="text-cyan-300 font-black text-[11.5px]">
+                    {formData.processYear || calculateProcessYearFromJoinDate(formData.joinDate)}
                   </div>
                 </div>
               </div>
 
-              {/* 다기능공 뱃지 & 지원 가능 공정 태그 */}
+              {/* 다기능공 뱃지 & 지원 공정 목록 */}
               <div className="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800/80 space-y-1.5 relative z-10">
                 <div className="flex items-center justify-between">
                   <span className="text-[10.5px] font-bold text-slate-400">다기능공 여부</span>
@@ -599,11 +604,11 @@ export default function PersonnelCardModal({
 
                 {formData.isMultiSkill && (formData.subProcesses || []).length > 0 && (
                   <div className="flex flex-wrap gap-1 pt-1">
-                    <span className="text-[10px] text-slate-500 mr-1 self-center">지원공정:</span>
+                    <span className="text-[10px] text-slate-400 self-center">지원공정:</span>
                     {formData.subProcesses.map((p) => (
                       <span
                         key={p}
-                        className="px-1.5 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800/70 text-[10px] font-bold"
+                        className="px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-800/70 text-[10px] font-bold"
                       >
                         {p}
                       </span>

@@ -8,23 +8,53 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { sanitizeForFirestore } from "../utils/firestoreUtils.js";
-import { cleanCompanyName, normalizeDept } from "./overtimeSmartService.js";
+import { cleanCompanyName } from "./overtimeSmartService.js";
 
 const LOCAL_STORAGE_KEY = "oryuk_personnel_cards_v1";
 
-// 표준 제조 공정 목록
+// ⭐ 표준 5대 제조 공정 목록 (압출 / 소재준비 / 조인트 / 사상 / 검사)
 export const STANDARD_PROCESS_LIST = [
   "압출",
-  "포밍",
-  "후가공",
-  "용접",
-  "프레스",
-  "조립",
-  "품질검사",
-  "설비보전",
-  "도장/코팅",
-  "포장/출하"
+  "소재준비",
+  "조인트",
+  "사상",
+  "검사"
 ];
+
+// ⭐ 표준 3대 부서 목록 (생산팀 / 생산관리팀 / 관리팀)
+export const DEPARTMENTS_LIST = [
+  "생산팀",
+  "생산관리팀",
+  "관리팀"
+];
+
+// ⭐ 표준 4대 직급 목록 (사원 / 선임 / 책임 / 이사)
+export const POSITIONS_LIST = [
+  "사원",
+  "선임",
+  "책임",
+  "이사"
+];
+
+// 부서 정규화 헬퍼 (생산팀, 생산관리팀, 관리팀 3개로 표준화)
+export const normalizeStandardDept = (dept) => {
+  if (!dept) return "생산팀";
+  const str = String(dept).trim();
+  if (str === "생산팀" || str === "생산관리팀" || str === "관리팀") return str;
+  if (str.includes("생산관리") || str.includes("공정관리") || str.includes("자재") || str.includes("출하")) return "생산관리팀";
+  if (str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계")) return "관리팀";
+  return "생산팀";
+};
+
+// 직위 정규화 헬퍼 (사원, 선임, 책임, 이사 4개로 표준화)
+export const normalizeStandardPosition = (pos) => {
+  if (!pos) return "사원";
+  const str = String(pos).trim();
+  if (str === "이사" || str.includes("이사") || str.includes("대표") || str.includes("임원")) return "이사";
+  if (str === "책임" || str.includes("책임") || str.includes("부장") || str.includes("차장") || str.includes("과장")) return "책임";
+  if (str === "선임" || str.includes("선임") || str.includes("반장") || str.includes("조장") || str.includes("대리") || str.includes("주임")) return "선임";
+  return "사원";
+};
 
 // 숙련등급 메타 정의 (1~5성)
 export const SKILL_LEVEL_META = {
@@ -119,6 +149,41 @@ export const calculateTenureFromJoinDate = (joinDateStr) => {
   }
 };
 
+// ⭐ 입사일 기준 공정년차 자동 계산 (예: "7년차", "3년차", "1년차")
+export const calculateProcessYearFromJoinDate = (joinDateStr) => {
+  if (!joinDateStr) return "1년차";
+  try {
+    const cleanStr = String(joinDateStr).replace(/\./g, "-").trim();
+    const parts = cleanStr.match(/(\d{4})[-/.]?(\d{1,2})[-/.]?(\d{1,2})?/);
+    if (!parts) return "1년차";
+
+    const y = parseInt(parts[1], 10);
+    const m = parseInt(parts[2], 10);
+    const d = parts[3] ? parseInt(parts[3], 10) : 1;
+
+    const startDate = new Date(y, m - 1, d);
+    const now = new Date();
+
+    if (isNaN(startDate.getTime())) return "1년차";
+
+    let years = now.getFullYear() - startDate.getFullYear();
+    let months = now.getMonth() - startDate.getMonth();
+
+    if (now.getDate() < startDate.getDate()) {
+      months--;
+    }
+
+    if (months < 0) {
+      years--;
+    }
+
+    const totalYears = Math.max(0, years);
+    return `${totalYears + 1}년차`;
+  } catch (e) {
+    return "1년차";
+  }
+};
+
 // 사번 자동 생성 헬퍼 (예: "200315")
 export const generateDefaultEmpNo = (worker, idx = 1) => {
   if (worker?.empNo) return worker.empNo;
@@ -132,7 +197,7 @@ export const generateDefaultEmpNo = (worker, idx = 1) => {
   return `${yearPrefix}${seq}`;
 };
 
-// 근로자 초기 인사카드 기본값 생성기
+// 근로자 초기 인사카드 기본값 생성기 (5대 주공정 및 3대 부서, 4대 직급 적용)
 export const getWorkerPersonnelCard = (worker, idx = 1) => {
   if (!worker) return null;
 
@@ -140,27 +205,28 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   const existingCard = worker.personnelCard || {};
 
   const company = cleanCompanyName(worker.company || existingCard.company || "오륙");
-  const dept = normalizeDept(worker.dept || existingCard.dept || "압출동");
+  const dept = normalizeStandardDept(worker.dept || existingCard.dept || "생산팀");
   const name = String(worker.name || existingCard.name || "").trim();
-  const position = worker.position || existingCard.position || "작업원";
+  const position = normalizeStandardPosition(worker.position || existingCard.position || "사원");
   const line = worker.line || existingCard.line || dept;
 
-  // 기본 주공정 추정
+  // 기본 주공정 추정 (압출 / 소재준비 / 조인트 / 사상 / 검사)
   let defaultMainProcess = existingCard.mainProcess;
-  if (!defaultMainProcess) {
+  if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
     if (line.includes("압출") || dept.includes("압출")) defaultMainProcess = "압출";
-    else if (line.includes("포밍") || line.includes("성형")) defaultMainProcess = "포밍";
-    else if (line.includes("가공") || line.includes("후가공")) defaultMainProcess = "후가공";
-    else if (line.includes("용접")) defaultMainProcess = "용접";
-    else if (line.includes("프레스")) defaultMainProcess = "프레스";
-    else if (line.includes("관리") || dept.includes("관리")) defaultMainProcess = "품질검사";
+    else if (line.includes("소재") || line.includes("원자재") || line.includes("절단")) defaultMainProcess = "소재준비";
+    else if (line.includes("조인트") || line.includes("용접") || line.includes("체결")) defaultMainProcess = "조인트";
+    else if (line.includes("사상") || line.includes("가공") || line.includes("후가공") || line.includes("포밍")) defaultMainProcess = "사상";
+    else if (line.includes("검사") || line.includes("품질") || dept.includes("관리")) defaultMainProcess = "검사";
     else defaultMainProcess = "압출";
   }
 
   // 기본 숙련도 추정
   let defaultSkillLevel = existingCard.skillLevel;
   if (!defaultSkillLevel) {
-    if (position.includes("반장") || position.includes("책임") || position.includes("조장") || position.includes("선임")) {
+    if (position === "이사" || position === "책임") {
+      defaultSkillLevel = 5;
+    } else if (position === "선임") {
       defaultSkillLevel = 4;
     } else {
       defaultSkillLevel = 3;
@@ -170,22 +236,25 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 기본 다기능공 여부
   const isMultiSkill = existingCard.isMultiSkill !== undefined ? existingCard.isMultiSkill : (defaultSkillLevel >= 4);
 
-  // 기본 서브 지원공정
+  // 기본 서브 지원공정 (압출, 소재준비, 조인트, 사상, 검사 중 선택)
   let subProcesses = existingCard.subProcesses;
-  if (!subProcesses || !Array.isArray(subProcesses)) {
+  if (!subProcesses || !Array.isArray(subProcesses) || subProcesses.length === 0) {
     if (isMultiSkill) {
-      if (defaultMainProcess === "압출") subProcesses = ["포밍", "후가공", "품질검사"];
-      else if (defaultMainProcess === "포밍") subProcesses = ["후가공", "조립", "품질검사"];
-      else subProcesses = ["압출", "포밍", "품질검사"];
+      if (defaultMainProcess === "압출") subProcesses = ["소재준비", "사상", "검사"];
+      else if (defaultMainProcess === "조인트") subProcesses = ["사상", "검사"];
+      else if (defaultMainProcess === "소재준비") subProcesses = ["압출", "사상"];
+      else subProcesses = ["조인트", "검사"];
     } else {
       subProcesses = [];
     }
   }
 
+  // 지원 공정 중 표준 5대 공정에 해당하는 항목만 필터링
+  subProcesses = subProcesses.filter((p) => STANDARD_PROCESS_LIST.includes(p) && p !== defaultMainProcess);
+
   const joinDate = existingCard.joinDate || "2022-03-15";
-  const tenure = existingCard.tenure || calculateTenureFromJoinDate(joinDate);
-  const career = existingCard.career || `${tenure} (총 제조경력)`;
-  const processYear = existingCard.processYear || `${tenure.split(" ")[0]}차`;
+  const tenure = calculateTenureFromJoinDate(joinDate);
+  const processYear = calculateProcessYearFromJoinDate(joinDate);
   const empNo = existingCard.empNo || worker.empNo || generateDefaultEmpNo(worker, idx);
 
   return {
@@ -197,15 +266,13 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     position,
     joinDate,
     tenure,
-    career,
     mainProcess: defaultMainProcess,
     processYear,
     skillLevel: defaultSkillLevel,
     skillGrade: getSkillMeta(defaultSkillLevel).grade,
     isMultiSkill,
     subProcesses,
-    certifications: existingCard.certifications || "지게차 운전, 위험물 취급 안전교육 수료",
-    notes: existingCard.notes || `${defaultMainProcess} 공정 트러블 대응 우수 및 다기능 백업 가능`,
+    notes: existingCard.notes || `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`,
     updatedAt: existingCard.updatedAt || new Date().toISOString()
   };
 };
@@ -236,12 +303,17 @@ export const saveLocalPersonnelCardsMap = (cardsMap) => {
 export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
   try {
     const cardKey = String(workerIdOrKey || `${cardData.company}_${cardData.name}`).trim();
+    const tenure = calculateTenureFromJoinDate(cardData.joinDate);
+    const processYear = calculateProcessYearFromJoinDate(cardData.joinDate);
+
     const cleanData = {
       ...cardData,
       company: cleanCompanyName(cardData.company),
-      dept: normalizeDept(cardData.dept),
+      dept: normalizeStandardDept(cardData.dept),
+      position: normalizeStandardPosition(cardData.position),
       skillGrade: getSkillMeta(cardData.skillLevel).grade,
-      tenure: calculateTenureFromJoinDate(cardData.joinDate),
+      tenure,
+      processYear,
       updatedAt: new Date().toISOString()
     };
 
