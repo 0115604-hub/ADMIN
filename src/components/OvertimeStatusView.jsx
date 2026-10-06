@@ -54,6 +54,7 @@ import {
   saveWorkerPersonnelCard,
   getSkillMeta,
   getNationalityMeta,
+  getInspectorGradeMeta,
   SKILL_LEVEL_META,
   calculateTenureFromJoinDate,
   calculateProcessYearFromJoinDate,
@@ -3498,11 +3499,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               <span className="font-black text-amber-600 dark:text-amber-300 text-xs truncate">
                                 {card.mainProcess || "압출"}
                               </span>
-                              {card.mainProcess === "검사" && card.inspectorGrade && (
-                                <span className="px-1 py-0.2 rounded text-[9.5px] font-black bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                  {card.inspectorGrade.split(" ")[0]}
-                                </span>
-                              )}
+                              {card.mainProcess === "검사" && card.inspectorGrade && (() => {
+                                const meta = getInspectorGradeMeta(card.inspectorGrade);
+                                return (
+                                  <span className={`px-1 py-0.2 rounded text-[9.5px] font-black border ${meta.badgeClass}`}>
+                                    {meta.shortGrade || card.inspectorGrade.split(" ")[0]}
+                                  </span>
+                                );
+                              })()}
                             </div>
                             <span className="text-[10.5px] text-slate-400 font-bold block">
                               {card.processYear || "3년차"}

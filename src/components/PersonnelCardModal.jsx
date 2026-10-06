@@ -187,7 +187,7 @@ export default function PersonnelCardModal({
         next.subProcesses = (prev.subProcesses || []).filter((p) => p !== value);
         // 검사 공정 선택 시 기본 검사원 등급 자동 부여
         if (value === "검사" && !prev.inspectorGrade) {
-          next.inspectorGrade = "B등급 (일반검사원)";
+          next.inspectorGrade = "A등급 (정검사원)";
         }
       }
       return next;
@@ -643,7 +643,7 @@ export default function PersonnelCardModal({
                 {/* Inspector Grade Selector Cards */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-slate-300 block">
-                    검사원 자격 등급 선택 (A/B/C 등급):
+                    검사원 자격 등급 선택 (S/A/B 등급):
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {INSPECTOR_GRADES.map((ig) => {
@@ -654,15 +654,15 @@ export default function PersonnelCardModal({
                           onClick={() => handleChange("inspectorGrade", ig.grade)}
                           className={`p-2.5 rounded-xl border transition-all cursor-pointer space-y-1 ${
                             isSelected
-                              ? "bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-md shadow-emerald-950/80"
+                              ? `${ig.badgeClass} shadow-md shadow-slate-950/80`
                               : "bg-slate-900/90 border-slate-700 hover:border-slate-600 hover:bg-slate-800/80 opacity-75"
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`font-black text-xs ${isSelected ? "text-emerald-300" : "text-white"}`}>
+                            <span className={`font-black text-xs ${isSelected ? ig.color : "text-white"}`}>
                               {ig.grade}
                             </span>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                            {isSelected && <Check className={`w-3.5 h-3.5 ${ig.color}`} />}
                           </div>
                           <p className="text-[10px] text-slate-400 leading-tight">
                             {ig.desc}

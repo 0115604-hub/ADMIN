@@ -69,15 +69,23 @@ export const getNationalityMeta = (code) => {
   return { code, label: `🌐 ${code}`, flag: "🌐" };
 };
 
-// ⭐ 검사원 자격 등급 정의 (검사 공정 선택 시 개별 평가)
+// ⭐ 검사원 자격 등급 정의 (검사 공정 선택 시 개별 평가: S / A / B 3단계)
 export const INSPECTOR_GRADES = [
+  {
+    grade: "S등급 (특급검사원)",
+    shortGrade: "S등급(특)",
+    level: "S",
+    color: "text-purple-400",
+    badgeClass: "bg-purple-950 text-purple-300 border-purple-700 ring-1 ring-purple-400/50",
+    desc: "최종 출하검사 승인, 초중종물 한도견본 판정, 정밀 측정기기 운용"
+  },
   {
     grade: "A등급 (정검사원)",
     shortGrade: "A등급(정)",
     level: "A",
     color: "text-emerald-400",
     badgeClass: "bg-emerald-950 text-emerald-300 border-emerald-700 ring-1 ring-emerald-400/50",
-    desc: "최종 출하검사 승인, 초중종물 한도견본 판정, 정밀 측정기기 운용"
+    desc: "양산 공정 자주검사, 치수 측정(버니어/마이크로미터), 불량 식별"
   },
   {
     grade: "B등급 (일반검사원)",
@@ -85,20 +93,31 @@ export const INSPECTOR_GRADES = [
     level: "B",
     color: "text-blue-400",
     badgeClass: "bg-blue-950 text-blue-300 border-blue-700",
-    desc: "양산 공정 자주검사, 치수 측정(버니어/마이크로미터), 불량 식별"
-  },
-  {
-    grade: "C등급 (보조검사원)",
-    shortGrade: "C등급(보조)",
-    level: "C",
-    color: "text-amber-400",
-    badgeClass: "bg-amber-950 text-amber-300 border-amber-700",
     desc: "외관 육안 검사, 포장 전 수량 및 라벨 식별 검사"
   }
 ];
 
 export const getInspectorGradeMeta = (grade) => {
-  if (!grade) return INSPECTOR_GRADES[1]; // 기본값: B등급 (일반검사원)
+  if (!grade) return INSPECTOR_GRADES[1]; // 기본값: A등급 (정검사원)
+  const str = String(grade).trim();
+  if (str.startsWith("S") || str.startsWith("s") || str.includes("특급") || str.includes("마스터")) {
+    return INSPECTOR_GRADES[0];
+  }
+  if (str.startsWith("A") || str.startsWith("a") || str.includes("정검사원") || str === "A등급") {
+    return INSPECTOR_GRADES[1];
+  }
+  if (
+    str.startsWith("B") ||
+    str.startsWith("b") ||
+    str.startsWith("C") ||
+    str.startsWith("c") ||
+    str.includes("일반검사원") ||
+    str.includes("보조검사원") ||
+    str === "B등급" ||
+    str === "C등급"
+  ) {
+    return INSPECTOR_GRADES[2];
+  }
   return (
     INSPECTOR_GRADES.find(
       (g) => g.grade === grade || g.level === grade || g.shortGrade === grade
@@ -386,7 +405,9 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   const empNo = existingCard.empNo || worker.empNo || generateDefaultEmpNo(worker, idx);
 
   // 검사원 등급 (주공정이 검사이거나 지정된 경우)
-  const inspectorGrade = existingCard.inspectorGrade || (defaultMainProcess === "검사" ? "B등급 (일반검사원)" : "");
+  const inspectorGrade = existingCard.inspectorGrade
+    ? getInspectorGradeMeta(existingCard.inspectorGrade).grade
+    : (defaultMainProcess === "검사" ? "A등급 (정검사원)" : "");
   const inspectorCertDate = existingCard.inspectorCertDate || (defaultMainProcess === "검사" ? joinDate : "");
   // 국적 (기본값: 대한민국)
   const nationality = existingCard.nationality || worker.nationality || "대한민국";
@@ -458,7 +479,7 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
       tenure,
       processYear,
       photoUrl: cardData.photoUrl || "",
-      inspectorGrade: cardData.mainProcess === "검사" ? (cardData.inspectorGrade || "B등급 (일반검사원)") : (cardData.inspectorGrade || ""),
+      inspectorGrade: cardData.mainProcess === "검사" ? (cardData.inspectorGrade ? getInspectorGradeMeta(cardData.inspectorGrade).grade : "A등급 (정검사원)") : (cardData.inspectorGrade ? getInspectorGradeMeta(cardData.inspectorGrade).grade : ""),
       updatedAt: new Date().toISOString()
     };
 
