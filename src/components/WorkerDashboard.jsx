@@ -1917,10 +1917,51 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, []);
 
+  // 🔒 본사 임원(권태형/최미영) 일정 일반 관리자/작업자 노출 방지 필터 헬퍼
+  const isScheduleVisibleToUser = (schedule, profile) => {
+    if (!schedule) return false;
+    const isHeadquarter =
+      profile?.plant === "본사" ||
+      profile?.role === "ADMIN" ||
+      profile?.name === "권태형" ||
+      profile?.name === "최미영" ||
+      profile?.id === "admin" ||
+      profile?.id === "admin_kwon" ||
+      profile?.id === "admin_choi";
+    if (isHeadquarter) return true;
+
+    const author = String(schedule.author || "").trim();
+    const target = String(schedule.target || "").trim();
+    const title = String(schedule.title || "").trim();
+
+    // 본사 임원(권태형/최미영/대표/전무/ADMIN)이 등록한 일정 및 본사/임원 관련 일정은 일반 사용자에게 비노출
+    if (
+      author === "권태형" ||
+      author === "최미영" ||
+      author === "대표이사" ||
+      author === "전무" ||
+      author === "ADMIN" ||
+      target === "본사" ||
+      title.includes("권태형") ||
+      title.includes("최미영") ||
+      title.includes("대표이사") ||
+      title.includes("전무")
+    ) {
+      return false;
+    }
+
+    // 공장별 타겟 분리
+    const userPlant = profile?.plant || "";
+    if (userPlant === "삼랑진공장" && target.includes("한림")) return false;
+    if (userPlant === "한림공장" && target.includes("삼랑진")) return false;
+
+    return true;
+  };
+
   const allActiveCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules
-      .filter((s) => !s.isCompleted && (s.endDate || s.startDate || s.date) >= todayDateStr)
+      .filter((s) => !s.isCompleted && (s.endDate || s.startDate || s.date) >= todayDateStr && isScheduleVisibleToUser(s, currentProfile))
       .sort((a, b) => {
         const aStart = a.startDate || a.date || "";
         const bStart = b.startDate || b.date || "";
@@ -1930,53 +1971,57 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
         return (a.time || "").localeCompare(b.time || "");
       });
-  }, [commonSchedules, todayDateStr]);
+  }, [commonSchedules, todayDateStr, currentProfile]);
 
   const uncompletedCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
-    return commonSchedules.filter((s) => !s.isCompleted).sort((a, b) => {
-      const aStart = a.startDate || a.date || "";
-      const bStart = b.startDate || b.date || "";
-      if (aStart !== bStart) return aStart.localeCompare(bStart);
-      const aEnd = a.endDate || aStart;
-      const bEnd = b.endDate || bStart;
-      if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
-      return (a.time || "").localeCompare(b.time || "");
-    });
-  }, [commonSchedules]);
+    return commonSchedules
+      .filter((s) => !s.isCompleted && isScheduleVisibleToUser(s, currentProfile))
+      .sort((a, b) => {
+        const aStart = a.startDate || a.date || "";
+        const bStart = b.startDate || b.date || "";
+        if (aStart !== bStart) return aStart.localeCompare(bStart);
+        const aEnd = a.endDate || aStart;
+        const bEnd = b.endDate || bStart;
+        if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
+        return (a.time || "").localeCompare(b.time || "");
+      });
+  }, [commonSchedules, currentProfile]);
 
   const todayCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
     return commonSchedules.filter((s) => {
-      if (s.isCompleted) return false;
+      if (s.isCompleted || !isScheduleVisibleToUser(s, currentProfile)) return false;
       const regDate = s.createdAt ? formatKSTDate(s.createdAt) : (s.startDate || s.date);
       const startDate = s.startDate || s.date;
       const endDate = s.endDate || startDate;
       const effectiveStart = regDate <= startDate ? regDate : startDate;
       return Boolean(effectiveStart && endDate && effectiveStart <= todayDateStr && todayDateStr <= endDate);
     });
-  }, [commonSchedules, todayDateStr]);
+  }, [commonSchedules, todayDateStr, currentProfile]);
 
   const scheduleCounts = useMemo(() => {
-    const active = (commonSchedules || []).filter((s) => !isScheduleExpired(s) && !s.isCompleted).length;
-    const archive = (commonScheduleArchive || []).length;
+    const active = (commonSchedules || []).filter((s) => !isScheduleExpired(s) && !s.isCompleted && isScheduleVisibleToUser(s, currentProfile)).length;
+    const archive = (commonScheduleArchive || []).filter((s) => isScheduleVisibleToUser(s, currentProfile)).length;
     return { all: active + archive, active, archive };
-  }, [commonSchedules, commonScheduleArchive]);
+  }, [commonSchedules, commonScheduleArchive, currentProfile]);
 
   const modalFilteredSchedules = useMemo(() => {
     if (commonScheduleFilterTab === "archive") {
-      return [...(commonScheduleArchive || [])].sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
+      return [...(commonScheduleArchive || [])]
+        .filter((s) => isScheduleVisibleToUser(s, currentProfile))
+        .sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
     }
     // Default: active non-expired schedules
     return (commonSchedules || [])
-      .filter((s) => !isScheduleExpired(s) && !s.isCompleted)
+      .filter((s) => !isScheduleExpired(s) && !s.isCompleted && isScheduleVisibleToUser(s, currentProfile))
       .sort((a, b) => {
         const aDate = a.startDate || a.date || "";
         const bDate = b.startDate || b.date || "";
         if (aDate !== bDate) return aDate.localeCompare(bDate);
         return (a.time || "").localeCompare(b.time || "");
       });
-  }, [commonSchedules, commonScheduleArchive, commonScheduleFilterTab]);
+  }, [commonSchedules, commonScheduleArchive, commonScheduleFilterTab, currentProfile]);
 
   const handleToggleCompleteCommonSchedule = async (id, currentCompleted) => {
     const nextCompleted = !currentCompleted;

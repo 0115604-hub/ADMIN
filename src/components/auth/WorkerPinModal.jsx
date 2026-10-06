@@ -410,19 +410,91 @@ export const WorkerPinModal = ({
   }, [urgentIssues, localUrgentIssues]);
 
   // =========================================================================
-  // 🌟 3. 관리자 일정 및 근태 통계
+  // 🌟 3. 관리자 일정 및 근태 통계 (본사 임원 vs 일반 관리자 일정 분리)
   // =========================================================================
-  // 미완료 사내 공통일정
+  // 미완료 사내 일정
   const uncompletedCommonSchedules = useMemo(() => {
-    return (commonSchedules || [])
-      .filter((s) => !s.isCompleted && !isScheduleExpired(s))
-      .sort((a, b) => {
-        const aStart = a.startDate || a.date || "";
-        const bStart = b.startDate || b.date || "";
-        if (aStart !== bStart) return aStart.localeCompare(bStart);
-        return (a.time || "").localeCompare(b.time || "");
+    const list = [];
+    const todayStr = getKSTDateString();
+
+    // 1. 공통 일정 (commonSchedules)
+    (commonSchedules || []).forEach((s) => {
+      if (!s || s.isCompleted || isScheduleExpired(s)) return;
+
+      const author = String(s.author || "").trim();
+      const target = String(s.target || "").trim();
+      const title = String(s.title || "").trim();
+
+      // 🔒 본사 관리자가 아닌 일반 관리자(삼랑진/한림)에게는 권태형/최미영(대표이사/전무/ADMIN)의 일정 완전 차단
+      if (!isHeadquarterAdmin) {
+        if (
+          author === "권태형" ||
+          author === "최미영" ||
+          author === "대표이사" ||
+          author === "전무" ||
+          author === "ADMIN" ||
+          target === "본사" ||
+          title.includes("권태형") ||
+          title.includes("최미영") ||
+          title.includes("대표이사") ||
+          title.includes("전무")
+        ) {
+          return;
+        }
+
+        // 공장별 타겟 필터링
+        if (isSamrangjinManager && target.includes("한림")) return;
+        if (isHallimManager && target.includes("삼랑진")) return;
+      }
+
+      list.push({
+        id: s.id || s._docId || Math.random(),
+        target: s.target || "공통",
+        title: s.title,
+        startDate: s.startDate || s.date,
+        endDate: s.endDate || s.startDate || s.date,
+        time: s.time || ""
       });
-  }, [commonSchedules]);
+    });
+
+    // 2. 해당 일반 관리자 본인의 등록/공유 일정 (annualLeaves) 연동
+    if (selectedUser && Array.isArray(annualLeaves)) {
+      const uid = selectedUser.id;
+      const uname = selectedUser.name;
+
+      annualLeaves.forEach((l) => {
+        if (!l || l.isCompleted || l.isDismissed) return;
+        const isMyLeave = (uid && l.userId === uid) || (uname && l.userName === uname);
+        const isSharedToMe = Boolean(l.isSharedRecipient && ((uid && l.userId === uid) || (uname && l.userName === uname)));
+
+        if (isMyLeave || isSharedToMe) {
+          const sDate = l.startDate || l.date || "";
+          const eDate = l.endDate || sDate;
+          if (sDate && eDate && sDate <= todayStr && todayStr <= eDate) {
+            const label = l.reason || l.leaveType || "일정";
+            const already = list.some((item) => item.title === label);
+            if (!already) {
+              list.push({
+                id: `leave_${l.id}`,
+                target: isSharedToMe ? `공유(${l.sharedBy || "동료"})` : (l.leaveType || "개인"),
+                title: label,
+                startDate: sDate,
+                endDate: eDate,
+                time: ""
+              });
+            }
+          }
+        }
+      });
+    }
+
+    return list.sort((a, b) => {
+      const aStart = a.startDate || a.date || "";
+      const bStart = b.startDate || b.date || "";
+      if (aStart !== bStart) return aStart.localeCompare(bStart);
+      return (a.time || "").localeCompare(b.time || "");
+    });
+  }, [commonSchedules, annualLeaves, selectedUser, isHeadquarterAdmin, isSamrangjinManager, isHallimManager]);
 
   // 당일 일자 및 일일 근태 요약
   const todayDayNum = useMemo(() => new Date().getDate(), []);
@@ -1092,10 +1164,18 @@ export const WorkerPinModal = ({
                             </div>
                             <div>
                               <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                📌 사내 공통일정 (미완료 일정)
+                                {isHeadquarterAdmin
+                                  ? "📌 본사 & 사내 공통일정"
+                                  : isSamrangjinManager
+                                  ? "📌 삼랑진공장 관리자 일정"
+                                  : "📌 한림공장 관리자 일정"}
                               </span>
                               <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
-                                전사 및 공장별 진행 중인 일정
+                                {isHeadquarterAdmin
+                                  ? "본사 및 전사 진행 중인 미완료 일정"
+                                  : isSamrangjinManager
+                                  ? "삼랑진공장 및 개인 미완료 일정"
+                                  : "한림공장 및 개인 미완료 일정"}
                               </span>
                             </div>
                           </div>
