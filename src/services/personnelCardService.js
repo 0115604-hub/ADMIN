@@ -123,9 +123,10 @@ export const normalizeStandardDept = (dept) => {
   if (!dept) return "생산팀";
   const str = String(dept).trim();
   if (DEPARTMENTS_LIST.includes(str)) return str;
-  if (str.includes("압출")) return "압출관리팀";
-  if (str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장") || str.includes("조인트") || str.includes("사상") || str.includes("코팅")) return "가공관리팀";
-  if (str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("품질") || str.includes("설비")) return "관리팀";
+  if (str === "생산팀" || str === "생산") return "생산팀";
+  if (str === "압출관리팀" || str === "압출동" || (str.includes("압출") && !str.includes("생산"))) return "압출관리팀";
+  if (str === "가공관리팀" || str === "가공동" || str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장") || str.includes("조인트") || str.includes("사상") || str.includes("코팅")) return "가공관리팀";
+  if (str === "관리팀" || str === "관리부" || str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("품질") || str.includes("설비") || str.includes("기술") || str.includes("출하") || str.includes("총괄")) return "관리팀";
   if (str.includes("생산")) return "생산팀";
   return "생산팀";
 };
@@ -329,8 +330,8 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 이미 카드 데이터가 존재하는 경우 병합하여 반환
   const existingCard = worker.personnelCard || {};
 
-  const company = normalizeStandardCompany(worker.company || existingCard.company || "주)오륙");
-  const dept = normalizeStandardDept(worker.dept || existingCard.dept || "생산팀");
+  const company = normalizeStandardCompany(existingCard.company || worker.company || "주)오륙");
+  const dept = normalizeStandardDept(existingCard.dept || worker.dept || "생산팀");
   const name = String(worker.name || existingCard.name || "").trim();
   const position = normalizeStandardPosition(worker.position || existingCard.position || "사원");
 

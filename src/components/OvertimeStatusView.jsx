@@ -1577,8 +1577,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           ...currentMatrix[targetIdx],
           name: updatedCardData.name,
           company: cleanCompanyName(updatedCardData.company),
-          dept: normalizeDept(updatedCardData.dept),
-          line: updatedCardData.line || updatedCardData.dept,
+          dept: normalizeStandardDept(updatedCardData.dept),
+          line: updatedCardData.line || updatedCardData.mainProcess || normalizeStandardDept(updatedCardData.dept),
           position: updatedCardData.position,
           empNo: updatedCardData.empNo,
           joinDate: updatedCardData.joinDate,
@@ -1600,11 +1600,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const reindexedMaster = reindexedMatrix.map((w, idx) => ({
         no: idx + 1,
         company: w.company,
-        dept: normalizeDept(w.dept),
-        line: w.line || normalizeDept(w.dept),
+        dept: normalizeStandardDept(w.dept),
+        line: w.line || normalizeStandardDept(w.dept),
         name: w.name,
         position: w.position || "작업원",
-        empNo: w.empNo || updatedCardData.empNo,
+        empNo: w.empNo || (w.personnelCard ? w.personnelCard.empNo : updatedCardData.empNo),
         personnelCard: w.personnelCard || (w.name === updatedCardData.name ? updatedCardData : null)
       }));
 
