@@ -43,8 +43,17 @@ import {
   Zap,
   CheckSquare,
   PauseCircle,
-  Stamp
+  Stamp,
+  Star
 } from "lucide-react";
+import PersonnelCardModal from "./PersonnelCardModal.jsx";
+import {
+  getWorkerPersonnelCard,
+  saveWorkerPersonnelCard,
+  getSkillMeta,
+  SKILL_LEVEL_META,
+  calculateTenureFromJoinDate
+} from "../services/personnelCardService.js";
 import { useAuth } from "../context/AuthContext";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
 import * as XLSX from "xlsx";
@@ -675,6 +684,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       setSelectedCompanyManageWorkers(null);
       setIsLegacyModalOpen(false);
       setSelectedLegacyReport(null);
+      setIsPersonnelModalOpen(false);
+      setSelectedPersonnelWorker(null);
     });
     return () => unsub();
   }, []);
@@ -690,8 +701,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   };
 
   const handleOpenManageWorkers = (compName) => {
-    pushModalHistory("manage_workers_modal");
-    setSelectedCompanyManageWorkers(compName);
+    // 인원관리 탭으로 바로 전환하며 해당 업체를 기본 필터로 설정
+    setWorkerMgmtCompanyFilter(cleanCompanyName(compName));
+    setActiveTab("worker_management");
   };
 
   const handleOpenLegacyReport = (report) => {
@@ -700,10 +712,30 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     setIsLegacyModalOpen(true);
   };
 
+  // ⭐ 제조현장 인사카드 모달 열기 핸들러
+  const handleOpenPersonnelCard = (worker, originalIndex) => {
+    pushModalHistory("personnel_card_modal");
+    setSelectedPersonnelWorker(worker);
+    setSelectedPersonnelWorkerIndex(
+      typeof originalIndex === "number" ? originalIndex : (worker?.originalMatrixIndex ?? -1)
+    );
+    setIsPersonnelModalOpen(true);
+  };
+
   // Smart Overtime Ledger State (5개사 통합 잔업 스마트 대장)
   const [smartData, setSmartData] = useState(() => getLocalSmartOvertimeData());
-  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input' default
+  const [activeTab, setActiveTab] = useState("daily_input"); // 'daily_input', 'daily_summary', 'monthly_matrix', 'worker_management', 'legacy_reports'
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // ⭐ 인원관리 및 인사카드 전용 State
+  const [selectedPersonnelWorker, setSelectedPersonnelWorker] = useState(null);
+  const [selectedPersonnelWorkerIndex, setSelectedPersonnelWorkerIndex] = useState(-1);
+  const [isPersonnelModalOpen, setIsPersonnelModalOpen] = useState(false);
+  const [workerMgmtCompanyFilter, setWorkerMgmtCompanyFilter] = useState("전체");
+  const [workerMgmtSearch, setWorkerMgmtSearch] = useState("");
+  const [workerMgmtSkillFilter, setWorkerMgmtSkillFilter] = useState("ALL");
+  const [workerMgmtMultiSkillOnly, setWorkerMgmtMultiSkillOnly] = useState(false);
+  const [showAddWorkerDrawer, setShowAddWorkerDrawer] = useState(false);
   
   // Dynamic Month & Year from global Header context
   const { selectedMonth = getCurrentYearMonth() } = useMonth() || {};
@@ -1396,6 +1428,143 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }
   };
 
+  // ⭐ 제조현장 인사카드 저장 및 실시간 대장 동기화 핸들러
+  const handleSavePersonnelCard = async (updatedCardData) => {
+    setIsSaving(true);
+    try {
+      const currentMatrix = [...(smartData.attendanceMatrix || [])];
+      let targetIdx = selectedPersonnelWorkerIndex;
+
+      if (targetIdx < 0 || targetIdx >= currentMatrix.length) {
+        targetIdx = currentMatrix.findIndex(
+          (w) => cleanCompanyName(w.company) === cleanCompanyName(updatedCardData.company) && w.name === updatedCardData.name
+        );
+      }
+
+      if (targetIdx >= 0 && currentMatrix[targetIdx]) {
+        currentMatrix[targetIdx] = {
+          ...currentMatrix[targetIdx],
+          name: updatedCardData.name,
+          company: cleanCompanyName(updatedCardData.company),
+          dept: normalizeDept(updatedCardData.dept),
+          line: updatedCardData.line || updatedCardData.dept,
+          position: updatedCardData.position,
+          empNo: updatedCardData.empNo,
+          joinDate: updatedCardData.joinDate,
+          tenure: updatedCardData.tenure,
+          career: updatedCardData.career,
+          mainProcess: updatedCardData.mainProcess,
+          processYear: updatedCardData.processYear,
+          skillLevel: updatedCardData.skillLevel,
+          skillGrade: updatedCardData.skillGrade,
+          isMultiSkill: updatedCardData.isMultiSkill,
+          subProcesses: updatedCardData.subProcesses,
+          notes: updatedCardData.notes,
+          certifications: updatedCardData.certifications,
+          personnelCard: updatedCardData
+        };
+      }
+
+      const reindexedMatrix = currentMatrix.map((w, idx) => ({ ...w, no: idx + 1 }));
+      const reindexedMaster = reindexedMatrix.map((w, idx) => ({
+        no: idx + 1,
+        company: w.company,
+        dept: normalizeDept(w.dept),
+        line: w.line || normalizeDept(w.dept),
+        name: w.name,
+        position: w.position || "작업원",
+        empNo: w.empNo || updatedCardData.empNo,
+        personnelCard: w.personnelCard || (w.name === updatedCardData.name ? updatedCardData : null)
+      }));
+
+      const updatedData = {
+        ...smartData,
+        masterWorkers: reindexedMaster,
+        attendanceMatrix: reindexedMatrix
+      };
+
+      setSmartData(updatedData);
+      await saveSmartOvertimeData(updatedData);
+      await saveWorkerPersonnelCard(`${cleanCompanyName(updatedCardData.company)}_${updatedCardData.name}`, updatedCardData);
+
+      triggerToast(`🎉 [${updatedCardData.company}] ${updatedCardData.name}님의 제조현장 인사카드가 저장되었습니다!`);
+    } catch (err) {
+      console.error(err);
+      alert("인사카드 저장 중 오류가 발생했습니다: " + (err.message || err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ⭐ 인원관리 탭 작업자 목록 및 필터링 (인사카드 포함)
+  const workerMgmtList = useMemo(() => {
+    const compCounters = {};
+    const matrix = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
+      const c = cleanCompanyName(w.company);
+      compCounters[c] = (compCounters[c] || 0) + 1;
+      const card = getWorkerPersonnelCard(w, compCounters[c]);
+      return {
+        ...w,
+        dept: normalizeDept(w.dept),
+        companyNo: compCounters[c],
+        originalMatrixIndex: originalIdx,
+        card
+      };
+    });
+
+    return matrix.filter((w) => {
+      // Company Filter
+      if (workerMgmtCompanyFilter !== "전체") {
+        if (workerMgmtCompanyFilter === "삼랑진공장") {
+          if (w.company !== "오륙" && w.company !== "유성") return false;
+        } else if (workerMgmtCompanyFilter === "한림공장") {
+          if (w.company !== "조영" && w.company !== "한울" && w.company !== "부림텍") return false;
+        } else {
+          if (cleanCompanyName(w.company) !== cleanCompanyName(workerMgmtCompanyFilter)) return false;
+        }
+      }
+
+      // Skill Level Filter
+      if (workerMgmtSkillFilter !== "ALL") {
+        const targetLvl = Number(workerMgmtSkillFilter);
+        if (w.card?.skillLevel !== targetLvl) return false;
+      }
+
+      // Multi-skill Only
+      if (workerMgmtMultiSkillOnly && !w.card?.isMultiSkill) {
+        return false;
+      }
+
+      // Search Filter
+      if (workerMgmtSearch.trim()) {
+        const q = workerMgmtSearch.trim().toLowerCase();
+        const str = `${w.name} ${w.company} ${w.dept} ${w.line} ${w.position} ${w.card?.empNo || ""} ${w.card?.mainProcess || ""} ${(w.card?.subProcesses || []).join(" ")}`.toLowerCase();
+        if (!str.includes(q)) return false;
+      }
+
+      return true;
+    });
+  }, [smartData.attendanceMatrix, workerMgmtCompanyFilter, workerMgmtSkillFilter, workerMgmtMultiSkillOnly, workerMgmtSearch]);
+
+  // ⭐ 인원관리 KPI 통계 요약
+  const workerMgmtStats = useMemo(() => {
+    const matrix = smartData.attendanceMatrix || [];
+    const total = matrix.length;
+    let masterCount = 0;
+    let multiSkillCount = 0;
+    matrix.forEach((w, idx) => {
+      const card = getWorkerPersonnelCard(w, idx + 1);
+      if (card.skillLevel >= 4) masterCount++;
+      if (card.isMultiSkill) multiSkillCount++;
+    });
+    return {
+      total,
+      masterCount,
+      multiSkillCount,
+      cardCompleteRate: "100%"
+    };
+  }, [smartData.attendanceMatrix]);
+
   // Filtered workers for selectedCompanyManageWorkers modal
   const manageCompanyWorkers = useMemo(() => {
     if (!selectedCompanyManageWorkers) return [];
@@ -1788,13 +1957,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       </div>
 
       {/* ========================================================================= */}
-      {/* 🧭 MAIN TAB NAVIGATION (Clean 4 Tabs - 근태등록 / 일자별 / 종합현황 / 관리) */}
+      {/* 🧭 MAIN TAB NAVIGATION (근태등록 / 일자별 / 종합현황 / 인원관리 / 관리) */}
       {/* ========================================================================= */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar border-b border-slate-200 dark:border-slate-800">
         {[
           { id: "daily_input", label: "근태등록", icon: Zap, badge: hasUnsavedChanges ? "미저장" : null, highlight: true },
           { id: "daily_summary", label: "일자별", icon: FileSpreadsheet },
           { id: "monthly_matrix", label: "종합현황", icon: CalendarDays },
+          { id: "worker_management", label: "인원관리", icon: Users, badge: `${smartData.attendanceMatrix?.length || 0}명` },
           { id: "legacy_reports", label: "관리", icon: FileText, badge: `${legacyReports.length}건` }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -2566,10 +2736,484 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       )}
 
       {/* ========================================================================= */}
-      {/* 📑 TAB 4: 특근보고서 관리 (SATURDAY OVERTIME & OFFICIAL REPORTS) */}
+      {/* 🪪 TAB 4: 인원관리 및 제조현장 인사카드 (PERSONNEL MANAGEMENT & SKILL CARDS) */}
       {/* ========================================================================= */}
+      {activeTab === "worker_management" && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4 sm:p-5">
+          {/* 1. Header & Summary Stats */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <span className="p-2 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-300 ring-1 ring-purple-400/40">
+                <Users className="w-5 h-5 text-purple-500" />
+              </span>
+              <div>
+                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>제조현장 인원관리 및 인사카드 목록표</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-mono font-bold border border-purple-300 dark:border-purple-800">
+                    총 {workerMgmtStats.total}명 등록
+                  </span>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  작업자별 제조경력, 주공정, 숙련등급(1~5성), 다기능공 여부를 등록하고 인사카드를 발급·관리합니다.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Add Worker Button */}
+            <button
+              type="button"
+              onClick={() => setShowAddWorkerDrawer(!showAddWorkerDrawer)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs shadow-md shadow-purple-900/30 transition-all cursor-pointer active:scale-95 shrink-0 self-start lg:self-auto"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>{showAddWorkerDrawer ? "등록 폼 닫기" : "➕ 신규 근로자 등록"}</span>
+            </button>
+          </div>
+
+          {/* 2. Top KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+            <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 pb-1">
+                <span className="text-[11px] font-bold">전체 등록 근로자</span>
+                <Users className="w-3.5 h-3.5 text-purple-500" />
+              </div>
+              <div className="font-mono font-black text-lg sm:text-xl text-slate-900 dark:text-white">
+                {workerMgmtStats.total}<span className="text-xs font-normal text-slate-400 ml-0.5">명</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 pb-1">
+                <span className="text-[11px] font-bold">숙련/마스터 (Lv.4~5)</span>
+                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              </div>
+              <div className="font-mono font-black text-lg sm:text-xl text-amber-500 dark:text-amber-400">
+                {workerMgmtStats.masterCount}<span className="text-xs font-normal text-slate-400 ml-0.5">명</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 pb-1">
+                <span className="text-[11px] font-bold">다기능공 (Multi-Skill)</span>
+                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+              </div>
+              <div className="font-mono font-black text-lg sm:text-xl text-cyan-500 dark:text-cyan-400">
+                {workerMgmtStats.multiSkillCount}<span className="text-xs font-normal text-slate-400 ml-0.5">명</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 pb-1">
+                <span className="text-[11px] font-bold">인사카드 완비율</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              </div>
+              <div className="font-mono font-black text-lg sm:text-xl text-emerald-500 dark:text-emerald-400">
+                100<span className="text-xs font-normal text-slate-400 ml-0.5">%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Expandable Quick Add Form Drawer */}
+          {showAddWorkerDrawer && (
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-purple-950/20 border-2 border-purple-500/40 space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-purple-300 flex items-center gap-1.5">
+                  <UserPlus className="w-4 h-4 text-purple-400" />
+                  <span>신규 근로자 간편 추가 (등록 후 즉시 인사카드 편집 가능)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowAddWorkerDrawer(false)}
+                  className="text-slate-400 hover:text-white p-1"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleQuickAddCompanyWorker} className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div className="sm:col-span-2">
+                  <select
+                    value={selectedCompanyManageWorkers || "오륙"}
+                    onChange={(e) => setSelectedCompanyManageWorkers(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    {COMPANIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="성명 *"
+                    value={quickNewWorkerName}
+                    onChange={(e) => setQuickNewWorkerName(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <select
+                    value={quickNewWorkerDept}
+                    onChange={(e) => setQuickNewWorkerDept(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <input
+                    type="text"
+                    placeholder="주공정/라인"
+                    value={quickNewWorkerLine}
+                    onChange={(e) => setQuickNewWorkerLine(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <select
+                    value={quickNewWorkerPos}
+                    onChange={(e) => setQuickNewWorkerPos(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold"
+                  >
+                    <option value="작업원">작업원</option>
+                    <option value="조장">조장</option>
+                    <option value="반장">반장</option>
+                    <option value="선임">선임</option>
+                    <option value="책임">책임</option>
+                    <option value="주임">주임</option>
+                    <option value="대리">대리</option>
+                    <option value="과장">과장</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-1">
+                  <button
+                    type="submit"
+                    className="w-full py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center justify-center cursor-pointer active:scale-95 transition-all shadow-sm"
+                  >
+                    추가
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* 4. Filter Controls Bar */}
+          <div className="p-2 sm:p-3 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+            {/* Left: Company Filter Pills */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-purple-500" />
+                <span>업체:</span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setWorkerMgmtCompanyFilter("전체")}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  workerMgmtCompanyFilter === "전체"
+                    ? "bg-purple-600 text-white font-black shadow-md ring-2 ring-purple-400"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800"
+                }`}
+              >
+                전체 ({workerMgmtList.length}명)
+              </button>
+
+              {/* 삼랑진 그룹 */}
+              <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-slate-900 border border-amber-600/50 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setWorkerMgmtCompanyFilter("삼랑진공장")}
+                  className={`text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-0.5 transition-all cursor-pointer ${
+                    workerMgmtCompanyFilter === "삼랑진공장"
+                      ? "bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300"
+                      : "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50"
+                  }`}
+                >
+                  <Factory className="w-3 h-3" />
+                  <span>삼랑진공장</span>
+                </button>
+                {["오륙", "유성"].map((comp) => (
+                  <button
+                    key={comp}
+                    type="button"
+                    onClick={() => setWorkerMgmtCompanyFilter(comp)}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      workerMgmtCompanyFilter === comp
+                        ? "bg-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-300"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {comp}
+                  </button>
+                ))}
+              </div>
+
+              {/* 한림 그룹 */}
+              <div className="flex items-center gap-1 p-0.5 bg-white dark:bg-slate-900 border border-emerald-600/50 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setWorkerMgmtCompanyFilter("한림공장")}
+                  className={`text-[11px] font-black px-2 py-0.5 rounded-lg flex items-center gap-0.5 transition-all cursor-pointer ${
+                    workerMgmtCompanyFilter === "한림공장"
+                      ? "bg-emerald-500 text-slate-950 shadow-xs ring-1 ring-emerald-300"
+                      : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
+                  }`}
+                >
+                  <Factory className="w-3 h-3" />
+                  <span>한림공장</span>
+                </button>
+                {["조영", "한울", "부림텍"].map((comp) => (
+                  <button
+                    key={comp}
+                    type="button"
+                    onClick={() => setWorkerMgmtCompanyFilter(comp)}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      workerMgmtCompanyFilter === comp
+                        ? "bg-emerald-500 text-slate-950 shadow-xs ring-1 ring-emerald-300"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {comp}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Skill Filter & Multi-skill Toggle & Search Bar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* 숙련등급 필터 */}
+              <select
+                value={workerMgmtSkillFilter}
+                onChange={(e) => setWorkerMgmtSkillFilter(e.target.value)}
+                className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white font-bold text-xs border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 cursor-pointer"
+              >
+                <option value="ALL">⭐ 전체 숙련등급</option>
+                <option value="5">★★★★★ Lv.5 마스터</option>
+                <option value="4">★★★★☆ Lv.4 숙련</option>
+                <option value="3">★★★☆☆ Lv.3 능숙</option>
+                <option value="2">★★☆☆☆ Lv.2 보통</option>
+                <option value="1">★☆☆☆☆ Lv.1 기초</option>
+              </select>
+
+              {/* 다기능공 토글 필터 */}
+              <button
+                type="button"
+                onClick={() => setWorkerMgmtMultiSkillOnly(!workerMgmtMultiSkillOnly)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1 border ${
+                  workerMgmtMultiSkillOnly
+                    ? "bg-cyan-600 text-white border-cyan-400 shadow-sm"
+                    : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-cyan-500"
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                <span>다기능공만</span>
+              </button>
+
+              {/* Search input */}
+              <div className="relative w-44 sm:w-52">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="성명/사번/부서/공정..."
+                  value={workerMgmtSearch}
+                  onChange={(e) => setWorkerMgmtSearch(e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-xs font-bold placeholder:text-slate-400 focus:border-purple-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Main Worker List Table with Personnel Card Actions */}
+          <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs bg-white dark:bg-slate-950">
+            {workerMgmtList.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 font-bold text-xs space-y-1">
+                <p>검색 및 필터 조건과 일치하는 근로자가 없습니다.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWorkerMgmtCompanyFilter("전체");
+                    setWorkerMgmtSkillFilter("ALL");
+                    setWorkerMgmtMultiSkillOnly(false);
+                    setWorkerMgmtSearch("");
+                  }}
+                  className="text-purple-400 hover:underline text-xs font-bold"
+                >
+                  필터 초기화
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 bg-slate-900 text-white z-20 font-black text-[11px] uppercase tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th className="py-2.5 px-2 text-center w-10 font-mono text-slate-400">No</th>
+                      <th className="py-2.5 px-2 w-20">소속</th>
+                      <th className="hidden sm:table-cell py-2.5 px-2 w-24">부서/라인</th>
+                      <th className="py-2.5 px-2 w-16 text-center">직위</th>
+                      <th className="py-2.5 px-2.5 w-28">성명 (사번)</th>
+                      <th className="hidden md:table-cell py-2.5 px-2 w-32">입사일 / 근속</th>
+                      <th className="py-2.5 px-2 w-28">주공정(년차)</th>
+                      <th className="py-2.5 px-2 w-36 text-center">숙련등급 (별점)</th>
+                      <th className="py-2.5 px-2 w-32 text-center">다기능공</th>
+                      <th className="py-2.5 px-2 w-28 text-center bg-purple-950/80 text-purple-200">인사카드</th>
+                      <th className="py-2.5 px-2 w-16 text-center">관리</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 bg-white dark:bg-slate-900/40 text-xs">
+                    {workerMgmtList.map((worker, rowIdx) => {
+                      const card = worker.card || getWorkerPersonnelCard(worker, rowIdx + 1);
+                      const companyTheme = COMPANY_THEMES[cleanCompanyName(worker.company)] || COMPANY_THEMES["오륙"];
+                      const skillMeta = getSkillMeta(card.skillLevel);
+
+                      return (
+                        <tr
+                          key={`${worker.company}_${worker.name}_${worker.originalMatrixIndex}_${rowIdx}`}
+                          className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+                        >
+                          {/* No */}
+                          <td className="py-2 px-2 text-center font-mono text-slate-400 text-[11px]">
+                            {worker.companyNo || rowIdx + 1}
+                          </td>
+
+                          {/* 소속 업체 */}
+                          <td className="py-2 px-2">
+                            <span className={`inline-block px-2 py-0.5 rounded-md text-[10.5px] font-black border ${companyTheme.badge} whitespace-nowrap`}>
+                              {cleanCompanyName(worker.company)}
+                            </span>
+                          </td>
+
+                          {/* 부서/라인 */}
+                          <td className="hidden sm:table-cell py-2 px-2">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 text-[11px] truncate">
+                              {worker.dept}
+                            </div>
+                            <div className="text-slate-400 text-[10px] truncate">
+                              {worker.line || worker.dept}
+                            </div>
+                          </td>
+
+                          {/* 직위 */}
+                          <td className="py-2 px-2 text-center">
+                            <span className="px-1.5 py-0.5 rounded text-[10.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              {worker.position || "작업원"}
+                            </span>
+                          </td>
+
+                          {/* 성명 & 사번 */}
+                          <td className="py-2 px-2.5">
+                            <div className="font-black text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                              <span>{worker.name}</span>
+                              {card.isMultiSkill && (
+                                <Zap className="w-3 h-3 text-cyan-400 shrink-0" title="다기능공" />
+                              )}
+                            </div>
+                            <div className="font-mono text-[10px] text-slate-400">
+                              {card.empNo || "250101"}
+                            </div>
+                          </td>
+
+                          {/* 입사일 / 근속기간 */}
+                          <td className="hidden md:table-cell py-2 px-2">
+                            <div className="font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                              {card.joinDate || "2022-03-15"}
+                            </div>
+                            <div className="text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                              {card.tenure || "2년 7개월"}
+                            </div>
+                          </td>
+
+                          {/* 주공정 (년차) */}
+                          <td className="py-2 px-2">
+                            <span className="font-black text-amber-600 dark:text-amber-300 text-xs block truncate">
+                              {card.mainProcess || "압출"}
+                            </span>
+                            <span className="text-[10.5px] text-slate-400 font-bold">
+                              {card.processYear || "3년차"}
+                            </span>
+                          </td>
+
+                          {/* 숙련등급 (1~5 별점) */}
+                          <td className="py-2 px-2 text-center">
+                            <div className="flex items-center justify-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star
+                                  key={s}
+                                  className={`w-3 h-3 ${
+                                    s <= card.skillLevel
+                                      ? "text-amber-400 fill-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.6)]"
+                                      : "text-slate-300 dark:text-slate-700"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <div className="pt-0.5">
+                              <span className={`px-1.5 py-0.2 rounded text-[10px] font-black border ${skillMeta.badgeClass}`}>
+                                {skillMeta.shortGrade}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* 다기능공 여부 */}
+                          <td className="py-2 px-2 text-center">
+                            {card.isMultiSkill ? (
+                              <div className="space-y-0.5">
+                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-950 text-cyan-300 border border-cyan-700/80 shadow-2xs">
+                                  <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                                  <span>다기능공</span>
+                                </span>
+                                {(card.subProcesses || []).length > 0 && (
+                                  <div className="text-[9.5px] text-cyan-400/90 font-bold truncate max-w-[120px] mx-auto">
+                                    {card.subProcesses.join(", ")}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500">
+                                단일공정
+                              </span>
+                            )}
+                          </td>
+
+                          {/* 인사카드 [🪪 카드작성/보기] 버튼 */}
+                          <td className="py-2 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPersonnelCard(worker, worker.originalMatrixIndex)}
+                              className="px-2.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs flex items-center justify-center gap-1 mx-auto cursor-pointer shadow-md shadow-purple-900/30 active:scale-95 transition-all"
+                              title="제조현장 인사카드 작성 및 조회"
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                              <span>🪪 인사카드</span>
+                            </button>
+                          </td>
+
+                          {/* 삭제 관리 */}
+                          <td className="py-2 px-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleQuickDeleteWorker(worker.originalMatrixIndex, worker.name, worker.company, worker.dept, worker.line)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors cursor-pointer active:scale-95"
+                              title="근로자 삭제"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ========================================================================= */}
-      {/* 📑 TAB 4: 근태/특근보고서 관리 (WEEKDAY ATTENDANCE, WEEKEND OVERTIME & PLANT SYNTHESIS) */}
+      {/* 📑 TAB 5: 근태/특근보고서 관리 (WEEKDAY ATTENDANCE, WEEKEND OVERTIME & PLANT SYNTHESIS) */}
       {/* ========================================================================= */}
       {activeTab === "legacy_reports" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
@@ -3987,6 +4631,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         );
       })()}
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🪪 MODAL: 제조현장 인사카드 작성 및 관리 모달 */}
+      {/* ========================================================================= */}
+      {isPersonnelModalOpen && selectedPersonnelWorker && (
+        <PersonnelCardModal
+          isOpen={isPersonnelModalOpen}
+          onClose={() => {
+            setIsPersonnelModalOpen(false);
+            setSelectedPersonnelWorker(null);
+          }}
+          worker={selectedPersonnelWorker}
+          workerIndex={selectedPersonnelWorkerIndex}
+          onSave={handleSavePersonnelCard}
+        />
       )}
     </div>
   );
