@@ -35,6 +35,7 @@ import {
   UserMinus,
   ShieldCheck,
   AlertCircle,
+  AlertTriangle,
   X,
   FileSpreadsheet,
   ArrowRight,
@@ -1115,6 +1116,28 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const dayLabel = getDayLabel(d);
     const reportType = isWk ? "특근보고서" : "근태보고서";
 
+    // 🚨 1. 누락된 항목(미선택 인원) 검증: 미선택 항목이 있을 경우 등록 차단 및 알림
+    const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
+      const val = w.daily ? w.daily[d] : "";
+      const str = String(val || "").trim();
+      return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+    });
+
+    if (missingWorkers.length > 0) {
+      const missingCount = missingWorkers.length;
+      const sampleNames = missingWorkers
+        .slice(0, 10)
+        .map((w, idx) => `• ${w.name} (${w.dept || w.company || "소속"})`)
+        .join("\n");
+      const moreText = missingCount > 10 ? `\n... 외 ${missingCount - 10}명` : "";
+
+      const alertMessage = `⚠️ [근태 미입력 알림 - 등록 불가]\n\n${currentMonthNum}월 ${d}일(${dayLabel}) 근태 선택 테이블에 아직 근태가 입력(선택)되지 않은 근로자가 총 ${missingCount}명 있습니다.\n\n[미선택 근로자 명단 (${missingCount}명)]\n${sampleNames}${moreText}\n\n모든 근로자의 근태(정시, 19시, 21시, 22시, 야간, 연차, 결근 등)를 빠짐없이 선택하셔야 보고서 등록이 가능합니다.\n\n💡 TIP: 상단의 '🟢 정시전체선택' 또는 '📋 전일과동일' 버튼을 누르시면 전체 인원의 근태를 빠르게 일괄 입력하실 수 있습니다.`;
+
+      alert(alertMessage);
+      triggerToast(`⚠️ 근태 미입력 인원이 ${missingCount}명 있어 등록할 수 없습니다. 테이블에서 모든 인원의 근태를 선택해주세요.`);
+      return;
+    }
+
     const compLabel = !selectedCompanyFilter || selectedCompanyFilter === "전체" ? "5개사 통합" : selectedCompanyFilter;
     const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
       company: selectedCompanyFilter || "전체",
@@ -1172,6 +1195,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // ⭐ USER ACTION: [ 💾 팝업 내 최종 저장 및 보고서 등록 ]
   const handleConfirmAndSaveReportModal = async () => {
+    const d = selectedDay || 1;
+    const isWk = isWeekendDay(d);
+    const dayLabel = getDayLabel(d);
+
+    // 🚨 최종 저장 전 누락 항목 재검증
+    const missingWorkers = (filteredAttendanceWorkers || []).filter((w) => {
+      const val = w.daily ? w.daily[d] : "";
+      const str = String(val || "").trim();
+      return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+    });
+
+    if (missingWorkers.length > 0) {
+      alert(`⚠️ 근태가 미선택된 근로자(${missingWorkers.length}명)가 있어 저장 및 등록을 진행할 수 없습니다.`);
+      return;
+    }
+
     setIsSaving(true);
     try {
       // 1. Save smart overtime ledger to Firestore & LocalStorage
@@ -1725,6 +1764,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [smartData.attendanceMatrix, selectedCompanyFilter]);
 
+  // 🚨 미입력/누락된 근태 작업자 실시간 집계 (선택된 일자 및 조회 대상 기준)
+  const missingAttendanceWorkers = useMemo(() => {
+    const d = selectedDay || 1;
+    return (filteredAttendanceWorkers || []).filter((w) => {
+      const val = w.daily ? w.daily[d] : "";
+      const str = String(val || "").trim();
+      return !str || str === "미입력" || str === "-" || str === "undefined" || str === "null";
+    });
+  }, [filteredAttendanceWorkers, selectedDay]);
+
   // Data for Company Popup Modal (간결화)
   const popupCompanyData = useMemo(() => {
     if (!selectedCompanyPopup) return null;
@@ -2195,16 +2244,36 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               </div>
 
               {/* Right Group: Registration Button (클릭 시 보고서 팝업창 오픈) */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                {missingAttendanceWorkers.length > 0 ? (
+                  <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-400/50 flex items-center gap-1 shadow-xs animate-pulse">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    <span>⚠️ 미선택 {missingAttendanceWorkers.length}명 (선택 완료 후 등록 가능)</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-400/50 flex items-center gap-1 shadow-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>✓ 전원 선택완료 ({filteredAttendanceWorkers.length}명)</span>
+                  </span>
+                )}
                 {hasUnsavedChanges && (
-                  <span className="px-2 py-0.5 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50">
                     ● 미등록
                   </span>
                 )}
                 <button
                   onClick={handleOpenRegistrationReportModal}
                   disabled={isSaving}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 ${
+                    missingAttendanceWorkers.length > 0
+                      ? "bg-slate-800 text-amber-300 border-2 border-amber-400/80 hover:bg-slate-700 hover:border-amber-300"
+                      : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+                  }`}
+                  title={
+                    missingAttendanceWorkers.length > 0
+                      ? `아직 근태가 미선택된 근로자가 ${missingAttendanceWorkers.length}명 있습니다. 모든 인원의 근태를 선택한 후 등록 가능합니다.`
+                      : `[${selectedCompanyFilter}] ${currentMonthNum}월 ${selectedDay}일 보고서 등록`
+                  }
                 >
                   <FileText className="w-4 h-4" />
                   <span>💾 [{selectedCompanyFilter}] {currentMonthNum}월 {selectedDay}일({getDayLabel(selectedDay)}) 등록</span>
@@ -2222,8 +2291,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   작업자별 {currentMonthNum}월 {selectedDay}일 근태 선택 테이블 (2열 병렬)
                 </h3>
                 <span className="text-xs font-bold text-slate-500">
-                  (조회 {filteredAttendanceWorkers.length}명)
+                  (총 {filteredAttendanceWorkers.length}명)
                 </span>
+                {missingAttendanceWorkers.length > 0 ? (
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-amber-950 text-amber-300 border border-amber-700/80 flex items-center gap-1 animate-pulse">
+                    <AlertTriangle className="w-3 h-3 text-amber-400" />
+                    <span>미선택 {missingAttendanceWorkers.length}명</span>
+                  </span>
+                ) : (
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-700/80 flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    <span>전원 입력완료</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <button
@@ -2278,6 +2358,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900/40 text-xs">
                             {colWorkers.map((worker) => {
                               const currentVal = worker.daily ? worker.daily[selectedDay] : "";
+                              const strVal = String(currentVal || "").trim();
+                              const isUnselected = !strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null";
                               const meta = getOptionMeta(currentVal);
                               const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
                               const ot = weekdayOt + weekendOt;
@@ -2287,7 +2369,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                               return (
                                 <tr
                                   key={`${cleanCompanyName(worker.company)}__${worker.name}__${worker.originalMatrixIndex}`}
-                                  className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
+                                  className={`transition-colors ${
+                                    isUnselected
+                                      ? "bg-amber-500/10 dark:bg-amber-950/30 hover:bg-amber-500/15 border-l-4 border-l-amber-500"
+                                      : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
+                                  }`}
                                 >
                                   {/* No (회사별 순번) */}
                                   <td className="py-1 px-1 text-center font-mono text-slate-400 text-[10.5px] sm:text-[11px]">
@@ -2316,6 +2402,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                   {/* 근태 선택 버튼 7개 (정시, 19시, 21시, 22시, 야간, 연차, 결근) */}
                                   <td className="py-1 px-0.5 sm:px-1 text-center whitespace-nowrap">
                                     <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                                      {isUnselected && (
+                                        <span className="px-1 py-0.5 rounded text-[9.5px] font-black bg-amber-950 text-amber-300 border border-amber-800/80 shrink-0 animate-pulse">
+                                          미선택
+                                        </span>
+                                      )}
                                       {/* 정시 */}
                                       <button
                                         type="button"
