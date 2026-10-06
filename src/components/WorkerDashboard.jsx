@@ -170,7 +170,10 @@ import {
   cleanupExpiredCommonSchedules,
   formatCommonSchedulesForTelegram,
   getUncompletedCommonSchedules,
-  getScheduleCategoryMeta
+  getScheduleCategoryMeta,
+  isScheduleAdminRestricted,
+  isUserAdminOrHeadquarter,
+  filterSchedulesForUser
 } from "../services/commonScheduleService";
 import { sendDailyPnLMorningBriefingTelegram, sendCommonScheduleRegisteredTelegram, sendCommonScheduleCommentTelegram } from "../services/telegramService";
 import { getKSTDateString, formatKSTDateTime, formatKSTDate, formatRelativeAccessTime, isThisWeek } from "../utils/dateUtils";
@@ -1917,41 +1920,17 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, []);
 
-  // 🔒 본사 임원(권태형/최미영) 일정 일반 관리자/작업자 노출 방지 필터 헬퍼
+  // 🔒 본사 ADMIN 작성 일정 일반 관리자/작업자 노출 방지 필터 헬퍼
   const isScheduleVisibleToUser = (schedule, profile) => {
     if (!schedule) return false;
-    const isHeadquarter =
-      profile?.plant === "본사" ||
-      profile?.role === "ADMIN" ||
-      profile?.name === "권태형" ||
-      profile?.name === "최미영" ||
-      profile?.id === "admin" ||
-      profile?.id === "admin_kwon" ||
-      profile?.id === "admin_choi";
-    if (isHeadquarter) return true;
+    if (isUserAdminOrHeadquarter(profile)) return true;
 
-    const author = String(schedule.author || "").trim();
-    const target = String(schedule.target || "").trim();
-    const title = String(schedule.title || "").trim();
-
-    // 본사 임원(권태형/최미영/대표/전무/ADMIN)이 등록한 일정 및 본사/임원 관련 일정은 일반 사용자에게 비노출
-    if (
-      author === "권태형" ||
-      author === "최미영" ||
-      author === "대표이사" ||
-      author === "전무" ||
-      author === "ADMIN" ||
-      target === "본사" ||
-      title.includes("권태형") ||
-      title.includes("최미영") ||
-      title.includes("대표이사") ||
-      title.includes("전무")
-    ) {
-      return false;
-    }
+    // 🔒 [철칙] ADMIN에서 작성된 내용은 타 일반 관리자/작업자에게 절대 공유/노출 금지
+    if (isScheduleAdminRestricted(schedule)) return false;
 
     // 공장별 타겟 분리
-    const userPlant = profile?.plant || "";
+    const userPlant = String(profile?.plant || "").trim();
+    const target = String(schedule.target || "").trim();
     if (userPlant === "삼랑진공장" && target.includes("한림")) return false;
     if (userPlant === "한림공장" && target.includes("삼랑진")) return false;
 
@@ -9902,7 +9881,25 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       등록된 의견이 없습니다. 첫 번째 의견을 남겨보세요!
                     </div>
                   ) : (
-                    selectedCommonScheduleForComments.comments.map((cmt) => {
+                    selectedCommonScheduleForComments.comments
+                      .filter((cmt) => {
+                        if (!cmt) return false;
+                        if (isUserAdminOrHeadquarter(currentProfile)) return true;
+                        const author = String(cmt.author || "").trim().toLowerCase();
+                        const role = String(cmt.role || "").trim().toUpperCase();
+                        if (
+                          author === "admin" ||
+                          author === "권태형" ||
+                          author === "최미영" ||
+                          author === "대표이사" ||
+                          author === "전무" ||
+                          role === "ADMIN"
+                        ) {
+                          return false;
+                        }
+                        return true;
+                      })
+                      .map((cmt) => {
                       const canDelete = isAdmin || isGeneralManager || cmt.author === currentProfile?.name;
                       const timeStr = cmt.createdAt ? new Date(cmt.createdAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : "";
                       const dateStr = cmt.createdAt ? cmt.createdAt.slice(5, 10).replace("-", "/") : "";

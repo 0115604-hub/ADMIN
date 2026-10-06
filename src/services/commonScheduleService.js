@@ -78,6 +78,85 @@ export const isScheduleExpired = (schedule, graceHours = 1) => {
   return nowKstMs >= expireTimeMs;
 };
 
+/**
+ * 🔒 [보안] ADMIN(본사/경영진)에서 작성/등록된 일정인지 판별
+ * ADMIN에서 작성된 내용은 타 일반 관리자(삼랑진/한림)에게 절대 공유/노출 금지
+ */
+export const isScheduleAdminRestricted = (schedule) => {
+  if (!schedule) return false;
+  const author = String(schedule.author || schedule.writer || schedule.userName || "").trim().toLowerCase();
+  const authorRole = String(schedule.authorRole || schedule.role || "").trim().toUpperCase();
+  const plant = String(schedule.plant || schedule.authorPlant || "").trim();
+  const target = String(schedule.target || "").trim();
+  const title = String(schedule.title || schedule.content || schedule.reason || "").trim();
+
+  return (
+    author === "admin" ||
+    author === "admin_kwon" ||
+    author === "admin_choi" ||
+    author === "권태형" ||
+    author === "최미영" ||
+    author === "대표이사" ||
+    author === "전무" ||
+    author === "대표" ||
+    authorRole === "ADMIN" ||
+    plant === "본사" ||
+    target === "본사" ||
+    target === "admin" ||
+    target === "ADMIN" ||
+    title.includes("[ADMIN]") ||
+    title.includes("[본사]")
+  );
+};
+
+/**
+ * 🔒 사용자가 본사 ADMIN(권태형 대표이사, 최미영 전무, ADMIN 계정)인지 판별
+ */
+export const isUserAdminOrHeadquarter = (profile) => {
+  if (!profile) return false;
+  const id = String(profile.id || "").trim();
+  const name = String(profile.name || "").trim();
+  const role = String(profile.role || "").trim().toUpperCase();
+  const plant = String(profile.plant || "").trim();
+
+  return (
+    id === "admin" ||
+    id === "admin_kwon" ||
+    id === "admin_choi" ||
+    name === "권태형" ||
+    name === "최미영" ||
+    name === "대표이사" ||
+    name === "전무" ||
+    role === "ADMIN" ||
+    plant === "본사"
+  );
+};
+
+/**
+ * 🔒 사용자 권한에 따른 일정 필터링
+ * - 본사 ADMIN: 전체 일정 조회 가능
+ * - 일반 관리자/작업자: ADMIN에서 작성된 모든 일정 완전 차단 + 해당 공장/개인 일정만 반환
+ */
+export const filterSchedulesForUser = (schedules, profile) => {
+  if (!Array.isArray(schedules)) return [];
+  if (isUserAdminOrHeadquarter(profile)) return schedules;
+
+  const userPlant = String(profile?.plant || "").trim();
+
+  return schedules.filter((s) => {
+    if (!s) return false;
+    // 1. ADMIN 작성 내용 무조건 제외
+    if (isScheduleAdminRestricted(s)) return false;
+
+    // 2. 타 공장 대상 일정 제외
+    const target = String(s.target || "").trim();
+    if (userPlant === "삼랑진공장" && target.includes("한림")) return false;
+    if (userPlant === "한림공장" && target.includes("삼랑진")) return false;
+
+    return true;
+  });
+};
+
 /* ========================================================================= */
 /* 📂 1. 보관 대장 (Archive Ledger) 로컬 & Firestore 관리 */
 /* ========================================================================= */

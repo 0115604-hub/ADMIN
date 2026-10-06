@@ -41,7 +41,8 @@ import {
 import {
   subscribeCommonSchedules,
   getLocalCommonSchedules,
-  isScheduleExpired
+  isScheduleExpired,
+  isScheduleAdminRestricted
 } from "../../services/commonScheduleService";
 import {
   subscribeSmartOvertimeData,
@@ -421,28 +422,12 @@ export const WorkerPinModal = ({
     (commonSchedules || []).forEach((s) => {
       if (!s || s.isCompleted || isScheduleExpired(s)) return;
 
-      const author = String(s.author || "").trim();
-      const target = String(s.target || "").trim();
-      const title = String(s.title || "").trim();
-
-      // 🔒 본사 관리자가 아닌 일반 관리자(삼랑진/한림)에게는 권태형/최미영(대표이사/전무/ADMIN)의 일정 완전 차단
+      // 🔒 [철칙] ADMIN에서 작성된 내용은 타 일반 관리자(삼랑진/한림)에게 절대 공유/노출 금지
       if (!isHeadquarterAdmin) {
-        if (
-          author === "권태형" ||
-          author === "최미영" ||
-          author === "대표이사" ||
-          author === "전무" ||
-          author === "ADMIN" ||
-          target === "본사" ||
-          title.includes("권태형") ||
-          title.includes("최미영") ||
-          title.includes("대표이사") ||
-          title.includes("전무")
-        ) {
-          return;
-        }
+        if (isScheduleAdminRestricted(s)) return;
 
-        // 공장별 타겟 필터링
+        const target = String(s.target || "").trim();
+        // 타 공장 전용 일정 필터링
         if (isSamrangjinManager && target.includes("한림")) return;
         if (isHallimManager && target.includes("삼랑진")) return;
       }
@@ -464,6 +449,18 @@ export const WorkerPinModal = ({
 
       annualLeaves.forEach((l) => {
         if (!l || l.isCompleted || l.isDismissed) return;
+
+        // 🔒 ADMIN이 작성한 일정/근태는 타 일반 관리자에게 절대 노출 금지
+        const isLeaveAdmin =
+          l.userId === "admin_kwon" ||
+          l.userId === "admin_choi" ||
+          l.userId === "admin" ||
+          l.userName === "권태형" ||
+          l.userName === "최미영" ||
+          l.role === "ADMIN" ||
+          l.plant === "본사";
+        if (!isHeadquarterAdmin && isLeaveAdmin) return;
+
         const isMyLeave = (uid && l.userId === uid) || (uname && l.userName === uname);
         const isSharedToMe = Boolean(l.isSharedRecipient && ((uid && l.userId === uid) || (uname && l.userName === uname)));
 
