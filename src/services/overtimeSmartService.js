@@ -484,17 +484,31 @@ export const calculateDeptSummary = (attendanceList, dayNum = 8) => {
 
 // Ensure all 5 companies are present even if loading from older cached storage
 // ⭐ Build Synchronized Attendance Matrix from Registered Reports (Tab 4 근태/특근관리 기준)
-export const buildMatrixFromReports = (masterWorkers, reports) => {
+export const buildMatrixFromReports = (masterWorkers, reports, targetYear = 2026, targetMonth = 10) => {
   const workers = Array.isArray(masterWorkers) && masterWorkers.length > 0 
     ? masterWorkers 
     : (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []);
 
-  // 1. Initialize 30-day base matrix preserving worker's daily records
+  const isSeptember = (targetMonth === 9);
+
+  // 1. Initialize base matrix preserving worker's daily records
   const matrix = workers.map((w, idx) => {
-    const daily = { ...(w.daily || {}) };
+    let daily = {};
+    if (w.daily) {
+      if (isSeptember) {
+        daily = { ...w.daily };
+      } else {
+        // For October: preserve only recorded days 1~6, future days are empty
+        for (let d = 1; d <= 6; d++) {
+          if (w.daily[d] && w.daily[d] !== "" && w.daily[d] !== "-") {
+            daily[d] = w.daily[d];
+          }
+        }
+      }
+    }
     return {
       no: idx + 1,
-      company: w.company,
+      company: cleanCompanyName(w.company),
       dept: normalizeDept(w.dept),
       line: w.line || normalizeDept(w.dept),
       name: w.name,
@@ -515,15 +529,21 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
     return c1 === c2 || c1.includes(c2) || c2.includes(c1);
   };
 
-  // 2. Iterate through all reports and project them onto the matrix
+  // 2. Iterate through reports that match targetYear and targetMonth ONLY
   reports.forEach((report) => {
     if (!report || !report.workDate) return;
     const parts = String(report.workDate).split("-");
     if (parts.length < 3) return;
+    const repYear = parseInt(parts[0], 10);
+    const repMonth = parseInt(parts[1], 10);
     const day = parseInt(parts[2], 10);
-    if (isNaN(day) || day < 1 || day > 30) return;
 
-    const isWeekend = (day === 5 || day === 6 || day === 12 || day === 13 || day === 19 || day === 20 || day === 26 || day === 27);
+    // ⭐ Strict month & year matching
+    if (targetYear && repYear && repYear !== targetYear) return;
+    if (targetMonth && repMonth && repMonth !== targetMonth) return;
+    if (isNaN(day) || day < 1 || day > 31) return;
+
+    const isWeekend = isWeekendByDate(day, targetYear || 2026, targetMonth || 10);
 
     // Identify target companies for this report
     let targetCompanies = [];
@@ -591,12 +611,53 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
   return matrix;
 };
 
-export const ensureAllCompaniesPresent = (data) => {
+export const ensureAllCompaniesPresent = (data, targetYearMonth = null) => {
+  const ym = targetYearMonth || (data?.year && data?.month ? `${data.year}-${String(data.month).padStart(2, "0")}` : "2026-10");
+  const [targetY, targetM] = ym.split("-").map(Number);
+  const isSeptember = (ym === "2026-09" || targetM === 9 || data?.month === 9);
+
   if (!data || !Array.isArray(data.attendanceMatrix) || data.attendanceMatrix.length === 0) {
-    return INITIAL_SMART_OVERTIME_DATA;
+    if (isSeptember) {
+      return INITIAL_SMART_OVERTIME_DATA;
+    }
+    return createEmptySmartOvertimeData(targetY || 2026, targetM || 10);
+  }
+
+  // Detect if October data is contaminated with September's 30-day dummy entries
+  let isContaminated = false;
+  if (!isSeptember) {
+    let futureFilledCount = 0;
+    data.attendanceMatrix.forEach((w) => {
+      if (w.daily) {
+        for (let d = 7; d <= 31; d++) {
+          if (w.daily[d] && w.daily[d] !== "-" && w.daily[d] !== "") {
+            futureFilledCount++;
+          }
+        }
+      }
+    });
+    if (futureFilledCount > 5 || data.month === 9) {
+      isContaminated = true;
+    }
   }
 
   let matrix = data.attendanceMatrix.map((w, idx) => {
+    const rawDaily = { ...(w.daily || {}) };
+    let cleanDaily = {};
+
+    if (isSeptember) {
+      cleanDaily = rawDaily;
+    } else if (isContaminated) {
+      // Clean contaminated October data: wipe all future days (7..31)
+      for (let d = 1; d <= 6; d++) {
+        if (rawDaily[d] && rawDaily[d] !== "" && rawDaily[d] !== "-") {
+          cleanDaily[d] = rawDaily[d];
+        }
+      }
+    } else {
+      cleanDaily = rawDaily;
+    }
+
     return {
       ...w,
       no: idx + 1,
@@ -605,7 +666,7 @@ export const ensureAllCompaniesPresent = (data) => {
       line: w.line || normalizeDept(w.dept),
       name: (w.name || "").trim(),
       position: w.position || "작업원",
-      daily: { ...(w.daily || {}) }
+      daily: cleanDaily
     };
   });
 
@@ -613,7 +674,7 @@ export const ensureAllCompaniesPresent = (data) => {
     ? data.masterWorkers.map((w, idx) => ({
         ...w,
         no: idx + 1,
-        company: w.company || matrix[idx]?.company || "(주)오륙",
+        company: w.company || matrix[idx]?.company || "오륙",
         dept: normalizeDept(w.dept || matrix[idx]?.dept),
         line: w.line || matrix[idx]?.line || normalizeDept(w.dept),
         name: (w.name || matrix[idx]?.name || "").trim(),
@@ -639,8 +700,13 @@ export const ensureAllCompaniesPresent = (data) => {
   // Check if any company from INITIAL_SMART_OVERTIME_DATA (like '유성') is completely missing
   COMPANIES.forEach((comp) => {
     if (!existingCompanies.has(comp)) {
-      const initialWorkersForComp = INITIAL_SMART_OVERTIME_DATA.masterWorkers.filter((w) => w.company === comp);
-      const initialMatrixForComp = INITIAL_SMART_OVERTIME_DATA.attendanceMatrix.filter((w) => w.company === comp);
+      const initialWorkersForComp = (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []).filter((w) => w.company === comp);
+      const initialMatrixForComp = (INITIAL_SMART_OVERTIME_DATA.attendanceMatrix || [])
+        .filter((w) => w.company === comp)
+        .map((w) => ({
+          ...w,
+          daily: isSeptember ? { ...(w.daily || {}) } : {} // 💡 Empty for October!
+        }));
       master.push(...initialWorkersForComp);
       matrix.push(...initialMatrixForComp);
     }
@@ -672,6 +738,8 @@ export const ensureAllCompaniesPresent = (data) => {
 
   return {
     ...data,
+    year: targetY || (isSeptember ? 2026 : (data.year || 2026)),
+    month: targetM || (isSeptember ? 9 : (data.month || 10)),
     attendanceMatrix: reindexedMatrix,
     masterWorkers: reindexedMaster
   };
@@ -733,12 +801,12 @@ export const getLocalSmartOvertimeData = (targetYearMonth = "2026-10") => {
     const key = getStorageKeyForMonth(ym);
 
     // 1. 2026년 9월 (지난달 실적 마감 대장)
-    if (ym === "2026-09") {
+    if (ym === "2026-09" || m === 9) {
       const septRaw = localStorage.getItem(key) || localStorage.getItem(STORAGE_KEY);
       if (septRaw) {
         const parsed = JSON.parse(septRaw);
         if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-          return ensureAllCompaniesPresent(parsed);
+          return ensureAllCompaniesPresent(parsed, "2026-09");
         }
       }
       return INITIAL_SMART_OVERTIME_DATA;
@@ -749,7 +817,9 @@ export const getLocalSmartOvertimeData = (targetYearMonth = "2026-10") => {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.attendanceMatrix) && parsed.attendanceMatrix.length > 0) {
-        return ensureAllCompaniesPresent(parsed);
+        const sanitized = ensureAllCompaniesPresent(parsed, ym);
+        localStorage.setItem(key, JSON.stringify(sanitized));
+        return sanitized;
       }
     }
 
@@ -771,7 +841,7 @@ export const saveSmartOvertimeData = async (data, targetYearMonth = null) => {
     const key = getStorageKeyForMonth(ym);
     const docId = getFirestoreDocIdForMonth(ym);
 
-    const normalizedData = ensureAllCompaniesPresent(data);
+    const normalizedData = ensureAllCompaniesPresent(data, ym);
     localStorage.setItem(key, JSON.stringify(normalizedData));
 
     if (ym === "2026-09") {
@@ -837,9 +907,20 @@ export const subscribeSmartOvertimeData = (callback, targetYearMonth = "2026-10"
         if (docSnap.exists()) {
           const cloudData = docSnap.data();
           if (cloudData && Array.isArray(cloudData.attendanceMatrix) && cloudData.attendanceMatrix.length > 0) {
-            const normalized = ensureAllCompaniesPresent(cloudData);
+            const normalized = ensureAllCompaniesPresent(cloudData, ym);
             localStorage.setItem(key, JSON.stringify(normalized));
             callback(normalized);
+
+            // If cloudData had future dummy records (e.g. days 15..30), fix Firestore doc in background
+            if (ym !== "2026-09" && cloudData.attendanceMatrix.some(w => w.daily && (w.daily[15] || w.daily[20] || w.daily[25]))) {
+              setDoc(ref, sanitizeForFirestore({
+                year: normalized.year,
+                month: normalized.month,
+                masterWorkers: normalized.masterWorkers,
+                attendanceMatrix: normalized.attendanceMatrix,
+                updatedAt: new Date().toISOString()
+              }), { merge: true }).catch(() => {});
+            }
             return;
           }
         }

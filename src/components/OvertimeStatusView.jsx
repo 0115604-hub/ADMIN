@@ -1346,13 +1346,15 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       setLegacyReports(nextReports);
       
       // ⭐ 삭제 즉시 근태/특근관리 기준 4개 탭 전사 동기화 (해당 일자/업체 자동 초기화)
-      const synchedMatrix = buildMatrixFromReports(smartData.masterWorkers, nextReports);
+      const synchedMatrix = buildMatrixFromReports(smartData.masterWorkers, nextReports, currentYear, currentMonthNum);
       const updatedLedger = {
         ...smartData,
+        year: currentYear,
+        month: currentMonthNum,
         attendanceMatrix: synchedMatrix
       };
       setSmartData(updatedLedger);
-      await saveSmartOvertimeData(updatedLedger);
+      await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10");
 
       // ⭐ 결재함 특근보고서 실시간 재수정/정리
       if (targetRep) {
