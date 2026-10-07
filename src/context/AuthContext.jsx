@@ -63,8 +63,7 @@ export const PLANTS = [
       { id: "sam_dg", name: "유동길", title: "선임", plant: "삼랑진공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "유", pin: "11" },
       { id: "sam_ij", name: "조인주", title: "선임", plant: "삼랑진공장", assignedProcess: "오륙 근태관리", role: "OPERATOR", avatar: "조", pin: "11" },
       { id: "sam_sk", name: "이성기", title: "선임", plant: "삼랑진공장", assignedProcess: "유성 근태관리", role: "OPERATOR", avatar: "이", pin: "11" },
-      { id: "sam_sg", name: "이상기", title: "기사", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" },
-      { id: "sam_ys", name: "유성", title: "대표이사", plant: "삼랑진공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "유", pin: "11", isPartner: true }
+      { id: "sam_sg", name: "이상기", title: "기사", plant: "삼랑진공장", assignedProcess: "품질관리", role: "OPERATOR", avatar: "이", pin: "11" }
     ]
   },
   {
@@ -76,10 +75,7 @@ export const PLANTS = [
       { id: "hal_sm", name: "오상민", title: "선임", plant: "한림공장", assignedProcess: "조영 근태관리", role: "OPERATOR", avatar: "오", pin: "11" },
       { id: "hal_hs", name: "황수현", title: "선임", plant: "한림공장", assignedProcess: "한울 근태관리", role: "OPERATOR", avatar: "황", pin: "11" },
       { id: "hal_dh", name: "김동훈", title: "책임", plant: "한림공장", assignedProcess: "부림텍 근태관리", role: "OPERATOR", avatar: "김", pin: "11" },
-      { id: "hal_hg", name: "정현규", title: "사원", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "정", pin: "11" },
-      { id: "hal_br", name: "부림텍", title: "대표이사", plant: "한림공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "부", pin: "11", isPartner: true },
-      { id: "hal_hu", name: "한울", title: "대표이사", plant: "한림공장", assignedProcess: "외주가공", role: "OPERATOR", avatar: "한", pin: "11", isPartner: true },
-      { id: "hal_test", name: "TEST", title: "선임", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "T", pin: "11" }
+      { id: "hal_hg", name: "정현규", title: "사원", plant: "한림공장", assignedProcess: "가공동 관리", role: "OPERATOR", avatar: "정", pin: "11" }
     ]
   }
 ];

@@ -526,10 +526,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isGeneralManager = isMyeongjae || isDongwook || isAdmin || currentProfile?.assignedProcess === "총괄관리";
   const isManagerOrAdmin = isGeneralManager || isAdmin || workerDept === "관리팀" || currentProfile?.assignedProcess === "총괄관리" || currentProfile?.assignedProcess === "경리업무" || currentProfile?.role === "ADMIN" || currentProfile?.title === "이사" || currentProfile?.title === "대표이사" || currentProfile?.title === "전무" || isInjoo;
 
-  // Approval Documents Subscription (Real-time for Top Panel)
-  // 5 Company Smart Overtime Ledger Subscription for Panel 4
-  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
-
   // Extrusion 4-Lines Downtime Summary (실시간 업로드 데이터 연동)
   const [extrusionSummaryList, setExtrusionSummaryList] = useState(() => getExtrusionSummaryData());
 
@@ -547,13 +543,23 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     };
   }, []);
 
+  // 5 Company Smart Overtime Ledger & Reports Subscription
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+  const [overtimeReports, setOvertimeReports] = useState(() => getLocalOvertimeReports());
+
   useEffect(() => {
-    const unsub = subscribeSmartOvertimeData((data) => {
+    const unsubSmart = subscribeSmartOvertimeData((data) => {
       if (data && data.attendanceMatrix) {
         setSmartOvertimeData(data);
       }
     });
-    return () => unsub();
+    const unsubReports = subscribeOvertimeReports((reports) => {
+      setOvertimeReports(reports || []);
+    });
+    return () => {
+      unsubSmart();
+      unsubReports();
+    };
   }, []);
 
   // 9시 기준 작성여부 및 미작성 업체 계산 (보고서와 대장 실시간 통합)
@@ -746,16 +752,6 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   useEffect(() => {
     const unsub = subscribeAccessLogs((logs) => {
       setAccessLogs(logs);
-    });
-    return () => unsub();
-  }, []);
-
-  // Real-time Overtime Reports State & Summary (마지막 수정본 자동 반영)
-  const [overtimeReports, setOvertimeReports] = useState(() => getLocalOvertimeReports());
-
-  useEffect(() => {
-    const unsub = subscribeOvertimeReports((reports) => {
-      setOvertimeReports(reports);
     });
     return () => unsub();
   }, []);
