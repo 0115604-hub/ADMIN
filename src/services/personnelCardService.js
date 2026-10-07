@@ -390,7 +390,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     localSavedCard = map[`${cleanComp}_${name}`] || map[`${company}_${name}`] || map[`${rawCompany}_${name}`] || null;
   }
 
-  const merged = { ...existingCard, ...(localSavedCard || {}) };
+  const merged = { ...worker, ...existingCard, ...(localSavedCard || {}) };
   const isPartner = isPartnerCompany(company) || isPartnerCompany(name);
 
   // 부서 우선순위: 저장된 카드(merged.dept) > worker.dept > (협력업체는 업체명, 그 외는 생산팀)

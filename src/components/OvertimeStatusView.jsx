@@ -1648,6 +1648,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       const reindexedMatrix = currentMatrix.map((w, idx) => ({ ...w, no: idx + 1 }));
       const reindexedMaster = reindexedMatrix.map((w, idx) => ({
+        ...w,
         no: idx + 1,
         company: w.company,
         dept: normalizeStandardDept(w.dept, w.company),
