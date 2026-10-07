@@ -2104,7 +2104,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {COMPANIES.map((compName) => {
-              const breakdown = dailySummary.companyBreakdown?.[compName] || {
+              const cleanComp = cleanCompanyName(compName);
+              const breakdown = dailySummary.companyBreakdown?.[cleanComp] || dailySummary.companyBreakdown?.[compName] || {
                 total: 0,
                 attended: 0,
                 regular: 0,
@@ -2118,13 +2119,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 otHours: 0,
                 totalHours: 0
               };
-              const dotColor = compName === "오륙" || compName === "(주)오륙" ? "bg-blue-400" :
-                compName === "조영" || compName === "(주)조영산업" ? "bg-purple-400" :
-                compName === "한울" ? "bg-emerald-400" :
-                compName === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
+              const dotColor = cleanComp === "오륙" ? "bg-blue-400" :
+                cleanComp === "조영" ? "bg-purple-400" :
+                cleanComp === "한울" ? "bg-emerald-400" :
+                cleanComp === "부림텍" ? "bg-amber-400" : "bg-cyan-400";
 
               const otWorkersCount = breakdown.otWorkers || 0;
-
               const absentCount = breakdown.absent || 0;
 
               return (
@@ -2145,7 +2145,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       {compName}
                     </span>
                     {(() => {
-                      const isUnwritten = unwrittenCompanies.some((c) => c.name === compName);
+                      const isUnwritten = unwrittenCompanies.some((c) => cleanCompanyName(c.name) === cleanComp || c.shortName === compName || c.name === compName);
                       const isWritten = !isUnwritten;
                       if (isWritten) {
                         return (
@@ -4786,7 +4786,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                         : "text-yellow-400 animate-pulse"
                     }`}>
                       {liveApproval.status === "APPROVED"
-                        ? "🟢 결재 완료 (4/4)"
+                        ? (!isWk ? "🟢 작성자 전결 승인 완료" : "🟢 결재 완료 (4/4)")
                         : liveApproval.status === "HOLD"
                         ? "⏸️ 결재 보류"
                         : liveApproval.status === "REJECTED"
@@ -4822,9 +4822,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                 </div>
                               ) : (
                                 <div className={`w-10 h-10 rounded-full border-2 ${sIdx === 0 ? "border-blue-600 text-blue-600" : "border-rose-600 text-rose-600"} flex flex-col items-center justify-center font-black leading-none transform rotate-[-5deg] select-none bg-white animate-scaleUp`}>
-                                  <span className="text-[7px] font-bold">오륙</span>
+                                  <span className="text-[7px] font-bold">{cleanCompanyName(selectedLegacyReport.company || "오륙")}</span>
                                   <span className="text-[10px] font-black">{st.name?.slice(0, 3)}</span>
-                                  <span className="text-[7px]">{sIdx === 0 ? "기안" : "승인"}</span>
+                                  <span className="text-[7px]">{sIdx === 0 ? "기안" : (!isWk ? "전결" : "승인")}</span>
                                 </div>
                               )
                             ) : isHoldStep ? (
