@@ -105,7 +105,8 @@ import {
   getLocalSmartOvertimeData,
   calculateDailySummary,
   subscribeSmartOvertimeData,
-  cleanCompanyName
+  cleanCompanyName,
+  buildMatrixFromReports
 } from "../services/overtimeSmartService.js";
 import {
   getLocalApprovalDocs,
@@ -555,12 +556,18 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return () => unsub();
   }, []);
 
-  // 9시 기준 작성여부 및 미작성 업체 계산
+  // 9시 기준 작성여부 및 미작성 업체 계산 (보고서와 대장 실시간 통합)
   const { companyOverviewStats, unwrittenCompanies, isAfter9AM } = useMemo(() => {
-    const matrix = smartOvertimeData?.attendanceMatrix || [];
+    const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
     const todayStr = getKSTDateString();
     const todayParts = todayStr.split("-");
     const todayDayNum = todayParts.length === 3 ? parseInt(todayParts[2], 10) : new Date().getDate();
+    const todayYear = todayParts.length === 3 ? parseInt(todayParts[0], 10) : 2026;
+    const todayMonth = todayParts.length === 3 ? parseInt(todayParts[1], 10) : 10;
+
+    const matrix = (overtimeReports && overtimeReports.length > 0)
+      ? buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth)
+      : rawMatrix;
 
     const now = new Date();
     const currentHour = now.getHours();
@@ -657,7 +664,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       unwrittenCompanies: unwritten,
       isAfter9AM: isAfter9
     };
-  }, [smartOvertimeData]);
+  }, [smartOvertimeData, overtimeReports]);
 
   const [approvalDocs, setApprovalDocs] = useState(() => getLocalApprovalDocs());
 

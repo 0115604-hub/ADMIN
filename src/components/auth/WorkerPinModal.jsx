@@ -49,8 +49,13 @@ import {
   getLocalSmartOvertimeData,
   calculateDailySummary,
   COMPANIES,
-  cleanCompanyName
+  cleanCompanyName,
+  buildMatrixFromReports
 } from "../../services/overtimeSmartService";
+import {
+  subscribeOvertimeReports,
+  getLocalOvertimeReports
+} from "../../services/overtimeService";
 import {
   subscribe4MAbsenceLogs,
   getLocal4MAbsenceLogsMap
@@ -103,6 +108,7 @@ export const WorkerPinModal = ({
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
+  const [overtimeReports, setOvertimeReports] = useState(() => getLocalOvertimeReports());
   const [localUrgentIssues, setLocalUrgentIssues] = useState(() => getLocalUrgentIssues());
   const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
 
@@ -115,6 +121,7 @@ export const WorkerPinModal = ({
     const unsubDisaster = subscribeSevereDisasterPhotos((photos) => setDisasterPhotos(photos || []));
     const unsubSched = subscribeCommonSchedules((scheds) => setCommonSchedules(scheds || []));
     const unsubOvertime = subscribeSmartOvertimeData((data) => { if (data) setSmartOvertimeData(data); });
+    const unsubReports = subscribeOvertimeReports((reps) => { if (reps) setOvertimeReports(reps); });
     const unsubAbsence = subscribe4MAbsenceLogs((logs) => { if (logs) setAbsenceLogsMap(logs); });
     const unsubExtQual = subscribeExtrusionQualityIssues((list) => setExtrusionQualityIssues(list || []));
     const unsub4M = subscribeFourMChangePoints((list) => setFourMLedgerRecords(list || []));
@@ -633,15 +640,26 @@ export const WorkerPinModal = ({
     });
   }, [commonSchedules, annualLeaves, selectedUser, isHeadquarterAdmin, isSamrangjinManager, isHallimManager]);
 
-  // 당일 일자 및 일일 근태 요약
+  // 당일 일자 및 일일 근태 요약 (보고서와 실시간 동기화)
   const todayDayNum = useMemo(() => new Date().getDate(), []);
+  const unifiedPinMatrix = useMemo(() => {
+    const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
+    const todayKst = getKSTDateString();
+    const p = todayKst.split("-");
+    const todayYear = parseInt(p[0], 10) || 2026;
+    const todayMonth = parseInt(p[1], 10) || 10;
+    return (overtimeReports && overtimeReports.length > 0)
+      ? buildMatrixFromReports(rawMatrix, overtimeReports, todayYear, todayMonth)
+      : rawMatrix;
+  }, [smartOvertimeData, overtimeReports]);
+
   const dailyOvertimeSummary = useMemo(() => {
-    if (!smartOvertimeData || !smartOvertimeData.attendanceMatrix) return null;
-    return calculateDailySummary(smartOvertimeData.attendanceMatrix, todayDayNum);
-  }, [smartOvertimeData, todayDayNum]);
+    if (!unifiedPinMatrix || unifiedPinMatrix.length === 0) return null;
+    return calculateDailySummary(unifiedPinMatrix, todayDayNum);
+  }, [unifiedPinMatrix, todayDayNum]);
 
   const unwrittenCompanies = useMemo(() => {
-    const matrix = smartOvertimeData?.attendanceMatrix || [];
+    const matrix = unifiedPinMatrix || [];
     return COMPANIES.filter((comp) => {
       const cleanCompName = cleanCompanyName(comp);
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
@@ -653,7 +671,7 @@ export const WorkerPinModal = ({
       }).length;
       return enteredCount === 0;
     });
-  }, [smartOvertimeData, todayDayNum]);
+  }, [unifiedPinMatrix, todayDayNum]);
 
   const isAfter9AM = useMemo(() => new Date().getHours() >= 9, []);
 

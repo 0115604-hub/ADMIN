@@ -935,6 +935,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       if (reports.length > 0 && !selectedLegacyReport) {
         setSelectedLegacyReport(reports[0]);
       }
+      if (Array.isArray(reports) && reports.length > 0) {
+        setSmartData((prev) => {
+          if (!prev) return prev;
+          const merged = buildMatrixFromReports(
+            prev.masterWorkers || prev.attendanceMatrix,
+            reports,
+            currentYear,
+            currentMonthNum
+          );
+          return {
+            ...prev,
+            year: currentYear,
+            month: currentMonthNum,
+            attendanceMatrix: merged
+          };
+        });
+      }
     });
 
     const unsubApproval = subscribeApprovalDocs((docs) => {
@@ -1278,31 +1295,29 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       };
       const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `${currentYear}년 ${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
 
-      const items = (filteredAttendanceWorkers || []).filter(w => {
-        const val = w.daily ? w.daily[d] : "";
-        const { isAttended, workHours } = calculateWorkerDailyHours(val);
-        return isAttended && workHours > 0;
-      }).map((w, idx) => {
-        const val = w.daily ? w.daily[d] : "";
-        const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
+      const allWorkersList = filteredAttendanceWorkers || [];
+      const items = allWorkersList.map((w, idx) => {
+        const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+        const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
+        const isOff = val === "결근" || val === "연차" || val === "휴가" || val === "-" || val === "휴무";
         return {
           id: `rep_item_${d}_${w.no || idx}_${w.name || idx}`,
           no: idx + 1,
-          company: w.company || "",
+          company: cleanCompanyName(w.company) || "",
           factory: getPlantForCompany(w.company) || compMeta.plant || "",
           dept: normalizeDept(w.dept) || "",
           line: w.line || normalizeDept(w.dept) || "",
           category: w.line || normalizeDept(w.dept) || "",
-          workerName: w.name || "",
+          workerName: (w.name || "").trim(),
           position: w.position || "작업원",
-          attendanceCode: val || "",
-          startTime: "08:00",
-          endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : "17:00",
-          hours: workHours || 8,
+          attendanceCode: val || (isWk ? "특근" : "🟢"),
+          startTime: isOff ? "-" : "08:00",
+          endTime: val === "19" ? "19:00" : val === "21" ? "21:00" : val === "22" ? "22:00" : (isOff ? "-" : "17:00"),
+          hours: workHours || (isAttended ? 8 : 0),
           otHours: (weekdayOt + weekendOt) || 0,
           count: 1,
-          workContent: `${w.company || ""} ${normalizeDept(w.dept) || ""} 작업 수행`,
-          workDetails: `${w.company || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} 생산 및 납품 대응`
+          workContent: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : "작업 수행"}`,
+          workDetails: `${cleanCompanyName(w.company) || ""} ${normalizeDept(w.dept) || ""} ${w.line || ""} ${val === "결근" ? "결근" : val === "연차" ? "연차" : val === "휴가" ? "휴가" : "생산 및 납품 대응"}`
         };
       });
 
@@ -1331,7 +1346,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           date: step.date || "",
           comment: isWk ? (step.comment || "") : "작성자 전결"
         })),
-        totalWorkers: items.length,
+        totalWorkers: allWorkersList.length,
+        attendedWorkers: items.filter(it => it.hours > 0).length,
         totalHours: totalHours,
         cost: cost,
         items: items,

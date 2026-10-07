@@ -502,7 +502,7 @@ export const calculateDeptSummary = (attendanceList, dayNum = 8) => {
 
 // Ensure all 5 companies are present even if loading from older cached storage
 // ⭐ Build Synchronized Attendance Matrix from Registered Reports (Tab 4 근태/특근관리 기준)
-export const buildMatrixFromReports = (masterWorkers, reports) => {
+export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null, targetMonth = null) => {
   const workers = Array.isArray(masterWorkers) && masterWorkers.length > 0 
     ? masterWorkers 
     : (INITIAL_SMART_OVERTIME_DATA.masterWorkers || []);
@@ -515,7 +515,7 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
       company: cleanCompanyName(w.company),
       dept: normalizeDept(w.dept),
       line: w.line || normalizeDept(w.dept),
-      name: w.name,
+      name: (w.name || "").trim(),
       position: w.position || "작업원",
       daily
     };
@@ -528,8 +528,8 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
   // Helper to normalize company name
   const matchCompany = (comp1, comp2) => {
     if (!comp1 || !comp2) return false;
-    const c1 = String(comp1).replace(/[()]/g, "").trim();
-    const c2 = String(comp2).replace(/[()]/g, "").trim();
+    const c1 = cleanCompanyName(comp1);
+    const c2 = cleanCompanyName(comp2);
     return c1 === c2 || c1.includes(c2) || c2.includes(c1);
   };
 
@@ -538,23 +538,27 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
     if (!report || !report.workDate) return;
     const parts = String(report.workDate).split("-");
     if (parts.length < 3) return;
+    const repYear = parseInt(parts[0], 10);
+    const repMonth = parseInt(parts[1], 10);
     const day = parseInt(parts[2], 10);
     if (isNaN(day) || day < 1 || day > 31) return;
+    if (targetYear && repYear !== Number(targetYear)) return;
+    if (targetMonth && repMonth !== Number(targetMonth)) return;
 
-    const isWeekend = (day === 5 || day === 6 || day === 12 || day === 13 || day === 19 || day === 20 || day === 26 || day === 27);
+    const isWeekend = isWeekendByDate(day, repYear, repMonth);
 
     // Identify target companies for this report
     let targetCompanies = [];
     if (report.company && report.company !== "전체") {
-      targetCompanies = [report.company];
+      targetCompanies = [cleanCompanyName(report.company)];
     } else if (report.plant === "삼랑진공장") {
-      targetCompanies = ["(주)오륙", "유성"];
+      targetCompanies = ["오륙", "유성"];
     } else if (report.plant === "한림공장") {
-      targetCompanies = ["(주)조영산업", "한울", "부림텍"];
+      targetCompanies = ["조영", "한울", "부림텍"];
     } else if (Array.isArray(report.companies) && report.companies.length > 0) {
-      targetCompanies = report.companies;
+      targetCompanies = report.companies.map(cleanCompanyName);
     } else {
-      targetCompanies = COMPANIES;
+      targetCompanies = COMPANIES.map(cleanCompanyName);
     }
 
     // Apply items from the report
@@ -564,21 +568,34 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
         if (it.workerName) {
           const wName = String(it.workerName).trim();
           const targetW = matrix.find((w) => {
-            const sameName = w.name.trim() === wName;
+            const sameName = w.name === wName;
             if (!sameName) return false;
             if (it.company) return matchCompany(it.company, w.company);
             return targetCompanies.some(tc => matchCompany(tc, w.company));
-          }) || matrix.find((w) => w.name.trim() === wName);
+          }) || matrix.find((w) => w.name === wName);
 
           if (targetW) {
             let code = it.attendanceCode;
-            if (!code || code === "특근" || code === "주말특근") {
-              if (it.hours === 10 || it.endTime === "19:00") code = "19";
-              else if (it.hours === 12 || it.endTime === "21:00") code = "21";
-              else if (it.hours === 13 || it.endTime === "22:00") code = "22";
+            if (!code || code === "미입력" || code === "-") {
+              if (it.hours >= 13 || it.endTime === "22:00") code = "22";
+              else if (it.hours >= 12 || it.endTime === "21:00") code = "21";
+              else if (it.hours >= 10 || it.endTime === "19:00") code = "19";
+              else if (it.hours === 4 || it.startTime?.includes("반차")) code = "반차";
+              else if (it.hours === 0 && (it.workContent?.includes("결근") || it.workDetails?.includes("결근"))) code = "결근";
+              else if (it.hours === 0 && (it.workContent?.includes("연차") || it.workDetails?.includes("연차"))) code = "연차";
+              else if (it.hours === 0 && (it.workContent?.includes("휴가") || it.workDetails?.includes("휴가"))) code = "휴가";
+              else if (it.hours === 0) code = "-";
               else code = isWeekend ? "특근" : "🟢";
+            } else if (code === "특근" || code === "주말특근") {
+              if (!isWeekend) {
+                if (it.hours >= 13) code = "22";
+                else if (it.hours >= 12) code = "21";
+                else if (it.hours >= 10) code = "19";
+                else code = "🟢";
+              }
             }
             targetW.daily[day] = code;
+            targetW.daily[String(day)] = code;
           }
         }
         // Case B: item has category group with names string
@@ -586,11 +603,11 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
           const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
           namesList.forEach((n) => {
             const targetW = matrix.find((w) => {
-              const sameName = w.name.trim() === n;
+              const sameName = w.name === n;
               if (!sameName) return false;
               if (it.company) return matchCompany(it.company, w.company);
               return targetCompanies.some(tc => matchCompany(tc, w.company));
-            }) || matrix.find((w) => w.name.trim() === n);
+            }) || matrix.find((w) => w.name === n);
 
             if (targetW) {
               let code = "🟢";
@@ -599,6 +616,7 @@ export const buildMatrixFromReports = (masterWorkers, reports) => {
               else if (it.hours >= 10) code = "19";
               else code = isWeekend ? "특근" : "🟢";
               targetW.daily[day] = code;
+              targetW.daily[String(day)] = code;
             }
           });
         }

@@ -222,17 +222,17 @@ export const INITIAL_4M_ABSENCE_LOGS = {
     id: "4m_sample_joyoung_1",
     date: "2026-10-07",
     company: "조영",
-    process: "소재준비",
+    process: "DT 조인트",
     plant: "한림공장",
     riskLevel: "STOPPED",
     riskWarningText: "해당 라인/공정 비가동 상태로 대체 인원을 투입하지 않습니다.",
     absentWorker: {
-      name: "김동욱",
-      position: "책임",
-      dept: "생산팀",
-      mainProcess: "소재준비",
-      skillLevel: 4,
-      skillGrade: "Lv.4 숙련",
+      name: "다렌",
+      position: "작업원",
+      dept: "가공동",
+      mainProcess: "DT 조인트",
+      skillLevel: 3,
+      skillGrade: "Lv.3 일반",
       reason: "개인사정"
     },
     substituteWorker: {
@@ -247,8 +247,8 @@ export const INITIAL_4M_ABSENCE_LOGS = {
       supervisorName: "김동욱 책임",
       qualityStatus: "NORMAL"
     },
-    oneLineLog: "📌 [4M Man 결근] 10/7 (조영) 소재준비공정 | 결근: 김동욱(책임 Lv.4, 개인사정) ➔ [⏸️ 라인비가동 / 대체 미투입]",
-    remarks: "한림공장 설비 정기 점검으로 인한 라인 비가동",
+    oneLineLog: "📌 [4M Man 결근] 10/7 (조영) DT 조인트공정 | 결근: 다렌(작업원 Lv.3, 개인사정) ➔ [대체 미투입 / 라인조정]",
+    remarks: "한림공장 설비 점검 및 라인 가동 조정",
     createdAt: "2026-10-07T08:20:00.000Z",
     updatedAt: "2026-10-07T08:20:00.000Z"
   }
@@ -260,8 +260,15 @@ export const getLocal4MAbsenceLogsMap = () => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && Object.keys(parsed).length > 0) {
-        return { ...INITIAL_4M_ABSENCE_LOGS, ...parsed };
+      if (parsed && typeof parsed === "object") {
+        // 김동욱 책임은 총괄관리자이므로 결근자 목록에서 제외/정화
+        const sanitized = {};
+        Object.entries(parsed).forEach(([k, v]) => {
+          if (v && v.absentWorker?.name !== "김동욱" && v.name !== "김동욱") {
+            sanitized[k] = v;
+          }
+        });
+        return { ...INITIAL_4M_ABSENCE_LOGS, ...sanitized };
       }
     }
   } catch (e) {

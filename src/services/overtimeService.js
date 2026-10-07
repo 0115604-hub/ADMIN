@@ -12,6 +12,11 @@ import {
 import { db } from "../firebase";
 import { syncPlantOvertimeToApprovalBox, syncAllOvertimeReportsToApprovalBox } from "./approvalService";
 import { sanitizeForFirestore } from "../utils/firestoreUtils";
+import {
+  getLocalSmartOvertimeData,
+  saveSmartOvertimeData,
+  buildMatrixFromReports
+} from "./overtimeSmartService";
 
 // ⭐ 공장별 소속 협력업체 취합 체계 (Plant-to-Company Mapping)
 // 삼랑진공장: (주)오륙, 유성
@@ -339,6 +344,34 @@ export const saveOvertimeReport = async (report) => {
   updatedReports.sort((a, b) => (b.updatedAt || b.workDate || "").localeCompare(a.updatedAt || a.workDate || ""));
   saveLocalOvertimeReports(updatedReports);
 
+  // ⭐ Synchronize Matrix Ledger (smart_overtime_ledger) immediately
+  if (cleanReport.workDate) {
+    try {
+      const parts = cleanReport.workDate.split("-");
+      if (parts.length >= 2) {
+        const ym = `${parts[0]}-${parts[1]}`;
+        const targetYear = parseInt(parts[0], 10);
+        const targetMonth = parseInt(parts[1], 10);
+        const currentLedger = getLocalSmartOvertimeData(ym);
+        const synchedMatrix = buildMatrixFromReports(
+          currentLedger.attendanceMatrix || currentLedger.masterWorkers,
+          updatedReports,
+          targetYear,
+          targetMonth
+        );
+        const updatedLedger = {
+          ...currentLedger,
+          year: targetYear,
+          month: targetMonth,
+          attendanceMatrix: synchedMatrix
+        };
+        await saveSmartOvertimeData(updatedLedger, ym);
+      }
+    } catch (ledgerSyncErr) {
+      console.warn("Matrix ledger auto-sync error in saveOvertimeReport:", ledgerSyncErr);
+    }
+  }
+
   // Sync to Cloud Firestore with recursive sanitization
   try {
     const payload = sanitizeForFirestore(cleanReport);
@@ -369,6 +402,34 @@ export const deleteOvertimeReport = async (reportId) => {
   const deletedRep = currentReports.find((r) => r.id === reportId);
   const updatedReports = currentReports.filter((r) => r.id !== reportId);
   saveLocalOvertimeReports(updatedReports);
+
+  // ⭐ Synchronize Matrix Ledger on deletion
+  if (deletedRep && deletedRep.workDate) {
+    try {
+      const parts = deletedRep.workDate.split("-");
+      if (parts.length >= 2) {
+        const ym = `${parts[0]}-${parts[1]}`;
+        const targetYear = parseInt(parts[0], 10);
+        const targetMonth = parseInt(parts[1], 10);
+        const currentLedger = getLocalSmartOvertimeData(ym);
+        const synchedMatrix = buildMatrixFromReports(
+          currentLedger.masterWorkers || currentLedger.attendanceMatrix,
+          updatedReports,
+          targetYear,
+          targetMonth
+        );
+        const updatedLedger = {
+          ...currentLedger,
+          year: targetYear,
+          month: targetMonth,
+          attendanceMatrix: synchedMatrix
+        };
+        await saveSmartOvertimeData(updatedLedger, ym);
+      }
+    } catch (ledgerDelSyncErr) {
+      console.warn("Matrix ledger auto-sync error in deleteOvertimeReport:", ledgerDelSyncErr);
+    }
+  }
 
   try {
     await deleteDoc(doc(db, COLLECTION_NAME, reportId));
