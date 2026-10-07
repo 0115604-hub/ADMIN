@@ -590,11 +590,13 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
     }
 
     // Apply items from the report
-    if (Array.isArray(report.items)) {
+    let hasAppliedAnyItem = false;
+    if (Array.isArray(report.items) && report.items.length > 0) {
       report.items.forEach((it) => {
-        // Case A: item has individual workerName
-        if (it.workerName) {
-          const wName = String(it.workerName).trim();
+        if (!it) return;
+        // Case A: item has individual workerName or name
+        const wName = String(it.workerName || it.name || "").trim();
+        if (wName) {
           const targetW = matrix.find((w) => {
             const sameName = w.name === wName;
             if (!sameName) return false;
@@ -603,8 +605,9 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
           }) || matrix.find((w) => w.name === wName);
 
           if (targetW) {
+            hasAppliedAnyItem = true;
             let code = it.attendanceCode;
-            if (!code || code === "미입력" || code === "-") {
+            if (!code || code === "미입력" || code === "-" || code === "08:00") {
               if (it.hours >= 13 || it.endTime === "22:00") code = "22";
               else if (it.hours >= 12 || it.endTime === "21:00") code = "21";
               else if (it.hours >= 10 || it.endTime === "19:00") code = "19";
@@ -614,6 +617,14 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
               else if (it.hours === 0 && (it.workContent?.includes("휴가") || it.workDetails?.includes("휴가"))) code = "휴가";
               else if (it.hours === 0) code = "-";
               else code = isWeekend ? "특근" : "🟢";
+            } else if (code === "정시" || code === "17" || code === "출근") {
+              code = isWeekend ? "특근" : "🟢";
+            } else if (code === "19시") {
+              code = "19";
+            } else if (code === "21시") {
+              code = "21";
+            } else if (code === "22시") {
+              code = "22";
             } else if (code === "특근" || code === "주말특근") {
               if (!isWeekend) {
                 if (it.hours >= 13) code = "22";
@@ -638,6 +649,7 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
             }) || matrix.find((w) => w.name === n);
 
             if (targetW) {
+              hasAppliedAnyItem = true;
               let code = "🟢";
               if (it.hours >= 13) code = "22";
               else if (it.hours >= 12) code = "21";
@@ -647,6 +659,19 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
               targetW.daily[String(day)] = code;
             }
           });
+        }
+      });
+    }
+
+    // Case C: Report was registered for company but had no individual items -> set all workers of that company to attended
+    if (!hasAppliedAnyItem && targetCompanies.length > 0) {
+      matrix.forEach((w) => {
+        if (targetCompanies.some(tc => matchCompany(tc, w.company))) {
+          const defaultCode = isWeekend ? "특근" : "🟢";
+          if (!w.daily[day] || w.daily[day] === "미입력" || w.daily[day] === "-") {
+            w.daily[day] = defaultCode;
+            w.daily[String(day)] = defaultCode;
+          }
         }
       });
     }

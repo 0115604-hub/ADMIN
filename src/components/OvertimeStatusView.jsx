@@ -1806,26 +1806,48 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
-  // Calculations & Summaries for 5 Companies
+  // ⭐ Dynamic Effective Matrix: seamlessly merges Firestore/local ledger with all registered reports
+  const effectiveMatrix = useMemo(() => {
+    const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
+    if (!legacyReports || legacyReports.length === 0) return rawMatrix;
+    return buildMatrixFromReports(rawMatrix, legacyReports, currentYear, currentMonthNum);
+  }, [smartData, legacyReports, currentYear, currentMonthNum]);
+
+  // Calculations & Summaries for 5 Companies (실시간 보고서와 통합된 effectiveMatrix 기준)
   const dailySummary = useMemo(() => {
-    return calculateDailySummary(smartData.attendanceMatrix || [], selectedDay);
-  }, [smartData.attendanceMatrix, selectedDay]);
+    return calculateDailySummary(effectiveMatrix || [], selectedDay);
+  }, [effectiveMatrix, selectedDay]);
 
   const companySummary = useMemo(() => {
-    return calculateCompanySummary(smartData.attendanceMatrix || []);
-  }, [smartData.attendanceMatrix]);
+    return calculateCompanySummary(effectiveMatrix || []);
+  }, [effectiveMatrix]);
 
   const deptSummary = useMemo(() => {
-    return calculateDeptSummary(smartData.attendanceMatrix || [], selectedDay);
-  }, [smartData.attendanceMatrix, selectedDay]);
+    return calculateDeptSummary(effectiveMatrix || [], selectedDay);
+  }, [effectiveMatrix, selectedDay]);
 
   const isAfter9AM = new Date().getHours() >= 9;
 
   const unwrittenCompanies = useMemo(() => {
-    const matrix = smartData.attendanceMatrix || [];
     const d = selectedDay || 1;
+    const targetDateStr = `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     return COMPANIES.filter((comp) => {
-      const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompanyName(comp));
+      const cleanComp = cleanCompanyName(comp);
+      // 1. 등록된 근태/특근 보고서가 존재하는지 확인
+      const hasReport = (legacyReports || []).some((r) => {
+        if (!r || r.workDate !== targetDateStr) return false;
+        if (r.company && r.company !== "전체") {
+          return cleanCompanyName(r.company) === cleanComp;
+        }
+        if (Array.isArray(r.companies) && r.companies.length > 0) {
+          return r.companies.some((c) => cleanCompanyName(c) === cleanComp);
+        }
+        return true;
+      });
+      if (hasReport) return false; // 보고서 등록 완료
+
+      // 2. 통합 매트릭스에 근태 데이터가 등록되어 있는지 확인
+      const compWorkers = (effectiveMatrix || []).filter((w) => cleanCompanyName(w.company) === cleanComp);
       if (compWorkers.length === 0) return false;
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)];
@@ -1834,12 +1856,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }).length;
       return enteredCount === 0;
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
-  }, [smartData.attendanceMatrix, selectedDay]);
+  }, [effectiveMatrix, legacyReports, selectedDay, currentYear, currentMonthNum]);
 
   // Filtered attendance rows for Daily Input and Summary tabs (회사별 1번부터 시작하는 순번 부여)
   const filteredAttendanceWorkers = useMemo(() => {
     const compCounters = {};
-    const matrixWithCompanyNo = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
+    const matrixWithCompanyNo = (effectiveMatrix || []).map((w, originalIdx) => {
       const c = cleanCompanyName(w.company);
       compCounters[c] = (compCounters[c] || 0) + 1;
       return {
@@ -1855,7 +1877,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       list = list.filter((w) => cleanCompanyName(w.company) === cleanCompanyName(selectedCompanyFilter));
     }
     return list;
-  }, [smartData.attendanceMatrix, selectedCompanyFilter]);
+  }, [effectiveMatrix, selectedCompanyFilter]);
 
   // 🚨 미입력/누락된 근태 작업자 실시간 집계 (선택된 일자 및 조회 대상 기준)
   const missingAttendanceWorkers = useMemo(() => {
@@ -1883,7 +1905,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       totalHours: 0
     };
 
-    const workers = (smartData.attendanceMatrix || [])
+    const workers = (effectiveMatrix || [])
       .map((w, originalMatrixIndex) => ({
         ...w,
         dept: normalizeDept(w.dept),
@@ -1900,12 +1922,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       breakdown,
       workers
     };
-  }, [selectedCompanyPopup, dailySummary, smartData.attendanceMatrix, selectedDay]);
+  }, [selectedCompanyPopup, dailySummary, effectiveMatrix, selectedDay]);
 
   // Real-time Plant Summary for the Selected Upcoming Weekend
   const weekendPlantSummary = useMemo(() => {
     const day = selectedWeekendDay; // e.g. 12 (or 5)
-    const matrix = smartData?.attendanceMatrix || [];
+    const matrix = effectiveMatrix || [];
 
     // 1. 삼랑진공장 ((주)오륙 + 유성)
     const samWorkers = matrix.filter((w) => {

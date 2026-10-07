@@ -593,13 +593,24 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       const cleanCompName = cleanCompanyName(name);
       const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
       const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
+      const hasDirectReport = (overtimeReports || []).some((r) => {
+        if (!r || r.workDate !== todayStr) return false;
+        if (r.company && r.company !== "전체") {
+          return cleanCompanyName(r.company) === cleanCompName;
+        }
+        if (Array.isArray(r.companies) && r.companies.length > 0) {
+          return r.companies.some((c) => cleanCompanyName(c) === cleanCompName);
+        }
+        return true;
+      });
+
       const enteredCount = compWorkers.filter((w) => {
         const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
         const str = String(v ?? "").trim();
         return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
 
-      const isWritten = compWorkers.length > 0 ? enteredCount > 0 : false;
+      const isWritten = hasDirectReport || (compWorkers.length > 0 ? enteredCount > 0 : false);
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;
