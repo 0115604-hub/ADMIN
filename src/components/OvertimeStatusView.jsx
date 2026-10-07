@@ -64,7 +64,8 @@ import {
   isPartnerCompany,
   normalizeStandardDept,
   normalizeStandardPosition,
-  getLocalPersonnelCardsMap
+  getLocalPersonnelCardsMap,
+  subscribePersonnelCards
 } from "../services/personnelCardService.js";
 import { useAuth } from "../context/AuthContext";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
@@ -736,15 +737,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // ⭐ 제조현장 인사카드 모달 열기 핸들러
   const handleOpenPersonnelCard = (worker, originalIndex) => {
     pushModalHistory("personnel_card_modal");
-    const map = getLocalPersonnelCardsMap();
     const cleanComp = cleanCompanyName(worker?.company);
     const cardKey = `${cleanComp}_${worker?.name}`;
-    const savedCard = map[cardKey] || map[`${worker?.company}_${worker?.name}`] || worker?.personnelCard || worker?.card;
+    const savedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${worker?.company}_${worker?.name}`] || worker?.personnelCard || worker?.card;
+    const card = savedCard
+      ? getWorkerPersonnelCard({ ...worker, personnelCard: savedCard }, (typeof originalIndex === "number" && originalIndex >= 0 ? originalIndex + 1 : 1))
+      : getWorkerPersonnelCard(worker, (typeof originalIndex === "number" && originalIndex >= 0 ? originalIndex + 1 : 1));
     const enrichedWorker = {
       ...worker,
-      position: savedCard?.position || worker?.position || "사원",
-      dept: savedCard?.dept || worker?.dept || "생산팀",
-      personnelCard: savedCard || worker?.personnelCard || worker?.card
+      position: card?.position || savedCard?.position || worker?.position || "사원",
+      dept: card?.dept || savedCard?.dept || worker?.dept || "생산팀",
+      personnelCard: card || savedCard || worker?.personnelCard || worker?.card
     };
     setSelectedPersonnelWorker(enrichedWorker);
     setSelectedPersonnelWorkerIndex(
@@ -797,6 +800,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const [absence4MCompany, setAbsence4MCompany] = useState("오륙");
 
   // ⭐ 인원관리 및 인사카드 전용 State
+  const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
   const [selectedPersonnelWorker, setSelectedPersonnelWorker] = useState(null);
   const [selectedPersonnelWorkerIndex, setSelectedPersonnelWorkerIndex] = useState(-1);
   const [isPersonnelModalOpen, setIsPersonnelModalOpen] = useState(false);
@@ -939,11 +943,33 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
     });
 
+    const unsubCards = subscribePersonnelCards((cards) => {
+      setPersonnelCardsMap(cards || {});
+    });
+
+    const handleCardUpdated = (e) => {
+      if (e?.detail?.cardKey && e?.detail?.cardData) {
+        setPersonnelCardsMap((prev) => ({
+          ...prev,
+          [e.detail.cardKey]: e.detail.cardData,
+          [`${cleanCompanyName(e.detail.cardData.company)}_${e.detail.cardData.name}`]: e.detail.cardData,
+          [`${e.detail.cardData.company}_${e.detail.cardData.name}`]: e.detail.cardData
+        }));
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("oryuk_personnel_card_updated", handleCardUpdated);
+    }
+
     return () => {
       unsubSmart();
       unsubPrev();
       unsubLegacy();
       unsubApproval();
+      unsubCards();
+      if (typeof window !== "undefined") {
+        window.removeEventListener("oryuk_personnel_card_updated", handleCardUpdated);
+      }
     };
   }, [selectedMonth, prevYearMonth]);
 
@@ -1577,12 +1603,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   const handleSavePersonnelCard = async (updatedCardData) => {
     setIsSaving(true);
     try {
+      const cleanComp = cleanCompanyName(updatedCardData.company);
+      const cardKey = `${cleanComp}_${updatedCardData.name}`;
+
+      // 1. 즉시 React 상태(personnelCardsMap) 업데이트 -> UI가 1ms만에 즉시 리렌더링됨
+      setPersonnelCardsMap((prev) => ({
+        ...prev,
+        [cardKey]: updatedCardData,
+        [`${updatedCardData.company}_${updatedCardData.name}`]: updatedCardData
+      }));
+
       const currentMatrix = [...(smartData.attendanceMatrix || [])];
       let targetIdx = selectedPersonnelWorkerIndex;
 
       if (targetIdx < 0 || targetIdx >= currentMatrix.length) {
         targetIdx = currentMatrix.findIndex(
-          (w) => cleanCompanyName(w.company) === cleanCompanyName(updatedCardData.company) && w.name === updatedCardData.name
+          (w) => cleanCompanyName(w.company) === cleanComp && w.name === updatedCardData.name
         );
       }
 
@@ -1590,7 +1626,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         currentMatrix[targetIdx] = {
           ...currentMatrix[targetIdx],
           name: updatedCardData.name,
-          company: cleanCompanyName(updatedCardData.company),
+          company: cleanComp,
           dept: normalizeStandardDept(updatedCardData.dept, updatedCardData.company),
           line: updatedCardData.line || updatedCardData.mainProcess || normalizeStandardDept(updatedCardData.dept, updatedCardData.company),
           position: updatedCardData.position,
@@ -1628,9 +1664,12 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         attendanceMatrix: reindexedMatrix
       };
 
+      // 2. 즉시 smartData 상태 업데이트
       setSmartData(updatedData);
+
+      // 3. 로컬 및 클라우드 비동기 저장
+      await saveWorkerPersonnelCard(cardKey, updatedCardData);
       await saveSmartOvertimeData(updatedData);
-      await saveWorkerPersonnelCard(`${cleanCompanyName(updatedCardData.company)}_${updatedCardData.name}`, updatedCardData);
 
       triggerToast(`🎉 [${updatedCardData.company}] ${updatedCardData.name}님의 제조현장 인사카드가 저장되었습니다!`);
     } catch (err) {
@@ -1644,12 +1683,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // ⭐ 인원관리 탭 작업자 목록 및 필터링 (인사카드 포함)
   const workerMgmtList = useMemo(() => {
     const compCounters = {};
-    const map = getLocalPersonnelCardsMap();
     const matrix = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
       const c = cleanCompanyName(w.company);
       compCounters[c] = (compCounters[c] || 0) + 1;
       const cardKey = `${c}_${w.name}`;
-      const existingSavedCard = map[cardKey] || map[`${w.company}_${w.name}`] || w.personnelCard;
+      const existingSavedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
       const card = existingSavedCard
         ? getWorkerPersonnelCard({ ...w, personnelCard: existingSavedCard }, compCounters[c])
         : getWorkerPersonnelCard(w, compCounters[c]);
@@ -1696,7 +1734,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
       return true;
     });
-  }, [smartData.attendanceMatrix, workerMgmtCompanyFilter, workerMgmtSkillFilter, workerMgmtMultiSkillOnly, workerMgmtSearch]);
+  }, [smartData.attendanceMatrix, personnelCardsMap, workerMgmtCompanyFilter, workerMgmtSkillFilter, workerMgmtMultiSkillOnly, workerMgmtSearch]);
 
   // ⭐ 인원관리 KPI 통계 요약
   const workerMgmtStats = useMemo(() => {
@@ -1705,7 +1743,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     let masterCount = 0;
     let multiSkillCount = 0;
     matrix.forEach((w, idx) => {
-      const card = getWorkerPersonnelCard(w, idx + 1);
+      const c = cleanCompanyName(w.company);
+      const cardKey = `${c}_${w.name}`;
+      const saved = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
+      const card = saved ? getWorkerPersonnelCard({ ...w, personnelCard: saved }, idx + 1) : getWorkerPersonnelCard(w, idx + 1);
       if (card.skillLevel >= 4) masterCount++;
       if (card.isMultiSkill) multiSkillCount++;
     });
@@ -1715,16 +1756,27 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       multiSkillCount,
       cardCompleteRate: "100%"
     };
-  }, [smartData.attendanceMatrix]);
+  }, [smartData.attendanceMatrix, personnelCardsMap]);
 
   // Filtered workers for selectedCompanyManageWorkers modal
   const manageCompanyWorkers = useMemo(() => {
     if (!selectedCompanyManageWorkers) return [];
-    let list = (smartData.attendanceMatrix || []).map((w, originalIdx) => ({
-      ...w,
-      dept: normalizeDept(w.dept),
-      originalMatrixIndex: originalIdx
-    })).filter((w) => cleanCompanyName(w.company) === cleanCompanyName(selectedCompanyManageWorkers));
+    let list = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
+      const c = cleanCompanyName(w.company);
+      const cardKey = `${c}_${w.name}`;
+      const existingSavedCard = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard;
+      const card = existingSavedCard
+        ? getWorkerPersonnelCard({ ...w, personnelCard: existingSavedCard }, originalIdx + 1)
+        : getWorkerPersonnelCard(w, originalIdx + 1);
+      return {
+        ...w,
+        dept: card.dept || normalizeDept(w.dept),
+        position: card.position || w.position || "사원",
+        originalMatrixIndex: originalIdx,
+        personnelCard: card,
+        card
+      };
+    }).filter((w) => cleanCompanyName(w.company) === cleanCompanyName(selectedCompanyManageWorkers));
 
     if (manageWorkerSearch.trim()) {
       const q = manageWorkerSearch.trim().toLowerCase();
@@ -1735,7 +1787,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       );
     }
     return list;
-  }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch]);
+  }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
   // Calculations & Summaries for 5 Companies
   const dailySummary = useMemo(() => {
