@@ -48,8 +48,13 @@ import {
   subscribeSmartOvertimeData,
   getLocalSmartOvertimeData,
   calculateDailySummary,
-  COMPANIES
+  COMPANIES,
+  cleanCompanyName
 } from "../../services/overtimeSmartService";
+import {
+  subscribe4MAbsenceLogs,
+  getLocal4MAbsenceLogsMap
+} from "../../services/absence4MService";
 import {
   subscribeFourMChangePoints,
   getLocalFourMChangePoints
@@ -89,6 +94,7 @@ export const WorkerPinModal = ({
   // Real-time Service Streams
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
   const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+  const [absenceLogsMap, setAbsenceLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
   const [extrusionQualityIssues, setExtrusionQualityIssues] = useState(() => getLocalExtrusionQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
   const [extrusionReports, setExtrusionReports] = useState([]);
@@ -104,6 +110,7 @@ export const WorkerPinModal = ({
     const unsubDisaster = subscribeSevereDisasterPhotos((photos) => setDisasterPhotos(photos || []));
     const unsubSched = subscribeCommonSchedules((scheds) => setCommonSchedules(scheds || []));
     const unsubOvertime = subscribeSmartOvertimeData((data) => { if (data) setSmartOvertimeData(data); });
+    const unsubAbsence = subscribe4MAbsenceLogs((logs) => { if (logs) setAbsenceLogsMap(logs); });
     const unsubExtQual = subscribeExtrusionQualityIssues((list) => setExtrusionQualityIssues(list || []));
     const unsub4M = subscribeFourMChangePoints((list) => setFourMLedgerRecords(list || []));
     const unsubExtRep = subscribeToExtrusionReports((reps) => setExtrusionReports(reps || []));
@@ -114,6 +121,7 @@ export const WorkerPinModal = ({
       if (unsubDisaster) unsubDisaster();
       if (unsubSched) unsubSched();
       if (unsubOvertime) unsubOvertime();
+      if (unsubAbsence) unsubAbsence();
       if (unsubExtQual) unsubExtQual();
       if (unsub4M) unsub4M();
       if (unsubExtRep) unsubExtRep();
@@ -375,8 +383,73 @@ export const WorkerPinModal = ({
       });
     });
 
+    // 1-5. 5개사 결근 및 대체투입 인원변동 (Man)
+    const registeredKeys = new Set();
+    const absenceList = Object.values(absenceLogsMap || {});
+    absenceList.forEach((log) => {
+      if (!log || !log.date) return;
+      const compClean = cleanCompanyName(log.company || "오륙");
+      const workerName = String(log.absentWorker?.name || log.name || "").trim();
+      const key = `${compClean}_${workerName}_${log.date}`;
+      registeredKeys.add(key);
+      const isSub = Boolean(log.substituteWorker?.name);
+      const isExt = String(log.process || "").includes("압출");
+
+      unified.push({
+        id: `man_log_${log.id || key}`,
+        fourM: "Man",
+        origin: isSub ? "4M 대체투입" : "결근발생",
+        plant: log.plant || (compClean === "오륙" || compClean === "유성" ? "삼랑진공장" : "한림공장"),
+        line: log.process || log.line || "생산/가공",
+        title: `[${compClean}] ${workerName || "결근자"} 결근 ➔ ${isSub ? `${log.substituteWorker.name} 대체투입` : "대체 미투입"}`,
+        content: log.summaryText || `${compClean} ${workerName} 결근 발생 (${log.reason || "결근"})`,
+        actionResult: isSub ? `대체작업자 ${log.substituteWorker.name} 투입 완료` : "라인 작업 조정",
+        date: log.date,
+        isResolved: isSub,
+        isExtrusion: isExt
+      });
+    });
+
+    // 출근부 결근 연동
+    const ym = smartOvertimeData?.yearMonth || todayKst.slice(0, 7);
+    const matrix = smartOvertimeData?.attendanceMatrix || [];
+    matrix.forEach((w) => {
+      if (!w || !w.name) return;
+      const compClean = cleanCompanyName(w.company || "오륙");
+      const workerName = String(w.name).trim();
+
+      for (let d = 1; d <= 31; d++) {
+        const val = w[d] !== undefined ? w[d] : w[String(d)];
+        if (!val) continue;
+        const strVal = String(val).trim();
+        if (strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")) {
+          const dStr = String(d).padStart(2, "0");
+          const dateStr = `${ym}-${dStr}`;
+          const key = `${compClean}_${workerName}_${dateStr}`;
+          if (registeredKeys.has(key)) continue;
+          registeredKeys.add(key);
+
+          const isExt = String(w.line || w.dept || "").includes("압출");
+
+          unified.push({
+            id: `man_matrix_${compClean}_${workerName}_${dateStr}`,
+            fourM: "Man",
+            origin: "결근발생",
+            plant: (compClean === "오륙" || compClean === "유성") ? "삼랑진공장" : "한림공장",
+            line: w.line || w.dept || "생산",
+            title: `[${compClean}] ${workerName} 결근 발생`,
+            content: `${compClean} ${workerName} (${w.position || "작업원"}) 결근 발생 (${strVal})`,
+            actionResult: "대체인원 투입 점검 및 공정 관리",
+            date: dateStr,
+            isResolved: false,
+            isExtrusion: isExt
+          });
+        }
+      }
+    });
+
     return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, todayKst]);
+  }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, smartOvertimeData, absenceLogsMap, todayKst]);
 
   // 🌟 최근 2건의 4M 변동점 발생공지 (압출동 작업자 및 관리자 공통 동일 노출)
   const recent4MRecords = useMemo(() => {
@@ -393,11 +466,13 @@ export const WorkerPinModal = ({
   const stats4M = useMemo(() => {
     const officialCount = fourMLedgerRecords.length;
     const machineCount = allUnified4MRecords.filter((r) => r.fourM === "Machine").length;
+    const manCount = allUnified4MRecords.filter((r) => r.fourM === "Man").length;
     const materialCount = allUnified4MRecords.filter((r) => r.fourM === "Material").length;
     const methodCount = allUnified4MRecords.filter((r) => r.fourM === "Method").length;
     return {
       officialCount,
       machineCount,
+      manCount,
       materialCount,
       methodCount,
       totalCount: allUnified4MRecords.length

@@ -54,6 +54,15 @@ import {
   registerToFourMLedger,
   unregisterFromFourMLedger
 } from "../../services/fourMChangePointService";
+import {
+  subscribeSmartOvertimeData,
+  getLocalSmartOvertimeData,
+  cleanCompanyName
+} from "../../services/overtimeSmartService";
+import {
+  subscribe4MAbsenceLogs,
+  getLocal4MAbsenceLogsMap
+} from "../../services/absence4MService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import * as XLSX from "xlsx";
 
@@ -107,6 +116,8 @@ export const UnifiedAbnormalityControlPanel = ({
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [extrusionQualityAlerts, setExtrusionQualityAlerts] = useState(() => getLocalExtrusionQualityIssues());
   const [fourMLedgerRecords, setFourMLedgerRecords] = useState(() => getLocalFourMChangePoints());
+  const [smartOvertimeData, setSmartOvertimeData] = useState(() => getLocalSmartOvertimeData());
+  const [absenceLogsMap, setAbsenceLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(new Date());
 
@@ -115,8 +126,8 @@ export const UnifiedAbnormalityControlPanel = ({
 
   // Filter States
   const [selectedPlant, setSelectedPlant] = useState("ALL"); // ALL | 삼랑진공장 | 한림공장
-  const [selected4MTab, setSelected4MTab] = useState("ALL"); // ALL | MACHINE | MATERIAL | METHOD | OFFICIAL_LEDGER
-  const [selectedOriginFilter, setSelectedOriginFilter] = useState("ALL"); // ALL | OFFICIAL_LEDGER | 설비수리 | 비가동 | 불량손실 | TPM이상신고 | 품질경보
+  const [selected4MTab, setSelected4MTab] = useState("ALL"); // ALL | MACHINE | MAN | MATERIAL | METHOD | OFFICIAL_LEDGER
+  const [selectedOriginFilter, setSelectedOriginFilter] = useState("ALL"); // ALL | OFFICIAL_LEDGER | 설비수리 | 비가동 | 불량손실 | TPM이상신고 | 품질경보 | 결근발생 | 4M대체투입
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL"); // ALL | PENDING | RESOLVED
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState("ALL"); // ALL | ONLY_PHOTOS
   const [searchQuery, setSearchQuery] = useState("");
@@ -162,11 +173,29 @@ export const UnifiedAbnormalityControlPanel = ({
       setLastRefreshedAt(new Date());
     });
 
+    // 5. Smart Overtime & 5 Companies Attendance Data
+    const unsubSmartOt = subscribeSmartOvertimeData((data) => {
+      if (data) {
+        setSmartOvertimeData(data);
+        setLastRefreshedAt(new Date());
+      }
+    });
+
+    // 6. 4M Absence / Substitute Logs
+    const unsubAbsenceLogs = subscribe4MAbsenceLogs((logs) => {
+      if (logs) {
+        setAbsenceLogsMap(logs);
+        setLastRefreshedAt(new Date());
+      }
+    });
+
     return () => {
       if (unsubIssues) unsubIssues();
       if (unsubExt) unsubExt();
       if (unsubExtQuality) unsubExtQuality();
       if (unsubLedger) unsubLedger();
+      if (unsubSmartOt) unsubSmartOt();
+      if (unsubAbsenceLogs) unsubAbsenceLogs();
     };
   }, []);
 
@@ -175,6 +204,8 @@ export const UnifiedAbnormalityControlPanel = ({
     setUrgentIssues(getLocalUrgentIssues());
     setExtrusionQualityAlerts(getLocalExtrusionQualityIssues());
     setFourMLedgerRecords(getLocalFourMChangePoints());
+    setSmartOvertimeData(getLocalSmartOvertimeData());
+    setAbsenceLogsMap(getLocal4MAbsenceLogsMap());
   };
 
   const todayStr = useMemo(() => {
@@ -255,6 +286,7 @@ export const UnifiedAbnormalityControlPanel = ({
         actionImages: Array.isArray(issue.actionImages) ? issue.actionImages : [],
         replies: Array.isArray(issue.replies) ? issue.replies : [],
         isResolved,
+        validation: isResolved ? "초·중·종물 한도견본 대조 및 유효성 확인" : "유효성 검증 대기중",
         severity: "HIGH",
         downtimeMinutes: 0,
         scrapKg: 0,
@@ -349,6 +381,7 @@ export const UnifiedAbnormalityControlPanel = ({
         actionImages: [],
         replies: [],
         isResolved: true,
+        validation: "설비 점검 및 보전수리 초물 가동 합격",
         severity: "NORMAL",
         downtimeMinutes: 0,
         scrapKg: 0,
@@ -399,6 +432,7 @@ export const UnifiedAbnormalityControlPanel = ({
           actionImages: [],
           replies: [],
           isResolved: report.approvalStatus === "승인",
+          validation: report.approvalStatus === "승인" ? "TPM 조치 및 자주보전 검증 완료" : "TPM 점검 및 조치 진행중",
           severity: abnormalChecks.some((c) => c.status === "NG") ? "HIGH" : "MEDIUM",
           downtimeMinutes: 0,
           scrapKg: 0,
@@ -454,6 +488,7 @@ export const UnifiedAbnormalityControlPanel = ({
             actionImages: [],
             replies: [],
             isResolved: true,
+            validation: isDefect ? "불량 원인제거 및 유효성 확인" : "라인 정상가동 및 초물검사 완료",
             severity: scrapKg >= 10 || minutes >= 60 ? "HIGH" : "NORMAL",
             downtimeMinutes: minutes,
             scrapKg: scrapKg,
@@ -503,11 +538,144 @@ export const UnifiedAbnormalityControlPanel = ({
         actionImages: actionImages,
         replies: Array.isArray(alert.replies) ? alert.replies : [],
         isResolved: isResolved,
+        validation: isResolved ? "압출 품질경보 조치 및 유효성 확인 완료" : "유효성 검증 대기중",
         severity: "HIGH",
         downtimeMinutes: 0,
         scrapKg: 0,
         raw: alert
       });
+    });
+
+    // -----------------------------------------------------------------------
+    // 5. [Man] 5개 업체 결근 및 4M 인원 대체투입 취합 (오륙, 조영, 유성, 한울, 부림텍)
+    // -----------------------------------------------------------------------
+    const registeredAbsenceKeys = new Set();
+
+    // 5-1. 4M 결근 및 대체투입 상세 로그 (Absence4MModal 등록분)
+    const absenceList = Object.values(absenceLogsMap || {});
+    absenceList.forEach((log) => {
+      if (!log || !log.date) return;
+      const compClean = cleanCompanyName(log.company || "오륙");
+      const workerName = String(log.absentWorker?.name || log.name || "").trim();
+      const key = `${compClean}_${workerName}_${log.date}`;
+      registeredAbsenceKeys.add(key);
+
+      const isSub = Boolean(log.substituteWorker?.name);
+      const title = `[${compClean}] ${workerName || "결근자"} 결근 ➔ ${isSub ? `${log.substituteWorker.name} 대체투입` : "대체 미투입 (라인조정)"}`;
+      const plant = log.plant || (compClean === "오륙" || compClean === "유성" ? "삼랑진공장" : "한림공장");
+      const line = log.process || log.line || "생산/가공";
+
+      const content = log.summaryText || [
+        `[4M Man 인원변동 결근내역]`,
+        `• 소속업체: ${compClean}`,
+        `• 결근근로자: ${workerName} (${log.absentWorker?.position || "사원"})`,
+        `• 대체작업자: ${isSub ? `${log.substituteWorker.name} (${log.substituteWorker.position || "사원"})` : "미배치 (라인 가동 조정)"}`,
+        `• 결근사유: ${log.reason || "결근"}`,
+        `• 담당공정: ${line}`,
+        log.notes ? `• 특기사항: ${log.notes}` : ""
+      ].filter(Boolean).join("\n");
+
+      const actionResult = isSub
+        ? `대체작업자 ${log.substituteWorker.name} 투입 및 ${log.firstPieceInspection || "초·중·종물 검사"} 완료`
+        : "라인 작업 인원 조정 및 비가동 조치";
+
+      const validation = log.firstPieceInspection
+        ? `${log.firstPieceInspection} 유효성검증 완료`
+        : (isSub ? "초·중·종물 검사 및 4M 유효성 확인" : "대체 투입 시 초물검사 필수");
+
+      unified.push({
+        id: `man_log_${log.id || key}`,
+        fourM: "Man",
+        origin: isSub ? "4M 대체투입" : "결근발생",
+        sourceType: "MAN_ABSENCE_LOG",
+        badgeColor: "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border-purple-300 dark:border-purple-700",
+        plant,
+        line,
+        writer: log.supervisor || log.writer || `${compClean} 관리자`,
+        title,
+        date: log.date,
+        time: log.time || "",
+        content,
+        actionResult,
+        actionAuthor: log.supervisor || "관리자",
+        actionAt: log.date || "",
+        images: Array.isArray(log.photos) ? log.photos : [],
+        actionImages: [],
+        replies: [],
+        isResolved: isSub,
+        validation,
+        severity: log.riskLevel === "HIGH" ? "HIGH" : "NORMAL",
+        downtimeMinutes: 0,
+        scrapKg: 0,
+        raw: log
+      });
+    });
+
+    // 5-2. 5개사 근태/연장근무 매트릭스 결근 발생분 (스마트 연장근무 출근부 연동)
+    const ym = smartOvertimeData?.yearMonth || todayStr.slice(0, 7);
+    const matrix = smartOvertimeData?.attendanceMatrix || [];
+    matrix.forEach((w) => {
+      if (!w || !w.name) return;
+      const compClean = cleanCompanyName(w.company || "오륙");
+      const workerName = String(w.name).trim();
+
+      // Check days 1 to 31
+      for (let d = 1; d <= 31; d++) {
+        const val = w[d] !== undefined ? w[d] : w[String(d)];
+        if (!val) continue;
+        const strVal = String(val).trim();
+        if (strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")) {
+          const dStr = String(d).padStart(2, "0");
+          const dateStr = `${ym}-${dStr}`;
+          const key = `${compClean}_${workerName}_${dateStr}`;
+          if (registeredAbsenceKeys.has(key)) continue; // avoid duplication with detailed log
+          registeredAbsenceKeys.add(key);
+
+          const plant = (compClean === "오륙" || compClean === "유성") ? "삼랑진공장" : "한림공장";
+          const line = w.line || w.dept || "생산";
+          const pos = w.position || "작업원";
+
+          const title = `[${compClean}] ${workerName}(${pos}) 결근 발생 (${line})`;
+          const content = [
+            `[4M Man 인원변동 결근내역]`,
+            `• 소속업체: ${compClean}`,
+            `• 결근근로자: ${workerName} (${pos})`,
+            `• 담당부서/공정: ${w.dept || ""} / ${line}`,
+            `• 발생일자: ${dateStr}`,
+            `• 근태구분: ${strVal}`,
+            `• 조치내용: 4M Man 작업자 결근에 따른 대체인원 투입 점검 및 공정 자주검사 강화 필요`
+          ].join("\n");
+
+          const photoUrl = w.personnelCard?.photoUrl || w.photoUrl || "";
+
+          unified.push({
+            id: `man_matrix_${compClean}_${workerName}_${dateStr}`,
+            fourM: "Man",
+            origin: "결근발생",
+            sourceType: "MAN_ABSENCE_MATRIX",
+            badgeColor: "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border-purple-300 dark:border-purple-700",
+            plant,
+            line,
+            writer: `${workerName} (${compClean})`,
+            title,
+            date: dateStr,
+            time: "",
+            content,
+            actionResult: "대체인원 투입 점검 및 현장 공정 모니터링 진행",
+            actionAuthor: "관리자",
+            actionAt: dateStr,
+            images: photoUrl ? [photoUrl] : [],
+            actionImages: [],
+            replies: [],
+            isResolved: false,
+            validation: "대체 투입 시 초·중·종물 자주검사 필수",
+            severity: "HIGH",
+            downtimeMinutes: 0,
+            scrapKg: 0,
+            raw: { worker: w, day: d, value: strVal }
+          });
+        }
+      }
     });
 
     const ledgerSet = new Set(
@@ -525,7 +693,7 @@ export const UnifiedAbnormalityControlPanel = ({
         if (b.time !== a.time) return (b.time || "").localeCompare(a.time || "");
         return String(b.id || "").localeCompare(String(a.id || ""));
       });
-  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, fourMLedgerRecords, todayStr]);
+  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, fourMLedgerRecords, smartOvertimeData, absenceLogsMap, todayStr]);
 
   // =========================================================================
   // 🔍 필터링 연산
@@ -769,7 +937,7 @@ export const UnifiedAbnormalityControlPanel = ({
     }
   };
 
-  // 현대차형 4M 엑셀 추출
+  // 4M 변동점 관리대장 엑셀 추출 (사용자 요청 항목 순서 정렬)
   const handleExportExcel = () => {
     if (filteredRecords.length === 0) {
       alert("출력할 데이터가 없습니다.");
@@ -777,24 +945,19 @@ export const UnifiedAbnormalityControlPanel = ({
     }
 
     const rows = filteredRecords.map((r, i) => ({
-      "No": i + 1,
-      "4M 구분": r.fourM,
-      "구분": r.origin,
-      "발생일자": r.date,
-      "발생시간": r.time || "-",
+      "NO": i + 1,
+      "구분": `[${r.fourM}] ${r.origin}`,
+      "일시": r.time ? `${r.date} ${r.time}` : r.date,
       "공장": r.plant,
-      "라인/설비": r.line || "-",
-      "보고자": r.writer,
-      "변동 및 이상 발생내용": r.title,
-      "상세 내용": r.content,
-      "비가동(분)": r.downtimeMinutes || 0,
-      "불량손실(kg)": r.scrapKg || 0,
-      "조치 상태": r.isResolved ? "조치완료" : "미조치(진행중)",
+      "변동점내용": r.title,
+      "사진": `${(r.images?.length || 0) + (r.actionImages?.length || 0)}장`,
+      "진행상태": r.isResolved ? "조치완료" : "진행중",
+      "유효성검증": r.validation || (r.isResolved ? "유효성 검증 완료" : "검증 대기"),
+      "변동점대장": r.isRegisteredInLedger ? "대장등록됨" : "미등록",
+      "상세 내용": r.content || "-",
       "조치 내용": r.actionResult || "-",
       "조치자": r.actionAuthor || "-",
-      "조치일시": r.actionAt || "-",
-      "대장등록여부": r.isRegisteredInLedger ? "등록" : "미등록",
-      "첨부사진 수": (r.images?.length || 0) + (r.actionImages?.length || 0)
+      "보고자": r.writer || "-"
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -1023,20 +1186,21 @@ export const UnifiedAbnormalityControlPanel = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-700 whitespace-nowrap text-[11px]">
-                  <th className="py-2.5 px-2 text-center w-7">No</th>
-                  <th className="py-2.5 px-2 text-center w-20">구분</th>
-                  <th className="py-2.5 px-2 text-center w-20">일시</th>
-                  <th className="py-2.5 px-2 text-center w-12">공장</th>
-                  <th className="py-2.5 px-3 min-w-[340px] w-full">변동 및 발생내용 (클릭 시 상세 팝업)</th>
-                  <th className="py-2.5 px-2 text-center w-18">조치</th>
+                  <th className="py-2.5 px-2 text-center w-8">NO</th>
+                  <th className="py-2.5 px-2 text-center w-24">구분</th>
+                  <th className="py-2.5 px-2 text-center w-22">일시</th>
+                  <th className="py-2.5 px-2 text-center w-14">공장</th>
+                  <th className="py-2.5 px-3 min-w-[320px] w-full">변동점내용</th>
+                  <th className="py-2.5 px-2 text-center w-14">사진</th>
+                  <th className="py-2.5 px-2 text-center w-20">진행상태</th>
+                  <th className="py-2.5 px-2 text-center w-28">유효성검증</th>
                   <th className="py-2.5 px-2 text-center w-24">변동점대장</th>
-                  <th className="py-2.5 px-1.5 text-center w-12">사진</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400">
+                    <td colSpan={9} className="py-10 text-center text-slate-400">
                       <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
                       <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
                         해당 조건의 변동점 내역이 없습니다.
@@ -1058,10 +1222,12 @@ export const UnifiedAbnormalityControlPanel = ({
                         ? "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border-amber-300"
                         : item.origin === "불량손실"
                         ? "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300"
+                        : item.origin === "결근발생" || item.origin === "4M 대체투입" || item.fourM === "Man"
+                        ? "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border-purple-300"
                         : "bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 border-rose-300";
 
-                    // Plant formatting (초간결: 삼 / 한)
-                    const pShort = item.plant?.includes("한림") ? "한" : "삼";
+                    // Plant formatting (삼랑진 / 한림)
+                    const isHallim = item.plant?.includes("한림");
 
                     return (
                       <tr
@@ -1070,32 +1236,37 @@ export const UnifiedAbnormalityControlPanel = ({
                         className="hover:bg-indigo-50/60 dark:hover:bg-slate-800/80 transition-colors cursor-pointer group"
                         title="클릭하여 상세 내용 및 조치 등록 팝업 열기"
                       >
-                        {/* No */}
+                        {/* 1. NO */}
                         <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-[10.5px] whitespace-nowrap">
                           {idx + 1}
                         </td>
 
-                        {/* 구분 */}
+                        {/* 2. 구분 */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
                           <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}>
                             {item.origin}
                           </span>
                         </td>
 
-                        {/* 일시 */}
+                        {/* 3. 일시 */}
                         <td className="py-2.5 px-2 text-center font-mono text-slate-600 dark:text-slate-400 text-[10.5px] whitespace-nowrap">
-                          {item.date}
+                          <div>{item.date}</div>
+                          {item.time ? <div className="text-[9.5px] text-slate-400 font-normal">{item.time}</div> : null}
                         </td>
 
-                        {/* 공장 (삼 / 한) */}
+                        {/* 4. 공장 */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
-                          <span className="inline-block px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-black text-[11px]">
-                            {pShort}
+                          <span className={`inline-block px-2 py-0.5 rounded border font-black text-[10.5px] ${
+                            isHallim
+                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
+                              : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700"
+                          }`}>
+                            {isHallim ? "한림" : "삼랑진"}
                           </span>
                         </td>
 
-                        {/* 변동 및 발생내용 (내용 + 조치결과가 있으면 표시) */}
-                        <td className="py-2.5 px-3 min-w-[340px] w-full">
+                        {/* 5. 변동점내용 */}
+                        <td className="py-2.5 px-3 min-w-[320px] w-full">
                           <div className="font-black text-slate-900 dark:text-white text-xs leading-relaxed group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors break-words">
                             {item.title}
                           </div>
@@ -1111,7 +1282,29 @@ export const UnifiedAbnormalityControlPanel = ({
                           )}
                         </td>
 
-                        {/* 조치 (조치완료 vs 조치중만 간결히 표시) */}
+                        {/* 6. 사진 */}
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                          {hasPhotos ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const firstImg = item.images?.[0] || item.actionImages?.[0];
+                                const src = typeof firstImg === "object" ? firstImg.dataUrl || firstImg.url : firstImg;
+                                if (src) setPreviewImage(src);
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10.5px] font-bold hover:scale-105 cursor-pointer shadow-2xs"
+                              title="사진 미리보기"
+                            >
+                              <Camera className="w-3 h-3 text-amber-600" />
+                              <span>{photoCount}장</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-xs font-mono">-</span>
+                          )}
+                        </td>
+
+                        {/* 7. 진행상태 */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap">
                           <span
                             className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black ${
@@ -1120,11 +1313,28 @@ export const UnifiedAbnormalityControlPanel = ({
                                 : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700 animate-pulse"
                             }`}
                           >
-                            {item.isResolved ? "조치완료" : "조치중"}
+                            {item.isResolved ? "조치완료" : "진행중"}
                           </span>
                         </td>
 
-                        {/* 변동점대장 등록 (탭 시 상단 관리대장으로 복사본 저장) */}
+                        {/* 8. 유효성검증 */}
+                        <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              item.isResolved
+                                ? "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                            }`}
+                            title={item.validation}
+                          >
+                            <span className="flex items-center justify-center gap-1">
+                              <CheckCircle2 className={`w-3 h-3 ${item.isResolved ? "text-blue-500" : "text-slate-400"}`} />
+                              <span className="truncate max-w-[95px]">{item.validation || "초·중·종물 검증"}</span>
+                            </span>
+                          </span>
+                        </td>
+
+                        {/* 9. 변동점대장 */}
                         <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           {item.isRegisteredInLedger ? (
                             <button
@@ -1148,28 +1358,6 @@ export const UnifiedAbnormalityControlPanel = ({
                               <Plus className="w-3 h-3" />
                               <span>대장등록</span>
                             </button>
-                          )}
-                        </td>
-
-                        {/* 사진 */}
-                        <td className="py-2.5 px-1.5 text-center whitespace-nowrap">
-                          {hasPhotos ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const firstImg = item.images?.[0] || item.actionImages?.[0];
-                                const src = typeof firstImg === "object" ? firstImg.dataUrl || firstImg.url : firstImg;
-                                if (src) setPreviewImage(src);
-                              }}
-                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 text-[10px] font-bold hover:scale-105 cursor-pointer"
-                              title="사진 미리보기"
-                            >
-                              <Camera className="w-2.5 h-2.5 text-amber-600" />
-                              <span>{photoCount}</span>
-                            </button>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-700">-</span>
                           )}
                         </td>
                       </tr>
