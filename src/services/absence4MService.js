@@ -136,17 +136,138 @@ export const generate4MOneLineLog = (entry) => {
   return `📌 [4M Man 변경] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체: ${subName}(${subPos} ${subSkill}${isMulti}) 투입 | [${firstPiece} / ${education}]`;
 };
 
+// ⭐ 기본 4M 결근 및 대체투입 초기 이력 샘플 데이터
+export const INITIAL_4M_ABSENCE_LOGS = {
+  "4m_sample_oryuk_1": {
+    id: "4m_sample_oryuk_1",
+    date: "2026-10-06",
+    company: "오륙",
+    process: "압출",
+    plant: "삼랑진공장",
+    riskLevel: "LOW",
+    riskWarningText: "동등 숙련도 다기능공 정상 배치 완료. 표준 초물검사 1회 실시.",
+    absentWorker: {
+      name: "설유철",
+      position: "책임",
+      dept: "압출관리팀",
+      mainProcess: "압출",
+      skillLevel: 5,
+      skillGrade: "Lv.5 마스터",
+      reason: "연차"
+    },
+    substituteWorker: {
+      name: "윤경수",
+      position: "책임",
+      dept: "압출관리팀",
+      mainProcess: "압출",
+      skillLevel: 5,
+      skillGrade: "Lv.5 마스터",
+      isMultiSkill: true,
+      subProcesses: ["소재준비", "검사"]
+    },
+    checkpoints: {
+      firstPieceCheck: true,
+      firstPieceChecker: "양인나 선임",
+      workInstructionTold: true,
+      supervisorApproval: true,
+      supervisorName: "양인나 선임",
+      qualityStatus: "NORMAL"
+    },
+    oneLineLog: "📌 [4M Man 변경] 10/6 (오륙) 압출공정 | 결근: 설유철(책임 Lv.5, 연차) ➔ 대체: 윤경수(책임 Lv.5 다기능) 투입 | [초물검사 완료 / 특별교육 완료]",
+    remarks: "압출 1호기 양산 진행 및 초물 한도견본 검사 승인 완료",
+    createdAt: "2026-10-06T08:30:00.000Z",
+    updatedAt: "2026-10-06T08:30:00.000Z"
+  },
+  "4m_sample_yuseong_1": {
+    id: "4m_sample_yuseong_1",
+    date: "2026-10-06",
+    company: "유성",
+    process: "압출",
+    plant: "삼랑진공장",
+    riskLevel: "LOW",
+    riskWarningText: "동등 숙련도 다기능공 정상 배치 완료. 표준 초물검사 1회 실시.",
+    absentWorker: {
+      name: "이성기",
+      position: "선임",
+      dept: "압출관리팀",
+      mainProcess: "압출",
+      skillLevel: 4,
+      skillGrade: "Lv.4 숙련",
+      reason: "휴가"
+    },
+    substituteWorker: {
+      name: "유동길",
+      position: "선임",
+      dept: "압출관리팀",
+      mainProcess: "압출",
+      skillLevel: 4,
+      skillGrade: "Lv.4 숙련",
+      isMultiSkill: true,
+      subProcesses: ["사상", "검사"]
+    },
+    checkpoints: {
+      firstPieceCheck: true,
+      firstPieceChecker: "유동길 선임",
+      workInstructionTold: true,
+      supervisorApproval: true,
+      supervisorName: "유동길 선임",
+      qualityStatus: "NORMAL"
+    },
+    oneLineLog: "📌 [4M Man 변경] 10/6 (유성) 압출공정 | 결근: 이성기(선임 Lv.4, 휴가) ➔ 대체: 유동길(선임 Lv.4 다기능) 투입 | [초물검사 완료 / 특별교육 완료]",
+    remarks: "유성 외주 압출 라인 정상 가동 및 치수 전수 검증",
+    createdAt: "2026-10-06T08:45:00.000Z",
+    updatedAt: "2026-10-06T08:45:00.000Z"
+  },
+  "4m_sample_joyoung_1": {
+    id: "4m_sample_joyoung_1",
+    date: "2026-10-07",
+    company: "조영",
+    process: "소재준비",
+    plant: "한림공장",
+    riskLevel: "STOPPED",
+    riskWarningText: "해당 라인/공정 비가동 상태로 대체 인원을 투입하지 않습니다.",
+    absentWorker: {
+      name: "김동욱",
+      position: "책임",
+      dept: "생산팀",
+      mainProcess: "소재준비",
+      skillLevel: 4,
+      skillGrade: "Lv.4 숙련",
+      reason: "개인사정"
+    },
+    substituteWorker: {
+      name: "라인비가동",
+      isLineStopped: true
+    },
+    checkpoints: {
+      firstPieceCheck: true,
+      firstPieceChecker: "김동욱 책임",
+      workInstructionTold: true,
+      supervisorApproval: true,
+      supervisorName: "김동욱 책임",
+      qualityStatus: "NORMAL"
+    },
+    oneLineLog: "📌 [4M Man 결근] 10/7 (조영) 소재준비공정 | 결근: 김동욱(책임 Lv.4, 개인사정) ➔ [⏸️ 라인비가동 / 대체 미투입]",
+    remarks: "한림공장 설비 정기 점검으로 인한 라인 비가동",
+    createdAt: "2026-10-07T08:20:00.000Z",
+    updatedAt: "2026-10-07T08:20:00.000Z"
+  }
+};
+
 // 로컬 스토리지에서 전체 4M 결근/대체 로그 로드
 export const getLocal4MAbsenceLogsMap = () => {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && Object.keys(parsed).length > 0) {
+        return { ...INITIAL_4M_ABSENCE_LOGS, ...parsed };
+      }
     }
   } catch (e) {
     console.warn("Failed to load local 4M absence logs map:", e);
   }
-  return {};
+  return { ...INITIAL_4M_ABSENCE_LOGS };
 };
 
 // 로컬 스토리지에 4M 결근/대체 로그 저장
@@ -263,13 +384,27 @@ export const subscribe4MAbsenceLogs = (callback) => {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
-        const logsMap = {};
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (data && data.id) {
-            logsMap[data.id] = data;
-          }
-        });
+        const local = getLocal4MAbsenceLogsMap();
+        const logsMap = { ...INITIAL_4M_ABSENCE_LOGS, ...local };
+        if (!snapshot.empty) {
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            if (data && (data.id || docSnap.id)) {
+              const id = data.id || docSnap.id;
+              logsMap[id] = { ...data, id };
+            }
+          });
+        } else {
+          // Firestore 컬렉션이 비어있으면 기본 4M 샘플 대장 항목 자동 시드 저장
+          Object.values(INITIAL_4M_ABSENCE_LOGS).forEach(async (sampleLog) => {
+            try {
+              const sanitizedDocId = sampleLog.id.replace(/[^\w가-힣]/g, "_");
+              await setDoc(doc(db, "absence_4m_logs", sanitizedDocId), sanitizeForFirestore(sampleLog), { merge: true });
+            } catch (e) {
+              // ignore
+            }
+          });
+        }
         saveLocal4MAbsenceLogsMap(logsMap);
         callback(logsMap);
       },

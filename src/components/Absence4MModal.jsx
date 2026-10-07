@@ -60,12 +60,21 @@ export default function Absence4MModal({
   onSaveSyncWithReports
 }) {
   const [selectedCompanyTab, setSelectedCompanyTab] = useState(initialCompany || "오륙");
-  const [logsMap, setLogsMap] = useState({});
+  const [modalDay, setModalDay] = useState(selectedDay || 7);
+  const [viewScope, setViewScope] = useState("ALL"); // "ALL" (전체 대장 이력) or "DATE" (당일 결근)
+  const [logsMap, setLogsMap] = useState(() => getLocal4MAbsenceLogsMap());
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const [allCopied, setAllCopied] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [personnelCardsMap, setPersonnelCardsMap] = useState({});
+  const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
+
+  // selectedDay prop 변경 시 modalDay 동기화
+  useEffect(() => {
+    if (selectedDay) {
+      setModalDay(selectedDay);
+    }
+  }, [selectedDay, isOpen]);
 
   // 신규 수기 4M 항목 폼 상태
   const [newEntry, setNewEntry] = useState({
@@ -88,9 +97,9 @@ export default function Absence4MModal({
   const dateStr = useMemo(() => {
     const y = currentYear || 2026;
     const m = String(currentMonth || 10).padStart(2, "0");
-    const d = String(selectedDay || 1).padStart(2, "0");
+    const d = String(modalDay || 1).padStart(2, "0");
     return `${y}-${m}-${d}`;
-  }, [currentYear, currentMonth, selectedDay]);
+  }, [currentYear, currentMonth, modalDay]);
 
   // 인사카드 실시간 구독 및 동기화
   useEffect(() => {
@@ -153,6 +162,7 @@ export default function Absence4MModal({
       const resolvedComp = card?.company ? cleanCompanyName(card.company) : comp;
       const resolvedDept = card?.dept || w.dept || "생산팀";
       const resolvedPos = card?.position || w.position || "사원";
+      const dailyVal = (w.daily && (w.daily[modalDay] !== undefined ? w.daily[modalDay] : w.daily[String(modalDay)])) || w[modalDay] || w[String(modalDay)] || "";
       return {
         ...w,
         company: resolvedComp,
@@ -160,27 +170,24 @@ export default function Absence4MModal({
         position: resolvedPos,
         cardKey,
         personnelCard: card,
-        dailyCode: w.daily ? w.daily[selectedDay] : ""
+        dailyCode: dailyVal
       };
     });
-  }, [attendanceMatrix, selectedDay, personnelCardsMap]);
+  }, [attendanceMatrix, modalDay, personnelCardsMap]);
 
   // 당일 결근/휴무로 체크된 근로자 자동 탐지
   const detectedAbsentWorkers = useMemo(() => {
     return allWorkers.filter((w) => {
       const code = String(w.dailyCode || "").trim();
-      return code === "결근" || code === "무단결근" || code === "휴가" || code === "연차" || code === "반차";
+      return code === "결근" || code === "무단결근" || code === "휴가" || code === "연차" || code === "반차" || code.includes("결근");
     });
   }, [allWorkers]);
 
-  // 현재 날짜의 저장된 4M 로그 목록
-  const activeDateLogs = useMemo(() => {
-    return Object.values(logsMap).filter((log) => log.date === dateStr);
-  }, [logsMap, dateStr]);
-
   // 화면에 표시할 4M 변경점 항목 목록 (자동 탐지된 결근자 + 수기 추가된 로그 병합)
   const displayEntries = useMemo(() => {
-    const filteredLogs = activeDateLogs.filter((log) => {
+    const allLogsList = Object.values(logsMap);
+    const targetLogs = viewScope === "ALL" ? allLogsList : allLogsList.filter((log) => log.date === dateStr);
+    const filteredLogs = targetLogs.filter((log) => {
       if (selectedCompanyTab !== "전체" && cleanCompanyName(log.company) !== cleanCompanyName(selectedCompanyTab)) {
         return false;
       }
@@ -223,67 +230,73 @@ export default function Absence4MModal({
       };
     });
 
-    // 자동 탐지된 결근자 중 아직 저장되지 않은 항목 생성
-    const detectedList = detectedAbsentWorkers
-      .filter((w) => {
-        if (selectedCompanyTab !== "전체" && cleanCompanyName(w.company) !== cleanCompanyName(selectedCompanyTab)) {
-          return false;
-        }
-        // 이미 저장된 로그가 있는지 확인
-        const alreadySaved = filteredLogs.some(
-          (l) => cleanCompanyName(l.company) === cleanCompanyName(w.company) && l.absentWorker?.name === w.name
-        );
-        return !alreadySaved;
-      })
-      .map((w) => {
-        const comp = cleanCompanyName(w.company);
-        const cardKey = `${comp}_${w.name}`;
-        const card = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard || getWorkerPersonnelCard(w);
-        const managerInfo = COMPANY_APPROVAL_MANAGERS[w.company] || COMPANY_APPROVAL_MANAGERS["오륙"];
-        const defaultSup = `${managerInfo.drafter || "관리감독자"} ${managerInfo.drafterRole || "선임"}`;
+    // 자동 탐지된 결근자 중 아직 저장되지 않은 항목 생성 (viewScope === "DATE" 이거나 당일 조회 시 추가)
+    let detectedList = [];
+    if (viewScope === "DATE") {
+      detectedList = detectedAbsentWorkers
+        .filter((w) => {
+          if (selectedCompanyTab !== "전체" && cleanCompanyName(w.company) !== cleanCompanyName(selectedCompanyTab)) {
+            return false;
+          }
+          const alreadySaved = filteredLogs.some(
+            (l) => cleanCompanyName(l.company) === cleanCompanyName(w.company) && l.absentWorker?.name === w.name
+          );
+          return !alreadySaved;
+        })
+        .map((w) => {
+          const comp = cleanCompanyName(w.company);
+          const cardKey = `${comp}_${w.name}`;
+          const card = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard || getWorkerPersonnelCard(w);
+          const managerInfo = COMPANY_APPROVAL_MANAGERS[w.company] || COMPANY_APPROVAL_MANAGERS["오륙"];
+          const defaultSup = `${managerInfo.drafter || "관리감독자"} ${managerInfo.drafterRole || "선임"}`;
 
-        let reason = "휴가";
-        if (w.dailyCode === "휴가") reason = "휴가";
-        else if (w.dailyCode === "연차") reason = "연차";
-        else if (w.dailyCode === "반차") reason = "반차";
-        else if (w.dailyCode === "무단결근") reason = "무단결근";
-        else if (w.dailyCode === "결근") reason = "병결";
+          let reason = "휴가";
+          if (w.dailyCode === "휴가") reason = "휴가";
+          else if (w.dailyCode === "연차") reason = "연차";
+          else if (w.dailyCode === "반차") reason = "반차";
+          else if (w.dailyCode === "무단결근") reason = "무단결근";
+          else if (w.dailyCode === "결근") reason = "병결";
 
-        const tempId = `auto_${dateStr}_${w.company}_${w.name}`;
+          const tempId = `auto_${dateStr}_${w.company}_${w.name}`;
 
-        return {
-          id: tempId,
-          isDraft: true,
-          date: dateStr,
-          company: w.company,
-          process: card?.mainProcess || "압출",
-          absentWorker: {
-            name: w.name,
-            position: card?.position || w.position || "사원",
-            dept: card?.dept || w.dept || "생산팀",
-            mainProcess: card?.mainProcess || "압출",
-            skillLevel: card?.skillLevel || 3,
-            skillGrade: card?.skillGrade || "Lv.3 보통",
-            reason: reason,
-            customReason: ""
-          },
-          substituteWorker: null,
-          riskLevel: "UNKNOWN",
-          riskWarningText: "대체 투입 작업자를 지정하거나 라인비가동을 선택해주세요.",
-          checkpoints: {
-            firstPieceCheck: true,
-            firstPieceChecker: defaultSup,
-            workInstructionTold: true,
-            supervisorApproval: true,
-            supervisorName: defaultSup,
-            qualityStatus: "NORMAL"
-          },
-          oneLineLog: `📌 [4M Man 결근] ${currentMonth}/${selectedDay} (${w.company}) ${card?.mainProcess || "압출"}공정 | 결근: ${w.name}(${card?.position || "사원"}, Lv.${card?.skillLevel || 3}, ${reason}) ➔ 대체 투입자 지정 필요`,
-          remarks: ""
-        };
-      });
+          return {
+            id: tempId,
+            isDraft: true,
+            date: dateStr,
+            company: w.company,
+            process: card?.mainProcess || "압출",
+            absentWorker: {
+              name: w.name,
+              position: card?.position || w.position || "사원",
+              dept: card?.dept || w.dept || "생산팀",
+              mainProcess: card?.mainProcess || "압출",
+              skillLevel: card?.skillLevel || 3,
+              skillGrade: card?.skillGrade || "Lv.3 보통",
+              reason: reason,
+              customReason: ""
+            },
+            substituteWorker: null,
+            riskLevel: "UNKNOWN",
+            riskWarningText: "대체 투입 작업자를 지정하거나 라인비가동을 선택해주세요.",
+            checkpoints: {
+              firstPieceCheck: true,
+              firstPieceChecker: defaultSup,
+              workInstructionTold: true,
+              supervisorApproval: true,
+              supervisorName: defaultSup,
+              qualityStatus: "NORMAL"
+            },
+            oneLineLog: `📌 [4M Man 결근] ${currentMonth}/${modalDay} (${w.company}) ${card?.mainProcess || "압출"}공정 | 결근: ${w.name}(${card?.position || "사원"}, Lv.${card?.skillLevel || 3}, ${reason}) ➔ 대체 투입자 지정 필요`,
+            remarks: ""
+          };
+        });
+    }
 
     let combined = [...syncedLogs, ...detectedList];
+
+    if (viewScope === "ALL") {
+      combined.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+    }
 
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -297,14 +310,14 @@ export default function Absence4MModal({
     }
 
     return combined;
-  }, [activeDateLogs, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, selectedDay, searchTerm, personnelCardsMap]);
+  }, [logsMap, viewScope, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, modalDay, searchTerm, personnelCardsMap]);
 
   // 통계 요약 KPIs
   const metrics = useMemo(() => {
-    const totalAbsent = detectedAbsentWorkers.length;
-    const completedSubs = activeDateLogs.filter((l) => l.substituteWorker?.name).length;
-    const firstPieceDone = activeDateLogs.filter((l) => l.checkpoints?.firstPieceCheck).length;
-    const highRisks = activeDateLogs.filter((l) => l.riskLevel === "HIGH").length;
+    const totalAbsent = viewScope === "ALL" ? Object.values(logsMap).length : detectedAbsentWorkers.length;
+    const completedSubs = (viewScope === "ALL" ? Object.values(logsMap) : Object.values(logsMap).filter((l) => l.date === dateStr)).filter((l) => l.substituteWorker?.name).length;
+    const firstPieceDone = (viewScope === "ALL" ? Object.values(logsMap) : Object.values(logsMap).filter((l) => l.date === dateStr)).filter((l) => l.checkpoints?.firstPieceCheck).length;
+    const highRisks = (viewScope === "ALL" ? Object.values(logsMap) : Object.values(logsMap).filter((l) => l.date === dateStr)).filter((l) => l.riskLevel === "HIGH").length;
 
     return {
       totalAbsent,
@@ -312,7 +325,7 @@ export default function Absence4MModal({
       firstPieceDone,
       highRisks
     };
-  }, [detectedAbsentWorkers, activeDateLogs]);
+  }, [detectedAbsentWorkers, logsMap, dateStr, viewScope]);
 
   // 개별 4M 변경점 저장 핸들러
   const handleSaveEntry = async (entry) => {
@@ -408,9 +421,9 @@ export default function Absence4MModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-mono font-bold text-slate-300">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-mono font-bold text-slate-300">
               <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{currentYear}년 {currentMonth}월 {selectedDay}일</span>
+              <span>{currentYear}년 {currentMonth}월 {modalDay}일</span>
             </div>
             <button
               type="button"
@@ -460,6 +473,104 @@ export default function Absence4MModal({
               >
                 <Zap className="w-3.5 h-3.5 text-yellow-300" />
                 <span>보고서 특기사항 동기화</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 🎛️ 대장 보기 모드 전환 & 일자 네비게이션 & 실시간 검색 툴바 */}
+        {/* ========================================================================= */}
+        <div className="bg-slate-950 px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          {/* 1. 조회 범위 선택 탭 */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => setViewScope("ALL")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black transition-all cursor-pointer ${
+                viewScope === "ALL"
+                  ? "bg-cyan-600 text-white shadow-md"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>📋 4M 대장 전체 이력 ({Object.keys(logsMap).length}건)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewScope("DATE")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black transition-all cursor-pointer ${
+                viewScope === "DATE"
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>📅 일자별 조회 ({currentMonth}월 {modalDay}일)</span>
+            </button>
+          </div>
+
+          {/* 2. 일자 네비게이션 (이전일, 드롭다운, 다음일, 오늘) */}
+          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setModalDay((prev) => (prev > 1 ? prev - 1 : 31))}
+              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all cursor-pointer"
+              title="이전 일자로 이동"
+            >
+              ◀
+            </button>
+            <select
+              value={modalDay}
+              onChange={(e) => {
+                setModalDay(Number(e.target.value));
+              }}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-cyan-300 font-bold font-mono cursor-pointer"
+            >
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>
+                  {currentMonth}월 {d}일
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setModalDay((prev) => (prev < 31 ? prev + 1 : 1))}
+              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all cursor-pointer"
+              title="다음 일자로 이동"
+            >
+              ▶
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const today = new Date().getDate();
+                setModalDay(today);
+              }}
+              className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-cyan-950 text-slate-300 hover:text-cyan-300 font-bold text-[11px] transition-all ml-0.5 cursor-pointer"
+            >
+              오늘
+            </button>
+          </div>
+
+          {/* 3. 검색창 */}
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="작업자/회사/공정 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-white text-xs font-bold placeholder-slate-500 focus:border-cyan-500 focus:outline-none"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs font-bold"
+              >
+                ✕
               </button>
             )}
           </div>
@@ -531,9 +642,9 @@ export default function Absence4MModal({
             <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
               <span className="text-slate-400 font-bold flex items-center gap-1">
                 <UserX className="w-3.5 h-3.5 text-rose-400" />
-                <span>당일 결근 인원</span>
+                <span>{viewScope === "ALL" ? "전체 등록 대장" : "당일 결근 인원"}</span>
               </span>
-              <span className="font-mono font-black text-rose-400 text-sm">{metrics.totalAbsent}명</span>
+              <span className="font-mono font-black text-rose-400 text-sm">{metrics.totalAbsent}건</span>
             </div>
 
             <div className="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -759,19 +870,37 @@ export default function Absence4MModal({
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-white">당일 결근자 및 4M Man 변경점이 없습니다.</h4>
+                <h4 className="text-sm font-black text-white">
+                  {viewScope === "DATE"
+                    ? `${currentMonth}월 ${modalDay}일 등록된 4M 결근 변경점이 없습니다.`
+                    : "등록된 4M 작업자 변경점 내역이 없습니다."}
+                </h4>
                 <p className="text-xs text-slate-400 mt-1">
-                  선택된 {selectedCompanyTab === "전체" ? "5개사 전 사업장" : selectedCompanyTab}에서 {currentMonth}월 {selectedDay}일 전원 정상 출근 상태입니다.
+                  {viewScope === "DATE"
+                    ? `선택된 ${selectedCompanyTab === "전체" ? "5개사 전 사업장" : selectedCompanyTab}에서 ${currentMonth}월 ${modalDay}일 전원 정상 출근 상태입니다.`
+                    : "상단의 [수기 4M 변경점 추가] 버튼을 눌러 결근 및 대체 인원을 등록하세요."}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold cursor-pointer transition-all"
-              >
-                <Plus className="w-3.5 h-3.5 text-cyan-400" />
-                <span>수기로 4M 대체 투입 등록하기</span>
-              </button>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                {viewScope === "DATE" && (
+                  <button
+                    type="button"
+                    onClick={() => setViewScope("ALL")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-700 hover:bg-cyan-600 text-white text-xs font-bold cursor-pointer transition-all shadow-md"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>📋 전체 4M 대장 이력 ({Object.keys(logsMap).length}건) 보기</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold cursor-pointer transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>수기로 4M 대체 투입 등록하기</span>
+                </button>
+              </div>
             </div>
           ) : (
             displayEntries.map((item, index) => {
@@ -786,7 +915,7 @@ export default function Absence4MModal({
                   onCopyOneLine={handleCopyOneLine}
                   isCopied={copiedId === item.id || copiedId === `saved_${item.id}`}
                   currentMonth={currentMonth}
-                  selectedDay={selectedDay}
+                  selectedDay={modalDay}
                 />
               );
             })
@@ -798,7 +927,8 @@ export default function Absence4MModal({
         {/* ========================================================================= */}
         <div className="bg-slate-950 p-3 sm:p-4 border-t border-slate-800 flex items-center justify-between gap-2 shrink-0">
           <span className="text-[11px] text-slate-400 font-mono">
-            총 <strong className="text-cyan-400 font-bold">{displayEntries.length}건</strong>의 4M 작업자 변경점이 관리 중입니다.
+            {viewScope === "ALL" ? "📋 전체 대장 이력: " : `📅 ${currentMonth}월 ${modalDay}일: `}
+            총 <strong className="text-cyan-400 font-bold">{displayEntries.length}건</strong>의 4M 작업자 변경점이 표시 중입니다.
           </span>
 
           <div className="flex items-center gap-2">
@@ -977,9 +1107,14 @@ function Absence4MCardItem({
         ? "bg-slate-950/90 border-amber-500/60 ring-1 ring-amber-500/30"
         : "bg-slate-950/80 border-slate-700/80 hover:border-slate-600"
     } p-3.5 sm:p-4 space-y-3`}>
-      {/* 🏷️ 카드 상단 헤더: 회사 / 공정 / 4M 위험도 배지 */}
+      {/* 🏷️ 카드 상단 헤더: 일자 / 회사 / 공정 / 4M 위험도 배지 */}
       <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-800">
         <div className="flex items-center gap-2">
+          <span className="text-xs px-2.5 py-0.5 rounded-lg font-mono font-bold bg-slate-800 text-cyan-300 border border-slate-700 flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{formState.date || item.date || `${currentMonth}/${selectedDay}`}</span>
+          </span>
+
           <span className={`text-xs px-2.5 py-0.5 rounded-lg font-black ${theme.badge}`}>
             {company}
           </span>
