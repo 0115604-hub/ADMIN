@@ -250,12 +250,17 @@ export const WorkerPinModal = ({
     );
   }, [selectedUser]);
 
-  // 삼랑진 관리자 = 오륙, 유성 / 한림 관리자 = 조영, 한울, 부림텍 / 본사 = 전체
+  // 협력업체 대표 = 해당 업체만 / 삼랑진 관리자 = 오륙, 유성 / 한림 관리자 = 조영, 한울, 부림텍 / 본사 = 전체
   const visibleAttendanceCompanies = useMemo(() => {
+    if (!selectedUser) return ["오륙", "유성", "조영", "한울", "부림텍"];
+    if (selectedUser.isPartner || selectedUser.company === "유성" || selectedUser.name === "유성") return ["유성"];
+    if (selectedUser.isPartner || selectedUser.company === "조영" || selectedUser.name === "조영") return ["조영"];
+    if (selectedUser.isPartner || selectedUser.company === "한울" || selectedUser.name === "한울") return ["한울"];
+    if (selectedUser.isPartner || selectedUser.company === "부림텍" || selectedUser.name === "부림텍") return ["부림텍"];
     if (isSamrangjinManager) return ["오륙", "유성"];
     if (isHallimManager) return ["조영", "한울", "부림텍"];
     return ["오륙", "유성", "조영", "한울", "부림텍"];
-  }, [isSamrangjinManager, isHallimManager]);
+  }, [selectedUser, isSamrangjinManager, isHallimManager]);
 
   const isProcessingWorker = useMemo(() => {
     return false;
@@ -814,12 +819,14 @@ export const WorkerPinModal = ({
 
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <h3 className="font-black text-base sm:text-lg md:text-xl text-slate-900 dark:text-white tracking-tight truncate">
-                  {selectedUser.name} {selectedUser.title || (isHeadquarterAdmin ? "대표이사" : "관리자")}
+                  {selectedUser.name} {selectedUser.title || (isHeadquarterAdmin ? "대표이사" : selectedUser.isPartner ? "대표이사" : "관리자")}
                 </h3>
                 <span
                   className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
                     isHeadquarterAdmin
                       ? "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                      : selectedUser.isPartner
+                      ? "bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
                       : isSamrangjinManager
                       ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                       : isHallimManager
@@ -831,6 +838,8 @@ export const WorkerPinModal = ({
                 >
                   {isHeadquarterAdmin
                     ? "경영총괄/대표이사"
+                    : selectedUser.isPartner
+                    ? `협력업체 (${selectedUser.name})`
                     : isSamrangjinManager
                     ? "삼랑진공장 관리자"
                     : isHallimManager
