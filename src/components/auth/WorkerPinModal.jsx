@@ -643,10 +643,13 @@ export const WorkerPinModal = ({
   const unwrittenCompanies = useMemo(() => {
     const matrix = smartOvertimeData?.attendanceMatrix || [];
     return COMPANIES.filter((comp) => {
-      const compWorkers = matrix.filter((w) => w.company === comp || (comp.includes("조영") && (w.company || "").includes("조영")));
+      const cleanCompName = cleanCompanyName(comp);
+      const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
+      if (compWorkers.length === 0) return false;
       const enteredCount = compWorkers.filter((w) => {
-        const v = w.daily?.[todayDayNum];
-        return v !== undefined && v !== null && String(v).trim() !== "" && String(v).trim() !== "미입력";
+        const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
+        const str = String(v ?? "").trim();
+        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
       return enteredCount === 0;
     });

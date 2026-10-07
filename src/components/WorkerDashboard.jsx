@@ -577,14 +577,16 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     const companies = ["오륙", "조영", "한울", "부림텍", "유성"].map((name) => {
       const styles = companyStyles[name] || companyStyles["오륙"];
-      const b = daily?.companyBreakdown?.[name];
-      const compWorkers = matrix.filter((w) => w.company === name || (name.includes("조영") && (w.company || "").includes("조영")));
+      const cleanCompName = cleanCompanyName(name);
+      const b = daily?.companyBreakdown?.[cleanCompName] || daily?.companyBreakdown?.[name];
+      const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompName);
       const enteredCount = compWorkers.filter((w) => {
-        const v = w.daily?.[todayDayNum];
-        return v !== undefined && v !== null && String(v).trim() !== "" && String(v).trim() !== "미입력";
+        const v = (w.daily && (w.daily[todayDayNum] !== undefined ? w.daily[todayDayNum] : w.daily[String(todayDayNum)])) ?? w[todayDayNum] ?? w[String(todayDayNum)];
+        const str = String(v ?? "").trim();
+        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
 
-      const isWritten = enteredCount > 0;
+      const isWritten = compWorkers.length > 0 ? enteredCount > 0 : false;
       const shortName = name.replace(/[()주]/g, "");
 
       const workers = b?.total && b.total > 0 ? b.total : compWorkers.length;

@@ -581,7 +581,7 @@ export const generateSynthesizedPlantReports = (reports = []) => {
       const cost = targetReps.reduce((sum, r) => sum + (r.cost || 0), 0);
       const allItems = targetReps.flatMap((r) => r.items || []);
 
-      const drafterName = "양인나";
+      const drafterName = "조인주";
       const drafterTitle = "선임";
       const leadName = "윤경수";
 
@@ -873,11 +873,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // ⭐ Registration Report Modal State (등록 클릭 시 뜨는 보고서 작성/확인 팝업)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportModalTitle, setReportModalTitle] = useState("");
-  const [reportModalAuthor, setReportModalAuthor] = useState("양인나 선임");
+  const [reportModalAuthor, setReportModalAuthor] = useState("조인주 선임");
   const [reportModalAuthorTitle, setReportModalAuthorTitle] = useState("선임");
   const [reportModalNotes, setReportModalNotes] = useState("");
   const [reportApprovalSteps, setReportApprovalSteps] = useState([
-    { role: "담당", name: "양인나", title: "선임", status: "APPROVED", date: "", comment: "기안" },
+    { role: "담당", name: "조인주", title: "선임", status: "APPROVED", date: "", comment: "기안" },
     { role: "책임", name: "윤경수", title: "책임", status: "PENDING", date: "", comment: "" },
     { role: "이사", name: "이명재", title: "이사", status: "WAITING", date: "", comment: "" },
     { role: "대표", name: "권태형", title: "대표", status: "WAITING", date: "" }
@@ -1181,8 +1181,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
       company: selectedCompanyFilter || "전체",
       plant: "전사",
-      author: "양인나 선임",
-      drafter: "양인나",
+      author: "조인주 선임",
+      drafter: "조인주",
       drafterRole: "선임",
       lead: "윤경수",
       leadRole: "책임",
@@ -1205,7 +1205,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     }, 0);
 
     setReportModalTitle(`${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`);
-    setReportModalAuthor(compMeta.author || compMeta.drafter || "양인나");
+    setReportModalAuthor(compMeta.author || compMeta.drafter || "조인주");
     setReportModalAuthorTitle(compMeta.drafterRole || "선임");
     
     // ⭐ 해당 회사 관리자들로 결재란 자동 구성 (평일 근태보고서는 작성자 전결 승인, 주말 특근은 4단계 결재)
@@ -1266,8 +1266,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const compMeta = COMPANY_APPROVAL_MANAGERS[selectedCompanyFilter] || COMPANY_APPROVAL_MANAGERS["전체"] || {
         company: selectedCompanyFilter || "전체",
         plant: "전사",
-        author: "양인나 선임",
-        drafter: "양인나",
+        author: "조인주 선임",
+        drafter: "조인주",
         drafterRole: "선임",
         lead: "윤경수",
         leadRole: "책임",
@@ -1807,11 +1807,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   const unwrittenCompanies = useMemo(() => {
     const matrix = smartData.attendanceMatrix || [];
+    const d = selectedDay || 1;
     return COMPANIES.filter((comp) => {
-      const compWorkers = matrix.filter((w) => w.company === comp || (comp.includes("조영") && (w.company || "").includes("조영")));
+      const compWorkers = matrix.filter((w) => cleanCompanyName(w.company) === cleanCompanyName(comp));
+      if (compWorkers.length === 0) return false;
       const enteredCount = compWorkers.filter((w) => {
-        const v = w.daily?.[selectedDay];
-        return v !== undefined && v !== null && String(v).trim() !== "" && String(v).trim() !== "미입력";
+        const v = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)];
+        const str = String(v ?? "").trim();
+        return str !== "" && str !== "미입력" && str !== "-" && str !== "undefined" && str !== "null";
       }).length;
       return enteredCount === 0;
     }).map((name) => ({ name, shortName: name.replace(/[()주]/g, "") }));
@@ -1957,7 +1960,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         plant: "삼랑진공장",
         companies: "(주)오륙, 유성",
         dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
-        author: "양인나 선임",
+        author: "조인주 선임",
         headcount: samWorkers.length || 40,
         manHours: samHours || 382,
         cost: samCost || 5730000,
@@ -1968,7 +1971,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         plant: "한림공장",
         companies: "(주)조영산업, 한울, 부림텍",
         dateFormatted: `${currentYear}-${monthNumStr}-${dayNumStr} (${dayLabelStr})`,
-        author: (dayLabelStr === "일" ? "한울 협력업체" : "오상민 선임"),
+        author: (dayLabelStr === "일" ? "황수현 선임" : "오상민 선임"),
         headcount: halWorkers.length || (dayLabelStr === "일" ? 2 : 4),
         manHours: halHours || (dayLabelStr === "일" ? 16 : 32),
         cost: halCost || (dayLabelStr === "일" ? 240000 : 480000),

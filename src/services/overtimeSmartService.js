@@ -47,8 +47,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "오륙": {
     company: "오륙",
     plant: "삼랑진공장",
-    author: "양인나 선임",
-    drafter: "양인나",
+    author: "조인주 선임",
+    drafter: "조인주",
     drafterRole: "선임",
     lead: "윤경수",
     leadRole: "책임",
@@ -60,8 +60,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "유성": {
     company: "유성",
     plant: "삼랑진공장",
-    author: "유동길 선임",
-    drafter: "유동길",
+    author: "이성기 선임",
+    drafter: "이성기",
     drafterRole: "선임",
     lead: "설유철",
     leadRole: "책임",
@@ -73,8 +73,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "조영": {
     company: "조영",
     plant: "한림공장",
-    author: "김동욱 책임",
-    drafter: "김동욱",
+    author: "오상민 선임",
+    drafter: "오상민",
     drafterRole: "선임",
     lead: "김동욱",
     leadRole: "책임",
@@ -86,8 +86,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "한울": {
     company: "한울",
     plant: "한림공장",
-    author: "오상민 선임",
-    drafter: "오상민",
+    author: "황수현 선임",
+    drafter: "황수현",
     drafterRole: "선임",
     lead: "김동욱",
     leadRole: "책임",
@@ -99,8 +99,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "부림텍": {
     company: "부림텍",
     plant: "한림공장",
-    author: "김동욱 책임",
-    drafter: "김동욱",
+    author: "김동훈 책임",
+    drafter: "김동훈",
     drafterRole: "책임",
     lead: "김동욱",
     leadRole: "책임",
@@ -112,8 +112,8 @@ export const COMPANY_APPROVAL_MANAGERS = {
   "전체": {
     company: "5개사 통합",
     plant: "삼랑진/한림공장",
-    author: "양인나 / 오상민 선임",
-    drafter: "양인나",
+    author: "조인주 / 오상민 선임",
+    drafter: "조인주",
     drafterRole: "선임",
     lead: "윤경수 / 김동욱",
     leadRole: "책임",
@@ -123,12 +123,20 @@ export const COMPANY_APPROVAL_MANAGERS = {
     ceoRole: "대표"
   },
   // Aliases for legacy compatibility
-  "주)오륙": { company: "오륙", plant: "삼랑진공장", author: "양인나 선임", drafter: "양인나", drafterRole: "선임", lead: "윤경수", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "(주)오륙": { company: "오륙", plant: "삼랑진공장", author: "양인나 선임", drafter: "양인나", drafterRole: "선임", lead: "윤경수", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "주)조영": { company: "조영", plant: "한림공장", author: "김동욱 책임", drafter: "김동욱", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "(주)조영": { company: "조영", plant: "한림공장", author: "김동욱 책임", drafter: "김동욱", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "(주)조영산업": { company: "조영", plant: "한림공장", author: "김동욱 책임", drafter: "김동욱", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
-  "조영산업": { company: "조영", plant: "한림공장", author: "김동욱 책임", drafter: "김동욱", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" }
+  "주)오륙": { company: "오륙", plant: "삼랑진공장", author: "조인주 선임", drafter: "조인주", drafterRole: "선임", lead: "윤경수", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)오륙": { company: "오륙", plant: "삼랑진공장", author: "조인주 선임", drafter: "조인주", drafterRole: "선임", lead: "윤경수", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "주)유성": { company: "유성", plant: "삼랑진공장", author: "이성기 선임", drafter: "이성기", drafterRole: "선임", lead: "설유철", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)유성": { company: "유성", plant: "삼랑진공장", author: "이성기 선임", drafter: "이성기", drafterRole: "선임", lead: "설유철", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "유성산업": { company: "유성", plant: "삼랑진공장", author: "이성기 선임", drafter: "이성기", drafterRole: "선임", lead: "설유철", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "주)조영": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)조영": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)조영산업": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "조영산업": { company: "조영", plant: "한림공장", author: "오상민 선임", drafter: "오상민", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "주)한울": { company: "한울", plant: "한림공장", author: "황수현 선임", drafter: "황수현", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)한울": { company: "한울", plant: "한림공장", author: "황수현 선임", drafter: "황수현", drafterRole: "선임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "주)부림텍": { company: "부림텍", plant: "한림공장", author: "김동훈 책임", drafter: "김동훈", drafterRole: "책임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "(주)부림텍": { company: "부림텍", plant: "한림공장", author: "김동훈 책임", drafter: "김동훈", drafterRole: "책임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" },
+  "부림": { company: "부림텍", plant: "한림공장", author: "김동훈 책임", drafter: "김동훈", drafterRole: "책임", lead: "김동욱", leadRole: "책임", director: "이명재", directorRole: "이사", ceo: "권태형", ceoRole: "대표" }
 };
 
 export const COMPANY_THEMES = {
@@ -347,7 +355,7 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
     }
     companyBreakdown[comp].total++;
 
-    const val = worker.daily ? worker.daily[dayNum] : "";
+    const val = (worker.daily && (worker.daily[dayNum] !== undefined ? worker.daily[dayNum] : worker.daily[String(dayNum)])) ?? worker[dayNum] ?? worker[String(dayNum)] ?? "";
     const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
     const ot = weekdayOt + weekendOt;
 
@@ -357,7 +365,7 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
     }
 
     const str = String(val).trim();
-    if (str === "🟢" || str === "정시" || str === "17") {
+    if (str === "🟢" || str === "정시" || str === "17" || str === "출근") {
       regularCount++;
       companyBreakdown[comp].regular++;
     } else if (str === "19" || str === "19시") {
@@ -372,9 +380,9 @@ export const calculateDailySummary = (attendanceList, dayNum = 8) => {
     } else if (str === "특근" || str === "주말특근" || str === "야간" || str === "주야") {
       specialNightCount++;
       companyBreakdown[comp].specialNight++;
-    } else if (str === "결근") {
+    } else if (str === "결근" || str === "무단결근" || str === "병결" || str.includes("결근")) {
       companyBreakdown[comp].absent = (companyBreakdown[comp].absent || 0) + 1;
-    } else if (str === "연차" || str === "반차") {
+    } else if (str === "연차" || str === "반차" || str === "휴가" || str.includes("휴가") || str.includes("연차")) {
       companyBreakdown[comp].leave = (companyBreakdown[comp].leave || 0) + 1;
     }
 
