@@ -33,7 +33,7 @@ export const ADMIN_TABS = [
 export const Sidebar = ({ activeTab, setActiveTab, mobileOpen, onCloseMobile }) => {
   const { currentProfile, isOperator, isAdmin, logout } = useAuth();
   const isInjoo = currentProfile?.name === "조인주";
-  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || currentProfile?.name?.includes("한울");
+  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || currentProfile?.name?.includes("한울") || currentProfile?.name === "황수현" || currentProfile?.assignedProcess?.includes("한울");
 
   // Operator navigation tabs - strictly 1 line, no badges/annotations
   const operatorTabs = [

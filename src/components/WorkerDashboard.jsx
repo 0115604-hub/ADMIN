@@ -501,7 +501,7 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
   const isQualityWorker = currentProfile?.assignedProcess === "품질관리" || currentProfile?.name === "이창엽" || currentProfile?.name === "이상기" || currentProfile?.id === "sam_cy" || currentProfile?.id === "sam_sg";
   const isExtrusionWorker = currentProfile?.name === "설유철" || currentProfile?.id === "sam_yc" || currentProfile?.assignedProcess?.includes("압출") || (assignedProcess?.includes("압출"));
   const isChangyong = false;
-  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울");
+  const isHanul = currentProfile?.name === "한울" || currentProfile?.id === "hal_hu" || (currentProfile?.isPartner && currentProfile?.name?.includes("한울")) || workerFullName?.includes("한울") || currentProfile?.name === "황수현" || currentProfile?.assignedProcess?.includes("한울");
   const isTestUser = currentProfile?.name === "TEST" || currentProfile?.id === "hal_test";
   const [isHanulSettlementModalOpen, setIsHanulSettlementModalOpen] = useState(false);
   const [isWorkLogsSummaryModalOpen, setIsWorkLogsSummaryModalOpen] = useState(false);
