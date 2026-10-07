@@ -174,18 +174,19 @@ export const normalizeStandardDept = (dept, comp) => {
   return "생산팀";
 };
 
-// 직위 정규화 헬퍼 (협력업체인 경우 대표이사 반환, 그 외 사원, 선임, 책임, 이사, 대표이사로 표준화)
+// 직위 정규화 헬퍼 (사원, 선임, 책임, 이사, 대표이사 5단계 표준화)
 export const normalizeStandardPosition = (pos, comp) => {
-  const normComp = comp ? normalizeStandardCompany(comp) : "";
-  if (normComp && isPartnerCompany(normComp)) {
-    return "대표이사";
+  if (!pos) {
+    const normComp = comp ? normalizeStandardCompany(comp) : "";
+    return isPartnerCompany(normComp) ? "대표이사" : "사원";
   }
-  if (!pos) return "사원";
   const str = String(pos).trim();
-  if (str === "대표이사" || str === "대표" || str.includes("대표이사") || str.includes("대표")) return "대표이사";
-  if (str === "이사" || str.includes("이사") || str.includes("임원")) return "이사";
+  if (POSITIONS_LIST.includes(str)) return str;
+  if (str === "대표이사" || str === "대표" || str.includes("대표이사") || str.includes("대표") || str === "대표자") return "대표이사";
+  if (str === "이사" || str.includes("이사") || str.includes("임원") || str === "상무" || str === "전무") return "이사";
   if (str === "책임" || str.includes("책임") || str.includes("부장") || str.includes("차장") || str.includes("과장")) return "책임";
   if (str === "선임" || str.includes("선임") || str.includes("반장") || str.includes("조장") || str.includes("대리") || str.includes("주임")) return "선임";
+  if (str === "작업원" || str === "사원" || str === "사원(작업원)" || str.includes("사원") || str.includes("작업원")) return "사원";
   return "사원";
 };
 
@@ -376,22 +377,35 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   if (!worker) return null;
 
   // 이미 카드 데이터가 존재하는 경우 병합하여 반환
-  const existingCard = worker.personnelCard || {};
+  const existingCard = worker.personnelCard || worker.card || {};
 
   const rawCompany = existingCard.company || worker.company || (isPartnerCompany(worker.name) ? worker.name : "주)오륙");
   const company = normalizeStandardCompany(rawCompany);
-  const isPartner = isPartnerCompany(company) || isPartnerCompany(worker.name);
-
-  const dept = isPartner
-    ? company
-    : normalizeStandardDept(existingCard.dept || worker.dept || "생산팀", company);
+  const cleanComp = cleanCompanyName(company);
   const name = String(worker.name || existingCard.name || "").trim();
-  const position = isPartner
-    ? "대표이사"
-    : normalizeStandardPosition(worker.position || existingCard.position || "사원", company);
+
+  let localSavedCard = null;
+  if (name) {
+    const map = getLocalPersonnelCardsMap();
+    localSavedCard = map[`${cleanComp}_${name}`] || map[`${company}_${name}`] || map[`${rawCompany}_${name}`] || null;
+  }
+
+  const merged = { ...existingCard, ...(localSavedCard || {}) };
+  const isPartner = isPartnerCompany(company) || isPartnerCompany(name);
+
+  // 부서 우선순위: 저장된 카드(merged.dept) > worker.dept > (협력업체는 업체명, 그 외는 생산팀)
+  const dept = merged.dept
+    ? normalizeStandardDept(merged.dept, company)
+    : (isPartner ? company : normalizeStandardDept(worker.dept || "생산팀", company));
+
+  // ⭐ 직위/직급 우선순위: 저장된 카드(merged.position) > worker.position > (협력업체 대표는 대표이사, 그 외는 사원)
+  // 사용자가 인사카드에서 직급(사원, 선임, 책임, 이사, 대표이사)을 선택/수정 저장한 경우 그 직급이 최우선 적용됨
+  const position = merged.position
+    ? normalizeStandardPosition(merged.position, company)
+    : (worker.position ? normalizeStandardPosition(worker.position, company) : (isPartner ? "대표이사" : "사원"));
 
   // 기본 주공정 추정 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
-  let defaultMainProcess = existingCard.mainProcess;
+  let defaultMainProcess = merged.mainProcess;
   if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
     const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
     if (hint.includes("압출")) defaultMainProcess = "압출";
@@ -404,7 +418,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   }
 
   // 기본 숙련도 추정
-  let defaultSkillLevel = existingCard.skillLevel;
+  let defaultSkillLevel = merged.skillLevel;
   if (!defaultSkillLevel) {
     if (position === "이사" || position === "책임") {
       defaultSkillLevel = 5;
@@ -416,10 +430,10 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   }
 
   // 기본 다기능공 여부
-  const isMultiSkill = existingCard.isMultiSkill !== undefined ? existingCard.isMultiSkill : (defaultSkillLevel >= 4);
+  const isMultiSkill = merged.isMultiSkill !== undefined ? merged.isMultiSkill : (defaultSkillLevel >= 4);
 
   // 기본 서브 지원공정 (압출, 소재준비, 조인트, 사상, 코팅, 검사 중 선택)
-  let subProcesses = existingCard.subProcesses;
+  let subProcesses = merged.subProcesses;
   if (!subProcesses || !Array.isArray(subProcesses) || subProcesses.length === 0) {
     if (isMultiSkill) {
       if (defaultMainProcess === "압출") subProcesses = ["소재준비", "사상", "검사"];
@@ -435,21 +449,21 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
   // 지원 공정 중 표준 6대 공정에 해당하는 항목만 필터링
   subProcesses = subProcesses.filter((p) => STANDARD_PROCESS_LIST.includes(p) && p !== defaultMainProcess);
 
-  const joinDate = existingCard.joinDate || "2022-03-15";
+  const joinDate = merged.joinDate || "2022-03-15";
   const tenure = calculateTenureFromJoinDate(joinDate);
   const processYear = calculateProcessYearFromJoinDate(joinDate);
-  const empNo = existingCard.empNo || worker.empNo || generateDefaultEmpNo(worker, idx);
+  const empNo = merged.empNo || worker.empNo || generateDefaultEmpNo(worker, idx);
 
   // 검사원 등급 (주공정이 검사이거나 지정된 경우)
-  const inspectorGrade = existingCard.inspectorGrade
-    ? getInspectorGradeMeta(existingCard.inspectorGrade).grade
+  const inspectorGrade = merged.inspectorGrade
+    ? getInspectorGradeMeta(merged.inspectorGrade).grade
     : (defaultMainProcess === "검사" ? "A등급 (정검사원)" : "");
-  const inspectorCertDate = existingCard.inspectorCertDate || (defaultMainProcess === "검사" ? joinDate : "");
+  const inspectorCertDate = merged.inspectorCertDate || (defaultMainProcess === "검사" ? joinDate : "");
   // 국적 (기본값: 대한민국)
-  const nationality = existingCard.nationality || worker.nationality || "대한민국";
-  const nationalityOther = existingCard.nationalityOther || worker.nationalityOther || "";
+  const nationality = merged.nationality || worker.nationality || "대한민국";
+  const nationalityOther = merged.nationalityOther || worker.nationalityOther || "";
   // 작업자 사진
-  const photoUrl = existingCard.photoUrl || worker.photoUrl || "";
+  const photoUrl = merged.photoUrl || worker.photoUrl || "";
 
   return {
     empNo,
@@ -470,8 +484,8 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     subProcesses,
     inspectorGrade,
     inspectorCertDate,
-    notes: existingCard.notes || `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`,
-    updatedAt: existingCard.updatedAt || new Date().toISOString()
+    notes: merged.notes || `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`,
+    updatedAt: merged.updatedAt || new Date().toISOString()
   };
 };
 
@@ -509,8 +523,8 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
     const cleanData = {
       ...cardData,
       company: normComp,
-      dept: isPartner ? normComp : normalizeStandardDept(cardData.dept, normComp),
-      position: isPartner ? "대표이사" : normalizeStandardPosition(cardData.position, normComp),
+      dept: cardData.dept ? normalizeStandardDept(cardData.dept, normComp) : (isPartner ? normComp : "생산팀"),
+      position: cardData.position ? normalizeStandardPosition(cardData.position, normComp) : (isPartner ? "대표이사" : "사원"),
       nationality: cardData.nationality || "대한민국",
       nationalityOther: cardData.nationality === "기타" ? (cardData.nationalityOther || "") : "",
       skillGrade: getSkillMeta(cardData.skillLevel).grade,

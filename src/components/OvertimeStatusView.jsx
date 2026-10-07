@@ -63,7 +63,8 @@ import {
   STANDARD_PROCESS_LIST,
   isPartnerCompany,
   normalizeStandardDept,
-  normalizeStandardPosition
+  normalizeStandardPosition,
+  getLocalPersonnelCardsMap
 } from "../services/personnelCardService.js";
 import { useAuth } from "../context/AuthContext";
 import { useMonth, getCurrentYearMonth } from "../context/MonthContext";
@@ -735,7 +736,17 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // ⭐ 제조현장 인사카드 모달 열기 핸들러
   const handleOpenPersonnelCard = (worker, originalIndex) => {
     pushModalHistory("personnel_card_modal");
-    setSelectedPersonnelWorker(worker);
+    const map = getLocalPersonnelCardsMap();
+    const cleanComp = cleanCompanyName(worker?.company);
+    const cardKey = `${cleanComp}_${worker?.name}`;
+    const savedCard = map[cardKey] || map[`${worker?.company}_${worker?.name}`] || worker?.personnelCard || worker?.card;
+    const enrichedWorker = {
+      ...worker,
+      position: savedCard?.position || worker?.position || "사원",
+      dept: savedCard?.dept || worker?.dept || "생산팀",
+      personnelCard: savedCard || worker?.personnelCard || worker?.card
+    };
+    setSelectedPersonnelWorker(enrichedWorker);
     setSelectedPersonnelWorkerIndex(
       typeof originalIndex === "number" ? originalIndex : (worker?.originalMatrixIndex ?? -1)
     );
@@ -1580,8 +1591,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
           ...currentMatrix[targetIdx],
           name: updatedCardData.name,
           company: cleanCompanyName(updatedCardData.company),
-          dept: normalizeStandardDept(updatedCardData.dept),
-          line: updatedCardData.line || updatedCardData.mainProcess || normalizeStandardDept(updatedCardData.dept),
+          dept: normalizeStandardDept(updatedCardData.dept, updatedCardData.company),
+          line: updatedCardData.line || updatedCardData.mainProcess || normalizeStandardDept(updatedCardData.dept, updatedCardData.company),
           position: updatedCardData.position,
           empNo: updatedCardData.empNo,
           joinDate: updatedCardData.joinDate,
@@ -1603,10 +1614,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       const reindexedMaster = reindexedMatrix.map((w, idx) => ({
         no: idx + 1,
         company: w.company,
-        dept: normalizeStandardDept(w.dept),
-        line: w.line || normalizeStandardDept(w.dept),
+        dept: normalizeStandardDept(w.dept, w.company),
+        line: w.line || normalizeStandardDept(w.dept, w.company),
         name: w.name,
-        position: w.position || "작업원",
+        position: w.position || (w.personnelCard ? w.personnelCard.position : updatedCardData.position),
         empNo: w.empNo || (w.personnelCard ? w.personnelCard.empNo : updatedCardData.empNo),
         personnelCard: w.personnelCard || (w.name === updatedCardData.name ? updatedCardData : null)
       }));
@@ -1633,15 +1644,22 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // ⭐ 인원관리 탭 작업자 목록 및 필터링 (인사카드 포함)
   const workerMgmtList = useMemo(() => {
     const compCounters = {};
+    const map = getLocalPersonnelCardsMap();
     const matrix = (smartData.attendanceMatrix || []).map((w, originalIdx) => {
       const c = cleanCompanyName(w.company);
       compCounters[c] = (compCounters[c] || 0) + 1;
-      const card = getWorkerPersonnelCard(w, compCounters[c]);
+      const cardKey = `${c}_${w.name}`;
+      const existingSavedCard = map[cardKey] || map[`${w.company}_${w.name}`] || w.personnelCard;
+      const card = existingSavedCard
+        ? getWorkerPersonnelCard({ ...w, personnelCard: existingSavedCard }, compCounters[c])
+        : getWorkerPersonnelCard(w, compCounters[c]);
       return {
         ...w,
-        dept: normalizeDept(w.dept),
+        dept: card.dept || normalizeDept(w.dept),
+        position: card.position || w.position || "사원",
         companyNo: compCounters[c],
         originalMatrixIndex: originalIdx,
+        personnelCard: card,
         card
       };
     });
