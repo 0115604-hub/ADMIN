@@ -935,7 +935,9 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
     // 2. If no detailed items, look up smartOvertimeData.attendanceMatrix for this company and workDate!
     if (smartOvertimeData && Array.isArray(smartOvertimeData.attendanceMatrix) && report.workDate) {
-      const dayNum = parseInt(report.workDate.split("-")[2], 10);
+      const parts = String(report.workDate).split("-");
+      const dayNum = parts.length >= 3 ? parseInt(parts[2], 10) : NaN;
+      if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) return list;
       const targetComp = cleanCompanyName(report.company || (report.badgeLabel || ""));
       const matched = smartOvertimeData.attendanceMatrix.filter((w) => {
         const matchComp = !targetComp || cleanCompanyName(w.company) === targetComp;

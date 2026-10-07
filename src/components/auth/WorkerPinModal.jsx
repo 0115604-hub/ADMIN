@@ -641,7 +641,11 @@ export const WorkerPinModal = ({
   }, [commonSchedules, annualLeaves, selectedUser, isHeadquarterAdmin, isSamrangjinManager, isHallimManager]);
 
   // 당일 일자 및 일일 근태 요약 (보고서와 실시간 동기화)
-  const todayDayNum = useMemo(() => new Date().getDate(), []);
+  const todayDayNum = useMemo(() => {
+    const kst = getKSTDateString();
+    const p = kst.split("-");
+    return p.length === 3 ? parseInt(p[2], 10) : new Date().getDate();
+  }, []);
   const unifiedPinMatrix = useMemo(() => {
     const rawMatrix = smartOvertimeData?.attendanceMatrix || [];
     const todayKst = getKSTDateString();
