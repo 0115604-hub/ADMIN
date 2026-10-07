@@ -63,6 +63,10 @@ import {
   subscribe4MAbsenceLogs,
   getLocal4MAbsenceLogsMap
 } from "../../services/absence4MService";
+import {
+  subscribePersonnelCards,
+  getLocalPersonnelCardsMap
+} from "../../services/personnelCardService";
 import { ImagePreviewModal } from "../common/ImagePreviewModal";
 import * as XLSX from "xlsx";
 
@@ -143,6 +147,7 @@ export const UnifiedAbnormalityControlPanel = ({
   const [actionAuthorInput, setActionAuthorInput] = useState(currentProfile?.name || "TEST 선임");
   const [actionPhotos, setActionPhotos] = useState([]);
   const [isSavingAction, setIsSavingAction] = useState(false);
+  const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
 
   // Subscriptions
   useEffect(() => {
@@ -189,6 +194,28 @@ export const UnifiedAbnormalityControlPanel = ({
       }
     });
 
+    // 7. Personnel Cards (인사카드 실시간 수신 및 동기화)
+    const unsubCards = subscribePersonnelCards((cards) => {
+      if (cards) {
+        setPersonnelCardsMap(cards);
+        setLastRefreshedAt(new Date());
+      }
+    });
+
+    const handleCardEvent = (e) => {
+      if (e.detail?.cardData) {
+        const { cardKey, cardData } = e.detail;
+        setPersonnelCardsMap((prev) => ({
+          ...prev,
+          [cardKey]: cardData,
+          [`${cleanCompanyName(cardData.company)}_${cardData.name}`]: cardData,
+          [`${cardData.company}_${cardData.name}`]: cardData
+        }));
+        setLastRefreshedAt(new Date());
+      }
+    };
+    window.addEventListener("oryuk_personnel_card_updated", handleCardEvent);
+
     return () => {
       if (unsubIssues) unsubIssues();
       if (unsubExt) unsubExt();
@@ -196,6 +223,8 @@ export const UnifiedAbnormalityControlPanel = ({
       if (unsubLedger) unsubLedger();
       if (unsubSmartOt) unsubSmartOt();
       if (unsubAbsenceLogs) unsubAbsenceLogs();
+      if (unsubCards) unsubCards();
+      window.removeEventListener("oryuk_personnel_card_updated", handleCardEvent);
     };
   }, []);
 
@@ -206,6 +235,7 @@ export const UnifiedAbnormalityControlPanel = ({
     setFourMLedgerRecords(getLocalFourMChangePoints());
     setSmartOvertimeData(getLocalSmartOvertimeData());
     setAbsenceLogsMap(getLocal4MAbsenceLogsMap());
+    setPersonnelCardsMap(getLocalPersonnelCardsMap());
   };
 
   const todayStr = useMemo(() => {
@@ -560,28 +590,65 @@ export const UnifiedAbnormalityControlPanel = ({
       const key = `${compClean}_${workerName}_${log.date}`;
       registeredAbsenceKeys.add(key);
 
-      const isSub = Boolean(log.substituteWorker?.name);
-      const title = `[${compClean}] ${workerName || "결근자"} 결근 ➔ ${isSub ? `${log.substituteWorker.name} 대체투입` : "대체 미투입 (라인조정)"}`;
-      const plant = log.plant || (compClean === "오륙" || compClean === "유성" ? "삼랑진공장" : "한림공장");
-      const line = log.process || log.line || "생산/가공";
+      // 최신 인사카드 데이터 매핑
+      const cardKey = `${compClean}_${workerName}`;
+      const absentCard = personnelCardsMap[cardKey] || personnelCardsMap[`${log.company}_${workerName}`] || log.absentWorker || {};
+      const absentDept = absentCard.dept || log.absentWorker?.dept || "생산팀";
+      const absentPos = absentCard.position || log.absentWorker?.position || "사원";
+      const absentSkill = absentCard.skillLevel || log.absentWorker?.skillLevel || 3;
+      const absentMainProc = absentCard.mainProcess || log.process || log.line || "압출";
+      const absentReason = log.absentWorker?.reason || log.reason || "휴가";
+      const absentPhoto = absentCard.photoUrl || log.absentWorker?.photoUrl || "";
 
-      const content = log.summaryText || [
+      const isSub = Boolean(log.substituteWorker?.name && log.substituteWorker?.name !== "라인비가동" && !log.substituteWorker?.isLineStopped);
+      const isLineStopped = log.substituteWorker?.name === "라인비가동" || log.substituteWorker?.isLineStopped;
+
+      let subName = isLineStopped ? "라인비가동" : (log.substituteWorker?.name || "");
+      let subPos = "사원";
+      let subDept = "생산팀";
+      let subPhoto = "";
+      if (isSub) {
+        const subCardKey = `${compClean}_${log.substituteWorker.name}`;
+        const subCard = personnelCardsMap[subCardKey] || personnelCardsMap[`${log.company}_${log.substituteWorker.name}`] || log.substituteWorker || {};
+        subPos = subCard.position || log.substituteWorker.position || "사원";
+        subDept = subCard.dept || log.substituteWorker.dept || "생산팀";
+        subPhoto = subCard.photoUrl || log.substituteWorker.photoUrl || "";
+      }
+
+      const plant = log.plant || (compClean === "오륙" || compClean === "유성" ? "삼랑진공장" : "한림공장");
+      const line = `${absentMainProc} 공정`;
+
+      const title = isLineStopped
+        ? `[${compClean}] ${workerName}(${absentPos}, ${absentDept}) 결근 ➔ [라인비가동]`
+        : `[${compClean}] ${workerName}(${absentPos}, ${absentDept}) 결근 ➔ ${isSub ? `${subName}(${subPos}) 대체투입` : "대체 미투입 (라인조정)"}`;
+
+      const content = [
         `[4M Man 인원변동 결근내역]`,
         `• 소속업체: ${compClean}`,
-        `• 결근근로자: ${workerName} (${log.absentWorker?.position || "사원"})`,
-        `• 대체작업자: ${isSub ? `${log.substituteWorker.name} (${log.substituteWorker.position || "사원"})` : "미배치 (라인 가동 조정)"}`,
-        `• 결근사유: ${log.reason || "결근"}`,
+        `• 소속부서: ${absentDept}`,
+        `• 결근근로자: ${workerName} (${absentPos}, Lv.${absentSkill})`,
+        `• 대체작업자: ${isLineStopped ? "라인비가동 (대체 미투입)" : (isSub ? `${subName} (${subPos}, ${subDept})` : "미배치 (라인 가동 조정)")}`,
+        `• 결근사유: ${absentReason}`,
         `• 담당공정: ${line}`,
-        log.notes ? `• 특기사항: ${log.notes}` : ""
+        log.remarks || log.notes ? `• 특기사항: ${log.remarks || log.notes}` : ""
       ].filter(Boolean).join("\n");
 
-      const actionResult = isSub
-        ? `대체작업자 ${log.substituteWorker.name} 투입 및 ${log.firstPieceInspection || "초·중·종물 검사"} 완료`
-        : "라인 작업 인원 조정 및 비가동 조치";
+      const actionResult = isLineStopped
+        ? "라인 비가동 (공정 정지/품질영향 없음)"
+        : (isSub
+            ? `대체작업자 ${subName}(${subPos}) 투입 완료 (${log.checkpoints?.firstPieceCheck ? "초물검사 완료" : "초물검사 미실시"} / ${log.checkpoints?.workInstructionTold ? "특별교육 완료" : "특별교육 미실시"})`
+            : "라인 작업 인원 조정 및 비가동 조치");
 
-      const validation = log.firstPieceInspection
-        ? `${log.firstPieceInspection} 유효성검증 완료`
-        : (isSub ? "초·중·종물 검사 및 4M 유효성 확인" : "대체 투입 시 초물검사 필수");
+      const validation = isLineStopped
+        ? "라인 비가동 확인 (품질영향 없음)"
+        : (isSub
+            ? (log.checkpoints?.firstPieceCheck ? "초물 한도검사 & 특별교육 유효성 확인 완료" : "초물검사 및 특별교육 실시 필수")
+            : "대체 투입 시 초물검사 및 특별교육 필수");
+
+      const images = [absentPhoto, subPhoto].filter(Boolean);
+      if (Array.isArray(log.photos)) {
+        log.photos.forEach((p) => { if (p && !images.includes(p)) images.push(p); });
+      }
 
       unified.push({
         id: `man_log_${log.id || key}`,
@@ -599,10 +666,10 @@ export const UnifiedAbnormalityControlPanel = ({
         actionResult,
         actionAuthor: log.supervisor || "관리자",
         actionAt: log.date || "",
-        images: Array.isArray(log.photos) ? log.photos : [],
+        images: images,
         actionImages: [],
         replies: [],
-        isResolved: isSub,
+        isResolved: isSub || isLineStopped,
         validation,
         severity: log.riskLevel === "HIGH" ? "HIGH" : "NORMAL",
         downtimeMinutes: 0,
@@ -616,63 +683,72 @@ export const UnifiedAbnormalityControlPanel = ({
     const matrix = smartOvertimeData?.attendanceMatrix || [];
     matrix.forEach((w) => {
       if (!w || !w.name) return;
-      const compClean = cleanCompanyName(w.company || "오륙");
+      const rawComp = w.company || "오륙";
+      const compClean = cleanCompanyName(rawComp);
       const workerName = String(w.name).trim();
+
+      // 최신 인사카드 데이터 매핑
+      const cardKey = `${compClean}_${workerName}`;
+      const card = personnelCardsMap[cardKey] || personnelCardsMap[`${rawComp}_${workerName}`] || w.personnelCard || {};
+      const resolvedComp = card?.company ? cleanCompanyName(card.company) : compClean;
+      const resolvedDept = card?.dept || w.dept || "생산팀";
+      const resolvedPos = card?.position || w.position || "사원";
+      const resolvedSkill = card?.skillLevel || 3;
+      const resolvedMainProc = card?.mainProcess || w.line || "압출";
+      const photoUrl = card?.photoUrl || w.photoUrl || "";
 
       // Check days 1 to 31
       for (let d = 1; d <= 31; d++) {
         const val = w[d] !== undefined ? w[d] : w[String(d)];
         if (!val) continue;
         const strVal = String(val).trim();
-        if (strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")) {
+        if (strVal === "결근" || strVal === "무단결근" || strVal === "휴가" || strVal === "연차" || strVal === "반차" || strVal.includes("결근")) {
           const dStr = String(d).padStart(2, "0");
           const dateStr = `${ym}-${dStr}`;
-          const key = `${compClean}_${workerName}_${dateStr}`;
+          const key = `${resolvedComp}_${workerName}_${dateStr}`;
           if (registeredAbsenceKeys.has(key)) continue; // avoid duplication with detailed log
           registeredAbsenceKeys.add(key);
 
-          const plant = (compClean === "오륙" || compClean === "유성") ? "삼랑진공장" : "한림공장";
-          const line = w.line || w.dept || "생산";
-          const pos = w.position || "작업원";
+          const plant = (resolvedComp === "오륙" || resolvedComp === "유성") ? "삼랑진공장" : "한림공장";
+          const line = `${resolvedMainProc} 공정`;
 
-          const title = `[${compClean}] ${workerName}(${pos}) 결근 발생 (${line})`;
+          const title = `[${resolvedComp}] ${workerName}(${resolvedPos}, ${resolvedDept}) 결근 발생 (${line})`;
           const content = [
             `[4M Man 인원변동 결근내역]`,
-            `• 소속업체: ${compClean}`,
-            `• 결근근로자: ${workerName} (${pos})`,
-            `• 담당부서/공정: ${w.dept || ""} / ${line}`,
+            `• 소속업체: ${resolvedComp}`,
+            `• 소속부서: ${resolvedDept}`,
+            `• 결근근로자: ${workerName} (${resolvedPos}, Lv.${resolvedSkill})`,
+            `• 담당공정: ${line}`,
             `• 발생일자: ${dateStr}`,
             `• 근태구분: ${strVal}`,
-            `• 조치내용: 4M Man 작업자 결근에 따른 대체인원 투입 점검 및 공정 자주검사 강화 필요`
+            `• 조치내용: 4M Man 작업자 결근에 따른 대체인원 투입 점검, 특별교육 및 공정 초물검사 실시`
           ].join("\n");
 
-          const photoUrl = w.personnelCard?.photoUrl || w.photoUrl || "";
-
           unified.push({
-            id: `man_matrix_${compClean}_${workerName}_${dateStr}`,
+            id: `man_matrix_${resolvedComp}_${workerName}_${dateStr}`,
             fourM: "Man",
             origin: "결근발생",
             sourceType: "MAN_ABSENCE_MATRIX",
             badgeColor: "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border-purple-300 dark:border-purple-700",
             plant,
             line,
-            writer: `${workerName} (${compClean})`,
+            writer: `${workerName} (${resolvedComp})`,
             title,
             date: dateStr,
             time: "",
             content,
-            actionResult: "대체인원 투입 점검 및 현장 공정 모니터링 진행",
+            actionResult: "대체인원 투입 점검, 특별교육 및 현장 공정 모니터링 진행",
             actionAuthor: "관리자",
             actionAt: dateStr,
             images: photoUrl ? [photoUrl] : [],
             actionImages: [],
             replies: [],
             isResolved: false,
-            validation: "대체 투입 시 초·중·종물 자주검사 필수",
-            severity: "HIGH",
+            validation: "대체 투입 시 초물검사 및 특별교육 필수",
+            severity: "NORMAL",
             downtimeMinutes: 0,
             scrapKg: 0,
-            raw: { worker: w, day: d, value: strVal }
+            raw: { ...w, personnelCard: card }
           });
         }
       }
@@ -693,7 +769,7 @@ export const UnifiedAbnormalityControlPanel = ({
         if (b.time !== a.time) return (b.time || "").localeCompare(a.time || "");
         return String(b.id || "").localeCompare(String(a.id || ""));
       });
-  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, fourMLedgerRecords, smartOvertimeData, absenceLogsMap, todayStr]);
+  }, [urgentIssues, extrusionReports, workLogs, extrusionQualityAlerts, fourMLedgerRecords, smartOvertimeData, absenceLogsMap, todayStr, personnelCardsMap]);
 
   // =========================================================================
   // 🔍 필터링 연산

@@ -56,6 +56,10 @@ import {
   getLocal4MAbsenceLogsMap
 } from "../../services/absence4MService";
 import {
+  subscribePersonnelCards,
+  getLocalPersonnelCardsMap
+} from "../../services/personnelCardService";
+import {
   subscribeFourMChangePoints,
   getLocalFourMChangePoints
 } from "../../services/fourMChangePointService";
@@ -100,6 +104,7 @@ export const WorkerPinModal = ({
   const [extrusionReports, setExtrusionReports] = useState([]);
   const [workLogs, setWorkLogs] = useState(() => getWorkLogs());
   const [localUrgentIssues, setLocalUrgentIssues] = useState(() => getLocalUrgentIssues());
+  const [personnelCardsMap, setPersonnelCardsMap] = useState(() => getLocalPersonnelCardsMap());
 
   const bodyRef = useRef(null);
   const pinInputRef = useRef(null);
@@ -116,6 +121,20 @@ export const WorkerPinModal = ({
     const unsubExtRep = subscribeToExtrusionReports((reps) => setExtrusionReports(reps || []));
     const unsubLogs = subscribeWorkLogs((logs) => setWorkLogs(logs || []));
     const unsubUrg = subscribeUrgentIssues((issues) => setLocalUrgentIssues(issues || []));
+    const unsubCards = subscribePersonnelCards((cards) => { if (cards) setPersonnelCardsMap(cards); });
+
+    const handleCardEvent = (e) => {
+      if (e.detail?.cardData) {
+        const { cardKey, cardData } = e.detail;
+        setPersonnelCardsMap((prev) => ({
+          ...prev,
+          [cardKey]: cardData,
+          [`${cleanCompanyName(cardData.company)}_${cardData.name}`]: cardData,
+          [`${cardData.company}_${cardData.name}`]: cardData
+        }));
+      }
+    };
+    window.addEventListener("oryuk_personnel_card_updated", handleCardEvent);
 
     return () => {
       if (unsubDisaster) unsubDisaster();
@@ -127,6 +146,8 @@ export const WorkerPinModal = ({
       if (unsubExtRep) unsubExtRep();
       if (unsubLogs) unsubLogs();
       if (unsubUrg) unsubUrg();
+      if (unsubCards) unsubCards();
+      window.removeEventListener("oryuk_personnel_card_updated", handleCardEvent);
     };
   }, []);
 
@@ -392,20 +413,43 @@ export const WorkerPinModal = ({
       const workerName = String(log.absentWorker?.name || log.name || "").trim();
       const key = `${compClean}_${workerName}_${log.date}`;
       registeredKeys.add(key);
-      const isSub = Boolean(log.substituteWorker?.name);
-      const isExt = String(log.process || "").includes("압출");
+
+      const cardKey = `${compClean}_${workerName}`;
+      const absentCard = personnelCardsMap[cardKey] || personnelCardsMap[`${log.company}_${workerName}`] || log.absentWorker || {};
+      const absentDept = absentCard.dept || log.absentWorker?.dept || "생산팀";
+      const absentPos = absentCard.position || log.absentWorker?.position || "사원";
+      const absentSkill = absentCard.skillLevel || log.absentWorker?.skillLevel || 3;
+      const absentMainProc = absentCard.mainProcess || log.process || log.line || "압출";
+      const absentReason = log.absentWorker?.reason || log.reason || "휴가";
+
+      const isSub = Boolean(log.substituteWorker?.name && log.substituteWorker?.name !== "라인비가동" && !log.substituteWorker?.isLineStopped);
+      const isLineStopped = log.substituteWorker?.name === "라인비가동" || log.substituteWorker?.isLineStopped;
+
+      let subName = isLineStopped ? "라인비가동" : (log.substituteWorker?.name || "");
+      let subPos = "사원";
+      if (isSub) {
+        const subCardKey = `${compClean}_${log.substituteWorker.name}`;
+        const subCard = personnelCardsMap[subCardKey] || personnelCardsMap[`${log.company}_${log.substituteWorker.name}`] || log.substituteWorker || {};
+        subPos = subCard.position || log.substituteWorker.position || "사원";
+      }
+
+      const isExt = String(absentMainProc || "").includes("압출");
+
+      const title = isLineStopped
+        ? `[${compClean}] ${workerName}(${absentPos}, ${absentDept}) 결근 ➔ [라인비가동]`
+        : `[${compClean}] ${workerName}(${absentPos}, ${absentDept}) 결근 ➔ ${isSub ? `${subName}(${subPos}) 대체투입` : "대체 미투입"}`;
 
       unified.push({
         id: `man_log_${log.id || key}`,
         fourM: "Man",
         origin: isSub ? "4M 대체투입" : "결근발생",
         plant: log.plant || (compClean === "오륙" || compClean === "유성" ? "삼랑진공장" : "한림공장"),
-        line: log.process || log.line || "생산/가공",
-        title: `[${compClean}] ${workerName || "결근자"} 결근 ➔ ${isSub ? `${log.substituteWorker.name} 대체투입` : "대체 미투입"}`,
-        content: log.summaryText || `${compClean} ${workerName} 결근 발생 (${log.reason || "결근"})`,
-        actionResult: isSub ? `대체작업자 ${log.substituteWorker.name} 투입 완료` : "라인 작업 조정",
+        line: `${absentMainProc} 공정`,
+        title,
+        content: `• 소속: ${compClean} ${absentDept} | 결근자: ${workerName}(${absentPos}, Lv.${absentSkill}) | 사유: ${absentReason}`,
+        actionResult: isLineStopped ? "라인 비가동 (공정 정지)" : (isSub ? `대체작업자 ${subName}(${subPos}) 투입 완료` : "라인 작업 조정"),
         date: log.date,
-        isResolved: isSub,
+        isResolved: isSub || isLineStopped,
         isExtrusion: isExt
       });
     });
@@ -415,31 +459,40 @@ export const WorkerPinModal = ({
     const matrix = smartOvertimeData?.attendanceMatrix || [];
     matrix.forEach((w) => {
       if (!w || !w.name) return;
-      const compClean = cleanCompanyName(w.company || "오륙");
+      const rawComp = w.company || "오륙";
+      const compClean = cleanCompanyName(rawComp);
       const workerName = String(w.name).trim();
+
+      const cardKey = `${compClean}_${workerName}`;
+      const card = personnelCardsMap[cardKey] || personnelCardsMap[`${rawComp}_${workerName}`] || w.personnelCard || {};
+      const resolvedComp = card?.company ? cleanCompanyName(card.company) : compClean;
+      const resolvedDept = card?.dept || w.dept || "생산팀";
+      const resolvedPos = card?.position || w.position || "사원";
+      const resolvedSkill = card?.skillLevel || 3;
+      const resolvedMainProc = card?.mainProcess || w.line || "압출";
 
       for (let d = 1; d <= 31; d++) {
         const val = w[d] !== undefined ? w[d] : w[String(d)];
         if (!val) continue;
         const strVal = String(val).trim();
-        if (strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")) {
+        if (strVal === "결근" || strVal === "무단결근" || strVal === "휴가" || strVal === "연차" || strVal === "반차" || strVal.includes("결근")) {
           const dStr = String(d).padStart(2, "0");
           const dateStr = `${ym}-${dStr}`;
-          const key = `${compClean}_${workerName}_${dateStr}`;
+          const key = `${resolvedComp}_${workerName}_${dateStr}`;
           if (registeredKeys.has(key)) continue;
           registeredKeys.add(key);
 
-          const isExt = String(w.line || w.dept || "").includes("압출");
+          const isExt = String(resolvedMainProc || "").includes("압출");
 
           unified.push({
-            id: `man_matrix_${compClean}_${workerName}_${dateStr}`,
+            id: `man_matrix_${resolvedComp}_${workerName}_${dateStr}`,
             fourM: "Man",
             origin: "결근발생",
-            plant: (compClean === "오륙" || compClean === "유성") ? "삼랑진공장" : "한림공장",
-            line: w.line || w.dept || "생산",
-            title: `[${compClean}] ${workerName} 결근 발생`,
-            content: `${compClean} ${workerName} (${w.position || "작업원"}) 결근 발생 (${strVal})`,
-            actionResult: "대체인원 투입 점검 및 공정 관리",
+            plant: (resolvedComp === "오륙" || resolvedComp === "유성") ? "삼랑진공장" : "한림공장",
+            line: `${resolvedMainProc} 공정`,
+            title: `[${resolvedComp}] ${workerName}(${resolvedPos}, ${resolvedDept}) 결근 발생`,
+            content: `• 소속: ${resolvedComp} ${resolvedDept} | 결근자: ${workerName}(${resolvedPos}, Lv.${resolvedSkill}) | 근태: ${strVal}`,
+            actionResult: "대체인원 투입 점검, 특별교육 및 공정 관리",
             date: dateStr,
             isResolved: false,
             isExtrusion: isExt
@@ -449,7 +502,7 @@ export const WorkerPinModal = ({
     });
 
     return unified.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, smartOvertimeData, absenceLogsMap, todayKst]);
+  }, [urgentIssues, localUrgentIssues, workLogs, extrusionReports, extrusionQualityIssues, smartOvertimeData, absenceLogsMap, todayKst, personnelCardsMap]);
 
   // 🌟 최근 2건의 4M 변동점 발생공지 (압출동 작업자 및 관리자 공통 동일 노출)
   const recent4MRecords = useMemo(() => {
