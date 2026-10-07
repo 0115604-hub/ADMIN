@@ -938,8 +938,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       if (Array.isArray(reports) && reports.length > 0) {
         setSmartData((prev) => {
           if (!prev) return prev;
+          const baseMatrix = prev.attendanceMatrix || prev.masterWorkers;
           const merged = buildMatrixFromReports(
-            prev.masterWorkers || prev.attendanceMatrix,
+            baseMatrix,
             reports,
             currentYear,
             currentMonthNum
@@ -1011,15 +1012,35 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   };
 
   // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
-  const handleUpdateWorkerDayAttendance = async (workerIndexInMaster, newCode) => {
-    const updatedMatrix = [...smartData.attendanceMatrix];
-    if (!updatedMatrix[workerIndexInMaster]) return;
+  const handleUpdateWorkerDayAttendance = async (targetWorkerOrIndex, newCode) => {
+    const currentMatrix = smartData?.attendanceMatrix || [];
+    let targetIdx = -1;
 
-    const worker = updatedMatrix[workerIndexInMaster];
+    if (typeof targetWorkerOrIndex === "object" && targetWorkerOrIndex !== null) {
+      const wName = (targetWorkerOrIndex.name || "").trim();
+      const wClean = wName.split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+      const wComp = cleanCompanyName(targetWorkerOrIndex.company);
+      targetIdx = currentMatrix.findIndex(
+        (w) => ((w.name || "").trim() === wName || (wClean && (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim() === wClean)) && cleanCompanyName(w.company) === wComp
+      );
+      if (targetIdx === -1) {
+        targetIdx = currentMatrix.findIndex((w) => (w.name || "").trim() === wName || (wClean && (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim() === wClean));
+      }
+      if (targetIdx === -1 && typeof targetWorkerOrIndex.originalMatrixIndex === "number") {
+        targetIdx = targetWorkerOrIndex.originalMatrixIndex;
+      }
+    } else if (typeof targetWorkerOrIndex === "number") {
+      targetIdx = targetWorkerOrIndex;
+    }
+
+    if (targetIdx === -1 || !currentMatrix[targetIdx]) return;
+
+    const updatedMatrix = [...currentMatrix];
+    const worker = updatedMatrix[targetIdx];
     const prevDaily = worker.daily || {};
-    const updatedDaily = { ...prevDaily, [selectedDay]: newCode };
+    const updatedDaily = { ...prevDaily, [selectedDay]: newCode, [String(selectedDay)]: newCode };
 
-    updatedMatrix[workerIndexInMaster] = {
+    updatedMatrix[targetIdx] = {
       ...worker,
       daily: updatedDaily
     };
@@ -1115,7 +1136,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
         updatedMatrix[idx] = {
           ...updatedMatrix[idx],
-          daily: { ...prevDaily, [selectedDay]: sourceVal }
+          daily: { ...prevDaily, [selectedDay]: sourceVal, [String(selectedDay)]: sourceVal }
         };
       }
     });
@@ -1147,7 +1168,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         const prevDaily = updatedMatrix[idx].daily || {};
         updatedMatrix[idx] = {
           ...updatedMatrix[idx],
-          daily: { ...prevDaily, [selectedDay]: "🟢" }
+          daily: { ...prevDaily, [selectedDay]: "🟢", [String(selectedDay)]: "🟢" }
         };
       }
     });
@@ -1269,9 +1290,33 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setIsSaving(true);
     try {
-      // 1. Save smart overtime ledger to Firestore & LocalStorage
-      if (smartData) {
-        await saveSmartOvertimeData(smartData, selectedMonth || "2026-10");
+      // 1. Save smart overtime ledger to Firestore & LocalStorage (ensure all current daily values are synchronized)
+      const allWorkersList = filteredAttendanceWorkers || [];
+      if (smartData && Array.isArray(smartData.attendanceMatrix)) {
+        const currentMatrix = [...smartData.attendanceMatrix];
+        allWorkersList.forEach((w) => {
+          const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
+          const cleanWName = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+          const targetIdx = currentMatrix.findIndex(
+            (mw) => ((mw.name || "").trim() === (w.name || "").trim() || (cleanWName && (mw.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim() === cleanWName)) && cleanCompanyName(mw.company) === cleanCompanyName(w.company)
+          );
+          if (targetIdx >= 0) {
+            currentMatrix[targetIdx] = {
+              ...currentMatrix[targetIdx],
+              daily: {
+                ...(currentMatrix[targetIdx].daily || {}),
+                [d]: val,
+                [String(d)]: val
+              }
+            };
+          }
+        });
+        const updatedLedger = {
+          ...smartData,
+          attendanceMatrix: currentMatrix
+        };
+        setSmartData(updatedLedger);
+        await saveSmartOvertimeData(updatedLedger, selectedMonth || "2026-10");
       }
       
       // 2. Generate and save company-specific report record
@@ -1295,7 +1340,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       };
       const finalReportTitle = (reportModalTitle && reportModalTitle.trim()) || `${currentYear}년 ${currentMonthNum}월 ${d}일(${dayLabel}) ${compMeta.plant || "전사"} ${compLabel} ${reportType}`;
 
-      const allWorkersList = filteredAttendanceWorkers || [];
       const items = allWorkersList.map((w, idx) => {
         const val = (w.daily && (w.daily[d] !== undefined ? w.daily[d] : w.daily[String(d)])) ?? w[d] ?? w[String(d)] ?? "";
         const { isAttended, weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(val);
@@ -2470,7 +2514,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white dark:bg-slate-900/40 text-xs">
                             {colWorkers.map((worker) => {
-                              const currentVal = worker.daily ? worker.daily[selectedDay] : "";
+                              const currentVal = (worker.daily && (worker.daily[selectedDay] !== undefined ? worker.daily[selectedDay] : worker.daily[String(selectedDay)])) ?? worker[selectedDay] ?? worker[String(selectedDay)] ?? "";
                               const strVal = String(currentVal || "").trim();
                               const isUnselected = !strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null";
                               const meta = getOptionMeta(currentVal);
@@ -2523,10 +2567,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 정시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "🟢")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "🟢")}
                                         title="정시 출근 (8시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "🟢" || currentVal === "정시" || currentVal === "17"
+                                          strVal === "🟢" || strVal === "정시" || strVal === "17"
                                             ? "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2537,10 +2581,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 19시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "19")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "19")}
                                         title="19시 잔업 (+2시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "19" || currentVal === "19시"
+                                          strVal === "19" || strVal === "19시"
                                             ? "bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2551,10 +2595,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 21시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "21")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "21")}
                                         title="21시 잔업 (+4시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "21" || currentVal === "21시"
+                                          strVal === "21" || strVal === "21시"
                                             ? "bg-orange-600 text-white font-black shadow-xs ring-1 ring-orange-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2565,10 +2609,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 22시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "22")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "22")}
                                         title="22시 잔업 (+5시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "22" || currentVal === "22시"
+                                          strVal === "22" || strVal === "22시"
                                             ? "bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2579,10 +2623,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 야간 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "야간")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "야간")}
                                         title="야간 근무 (8시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "야간"
+                                          strVal === "야간"
                                             ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2593,10 +2637,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 연차 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "연차")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "연차")}
                                         title="연차 휴가"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "연차"
+                                          strVal === "연차"
                                             ? "bg-sky-600 text-white font-black shadow-xs ring-1 ring-sky-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2607,10 +2651,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 결근 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "결근")}
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "결근")}
                                         title="결근"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          currentVal === "결근"
+                                          strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")
                                             ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
@@ -2636,7 +2680,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        handleUpdateWorkerDayAttendance(worker.originalMatrixIndex, "");
+                                        handleUpdateWorkerDayAttendance(worker, "");
                                         triggerToast(`↩️ ${worker.name}님의 ${currentMonthNum}월 ${selectedDay}일 근태 선택이 취소되었습니다.`);
                                       }}
                                       title={`${currentMonthNum}월 ${selectedDay}일 근태 선택 취소`}

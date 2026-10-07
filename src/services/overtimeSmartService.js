@@ -597,42 +597,71 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
         // Case A: item has individual workerName or name
         const wName = String(it.workerName || it.name || "").trim();
         if (wName) {
+          const cleanItName = wName.split(" ")[0].replace(/\([^)]*\)/g, "").trim();
           const targetW = matrix.find((w) => {
-            const sameName = w.name === wName;
+            const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+            const sameName = w.name === wName || (cleanItName && wClean === cleanItName);
             if (!sameName) return false;
             if (it.company) return matchCompany(it.company, w.company);
             return targetCompanies.some(tc => matchCompany(tc, w.company));
-          }) || matrix.find((w) => w.name === wName);
+          }) || matrix.find((w) => {
+            const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+            return w.name === wName || (cleanItName && wClean === cleanItName);
+          });
 
           if (targetW) {
             hasAppliedAnyItem = true;
             let code = it.attendanceCode;
-            if (!code || code === "미입력" || code === "-" || code === "08:00") {
-              if (it.hours >= 13 || it.endTime === "22:00") code = "22";
-              else if (it.hours >= 12 || it.endTime === "21:00") code = "21";
-              else if (it.hours >= 10 || it.endTime === "19:00") code = "19";
-              else if (it.hours === 4 || it.startTime?.includes("반차")) code = "반차";
-              else if (it.hours === 0 && (it.workContent?.includes("결근") || it.workDetails?.includes("결근"))) code = "결근";
-              else if (it.hours === 0 && (it.workContent?.includes("연차") || it.workDetails?.includes("연차"))) code = "연차";
-              else if (it.hours === 0 && (it.workContent?.includes("휴가") || it.workDetails?.includes("휴가"))) code = "휴가";
-              else if (it.hours === 0) code = "-";
-              else code = isWeekend ? "특근" : "🟢";
-            } else if (code === "정시" || code === "17" || code === "출근") {
-              code = isWeekend ? "특근" : "🟢";
-            } else if (code === "19시") {
+            const codeStr = String(code || "").trim();
+            const contentStr = `${it.workContent || ""} ${it.workDetails || ""} ${it.note || ""}`;
+
+            if (codeStr === "결근" || codeStr.includes("결근") || contentStr.includes("결근")) {
+              code = "결근";
+            } else if (codeStr === "연차" || codeStr.includes("연차") || contentStr.includes("연차")) {
+              code = "연차";
+            } else if (codeStr === "휴가" || codeStr.includes("휴가") || contentStr.includes("휴가")) {
+              code = "휴가";
+            } else if (codeStr === "반차" || codeStr.includes("반차") || contentStr.includes("반차")) {
+              code = "반차";
+            } else if (codeStr === "야간" || codeStr.includes("야간") || contentStr.includes("야간")) {
+              code = "야간";
+            } else if (codeStr === "주야" || codeStr.includes("주야") || contentStr.includes("주야")) {
+              code = "주야";
+            } else if (codeStr === "19" || codeStr === "19시") {
               code = "19";
-            } else if (code === "21시") {
+            } else if (codeStr === "21" || codeStr === "21시") {
               code = "21";
-            } else if (code === "22시") {
+            } else if (codeStr === "22" || codeStr === "22시") {
               code = "22";
-            } else if (code === "특근" || code === "주말특근") {
+            } else if (codeStr === "정시" || codeStr === "17" || codeStr === "출근") {
+              code = isWeekend ? "특근" : "🟢";
+            } else if (codeStr === "특근" || codeStr === "주말특근") {
               if (!isWeekend) {
                 if (it.hours >= 13) code = "22";
                 else if (it.hours >= 12) code = "21";
                 else if (it.hours >= 10) code = "19";
                 else code = "🟢";
+              } else {
+                code = "특근";
+              }
+            } else if (!codeStr || codeStr === "미입력" || codeStr === "-" || codeStr === "08:00") {
+              if (it.hours >= 13 || it.endTime === "22:00") code = "22";
+              else if (it.hours >= 12 || it.endTime === "21:00") code = "21";
+              else if (it.hours >= 10 || it.endTime === "19:00") code = "19";
+              else if (it.hours === 4 || it.startTime?.includes("반차")) code = "반차";
+              else if (it.hours === 0) {
+                // If targetW already had a valid state (e.g. 결근 or 연차) in matrix, preserve it!
+                const existingVal = targetW.daily[day] || targetW.daily[String(day)];
+                if (existingVal && existingVal !== "-" && existingVal !== "미입력" && existingVal !== "undefined" && existingVal !== "null") {
+                  code = existingVal;
+                } else {
+                  code = isWeekend ? "-" : "결근";
+                }
+              } else {
+                code = isWeekend ? "특근" : "🟢";
               }
             }
+
             targetW.daily[day] = code;
             targetW.daily[String(day)] = code;
           }
@@ -641,12 +670,17 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
         else if (it.names) {
           const namesList = String(it.names).split(",").map((s) => s.trim()).filter(Boolean);
           namesList.forEach((n) => {
+            const cleanN = n.split(" ")[0].replace(/\([^)]*\)/g, "").trim();
             const targetW = matrix.find((w) => {
-              const sameName = w.name === n;
+              const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+              const sameName = w.name === n || (cleanN && wClean === cleanN);
               if (!sameName) return false;
               if (it.company) return matchCompany(it.company, w.company);
               return targetCompanies.some(tc => matchCompany(tc, w.company));
-            }) || matrix.find((w) => w.name === n);
+            }) || matrix.find((w) => {
+              const wClean = (w.name || "").split(" ")[0].replace(/\([^)]*\)/g, "").trim();
+              return w.name === n || (cleanN && wClean === cleanN);
+            });
 
             if (targetW) {
               hasAppliedAnyItem = true;
