@@ -43,6 +43,34 @@ export const normalizeDept = (dept) => {
   return "생산팀";
 };
 
+export const isWeekendByDate = (dateStrOrDay, year = 2026, month = 10) => {
+  if (typeof dateStrOrDay === "number") {
+    const d = dateStrOrDay;
+    const y = Number(year) || 2026;
+    const m = Number(month) || 10;
+    const dt = new Date(y, m - 1, d);
+    if (!isNaN(dt.getTime())) {
+      const dayOfWeek = dt.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    }
+    return d === 5 || d === 6 || d === 12 || d === 13 || d === 19 || d === 20 || d === 26 || d === 27;
+  }
+  if (!dateStrOrDay) return false;
+  const rawStr = String(dateStrOrDay).trim();
+  const p = rawStr.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+  if (p) {
+    const y = parseInt(p[1], 10);
+    const m = parseInt(p[2], 10);
+    const d = parseInt(p[3], 10);
+    const dt = new Date(y, m - 1, d);
+    if (!isNaN(dt.getTime())) {
+      const dayOfWeek = dt.getDay();
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    }
+  }
+  return false;
+};
+
 export const COMPANY_APPROVAL_MANAGERS = {
   "오륙": {
     company: "오륙",
