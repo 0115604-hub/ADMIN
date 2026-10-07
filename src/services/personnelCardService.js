@@ -524,6 +524,13 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
     // 1. LocalStorage Map 업데이트
     const map = getLocalPersonnelCardsMap();
     map[cardKey] = cleanData;
+    const cleanComp = cleanCompanyName(normComp);
+    map[`${cleanComp}_${cleanData.name}`] = cleanData;
+    map[`${normComp}_${cleanData.name}`] = cleanData;
+    if (cardData.company) {
+      map[`${cardData.company}_${cleanData.name}`] = cleanData;
+      map[`${cleanCompanyName(cardData.company)}_${cleanData.name}`] = cleanData;
+    }
     saveLocalPersonnelCardsMap(map);
 
     // 2. Custom Window Event
@@ -560,8 +567,12 @@ export const subscribePersonnelCards = (callback) => {
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
           if (data && data.name) {
-            const key = `${cleanCompanyName(data.company)}_${data.name}`;
-            cardsMap[key] = data;
+            const cleanComp = cleanCompanyName(data.company);
+            const rawComp = data.company || "";
+            cardsMap[`${cleanComp}_${data.name}`] = data;
+            if (rawComp) {
+              cardsMap[`${rawComp}_${data.name}`] = data;
+            }
           }
         });
         saveLocalPersonnelCardsMap(cardsMap);

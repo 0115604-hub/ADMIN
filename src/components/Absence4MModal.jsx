@@ -35,7 +35,8 @@ import {
   STANDARD_PROCESS_LIST,
   getSkillMeta,
   getWorkerPersonnelCard,
-  getLocalPersonnelCardsMap
+  getLocalPersonnelCardsMap,
+  subscribePersonnelCards
 } from "../services/personnelCardService.js";
 import {
   ABSENCE_REASONS,
@@ -91,9 +92,28 @@ export default function Absence4MModal({
     return `${y}-${m}-${d}`;
   }, [currentYear, currentMonth, selectedDay]);
 
-  // 인사카드 맵 로드
+  // 인사카드 실시간 구독 및 동기화
   useEffect(() => {
     setPersonnelCardsMap(getLocalPersonnelCardsMap());
+    const unsub = subscribePersonnelCards((cards) => {
+      setPersonnelCardsMap(cards || {});
+    });
+    const handleUpdate = (e) => {
+      if (e.detail && e.detail.cardData) {
+        const { cardKey, cardData } = e.detail;
+        setPersonnelCardsMap((prev) => ({
+          ...prev,
+          [cardKey]: cardData,
+          [`${cleanCompanyName(cardData.company)}_${cardData.name}`]: cardData,
+          [`${cardData.company}_${cardData.name}`]: cardData
+        }));
+      }
+    };
+    window.addEventListener("oryuk_personnel_card_updated", handleUpdate);
+    return () => {
+      unsub();
+      window.removeEventListener("oryuk_personnel_card_updated", handleUpdate);
+    };
   }, [isOpen]);
 
   // 4M 로그 실시간 구독
@@ -124,15 +144,20 @@ export default function Absence4MModal({
     }));
   }, [selectedCompanyTab]);
 
-  // 전체 근로자 리스트 (attendanceMatrix 기반)
+  // 전체 근로자 리스트 (attendanceMatrix 기반 + 인사카드 최신 데이터 동기화)
   const allWorkers = useMemo(() => {
     return (attendanceMatrix || []).map((w, idx) => {
       const comp = cleanCompanyName(w.company);
       const cardKey = `${comp}_${w.name}`;
-      const card = personnelCardsMap[cardKey] || getWorkerPersonnelCard(w, idx + 1);
+      const card = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard || getWorkerPersonnelCard(w, idx + 1);
+      const resolvedComp = card?.company ? cleanCompanyName(card.company) : comp;
+      const resolvedDept = card?.dept || w.dept || "생산팀";
+      const resolvedPos = card?.position || w.position || "사원";
       return {
         ...w,
-        company: comp,
+        company: resolvedComp,
+        dept: resolvedDept,
+        position: resolvedPos,
         cardKey,
         personnelCard: card,
         dailyCode: w.daily ? w.daily[selectedDay] : ""
@@ -162,6 +187,42 @@ export default function Absence4MModal({
       return true;
     });
 
+    // 기존 저장된 4M 로그에 최신 인사카드 부서/직급/숙련도 동기화
+    const syncedLogs = filteredLogs.map((log) => {
+      const comp = cleanCompanyName(log.company);
+      const absentKey = `${comp}_${log.absentWorker?.name}`;
+      const absentCard = personnelCardsMap[absentKey] || personnelCardsMap[`${log.company}_${log.absentWorker?.name}`] || log.absentWorker || {};
+
+      let subWorkerObj = log.substituteWorker;
+      if (subWorkerObj && subWorkerObj.name && subWorkerObj.name !== "라인비가동" && !subWorkerObj.isLineStopped) {
+        const subKey = `${comp}_${subWorkerObj.name}`;
+        const subCard = personnelCardsMap[subKey] || personnelCardsMap[`${log.company}_${subWorkerObj.name}`] || subWorkerObj;
+        subWorkerObj = {
+          ...subWorkerObj,
+          dept: subCard.dept || subWorkerObj.dept || "생산팀",
+          position: subCard.position || subWorkerObj.position || "사원",
+          skillLevel: subCard.skillLevel || subWorkerObj.skillLevel || 3,
+          skillGrade: subCard.skillGrade || subWorkerObj.skillGrade || "Lv.3 보통",
+          mainProcess: subCard.mainProcess || subWorkerObj.mainProcess || log.process || "압출",
+          subProcesses: subCard.subProcesses || subWorkerObj.subProcesses || [],
+          isMultiSkill: subCard.isMultiSkill !== undefined ? subCard.isMultiSkill : subWorkerObj.isMultiSkill
+        };
+      }
+
+      return {
+        ...log,
+        absentWorker: {
+          ...log.absentWorker,
+          dept: absentCard.dept || log.absentWorker?.dept || "생산팀",
+          position: absentCard.position || log.absentWorker?.position || "사원",
+          skillLevel: absentCard.skillLevel || log.absentWorker?.skillLevel || 3,
+          skillGrade: absentCard.skillGrade || log.absentWorker?.skillGrade || "Lv.3 보통",
+          mainProcess: absentCard.mainProcess || log.absentWorker?.mainProcess || log.process || "압출"
+        },
+        substituteWorker: subWorkerObj
+      };
+    });
+
     // 자동 탐지된 결근자 중 아직 저장되지 않은 항목 생성
     const detectedList = detectedAbsentWorkers
       .filter((w) => {
@@ -175,7 +236,9 @@ export default function Absence4MModal({
         return !alreadySaved;
       })
       .map((w) => {
-        const card = w.personnelCard;
+        const comp = cleanCompanyName(w.company);
+        const cardKey = `${comp}_${w.name}`;
+        const card = personnelCardsMap[cardKey] || personnelCardsMap[`${w.company}_${w.name}`] || w.personnelCard || getWorkerPersonnelCard(w);
         const managerInfo = COMPANY_APPROVAL_MANAGERS[w.company] || COMPANY_APPROVAL_MANAGERS["오륙"];
         const defaultSup = `${managerInfo.drafter || "관리감독자"} ${managerInfo.drafterRole || "선임"}`;
 
@@ -220,7 +283,7 @@ export default function Absence4MModal({
         };
       });
 
-    let combined = [...filteredLogs, ...detectedList];
+    let combined = [...syncedLogs, ...detectedList];
 
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
@@ -234,7 +297,7 @@ export default function Absence4MModal({
     }
 
     return combined;
-  }, [activeDateLogs, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, selectedDay, searchTerm]);
+  }, [activeDateLogs, detectedAbsentWorkers, selectedCompanyTab, dateStr, currentMonth, selectedDay, searchTerm, personnelCardsMap]);
 
   // 통계 요약 KPIs
   const metrics = useMemo(() => {
@@ -782,6 +845,22 @@ function Absence4MCardItem({
   const company = cleanCompanyName(formState.company);
   const theme = COMPANY_THEMES[company] || COMPANY_THEMES["오륙"];
 
+  // 최신 인사카드 데이터 동기화
+  const absentKey = `${company}_${formState.absentWorker?.name}`;
+  const latestAbsentCard = personnelCardsMap[absentKey] || personnelCardsMap[`${formState.company}_${formState.absentWorker?.name}`] || formState.absentWorker || {};
+  const currentAbsentDept = latestAbsentCard.dept || formState.absentWorker?.dept || "생산팀";
+  const currentAbsentPos = latestAbsentCard.position || formState.absentWorker?.position || "사원";
+  const currentAbsentSkill = latestAbsentCard.skillLevel || formState.absentWorker?.skillLevel || 3;
+  const currentAbsentProcess = latestAbsentCard.mainProcess || formState.absentWorker?.mainProcess || formState.process || "압출";
+
+  const absentCard = {
+    ...formState.absentWorker,
+    dept: currentAbsentDept,
+    position: currentAbsentPos,
+    skillLevel: currentAbsentSkill,
+    mainProcess: currentAbsentProcess
+  };
+
   // 해당 회사의 모든 근로자 후보 (대체 인원 추천용)
   const candidateWorkers = useMemo(() => {
     return allWorkers.filter((w) => cleanCompanyName(w.company) === company && w.name !== formState.absentWorker?.name);
@@ -820,7 +899,7 @@ function Absence4MCardItem({
         name: "라인비가동",
         isLineStopped: true,
         position: "비가동",
-        dept: formState.absentWorker?.dept || "생산팀",
+        dept: currentAbsentDept,
         mainProcess: formState.process || "압출",
         subProcesses: [],
         isMultiSkill: false,
@@ -829,7 +908,7 @@ function Absence4MCardItem({
       };
 
       const risk = calculate4MRisk(
-        formState.absentWorker,
+        absentCard,
         subWorkerData,
         formState.process || formState.absentWorker?.mainProcess || "압출"
       );
@@ -851,7 +930,8 @@ function Absence4MCardItem({
     }
 
     const workerObj = candidateWorkers.find((w) => w.name === workerName);
-    const card = personnelCardsMap[workerObj?.cardKey] || workerObj?.personnelCard || {};
+    const subCardKey = `${company}_${workerName}`;
+    const card = personnelCardsMap[subCardKey] || personnelCardsMap[workerObj?.cardKey] || workerObj?.personnelCard || {};
 
     const subWorkerData = {
       name: workerName,
@@ -865,7 +945,7 @@ function Absence4MCardItem({
     };
 
     const risk = calculate4MRisk(
-      formState.absentWorker,
+      absentCard,
       subWorkerData,
       formState.process || formState.absentWorker?.mainProcess || "압출"
     );
@@ -882,10 +962,12 @@ function Absence4MCardItem({
 
   // 실시간 1줄 로그 계산
   const currentOneLine = useMemo(() => {
-    return generate4MOneLineLog(formState);
-  }, [formState]);
+    return generate4MOneLineLog({
+      ...formState,
+      absentWorker: absentCard
+    });
+  }, [formState, absentCard]);
 
-  const absentCard = formState.absentWorker || {};
   const subCard = formState.substituteWorker || {};
   const risk = calculate4MRisk(absentCard, formState.substituteWorker, formState.process);
 
@@ -1061,7 +1143,7 @@ function Absence4MCardItem({
       )}
 
       {/* 🛡️ 4M 품질 관리 필수 체크포인트 */}
-      <div className="bg-slate-900/70 p-3 rounded-xl border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+      <div className="bg-slate-900/70 p-3 rounded-xl border border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -1090,23 +1172,9 @@ function Absence4MCardItem({
           />
           <span className="text-slate-300 font-bold flex items-center gap-1">
             <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span>작업표준서(SOP) 특별전달</span>
+            <span>특별교육</span>
           </span>
         </label>
-
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 font-bold shrink-0">감독자:</span>
-          <input
-            type="text"
-            value={formState.checkpoints?.supervisorName || ""}
-            onChange={(e) => setFormState({
-              ...formState,
-              checkpoints: { ...formState.checkpoints, supervisorName: e.target.value }
-            })}
-            placeholder="선임/책임 성명"
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white font-bold"
-          />
-        </div>
       </div>
 
       {/* 📌 1줄 4M 변경점 감사 증빙 로그 박스 */}
@@ -1150,7 +1218,13 @@ function Absence4MCardItem({
 
         <button
           type="button"
-          onClick={() => onSave(formState)}
+          onClick={() => {
+            const entryToSave = {
+              ...formState,
+              absentWorker: absentCard
+            };
+            onSave(entryToSave);
+          }}
           className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition-all cursor-pointer"
         >
           <Save className="w-3.5 h-3.5" />

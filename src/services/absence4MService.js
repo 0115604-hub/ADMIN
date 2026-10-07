@@ -122,18 +122,18 @@ export const generate4MOneLineLog = (entry) => {
   const isMulti = entry.substituteWorker?.isMultiSkill ? " 다기능" : "";
 
   const firstPiece = entry.checkpoints?.firstPieceCheck ? "초물검사 완료" : "초물검사 미실시";
-  const supervisor = entry.checkpoints?.supervisorName || "현장선임";
+  const education = entry.checkpoints?.workInstructionTold ? "특별교육 완료" : "특별교육 미실시";
 
   // ⏸️ 라인비가동 (대체 미투입)인 경우의 1줄 로그
   if (entry.substituteWorker?.name === "라인비가동" || entry.substituteWorker?.isLineStopped || entry.substituteWorker?.name?.includes("라인비가동")) {
-    return `📌 [4M Man 결근] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ [⏸️ 라인비가동 / 대체 미투입] | [감독: ${supervisor}]`;
+    return `📌 [4M Man 결근] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ [⏸️ 라인비가동 / 대체 미투입]`;
   }
 
   if (!entry.substituteWorker?.name) {
     return `📌 [4M Man 결근] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체인원 미배치 (라인 비가동/조정)`;
   }
 
-  return `📌 [4M Man 변경] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체: ${subName}(${subPos} ${subSkill}${isMulti}) 투입 | [${firstPiece} / 지도: ${supervisor}]`;
+  return `📌 [4M Man 변경] ${shortDate} (${comp}) ${process}공정 | 결근: ${absentName}(${absentPos} ${absentSkill}, ${reason}) ➔ 대체: ${subName}(${subPos} ${subSkill}${isMulti}) 투입 | [${firstPiece} / ${education}]`;
 };
 
 // 로컬 스토리지에서 전체 4M 결근/대체 로그 로드
