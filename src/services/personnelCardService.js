@@ -41,12 +41,13 @@ export const DEPARTMENTS_LIST = [
   "관리팀"
 ];
 
-// ⭐ 표준 4대 직급 목록 (사원 / 선임 / 책임 / 이사)
+// ⭐ 표준 5대 직급 목록 (사원 / 선임 / 책임 / 이사 / 대표이사)
 export const POSITIONS_LIST = [
   "사원",
   "선임",
   "책임",
-  "이사"
+  "이사",
+  "대표이사"
 ];
 
 // ⭐ 표준 국적 목록 (필리핀, 베트남, 태국, 스리랑카, 우즈벡, 인도네시아, 대한민국, 네팔, 캄보디아, 몽골, 기타)
@@ -127,6 +128,20 @@ export const getInspectorGradeMeta = (grade) => {
   );
 };
 
+// 협력/외주 업체 여부 확인 (유성, 한울, 부림텍)
+export const isPartnerCompany = (comp) => {
+  if (!comp) return false;
+  const str = String(comp).trim();
+  return (
+    str === "유성" ||
+    str === "한울" ||
+    str === "부림텍" ||
+    str.includes("유성") ||
+    str.includes("한울") ||
+    str.includes("부림")
+  );
+};
+
 // 소속 업체 정규화 헬퍼 (주)오륙, 주)조영, 유성, 한울, 부림텍 5개사로 표준화)
 export const normalizeStandardCompany = (comp) => {
   if (!comp) return "주)오륙";
@@ -139,10 +154,15 @@ export const normalizeStandardCompany = (comp) => {
   return str;
 };
 
-// 부서 정규화 헬퍼 (생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 관리팀 6개로 표준화)
-export const normalizeStandardDept = (dept) => {
+// 부서 정규화 헬퍼 (협력업체인 경우 업체명 반환, 그 외 생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 관리팀 6개로 표준화)
+export const normalizeStandardDept = (dept, comp) => {
+  const normComp = comp ? normalizeStandardCompany(comp) : "";
+  if (normComp && isPartnerCompany(normComp)) {
+    return normComp;
+  }
   if (!dept) return "생산팀";
   const str = String(dept).trim();
+  if (isPartnerCompany(str)) return normalizeStandardCompany(str);
   if (DEPARTMENTS_LIST.includes(str)) return str;
   if (str === "설비보전팀" || str === "설비보전" || str === "설비팀" || str === "보전팀" || str === "공무팀" || str.includes("설비") || str.includes("보전") || str.includes("공무")) return "설비보전팀";
   if (str === "품질관리팀" || str === "품질팀" || str === "품질부" || str.includes("품질")) return "품질관리팀";
@@ -154,11 +174,16 @@ export const normalizeStandardDept = (dept) => {
   return "생산팀";
 };
 
-// 직위 정규화 헬퍼 (사원, 선임, 책임, 이사 4개로 표준화)
-export const normalizeStandardPosition = (pos) => {
+// 직위 정규화 헬퍼 (협력업체인 경우 대표이사 반환, 그 외 사원, 선임, 책임, 이사, 대표이사로 표준화)
+export const normalizeStandardPosition = (pos, comp) => {
+  const normComp = comp ? normalizeStandardCompany(comp) : "";
+  if (normComp && isPartnerCompany(normComp)) {
+    return "대표이사";
+  }
   if (!pos) return "사원";
   const str = String(pos).trim();
-  if (str === "이사" || str.includes("이사") || str.includes("대표") || str.includes("임원")) return "이사";
+  if (str === "대표이사" || str === "대표" || str.includes("대표이사") || str.includes("대표")) return "대표이사";
+  if (str === "이사" || str.includes("이사") || str.includes("임원")) return "이사";
   if (str === "책임" || str.includes("책임") || str.includes("부장") || str.includes("차장") || str.includes("과장")) return "책임";
   if (str === "선임" || str.includes("선임") || str.includes("반장") || str.includes("조장") || str.includes("대리") || str.includes("주임")) return "선임";
   return "사원";
@@ -346,17 +371,24 @@ export const compressImageToBase64 = (fileOrBlob, maxWidth = 360, maxHeight = 36
   });
 };
 
-// 근로자 초기 인사카드 기본값 생성기 (6대 주공정 및 3대 부서, 4대 직급, 검사원 등급 및 사진 연동)
+// 근로자 초기 인사카드 기본값 생성기 (6대 주공정 및 부서, 직급, 검사원 등급 및 사진 연동)
 export const getWorkerPersonnelCard = (worker, idx = 1) => {
   if (!worker) return null;
 
   // 이미 카드 데이터가 존재하는 경우 병합하여 반환
   const existingCard = worker.personnelCard || {};
 
-  const company = normalizeStandardCompany(existingCard.company || worker.company || "주)오륙");
-  const dept = normalizeStandardDept(existingCard.dept || worker.dept || "생산팀");
+  const rawCompany = existingCard.company || worker.company || (isPartnerCompany(worker.name) ? worker.name : "주)오륙");
+  const company = normalizeStandardCompany(rawCompany);
+  const isPartner = isPartnerCompany(company) || isPartnerCompany(worker.name);
+
+  const dept = isPartner
+    ? company
+    : normalizeStandardDept(existingCard.dept || worker.dept || "생산팀", company);
   const name = String(worker.name || existingCard.name || "").trim();
-  const position = normalizeStandardPosition(worker.position || existingCard.position || "사원");
+  const position = isPartner
+    ? "대표이사"
+    : normalizeStandardPosition(worker.position || existingCard.position || "사원", company);
 
   // 기본 주공정 추정 (압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
   let defaultMainProcess = existingCard.mainProcess;
@@ -472,11 +504,13 @@ export const saveWorkerPersonnelCard = async (workerIdOrKey, cardData) => {
     const tenure = calculateTenureFromJoinDate(cardData.joinDate);
     const processYear = calculateProcessYearFromJoinDate(cardData.joinDate);
 
+    const normComp = normalizeStandardCompany(cardData.company);
+    const isPartner = isPartnerCompany(normComp);
     const cleanData = {
       ...cardData,
-      company: normalizeStandardCompany(cardData.company),
-      dept: normalizeStandardDept(cardData.dept),
-      position: normalizeStandardPosition(cardData.position),
+      company: normComp,
+      dept: isPartner ? normComp : normalizeStandardDept(cardData.dept, normComp),
+      position: isPartner ? "대표이사" : normalizeStandardPosition(cardData.position, normComp),
       nationality: cardData.nationality || "대한민국",
       nationalityOther: cardData.nationality === "기타" ? (cardData.nationalityOther || "") : "",
       skillGrade: getSkillMeta(cardData.skillLevel).grade,

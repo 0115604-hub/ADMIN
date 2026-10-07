@@ -61,6 +61,7 @@ import {
   DEPARTMENTS_LIST,
   POSITIONS_LIST,
   STANDARD_PROCESS_LIST,
+  isPartnerCompany,
   normalizeStandardDept,
   normalizeStandardPosition
 } from "../services/personnelCardService.js";
@@ -1427,10 +1428,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       return;
     }
     const company = cleanCompanyName(selectedCompanyManageWorkers || selectedCompanyPopup || "오륙");
-    const dept = normalizeStandardDept(quickNewWorkerDept || "생산팀");
+    const isPartner = isPartnerCompany(company);
+    const dept = isPartner ? company : normalizeStandardDept(quickNewWorkerDept || "생산팀", company);
     const line = quickNewWorkerLine.trim() || dept;
     const name = quickNewWorkerName.trim();
-    const position = normalizeStandardPosition(quickNewWorkerPos || "사원");
+    const position = isPartner ? "대표이사" : normalizeStandardPosition(quickNewWorkerPos || "사원", company);
 
     // Build standard attendance record for current month
     const emptyDaily = {};

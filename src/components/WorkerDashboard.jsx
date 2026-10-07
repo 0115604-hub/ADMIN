@@ -510,9 +510,14 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
     return getWorkerPersonnelCard(currentProfile || {});
   }, [currentProfile]);
 
+  const isPartnerProfile = currentProfile?.isPartner || currentProfile?.name === "유성" || currentProfile?.name === "한울" || currentProfile?.name === "부림텍" || currentProfile?.company === "유성" || currentProfile?.company === "한울" || currentProfile?.company === "부림텍";
   const isJaeyulWorker = isJaeyul || currentProfile?.name === "전재율" || currentProfile?.assignedProcess === "설비보전";
-  const workerDept = workerCard?.dept || (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀");
-  const workerPosition = officialTitle || workerCard?.position || "선임";
+  const workerDept = isPartnerProfile
+    ? (currentProfile?.name || currentProfile?.company || "유성")
+    : (workerCard?.dept || (isJaeyulWorker ? "설비보전팀" : isQualityWorker ? "품질관리팀" : isExtrusionWorker ? "압출관리팀" : isInjoo ? "관리팀" : "생산팀"));
+  const workerPosition = isPartnerProfile
+    ? "대표이사"
+    : (officialTitle || workerCard?.position || "선임");
 
   // General Manager & Management Staff Identification (관리자 및 관리팀 여부)
   const isMyeongjae = currentProfile?.name === "이명재" || currentProfile?.id === "sam_mj";

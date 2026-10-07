@@ -40,6 +40,7 @@ import {
   calculateTenureFromJoinDate,
   calculateProcessYearFromJoinDate,
   getWorkerPersonnelCard,
+  isPartnerCompany,
   normalizeStandardCompany,
   normalizeStandardDept,
   normalizeStandardPosition,
@@ -173,6 +174,20 @@ export default function PersonnelCardModal({
   const handleChange = (field, value) => {
     setFormData((prev) => {
       const next = { ...prev, [field]: value };
+      // 소속 업체 변경 시: 협력업체(유성/한울/부림텍)는 부서를 업체명, 직급을 대표이사로 자동 설정
+      if (field === "company") {
+        if (isPartnerCompany(value)) {
+          next.dept = value;
+          next.position = "대표이사";
+        } else {
+          if (isPartnerCompany(next.dept)) {
+            next.dept = "생산팀";
+          }
+          if (next.position === "대표이사") {
+            next.position = "사원";
+          }
+        }
+      }
       // 입사일 변경 시 근속기간 및 공정년차 동시 자동 계산
       if (field === "joinDate") {
         next.tenure = calculateTenureFromJoinDate(value);
@@ -428,23 +443,28 @@ export default function PersonnelCardModal({
                   </select>
                 </div>
 
-                {/* 부서 선택: 생산팀 / 압출관리팀 / 가공관리팀 / 품질관리팀 / 설비보전팀 / 관리팀 */}
+                {/* 부서 선택: 협력업체인 경우 소속업체명 또는 6대 부서 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서 (6대 부서)</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">부서</label>
                   <select
                     value={formData.dept}
                     onChange={(e) => handleChange("dept", e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 focus:border-purple-400 text-white text-xs font-bold cursor-pointer"
                   >
+                    {isPartnerCompany(formData.company) && (
+                      <option value={formData.company} className="bg-slate-900 text-purple-300 font-bold">
+                        {formData.company} (소속업체)
+                      </option>
+                    )}
                     {DEPARTMENTS_LIST.map((deptName) => (
                       <option key={deptName} value={deptName} className="bg-slate-900 text-white font-bold">{deptName}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* 직위 선택: 이사 / 책임 / 선임 / 사원 */}
+                {/* 직위 선택: 대표이사 / 이사 / 책임 / 선임 / 사원 */}
                 <div>
-                  <label className="text-[11px] font-bold text-slate-400 block pb-1">직위/직급 (4대 직위)</label>
+                  <label className="text-[11px] font-bold text-slate-400 block pb-1">직위/직급</label>
                   <select
                     value={formData.position}
                     onChange={(e) => handleChange("position", e.target.value)}
