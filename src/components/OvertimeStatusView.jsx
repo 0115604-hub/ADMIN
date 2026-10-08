@@ -2587,8 +2587,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
               {/* Right Group: Registration Button (클릭 시 보고서 팝업창 오픈) */}
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {isWeekendDay(selectedDay) ? (
-                  <span className="px-2.5 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-black border border-cyan-400/50 flex items-center gap-1 shadow-xs">
-                    <span>🌴 휴무일 (선택자 {filteredAttendanceWorkers.length - missingAttendanceWorkers.length}명 특근 등록 가능)</span>
+                  <span className="px-2.5 py-1 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-black border border-purple-400/50 flex items-center gap-1 shadow-xs">
+                    <span>🌙 주말/특근일 ({filteredAttendanceWorkers.filter(w => { const v = w.daily ? (w.daily[selectedDay] ?? w.daily[String(selectedDay)]) : ""; return v && v !== "-" && v !== "휴무" && v !== "미출근" && v !== "미입력" && v !== "결근"; }).length}명 특근 투입)</span>
                   </span>
                 ) : missingAttendanceWorkers.length > 0 ? (
                   <button
@@ -2673,8 +2673,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   (총 {filteredAttendanceWorkers.length}명)
                 </span>
                 {isWeekendDay(selectedDay) ? (
-                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-cyan-950 text-cyan-300 border border-cyan-700/80 flex items-center gap-1">
-                    <span>🌴 휴무일 (특근 인원만 선택)</span>
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-purple-950 text-purple-300 border border-purple-700/80 flex items-center gap-1">
+                    <span>🌙 주말/특근일 (특근 투입자만 선택)</span>
                   </span>
                 ) : missingAttendanceWorkers.length > 0 ? (
                   <button
@@ -4754,6 +4754,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   <button
                     type="button"
                     onClick={async () => {
+                      const isWk = isWeekendDay(selectedDay);
+                      const targetCode = isWk ? "특근" : "🟢";
                       const cleanComp = cleanCompanyName(popupCompanyData.company);
                       const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
                         ? [...effectiveMatrix]
@@ -4765,8 +4767,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       let updatedCount = 0;
                       updatedMatrix.forEach((w) => {
                         if (cleanCompanyName(w.company) === cleanComp) {
-                          w.daily[selectedDay] = "🟢";
-                          w.daily[String(selectedDay)] = "🟢";
+                          w.daily[selectedDay] = targetCode;
+                          w.daily[String(selectedDay)] = targetCode;
                           updatedCount++;
                         }
                       });
@@ -4778,14 +4780,14 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                       };
                       setSmartData(newLedger);
                       setHasUnsavedChanges(true);
-                      triggerToast(`🟢 [${popupCompanyData.company}] ${updatedCount}명 전원 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+                      triggerToast(`${isWk ? "🌙" : "🟢"} [${popupCompanyData.company}] ${updatedCount}명 전원 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(🌙)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
                       await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-emerald-500 ml-1"
-                    title="해당 협력사 인원 전체를 오늘 정시(🟢)로 일괄 선택합니다"
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg ${isWeekendDay(selectedDay) ? "bg-purple-600 hover:bg-purple-500 border-purple-500" : "bg-emerald-600 hover:bg-emerald-500 border-emerald-500"} text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ml-1`}
+                    title={isWeekendDay(selectedDay) ? "해당 협력사 인원 전체를 오늘 특근(🌙)으로 일괄 선택합니다" : "해당 협력사 인원 전체를 오늘 정시(🟢)로 일괄 선택합니다"}
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
-                    <span>🟢 정시전체선택</span>
+                    <span>{isWeekendDay(selectedDay) ? "🌙 특근전체선택" : "🟢 정시전체선택"}</span>
                   </button>
                 </div>
               </div>
