@@ -3961,10 +3961,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             <div className="flex items-center gap-1 flex-wrap">
                               <span className={`text-xs truncate ${
                                 card.mainProcess === "관리자"
-                                  ? "font-black px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 flex items-center gap-0.5"
+                                  ? "font-black px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800"
                                   : "font-black text-amber-600 dark:text-amber-300"
                               }`}>
-                                {card.mainProcess === "관리자" ? "🛡️ 관리자" : (card.mainProcess || "압출")}
+                                {card.mainProcess || "압출"}
                               </span>
                               {card.mainProcess === "검사" && card.inspectorGrade && (() => {
                                 const meta = getInspectorGradeMeta(card.inspectorGrade);

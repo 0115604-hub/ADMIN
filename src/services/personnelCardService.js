@@ -33,13 +33,14 @@ export const COMPANY_LIST = [
   "부림텍"
 ];
 
-// ⭐ 표준 6대 부서 목록 (생산팀 / 압출관리팀 / 가공관리팀 / 품질관리팀 / 설비보전팀 / 관리팀)
+// ⭐ 표준 7대 부서 목록 (생산팀 / 압출관리팀 / 가공관리팀 / 품질관리팀 / 설비보전팀 / 물류팀 / 관리팀)
 export const DEPARTMENTS_LIST = [
   "생산팀",
   "압출관리팀",
   "가공관리팀",
   "품질관리팀",
   "설비보전팀",
+  "물류팀",
   "관리팀"
 ];
 
@@ -156,7 +157,7 @@ export const normalizeStandardCompany = (comp) => {
   return str;
 };
 
-// 부서 정규화 헬퍼 (협력업체인 경우 업체명 반환, 그 외 생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 관리팀 6개로 표준화)
+// 부서 정규화 헬퍼 (협력업체인 경우 업체명 반환, 그 외 생산팀, 압출관리팀, 가공관리팀, 품질관리팀, 설비보전팀, 물류팀, 관리팀 7개로 표준화)
 export const normalizeStandardDept = (dept, comp) => {
   const normComp = comp ? normalizeStandardCompany(comp) : "";
   if (normComp && isPartnerCompany(normComp)) {
@@ -166,12 +167,13 @@ export const normalizeStandardDept = (dept, comp) => {
   const str = String(dept).trim();
   if (isPartnerCompany(str)) return normalizeStandardCompany(str);
   if (DEPARTMENTS_LIST.includes(str)) return str;
+  if (str === "물류팀" || str === "물류" || str.includes("물류") || str.includes("출하") || str.includes("창고") || str.includes("자재")) return "물류팀";
   if (str === "설비보전팀" || str === "설비보전" || str === "설비팀" || str === "보전팀" || str === "공무팀" || str.includes("설비") || str.includes("보전") || str.includes("공무")) return "설비보전팀";
   if (str === "품질관리팀" || str === "품질팀" || str === "품질부" || str.includes("품질")) return "품질관리팀";
   if (str === "생산팀" || str === "생산") return "생산팀";
   if (str === "압출관리팀" || str === "압출동" || (str.includes("압출") && !str.includes("생산"))) return "압출관리팀";
   if (str === "가공관리팀" || str === "가공동" || str.includes("가공") || str.includes("프레스") || str.includes("용접") || str.includes("성형") || str.includes("도장") || str.includes("조인트") || str.includes("사상") || str.includes("코팅")) return "가공관리팀";
-  if (str === "관리팀" || str === "관리부" || str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("기술") || str.includes("출하") || str.includes("총괄")) return "관리팀";
+  if (str === "관리팀" || str === "관리부" || str.includes("관리") || str.includes("총무") || str.includes("경영") || str.includes("회계") || str.includes("기술") || str.includes("총괄")) return "관리팀";
   if (str.includes("생산")) return "생산팀";
   return "생산팀";
 };
@@ -406,36 +408,19 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     ? normalizeStandardPosition(merged.position, company)
     : (worker.position ? normalizeStandardPosition(worker.position, company) : (isPartner ? "대표이사" : "사원"));
 
-  // ⭐ 관리자 직급/직책 확인 (사원, 선임, 책임, 이사, 대표이사 또는 관리부서 소속)
-  // 사용자 요구사항: 사원, 선임, 책임, 이사, 대표이사인 경우 담당공정을 "관리자"로 표시하고 "다기능공"으로 지정 (현장 결근 발생 시 관리자가 전 제조공정 대체 근무)
-  const isManagerRole = (
-    position === "사원" ||
-    position === "선임" ||
-    position === "책임" ||
-    position === "이사" ||
-    position === "대표이사" ||
-    dept === "관리팀" ||
-    dept === "관리부" ||
-    (worker.line && worker.line.includes("관리"))
-  );
-
   // 기본 주공정 추정 (관리자 / 압출 / 소재준비 / 조인트 / 사상 / 코팅 / 검사)
   let defaultMainProcess = merged.mainProcess;
   if (!defaultMainProcess || !STANDARD_PROCESS_LIST.includes(defaultMainProcess)) {
-    if (isManagerRole) {
-      defaultMainProcess = "관리자";
-    } else {
-      const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
-      if (hint.includes("압출")) defaultMainProcess = "압출";
-      else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
-      else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
-      else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
-      else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
-      else if (hint.includes("검사") || hint.includes("품질") || dept.includes("관리")) defaultMainProcess = "검사";
-      else defaultMainProcess = "압출";
-    }
-  } else if (isManagerRole && !merged.mainProcessManuallySet && defaultMainProcess !== "관리자") {
-    defaultMainProcess = "관리자";
+    const hint = `${worker.line || ""} ${dept} ${name}`.toLowerCase();
+    if (hint.includes("압출")) defaultMainProcess = "압출";
+    else if (hint.includes("소재") || hint.includes("원자재") || hint.includes("절단")) defaultMainProcess = "소재준비";
+    else if (hint.includes("조인트") || hint.includes("용접") || hint.includes("체결")) defaultMainProcess = "조인트";
+    else if (hint.includes("사상") || hint.includes("가공") || hint.includes("후가공") || hint.includes("포밍")) defaultMainProcess = "사상";
+    else if (hint.includes("코팅") || hint.includes("도장") || hint.includes("피막")) defaultMainProcess = "코팅";
+    else if (hint.includes("검사") || hint.includes("품질")) defaultMainProcess = "검사";
+    else if (hint.includes("물류") || dept.includes("물류")) defaultMainProcess = "소재준비";
+    else if (dept === "관리팀" || dept === "관리부" || hint.includes("관리자") || hint.includes("총무") || hint.includes("경영")) defaultMainProcess = "관리자";
+    else defaultMainProcess = "압출";
   }
 
   // 기본 숙련도 추정
@@ -445,20 +430,18 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
       defaultSkillLevel = 5;
     } else if (position === "선임") {
       defaultSkillLevel = 4;
-    } else if (position === "사원" && isManagerRole) {
-      defaultSkillLevel = 4;
     } else {
       defaultSkillLevel = 3;
     }
   }
 
-  // 기본 다기능공 여부 (사원/선임/책임/이사/대표이사/관리자는 100% 다기능공 지정)
-  const isMultiSkill = merged.isMultiSkill !== undefined ? merged.isMultiSkill : (isManagerRole || defaultSkillLevel >= 4);
+  // 기본 다기능공 여부 (관리자 공정이거나 숙련도 4 이상인 경우 기본 다기능공 지정)
+  const isMultiSkill = merged.isMultiSkill !== undefined ? merged.isMultiSkill : (defaultMainProcess === "관리자" || defaultSkillLevel >= 4);
 
-  // 기본 서브 지원공정 (작업자 결근 시 관리자가 전 공정 대체 근무 가능하도록 전 제조 공정 자동 지원 배정)
+  // 기본 서브 지원공정 (관리자 공정이면 전 제조 공정 자동 지원 배정)
   let subProcesses = merged.subProcesses;
   if (!subProcesses || !Array.isArray(subProcesses) || subProcesses.length === 0) {
-    if (isManagerRole || defaultMainProcess === "관리자") {
+    if (defaultMainProcess === "관리자") {
       subProcesses = ["압출", "소재준비", "조인트", "사상", "코팅", "검사"];
     } else if (isMultiSkill) {
       if (defaultMainProcess === "압출") subProcesses = ["소재준비", "사상", "검사"];
@@ -510,7 +493,7 @@ export const getWorkerPersonnelCard = (worker, idx = 1) => {
     inspectorGrade,
     inspectorCertDate,
     notes: merged.notes || (
-      isManagerRole || defaultMainProcess === "관리자"
+      defaultMainProcess === "관리자"
         ? "관리자 (현장 작업자 결근 시 전 제조공정 대체 투입 및 생산 지원)"
         : `${defaultMainProcess} 공정 트러블 조치 능숙 및 지원공정 백업 가능`
     ),
