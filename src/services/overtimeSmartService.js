@@ -301,10 +301,18 @@ export const getOptionMeta = (code) => {
   const strCode = String(code).trim();
   const found = ATTENDANCE_OPTIONS.find((o) => o.code === strCode);
   if (found) return found;
-  if (strCode === "정시" || strCode === "17") return ATTENDANCE_OPTIONS[0];
-  if (strCode === "19시") return ATTENDANCE_OPTIONS[1];
-  if (strCode === "21시") return ATTENDANCE_OPTIONS[2];
-  if (strCode === "22시") return ATTENDANCE_OPTIONS[3];
+  if (strCode === "정시" || strCode === "17" || strCode === "🟢" || strCode.includes("정시")) return ATTENDANCE_OPTIONS[0];
+  if (strCode === "19시" || strCode === "19" || strCode.includes("19")) return ATTENDANCE_OPTIONS[1];
+  if (strCode === "21시" || strCode === "21" || strCode.includes("21")) return ATTENDANCE_OPTIONS[2];
+  if (strCode === "22시" || strCode === "22" || strCode.includes("22")) return ATTENDANCE_OPTIONS[3];
+  if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) return ATTENDANCE_OPTIONS[4];
+  if (strCode === "야간" || strCode.includes("야간")) return ATTENDANCE_OPTIONS[5];
+  if (strCode === "주야" || strCode.includes("주야")) return ATTENDANCE_OPTIONS[6];
+  if (strCode === "-" || strCode === "휴무") return ATTENDANCE_OPTIONS[7];
+  if (strCode === "휴가" || strCode.includes("휴가")) return ATTENDANCE_OPTIONS[8];
+  if (strCode === "연차" || strCode.includes("연차")) return ATTENDANCE_OPTIONS[9];
+  if (strCode === "반차" || strCode.includes("반차")) return ATTENDANCE_OPTIONS[10];
+  if (strCode === "결근" || strCode.includes("결근")) return ATTENDANCE_OPTIONS[11];
   return { code: strCode, label: strCode, shortLabel: strCode, otHours: 0, workHours: 8, bg: "bg-blue-50 text-blue-800 border-blue-200" };
 };
 

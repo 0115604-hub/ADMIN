@@ -1227,6 +1227,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   // 1-Click Set All Filtered Workers to "🟢 정시" for Selected Day
   const handleSetAllFilteredWorkersRegular = async () => {
     if (!filteredAttendanceWorkers || filteredAttendanceWorkers.length === 0) return;
+
+    const isWk = isWeekendDay(selectedDay);
+    const targetCode = isWk ? "특근" : "🟢";
     const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
       ? [...effectiveMatrix]
       : (smartData?.attendanceMatrix || []);
@@ -1249,8 +1252,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       }
 
       if (idx >= 0 && updatedMatrix[idx]) {
-        updatedMatrix[idx].daily[selectedDay] = "🟢";
-        updatedMatrix[idx].daily[String(selectedDay)] = "🟢";
+        updatedMatrix[idx].daily[selectedDay] = targetCode;
+        updatedMatrix[idx].daily[String(selectedDay)] = targetCode;
         updatedCount++;
       }
     });
@@ -1264,7 +1267,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
     setSmartData(newLedger);
     setHasUnsavedChanges(true);
-    triggerToast(`🟢 [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 정시(🟢)로 일괄 선택되었습니다.`);
+    triggerToast(`${isWk ? "🌙" : "🟢"} [${selectedCompanyFilter === "전체" ? "5개사 전원" : selectedCompanyFilter}] ${updatedCount}명 ${currentMonthNum}월 ${selectedDay}일 ${isWk ? "특근(8H)" : "정시(🟢)"}로 일괄 선택되었습니다.`);
     await saveSmartOvertimeData(newLedger, selectedMonth || "2026-10");
   };
 
@@ -2681,11 +2684,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                 <button
                   type="button"
                   onClick={handleSetAllFilteredWorkersRegular}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border border-emerald-500 ring-2 ring-emerald-400/20"
-                  title="조회된 모든 작업자의 오늘 근태를 '정시(🟢)'로 일괄 선택합니다"
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-black text-xs shadow-xs active:scale-95 transition-all cursor-pointer border ${
+                    isWeekendDay(selectedDay)
+                      ? "bg-purple-600 hover:bg-purple-500 text-white border-purple-500 ring-2 ring-purple-400/20"
+                      : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 ring-2 ring-emerald-400/20"
+                  }`}
+                  title={
+                    isWeekendDay(selectedDay)
+                      ? "조회된 모든 작업자의 오늘 근태를 '특근(8H)'으로 일괄 선택합니다"
+                      : "조회된 모든 작업자의 오늘 근태를 '정시(🟢)'로 일괄 선택합니다"
+                  }
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
-                  <span>🟢 정시전체선택</span>
+                  <span>{isWeekendDay(selectedDay) ? "🌙 특근전체선택" : "🟢 정시전체선택"}</span>
                 </button>
               </div>
             </div>
@@ -2722,7 +2733,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                             {colWorkers.map((worker) => {
                               const currentVal = (worker.daily && (worker.daily[selectedDay] !== undefined ? worker.daily[selectedDay] : worker.daily[String(selectedDay)])) ?? worker[selectedDay] ?? worker[String(selectedDay)] ?? "";
                               const strVal = String(currentVal || "").trim();
-                              const isUnselected = !strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null";
+                              const isWk = isWeekendDay(selectedDay);
+                              const isUnselected = !isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "undefined" || strVal === "null");
+                              const isOffWeekend = isWk && (!strVal || strVal === "미입력" || strVal === "-" || strVal === "휴무" || strVal === "undefined" || strVal === "null");
+                              const isRegularOrSpecial = strVal === "🟢" || strVal === "정시" || strVal === "17" || strVal === "특근" || strVal === "주말특근" || strVal.includes("정시") || strVal.includes("특근") || strVal === "출근";
                               const meta = getOptionMeta(currentVal);
                               const { weekdayOt, weekendOt, workHours } = calculateWorkerDailyHours(currentVal);
                               const ot = weekdayOt + weekendOt;
@@ -2735,6 +2749,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                   className={`transition-colors ${
                                     isUnselected
                                       ? "bg-amber-500/10 dark:bg-amber-950/30 hover:bg-amber-500/15 border-l-4 border-l-amber-500"
+                                      : isWk && !isOffWeekend
+                                      ? "bg-purple-500/10 dark:bg-purple-950/20 hover:bg-purple-500/15 border-l-4 border-l-purple-500"
                                       : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
                                   }`}
                                 >
@@ -2762,7 +2778,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                     {cleanWorkerName}
                                   </td>
 
-                                  {/* 근태 선택 버튼 7개 (정시, 19시, 21시, 22시, 야간, 연차, 결근) */}
+                                  {/* 근태 선택 버튼 7개 (정시/특근, 19시, 21시, 22시, 야간, 연차, 결근) */}
                                   <td className="py-1 px-0.5 sm:px-1 text-center whitespace-nowrap">
                                     <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                                       {isUnselected && (
@@ -2770,28 +2786,35 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                           미선택
                                         </span>
                                       )}
-                                      {/* 정시 */}
+                                      {isWk && isOffWeekend && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
+                                          - 휴무
+                                        </span>
+                                      )}
+                                      {/* 정시 / 특근 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "🟢")}
-                                        title="정시 출근 (8시간)"
+                                        onClick={() => handleUpdateWorkerDayAttendance(worker, isWk ? "특근" : "🟢")}
+                                        title={isWk ? "주말/공휴일 특근 출근 (8시간)" : "정시 출근 (8시간)"}
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "🟢" || strVal === "정시" || strVal === "17"
-                                            ? "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400"
+                                          isRegularOrSpecial
+                                            ? isWk
+                                              ? "bg-purple-600 text-white font-black shadow-xs ring-1 ring-purple-400 scale-102"
+                                              : "bg-emerald-600 text-white font-black shadow-xs ring-1 ring-emerald-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
-                                        정시
+                                        {isWk ? "특근" : "정시"}
                                       </button>
 
                                       {/* 19시 */}
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker, "19")}
-                                        title="19시 잔업 (+2시간)"
+                                        title="19시 잔업 (+2시간, 총10H)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "19" || strVal === "19시"
-                                            ? "bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-400"
+                                          strVal === "19" || strVal === "19시" || strVal.includes("19")
+                                            ? "bg-amber-600 text-white font-black shadow-xs ring-1 ring-amber-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -2802,10 +2825,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker, "21")}
-                                        title="21시 잔업 (+4시간)"
+                                        title="21시 잔업 (+4시간, 총12H)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "21" || strVal === "21시"
-                                            ? "bg-orange-600 text-white font-black shadow-xs ring-1 ring-orange-400"
+                                          strVal === "21" || strVal === "21시" || strVal.includes("21")
+                                            ? "bg-orange-600 text-white font-black shadow-xs ring-1 ring-orange-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -2816,10 +2839,10 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       <button
                                         type="button"
                                         onClick={() => handleUpdateWorkerDayAttendance(worker, "22")}
-                                        title="22시 잔업 (+5시간)"
+                                        title="22시 잔업 (+5시간, 총13H)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "22" || strVal === "22시"
-                                            ? "bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-400"
+                                          strVal === "22" || strVal === "22시" || strVal.includes("22")
+                                            ? "bg-rose-600 text-white font-black shadow-xs ring-1 ring-rose-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -2832,8 +2855,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                         onClick={() => handleUpdateWorkerDayAttendance(worker, "야간")}
                                         title="야간 근무 (8시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "야간"
-                                            ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400"
+                                          strVal === "야간" || strVal.includes("야간")
+                                            ? "bg-indigo-600 text-white font-black shadow-xs ring-1 ring-indigo-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -2846,8 +2869,8 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                         onClick={() => handleUpdateWorkerDayAttendance(worker, "연차")}
                                         title="연차 휴가"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
-                                          strVal === "연차"
-                                            ? "bg-sky-600 text-white font-black shadow-xs ring-1 ring-sky-400"
+                                          strVal === "연차" || strVal.includes("연차") || strVal === "휴가" || strVal.includes("휴가")
+                                            ? "bg-sky-600 text-white font-black shadow-xs ring-1 ring-sky-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
@@ -2861,7 +2884,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                         title="결근"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")
-                                            ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400"
+                                            ? "bg-red-600 text-white font-black shadow-xs ring-1 ring-red-400 scale-102"
                                             : "bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700"
                                         }`}
                                       >
