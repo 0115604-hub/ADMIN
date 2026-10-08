@@ -2080,9 +2080,27 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
 
   const allActiveCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
+    const now = Date.now();
+    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
+
     return commonSchedules
       .filter((s) => !s.isCompleted && (s.endDate || s.startDate || s.date) >= todayDateStr && isScheduleVisibleToUser(s, currentProfile))
+      .map((s) => {
+        const comments = Array.isArray(s.comments) ? s.comments : [];
+        const isRecentItem = s.createdAt && (now - new Date(s.createdAt).getTime()) < TWO_DAYS_MS;
+        const latestComment = comments.length > 0 ? comments[comments.length - 1] : null;
+        const isRecentComment = latestComment && latestComment.createdAt && (now - new Date(latestComment.createdAt).getTime()) < TWO_DAYS_MS;
+        const hasNewMessage = Boolean(isRecentItem || isRecentComment || comments.length > 0);
+
+        return {
+          ...s,
+          hasNewMessage,
+          isRecent: isRecentItem
+        };
+      })
       .sort((a, b) => {
+        if (a.hasNewMessage && !b.hasNewMessage) return -1;
+        if (!a.hasNewMessage && b.hasNewMessage) return 1;
         const aStart = a.startDate || a.date || "";
         const bStart = b.startDate || b.date || "";
         if (aStart !== bStart) return aStart.localeCompare(bStart);
@@ -2092,6 +2110,10 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
         return (a.time || "").localeCompare(b.time || "");
       });
   }, [commonSchedules, todayDateStr, currentProfile]);
+
+  const hasNewScheduleMessage = useMemo(() => {
+    return (allActiveCommonSchedules || []).some((item) => item.hasNewMessage);
+  }, [allActiveCommonSchedules]);
 
   const uncompletedCommonSchedules = useMemo(() => {
     if (!commonSchedules || !Array.isArray(commonSchedules)) return [];
@@ -3203,16 +3225,28 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
       {/* 📌 사내 공통일정 (1줄 간결 바 • 결재 패널 상단 • ADMIN 전용 노출 • 클릭 시 실시간 의견/코멘트 팝업) */}
       {/* ========================================================================= */}
       {isAdmin && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl px-3 sm:px-3.5 py-2 border border-indigo-500/40 dark:border-indigo-600/40 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 min-w-0 max-w-full">
+        <div className={`rounded-xl px-3 sm:px-3.5 py-2 border shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 min-w-0 max-w-full transition-all ${
+          hasNewScheduleMessage
+            ? "bg-gradient-to-r from-indigo-50/95 via-purple-50/90 to-indigo-50/95 dark:from-indigo-950/85 dark:via-purple-950/70 dark:to-indigo-950/85 border-2 border-indigo-400 dark:border-indigo-500 ring-4 ring-indigo-400/40 shadow-xl shadow-indigo-500/25 animate-pulse"
+            : "bg-white dark:bg-slate-900 border-indigo-500/40 dark:border-indigo-600/40"
+        }`}>
           {/* Mobile Top Header / Desktop Left Section */}
           <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0 sm:flex-1 overflow-hidden">
             <div className="flex items-center gap-2 shrink-0">
-              <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-xs shrink-0">
+              <div className={`p-1 rounded-lg text-white shadow-xs shrink-0 ${
+                hasNewScheduleMessage ? "bg-gradient-to-br from-rose-500 to-indigo-600 animate-bounce" : "bg-indigo-600"
+              }`}>
                 <CalendarDays className="w-3.5 h-3.5" />
               </div>
               <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white shrink-0">
                 공통일정
               </span>
+              {hasNewScheduleMessage && (
+                <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 animate-pulse flex items-center gap-1 shadow-2xs shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  <span>새 메시지(점멸)</span>
+                </span>
+              )}
             </div>
 
             {/* Desktop Only: Inline Chips */}
@@ -3224,7 +3258,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                     <div
                       key={item.id}
                       onClick={() => setSelectedCommonScheduleForComments(item)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700/80 text-xs shadow-2xs shrink-0 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all group"
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs shadow-2xs shrink-0 cursor-pointer hover:scale-[1.02] active:scale-95 transition-all group ${
+                        item.hasNewMessage
+                          ? "bg-indigo-100/90 dark:bg-indigo-900/80 border-indigo-400 dark:border-indigo-500 ring-2 ring-purple-400/80 animate-pulse"
+                          : "bg-indigo-50/70 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 border-indigo-300 dark:border-indigo-700/80"
+                      }`}
                       title="탭하여 일정 상세 보기 및 실시간 의견 작성하기"
                     >
                       {(() => {
@@ -3279,10 +3317,20 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                       <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold flex items-center gap-0.5 border shadow-2xs ${
                         commentCount > 0
                           ? "bg-purple-600 text-white border-purple-500 animate-pulse"
+                          : item.isRecent
+                          ? "bg-rose-600 text-white border-rose-500 animate-pulse"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700"
                       }`}>
-                        <MessageCircle className="w-2.5 h-2.5" />
-                        <span>{commentCount > 0 ? `의견 ${commentCount}` : "의견"}</span>
+                        {commentCount > 0 ? (
+                          <>
+                            <MessageCircle className="w-2.5 h-2.5" />
+                            <span>의견 {commentCount}</span>
+                          </>
+                        ) : item.isRecent ? (
+                          <span>⚡ NEW</span>
+                        ) : (
+                          <span>의견</span>
+                        )}
                       </span>
 
                       {(isAdmin || isGeneralManager) && (
@@ -3332,7 +3380,11 @@ export const WorkerDashboard = ({ onBulkUpload, onNavigateTab }) => {
                   <div
                     key={item.id}
                     onClick={() => setSelectedCommonScheduleForComments(item)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 border border-indigo-300 dark:border-indigo-700/80 text-[11px] shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all group"
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all group ${
+                      item.hasNewMessage
+                        ? "bg-indigo-100/90 dark:bg-indigo-900/80 border-indigo-400 dark:border-indigo-500 ring-2 ring-purple-400/80 animate-pulse"
+                        : "bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 border-indigo-300 dark:border-indigo-700/80"
+                    }`}
                     title="탭하여 일정 상세 보기 및 실시간 의견 작성하기"
                   >
                     {(() => {

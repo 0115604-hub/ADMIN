@@ -28,7 +28,9 @@ import {
   FileSpreadsheet,
   Plus,
   Check,
-  ZoomIn
+  ZoomIn,
+  MessageCircle,
+  CalendarDays
 } from "lucide-react";
 import { ADMIN_USERS, EXTRUSION_WORKERS, useAuth } from "../../context/AuthContext";
 import { getUserLeaveStatus, getLeaveTypeMeta } from "../../services/annualLeaveService";
@@ -42,7 +44,9 @@ import {
   subscribeCommonSchedules,
   getLocalCommonSchedules,
   isScheduleExpired,
-  isScheduleAdminRestricted
+  isScheduleAdminRestricted,
+  addCommonScheduleComment,
+  deleteCommonScheduleComment
 } from "../../services/commonScheduleService";
 import {
   subscribeSmartOvertimeData,
@@ -99,6 +103,11 @@ export const WorkerPinModal = ({
   const [pinInput, setPinInput] = useState("");
   const [isPinVerified, setIsPinVerified] = useState(false);
   const [pinError, setPinError] = useState(false);
+
+  // 💬 일정 상세 & 의견/메시지 모달 State
+  const [selectedScheduleForComments, setSelectedScheduleForComments] = useState(null);
+  const [scheduleCommentInput, setScheduleCommentInput] = useState("");
+  const [scheduleCommentSubmitting, setScheduleCommentSubmitting] = useState(false);
 
   // Real-time Service Streams
   const [commonSchedules, setCommonSchedules] = useState(() => getLocalCommonSchedules());
@@ -569,6 +578,8 @@ export const WorkerPinModal = ({
   const uncompletedCommonSchedules = useMemo(() => {
     const list = [];
     const todayStr = getKSTDateString();
+    const now = Date.now();
+    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
 
     // 1. 공통 일정 (commonSchedules)
     (commonSchedules || []).forEach((s) => {
@@ -584,13 +595,26 @@ export const WorkerPinModal = ({
         if (isHallimManager && target.includes("삼랑진")) return;
       }
 
+      const comments = Array.isArray(s.comments) ? s.comments : [];
+      const isRecentItem = s.createdAt && (now - new Date(s.createdAt).getTime()) < TWO_DAYS_MS;
+      const latestComment = comments.length > 0 ? comments[comments.length - 1] : null;
+      const isRecentComment = latestComment && latestComment.createdAt && (now - new Date(latestComment.createdAt).getTime()) < TWO_DAYS_MS;
+      const hasNewMessage = Boolean(isRecentItem || isRecentComment || comments.length > 0);
+
       list.push({
         id: s.id || s._docId || Math.random(),
         target: s.target || "공통",
         title: s.title,
         startDate: s.startDate || s.date,
         endDate: s.endDate || s.startDate || s.date,
-        time: s.time || ""
+        time: s.time || "",
+        author: s.author || "ADMIN",
+        createdAt: s.createdAt,
+        comments,
+        hasNewMessage,
+        isRecent: isRecentItem,
+        isCommonSchedule: true,
+        rawSchedule: s
       });
     });
 
@@ -623,13 +647,20 @@ export const WorkerPinModal = ({
             const label = l.reason || l.leaveType || "일정";
             const already = list.some((item) => item.title === label);
             if (!already) {
+              const isRecentLeave = l.createdAt && (now - new Date(l.createdAt).getTime()) < TWO_DAYS_MS;
               list.push({
                 id: `leave_${l.id}`,
                 target: isSharedToMe ? `공유(${l.sharedBy || "동료"})` : (l.leaveType || "개인"),
                 title: label,
                 startDate: sDate,
                 endDate: eDate,
-                time: ""
+                time: "",
+                author: l.userName || "관리자",
+                comments: [],
+                hasNewMessage: Boolean(isSharedToMe || isRecentLeave),
+                isRecent: isRecentLeave,
+                isCommonSchedule: false,
+                rawSchedule: l
               });
             }
           }
@@ -638,12 +669,63 @@ export const WorkerPinModal = ({
     }
 
     return list.sort((a, b) => {
+      // 새로운 메시지가 있는 항목을 우선 표시
+      if (a.hasNewMessage && !b.hasNewMessage) return -1;
+      if (!a.hasNewMessage && b.hasNewMessage) return 1;
       const aStart = a.startDate || a.date || "";
       const bStart = b.startDate || b.date || "";
       if (aStart !== bStart) return aStart.localeCompare(bStart);
       return (a.time || "").localeCompare(b.time || "");
     });
   }, [commonSchedules, annualLeaves, selectedUser, isHeadquarterAdmin, isSamrangjinManager, isHallimManager]);
+
+  // ⭐ 일정패널 전체 점멸 여부 (새로운 메시지/의견/신규 일정이 입력된 경우 true)
+  const hasAnyNewScheduleMessage = useMemo(() => {
+    return (uncompletedCommonSchedules || []).some((s) => s.hasNewMessage);
+  }, [uncompletedCommonSchedules]);
+
+  // 💬 일정 댓글/의견 추가 핸들러
+  const handleAddScheduleComment = async (e) => {
+    if (e) e.preventDefault();
+    if (!selectedScheduleForComments || !scheduleCommentInput.trim() || scheduleCommentSubmitting) return;
+
+    setScheduleCommentSubmitting(true);
+    try {
+      const authorName = selectedUser?.name || "관리자";
+      const authorRole = selectedUser?.title || selectedUser?.position || "관리자";
+      const authorPlant = isHeadquarterAdmin ? "본사" : isSamrangjinManager ? "삼랑진공장" : "한림공장";
+
+      const { updatedItem } = await addCommonScheduleComment(selectedScheduleForComments.id, {
+        author: authorName,
+        role: authorRole,
+        plant: authorPlant,
+        text: scheduleCommentInput.trim()
+      });
+
+      if (updatedItem) {
+        setSelectedScheduleForComments(updatedItem);
+      }
+      setScheduleCommentInput("");
+    } catch (err) {
+      console.error("Failed to add schedule comment:", err);
+      alert("의견 등록 중 오류가 발생했습니다: " + (err.message || err));
+    } finally {
+      setScheduleCommentSubmitting(false);
+    }
+  };
+
+  const handleDeleteScheduleComment = async (commentId) => {
+    if (!selectedScheduleForComments || !commentId) return;
+    if (!window.confirm("이 의견을 삭제하시겠습니까?")) return;
+    try {
+      const { updatedItem } = await deleteCommonScheduleComment(selectedScheduleForComments.id, commentId);
+      if (updatedItem) {
+        setSelectedScheduleForComments(updatedItem);
+      }
+    } catch (err) {
+      console.error("Failed to delete schedule comment:", err);
+    }
+  };
 
   // 당일 일자 및 일일 근태 요약 (보고서와 실시간 동기화)
   const todayDayNum = useMemo(() => {
@@ -1340,21 +1422,35 @@ export const WorkerPinModal = ({
                   {/* ───────────────────────────────────────────────────────────────── */}
                   {isAdminUser && (
                     <div className="space-y-3.5 flex flex-col justify-between h-full">
-                      {/* 1. 사내 공통일정 / 관리자 일정 */}
-                      <div className="p-3.5 rounded-3xl bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm space-y-2">
-                        <div className="flex items-center justify-between">
+                      {/* 1. 사내 공통일정 / 관리자 일정 (새 메시지 등록 시 점멸 효과) */}
+                      <div className={`p-3.5 rounded-3xl transition-all duration-300 space-y-2.5 ${
+                        hasAnyNewScheduleMessage
+                          ? "bg-gradient-to-br from-indigo-50/95 via-purple-50/90 to-indigo-50/95 dark:from-indigo-950/85 dark:via-purple-950/70 dark:to-indigo-950/85 border-2 border-indigo-400 dark:border-indigo-500 ring-4 ring-indigo-400/40 shadow-xl shadow-indigo-500/25 animate-pulse"
+                          : "bg-slate-50 dark:bg-slate-800/70 border-2 border-indigo-200 dark:border-indigo-800/80 shadow-sm"
+                      }`}>
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
                           <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs">
+                            <div className={`p-1.5 rounded-xl text-white shadow-xs shrink-0 ${
+                              hasAnyNewScheduleMessage ? "bg-gradient-to-br from-rose-500 to-indigo-600 animate-bounce" : "bg-indigo-600"
+                            }`}>
                               <Calendar className="w-4 h-4" />
                             </div>
                             <div>
-                              <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
-                                {isHeadquarterAdmin
-                                  ? "📌 본사 & 사내 공통일정"
-                                  : isSamrangjinManager
-                                  ? "📌 삼랑진공장 관리자 일정"
-                                  : "📌 한림공장 관리자 일정"}
-                              </span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-sm font-black text-slate-900 dark:text-white block leading-tight">
+                                  {isHeadquarterAdmin
+                                    ? "📌 본사 & 사내 공통일정"
+                                    : isSamrangjinManager
+                                    ? "📌 삼랑진공장 관리자 일정"
+                                    : "📌 한림공장 관리자 일정"}
+                                </span>
+                                {hasAnyNewScheduleMessage && (
+                                  <span className="text-[10px] font-black text-white px-2 py-0.5 rounded-full bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 animate-pulse flex items-center gap-1 shadow-sm shrink-0">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                    <span>새 메시지 도착</span>
+                                  </span>
+                                )}
+                              </div>
                               <span className="text-[10.5px] font-bold text-slate-500 dark:text-slate-400">
                                 {isHeadquarterAdmin
                                   ? "본사 및 전사 진행 중인 미완료 일정"
@@ -1365,21 +1461,36 @@ export const WorkerPinModal = ({
                             </div>
                           </div>
 
-                          <span className="text-xs font-black text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
+                          <span className={`text-xs font-black px-2 py-0.5 rounded-full border ${
+                            hasAnyNewScheduleMessage
+                              ? "text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border-purple-300 dark:border-purple-700"
+                              : "text-indigo-800 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800"
+                          }`}>
                             {uncompletedCommonSchedules.length}건 진행중
                           </span>
                         </div>
 
                         {uncompletedCommonSchedules.length > 0 ? (
-                          <div className="space-y-1.5 max-h-28 overflow-y-auto pr-0.5">
+                          <div className="space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
                             {uncompletedCommonSchedules.map((schedule) => {
                               const sDate = schedule.startDate || schedule.date;
                               const eDate = schedule.endDate || sDate;
                               const dateText = sDate === eDate || !eDate ? sDate : `${sDate}~${eDate}`;
+                              const commentCount = schedule.comments?.length || 0;
                               return (
                                 <div
                                   key={schedule.id || schedule._docId}
-                                  className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs text-xs flex items-center justify-between gap-1.5"
+                                  onClick={() => {
+                                    if (schedule.rawSchedule) {
+                                      setSelectedScheduleForComments(schedule.rawSchedule);
+                                    }
+                                  }}
+                                  className={`p-2 rounded-xl border shadow-2xs text-xs flex items-center justify-between gap-1.5 transition-all cursor-pointer hover:scale-[1.01] ${
+                                    schedule.hasNewMessage
+                                      ? "bg-indigo-50/90 dark:bg-indigo-900/60 border-indigo-400 dark:border-indigo-500 ring-2 ring-purple-400/70 animate-pulse"
+                                      : "bg-white dark:bg-slate-900 border-indigo-100 dark:border-indigo-900/50 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                  }`}
+                                  title="클릭 시 일정 상세 및 의견/메시지 확인"
                                 >
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 shrink-0">
@@ -1388,6 +1499,17 @@ export const WorkerPinModal = ({
                                     <span className="font-bold text-slate-900 dark:text-white truncate text-xs">
                                       {schedule.title}
                                     </span>
+                                    {commentCount > 0 && (
+                                      <span className="text-[9.5px] font-black px-1.5 py-0.2 rounded-full bg-purple-600 text-white animate-pulse flex items-center gap-0.5 shrink-0 shadow-2xs">
+                                        <MessageCircle className="w-2.5 h-2.5" />
+                                        <span>의견 {commentCount}</span>
+                                      </span>
+                                    )}
+                                    {commentCount === 0 && schedule.isRecent && (
+                                      <span className="text-[9px] font-black px-1.5 py-0.2 rounded-full bg-rose-600 text-white animate-pulse shrink-0">
+                                        ⚡ NEW
+                                      </span>
+                                    )}
                                   </div>
                                   <span className="text-[10px] font-mono text-slate-400 shrink-0">{dateText}</span>
                                 </div>
@@ -1548,6 +1670,173 @@ export const WorkerPinModal = ({
           </div>
         </div>
       </div>
+
+      {/* 💬 Schedule Detail & Comments Modal for Admin */}
+      {selectedScheduleForComments && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedScheduleForComments(null);
+          }}
+          className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full max-h-[90vh] flex flex-col border border-indigo-500/50 shadow-2xl animate-scaleUp overflow-hidden cursor-default text-left"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-2xl bg-indigo-500/10 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 shrink-0">
+                  <CalendarDays className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-black text-base text-slate-900 dark:text-white truncate">
+                    공통일정 상세 및 의견 교환
+                  </h3>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    일정 세부 내용을 확인하고 관련 의견이나 메시지를 남길 수 있습니다.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedScheduleForComments(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-sm font-bold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shrink-0"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-4 overflow-y-auto space-y-3.5 divide-y divide-slate-100 dark:divide-slate-800 flex-1 text-xs">
+              {/* Schedule Info Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 space-y-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300">
+                      {selectedScheduleForComments.target || "공통"}
+                    </span>
+                    <span className="text-xs font-black text-slate-700 dark:text-slate-300 font-mono">
+                      {selectedScheduleForComments.startDate || selectedScheduleForComments.date}
+                      {selectedScheduleForComments.endDate && selectedScheduleForComments.endDate !== (selectedScheduleForComments.startDate || selectedScheduleForComments.date)
+                        ? ` ~ ${selectedScheduleForComments.endDate}`
+                        : ""}
+                    </span>
+                    {selectedScheduleForComments.time && selectedScheduleForComments.time !== "종일" && (
+                      <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 font-mono">
+                        [{selectedScheduleForComments.time}]
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10.5px] text-slate-400 font-medium">
+                    등록자: {selectedScheduleForComments.author || "ADMIN"}
+                  </span>
+                </div>
+
+                <h4 className="font-black text-base text-slate-900 dark:text-white leading-snug">
+                  {selectedScheduleForComments.title}
+                </h4>
+              </div>
+
+              {/* Comments / Messages Section */}
+              <div className="pt-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-purple-500" />
+                    <span>실시간 의견 및 메시지</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400 font-mono">
+                    {(selectedScheduleForComments.comments || []).length}건
+                  </span>
+                </div>
+
+                {/* Comment List */}
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-0.5">
+                  {(!selectedScheduleForComments.comments || selectedScheduleForComments.comments.length === 0) ? (
+                    <div className="p-4 text-center text-xs text-slate-400 font-medium bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                      등록된 의견이 없습니다. 아래 입력창에 첫 의견을 남겨보세요!
+                    </div>
+                  ) : (
+                    selectedScheduleForComments.comments.map((cmt) => (
+                      <div
+                        key={cmt.id}
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 space-y-1"
+                      >
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
+                            <span>{cmt.author}</span>
+                            {cmt.role && (
+                              <span className="text-[10px] font-normal text-slate-400">({cmt.role})</span>
+                            )}
+                            {cmt.plant && (
+                              <span className="px-1.5 py-0.2 rounded text-[9.5px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                {cmt.plant}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {cmt.createdAt ? new Date(cmt.createdAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteScheduleComment(cmt.id)}
+                              className="text-slate-400 hover:text-rose-500 transition-colors p-0.5"
+                              title="삭제"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                          {cmt.text}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Comment Input Form */}
+                <form onSubmit={handleAddScheduleComment} className="pt-2 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-0.5">
+                    <span>
+                      작성자: <strong className="text-slate-900 dark:text-white">{selectedUser?.name || "관리자"}</strong> ({selectedUser?.title || "관리자"})
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="의견이나 피드백 메시지를 입력하세요..."
+                      value={scheduleCommentInput}
+                      onChange={(e) => setScheduleCommentInput(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-indigo-500 text-slate-900 dark:text-white text-xs font-medium"
+                      maxLength={200}
+                    />
+                    <button
+                      type="submit"
+                      disabled={scheduleCommentSubmitting || !scheduleCommentInput.trim()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+                    >
+                      {scheduleCommentSubmitting ? "등록중..." : "의견 등록"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedScheduleForComments(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox Modal for Disaster Images */}
       {previewImage && (
