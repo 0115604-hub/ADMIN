@@ -1541,6 +1541,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
 
   // ⭐ USER ACTION: 보고서 수정 및 근태 등록 화면으로 이동
   const handleEditReport = (report) => {
+    if (!report) return;
     if (report.workDate) {
       const parts = report.workDate.split("-");
       if (parts.length === 3) {
@@ -1548,15 +1549,19 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
         if (!isNaN(d)) setSelectedDay(d);
       }
     }
-    if (report.company) {
-      setSelectedCompanyFilter(report.company);
+    if (report.company && report.company !== "전체" && report.company !== "5개사 통합") {
+      setSelectedCompanyFilter(cleanCompanyName(report.company));
     } else if (report.plant === "삼랑진공장") {
       setSelectedCompanyFilter("오륙");
     } else if (report.plant === "한림공장") {
       setSelectedCompanyFilter("조영");
+    } else {
+      setSelectedCompanyFilter("오륙");
     }
+    setIsLegacyModalOpen(false);
+    setSelectedLegacyReport(null);
     setActiveTab("daily_input");
-    triggerToast(`✏️ ${report.workDate ? report.workDate.split("-")[1] + "월 " + report.workDate.split("-")[2] : ""}일 [${report.company || report.plant || "전체"}] 근태 등록 화면으로 이동했습니다.`);
+    triggerToast(`✏️ ${report.workDate ? report.workDate.split("-")[1] + "월 " + report.workDate.split("-")[2] + "일" : ""} [${report.company || report.plant || "오륙"}] 근태 수정 화면으로 이동했습니다. 작업자 근태 변경 후 [수정 및 재등록]을 클릭하세요.`);
   };
 
   // ⭐ USER ACTION: 특근보고서 삭제 핸들러
@@ -2613,28 +2618,57 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                     <span>✓ 전원 선택완료 ({filteredAttendanceWorkers.length}명)</span>
                   </span>
                 )}
-                {hasUnsavedChanges && (
-                  <span className="px-2 py-0.5 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50">
-                    ● 미등록
-                  </span>
-                )}
-                <button
-                  onClick={handleOpenRegistrationReportModal}
-                  disabled={isSaving}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 ${
-                    !isWeekendDay(selectedDay) && missingAttendanceWorkers.length > 0
-                      ? "bg-slate-800 text-amber-300 border-2 border-amber-400/80 hover:bg-slate-700 hover:border-amber-300"
-                      : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
-                  }`}
-                  title={
-                    !isWeekendDay(selectedDay) && missingAttendanceWorkers.length > 0
-                      ? `아직 근태가 미선택된 근로자가 ${missingAttendanceWorkers.length}명 있습니다. 모든 인원의 근태를 선택한 후 등록 가능합니다.`
-                      : `[${selectedCompanyFilter}] ${currentMonthNum}월 ${selectedDay}일 보고서 등록`
-                  }
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>💾 [{selectedCompanyFilter}] {currentMonthNum}월 {selectedDay}일({getDayLabel(selectedDay)}) 등록</span>
-                </button>
+                {(() => {
+                  const existingReport = (legacyReports || []).find((r) => {
+                    if (!r || r.isSynthesized) return false;
+                    const matchDay = (
+                      r.workDate === `${currentYear}-${String(currentMonthNum).padStart(2, "0")}-${String(selectedDay).padStart(2, "0")}` ||
+                      (r.workDate && r.workDate.endsWith(String(selectedDay).padStart(2, "0")) && r.workDate.includes(String(currentMonthNum).padStart(2, "0"))) ||
+                      (r.title && r.title.includes(`${currentMonthNum}월 ${selectedDay}일`))
+                    );
+                    if (!matchDay) return false;
+                    if (!selectedCompanyFilter || selectedCompanyFilter === "전체") return true;
+                    return cleanCompanyName(r.company) === cleanCompanyName(selectedCompanyFilter);
+                  });
+
+                  return (
+                    <>
+                      {existingReport ? (
+                        <span className="px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 text-[11px] font-black border border-cyan-400/50 flex items-center gap-1 shrink-0">
+                          <span>✅ 등록됨</span>
+                          {hasUnsavedChanges && <span className="text-amber-400 font-bold animate-pulse">(수정중)</span>}
+                        </span>
+                      ) : hasUnsavedChanges ? (
+                        <span className="px-2 py-0.5 rounded-lg bg-rose-500/30 text-rose-300 text-[11px] font-black border border-rose-400/50 shrink-0">
+                          ● 미등록
+                        </span>
+                      ) : null}
+                      <button
+                        onClick={handleOpenRegistrationReportModal}
+                        disabled={isSaving}
+                        className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl font-black text-xs sm:text-sm shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0 ${
+                          !isWeekendDay(selectedDay) && missingAttendanceWorkers.length > 0
+                            ? "bg-slate-800 text-amber-300 border-2 border-amber-400/80 hover:bg-slate-700 hover:border-amber-300"
+                            : existingReport
+                            ? "bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 ring-2 ring-cyan-400/50"
+                            : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+                        }`}
+                        title={
+                          !isWeekendDay(selectedDay) && missingAttendanceWorkers.length > 0
+                            ? `아직 근태가 미선택된 근로자가 ${missingAttendanceWorkers.length}명 있습니다. 모든 인원의 근태를 선택한 후 등록 가능합니다.`
+                            : existingReport
+                            ? `이미 등록된 보고서가 있습니다. 클릭하여 수정 내용을 최종 저장하고 보고서를 재등록합니다.`
+                            : `[${selectedCompanyFilter}] ${currentMonthNum}월 ${selectedDay}일 보고서 등록`
+                        }
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>
+                          💾 [{selectedCompanyFilter}] {currentMonthNum}월 {selectedDay}일({getDayLabel(selectedDay)}) {existingReport ? "수정 및 재등록" : "등록"}
+                        </span>
+                      </button>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -5408,6 +5442,16 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   }
                   return null;
                 })()}
+
+                <button
+                  type="button"
+                  onClick={() => handleEditReport(selectedLegacyReport)}
+                  className="px-4 py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700 font-black text-xs cursor-pointer shadow-xs active:scale-95 transition-all flex items-center gap-1.5"
+                  title="이 보고서의 근태/특근 수정 및 재등록 화면으로 이동합니다"
+                >
+                  <Edit3 className="w-4 h-4 text-cyan-400" />
+                  <span>✏️ 이 보고서 수정하기</span>
+                </button>
 
                 <button
                   type="button"
