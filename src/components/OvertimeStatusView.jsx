@@ -966,24 +966,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       if (reports.length > 0 && !selectedLegacyReport) {
         setSelectedLegacyReport(reports[0]);
       }
-      if (Array.isArray(reports) && reports.length > 0) {
-        setSmartData((prev) => {
-          if (!prev) return prev;
-          const baseMatrix = prev.attendanceMatrix || prev.masterWorkers;
-          const merged = buildMatrixFromReports(
-            baseMatrix,
-            reports,
-            currentYear,
-            currentMonthNum
-          );
-          return {
-            ...prev,
-            year: currentYear,
-            month: currentMonthNum,
-            attendanceMatrix: merged
-          };
-        });
-      }
     });
 
     const unsubApproval = subscribeApprovalDocs((docs) => {
@@ -1043,7 +1025,6 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
   };
 
   // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
-  // 1-Click Update Worker Attendance for Selected Day (Local Staging + Auto Save)
   const handleUpdateWorkerDayAttendance = async (targetWorkerOrIndex, newCode) => {
     const currentMatrix = (effectiveMatrix && effectiveMatrix.length > 0)
       ? [...effectiveMatrix]
@@ -1072,13 +1053,9 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
       daily: { ...(w.daily || {}) }
     }));
 
-    if (newCode) {
-      updatedMatrix[targetIdx].daily[selectedDay] = newCode;
-      updatedMatrix[targetIdx].daily[String(selectedDay)] = newCode;
-    } else {
-      delete updatedMatrix[targetIdx].daily[selectedDay];
-      delete updatedMatrix[targetIdx].daily[String(selectedDay)];
-    }
+    const finalCode = (newCode !== undefined && newCode !== null) ? newCode : "";
+    updatedMatrix[targetIdx].daily[selectedDay] = finalCode;
+    updatedMatrix[targetIdx].daily[String(selectedDay)] = finalCode;
 
     const newLedger = {
       ...smartData,
@@ -2006,23 +1983,23 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
     return list;
   }, [selectedCompanyManageWorkers, smartData.attendanceMatrix, manageWorkerSearch, personnelCardsMap]);
 
-  // ⭐ Dynamic Effective Matrix: seamlessly merges Firestore/local ledger with all registered reports
-  // Registered reports (reportMatrix) take authoritative precedence for official recorded days
+  // ⭐ Dynamic Effective Matrix: seamlessly merges registered reports with live user edits
+  // Live staging edits and user ledger entries take authoritative precedence over static historical reports
   const effectiveMatrix = useMemo(() => {
     const rawMatrix = smartData?.attendanceMatrix || smartData?.masterWorkers || [];
     if (!legacyReports || legacyReports.length === 0) return rawMatrix;
 
-    // 1. Build authoritative base from registered reports
+    // 1. Build base from registered reports
     const reportMatrix = buildMatrixFromReports(smartData?.masterWorkers || rawMatrix, legacyReports, currentYear, currentMonthNum);
 
-    // 2. Overlay staging edits for days without reports, while keeping registered reports authoritative
+    // 2. Overlay live user edits (rawMatrix) on top of registered reports (reportMatrix)
     return reportMatrix.map((w, idx) => {
       const liveW = rawMatrix[idx] || rawMatrix.find((rw) => ((rw.name || "").trim() === (w.name || "").trim()) && cleanCompanyName(rw.company) === cleanCompanyName(w.company));
       const liveDaily = liveW?.daily || {};
       const reportDaily = w.daily || {};
       
-      // Combine: staging edits for days with no registered reports, but official reports win on recorded days
-      const combinedDaily = { ...liveDaily, ...reportDaily };
+      // Combine: registered reports as baseline, live user edits override on modified days
+      const combinedDaily = { ...reportDaily, ...liveDaily };
 
       return {
         ...w,
@@ -2828,7 +2805,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 정시 / 특근 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, isWk ? "특근" : "🟢")}
+                                        onClick={() => {
+                                          const targetCode = isWk ? "특근" : "🟢";
+                                          const nextCode = isRegularOrSpecial ? (isWk ? "-" : "") : targetCode;
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title={isWk ? "주말/공휴일 특근 출근 (8시간)" : "정시 출근 (8시간)"}
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           isRegularOrSpecial
@@ -2844,7 +2825,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 19시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "19")}
+                                        onClick={() => {
+                                          const isCurrent = strVal === "19" || strVal === "19시" || strVal.includes("19");
+                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "19";
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title="19시 잔업 (+2시간, 총10H)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "19" || strVal === "19시" || strVal.includes("19")
@@ -2858,7 +2843,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 21시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "21")}
+                                        onClick={() => {
+                                          const isCurrent = strVal === "21" || strVal === "21시" || strVal.includes("21");
+                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "21";
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title="21시 잔업 (+4시간, 총12H)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "21" || strVal === "21시" || strVal.includes("21")
@@ -2872,7 +2861,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 22시 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "22")}
+                                        onClick={() => {
+                                          const isCurrent = strVal === "22" || strVal === "22시" || strVal.includes("22");
+                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "22";
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title="22시 잔업 (+5시간, 총13H)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "22" || strVal === "22시" || strVal.includes("22")
@@ -2886,7 +2879,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 야간 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "야간")}
+                                        onClick={() => {
+                                          const isCurrent = strVal === "야간" || strVal.includes("야간");
+                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "야간";
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title="야간 근무 (8시간)"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "야간" || strVal.includes("야간")
@@ -2900,7 +2897,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 연차 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "연차")}
+                                        onClick={() => {
+                                          const isCurrent = strVal === "연차" || strVal.includes("연차") || strVal === "휴가" || strVal.includes("휴가");
+                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "연차";
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title="연차 휴가"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "연차" || strVal.includes("연차") || strVal === "휴가" || strVal.includes("휴가")
@@ -2914,7 +2915,11 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                                       {/* 결근 */}
                                       <button
                                         type="button"
-                                        onClick={() => handleUpdateWorkerDayAttendance(worker, "결근")}
+                                        onClick={() => {
+                                          const isCurrent = strVal === "결근" || strVal === "무단결근" || strVal.includes("결근");
+                                          const nextCode = isCurrent ? (isWk ? "-" : "🟢") : "결근";
+                                          handleUpdateWorkerDayAttendance(worker, nextCode);
+                                        }}
                                         title="결근"
                                         className={`px-1 sm:px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-bold transition-all cursor-pointer ${
                                           strVal === "결근" || strVal === "무단결근" || strVal.includes("결근")
