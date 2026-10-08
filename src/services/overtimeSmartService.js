@@ -308,7 +308,7 @@ export const getOptionMeta = (code) => {
   if (strCode === "특근" || strCode === "주말특근" || strCode.includes("특근")) return ATTENDANCE_OPTIONS[4];
   if (strCode === "야간" || strCode.includes("야간")) return ATTENDANCE_OPTIONS[5];
   if (strCode === "주야" || strCode.includes("주야")) return ATTENDANCE_OPTIONS[6];
-  if (strCode === "-" || strCode === "휴무") return ATTENDANCE_OPTIONS[7];
+  if (strCode === "-" || strCode === "휴무" || strCode === "미출근" || strCode.includes("미출근")) return ATTENDANCE_OPTIONS[7];
   if (strCode === "휴가" || strCode.includes("휴가")) return ATTENDANCE_OPTIONS[8];
   if (strCode === "연차" || strCode.includes("연차")) return ATTENDANCE_OPTIONS[9];
   if (strCode === "반차" || strCode.includes("반차")) return ATTENDANCE_OPTIONS[10];
@@ -331,6 +331,8 @@ export const calculateWorkerDailyHours = (code) => {
   if (
     strCode === "-" ||
     strCode === "휴무" ||
+    strCode === "미출근" ||
+    strCode.includes("미출근") ||
     strCode === "결근" ||
     strCode.includes("결근") ||
     strCode === "휴가" ||
@@ -730,7 +732,7 @@ export const buildMatrixFromReports = (masterWorkers, reports, targetYear = null
               code = isWeekend ? "-" : "휴가";
             } else if (codeStr === "반차" || codeStr.includes("반차") || contentStr.includes("반차")) {
               code = isWeekend ? "-" : "반차";
-            } else if (codeStr === "휴무" || codeStr === "-") {
+            } else if (codeStr === "휴무" || codeStr === "-" || codeStr === "미출근" || codeStr.includes("미출근")) {
               code = "-";
             } else if (codeStr === "야간" || codeStr.includes("야간") || contentStr.includes("야간")) {
               code = "야간";

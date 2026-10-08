@@ -3418,14 +3418,7 @@ export const OvertimeStatusView = ({ onNavigateTab }) => {
                   {/* 엑셀 다운로드 버튼 연동 */}
                   <button
                     type="button"
-                    onClick={() => {
-                      try {
-                        const filename = exportSmartOvertimeToExcel(activeDataset);
-                        triggerToast(`📥 엑셀 다운로드 완료 (${filename})`);
-                      } catch (err) {
-                        alert("엑셀 내보내기 중 오류가 발생했습니다: " + err.message);
-                      }
-                    }}
+                    onClick={handleExportExcel}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition-all cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
